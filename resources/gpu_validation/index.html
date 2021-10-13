@@ -1,0 +1,391 @@
+<!doctype html>
+<html>
+
+<head>
+	<title>GPU Report</title>
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>
+	
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js"></script>
+	<script src="https://unpkg.com/bootstrap-table@1.15.3/dist/bootstrap-table.min.js"></script>
+	
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link href="https://unpkg.com/bootstrap-table@1.15.3/dist/bootstrap-table.min.css" rel="stylesheet">
+	
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-crosshair@1.1.2"></script>
+	
+	<link href="https://cdn.jsdelivr.net/npm/prismjs@1.17.1/themes/prism-okaidia.css" rel="stylesheet" />
+	
+	<style>
+		.graph {
+			width: 75%;
+			margin: auto;
+		}
+		
+		.messages {
+			width: 85%;
+			margin: auto;
+			margin-top: 35px;
+		}
+		
+		.donut {
+			margin-top: 7%;
+		}
+		
+		.reset-zoom {
+		    position: absolute;
+			top: 27%;
+			left: 10%;
+		}
+		
+		.btn-dark {
+			color: #fff;
+			background-color: #343a40;
+			border-color: #343a40;
+		}
+		
+		.btn-dark:hover {
+			color: #d6d6d6;
+		}
+		
+		body {
+			min-width: 1125px;
+			width: auto !important;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container-fluid main">
+		<div class="row graph">
+			<div class="col-md-10">
+				<canvas id="canvas" height="100"></canvas>
+			</div>
+			<div class="col-md-2 donut">
+				<canvas id="donut" height="300"></canvas>
+			</div>
+		</div>
+		<div class="row messages">
+			<div id="message"/>
+		</div>
+	</div>
+	
+	<script>
+		var colors = [
+			'#4dc9f6',
+			'#f67019',
+			'#f53794',
+			'#537bc4',
+			'#acc236',
+			'#166a8f',
+			'#00a950',
+			'#58595b',
+			'#8549ba'
+		];
+		
+		let dataSets = [];
+		for (var k in Data.Types) {
+			let type = Data.Types[k];
+			
+			let color = colors[k % colors.length];
+			
+			dataSets[k] = 
+			{
+				label: type.Name,
+				type: 'line',
+				radius: 1,
+				borderColor: color,
+				backgroundColor: color,
+				data: [ ],
+			};
+		}
+		
+		let labels = [];
+		
+		let max = 0;
+		
+		for (var k in Data.TimeSliced) {
+			let slice = Data.TimeSliced[k];
+			
+			labels.push(String(slice.Label));
+			
+			let localMax = 0;
+			for (var j in slice.Counts) {
+				let count = slice.Counts[j];
+				
+				dataSets[count.Type].data.push({x: slice.Label, y: count.Count});
+				
+				localMax += count.Count;
+			}
+			
+			max = Math.max(max, localMax);
+		}
+		
+		let valueCallback = function(value, index, values) { return value; };
+		
+		if (max > 1e6)
+			valueCallback = function(value, index, values) { return Math.ceil(value / 1e6) + 'M'; }
+		else if (max > 1e4)
+			valueCallback = function(value, index, values) { return Math.ceil(value / 1e3) + 'K'; }
+		
+		let latentData = [];
+		let latentColors = [];
+		
+		for (var k in Data.TimeSliced) {
+			let slice = Data.TimeSliced[k];
+			
+			latentData.push({x: slice.Label, y: slice.Latency.Undershoots});
+		}
+		
+		let latentSet = 
+		{
+			label: 'Undershoots',
+			type: 'line',
+			yAxisID: 'NonStack',
+			radius: 0,
+			backgroundColor: 'rgba(0, 0, 0, .45)',
+			data: latentData.map(function (e) { return {x: e.x, y: Math.abs(e.y)}; }),
+		};
+		
+		dataSets.unshift(latentSet);
+		
+		var config = {
+			type: 'bar',
+			data: {
+				datasets: dataSets
+			},
+			options: {
+				responsive: true,
+				title: {
+					display: true,
+					text: 'Validation Errors'
+				},
+				hover: {
+					mode: 'index'
+				},
+				scales: {
+					xAxes: 
+					[
+						{
+							type: 'linear',
+							scaleLabel: 
+							{
+								display: true,
+								labelString: 'Time (s)'
+							},
+							ticks: 
+							{
+								min: 0,
+								max: Data.TimeSliced[Data.TimeSliced.length - 1].Label
+							}
+						}
+					],
+					yAxes: 
+					[
+						{
+							stacked: true,
+							scaleLabel:
+							{
+								display: true,
+								labelString: '# Messages'
+							},
+							ticks: 
+							{
+								min: 0,
+								max: max * 1.15,
+								callback: valueCallback
+							}
+						},
+						{
+							display: false,
+							id: 'NonStack',
+							ticks: 
+							{
+								min: 0,
+								max: max * 1.15,
+								callback: valueCallback
+							}
+						}
+					]
+				},
+				plugins: {
+				  crosshair: {
+					sync: {
+					  enabled: false
+					},
+					zoom: {
+					  enabled: true,                                      
+					  zoomboxBackgroundColor: 'rgba(66,133,244,0.2)',     
+					  zoomboxBorderColor: '#48F',                         
+					  zoomButtonText: 'Reset Zoom',                       
+					  zoomButtonClass: 'reset-zoom btn btn-dark',                      
+					}
+				  }
+				},
+				tooltips: {
+				  mode: "index",
+				  intersect: false,
+				  callbacks: {
+					title: function(a, d) {
+					  return a[0].xLabel.toFixed(2);
+					},
+					label: function(i, d) {
+					  return (
+						d.datasets[i.datasetIndex].label + ": " + i.yLabel.toFixed(2)
+					  );
+					}
+				  }
+				}
+			}
+		};
+		
+		let donut_values = [];
+		let donut_labels = [];
+		let donut_colors = [];
+		
+		for (var k in Data.Summary.Counts) {
+			let count = Data.Summary.Counts[k];
+			
+			donut_values.push(count.Count);
+			donut_labels.push(Data.Types[count.Type].Name);
+			donut_colors.push(colors[k % colors.length]);
+		}
+		
+		donut_labels.push('Undershoots');
+		donut_values.push(Data.Summary.Latency.Undershoots);
+		donut_colors.push(latentSet.backgroundColor);
+		
+		let donut_config = {
+			type: 'doughnut',
+			data: {
+				labels: donut_labels,
+				datasets: [{
+					data: donut_values,
+					backgroundColor: donut_colors
+				}]
+			},
+			options: {
+				responsive: true,
+				legend: {
+					display: false
+				},
+				plugins: {
+				  crosshair: false
+				},
+				animation: {
+					animateScale: true,
+					animateRotate: true
+				}
+			}
+		};
+		
+		let language = {};
+		language.keywords = /\b(?:const|void|struct|static|extern|register|volatile|inline|target|nointerpolation|shared|uniform|row_major|column_major|snorm|unorm|bool|bool1|bool2|bool3|bool4|int|int1|int2|int3|int4|uint|uint1|uint2|uint3|uint4|half|half1|half2|half3|half4|float|float1|float2|float3|float4|double|double1|double2|double3|double4|matrix|bool1x1|bool1x2|bool1x3|bool1x4|bool2x1|bool2x2|bool2x3|bool2x4|bool3x1|bool3x2|bool3x3|bool3x4|bool4x1|bool4x2|bool4x3|bool4x4|int1x1|int1x2|int1x3|int1x4|int2x1|int2x2|int2x3|int2x4|int3x1|int3x2|int3x3|int3x4|int4x1|int4x2|int4x3|int4x4|uint1x1|uint1x2|uint1x3|uint1x4|uint2x1|uint2x2|uint2x3|uint2x4|uint3x1|uint3x2|uint3x3|uint3x4|uint4x1|uint4x2|uint4x3|uint4x4|half1x1|half1x2|half1x3|half1x4|half2x1|half2x2|half2x3|half2x4|half3x1|half3x2|half3x3|half3x4|half4x1|half4x2|half4x3|half4x4|float1x1|float1x2|float1x3|float1x4|float2x1|float2x2|float2x3|float2x4|float3x1|float3x2|float3x3|float3x4|float4x1|float4x2|float4x3|float4x4|double1x1|double1x2|double1x3|double1x4|double2x1|double2x2|double2x3|double2x4|double3x1|double3x2|double3x3|double3x4|double4x1|double4x2|double4x3|double4x4|cbuffer|groupshared|SamplerState|in|out|inout|vector|matrix|interface|class|point|triangle|line|lineadj|triangleadj)\b/;
+		
+		function BuildMessageTable($table, index) {
+			var data = [];
+			
+			var columns = 
+			[
+				{ field: "id", visible: false },
+				{ field: "file", title: "File", sortable: true },
+                { field: "line", title: "Line", sortable: true },
+				{ field: "type", title: "Type", sortable: true },
+                { field: "object", title: "Object", sortable: true },
+                { field: "message", title: "Message", sortable: true },
+                { field: "count", title: "Count", sortable: true },
+			];
+			
+			let shader = Data.Shaders[index];
+			for (var k in shader.Messages) {
+				let message = shader.Messages[k];
+				
+				data.push({
+					"id": k,
+					"type": Data.Types[message.Type].Name,
+					"message": message.Message,
+					"file": message.Location.File,
+                    "line": message.Location.Line,
+                    "object": message.Object,
+					"count": message.Count
+				});
+			};
+			
+			$table.bootstrapTable({
+				columns: columns,
+				data: data,
+				detailView: true,
+				onExpandRow: function (index, row, $detail) {
+					let html = $detail.html('<pre class=" language-cpp" data-language="cpp" id = "pre"><code class="language-cpp" id="code"></code></pre>');
+					
+					html.find('code').html(Prism.highlight(
+						shader.Messages[row.id].Location.Extract, 
+						language, 
+						'cpp'
+					));
+					
+					html.attr('style', 'padding: 0');
+					html.find('pre').attr('style', 'margin: 0; border-radius: 0');
+				},
+			});
+		}
+		
+		function BuildShaderTable($table) {			
+			var data = [];
+			
+			var columns = 
+			[
+				{ field: "id", visible: false },
+                { field: "module", title: "Module", sortable: true },
+                { field: "file", title: "File", sortable: true },
+				{ field: "features", title: "Features", sortable: true },
+				{ field: "errors", title: "Errors (#)", sortable: true },
+				{ field: "unique", title: "Unique Errors (#)", sortable: true },
+			];
+			
+			for (var k in Data.Shaders) {
+				let shader = Data.Shaders[k];
+				
+				data.push({
+					"id": k,
+                    "module": shader.Module,
+                    "file": shader.ModuleFile,
+					"errors": shader.Errors,
+					"unique": shader.UniqueErrors,
+					"features": shader.Features
+				});
+			};
+			
+			$table.bootstrapTable({
+				columns: columns,
+				data: data,
+				detailView: true,
+				onExpandRow: function (index, row, $detail) {
+					BuildMessageTable($detail.html('<table></table>').find('table'), row.id);
+				},
+			});
+		}
+
+		$(function() {
+			language = Prism.languages.clike;
+		
+			let canvas = new Chart(document.getElementById('canvas').getContext('2d'), config);
+			
+			let crosshair = canvas.$plugins.descriptors.find(function (p) { return p.plugin.id == 'crosshair'; });
+			
+			let hook = crosshair.plugin.resetZoom;
+			crosshair.plugin.resetZoom = (function(t) {
+				canvas.crosshair.originalXRange = { min: 0, max: Data.TimeSliced[Data.TimeSliced.length - 1].Label };
+				hook.bind(this)(t);
+			}).bind(crosshair.plugin);
+		
+			new Chart(document.getElementById('donut').getContext('2d'), donut_config);
+			
+			BuildShaderTable($('#message').html('<table></table>').find('table'));
+		});
+	</script>
+	
+	<script src="https://cdn.jsdelivr.net/npm/prismjs@1.17.1/prism.min.js"></script>
+</body>
+
+</html>
