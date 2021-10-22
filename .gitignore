@@ -1,0 +1,9 @@
+# JetBrains
+.idea/
+.idea_modules/
+
+# CMake
+cmake-build-*/
+
+# Output
+Bin/
