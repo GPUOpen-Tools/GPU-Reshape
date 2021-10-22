@@ -1,0 +1,3 @@
+# Scratch
+
+Various unorganized thoughts.
