@@ -11,20 +11,21 @@ Status of all implemented and planned features.
 | Resource export stability | Validation | :white_check_mark: |  |
 | Concurrency | Validation | :white_check_mark: |  |
 | Resource initialization | Validation | :white_check_mark: |  |
-| Numeric stability | Validation |  |  |
+| Numeric & builtin stability | Validation |  |  |
 | Indirect parameters | Validation |  |  |
 | Direct Parameters | Validation |  |  |
 | Branch termination | Validation |  |  |
 | Branch coverage | Optimization |  |  |
+| Branch coherence | Optimization |  |  |
 | Branch hot spots | Optimization |  |  |
 | Scalarization potential | Optimization |  |  |
 | Shader assertions | Debugging |  |  |
 | Shader instruction debugging | Debugging |  |  |
-| Shader reloading | Debugging |  |  |
+| Shader live editing | Debugging |  |  |
 
 ### Investigation
 
 | Feature | Type | Implemented |
 | --------------- | ---- | ----------- |
-| Access patterns | Optimization |  |
+| Access patterns / coherence | Optimization |  |
 | Profile guided optimization | Optimization |  |

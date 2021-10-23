@@ -1,0 +1,15 @@
+{
+  "file_format_version" : "1.0.0",
+  "layer" : {
+    "name": "GBV_user_data_layer",
+    "type": "GLOBAL",
+    "library_path": ".\\Backends.Vulkan.Tests.UserDataLayer.dll",
+    "api_version": "1.0.0",
+    "implementation_version": "1",
+    "description": "",
+    "functions": {
+      "vkGetInstanceProcAddr": "vkGetInstanceProcAddr",
+      "vkGetDeviceProcAddr": "vkGetDeviceProcAddr"
+    }
+  }
+}

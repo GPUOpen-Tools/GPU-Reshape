@@ -1,4 +1,13 @@
 project(gpu-validation)
+
 cmake_minimum_required(VERSION 3.19)
 
+set(CMAKE_CXX_STANDARD 17)
+
+# Set all outputs to Bin/Config
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE})
+
+add_subdirectory(ThirdParty)
 add_subdirectory(Source)
