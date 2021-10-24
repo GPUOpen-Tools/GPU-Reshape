@@ -13,10 +13,23 @@
 #include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
 #include <Backends/Vulkan/CommandBufferObject.h>
 
-// Table population
+// Std
+#include <cstring>
 
+// Table population
+void CommandBufferDispatchTable::Populate(VkDevice device, PFN_vkGetDeviceProcAddr getProcAddr)
+{
+$POPULATE
+}
 
 // Command buffer hooks
 $HOOKS
 
 // Registration
+PFN_vkVoidFunction CommandBufferDispatchTable::GetHookAddress(const char* name)
+{
+$GETHOOKADDRESS
+
+    // No hook
+    return nullptr;
+}
