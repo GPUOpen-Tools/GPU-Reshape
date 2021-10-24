@@ -1,10 +1,11 @@
-#define CATCH_CONFIG_MAIN
+// Catch2
 #include <catch2/catch.hpp>
 
+// Tests
 #include "Loader.h"
 
-TEST_CASE_METHOD(Loader, "User Data", "[Vulkan]") {
-    REQUIRE(AddInstanceLayer("GBV_user_data_layer"));
+TEST_CASE_METHOD(Loader, "UserData.Performance", "[Vulkan]") {
+    REQUIRE(AddInstanceLayer("VK_GPUOpen_Test_UserDataLayer"));
 
     // Create the instance
     CreateInstance();
@@ -168,5 +169,12 @@ TEST_CASE_METHOD(Loader, "User Data", "[Vulkan]") {
 
         REQUIRE(vkEndCommandBuffer(commandBuffer) == VK_SUCCESS);
     }
+
+    // Release handles
+    vkDestroyPipeline(GetDevice(), pipeline, nullptr);
+    vkDestroyShaderModule(GetDevice(), module, nullptr);
+    vkDestroyPipelineLayout(GetDevice(), layout, nullptr);
+    vkFreeCommandBuffers(GetDevice(), pool, 1, &commandBuffer);
+    vkDestroyCommandPool(GetDevice(), pool, nullptr);
 }
 

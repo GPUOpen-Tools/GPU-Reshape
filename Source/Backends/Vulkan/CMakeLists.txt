@@ -57,6 +57,9 @@ add_library(
     Backends.Vulkan.Layer SHARED
     Layer/Source/Layer.cpp
     Layer/Source/DeviceDispatchTable.cpp
+    Layer/Source/InstanceDispatchTable.cpp
+    Layer/Source/Device.cpp
+    Layer/Source/Instance.cpp
 
     # Generated
     Layer/Source/CommandBuffer.Gen.cpp
@@ -79,22 +82,24 @@ configure_file(Layer/Resources/VK_GPUOpen_GBV.json ${CMAKE_LIBRARY_OUTPUT_DIRECT
 # Create test layer
 add_library(
     Backends.Vulkan.Tests.UserDataLayer SHARED
-    Tests/UserDataLayer.cpp
+    Tests/Layer/UserDataLayer.cpp
 )
 
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Tests.UserDataLayer VulkanHeaders)
 
 # Copy layer definition (configuration time)
-configure_file(Tests/user_data_layer.json ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/user_data_layer.json COPYONLY)
+configure_file(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/VK_GPUOpen_Test_UserDataLayer.json COPYONLY)
 
 #----- Test Application -----#
 
 # Create test app
 add_executable(
     Backends.Vulkan.Tests
-    Tests/Loader.cpp
-    Tests/UserData.cpp
+    Tests/Source/Main.cpp
+    Tests/Source/Loader.cpp
+    Tests/Source/UserData.cpp
+    Tests/Source/Layer.cpp
 )
 
 # Setup dependencies
@@ -108,4 +113,8 @@ target_compile_definitions(
 )
 
 # Add dependency on the layer
-add_dependencies(Backends.Vulkan.Tests Backends.Vulkan.Tests.UserDataLayer)
+add_dependencies(
+    Backends.Vulkan.Tests
+    Backends.Vulkan.Tests.UserDataLayer
+    Backends.Vulkan.Layer
+)

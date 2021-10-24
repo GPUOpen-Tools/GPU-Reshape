@@ -15,7 +15,7 @@
  */
 
 /// Name of the layer
-#define LAYER_NAME "UserDataLayer"
+#define LAYER_NAME "VK_GPUOpen_Test_UserDataLayer"
 
 /// Linkage information
 #if defined(_WIN32)
@@ -42,8 +42,9 @@ struct InstanceDispatchTable {
         return Table[key];
     }
 
-    PFN_vkGetInstanceProcAddr                GetInstanceProcAddr;
-    PFN_vkEnumerateDeviceExtensionProperties EnumerateDeviceExtensionProperties;
+    PFN_vkGetInstanceProcAddr                getInstanceProcAddr;
+    PFN_vkDestroyInstance                    destroyInstance;
+    PFN_vkEnumerateDeviceExtensionProperties enumerateDeviceExtensionProperties;
 
 private:
     static std::mutex Mutex;
@@ -56,7 +57,7 @@ public:
     virtual void Foo() = 0;
 
     // Function pointer test
-    void(*FooFPtr)(IFeature* frame){nullptr};
+    void(*fooFPtr)(IFeature* frame){nullptr};
 };
 
 class FeatureA final : public IFeature
@@ -64,7 +65,7 @@ class FeatureA final : public IFeature
 public:
     FeatureA()
     {
-        FooFPtr = [](IFeature* frame)
+        fooFPtr = [](IFeature* frame)
         {
             static_cast<FeatureA*>(frame)->Foo();
         };
@@ -90,39 +91,45 @@ struct DeviceDispatchTable {
 
 
     /// Proc addresses
-    PFN_vkCmdBindPipeline          CmdBindPipeline;
-    PFN_vkCreatePrivateDataSlotEXT CreatePrivateDataSlotEXT;
-    PFN_vkSetPrivateDataEXT        SetPrivateDataEXT;
-    PFN_vkGetPrivateDataEXT        GetPrivateDataEXT;
-    PFN_vkCmdDispatch              CmdDispatch;
-    PFN_vkCmdDispatchIndirect      CmdDispatchIndirect;
-    PFN_vkAllocateCommandBuffers   AllocateCommandBuffers;
-    PFN_vkBeginCommandBuffer       BeginCommandBuffer;
-    PFN_vkEndCommandBuffer         EndCommandBuffer;
-    PFN_vkGetDeviceProcAddr        GetDeviceProcAddr;
+    PFN_vkCmdBindPipeline           cmdBindPipeline;
+    PFN_vkCreatePrivateDataSlotEXT  createPrivateDataSlotEXT;
+    PFN_vkDestroyPrivateDataSlotEXT destroyPrivateDataSlotEXT;
+    PFN_vkSetPrivateDataEXT         setPrivateDataEXT;
+    PFN_vkGetPrivateDataEXT         getPrivateDataEXT;
+    PFN_vkCmdDispatch               cmdDispatch;
+    PFN_vkCmdDispatchIndirect       cmdDispatchIndirect;
+    PFN_vkAllocateCommandBuffers    allocateCommandBuffers;
+    PFN_vkFreeCommandBuffers        freeCommandBuffers;
+    PFN_vkBeginCommandBuffer        beginCommandBuffer;
+    PFN_vkEndCommandBuffer          endCommandBuffer;
+    PFN_vkGetDeviceProcAddr         getDeviceProcAddr;
+    PFN_vkDestroyDevice             destroyDevice;
 
     /// Data
-    VkDevice             Device;
-    VkPrivateDataSlotEXT Slot;
+    VkDevice             device;
+    VkPrivateDataSlotEXT slot;
+
+    /// Feature
+    IFeature* feature{};
 
     /// Feature testing, vector
-    std::vector<IFeature*> DispatchIndirectFeatures;
+    std::vector<IFeature*> dispatchIndirectFeatures;
 
     /// Feature testing, inline
-    IFeature* DispatchIndirectFeaturesFlat[1];
-    uint32_t DispatchIndirectFeaturesFlatCount;
+    IFeature* dispatchIndirectFeaturesFlat[1];
+    uint32_t dispatchIndirectFeaturesFlatCount;
 
     /// Feature testing, bitset
-    uint64_t DispatchIndirectFeatureSetZero = 0;
+    uint64_t dispatchIndirectFeatureSetZero = 0;
 
     /// Feature testing, bitset
-    uint64_t DispatchIndirectFeatureSetBits = 0;
-    std::vector<IFeature*> DispatchIndirectFeatureSet;
+    uint64_t dispatchIndirectFeatureSetBits = 0;
+    std::vector<IFeature*> dispatchIndirectFeatureSet;
 
     /// Feature testing, bitset
-    uint64_t DispatchIndirectFeatureSetBitsMany = 0;
-    uint64_t DispatchIndirectFeatureSetBitsManyFewEnabled = 0;
-    std::vector<IFeature*> DispatchIndirectFeatureSetMany;
+    uint64_t dispatchIndirectFeatureSetBitsMany = 0;
+    uint64_t dispatchIndirectFeatureSetBitsManyFewEnabled = 0;
+    std::vector<IFeature*> dispatchIndirectFeatureSetMany;
 
 private:
     static std::mutex Mutex;
@@ -159,21 +166,21 @@ VkResult GetExtensionProperties(uint32_t *pPropertyCount, VkExtensionProperties 
 
 VkResult VKAPI_PTR CreateInstance(const VkInstanceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
     // Attempt to find link info
-    auto chain_info = (VkLayerInstanceCreateInfo *) pCreateInfo->pNext;
-    while (chain_info && !(chain_info->sType == VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO && chain_info->function == VK_LAYER_LINK_INFO)) {
-        chain_info = (VkLayerInstanceCreateInfo *) chain_info->pNext;
+    auto chainInfo = (VkLayerInstanceCreateInfo *) pCreateInfo->pNext;
+    while (chainInfo && !(chainInfo->sType == VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO && chainInfo->function == VK_LAYER_LINK_INFO)) {
+        chainInfo = (VkLayerInstanceCreateInfo *) chainInfo->pNext;
     }
 
     // ...
-    if (!chain_info) {
+    if (!chainInfo) {
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
     // Fetch previous addresses
-    PFN_vkGetInstanceProcAddr getInstanceProcAddr = chain_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
+    PFN_vkGetInstanceProcAddr getInstanceProcAddr = chainInfo->u.pLayerInfo->pfnNextGetInstanceProcAddr;
 
     // Advance layer
-    chain_info->u.pLayerInfo = chain_info->u.pLayerInfo->pNext;
+    chainInfo->u.pLayerInfo = chainInfo->u.pLayerInfo->pNext;
 
     // Pass down the chain
     VkResult result = reinterpret_cast<PFN_vkCreateInstance>(getInstanceProcAddr(nullptr, "vkCreateInstance"))(pCreateInfo, pAllocator, pInstance);
@@ -183,11 +190,22 @@ VkResult VKAPI_PTR CreateInstance(const VkInstanceCreateInfo *pCreateInfo, const
 
     // Insert dispatch table
     auto table = new InstanceDispatchTable{};
-    table->GetInstanceProcAddr = getInstanceProcAddr;
-    table->EnumerateDeviceExtensionProperties = reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(getInstanceProcAddr(*pInstance, "vkEnumerateDeviceExtensionProperties"));
+    table->getInstanceProcAddr = getInstanceProcAddr;
+    table->destroyInstance = reinterpret_cast<PFN_vkDestroyInstance>(getInstanceProcAddr(*pInstance, "vkDestroyInstance"));
+    table->enumerateDeviceExtensionProperties = reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(getInstanceProcAddr(*pInstance, "vkEnumerateDeviceExtensionProperties"));
     InstanceDispatchTable::Add(GetInternalTable(*pInstance), table);
 
     return VK_SUCCESS;
+}
+
+void VKAPI_PTR DestroyInstance(VkInstance instance, const VkAllocationCallbacks *pAllocator) {
+    auto table = InstanceDispatchTable::Get(GetInternalTable(instance));
+
+    // Pass down callchain
+    table->destroyInstance(instance, pAllocator);
+
+    // Release the table
+    delete table;
 }
 
 VKAPI_ATTR void VKAPI_CALL CmdDispatchNull(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
@@ -200,19 +218,19 @@ VKAPI_ATTR void VKAPI_CALL CmdDispatchIndirectNull(VkCommandBuffer commandBuffer
 
 VkResult VKAPI_PTR CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     // Attempt to find link info
-    auto chain_info = (VkLayerDeviceCreateInfo *) pCreateInfo->pNext;
-    while (chain_info && !(chain_info->sType == VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO && chain_info->function == VK_LAYER_LINK_INFO)) {
-        chain_info = (VkLayerDeviceCreateInfo *) chain_info->pNext;
+    auto chainInfo = (VkLayerDeviceCreateInfo *) pCreateInfo->pNext;
+    while (chainInfo && !(chainInfo->sType == VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO && chainInfo->function == VK_LAYER_LINK_INFO)) {
+        chainInfo = (VkLayerDeviceCreateInfo *) chainInfo->pNext;
     }
 
     // ...
-    if (!chain_info) {
+    if (!chainInfo) {
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
     // Fetch previous addresses
-    PFN_vkGetInstanceProcAddr getInstanceProcAddr = chain_info->u.pLayerInfo->pfnNextGetInstanceProcAddr;
-    PFN_vkGetDeviceProcAddr   getDeviceProcAddr   = chain_info->u.pLayerInfo->pfnNextGetDeviceProcAddr;
+    PFN_vkGetInstanceProcAddr getInstanceProcAddr = chainInfo->u.pLayerInfo->pfnNextGetInstanceProcAddr;
+    PFN_vkGetDeviceProcAddr   getDeviceProcAddr   = chainInfo->u.pLayerInfo->pfnNextGetDeviceProcAddr;
 
     // Pass down the chain
     VkResult result = reinterpret_cast<PFN_vkCreateDevice>(getInstanceProcAddr(nullptr, "vkCreateDevice"))(physicalDevice, pCreateInfo, pAllocator, pDevice);
@@ -222,53 +240,56 @@ VkResult VKAPI_PTR CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceC
 
     // Insert dispatch table
     auto table = new DeviceDispatchTable{};
-    table->Device                   = *pDevice;
-    table->GetDeviceProcAddr        = getDeviceProcAddr;
-    table->CmdBindPipeline          = reinterpret_cast<PFN_vkCmdBindPipeline>(getDeviceProcAddr(*pDevice, "vkCmdBindPipeline"));
-    table->CmdDispatch              = CmdDispatchNull;
-    table->CmdDispatchIndirect      = CmdDispatchIndirectNull;
-    table->CreatePrivateDataSlotEXT = reinterpret_cast<PFN_vkCreatePrivateDataSlotEXT>(getDeviceProcAddr(*pDevice, "vkCreatePrivateDataSlotEXT"));
-    table->SetPrivateDataEXT        = reinterpret_cast<PFN_vkSetPrivateDataEXT>(getDeviceProcAddr(*pDevice, "vkSetPrivateDataEXT"));
-    table->GetPrivateDataEXT        = reinterpret_cast<PFN_vkGetPrivateDataEXT>(getDeviceProcAddr(*pDevice, "vkGetPrivateDataEXT"));
-    table->AllocateCommandBuffers   = reinterpret_cast<PFN_vkAllocateCommandBuffers>(getDeviceProcAddr(*pDevice, "vkAllocateCommandBuffers"));
-    table->BeginCommandBuffer       = reinterpret_cast<PFN_vkBeginCommandBuffer>(getDeviceProcAddr(*pDevice, "vkBeginCommandBuffer"));
-    table->EndCommandBuffer         = reinterpret_cast<PFN_vkEndCommandBuffer>(getDeviceProcAddr(*pDevice, "vkEndCommandBuffer"));
+    table->device                   = *pDevice;
+    table->getDeviceProcAddr        = getDeviceProcAddr;
+    table->destroyDevice            = reinterpret_cast<PFN_vkDestroyDevice>(getDeviceProcAddr(*pDevice, "vkDestroyDevice"));
+    table->cmdBindPipeline          = reinterpret_cast<PFN_vkCmdBindPipeline>(getDeviceProcAddr(*pDevice, "vkCmdBindPipeline"));
+    table->cmdDispatch              = CmdDispatchNull;
+    table->cmdDispatchIndirect      = CmdDispatchIndirectNull;
+    table->createPrivateDataSlotEXT = reinterpret_cast<PFN_vkCreatePrivateDataSlotEXT>(getDeviceProcAddr(*pDevice, "vkCreatePrivateDataSlotEXT"));
+    table->destroyPrivateDataSlotEXT = reinterpret_cast<PFN_vkDestroyPrivateDataSlotEXT>(getDeviceProcAddr(*pDevice, "vkDestroyPrivateDataSlotEXT"));
+    table->setPrivateDataEXT        = reinterpret_cast<PFN_vkSetPrivateDataEXT>(getDeviceProcAddr(*pDevice, "vkSetPrivateDataEXT"));
+    table->getPrivateDataEXT        = reinterpret_cast<PFN_vkGetPrivateDataEXT>(getDeviceProcAddr(*pDevice, "vkGetPrivateDataEXT"));
+    table->allocateCommandBuffers   = reinterpret_cast<PFN_vkAllocateCommandBuffers>(getDeviceProcAddr(*pDevice, "vkAllocateCommandBuffers"));
+    table->freeCommandBuffers       = reinterpret_cast<PFN_vkFreeCommandBuffers>(getDeviceProcAddr(*pDevice, "vkFreeCommandBuffers"));
+    table->beginCommandBuffer       = reinterpret_cast<PFN_vkBeginCommandBuffer>(getDeviceProcAddr(*pDevice, "vkBeginCommandBuffer"));
+    table->endCommandBuffer         = reinterpret_cast<PFN_vkEndCommandBuffer>(getDeviceProcAddr(*pDevice, "vkEndCommandBuffer"));
     DeviceDispatchTable::Add(GetInternalTable(*pDevice), table);
 
     // Feature setup
     {
-        auto* feature = new FeatureA();
+        table->feature = new FeatureA();
 
-        table->DispatchIndirectFeatures.push_back(feature);
+        table->dispatchIndirectFeatures.push_back(table->feature);
 
-        table->DispatchIndirectFeaturesFlat[0] = feature;
-        table->DispatchIndirectFeaturesFlatCount = 1;
+        table->dispatchIndirectFeaturesFlat[0] = table->feature;
+        table->dispatchIndirectFeaturesFlatCount = 1;
 
-        table->DispatchIndirectFeatureSet.resize(20);
-        table->DispatchIndirectFeatureSet[0] = feature;
-        table->DispatchIndirectFeatureSetBits = (1 << 0);
+        table->dispatchIndirectFeatureSet.resize(20);
+        table->dispatchIndirectFeatureSet[0] = table->feature;
+        table->dispatchIndirectFeatureSetBits = (1 << 0);
 
-        table->DispatchIndirectFeatureSetMany.resize(20);
-        table->DispatchIndirectFeatureSetBitsMany = 0;
+        table->dispatchIndirectFeatureSetMany.resize(20);
+        table->dispatchIndirectFeatureSetBitsMany = 0;
 
         for (uint32_t i = 0; i < 20; i++) {
             if (i % 3 == 0)
                 continue;
 
-            table->DispatchIndirectFeatureSetMany[i] = feature;
-            table->DispatchIndirectFeatureSetBitsMany |= (1 << i);
+            table->dispatchIndirectFeatureSetMany[i] = table->feature;
+            table->dispatchIndirectFeatureSetBitsMany |= (1 << i);
         }
 
-        table->DispatchIndirectFeatureSetBitsManyFewEnabled |= (1 << 4);
+        table->dispatchIndirectFeatureSetBitsManyFewEnabled |= (1 << 4);
     }
 
     // Allocate private slot if possible
-    if (table->CreatePrivateDataSlotEXT)
+    if (table->createPrivateDataSlotEXT)
     {
         VkPrivateDataSlotCreateInfoEXT privateInfo{};
         privateInfo.sType = VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO_EXT;
 
-        result = table->CreatePrivateDataSlotEXT(*pDevice, &privateInfo, nullptr, &table->Slot);
+        result = table->createPrivateDataSlotEXT(*pDevice, &privateInfo, nullptr, &table->slot);
         if (result != VK_SUCCESS) {
             return result;
         }
@@ -278,16 +299,32 @@ VkResult VKAPI_PTR CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceC
     return VK_SUCCESS;
 }
 
+void VKAPI_PTR DestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator) {
+    auto table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Destroy private data
+    table->destroyPrivateDataSlotEXT(device, table->slot, pAllocator);
+
+    // Pass down callchain
+    table->destroyDevice(device, pAllocator);
+
+    // Release the feature
+    delete table->feature;
+
+    // Release the table
+    delete table;
+}
+
 struct WrappedCommandBuffer
 {
-    void*                DispatchTable;
-    DeviceDispatchTable* Table;
-    VkCommandBuffer      Object;
+    void*                dispatchTable;
+    DeviceDispatchTable* table;
+    VkCommandBuffer      object;
 };
 
 VKAPI_ATTR void VKAPI_CALL CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) {
     auto wrapped = reinterpret_cast<WrappedCommandBuffer*>(commandBuffer);
-    wrapped->Table->CmdBindPipeline(wrapped->Object, pipelineBindPoint, pipeline);
+    wrapped->table->cmdBindPipeline(wrapped->object, pipelineBindPoint, pipeline);
 }
 
 VKAPI_ATTR void VKAPI_CALL CmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
@@ -299,20 +336,20 @@ VKAPI_ATTR void VKAPI_CALL CmdDispatch(VkCommandBuffer commandBuffer, uint32_t g
         case 0: {
             // Fetch from lookup  table
             DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(commandBuffer));
-            table->CmdDispatch(wrapped->Object, 16, groupCountY, groupCountZ);
+            table->cmdDispatch(wrapped->object, 16, groupCountY, groupCountZ);
             break;
         }
         case 1: {
             // Wrapped
-            wrapped->Table->CmdDispatch(wrapped->Object, 16, groupCountY, groupCountZ);
+            wrapped->table->cmdDispatch(wrapped->object, 16, groupCountY, groupCountZ);
             break;
         }
         case 2: {
             // Private
             uint64_t data;
-            wrapped->Table->GetPrivateDataEXT(wrapped->Table->Device, VK_OBJECT_TYPE_COMMAND_BUFFER, reinterpret_cast<uint64_t>(wrapped->Object), wrapped->Table->Slot, &data);
+            wrapped->table->getPrivateDataEXT(wrapped->table->device, VK_OBJECT_TYPE_COMMAND_BUFFER, reinterpret_cast<uint64_t>(wrapped->object), wrapped->table->slot, &data);
 
-            reinterpret_cast<DeviceDispatchTable*>(data)->CmdDispatch(wrapped->Object, 16, groupCountY, groupCountZ);
+            reinterpret_cast<DeviceDispatchTable*>(data)->cmdDispatch(wrapped->object, 16, groupCountY, groupCountZ);
             break;
         }
     }
@@ -326,130 +363,130 @@ VKAPI_ATTR void VKAPI_CALL CmdDispatchIndirect(VkCommandBuffer commandBuffer, Vk
     switch (offset) {
         case 0: {
             // Pass through, for baseline speeds
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
         case 1: {
             // Std vector, linear
-            for (IFeature* feature : wrapped->Table->DispatchIndirectFeatures)
+            for (IFeature* feature : wrapped->table->dispatchIndirectFeatures)
             {
                 feature->Foo();
             }
 
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
         case 2: {
             // Flat
-            for (uint32_t i= 0; i < wrapped->Table->DispatchIndirectFeaturesFlatCount; i++)
+            for (uint32_t i= 0; i < wrapped->table->dispatchIndirectFeaturesFlatCount; i++)
             {
-                wrapped->Table->DispatchIndirectFeaturesFlat[i]->Foo();
+                wrapped->table->dispatchIndirectFeaturesFlat[i]->Foo();
             }
 
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
         case 3: {
             // Vector, if 0 basically
-            if (wrapped->Table->DispatchIndirectFeatureSetZero)
+            if (wrapped->table->dispatchIndirectFeatureSetZero)
             {
-                for (uint32_t i= 0; i < wrapped->Table->DispatchIndirectFeaturesFlatCount; i++)
+                for (uint32_t i= 0; i < wrapped->table->dispatchIndirectFeaturesFlatCount; i++)
                 {
-                    wrapped->Table->DispatchIndirectFeaturesFlat[i]->Foo();
+                    wrapped->table->dispatchIndirectFeaturesFlat[i]->Foo();
                 }
             }
 
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
         case 4: {
             // Vector, bit loop
-            if (wrapped->Table->DispatchIndirectFeatureSetBits)
+            if (wrapped->table->dispatchIndirectFeatureSetBits)
             {
-                unsigned long bitMask = wrapped->Table->DispatchIndirectFeatureSetBits;
+                unsigned long bitMask = wrapped->table->dispatchIndirectFeatureSetBits;
 
                 unsigned long index;
                 while (_BitScanReverse(&index, bitMask))
                 {
-                    wrapped->Table->DispatchIndirectFeatureSet[index]->Foo();
+                    wrapped->table->dispatchIndirectFeatureSet[index]->Foo();
                     bitMask &= ~(1ul << index);
                 }
             }
 
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
         case 5: {
             // Vector, many features, null checks
-            for (uint32_t i = 0; i < wrapped->Table->DispatchIndirectFeatureSetMany.size(); i++)
+            for (uint32_t i = 0; i < wrapped->table->dispatchIndirectFeatureSetMany.size(); i++)
             {
-                if (!wrapped->Table->DispatchIndirectFeatureSetMany[i])
+                if (!wrapped->table->dispatchIndirectFeatureSetMany[i])
                     continue;
 
-                wrapped->Table->DispatchIndirectFeatureSetMany[i]->Foo();
+                wrapped->table->dispatchIndirectFeatureSetMany[i]->Foo();
             }
 
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
         case 6: {
             // Vector, many features, bit loop
-            if (wrapped->Table->DispatchIndirectFeatureSetBitsMany)
+            if (wrapped->table->dispatchIndirectFeatureSetBitsMany)
             {
-                unsigned long bitMask = wrapped->Table->DispatchIndirectFeatureSetBitsMany;
+                unsigned long bitMask = wrapped->table->dispatchIndirectFeatureSetBitsMany;
 
                 unsigned long index;
                 while (_BitScanReverse(&index, bitMask))
                 {
-                    wrapped->Table->DispatchIndirectFeatureSetMany[index]->Foo();
+                    wrapped->table->dispatchIndirectFeatureSetMany[index]->Foo();
                     bitMask &= ~(1ul << index);
                 }
             }
 
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
         case 7: {
             // Vector, many features, few enabled, bit loop
-            if (wrapped->Table->DispatchIndirectFeatureSetBitsManyFewEnabled)
+            if (wrapped->table->dispatchIndirectFeatureSetBitsManyFewEnabled)
             {
-                unsigned long bitMask = wrapped->Table->DispatchIndirectFeatureSetBitsManyFewEnabled;
+                unsigned long bitMask = wrapped->table->dispatchIndirectFeatureSetBitsManyFewEnabled;
 
                 unsigned long index;
                 while (_BitScanReverse(&index, bitMask))
                 {
-                    wrapped->Table->DispatchIndirectFeatureSetMany[index]->Foo();
+                    wrapped->table->dispatchIndirectFeatureSetMany[index]->Foo();
                     bitMask &= ~(1ul << index);
                 }
             }
 
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
         case 8: {
             // Vector, many features, virtuals
-            for (uint32_t i = 0; i < wrapped->Table->DispatchIndirectFeatureSetMany.size(); i++)
+            for (uint32_t i = 0; i < wrapped->table->dispatchIndirectFeatureSetMany.size(); i++)
             {
-                if (!wrapped->Table->DispatchIndirectFeatureSetMany[i])
+                if (!wrapped->table->dispatchIndirectFeatureSetMany[i])
                     continue;
 
-                wrapped->Table->DispatchIndirectFeatureSetMany[i]->Foo();
+                wrapped->table->dispatchIndirectFeatureSetMany[i]->Foo();
             }
 
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
         case 9: {
             // Vector, many features, fptrs
-            for (uint32_t i = 0; i < wrapped->Table->DispatchIndirectFeatureSetMany.size(); i++)
+            for (uint32_t i = 0; i < wrapped->table->dispatchIndirectFeatureSetMany.size(); i++)
             {
-                if (!wrapped->Table->DispatchIndirectFeatureSetMany[i])
+                if (!wrapped->table->dispatchIndirectFeatureSetMany[i])
                     continue;
 
-                wrapped->Table->DispatchIndirectFeatureSetMany[i]->FooFPtr(wrapped->Table->DispatchIndirectFeatureSetMany[i]);
+                wrapped->table->dispatchIndirectFeatureSetMany[i]->fooFPtr(wrapped->table->dispatchIndirectFeatureSetMany[i]);
             }
 
-            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            wrapped->table->cmdDispatchIndirect(wrapped->object, buffer, offset);
             break;
         }
     }
@@ -459,39 +496,54 @@ VKAPI_ATTR VkResult VKAPI_CALL AllocateCommandBuffers(VkDevice device, const VkC
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
     // Pass down callchain
-    VkResult result = table->AllocateCommandBuffers(device, pAllocateInfo, pCommandBuffers);
+    VkResult result = table->allocateCommandBuffers(device, pAllocateInfo, pCommandBuffers);
     if (result != VK_SUCCESS) {
         return result;
     }
 
     // Wrap objects
     for (uint32_t i = 0; i < pAllocateInfo->commandBufferCount; i++) {
-        if (table->SetPrivateDataEXT) {
-            table->SetPrivateDataEXT(device, VK_OBJECT_TYPE_COMMAND_BUFFER, reinterpret_cast<uint64_t>(pCommandBuffers[i]), table->Slot, reinterpret_cast<uint64_t>(table));
+        if (table->setPrivateDataEXT) {
+            table->setPrivateDataEXT(device, VK_OBJECT_TYPE_COMMAND_BUFFER, reinterpret_cast<uint64_t>(pCommandBuffers[i]), table->slot, reinterpret_cast<uint64_t>(table));
         }
 
         auto wrapped = new WrappedCommandBuffer;
-        wrapped->DispatchTable = GetInternalTable(pCommandBuffers[i]);
-        wrapped->Object = pCommandBuffers[i];
-        wrapped->Table = table;
+        wrapped->dispatchTable = GetInternalTable(pCommandBuffers[i]);
+        wrapped->object = pCommandBuffers[i];
+        wrapped->table = table;
         pCommandBuffers[i] = reinterpret_cast<VkCommandBuffer>(wrapped);
     }
 
     return result;
 }
 
+VKAPI_ATTR void VKAPI_CALL FreeCommandBuffers(VkDevice device, VkCommandPool commandPool, uint32_t commandBufferCount, const VkCommandBuffer* pCommandBuffers) {
+    DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Unwrap and release wrappers
+    auto unwrappedBuffers = static_cast<VkCommandBuffer*>(alloca(sizeof(VkCommandBuffer) * commandBufferCount));
+    for (uint32_t i = 0; i < commandBufferCount; i++) {
+        auto wrapped = reinterpret_cast<WrappedCommandBuffer*>(pCommandBuffers[i]);
+        unwrappedBuffers[i] =  wrapped->object;
+        delete wrapped;
+    }
+
+    // Pass down callchain
+    table->freeCommandBuffers(device, commandPool, commandBufferCount, unwrappedBuffers);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBeginInfo *pBeginInfo) {
     auto wrapped = reinterpret_cast<WrappedCommandBuffer*>(commandBuffer);
 
     // Pass down callchain
-    return wrapped->Table->BeginCommandBuffer(wrapped->Object, pBeginInfo);
+    return wrapped->table->beginCommandBuffer(wrapped->object, pBeginInfo);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL EndCommandBuffer(VkCommandBuffer commandBuffer) {
     auto wrapped = reinterpret_cast<WrappedCommandBuffer*>(commandBuffer);
 
     // Pass down callchain
-    return wrapped->Table->EndCommandBuffer(wrapped->Object);
+    return wrapped->table->endCommandBuffer(wrapped->object);
 }
 
 static VKAPI_ATTR PFN_vkVoidFunction GetSharedProcAddr(void *, const char *pName) {
@@ -499,8 +551,16 @@ static VKAPI_ATTR PFN_vkVoidFunction GetSharedProcAddr(void *, const char *pName
         return reinterpret_cast<PFN_vkVoidFunction>(&CreateDevice);
     }
 
+    if (!std::strcmp(pName, "vkDestroyDevice")) {
+        return reinterpret_cast<PFN_vkVoidFunction>(&DestroyDevice);
+    }
+
     if (!std::strcmp(pName, "vkAllocateCommandBuffers")) {
         return reinterpret_cast<PFN_vkVoidFunction>(&AllocateCommandBuffers);
+    }
+
+    if (!std::strcmp(pName, "vkFreeCommandBuffers")) {
+        return reinterpret_cast<PFN_vkVoidFunction>(&FreeCommandBuffers);
     }
 
     if (!std::strcmp(pName, "vkBeginCommandBuffer")) {
@@ -543,7 +603,7 @@ EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice d
         return addr;
     }
 
-    return DeviceDispatchTable::Get(GetInternalTable(device))->GetDeviceProcAddr(device, pName);
+    return DeviceDispatchTable::Get(GetInternalTable(device))->getDeviceProcAddr(device, pName);
 }
 
 EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance, const char *pName) {
@@ -559,6 +619,10 @@ EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstan
         return reinterpret_cast<PFN_vkVoidFunction>(&CreateInstance);
     }
 
+    if (!std::strcmp(pName, "vkDestroyInstance")) {
+        return reinterpret_cast<PFN_vkVoidFunction>(&DestroyInstance);
+    }
+
     if (!std::strcmp(pName, "vkEnumerateInstanceLayerProperties")) {
         return reinterpret_cast<PFN_vkVoidFunction>(&GetLayerProperties);
     }
@@ -571,10 +635,10 @@ EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstan
         return addr;
     }
 
-    return InstanceDispatchTable::Get(GetInternalTable(instance))->GetInstanceProcAddr(instance, pName);
+    return InstanceDispatchTable::Get(GetInternalTable(instance))->getInstanceProcAddr(instance, pName);
 }
 
-EXPORT_C VKAPI_ATTR VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface *pVersionStruct) {
+[[maybe_unused]] EXPORT_C VKAPI_ATTR VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface *pVersionStruct) {
     if (pVersionStruct->loaderLayerInterfaceVersion >= 2) {
         pVersionStruct->pfnGetInstanceProcAddr = vkGetInstanceProcAddr;
         pVersionStruct->pfnGetDeviceProcAddr = vkGetDeviceProcAddr;
