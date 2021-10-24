@@ -11,8 +11,12 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         return false;
     }
 
-    // Process all commands
+    // Template streams
+    std::stringstream populate;
     std::stringstream hooks;
+    std::stringstream gethookaddress;
+
+    // Process all commands
     for (tinyxml2::XMLNode *commandNode = commands->FirstChild(); commandNode; commandNode = commandNode->NextSibling()) {
         tinyxml2::XMLElement *command = commandNode->ToElement();
 
@@ -82,6 +86,15 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         if (!isHookCandidate) {
             continue;
         }
+
+        // Add population, always pull all functions regardless of whitelist
+        populate << "\tNext_" << prototypeName->GetText() << " = reinterpret_cast<PFN_" << prototypeName->GetText() << ">(";
+        populate << "getProcAddr(device, \"" << prototypeName->GetText() << "\")";
+        populate << ");\n";
+
+        // Add get hook address, must be done after white listing
+        gethookaddress << "\tif (!std::strcmp(\"" << prototypeName->GetText() << "\", name))\n";
+        gethookaddress << "\t\treturn reinterpret_cast<PFN_vkVoidFunction>(Hook_" << prototypeName->GetText() << ");\n";
 
         // Generate prototype
         hooks << prototypeResult->GetText() << " " << "Hook_" << prototypeName->GetText() << "(";
@@ -199,9 +212,21 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         hooks << "}\n\n";
     }
 
-    // Instantiate template
+    // Instantiate population
+    if (!templateEngine.Substitute("$POPULATE", populate.str().c_str())) {
+        std::cerr << "Bad template, failed to substitute $POPULATE" << std::endl;
+        return false;
+    }
+
+    // Instantiate hooks
     if (!templateEngine.Substitute("$HOOKS", hooks.str().c_str())) {
         std::cerr << "Bad template, failed to substitute $HOOKS" << std::endl;
+        return false;
+    }
+
+    // Instantiate hooks
+    if (!templateEngine.Substitute("$GETHOOKADDRESS", gethookaddress.str().c_str())) {
+        std::cerr << "Bad template, failed to substitute $GETHOOKADDRESS" << std::endl;
         return false;
     }
 
