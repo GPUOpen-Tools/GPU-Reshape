@@ -1,11 +1,13 @@
 #pragma once
 
-#include <vulkan/vulkan_core.h>
+#include "Vulkan.h"
 
-struct CommandBufferDispatchTable;
+/// Forward declarations
+struct DeviceDispatchTable;
 
+/// Wrapped command buffer object
 struct CommandBufferObject
 {
-    VkCommandBuffer             Object;
-    CommandBufferDispatchTable* Table;
+    VkCommandBuffer      object;
+    DeviceDispatchTable* table;
 };

@@ -52,13 +52,16 @@ add_custom_command(
         -o Layer/Source/CommandBuffer.Gen.cpp
 )
 
-# Create test layer
+# Create layer
 add_library(
     Backends.Vulkan.Layer SHARED
     Layer/Source/Layer.cpp
+    Layer/Source/DeviceDispatchTable.cpp
+
+    # Generated
     Layer/Source/CommandBuffer.Gen.cpp
 
-    # Dependency headers
+    # Generated dependency headers
     Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
 )
 

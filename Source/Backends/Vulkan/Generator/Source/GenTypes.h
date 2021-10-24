@@ -11,10 +11,10 @@
 
 struct GeneratorInfo {
     /// Specification registry node
-    tinyxml2::XMLElement* Registry{nullptr};
+    tinyxml2::XMLElement* registry{nullptr};
 
     /// Whitelisted commands, context sensitive
-    std::set<std::string> Whitelist;
+    std::set<std::string> whitelist;
 };
 
 namespace Generators {

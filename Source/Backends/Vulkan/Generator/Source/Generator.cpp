@@ -47,7 +47,7 @@ int main(int argc, char *const argv[]) {
     while( whitelistStream.good() ) {
         std::string substr;
         getline(whitelistStream, substr, ',' );
-        generatorInfo.Whitelist.insert( substr );
+        generatorInfo.whitelist.insert(substr );
     }
 
     // Attempt to open the specification xml
@@ -58,8 +58,8 @@ int main(int argc, char *const argv[]) {
     }
 
     // Get the root registry
-    generatorInfo.Registry = document.FirstChildElement("registry");
-    if (!generatorInfo.Registry) {
+    generatorInfo.registry = document.FirstChildElement("registry");
+    if (!generatorInfo.registry) {
         std::cerr << "Failed to find registry in specification" << std::endl;
         return 1;
     }

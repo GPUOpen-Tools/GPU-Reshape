@@ -1,13 +1,12 @@
 #pragma once
 
-/**
- * Device dispatch table generation template
- */
-
 // Layer
-#include <Backends/Vulkan/Vulkan.h>
+#include "Vulkan.h"
 
-struct CommandBufferDispatchTable
+// Generated
+#include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
+
+struct DeviceDispatchTable
 {
     /// Populate this table
     /// \param getProcAddr the device proc address fn for the next layer
@@ -18,6 +17,6 @@ struct CommandBufferDispatchTable
     /// \return the hooked address, may be nullptr
     static PFN_vkVoidFunction GetHookAddress(const char* name);
 
-    // All command buffer callbacks
-$COMMANDBUFFER_CALLBACKS
+    /// Command buffer dispatch table
+    CommandBufferDispatchTable commandBufferDispatchTable;
 };

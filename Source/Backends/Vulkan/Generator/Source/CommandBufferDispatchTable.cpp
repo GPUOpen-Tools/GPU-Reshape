@@ -5,7 +5,7 @@
 
 bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateEngine& templateEngine) {
     // Get the commands
-    tinyxml2::XMLElement *commands = info.Registry->FirstChildElement("commands");
+    tinyxml2::XMLElement *commands = info.registry->FirstChildElement("commands");
     if (!commands) {
         std::cerr << "Failed to find commands in registry" << std::endl;
         return false;
@@ -49,7 +49,7 @@ bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateE
         }
 
         // Whitelisted?
-        if (info.Whitelist.count(prototypeName->GetText())) {
+        if (info.whitelist.count(prototypeName->GetText())) {
             continue;
         }
 
@@ -76,7 +76,7 @@ bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateE
         }
 
         // Generate callback
-        callbacks << "\t" << "PFN_" << prototypeName->GetText() << " Next_" << prototypeName->GetText() << ";\n";
+        callbacks << "\t" << "PFN_" << prototypeName->GetText() << " next_" << prototypeName->GetText() << ";\n";
     }
 
     // Instantiate template
