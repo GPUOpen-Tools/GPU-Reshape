@@ -142,6 +142,10 @@ VkResult VKAPI_PTR CreateInstance(const VkInstanceCreateInfo *pCreateInfo, const
     return VK_SUCCESS;
 }
 
+VKAPI_ATTR void VKAPI_CALL CmdDispatchNull(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+
+}
+
 VkResult VKAPI_PTR CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     // Attempt to find link info
     auto chain_info = (VkLayerDeviceCreateInfo *) pCreateInfo->pNext;
@@ -166,16 +170,16 @@ VkResult VKAPI_PTR CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceC
 
     // Insert dispatch table
     auto table = new DeviceDispatchTable{};
-    table->Device = *pDevice;
-    table->GetDeviceProcAddr = getDeviceProcAddr;
-    table->CmdBindPipeline = reinterpret_cast<PFN_vkCmdBindPipeline>(getDeviceProcAddr(*pDevice, "vkCmdBindPipeline"));
-    table->CmdDispatch = reinterpret_cast<PFN_vkCmdDispatch>(getDeviceProcAddr(*pDevice, "vkCmdDispatch"));
+    table->Device                   = *pDevice;
+    table->GetDeviceProcAddr        = getDeviceProcAddr;
+    table->CmdBindPipeline          = reinterpret_cast<PFN_vkCmdBindPipeline>(getDeviceProcAddr(*pDevice, "vkCmdBindPipeline"));
+    table->CmdDispatch              = CmdDispatchNull;
     table->CreatePrivateDataSlotEXT = reinterpret_cast<PFN_vkCreatePrivateDataSlotEXT>(getDeviceProcAddr(*pDevice, "vkCreatePrivateDataSlotEXT"));
-    table->SetPrivateDataEXT = reinterpret_cast<PFN_vkSetPrivateDataEXT>(getDeviceProcAddr(*pDevice, "vkSetPrivateDataEXT"));
-    table->GetPrivateDataEXT = reinterpret_cast<PFN_vkGetPrivateDataEXT>(getDeviceProcAddr(*pDevice, "vkGetPrivateDataEXT"));
-    table->AllocateCommandBuffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(getDeviceProcAddr(*pDevice, "vkAllocateCommandBuffers"));
-    table->BeginCommandBuffer = reinterpret_cast<PFN_vkBeginCommandBuffer>(getDeviceProcAddr(*pDevice, "vkBeginCommandBuffer"));
-    table->EndCommandBuffer = reinterpret_cast<PFN_vkEndCommandBuffer>(getDeviceProcAddr(*pDevice, "vkEndCommandBuffer"));
+    table->SetPrivateDataEXT        = reinterpret_cast<PFN_vkSetPrivateDataEXT>(getDeviceProcAddr(*pDevice, "vkSetPrivateDataEXT"));
+    table->GetPrivateDataEXT        = reinterpret_cast<PFN_vkGetPrivateDataEXT>(getDeviceProcAddr(*pDevice, "vkGetPrivateDataEXT"));
+    table->AllocateCommandBuffers   = reinterpret_cast<PFN_vkAllocateCommandBuffers>(getDeviceProcAddr(*pDevice, "vkAllocateCommandBuffers"));
+    table->BeginCommandBuffer       = reinterpret_cast<PFN_vkBeginCommandBuffer>(getDeviceProcAddr(*pDevice, "vkBeginCommandBuffer"));
+    table->EndCommandBuffer         = reinterpret_cast<PFN_vkEndCommandBuffer>(getDeviceProcAddr(*pDevice, "vkEndCommandBuffer"));
     DeviceDispatchTable::Add(GetInternalTable(*pDevice), table);
 
     // Allocate private slot if possible
@@ -211,7 +215,6 @@ VKAPI_ATTR void VKAPI_CALL CmdDispatch(VkCommandBuffer commandBuffer, uint32_t g
 
     // Select implementation based on the dispatch count
     //  ? Slightly arbitrary, but works quite well
-    //  ? Pass in 16 to "avoid" (guess) driver optimizations
     switch (groupCountX) {
         case 0: {
             // Fetch from lookup  table
