@@ -2,15 +2,9 @@
  * Command buffer generation template
  */
 
-// Ensure the beta extensions are enabled
-#define VK_ENABLE_BETA_EXTENSIONS 1
-
-// Vulkan
-#include <vulkan/vulkan_core.h>
-#include <vulkan/vulkan_beta.h>
-
 // Layer
-#include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
+#include <Backends/Vulkan/Vulkan.h>
+#include <Backends/Vulkan/DeviceDispatchTable.h>
 #include <Backends/Vulkan/CommandBufferObject.h>
 
 // Std

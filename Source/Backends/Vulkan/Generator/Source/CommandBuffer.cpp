@@ -5,7 +5,7 @@
 
 bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templateEngine) {
     // Get the commands
-    tinyxml2::XMLElement *commands = info.Registry->FirstChildElement("commands");
+    tinyxml2::XMLElement *commands = info.registry->FirstChildElement("commands");
     if (!commands) {
         std::cerr << "Failed to find commands in registry" << std::endl;
         return false;
@@ -53,7 +53,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Whitelisted?
-        if (info.Whitelist.count(prototypeName->GetText())) {
+        if (info.whitelist.count(prototypeName->GetText())) {
             continue;
         }
 
@@ -88,7 +88,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Add population, always pull all functions regardless of whitelist
-        populate << "\tNext_" << prototypeName->GetText() << " = reinterpret_cast<PFN_" << prototypeName->GetText() << ">(";
+        populate << "\tnext_" << prototypeName->GetText() << " = reinterpret_cast<PFN_" << prototypeName->GetText() << ">(";
         populate << "getProcAddr(device, \"" << prototypeName->GetText() << "\")";
         populate << ");\n";
 
@@ -174,7 +174,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Pass down the call chain
-        hooks << wrappedObject << "->Table->Next_" << prototypeName->GetText() << "(";
+        hooks << wrappedObject << "->table->commandBufferDispatchTable.next_" << prototypeName->GetText() << "(";
 
         // Generate arguments
         parameterIndex = 0;
@@ -200,7 +200,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
 
             // Generate argument, unwrap if needed
             if (unwrappingStates[parameterIndex])
-                hooks << paramName->GetText() << "->Object";
+                hooks << paramName->GetText() << "->object";
             else
                 hooks << paramName->GetText();
         }

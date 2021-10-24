@@ -9,6 +9,4 @@ cmake-build-*/
 Bin/
 
 # Pulled third party dependencies
-ThirdParty/Catch2/
-ThirdParty/VulkanHeaders/
-ThirdParty/VulkanLoader/
+ThirdParty/**/
