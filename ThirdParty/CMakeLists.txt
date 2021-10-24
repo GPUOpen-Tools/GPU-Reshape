@@ -4,6 +4,8 @@ include(ExternalProject)
 # TODO: While the pulled objects are generally trusted, there should be some safety mechanism
 include(Catch2.cmake)
 include(Vulkan.cmake)
+include(ArgParser.cmake)
+include(TinyXML2.cmake)
 
 # Standard project installation
 function(ExternalProject_Link Project Name)
