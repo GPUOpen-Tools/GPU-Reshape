@@ -8,7 +8,7 @@ was implemented entirely as a Vulkan layer, while this is not an accurate repres
 of the improved design, it does provide insight into what capabilities a feature needs in order
 to operate.
 
-## 1 Features
+## 1. Features
 
 Each feature operates in three fronts, the backend, analysis and frontend.
 
@@ -27,7 +27,7 @@ but it is responsible for presenting the final validation data in a user friendl
 This separation of behaviour also allows for the separation of data, meaning that the individual
 stages do not need to execute on the same process or machine. Allowing for the latter stages to be executed remotely, separating the host and target machines, such as consoles.
 
-### 1.1 Backend features
+### 1.1. Backend features
 
 Each backend feature is responsible for hooking the relevant callbacks, and performing the needed
 modifications / management for the feature. This is typically performing dynamic injecting of shader code
@@ -42,7 +42,7 @@ Additionally, the various API concepts will need appropriate abstraction and gen
 not generalize to the extent at which you loose all the specialization that the various APIs offer these days. Additionally, it should
 be possible to still hook API specific calls when required. The exact balance in the abstraction will remain to be seen, and will likely change as the features are iterated on.
 
-### 1.2 Analysis features
+### 1.2. Analysis features
 
 The backend features intercept the messages produced by the backend features, and interpret them in a meaningful way. Most validation features
 do not need extensive analysis of the produced messages, however certain features such as branch coverage reports need to.
@@ -50,7 +50,7 @@ do not need extensive analysis of the produced messages, however certain feature
 As the analysis feature consumes messages, the filtered reports or the like are additional outgoing messages. Keeping the
 ingoing and outgoing type the same, means that features which do not require analysis can be passed through when not consumed.
 
-### 1.3 Frontend features
+### 1.3. Frontend features
 
 Finally, the frontend feature is responsible for creating a suitable representation of the incoming messages.
 The exact design of this is highly dependent on the UI solution to be used, and as it is the last part of the pipeline, there is no need to impose strict restrictions.

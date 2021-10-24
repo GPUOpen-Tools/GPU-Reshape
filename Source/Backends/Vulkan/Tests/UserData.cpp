@@ -93,6 +93,7 @@ TEST_CASE_METHOD(Loader, "User Data", "[Vulkan]") {
     VkPipeline pipeline;
     REQUIRE(vkCreateComputePipelines(GetDevice(), nullptr, 1, &pipelineInfo, nullptr, &pipeline) == VK_SUCCESS);
 
+    SECTION("Dispatch Table")
     {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -110,9 +111,52 @@ TEST_CASE_METHOD(Loader, "User Data", "[Vulkan]") {
 
         if (SupportsPrivateData) {
             BENCHMARK("Private Data") {
-                vkCmdDispatch(commandBuffer, 2, 1, 1);
-            };
+                  vkCmdDispatch(commandBuffer, 2, 1, 1);
+              };
         }
+
+        REQUIRE(vkEndCommandBuffer(commandBuffer) == VK_SUCCESS);
+    }
+
+    SECTION("Features")
+    {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        REQUIRE(vkBeginCommandBuffer(commandBuffer, &beginInfo) == VK_SUCCESS);
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+
+        BENCHMARK("Baseline") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 0);
+        };
+
+        BENCHMARK("Std Vector") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 1);
+        };
+
+        BENCHMARK("Flat Array") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 2);
+        };
+
+        BENCHMARK("Std Vector, Zero feature set") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 3);
+        };
+
+        BENCHMARK("Std Vector, Bit loop") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 4);
+        };
+
+        BENCHMARK("Std Vector, Many features, null check") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 5);
+        };
+
+        BENCHMARK("Std Vector, Many features, bit loop") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 6);
+        };
+
+        BENCHMARK("Std Vector, Many features, few enabled, bit loop") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 7);
+        };
 
         REQUIRE(vkEndCommandBuffer(commandBuffer) == VK_SUCCESS);
     }
