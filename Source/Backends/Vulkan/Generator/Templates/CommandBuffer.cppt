@@ -17,8 +17,7 @@
 #include <cstring>
 
 // Table population
-void CommandBufferDispatchTable::Populate(VkDevice device, PFN_vkGetDeviceProcAddr getProcAddr)
-{
+void CommandBufferDispatchTable::Populate(VkDevice device, PFN_vkGetDeviceProcAddr getProcAddr) {
 $POPULATE
 }
 
@@ -26,8 +25,7 @@ $POPULATE
 $HOOKS
 
 // Registration
-PFN_vkVoidFunction CommandBufferDispatchTable::GetHookAddress(const char* name)
-{
+PFN_vkVoidFunction CommandBufferDispatchTable::GetHookAddress(const char* name) {
 $GETHOOKADDRESS
 
     // No hook
