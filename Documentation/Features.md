@@ -2,7 +2,7 @@
 
 Status of all implemented and planned features.
 
-## Feature Support
+## 1. Feature Support
 
 | Feature | Type | Proof-of-concept | Implemented |
 | --------------- | ---- | --------- | ----------- |
@@ -23,7 +23,7 @@ Status of all implemented and planned features.
 | Shader instruction debugging | Debugging |  |  |
 | Shader live editing | Debugging |  |  |
 
-### Investigation
+### 2. Investigation
 
 | Feature | Type | Implemented |
 | --------------- | ---- | ----------- |
