@@ -54,11 +54,22 @@ class IFeature
 {
 public:
     virtual void Foo() = 0;
+
+    // Function pointer test
+    void(*FooFPtr)(IFeature* frame){nullptr};
 };
 
 class FeatureA final : public IFeature
 {
 public:
+    FeatureA()
+    {
+        FooFPtr = [](IFeature* frame)
+        {
+            static_cast<FeatureA*>(frame)->Foo();
+        };
+    }
+
     void Foo() final
     {
 
@@ -410,6 +421,32 @@ VKAPI_ATTR void VKAPI_CALL CmdDispatchIndirect(VkCommandBuffer commandBuffer, Vk
                     wrapped->Table->DispatchIndirectFeatureSetMany[index]->Foo();
                     bitMask &= ~(1ul << index);
                 }
+            }
+
+            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            break;
+        }
+        case 8: {
+            // Vector, many features, virtuals
+            for (uint32_t i = 0; i < wrapped->Table->DispatchIndirectFeatureSetMany.size(); i++)
+            {
+                if (!wrapped->Table->DispatchIndirectFeatureSetMany[i])
+                    continue;
+
+                wrapped->Table->DispatchIndirectFeatureSetMany[i]->Foo();
+            }
+
+            wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);
+            break;
+        }
+        case 9: {
+            // Vector, many features, fptrs
+            for (uint32_t i = 0; i < wrapped->Table->DispatchIndirectFeatureSetMany.size(); i++)
+            {
+                if (!wrapped->Table->DispatchIndirectFeatureSetMany[i])
+                    continue;
+
+                wrapped->Table->DispatchIndirectFeatureSetMany[i]->FooFPtr(wrapped->Table->DispatchIndirectFeatureSetMany[i]);
             }
 
             wrapped->Table->CmdDispatchIndirect(wrapped->Object, buffer, offset);

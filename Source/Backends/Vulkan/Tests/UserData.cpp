@@ -158,6 +158,14 @@ TEST_CASE_METHOD(Loader, "User Data", "[Vulkan]") {
             vkCmdDispatchIndirect(commandBuffer, nullptr, 7);
         };
 
+        BENCHMARK("Std Vector, Many features, virtuals") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 8);
+        };
+
+        BENCHMARK("Std Vector, Many features, fptrs") {
+            vkCmdDispatchIndirect(commandBuffer, nullptr, 9);
+        };
+
         REQUIRE(vkEndCommandBuffer(commandBuffer) == VK_SUCCESS);
     }
 }
