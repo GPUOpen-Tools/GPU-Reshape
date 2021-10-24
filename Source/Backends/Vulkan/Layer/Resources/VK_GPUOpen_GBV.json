@@ -8,8 +8,9 @@
     "implementation_version": "1",
     "description": "GPUOpen GPU-Based-Validation, https://github.com/GPUOpen-Tools/gpu-validation",
     "functions": {
-      "vkGetInstanceProcAddr": "vkGetInstanceProcAddr",
-      "vkGetDeviceProcAddr": "vkGetDeviceProcAddr"
+      "vkGetInstanceProcAddr": "Hook_vkGetInstanceProcAddr",
+      "vkGetDeviceProcAddr": "Hook_vkGetDeviceProcAddr",
+      "vkNegotiateLoaderLayerInterfaceVersion": "Hook_vkNegotiateLoaderLayerInterfaceVersion"
     }
   }
 }

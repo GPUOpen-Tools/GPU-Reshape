@@ -11,6 +11,7 @@
 class Loader {
 public:
 	Loader();
+    ~Loader();
 
     /// Create an instance with the given extensions
     void CreateInstance();

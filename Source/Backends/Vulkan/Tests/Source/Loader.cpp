@@ -163,3 +163,12 @@ void Loader::CreateDevice() {
     REQUIRE(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) == VK_SUCCESS);
 }
 
+Loader::~Loader() {
+    vkDestroyDevice(device, nullptr);
+    vkDestroyInstance(instance, nullptr);
+}
+
+TEST_CASE_METHOD(Loader, "Loader.Startup", "[Vulkan]") {
+    CreateInstance();
+    CreateDevice();
+}
