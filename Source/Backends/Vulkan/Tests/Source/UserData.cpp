@@ -177,4 +177,3 @@ TEST_CASE_METHOD(Loader, "UserData.Performance", "[Vulkan]") {
     vkFreeCommandBuffers(GetDevice(), pool, 1, &commandBuffer);
     vkDestroyCommandPool(GetDevice(), pool, nullptr);
 }
-

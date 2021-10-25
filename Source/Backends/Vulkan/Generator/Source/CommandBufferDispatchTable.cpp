@@ -76,7 +76,17 @@ bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateE
         }
 
         // Generate callback
+        callbacks << "\n\t// Callback " << prototypeName->GetText() << "\n";
         callbacks << "\t" << "PFN_" << prototypeName->GetText() << " next_" << prototypeName->GetText() << ";\n";
+
+        // Hooked?
+        if (info.hooks.count(prototypeName->GetText())) {
+            // Generate feature bit set
+            callbacks << "\tuint64_t featureBitSet_" << prototypeName->GetText() << "{0};\n";
+
+            // Generate feature callbacks
+            callbacks << "\tFeatureHook_" << prototypeName->GetText() << "::Hook featureHooks_" << prototypeName->GetText() << "[64];\n";
+        }
     }
 
     // Instantiate template
