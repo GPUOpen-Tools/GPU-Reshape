@@ -20,7 +20,8 @@ int main(int argc, char *const argv[]) {
     program.add_argument("-vkxml").help("Path of the vulkan specification xml file").required();
     program.add_argument("-template").help("The file to template").required();
     program.add_argument("-gentype").help("The generation type, one of [commandbuffer, commandbufferdispatchtable]").required();
-    program.add_argument("-whitelist").help("Whitelist a hook").default_value(std::string(""));
+    program.add_argument("-whitelist").help("Whitelist a callback").default_value(std::string(""));
+    program.add_argument("-hook").help("All feature hooks").default_value(std::string(""));
     program.add_argument("-o").help("Output of the generated file").required();
 
     // Attempt to parse the input
@@ -38,6 +39,7 @@ int main(int argc, char *const argv[]) {
     auto &&ftemplate = program.get<std::string>("-template");
     auto &&output = program.get<std::string>("-o");
     auto &&whitelist = program.get<std::string>("-whitelist");
+    auto &&hooks = program.get<std::string>("-hook");
 
     // Generator information
     GeneratorInfo generatorInfo{};
@@ -48,6 +50,14 @@ int main(int argc, char *const argv[]) {
         std::string substr;
         getline(whitelistStream, substr, ',' );
         generatorInfo.whitelist.insert(substr );
+    }
+
+    // Parse hooks
+    std::stringstream hookStream(hooks);
+    while( hookStream.good() ) {
+        std::string substr;
+        getline(hookStream, substr, ',' );
+        generatorInfo.hooks.insert(substr );
     }
 
     // Attempt to open the specification xml

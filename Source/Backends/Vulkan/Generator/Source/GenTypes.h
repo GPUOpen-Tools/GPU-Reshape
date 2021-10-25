@@ -15,6 +15,9 @@ struct GeneratorInfo {
 
     /// Whitelisted commands, context sensitive
     std::set<std::string> whitelist;
+
+    /// Hooked commands, context sensitive
+    std::set<std::string> hooks;
 };
 
 namespace Generators {

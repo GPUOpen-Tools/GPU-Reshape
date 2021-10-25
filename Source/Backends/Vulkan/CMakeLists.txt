@@ -23,6 +23,9 @@ set(VKXML                              ${CMAKE_SOURCE_DIR}/ThirdParty/VulkanHead
 set(CommandBufferTemplate              ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/CommandBuffer.cppt)
 set(CommandBufferDispatchTableTemplate ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/CommandBufferDispatchTable.ht)
 
+# Generated hooks
+set(VkHooks vkCmdDrawIndexed)
+
 # Generate the command buffer dispatch table
 add_custom_command(
     OUTPUT Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
@@ -35,6 +38,7 @@ add_custom_command(
         -template ${CommandBufferDispatchTableTemplate}
         -gentype commandbufferdispatchtable
         -o Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
+        -hook ${VkHooks}
 )
 
 # Generate the command buffer hooks
@@ -50,6 +54,7 @@ add_custom_command(
         -gentype commandbuffer
         -whitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands
         -o Layer/Source/CommandBuffer.Gen.cpp
+        -hook ${VkHooks}
 )
 
 # Create layer
@@ -68,8 +73,15 @@ add_library(
     Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
 )
 
+# Link against backend
+target_link_libraries(Backends.Vulkan.Layer Libraries.Backend)
+
 # Include directories
-target_include_directories(Backends.Vulkan.Layer PUBLIC Layer/Include ${CMAKE_CURRENT_BINARY_DIR}/Layer/Include)
+target_include_directories(
+    Backends.Vulkan.Layer PUBLIC
+    Layer/Include ${CMAKE_CURRENT_BINARY_DIR}/Layer/Include
+
+)
 
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Layer VulkanHeaders)

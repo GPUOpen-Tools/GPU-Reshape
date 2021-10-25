@@ -160,6 +160,40 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
 
         // Begin hook
         hooks << ") {\n";
+
+        // Hooked?
+        if (info.hooks.count(prototypeName->GetText())) {
+            hooks << "\tApplyFeatureHook<FeatureHook_" << prototypeName->GetText() << ">(\n";
+            hooks << "\t\t" << wrappedObject << "->table->commandBufferDispatchTable.featureBitSet_" << prototypeName->GetText() << ",\n";
+            hooks << "\t\t" << wrappedObject << "->table->commandBufferDispatchTable.featureHooks_" << prototypeName->GetText() << ",\n";
+            hooks << "\t\t";
+
+            // Generate arguments
+            parameterIndex = 0;
+            for (tinyxml2::XMLElement *paramNode = firstParam; paramNode; paramNode = paramNode->NextSiblingElement("param"), parameterIndex++) {
+                // Get the name
+                tinyxml2::XMLElement *paramName = paramNode->FirstChildElement("name");
+                if (!paramName) {
+                    std::cerr << "Malformed parameter in line: " << paramNode->GetLineNum() << ", name not found" << std::endl;
+                    continue;
+                }
+
+                // Comma
+                if (paramNode != firstParam) {
+                    hooks << ", ";
+                }
+
+                // Generate argument, unwrap if needed
+                if (unwrappingStates[parameterIndex])
+                    hooks << paramName->GetText() << "->object";
+                else
+                    hooks << paramName->GetText();
+            }
+
+            hooks << "\n\t);\n\n";
+        }
+
+        // Indent!
         hooks << "\t";
 
         // Anything to return?
