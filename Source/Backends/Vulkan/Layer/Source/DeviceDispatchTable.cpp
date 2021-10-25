@@ -1,6 +1,9 @@
 #include <Backends/Vulkan/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Device.h>
 
+// Std
+#include <cstring>
+
 /// Global instantiation
 std::mutex                              DeviceDispatchTable::Mutex;
 std::map<void *, DeviceDispatchTable *> DeviceDispatchTable::Table;

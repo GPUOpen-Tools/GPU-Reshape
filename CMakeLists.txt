@@ -2,6 +2,22 @@ project(gpu-validation)
 
 cmake_minimum_required(VERSION 3.19)
 
+# Ensure 64 bit
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    # Supported
+else()
+    message(FATAL_ERROR "Only x64 target not supported")
+endif()
+
+# Toolchain support
+if (MSVC)
+    # Supported
+elseif(MINGW)
+    message(WARNING "MinGW support not complete")
+else()
+    message(FATAL_ERROR "Unsupported compiler ${CMAKE_CXX_COMPILER_ID}")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 
 # Set all outputs to Bin/Config
