@@ -18,10 +18,10 @@
 #define LAYER_NAME "VK_GPUOpen_Test_UserDataLayer"
 
 /// Linkage information
-#if defined(_WIN32)
-#	define EXPORT_C extern "C" __declspec(dllexport)
+#if defined(_MSC_VER)
+#	define EXPORT_C __declspec(dllexport)
 #else
-#	define EXPORT_C extern "C" __attribute__((visibility("default")))
+#	define EXPORT_C __attribute__((visibility("default")))
 #endif
 
 /// Get the internally stored table
@@ -586,68 +586,71 @@ static VKAPI_ATTR PFN_vkVoidFunction GetSharedProcAddr(void *, const char *pName
     return nullptr;
 }
 
-EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice device, const char *pName) {
-    if (!std::strcmp(pName, "vkGetDeviceProcAddr")) {
-        return reinterpret_cast<PFN_vkVoidFunction>(&vkGetDeviceProcAddr);
+// All exports
+extern "C" {
+    EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetDeviceProcAddr(VkDevice device, const char *pName) {
+        if (!std::strcmp(pName, "vkGetDeviceProcAddr")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetDeviceProcAddr);
+        }
+
+        if (!std::strcmp(pName, "vkEnumerateDeviceLayerProperties")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&GetLayerProperties);
+        }
+
+        if (!std::strcmp(pName, "vkEnumerateDeviceExtensionProperties")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&GetExtensionProperties);
+        }
+
+        if (PFN_vkVoidFunction addr = GetSharedProcAddr(device, pName)) {
+            return addr;
+        }
+
+        return DeviceDispatchTable::Get(GetInternalTable(device))->getDeviceProcAddr(device, pName);
     }
 
-    if (!std::strcmp(pName, "vkEnumerateDeviceLayerProperties")) {
-        return reinterpret_cast<PFN_vkVoidFunction>(&GetLayerProperties);
+    EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetInstanceProcAddr(VkInstance instance, const char *pName) {
+        if (!std::strcmp(pName, "vkGetDeviceProcAddr")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetInstanceProcAddr);
+        }
+
+        if (!std::strcmp(pName, "vkGetDeviceProcAddr")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetDeviceProcAddr);
+        }
+
+        if (!std::strcmp(pName, "vkCreateInstance")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&CreateInstance);
+        }
+
+        if (!std::strcmp(pName, "vkDestroyInstance")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&DestroyInstance);
+        }
+
+        if (!std::strcmp(pName, "vkEnumerateInstanceLayerProperties")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&GetLayerProperties);
+        }
+
+        if (!std::strcmp(pName, "vkEnumerateInstanceExtensionProperties")) {
+            return reinterpret_cast<PFN_vkVoidFunction>(&GetExtensionProperties);
+        }
+
+        if (PFN_vkVoidFunction addr = GetSharedProcAddr(instance, pName)) {
+            return addr;
+        }
+
+        return InstanceDispatchTable::Get(GetInternalTable(instance))->getInstanceProcAddr(instance, pName);
     }
 
-    if (!std::strcmp(pName, "vkEnumerateDeviceExtensionProperties")) {
-        return reinterpret_cast<PFN_vkVoidFunction>(&GetExtensionProperties);
+    [[maybe_unused]] EXPORT_C VKAPI_ATTR VkResult VKAPI_CALL Hook_vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface *pVersionStruct) {
+        if (pVersionStruct->loaderLayerInterfaceVersion >= 2) {
+            pVersionStruct->pfnGetInstanceProcAddr = Hook_vkGetInstanceProcAddr;
+            pVersionStruct->pfnGetDeviceProcAddr = Hook_vkGetDeviceProcAddr;
+            pVersionStruct->pfnGetPhysicalDeviceProcAddr = nullptr;
+        }
+
+        if (pVersionStruct->loaderLayerInterfaceVersion > CURRENT_LOADER_LAYER_INTERFACE_VERSION) {
+            pVersionStruct->loaderLayerInterfaceVersion = CURRENT_LOADER_LAYER_INTERFACE_VERSION;
+        }
+
+        return VK_SUCCESS;
     }
-
-    if (PFN_vkVoidFunction addr = GetSharedProcAddr(device, pName)) {
-        return addr;
-    }
-
-    return DeviceDispatchTable::Get(GetInternalTable(device))->getDeviceProcAddr(device, pName);
-}
-
-EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance, const char *pName) {
-    if (!std::strcmp(pName, "vkGetDeviceProcAddr")) {
-        return reinterpret_cast<PFN_vkVoidFunction>(&vkGetInstanceProcAddr);
-    }
-
-    if (!std::strcmp(pName, "vkGetDeviceProcAddr")) {
-        return reinterpret_cast<PFN_vkVoidFunction>(&vkGetDeviceProcAddr);
-    }
-
-    if (!std::strcmp(pName, "vkCreateInstance")) {
-        return reinterpret_cast<PFN_vkVoidFunction>(&CreateInstance);
-    }
-
-    if (!std::strcmp(pName, "vkDestroyInstance")) {
-        return reinterpret_cast<PFN_vkVoidFunction>(&DestroyInstance);
-    }
-
-    if (!std::strcmp(pName, "vkEnumerateInstanceLayerProperties")) {
-        return reinterpret_cast<PFN_vkVoidFunction>(&GetLayerProperties);
-    }
-
-    if (!std::strcmp(pName, "vkEnumerateInstanceExtensionProperties")) {
-        return reinterpret_cast<PFN_vkVoidFunction>(&GetExtensionProperties);
-    }
-
-    if (PFN_vkVoidFunction addr = GetSharedProcAddr(instance, pName)) {
-        return addr;
-    }
-
-    return InstanceDispatchTable::Get(GetInternalTable(instance))->getInstanceProcAddr(instance, pName);
-}
-
-[[maybe_unused]] EXPORT_C VKAPI_ATTR VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface *pVersionStruct) {
-    if (pVersionStruct->loaderLayerInterfaceVersion >= 2) {
-        pVersionStruct->pfnGetInstanceProcAddr = vkGetInstanceProcAddr;
-        pVersionStruct->pfnGetDeviceProcAddr = vkGetDeviceProcAddr;
-        pVersionStruct->pfnGetPhysicalDeviceProcAddr = nullptr;
-    }
-
-    if (pVersionStruct->loaderLayerInterfaceVersion > CURRENT_LOADER_LAYER_INTERFACE_VERSION) {
-        pVersionStruct->loaderLayerInterfaceVersion = CURRENT_LOADER_LAYER_INTERFACE_VERSION;
-    }
-
-    return VK_SUCCESS;
 }

@@ -4,6 +4,9 @@
 // Vulkan
 #include <vulkan/vk_layer.h>
 
+// Std
+#include <cstring>
+
 VkResult VKAPI_PTR Hook_vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount, VkLayerProperties *pProperties) {
     if (pPropertyCount) {
         *pPropertyCount = 1;

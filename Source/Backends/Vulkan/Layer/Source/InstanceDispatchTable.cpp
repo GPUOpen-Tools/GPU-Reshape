@@ -9,7 +9,7 @@ std::mutex                                InstanceDispatchTable::Mutex;
 std::map<void *, InstanceDispatchTable *> InstanceDispatchTable::Table;
 
 void InstanceDispatchTable::Populate(VkInstance instance, PFN_vkGetInstanceProcAddr getProcAddr) {
-    object                   = instance;
+    object                     = instance;
     next_vkGetInstanceProcAddr = getProcAddr;
 
     // Populate instance

@@ -92,7 +92,7 @@ TEST_CASE_METHOD(Loader, "UserData.Performance", "[Vulkan]") {
     pipelineInfo.stage  = stageInfo;
 
     VkPipeline pipeline;
-    REQUIRE(vkCreateComputePipelines(GetDevice(), nullptr, 1, &pipelineInfo, nullptr, &pipeline) == VK_SUCCESS);
+    REQUIRE(vkCreateComputePipelines(GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) == VK_SUCCESS);
 
     SECTION("Dispatch Table")
     {
@@ -128,43 +128,43 @@ TEST_CASE_METHOD(Loader, "UserData.Performance", "[Vulkan]") {
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 
         BENCHMARK("Baseline") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 0);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 0);
         };
 
         BENCHMARK("Std Vector") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 1);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 1);
         };
 
         BENCHMARK("Flat Array") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 2);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 2);
         };
 
         BENCHMARK("Std Vector, Zero feature set") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 3);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 3);
         };
 
         BENCHMARK("Std Vector, Bit loop") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 4);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 4);
         };
 
         BENCHMARK("Std Vector, Many features, null check") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 5);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 5);
         };
 
         BENCHMARK("Std Vector, Many features, bit loop") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 6);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 6);
         };
 
         BENCHMARK("Std Vector, Many features, few enabled, bit loop") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 7);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 7);
         };
 
         BENCHMARK("Std Vector, Many features, virtuals") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 8);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 8);
         };
 
         BENCHMARK("Std Vector, Many features, fptrs") {
-            vkCmdDispatchIndirect(commandBuffer, nullptr, 9);
+            vkCmdDispatchIndirect(commandBuffer, VK_NULL_HANDLE, 9);
         };
 
         REQUIRE(vkEndCommandBuffer(commandBuffer) == VK_SUCCESS);
