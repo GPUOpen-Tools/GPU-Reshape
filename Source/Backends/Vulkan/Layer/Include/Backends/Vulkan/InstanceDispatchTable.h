@@ -2,6 +2,7 @@
 
 // Layer
 #include "Vulkan.h"
+#include "Allocators.h"
 
 // Std
 #include <mutex>
@@ -40,6 +41,9 @@ struct InstanceDispatchTable {
 
     /// States
     VkInstance object;
+
+    /// Allocators
+    Allocators allocators;
 
     /// Callbacks
     PFN_vkGetInstanceProcAddr next_vkGetInstanceProcAddr;
