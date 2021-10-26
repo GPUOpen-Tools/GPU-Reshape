@@ -1,5 +1,6 @@
 #include <Backends/Vulkan/Device.h>
 #include <Backends/Vulkan/DeviceDispatchTable.h>
+#include <Backends/Vulkan/InstanceDispatchTable.h>
 
 // Vulkan
 #include <vulkan/vk_layer.h>
@@ -43,6 +44,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
+    // Get the instance table
+    auto instanceTable = InstanceDispatchTable::Get(GetInternalTable(physicalDevice));
+
     // Fetch previous addresses
     PFN_vkGetInstanceProcAddr getInstanceProcAddr = chainInfo->u.pLayerInfo->pfnNextGetInstanceProcAddr;
     PFN_vkGetDeviceProcAddr getDeviceProcAddr = chainInfo->u.pLayerInfo->pfnNextGetDeviceProcAddr;
@@ -55,6 +59,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Create dispatch table
     auto table = DeviceDispatchTable::Add(GetInternalTable(*pDevice), new DeviceDispatchTable{});
+
+    // Inherit allocators from the instance
+    table->allocators = instanceTable->allocators;
 
     // Populate the table
     table->Populate(*pDevice, getInstanceProcAddr, getDeviceProcAddr);

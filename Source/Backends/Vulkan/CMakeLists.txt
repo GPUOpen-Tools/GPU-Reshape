@@ -26,6 +26,9 @@ set(CommandBufferDispatchTableTemplate ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 # Generated hooks
 set(VkHooks vkCmdDrawIndexed)
 
+# White list
+set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkEndCommandBuffer)
+
 # Generate the command buffer dispatch table
 add_custom_command(
     OUTPUT Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
@@ -39,6 +42,7 @@ add_custom_command(
         -gentype commandbufferdispatchtable
         -o Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
         -hook ${VkHooks}
+        -whitelist ${VkWhitelist}
 )
 
 # Generate the command buffer hooks
@@ -52,9 +56,9 @@ add_custom_command(
         -vkxml ${VKXML}
         -template ${CommandBufferTemplate}
         -gentype commandbuffer
-        -whitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands
         -o Layer/Source/CommandBuffer.Gen.cpp
         -hook ${VkHooks}
+        -whitelist ${VkWhitelist}
 )
 
 # Create layer
@@ -65,6 +69,7 @@ add_library(
     Layer/Source/InstanceDispatchTable.cpp
     Layer/Source/Device.cpp
     Layer/Source/Instance.cpp
+    Layer/Source/CommandBuffer.cpp
 
     # Generated
     Layer/Source/CommandBuffer.Gen.cpp
@@ -80,7 +85,6 @@ target_link_libraries(Backends.Vulkan.Layer Libraries.Backend)
 target_include_directories(
     Backends.Vulkan.Layer PUBLIC
     Layer/Include ${CMAKE_CURRENT_BINARY_DIR}/Layer/Include
-
 )
 
 # Setup dependencies

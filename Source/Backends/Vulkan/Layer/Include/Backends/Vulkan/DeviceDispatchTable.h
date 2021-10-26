@@ -2,6 +2,8 @@
 
 // Layer
 #include "Vulkan.h"
+#include "Allocators.h"
+#include "TrackedObject.h"
 
 // Generated
 #include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
@@ -9,6 +11,9 @@
 // Std
 #include <mutex>
 #include <map>
+
+// Forward declarations
+struct CommandPoolState;
 
 struct DeviceDispatchTable {
     /// Add a new table
@@ -44,10 +49,22 @@ struct DeviceDispatchTable {
     /// States
     VkDevice object;
 
+    /// Allocators
+    Allocators allocators;
+
+    /// Tracked objects
+    TrackedObject<VkCommandPool, CommandPoolState> state_commandPool;
+
     /// Callbacks
-    PFN_vkGetInstanceProcAddr next_vkGetInstanceProcAddr;
-    PFN_vkGetDeviceProcAddr   next_vkGetDeviceProcAddr;
-    PFN_vkDestroyDevice       next_vkDestroyDevice;
+    PFN_vkGetInstanceProcAddr    next_vkGetInstanceProcAddr;
+    PFN_vkGetDeviceProcAddr      next_vkGetDeviceProcAddr;
+    PFN_vkDestroyDevice          next_vkDestroyDevice;
+    PFN_vkCreateCommandPool      next_vkCreateCommandPool;
+    PFN_vkAllocateCommandBuffers next_vkAllocateCommandBuffers;
+    PFN_vkBeginCommandBuffer     next_vkBeginCommandBuffer;
+    PFN_vkEndCommandBuffer       next_vkEndCommandBuffer;
+    PFN_vkFreeCommandBuffers     next_vkFreeCommandBuffers;
+    PFN_vkDestroyCommandPool     next_vkDestroyCommandPool;
 
     /// Command buffer dispatch table
     CommandBufferDispatchTable commandBufferDispatchTable;

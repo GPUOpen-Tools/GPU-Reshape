@@ -1,5 +1,8 @@
 #pragma once
 
+// Layer
+#include "Common.h"
+
 // Ensure the beta extensions are enabled
 #define VK_ENABLE_BETA_EXTENSIONS 1
 

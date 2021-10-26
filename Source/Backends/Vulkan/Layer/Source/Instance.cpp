@@ -7,6 +7,14 @@
 // Std
 #include <cstring>
 
+static void* InstanceAllocateDefault(size_t size) {
+    return malloc(size);
+}
+
+static void InstanceFreeDefault(void* ptr, size_t) {
+    free(ptr);
+}
+
 VkResult VKAPI_PTR Hook_vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount, VkLayerProperties *pProperties) {
     if (pPropertyCount) {
         *pPropertyCount = 1;
@@ -58,6 +66,10 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
 
     // Create dispatch table
     auto table = InstanceDispatchTable::Add(GetInternalTable(*pInstance), new InstanceDispatchTable{});
+
+    // Setup the default allocators
+    table->allocators.alloc = InstanceAllocateDefault;
+    table->allocators.free  = InstanceFreeDefault;
 
     // Populate the table
     table->Populate(*pInstance, getInstanceProcAddr);
