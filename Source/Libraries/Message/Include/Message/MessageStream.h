@@ -1,8 +1,10 @@
 #pragma once
 
+// Common
+#include <Common/Assert.h>
+
 // Std
 #include <vector>
-#include <cassert>
 
 // Message
 #include "Message.h"
@@ -46,7 +48,7 @@ struct MessageStream {
     /// \param value
     void ValidateOrSetSchema(const MessageSchema& value) {
         if (schema.type != MessageSchemaType::None) {
-            assert(schema == value);
+            ASSERT(schema == value, "Source schema incompatible with destination schema");
             return;
         }
 
