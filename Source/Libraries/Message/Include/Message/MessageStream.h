@@ -135,6 +135,12 @@ struct MessageStream {
         return count;
     }
 
+    /// Check if this stream is empty
+    [[nodiscard]]
+    bool IsEmpty() const {
+        return count == 0;
+    }
+
 private:
     /// Current schema
     MessageSchema schema;
@@ -209,6 +215,12 @@ struct MessageStreamSchema<StaticMessageSchema> {
         return iterator;
     }
 
+    /// Get the message stream
+    [[nodiscard]]
+    MessageStream& GetStream() const {
+        return stream;
+    }
+
 private:
     MessageStream& stream;
 };
@@ -280,6 +292,12 @@ struct MessageStreamSchema<DynamicMessageSchema> {
         iterator.ptr = stream.GetDataBegin();
         iterator.end = stream.GetDataEnd();
         return iterator;
+    }
+
+    /// Get the message stream
+    [[nodiscard]]
+    MessageStream& GetStream() const {
+        return stream;
     }
 
 private:
@@ -369,6 +387,12 @@ struct MessageStreamSchema<OrderedMessageSchema> {
         return iterator;
     }
 
+    /// Get the message stream
+    [[nodiscard]]
+    MessageStream& GetStream() const {
+        return stream;
+    }
+
 private:
     MessageStream& stream;
 };
@@ -396,6 +420,12 @@ struct MessageStreamView {
         return schema.template GetIterator<T>();
     }
 
+    /// Get the message stream
+    [[nodiscard]]
+    MessageStream& GetStream() const {
+        return schema.GetStream();
+    }
+
 private:
     MessageStreamSchema schema;
 };
@@ -421,6 +451,12 @@ struct MessageStreamView<void> {
     [[nodiscard]]
     typename MessageStreamSchema::ConstIterator GetIterator() const {
         return schema.GetIterator();
+    }
+
+    /// Get the message stream
+    [[nodiscard]]
+    MessageStream& GetStream() const {
+        return schema.GetStream();
     }
 
 private:

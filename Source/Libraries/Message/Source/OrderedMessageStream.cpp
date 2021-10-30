@@ -2,11 +2,22 @@
 #include <Message/MessageStream.h>
 
 void OrderedMessageStorage::AddStream(const MessageStream &stream) {
+    // Ignore if empty
+    if (stream.IsEmpty()) {
+        return;
+    }
+
+    // Add to storage, no recycling
     storage.push_back(stream);
 }
 
 void OrderedMessageStorage::AddStreamAndSwap(MessageStream &stream) {
     MessageSchema schema = stream.GetSchema();
+
+    // Ignore if empty
+    if (stream.IsEmpty()) {
+        return;
+    }
 
     // Target stream
     MessageStream target;
@@ -30,7 +41,7 @@ void OrderedMessageStorage::AddStreamAndSwap(MessageStream &stream) {
 
     // Swap with target
     //  The target stream, possibly recycled, contains the produced messages,
-    //  and the source stream is recycled.
+    //  and the source stream swapped.
     target.Swap(stream);
 
     // Add the target

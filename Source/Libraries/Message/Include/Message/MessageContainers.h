@@ -20,7 +20,15 @@ struct MessageArray {
         return reinterpret_cast<T*>(reinterpret_cast<uint8_t*>(this) + thisOffset);
     }
 
+    const T* Get() const {
+        return reinterpret_cast<const T*>(reinterpret_cast<const uint8_t*>(this) + thisOffset);
+    }
+
     T& operator[](size_t i) {
+        return Get()[i];
+    }
+
+    const T& operator[](size_t i) const {
         return Get()[i];
     }
 };

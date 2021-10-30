@@ -98,3 +98,96 @@ TEST_CASE("Backend.FeatureMessage") {
     REQUIRE(it->indexCount == 0);
     REQUIRE(it->instanceCount == 1);
 }
+
+class TestFeatureDynamicMixed final : public IFeature {
+public:
+    FeatureHookTable GetHookTable() final {
+        FeatureHookTable table{};
+        table.drawIndexed = BindDelegate(this, TestFeatureDynamicMixed::OnDrawIndexed);
+        return table;
+    }
+
+    void CollectMessages(IMessageStorage *storage) override {
+        storage->AddStreamAndSwap(emptyDrawMessages);
+        storage->AddStreamAndSwap(complexMessages);
+    }
+
+    MessageStream emptyDrawMessages;
+    MessageStream complexMessages;
+
+protected:
+    void OnDrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
+        if (!indexCount || !instanceCount) {
+            MessageStreamView<EmptyDrawCommandMessage> view(emptyDrawMessages);
+
+            EmptyDrawCommandMessage *msg = view.Add();
+            msg->indexCount = indexCount;
+            msg->instanceCount = instanceCount;
+        }
+
+        MessageStreamView<ComplexMessageMessage> complexView(complexMessages);
+
+        ComplexMessageMessage *complexMsg = complexView.Add(ComplexMessageMessage::AllocationInfo { .dataCount = 8 });
+        for (uint64_t i = 0; i < complexMsg->data.count; i++) {
+            complexMsg->data[i] = i;
+        }
+    }
+};
+
+TEST_CASE("Backend.FeatureMessageDynamicMixed") {
+    TestFeatureDynamicMixed feature;
+
+    FeatureHookTable table = feature.GetHookTable();
+    table.drawIndexed.Invoke(5, 1, 0, 0, 0);
+    table.drawIndexed.Invoke(5, 0, 0, 0, 0);
+    table.drawIndexed.Invoke(0, 1, 0, 0, 0);
+    table.drawIndexed.Invoke(5, 1, 0, 0, 0);
+
+    OrderedMessageStorage storage;
+    feature.CollectMessages(&storage);
+
+    uint32_t consumeCount;
+    storage.ConsumeStreams(&consumeCount, nullptr);
+
+    REQUIRE(consumeCount == 2);
+
+    std::vector<MessageStream> consumedStreams(consumeCount);
+    storage.ConsumeStreams(&consumeCount, consumedStreams.data());
+
+    REQUIRE(consumedStreams[0].Is<EmptyDrawCommandMessage>());
+    REQUIRE(consumedStreams[1].Is<ComplexMessageMessage>());
+
+    MessageStreamView<EmptyDrawCommandMessage> view(consumedStreams[0]);
+    REQUIRE(view.GetStream().GetCount() == 2);
+
+    MessageStreamView<ComplexMessageMessage> complexView(consumedStreams[1]);
+    REQUIRE(complexView.GetStream().GetCount() == 4);
+
+    {
+        auto it = view.GetIterator();
+
+        REQUIRE(it->indexCount == 5);
+        REQUIRE(it->instanceCount == 0);
+
+        ++it;
+
+        REQUIRE(it->indexCount == 0);
+        REQUIRE(it->instanceCount == 1);
+    }
+
+    {
+        auto it = complexView.GetIterator();
+
+        REQUIRE(it->data.count == 8);
+        for (uint64_t i = 0; i < it->data.count; i++) {
+            REQUIRE(it->data[i] == i);
+        }
+
+        ++it;
+
+        REQUIRE(it->data.count == 8);
+        for (uint64_t i = 0; i < it->data.count; i++) {
+            REQUIRE(it->data[i] == i);
+        }
+    }
+}
