@@ -58,6 +58,9 @@ add_library(
     Source/OrderedMessageStream.cpp
 )
 
+# Links
+target_link_libraries(Libraries.Message Libraries.Common)
+
 # Includes
 target_include_directories(Libraries.Message PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
