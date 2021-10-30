@@ -3,42 +3,10 @@
 #include <Message/IMessageStorage.h>
 #include <Message/MessageStream.h>
 #include <Message/MessageContainers.h>
+#include <Message/OrderedMessageStorage.h>
 
 // Schema
 #include <Schemas/Schema.h>
-
-/// Simple storage type
-class MessageStorage final : public IMessageStorage {
-public:
-    void AddStream(const MessageStream &stream) override {
-        storage.push_back(stream);
-    }
-
-    void AddStreamAndSwap(MessageStream& stream) override {
-        storage.push_back(stream);
-        stream.Clear();
-    }
-
-    void ConsumeStreams(uint32_t *count, MessageStream *streams) override {
-        if (count) {
-            *count = storage.size();
-        }
-
-        if (streams) {
-            for (uint32_t i = 0; i < *count; i++) {
-                streams[i].Swap(storage[i]);
-            }
-
-            storage.erase(storage.begin(), storage.begin() + *count);
-        }
-    }
-
-    void Free(const MessageStream& stream) override {
-
-    }
-
-    std::vector<MessageStream> storage;
-};
 
 TEST_CASE("Message.StaticSchema") {
     MessageStream stream;
@@ -52,7 +20,7 @@ TEST_CASE("Message.StaticSchema") {
     view.Add();
 
     // Pass through storage
-    MessageStorage storage;
+    OrderedMessageStorage storage;
     storage.AddStreamAndSwap(stream);
 
     uint32_t consumeCount;
@@ -82,7 +50,7 @@ TEST_CASE("Message.DynamicSchema") {
     std::memset(msgInB->data.Get(), 0x0, sizeof(float) * 512);
 
     // Pass through storage
-    MessageStorage storage;
+    OrderedMessageStorage storage;
     storage.AddStreamAndSwap(stream);
 
     uint32_t consumeCount;
@@ -117,7 +85,7 @@ TEST_CASE("Message.OrderedSchema") {
     std::memset(msgInB->data.Get(), 0x0, sizeof(float) * 512);
 
     // Pass through storage
-    MessageStorage storage;
+    OrderedMessageStorage storage;
     storage.AddStreamAndSwap(stream);
 
     uint32_t consumeCount;

@@ -6,8 +6,35 @@ void OrderedMessageStorage::AddStream(const MessageStream &stream) {
 }
 
 void OrderedMessageStorage::AddStreamAndSwap(MessageStream &stream) {
-    storage.push_back(stream);
-    stream.Clear();
+    MessageSchema schema = stream.GetSchema();
+
+    // Target stream
+    MessageStream target;
+
+    // Ordered?
+    if (schema == OrderedMessageSchema::GetSchema()) {
+        // Pop one if possible
+        if (!freeOrderedStreams.empty()) {
+            target.Swap(freeOrderedStreams.back());
+            freeOrderedStreams.pop_back();
+        }
+    } else {
+        MessageBucket& bucket = messageBuckets[schema.id];
+
+        // Pop one if possible
+        if (!bucket.freeStreams.empty()) {
+            target.Swap(bucket.freeStreams.back());
+            bucket.freeStreams.pop_back();
+        }
+    }
+
+    // Swap with target
+    //  The target stream, possibly recycled, contains the produced messages,
+    //  and the source stream is recycled.
+    target.Swap(stream);
+
+    // Add the target
+    storage.push_back(target);
 }
 
 void OrderedMessageStorage::ConsumeStreams(uint32_t *count, MessageStream *streams) {
@@ -23,4 +50,20 @@ void OrderedMessageStorage::ConsumeStreams(uint32_t *count, MessageStream *strea
 }
 
 void OrderedMessageStorage::Free(const MessageStream &stream) {
+    MessageSchema schema = stream.GetSchema();
+
+    // If the schema is not assigned, there is no purpose in recycling it
+    if (schema.type == MessageSchemaType::None) {
+        return;
+    }
+
+    // Ordered?
+    if (schema == OrderedMessageSchema::GetSchema()) {
+        freeOrderedStreams.push_back(stream);
+        return;
+    }
+
+    // Let the bucket acquire it
+    MessageBucket& bucket = messageBuckets[schema.id];
+    bucket.freeStreams.push_back(stream);
 }
