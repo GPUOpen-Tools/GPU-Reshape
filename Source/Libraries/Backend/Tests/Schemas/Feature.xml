@@ -3,4 +3,7 @@
         <field name="indexCount" type="uint32"/>
         <field name="instanceCount" type="uint32"/>
     </message>
+    <message name="ComplexMessage">
+        <field name="data" type="array" element="uint64"/>
+    </message>
 </schema>

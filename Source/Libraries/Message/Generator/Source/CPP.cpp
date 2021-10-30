@@ -111,7 +111,7 @@ bool Generators::CPP(const GeneratorInfo& info, TemplateEngine& templateEngine) 
                     }
 
                     // Add allocation parameter
-                    allocationParameters << "\t\tsize_t " << fieldName << "Count;\n";
+                    allocationParameters << "\t\tsize_t " << fieldName << "Count = 0;\n";
 
                     // Add byte size
                     byteSize << "\t\t\tsize += 16 + " << it->second.size << " * " << fieldName << "Count" << ";\n";
