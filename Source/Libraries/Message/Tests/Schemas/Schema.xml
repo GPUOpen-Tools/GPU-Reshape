@@ -1,0 +1,9 @@
+<schema>
+    <message name="Foo">
+        <field name="life" type="uint32" value="42"/>
+    </message>
+    <message name="InstructionPixelInvocationDebug">
+        <field name="guid" type="uint64"/>
+        <field name="data" type="array" element="float"/>
+    </message>
+</schema>

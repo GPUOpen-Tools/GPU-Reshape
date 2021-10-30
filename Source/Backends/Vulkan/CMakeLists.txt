@@ -8,6 +8,9 @@ add_executable(
     Generator/Source/CommandBufferDispatchTable.cpp
 )
 
+# Local links
+target_link_libraries(Backends.Vulkan.Generator Libraries.Common)
+
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
     target_compile_options(Backends.Vulkan.Generator PRIVATE /EHa)
@@ -15,6 +18,7 @@ endif()
 
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Generator ArgParse)
+ExternalProject_Link(Backends.Vulkan.Generator VulkanHeaders)
 ExternalProject_Link(Backends.Vulkan.Generator TinyXML2 tinyxml2)
 
 #----- Layer -----#
@@ -34,7 +38,6 @@ add_custom_command(
     OUTPUT Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
     DEPENDS Backends.Vulkan.Generator
     DEPENDS
-        ${VKXML}
         ${CommandBufferDispatchTableTemplate}
     COMMAND Backends.Vulkan.Generator
         -vkxml ${VKXML}
@@ -50,7 +53,6 @@ add_custom_command(
     OUTPUT Layer/Source/CommandBuffer.Gen.cpp
     DEPENDS Backends.Vulkan.Generator
     DEPENDS
-        ${VKXML}
         ${CommandBufferTemplate}
     COMMAND Backends.Vulkan.Generator
         -vkxml ${VKXML}

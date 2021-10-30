@@ -9,8 +9,10 @@
 // Xml
 #include <tinyxml2.h>
 
+// Common
+#include <Common/TemplateEngine.h>
+
 // Generator
-#include "TemplateEngine.h"
 #include "GenTypes.h"
 
 int main(int argc, char *const argv[]) {
