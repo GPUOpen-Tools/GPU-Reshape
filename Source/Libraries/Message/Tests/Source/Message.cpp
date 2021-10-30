@@ -5,7 +5,7 @@
 #include <Message/MessageContainers.h>
 
 // Schema
-#include <Schemas/Message.h>
+#include <Schemas/Schema.h>
 
 /// Simple storage type
 class MessageStorage final : public IMessageStorage {
