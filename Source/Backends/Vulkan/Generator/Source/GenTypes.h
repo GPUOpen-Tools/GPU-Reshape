@@ -6,8 +6,8 @@
 // Xml
 #include <tinyxml2.h>
 
-// Generator
-#include "TemplateEngine.h"
+// Common
+#include <Common/TemplateEngine.h>
 
 struct GeneratorInfo {
     /// Specification registry node
