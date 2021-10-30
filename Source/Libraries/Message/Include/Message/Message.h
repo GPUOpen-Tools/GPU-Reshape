@@ -1,10 +1,10 @@
 #pragma once
 
 /// Global unique message id
-using MessageID = uint64_t;
+using MessageID = uint32_t;
 
 /// Invalid id
-static constexpr MessageID InvalidMessageID = ~0ull;
+static constexpr MessageID InvalidMessageID = ~0u;
 
 /// Message schema type
 enum class MessageSchemaType {
