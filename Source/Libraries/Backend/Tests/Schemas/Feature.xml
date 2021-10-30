@@ -1,0 +1,6 @@
+<schema>
+    <message name="EmptyDrawCommand">
+        <field name="indexCount" type="uint32"/>
+        <field name="instanceCount" type="uint32"/>
+    </message>
+</schema>

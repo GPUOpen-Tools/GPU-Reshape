@@ -1,5 +1,8 @@
 #pragma once
 
+// Std
+#include <cstdint>
+
 /// Global unique message id
 using MessageID = uint32_t;
 

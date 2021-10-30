@@ -20,11 +20,42 @@ endif()
 ExternalProject_Link(Libraries.Message.Generator ArgParse)
 ExternalProject_Link(Libraries.Message.Generator TinyXML2 tinyxml2)
 
+# Schema helper
+function(Project_AddSchema OUT_GENERATED SCHEMA SCHEMA_OUT_PATH)
+    # Get the source directory of the generator
+    get_target_property(GeneratorSourceDir Libraries.Message.Generator SOURCE_DIR)
+
+    # Schema
+    set(Schema ${CMAKE_CURRENT_SOURCE_DIR}/${SCHEMA})
+    set(Template ${GeneratorSourceDir}/Generator/Templates/Message)
+
+    # Set output path
+    get_filename_component(SchemaName ${SCHEMA} NAME_WE)
+    set(OutputPath ${SCHEMA_OUT_PATH}/${SchemaName}.h)
+
+    # Generate the schema
+    add_custom_command(
+        OUTPUT ${OutputPath}
+        DEPENDS
+            Libraries.Message.Generator
+            ${Schema}
+        COMMAND Libraries.Message.Generator
+            -schemaxml ${Schema}
+            -template ${Template}
+            -lang cpp
+            -opath ${SCHEMA_OUT_PATH}
+    )
+
+    # Set output
+    set(${OUT_GENERATED} ${OutputPath} PARENT_SCOPE)
+endfunction()
+
 #----- Message -----#
 
 add_library(
     Libraries.Message STATIC
     Source/Message.cpp
+    Source/OrderedMessageStream.cpp
 )
 
 # Includes
@@ -37,17 +68,7 @@ set(Schema ${CMAKE_CURRENT_SOURCE_DIR}/Tests/Schemas/Schema.xml)
 set(Template ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Message)
 
 # Generate the schema
-add_custom_command(
-    OUTPUT Tests/Include/Schemas/Schema.h
-    DEPENDS
-        Libraries.Message.Generator
-        ${Schema}
-    COMMAND Libraries.Message.Generator
-        -schemaxml ${Schema}
-        -template ${Template}
-        -lang cpp
-        -opath Tests/Include/Schemas
-)
+Project_AddSchema(Generated Tests/Schemas/Schema.xml Tests/Include/Schemas)
 
 # Create test layer
 add_executable(
@@ -56,7 +77,7 @@ add_executable(
     Tests/Source/Message.cpp
 
     # Generated
-    Tests/Include/Schemas/Schema.h
+    ${Generated}
 )
 
 # Include

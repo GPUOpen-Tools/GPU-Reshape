@@ -2,6 +2,7 @@
 
 // Std
 #include <vector>
+#include <cassert>
 
 // Message
 #include "Message.h"
@@ -50,6 +51,25 @@ struct MessageStream {
         }
 
         schema = value;
+    }
+
+    /// Check if this stream hosts a given message
+    template<typename T>
+    bool Is() {
+        using Schema = typename T::Schema;
+
+        // Check the schema
+        return Schema::GetSchema(T::kID) == schema;
+    }
+
+    /// Check if this stream hosts a given message, or is empty
+    template<typename T>
+    bool IsOrEmpty() {
+        if (count == 0) {
+            return true;
+        }
+
+        return Is<T>();
     }
 
     /// Allocate a new message

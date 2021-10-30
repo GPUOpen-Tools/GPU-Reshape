@@ -6,9 +6,16 @@ add_library(
     Source/Backend.cpp
 )
 
+# Includes
 target_include_directories(Libraries.Backend PUBLIC Include)
 
+# Links
+target_link_libraries(Libraries.Backend PUBLIC Libraries.Message)
+
 #----- Tests -----#
+
+# Generate the schema
+Project_AddSchema(Generated Tests/Schemas/Feature.xml Tests/Include/Schemas)
 
 # Create test layer
 add_executable(
@@ -16,7 +23,13 @@ add_executable(
     Tests/Source/Main.cpp
     Tests/Source/Emitter.cpp
     Tests/Source/Feature.cpp
+
+    # Generated
+    ${Generated}
 )
+
+# Includes
+target_include_directories(Libraries.Backend.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
 
 # Setup dependencies
 ExternalProject_Link(Libraries.Backend.Tests Catch2)
