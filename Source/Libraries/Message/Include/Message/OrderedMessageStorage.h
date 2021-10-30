@@ -5,6 +5,7 @@
 
 // Std
 #include <vector>
+#include <map>
 
 /// Simple batch ordered message storage
 class OrderedMessageStorage final : public IMessageStorage {
@@ -16,6 +17,17 @@ public:
     void Free(const MessageStream& stream) override;
 
 private:
-    std::vector<MessageStream> freeStreams;
+    /// Cache for message types
+    struct MessageBucket {
+        std::vector<MessageStream> freeStreams;
+    };
+
+    /// All message buckets
+    std::map<MessageID, MessageBucket> messageBuckets;
+
+    /// Free ordered streams, message invariant
+    std::vector<MessageStream> freeOrderedStreams;
+
+    /// Current pushed streams
     std::vector<MessageStream> storage;
 };
