@@ -1,0 +1,11 @@
+/**
+ * Deep copy generation template
+ */
+
+// Layer
+#include <Backends/Vulkan/DeepCopyObjects.Gen.h>
+
+// Std
+#include <cstring>
+
+$DEEPCOPY

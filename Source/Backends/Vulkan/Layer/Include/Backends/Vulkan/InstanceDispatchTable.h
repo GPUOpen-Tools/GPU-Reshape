@@ -8,6 +8,9 @@
 #include <mutex>
 #include <map>
 
+// Forward declarations
+class Dispatcher;
+
 struct InstanceDispatchTable {
     /// Add a new table
     /// \param key the given dispatch key
@@ -44,6 +47,9 @@ struct InstanceDispatchTable {
 
     /// Allocators
     Allocators allocators;
+
+    /// Dispatcher, simple job work pool
+    Dispatcher* dispatcher;
 
     /// Callbacks
     PFN_vkGetInstanceProcAddr next_vkGetInstanceProcAddr;

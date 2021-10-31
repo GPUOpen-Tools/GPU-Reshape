@@ -1,7 +1,7 @@
 #pragma once
 
 // Backend
-#include <Backend/Delegate.h>
+#include <Common/Delegate.h>
 
 /// Feature hook, derived type must implement operator()
 template<typename T>

@@ -1,7 +1,7 @@
 #pragma once
 
-// Backend
-#include "Delegate.h"
+// Common
+#include <Common/Delegate.h>
 
 // Hook types
 namespace Hooks {

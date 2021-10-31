@@ -16,6 +16,9 @@ struct GeneratorInfo {
     /// Whitelisted commands, context sensitive
     std::set<std::string> whitelist;
 
+    /// Objects, context sensitive
+    std::set<std::string> objects;
+
     /// Hooked commands, context sensitive
     std::set<std::string> hooks;
 };
@@ -32,4 +35,16 @@ namespace Generators {
     /// \param templateEngine template destination
     /// \return success
     bool CommandBufferDispatchTable(const GeneratorInfo& info, TemplateEngine& templateEngine);
+
+    /// Generate the deep copy object implementation
+    /// \param info generation info
+    /// \param templateEngine template destination
+    /// \return success
+    bool DeepCopyObjects(const GeneratorInfo& info, TemplateEngine& templateEngine);
+
+    /// Generate the deep copy implementation
+    /// \param info generation info
+    /// \param templateEngine template destination
+    /// \return success
+    bool DeepCopy(const GeneratorInfo& info, TemplateEngine& templateEngine);
 }
