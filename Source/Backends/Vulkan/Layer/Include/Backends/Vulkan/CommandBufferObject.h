@@ -5,11 +5,12 @@
 
 /// Forward declarations
 struct DeviceDispatchTable;
+struct CommandPoolState;
 
 /// Wrapped command buffer object
-struct CommandBufferObject
-{
+struct CommandBufferObject {
     void*                next_dispatchTable;
     VkCommandBuffer      object;
     DeviceDispatchTable* table;
+    CommandPoolState*    pool;
 };

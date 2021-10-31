@@ -10,10 +10,7 @@
 struct CommandBufferObject;
 
 /// Command pool state, not wrapped
-struct CommandPoolState
-{
-    DeviceDispatchTable* table;
-
+struct CommandPoolState {
     /// Allocated command buffers
     std::vector<CommandBufferObject*> commandBuffers;
 };

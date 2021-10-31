@@ -72,6 +72,8 @@ add_library(
     Layer/Source/Device.cpp
     Layer/Source/Instance.cpp
     Layer/Source/CommandBuffer.cpp
+    Layer/Source/ShaderModule.cpp
+    Layer/Source/Pipeline.cpp
 
     # Generated
     Layer/Source/CommandBuffer.Gen.cpp
@@ -81,7 +83,7 @@ add_library(
 )
 
 # Link against backend
-target_link_libraries(Backends.Vulkan.Layer Libraries.Backend)
+target_link_libraries(Backends.Vulkan.Layer PUBLIC Libraries.Backend Libraries.Common)
 
 # Include directories
 target_include_directories(

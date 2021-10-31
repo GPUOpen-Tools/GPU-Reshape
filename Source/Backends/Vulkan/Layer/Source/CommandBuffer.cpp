@@ -22,6 +22,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const V
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, const VkCommandBufferAllocateInfo *pAllocateInfo, CommandBufferObject** pCommandBuffers) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Get pool state
+    CommandPoolState* poolState = table->state_commandPool.Get(pAllocateInfo->commandPool);
+
     // Returned vulkan handles
     auto* vkCommandBuffers = AllocaArray(VkCommandBuffer, pAllocateInfo->commandBufferCount);
 
@@ -37,11 +40,13 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, co
         auto wrapped = new (table->allocators) CommandBufferObject;
         wrapped->object = vkCommandBuffers[i];
         wrapped->table = table;
+        wrapped->pool = poolState;
 
         // Ensure the internal dispatch table is preserved
         wrapped->next_dispatchTable = GetInternalTable(pCommandBuffers[i]);
 
         // OK
+        poolState->commandBuffers.push_back(wrapped);
         pCommandBuffers[i] = wrapped;
     }
 
@@ -67,6 +72,13 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkFreeCommandBuffers(VkDevice device, VkCommandP
     // Unwrap and release wrappers
     for (uint32_t i = 0; i < commandBufferCount; i++) {
         vkCommandBuffers[i] = pCommandBuffers[i]->object;
+
+        // Remove from pool
+        //  TODO: Slot allocators
+        auto poolIt = std::find(pCommandBuffers[i]->pool->commandBuffers.begin(), pCommandBuffers[i]->pool->commandBuffers.end(), pCommandBuffers[i]);
+        if (poolIt != pCommandBuffers[i]->pool->commandBuffers.end()) {
+            pCommandBuffers[i]->pool->commandBuffers.erase(poolIt);
+        }
 
         // Free the memory
         destroy(pCommandBuffers[i], table->allocators);
