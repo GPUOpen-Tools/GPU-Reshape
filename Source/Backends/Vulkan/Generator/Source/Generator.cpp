@@ -21,9 +21,10 @@ int main(int argc, char *const argv[]) {
     // Setup parameters
     program.add_argument("-vkxml").help("Path of the vulkan specification xml file").required();
     program.add_argument("-template").help("The file to template").required();
-    program.add_argument("-gentype").help("The generation type, one of [commandbuffer, commandbufferdispatchtable]").required();
+    program.add_argument("-gentype").help("The generation type, one of [commandbuffer, commandbufferdispatchtable, deepcopyobjects]").required();
     program.add_argument("-whitelist").help("Whitelist a callback").default_value(std::string(""));
     program.add_argument("-hook").help("All feature hooks").default_value(std::string(""));
+    program.add_argument("-object").help("All generator objects").default_value(std::string(""));
     program.add_argument("-o").help("Output of the generated file").required();
 
     // Attempt to parse the input
@@ -41,6 +42,7 @@ int main(int argc, char *const argv[]) {
     auto &&ftemplate = program.get<std::string>("-template");
     auto &&output = program.get<std::string>("-o");
     auto &&whitelist = program.get<std::string>("-whitelist");
+    auto &&object = program.get<std::string>("-object");
     auto &&hooks = program.get<std::string>("-hook");
 
     // Generator information
@@ -51,7 +53,15 @@ int main(int argc, char *const argv[]) {
     while( whitelistStream.good() ) {
         std::string substr;
         getline(whitelistStream, substr, ',' );
-        generatorInfo.whitelist.insert(substr );
+        generatorInfo.whitelist.insert(substr);
+    }
+
+    // Parse object
+    std::stringstream objectStream(object);
+    while( objectStream.good() ) {
+        std::string substr;
+        getline(objectStream, substr, ',' );
+        generatorInfo.objects.insert(substr);
     }
 
     // Parse hooks
@@ -59,7 +69,7 @@ int main(int argc, char *const argv[]) {
     while( hookStream.good() ) {
         std::string substr;
         getline(hookStream, substr, ',' );
-        generatorInfo.hooks.insert(substr );
+        generatorInfo.hooks.insert(substr);
     }
 
     // Attempt to open the specification xml
@@ -91,6 +101,10 @@ int main(int argc, char *const argv[]) {
         generatorResult = Generators::CommandBuffer(generatorInfo, templateEngine);
     } else if (gentype == "commandbufferdispatchtable") {
         generatorResult = Generators::CommandBufferDispatchTable(generatorInfo, templateEngine);
+    } else if (gentype == "deepcopyobjects") {
+        generatorResult = Generators::DeepCopyObjects(generatorInfo, templateEngine);
+    } else if (gentype == "deepcopy") {
+        generatorResult = Generators::DeepCopy(generatorInfo, templateEngine);
     } else {
         std::cerr << "Invalid generator type: " << gentype << ", see help." << std::endl;
         return 1;

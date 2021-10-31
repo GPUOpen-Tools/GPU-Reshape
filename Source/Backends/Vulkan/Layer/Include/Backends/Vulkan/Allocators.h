@@ -11,13 +11,18 @@ struct Allocators {
 };
 
 /// Allocation overload
-inline void* operator new (size_t size, Allocators& allocators) {
+inline void* operator new (size_t size, const Allocators& allocators) {
+    return allocators.alloc(size);
+}
+
+/// Allocation overload
+inline void* operator new[](size_t size, const Allocators& allocators) {
     return allocators.alloc(size);
 }
 
 /// Destruction (can't overload deletion)
 template<typename T>
-inline void destroy(T* object, Allocators& allocators) {
+inline void destroy(T* object, const Allocators& allocators) {
     if (!object)
         return;
 

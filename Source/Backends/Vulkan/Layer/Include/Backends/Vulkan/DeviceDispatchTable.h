@@ -14,6 +14,7 @@
 
 // Forward declarations
 struct CommandPoolState;
+class Dispatcher;
 
 struct DeviceDispatchTable {
     /// Add a new table
@@ -51,6 +52,9 @@ struct DeviceDispatchTable {
 
     /// Allocators
     Allocators allocators;
+
+    /// Dispatcher, simple job work pool
+    Dispatcher* dispatcher;
 
     /// Tracked objects
     TrackedObject<VkCommandPool, CommandPoolState> state_commandPool;

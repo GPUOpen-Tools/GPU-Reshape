@@ -32,14 +32,14 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         tinyxml2::XMLElement *prototype = command->FirstChildElement("proto");
         if (!prototype) {
             std::cerr << "Malformed command in line: " << command->GetLineNum() << ", prototype not found" << std::endl;
-            continue;
+            return false;
         }
 
         // Get the result
         tinyxml2::XMLElement *prototypeResult = prototype->FirstChildElement("type");
         if (!prototypeResult) {
             std::cerr << "Malformed command in line: " << command->GetLineNum() << ", prototype result not found" << std::endl;
-            continue;
+            return false;
         }
 
         // Check return type
@@ -49,7 +49,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         tinyxml2::XMLElement *prototypeName = prototype->FirstChildElement("name");
         if (!prototypeName) {
             std::cerr << "Malformed command in line: " << command->GetLineNum() << ", prototype name not found" << std::endl;
-            continue;
+            return false;
         }
 
         // Whitelisted?
@@ -72,7 +72,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
             tinyxml2::XMLElement *paramType = paramNode->FirstChildElement("type");
             if (!paramType) {
                 std::cerr << "Malformed parameter in line: " << command->GetLineNum() << ", type not found" << std::endl;
-                continue;
+                return false;
             }
 
             // Note: This is obviously not correct, it may be inside compound types and such, but it's sufficient for prototyping
@@ -109,14 +109,14 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
             tinyxml2::XMLElement *paramType = paramNode->FirstChildElement("type");
             if (!paramType) {
                 std::cerr << "Malformed parameter in line: " << paramNode->GetLineNum() << ", type not found" << std::endl;
-                continue;
+                return false;
             }
 
             // Get the name
             tinyxml2::XMLElement *paramName = paramNode->FirstChildElement("name");
             if (!paramName) {
                 std::cerr << "Malformed parameter in line: " << paramNode->GetLineNum() << ", name not found" << std::endl;
-                continue;
+                return false;
             }
 
             // Comma
@@ -175,7 +175,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
                 tinyxml2::XMLElement *paramName = paramNode->FirstChildElement("name");
                 if (!paramName) {
                     std::cerr << "Malformed parameter in line: " << paramNode->GetLineNum() << ", name not found" << std::endl;
-                    continue;
+                    return false;
                 }
 
                 // Comma
@@ -204,7 +204,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         // Double check
         if (!wrappedObject) {
             std::cerr << "Wrapped object not found, unexpected error for command on line: " << command->GetLineNum() << std::endl;
-            continue;
+            return false;
         }
 
         // Pass down the call chain
@@ -217,14 +217,14 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
             tinyxml2::XMLElement *paramType = paramNode->FirstChildElement("type");
             if (!paramType) {
                 std::cerr << "Malformed parameter in line: " << paramNode->GetLineNum() << ", type not found" << std::endl;
-                continue;
+                return false;
             }
 
             // Get the name
             tinyxml2::XMLElement *paramName = paramNode->FirstChildElement("name");
             if (!paramName) {
                 std::cerr << "Malformed parameter in line: " << paramNode->GetLineNum() << ", name not found" << std::endl;
-                continue;
+                return false;
             }
 
             // Comma

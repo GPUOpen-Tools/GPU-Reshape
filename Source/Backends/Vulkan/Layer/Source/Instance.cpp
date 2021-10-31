@@ -1,6 +1,9 @@
 #include <Backends/Vulkan/Instance.h>
 #include <Backends/Vulkan/InstanceDispatchTable.h>
 
+// Common
+#include <Common/Dispatcher.h>
+
 // Vulkan
 #include <vulkan/vk_layer.h>
 
@@ -70,6 +73,9 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     // Setup the default allocators
     table->allocators.alloc = InstanceAllocateDefault;
     table->allocators.free  = InstanceFreeDefault;
+
+    // Create the default dispatcher
+    table->dispatcher = new Dispatcher();
 
     // Populate the table
     table->Populate(*pInstance, getInstanceProcAddr);
