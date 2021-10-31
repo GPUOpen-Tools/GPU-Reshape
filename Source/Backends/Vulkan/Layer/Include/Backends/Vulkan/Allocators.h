@@ -5,8 +5,7 @@ using TAllocatorAlloc  = void*(*)(size_t size);
 using TAllocatorFree = void(*)(void* ptr, size_t size);
 
 /// Contains basic allocators
-struct Allocators
-{
+struct Allocators {
     TAllocatorAlloc alloc;
     TAllocatorFree  free;
 };
