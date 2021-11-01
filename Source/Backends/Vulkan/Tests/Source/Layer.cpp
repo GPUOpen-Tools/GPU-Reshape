@@ -113,7 +113,7 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
         submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit.pCommandBuffers = &commandBuffer;
         submit.commandBufferCount = 1;
-        vkQueueSubmit(GetPrimaryQueue(), 1, &submit, VK_NULL_HANDLE);
+        REQUIRE(vkQueueSubmit(GetPrimaryQueue(), 1, &submit, VK_NULL_HANDLE) == VK_SUCCESS);
     }
 
     vkQueueWaitIdle(GetPrimaryQueue());

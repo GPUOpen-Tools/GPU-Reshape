@@ -1,9 +1,15 @@
 
 #----- Backend -----#
 
+# Generate the schemas
+Project_AddSchema(GeneratedLib Schemas/Pipeline.xml Include/Schemas)
+
 add_library(
     Libraries.Backend STATIC
     Source/Backend.cpp
+
+    # Generated schemas
+    ${GeneratedLib}
 )
 
 # Includes

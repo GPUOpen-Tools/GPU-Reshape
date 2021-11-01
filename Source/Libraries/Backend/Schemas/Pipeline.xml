@@ -1,0 +1,21 @@
+<schema>
+    <message name="SetGlobalInstrumentation">
+        <field name="featureBitSet" type="uint64">
+            Feature set to be enabled globally
+        </field>
+    </message>
+
+    <message name="SetShaderInstrumentation">
+        <field name="featureBitSet" type="uint64">
+            Feature set to be enabled for the given shader
+        </field>
+        <field name="specialization" type="stream"/>
+    </message>
+
+    <message name="SetPipelineInstrumentation">
+        <field name="featureBitSet" type="uint64">
+            Feature set to be enabled for the given pipeline
+        </field>
+        <field name="specialization" type="stream"/>
+    </message>
+</schema>
