@@ -20,10 +20,7 @@ struct PipelineState : public ReferenceObject {
 };
 
 /*
-    1. Deep copies (shader module, pipeline, anything needing recreation), generator
-    2. Job system, lightweight
     2.1. Batched work, fx, recompile all pipelines, # / 30 per-worker
-    2.2. Shared job system
 
     Who gets recompiled when?
     1. Some system knows about all the pipelines

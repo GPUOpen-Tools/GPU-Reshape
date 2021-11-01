@@ -47,7 +47,7 @@ function(Project_AddSchema OUT_GENERATED SCHEMA SCHEMA_OUT_PATH)
     )
 
     # Set output
-    set(${OUT_GENERATED} ${OutputPath} PARENT_SCOPE)
+    set(${OUT_GENERATED} "${${OUT_GENERATED}};${OutputPath}" PARENT_SCOPE)
 endfunction()
 
 #----- Message -----#

@@ -1,0 +1,16 @@
+<schema>
+    <struct name="ShaderLocation">
+        <field name="offset" type="uint32"/>
+        <field name="line"   type="uint32"/>
+        <field name="column" type="uint32"/>
+    </struct>
+
+    <message name="GetShaderCode">
+        <field name="shaderUID" type="uint64"/>
+    </message>
+
+    <message name="ShaderCode">
+        <field name="shaderUID" type="uint64"/>
+        <field name="code"      type="string"/>
+    </message>
+</schema>
