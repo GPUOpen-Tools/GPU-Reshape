@@ -116,6 +116,8 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
         vkQueueSubmit(GetPrimaryQueue(), 1, &submit, VK_NULL_HANDLE);
     }
 
+    vkQueueWaitIdle(GetPrimaryQueue());
+
     // Release handles
     vkDestroyPipeline(GetDevice(), pipeline, nullptr);
     vkDestroyShaderModule(GetDevice(), module, nullptr);

@@ -43,7 +43,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, co
         wrapped->pool = poolState;
 
         // Ensure the internal dispatch table is preserved
-        wrapped->next_dispatchTable = GetInternalTable(pCommandBuffers[i]);
+        wrapped->next_dispatchTable = GetInternalTable(vkCommandBuffers[i]);
 
         // OK
         poolState->commandBuffers.push_back(wrapped);
