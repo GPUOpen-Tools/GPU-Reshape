@@ -53,14 +53,22 @@ public:
 	}
 
     /// Get the primary queue family
+    [[nodiscard]]
     uint32_t GetPrimaryQueueFamily() const {
         return queueFamilyIndex;
+    }
+
+    /// Get the primary queue
+    [[nodiscard]]
+    VkQueue GetPrimaryQueue() const {
+        return queue;
     }
 
 private:
 	VkInstance       instance      {VK_NULL_HANDLE};
 	VkPhysicalDevice physicalDevice{VK_NULL_HANDLE};
 	VkDevice         device        {VK_NULL_HANDLE};
+    VkQueue          queue         {VK_NULL_HANDLE};
 
     uint32_t queueFamilyIndex{0xFFFFFFFF};
 
