@@ -69,6 +69,7 @@ struct DeviceDispatchTable {
     PFN_vkEndCommandBuffer       next_vkEndCommandBuffer;
     PFN_vkFreeCommandBuffers     next_vkFreeCommandBuffers;
     PFN_vkDestroyCommandPool     next_vkDestroyCommandPool;
+    PFN_vkQueueSubmit            next_vkQueueSubmit;
 
     /// Command buffer dispatch table
     CommandBufferDispatchTable commandBufferDispatchTable;

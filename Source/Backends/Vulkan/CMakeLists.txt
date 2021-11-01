@@ -109,6 +109,7 @@ add_library(
     Layer/Source/CommandBuffer.cpp
     Layer/Source/ShaderModule.cpp
     Layer/Source/Pipeline.cpp
+    Layer/Source/Queue.cpp
 
     # Generated
     Layer/Source/CommandBuffer.Gen.cpp

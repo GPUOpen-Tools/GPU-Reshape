@@ -1,6 +1,7 @@
 #include <Backends/Vulkan/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Device.h>
 #include <Backends/Vulkan/CommandBuffer.h>
+#include <Backends/Vulkan/Queue.h>
 
 // Std
 #include <cstring>
@@ -24,6 +25,7 @@ void DeviceDispatchTable::Populate(VkDevice device, PFN_vkGetInstanceProcAddr ge
     next_vkEndCommandBuffer = reinterpret_cast<PFN_vkEndCommandBuffer>(getDeviceProcAddr(device, "vkEndCommandBuffer"));
     next_vkFreeCommandBuffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(getDeviceProcAddr(device, "vkFreeCommandBuffers"));
     next_vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool>(getDeviceProcAddr(device, "vkDestroyCommandPool"));
+    next_vkQueueSubmit = reinterpret_cast<PFN_vkQueueSubmit>(getDeviceProcAddr(device, "vkQueueSubmit"));
 
     // Populate all generated commands
     commandBufferDispatchTable.Populate(device, getDeviceProcAddr);
@@ -45,7 +47,7 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
     if (!std::strcmp(name, "vkCreateCommandPool"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateCommandPool);
 
-    if (!std::strcmp(name, "Hook_vkAllocateCommandBuffers"))
+    if (!std::strcmp(name, "vkAllocateCommandBuffers"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkAllocateCommandBuffers);
 
     if (!std::strcmp(name, "vkBeginCommandBuffer"))
@@ -59,6 +61,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkDestroyCommandPool"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyCommandPool);
+
+    if (!std::strcmp(name, "vkQueueSubmit"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueueSubmit);
 
     // Check command hooks
     if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(name)) {
