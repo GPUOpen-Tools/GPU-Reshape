@@ -161,6 +161,9 @@ void Loader::CreateDevice() {
     deviceCreateInfo.queueCreateInfoCount    = 1;
     deviceCreateInfo.pQueueCreateInfos       = &primaryQueueInfo;
     REQUIRE(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) == VK_SUCCESS);
+
+    // Get the allocated queue
+    vkGetDeviceQueue(device, queueFamilyIndex, 0, &queue);
 }
 
 Loader::~Loader() {
