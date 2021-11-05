@@ -3,6 +3,7 @@
 
 # Generate the schemas
 Project_AddSchema(GeneratedLib Schemas/Pipeline.xml Include/Schemas)
+Project_AddSchema(GeneratedLib Schemas/ShaderMetadata.xml Include/Schemas)
 
 add_library(
     Libraries.Backend STATIC
@@ -13,7 +14,7 @@ add_library(
 )
 
 # Includes
-target_include_directories(Libraries.Backend PUBLIC Include)
+target_include_directories(Libraries.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
 target_link_libraries(Libraries.Backend PUBLIC Libraries.Message)

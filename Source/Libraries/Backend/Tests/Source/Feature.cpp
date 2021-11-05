@@ -8,6 +8,8 @@
 
 // Messages
 #include <Schemas/Feature.h>
+#include <Schemas/Pipeline.h>
+#include <Schemas/ShaderMetadata.h>
 
 class TestFeatureHook final : public IFeature {
 public:
