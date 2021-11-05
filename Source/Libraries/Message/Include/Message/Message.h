@@ -10,7 +10,7 @@ using MessageID = uint32_t;
 static constexpr MessageID InvalidMessageID = ~0u;
 
 /// Message schema type
-enum class MessageSchemaType {
+enum class MessageSchemaType : uint32_t {
     None,
 
     /// Static schema, stride of each message is constant, single message type

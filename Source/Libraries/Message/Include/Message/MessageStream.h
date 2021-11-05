@@ -155,13 +155,13 @@ private:
 };
 
 /// Schema representation
-template<typename T>
+template<typename T, typename STREAM>
 struct MessageStreamSchema;
 
 /// Static schema, see MessageSchemaType::Static
-template<>
-struct MessageStreamSchema<StaticMessageSchema> {
-    MessageStreamSchema(MessageStream& stream) : stream(stream) {
+template<typename STREAM>
+struct MessageStreamSchema<StaticMessageSchema, STREAM> {
+    MessageStreamSchema(STREAM& stream) : stream(stream) {
 
     }
 
@@ -204,7 +204,7 @@ struct MessageStreamSchema<StaticMessageSchema> {
     /// Add a new message
     template<typename T>
     T* Add(const typename T::AllocationInfo& info) {
-        auto allocation = stream.Allocate<T, typename T::Schema>(sizeof(T));
+        auto allocation = stream.template Allocate<T, typename T::Schema>(sizeof(T));
         return new (allocation.message) T();
     }
 
@@ -219,18 +219,18 @@ struct MessageStreamSchema<StaticMessageSchema> {
 
     /// Get the message stream
     [[nodiscard]]
-    MessageStream& GetStream() const {
+    STREAM& GetStream() const {
         return stream;
     }
 
 private:
-    MessageStream& stream;
+    STREAM& stream;
 };
 
 /// Dynamic schema, see MessageSchemaType::Dynamic
-template<>
-struct MessageStreamSchema<DynamicMessageSchema> {
-    MessageStreamSchema(MessageStream& stream) : stream(stream) {
+template<typename STREAM>
+struct MessageStreamSchema<DynamicMessageSchema, STREAM> {
+    MessageStreamSchema(STREAM& stream) : stream(stream) {
 
     }
 
@@ -276,7 +276,7 @@ struct MessageStreamSchema<DynamicMessageSchema> {
         uint64_t byteSize = info.ByteSize();
 
         // Allocate the message
-        auto allocation = stream.Allocate<T, typename T::Schema>(byteSize);
+        auto allocation = stream.template Allocate<T, typename T::Schema>(byteSize);
 
         // Set the header
         allocation.header->byteSize = info.ByteSize();
@@ -298,18 +298,18 @@ struct MessageStreamSchema<DynamicMessageSchema> {
 
     /// Get the message stream
     [[nodiscard]]
-    MessageStream& GetStream() const {
+    STREAM& GetStream() const {
         return stream;
     }
 
 private:
-    MessageStream& stream;
+    STREAM& stream;
 };
 
 /// Ordered schema, see MessageSchemaType::Ordered
-template<>
-struct MessageStreamSchema<OrderedMessageSchema> {
-    MessageStreamSchema(MessageStream& stream) : stream(stream) {
+template<typename STREAM>
+struct MessageStreamSchema<OrderedMessageSchema, STREAM> {
+    MessageStreamSchema(STREAM& stream) : stream(stream) {
 
     }
 
@@ -368,7 +368,7 @@ struct MessageStreamSchema<OrderedMessageSchema> {
         uint64_t byteSize = info.ByteSize();
 
         // Allocate the message
-        auto allocation = stream.Allocate<T, OrderedMessageSchema>(byteSize);
+        auto allocation = stream.template Allocate<T, OrderedMessageSchema>(byteSize);
 
         // Setup the header
         allocation.header->id       = T::kID;
@@ -391,23 +391,23 @@ struct MessageStreamSchema<OrderedMessageSchema> {
 
     /// Get the message stream
     [[nodiscard]]
-    MessageStream& GetStream() const {
+    STREAM& GetStream() const {
         return stream;
     }
 
 private:
-    MessageStream& stream;
+    STREAM& stream;
 };
 
 /// Static and dynamic message stream views
 ///  fx.  MessageStreamView<FooMessage> view
 /// , schema selection is deduced from the type.
-template<typename T = void>
+template<typename T = void, typename STREAM = MessageStream>
 struct MessageStreamView {
     using MessageSchema       = typename T::Schema;
-    using MessageStreamSchema = MessageStreamSchema<MessageSchema>;
+    using MessageStreamSchema = MessageStreamSchema<MessageSchema, STREAM>;
 
-    MessageStreamView(MessageStream& stream) : schema(stream) {
+    MessageStreamView(STREAM& stream) : schema(stream) {
         stream.ValidateOrSetSchema(MessageSchema::GetSchema(T::kID));
     }
 
@@ -434,12 +434,12 @@ private:
 
 /// Ordered message stream view
 ///  fx. MessageStreamView view
-template<>
-struct MessageStreamView<void> {
+template<typename STREAM>
+struct MessageStreamView<void, STREAM> {
     using MessageSchema       = OrderedMessageSchema;
-    using MessageStreamSchema = MessageStreamSchema<MessageSchema>;
+    using MessageStreamSchema = MessageStreamSchema<MessageSchema, STREAM>;
 
-    MessageStreamView(MessageStream& stream) : schema(stream) {
+    MessageStreamView(STREAM& stream) : schema(stream) {
         stream.ValidateOrSetSchema(MessageSchema::GetSchema());
     }
 

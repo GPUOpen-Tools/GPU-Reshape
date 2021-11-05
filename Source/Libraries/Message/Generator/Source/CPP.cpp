@@ -129,6 +129,46 @@ bool Generators::CPP(const GeneratorInfo& info, TemplateEngine& templateEngine) 
 
                     // Size type, not allocation type
                     cxxSizeType += 16;
+                } else if (!std::strcmp(typeName, "string")) {
+                    // Add allocation parameter
+                    allocationParameters << "\t\tsize_t " << fieldName << "Length = 0;\n";
+
+                    // Add byte size
+                    byteSize << "\t\t\tsize += 16 + sizeof(char) * " << fieldName << "Length" << ";\n";
+
+                    // Add patch
+                    patch << "\t\t\tmessage->" << fieldName << ".data.count = " << fieldName << "Length;\n";
+                    patch << "\t\t\tmessage->" << fieldName << ".data.thisOffset = offset + sizeof(" << name << "Message) - offsetof(" << name << "Message, " << fieldName << ");\n";
+                    patch << "\t\t\toffset += " << fieldName << "Length * sizeof(char); \n\n";
+
+                    // Requires the dynamic schema
+                    anyDynamic = true;
+
+                    // Append field
+                    fields << "\tMessageString " << fieldName << ";\n";
+
+                    // Size type, not allocation type
+                    cxxSizeType += 16;
+                } else if (!std::strcmp(typeName, "stream")) {
+                    // Add allocation parameter
+                    allocationParameters << "\t\tsize_t " << fieldName << "ByteSize = 0;\n";
+
+                    // Add byte size
+                    byteSize << "\t\t\tsize += 32 + sizeof(uint8_t) * " << fieldName << "ByteSize" << ";\n";
+
+                    // Add patch
+                    patch << "\t\t\tmessage->" << fieldName << ".data.count = " << fieldName << "ByteSize;\n";
+                    patch << "\t\t\tmessage->" << fieldName << ".data.thisOffset = offset + sizeof(" << name << "Message) - offsetof(" << name << "Message, " << fieldName << ");\n";
+                    patch << "\t\t\toffset += " << fieldName << "ByteSize * sizeof(uint8_t); \n\n";
+
+                    // Requires the dynamic schema
+                    anyDynamic = true;
+
+                    // Append field
+                    fields << "\tMessageSubStream " << fieldName << ";\n";
+
+                    // Size type, not allocation type
+                    cxxSizeType += 32;
                 } else {
                     std::cerr << "Malformed command in line: " << command->GetLineNum() << ", unknown type '" << typeName << "'" << std::endl;
                     return false;
