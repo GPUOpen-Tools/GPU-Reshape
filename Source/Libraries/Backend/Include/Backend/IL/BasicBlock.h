@@ -19,6 +19,17 @@ namespace IL {
             data.resize(data.size() + sizeof(T));
             std::memcpy(&data[offset], &instr, sizeof(T));
             count++;
+            dirty = true;
+        }
+
+        /// Check if this basic block has been modified
+        bool IsModified() const {
+            return dirty;
+        }
+
+        /// Immortalize this basic block
+        void Immortalize() {
+            dirty = false;
         }
 
         /// Get the number of instructions
@@ -35,10 +46,13 @@ namespace IL {
         /// Label id
         ID id;
 
-        /// Number of instuctions
+        /// Number of instructions
         uint32_t count{0};
 
         /// Instruction stream
         std::vector<uint8_t> data;
+
+        /// Dirty flag
+        bool dirty{true};
     };
 }

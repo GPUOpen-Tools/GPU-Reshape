@@ -21,6 +21,11 @@ bool SPIRVModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
         }
     }
 
+    // Must have been terminated
+    if (context.emitter.Good()) {
+        return false;
+    }
+
     // OK
     return true;
 }
@@ -97,6 +102,13 @@ bool SPIRVModule::ParseInstruction(ParseContext &context) {
 
         // End of a function
         case SpvOpFunctionEnd: {
+            // Terminate current basic block
+            if (IL::BasicBlock* basicBlock = context.emitter.GetBasicBlock()) {
+                // Immortalize the current block
+                basicBlock->Immortalize();
+            }
+
+            // Clean context
             context.function = nullptr;
             context.emitter.SetBasicBlock(nullptr);
             break;
@@ -106,6 +118,12 @@ bool SPIRVModule::ParseInstruction(ParseContext &context) {
         case SpvOpLabel: {
             if (!hasResult) {
                 return false;
+            }
+
+            // Terminate current basic block
+            if (IL::BasicBlock* basicBlock = context.emitter.GetBasicBlock()) {
+                // Immortalize the current block
+                basicBlock->Immortalize();
             }
 
             // Allocate a new basic block
