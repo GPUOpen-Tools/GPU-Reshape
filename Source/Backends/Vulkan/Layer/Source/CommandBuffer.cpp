@@ -13,7 +13,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const V
 
     // Prepare state
     auto state = new (table->allocators) CommandPoolState();
-    table->state_commandPool.Add(*pCommandPool, state);
+    table->states_commandPool.Add(*pCommandPool, state);
 
     // OK
     return VK_SUCCESS;
@@ -23,7 +23,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, co
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
     // Get pool state
-    CommandPoolState* poolState = table->state_commandPool.Get(pAllocateInfo->commandPool);
+    CommandPoolState* poolState = table->states_commandPool.Get(pAllocateInfo->commandPool);
 
     // Returned vulkan handles
     auto* vkCommandBuffers = AllocaArray(VkCommandBuffer, pAllocateInfo->commandBufferCount);
@@ -92,7 +92,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyCommandPool(VkDevice device, VkCommandP
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
     // Get state
-    CommandPoolState* state = table->state_commandPool.Get(commandPool);
+    CommandPoolState* state = table->states_commandPool.Get(commandPool);
 
     // Free all command objects
     for (CommandBufferObject* object : state->commandBuffers) {

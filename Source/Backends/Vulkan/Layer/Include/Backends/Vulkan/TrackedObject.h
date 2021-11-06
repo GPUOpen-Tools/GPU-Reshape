@@ -8,14 +8,15 @@
 template<typename T, typename U>
 struct TrackedObject {
     /// Add a new tracked object
-    void Add(T object, U* state) {
+    U* Add(T object, U* state) {
         std::lock_guard<std::mutex> guard(mutex);
         return AddNoLock(object, state);
     }
 
     /// Add a new tracked object, not thread safe
-    void AddNoLock(T object, U* state) {
+    U* AddNoLock(T object, U* state) {
         map[object] = state;
+        return state;
     }
 
     /// Get a tracked object

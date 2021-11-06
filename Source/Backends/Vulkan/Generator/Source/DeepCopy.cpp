@@ -390,7 +390,8 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
         }
 
         // Begin deep copy constructor
-        deepCopy << name << "DeepCopy::" << name << "DeepCopy(const Allocators& allocators, const " << name << "& source) : allocators(allocators) {\n";
+        deepCopy << "void " << name << "DeepCopy::DeepCopy(const Allocators& _allocators, const " << name << "& source) {\n";
+        deepCopy << "\tallocators = _allocators;\n";
 
         // Byte size
         deepCopy << "\t// Byte size\n";
