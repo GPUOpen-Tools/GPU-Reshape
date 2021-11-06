@@ -5,18 +5,39 @@
 #include "ReferenceObject.h"
 #include "InstrumentationInfo.h"
 
+// Deep Copy
+#include <Backends/Vulkan/DeepCopyObjects.Gen.h>
+
 // Std
 #include <atomic>
 
+enum class PipelineType {
+    Graphics,
+    Compute
+};
+
 struct PipelineState : public ReferenceObject {
     /// User pipeline
-    VkPipeline object{nullptr};
+    VkPipeline object{VK_NULL_HANDLE};
+
+    /// Type of the pipeline
+    PipelineType type;
 
     /// Replaced pipeline object, fx. instrumented version
-    std::atomic<VkPipeline> hotSwapObject{nullptr};
+    std::atomic<VkPipeline> hotSwapObject{VK_NULL_HANDLE};
 
     /// Instrumentation info
     InstrumentationInfo instrumentationInfo;
+};
+
+struct GraphicsPipelineState : public PipelineState {
+    /// Recreation info
+    VkGraphicsPipelineCreateInfoDeepCopy createInfoDeepCopy;
+};
+
+struct ComputePipelineState : public PipelineState {
+    /// Recreation info
+    VkComputePipelineCreateInfoDeepCopy createInfoDeepCopy;
 };
 
 /*

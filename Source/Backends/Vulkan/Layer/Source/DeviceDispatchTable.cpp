@@ -2,6 +2,8 @@
 #include <Backends/Vulkan/Device.h>
 #include <Backends/Vulkan/CommandBuffer.h>
 #include <Backends/Vulkan/Queue.h>
+#include <Backends/Vulkan/Pipeline.h>
+#include <Backends/Vulkan/ShaderModule.h>
 
 // Std
 #include <cstring>
@@ -26,6 +28,11 @@ void DeviceDispatchTable::Populate(VkDevice device, PFN_vkGetInstanceProcAddr ge
     next_vkFreeCommandBuffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(getDeviceProcAddr(device, "vkFreeCommandBuffers"));
     next_vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool>(getDeviceProcAddr(device, "vkDestroyCommandPool"));
     next_vkQueueSubmit = reinterpret_cast<PFN_vkQueueSubmit>(getDeviceProcAddr(device, "vkQueueSubmit"));
+    next_vkCreateShaderModule = reinterpret_cast<PFN_vkCreateShaderModule>(getDeviceProcAddr(device, "vkCreateShaderModule"));
+    next_vkDestroyShaderModule = reinterpret_cast<PFN_vkDestroyShaderModule>(getDeviceProcAddr(device, "vkDestroyShaderModule"));
+    next_vkCreateGraphicsPipelines = reinterpret_cast<PFN_vkCreateGraphicsPipelines>(getDeviceProcAddr(device, "vkCreateGraphicsPipelines"));
+    next_vkCreateComputePipelines = reinterpret_cast<PFN_vkCreateComputePipelines>(getDeviceProcAddr(device, "vkCreateComputePipelines"));
+    next_vkDestroyPipeline = reinterpret_cast<PFN_vkDestroyPipeline>(getDeviceProcAddr(device, "vkDestroyPipeline"));
 
     // Populate all generated commands
     commandBufferDispatchTable.Populate(device, getDeviceProcAddr);
@@ -43,6 +50,21 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkEnumerateDeviceExtensionProperties"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkEnumerateDeviceExtensionProperties);
+
+    if (!std::strcmp(name, "vkCreateShaderModule"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateShaderModule);
+
+    if (!std::strcmp(name, "vkDestroyShaderModule"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyShaderModule);
+
+    if (!std::strcmp(name, "vkCreateGraphicsPipelines"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateGraphicsPipelines);
+
+    if (!std::strcmp(name, "vkCreateComputePipelines"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateComputePipelines);
+
+    if (!std::strcmp(name, "vkDestroyPipeline"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyPipeline);
 
     if (!std::strcmp(name, "vkCreateCommandPool"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateCommandPool);

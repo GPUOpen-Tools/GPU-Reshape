@@ -14,6 +14,8 @@
 
 // Forward declarations
 struct CommandPoolState;
+struct ShaderModuleState;
+struct PipelineState;
 class Dispatcher;
 
 struct DeviceDispatchTable {
@@ -57,19 +59,26 @@ struct DeviceDispatchTable {
     Dispatcher* dispatcher;
 
     /// Tracked objects
-    TrackedObject<VkCommandPool, CommandPoolState> state_commandPool;
+    TrackedObject<VkCommandPool, CommandPoolState>   states_commandPool;
+    TrackedObject<VkShaderModule, ShaderModuleState> states_shaderModule;
+    TrackedObject<VkPipeline, PipelineState>         states_pipeline;
 
     /// Callbacks
-    PFN_vkGetInstanceProcAddr    next_vkGetInstanceProcAddr;
-    PFN_vkGetDeviceProcAddr      next_vkGetDeviceProcAddr;
-    PFN_vkDestroyDevice          next_vkDestroyDevice;
-    PFN_vkCreateCommandPool      next_vkCreateCommandPool;
-    PFN_vkAllocateCommandBuffers next_vkAllocateCommandBuffers;
-    PFN_vkBeginCommandBuffer     next_vkBeginCommandBuffer;
-    PFN_vkEndCommandBuffer       next_vkEndCommandBuffer;
-    PFN_vkFreeCommandBuffers     next_vkFreeCommandBuffers;
-    PFN_vkDestroyCommandPool     next_vkDestroyCommandPool;
-    PFN_vkQueueSubmit            next_vkQueueSubmit;
+    PFN_vkGetInstanceProcAddr     next_vkGetInstanceProcAddr;
+    PFN_vkGetDeviceProcAddr       next_vkGetDeviceProcAddr;
+    PFN_vkDestroyDevice           next_vkDestroyDevice;
+    PFN_vkCreateCommandPool       next_vkCreateCommandPool;
+    PFN_vkAllocateCommandBuffers  next_vkAllocateCommandBuffers;
+    PFN_vkBeginCommandBuffer      next_vkBeginCommandBuffer;
+    PFN_vkEndCommandBuffer        next_vkEndCommandBuffer;
+    PFN_vkFreeCommandBuffers      next_vkFreeCommandBuffers;
+    PFN_vkDestroyCommandPool      next_vkDestroyCommandPool;
+    PFN_vkQueueSubmit             next_vkQueueSubmit;
+    PFN_vkCreateShaderModule      next_vkCreateShaderModule;
+    PFN_vkDestroyShaderModule     next_vkDestroyShaderModule;
+    PFN_vkCreateGraphicsPipelines next_vkCreateGraphicsPipelines;
+    PFN_vkCreateComputePipelines  next_vkCreateComputePipelines;
+    PFN_vkDestroyPipeline         next_vkDestroyPipeline;
 
     /// Command buffer dispatch table
     CommandBufferDispatchTable commandBufferDispatchTable;

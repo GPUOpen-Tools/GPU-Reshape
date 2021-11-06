@@ -3,12 +3,15 @@
 // Common
 #include <Common/Assert.h>
 
+// Layer
+#include "Allocators.h"
+
 // Std
 #include <atomic>
 
 /// A reference counted object
 struct ReferenceObject {
-    ~ReferenceObject() {
+    virtual ~ReferenceObject() {
         // Ensure the object is fully released
         ASSERT(users.load() == 0, "Dangling users to referenced object, use ReferenceObject::Release");
     }
@@ -28,3 +31,10 @@ private:
     /// Number of users for this object, starts at 1 for base allocation
     std::atomic<uint32_t> users{1};
 };
+
+template<typename T>
+inline void destroyRef(T* object, const Allocators& allocators) {
+    if (object->ReleaseUser()) {
+        destroy(object, allocators);
+    }
+}
