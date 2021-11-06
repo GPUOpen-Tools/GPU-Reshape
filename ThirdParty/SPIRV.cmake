@@ -1,0 +1,15 @@
+
+# SPIRV headers
+ExternalProject_Add(
+    SPIRVHeaders
+    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Headers
+    GIT_TAG 1.5.4
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SPIRVHeaders
+    USES_TERMINAL_INSTALL 0
+    CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/External
+        -DCMAKE_INSTALL_LIBDIR=${CMAKE_BINARY_DIR}/External/lib
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+        -G ${CMAKE_GENERATOR}
+)

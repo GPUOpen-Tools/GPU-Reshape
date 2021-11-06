@@ -17,7 +17,11 @@ enum class PipelineType {
 };
 
 struct PipelineState : public ReferenceObject {
+    /// Reference counted destructor
+    virtual ~PipelineState();
+
     /// User pipeline
+    ///  ! May be nullptr if the top pipeline has been destroyed
     VkPipeline object{VK_NULL_HANDLE};
 
     /// Type of the pipeline

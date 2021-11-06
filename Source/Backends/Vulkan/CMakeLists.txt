@@ -20,6 +20,7 @@ endif()
 
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Generator ArgParse)
+ExternalProject_Link(Backends.Vulkan.Generator SPIRVHeaders)
 ExternalProject_Link(Backends.Vulkan.Generator VulkanHeaders)
 ExternalProject_Link(Backends.Vulkan.Generator TinyXML2 tinyxml2)
 
@@ -110,6 +111,7 @@ add_library(
     Layer/Source/ShaderModule.cpp
     Layer/Source/Pipeline.cpp
     Layer/Source/Queue.cpp
+    Layer/Source/Shader/SPIRVModule.cpp
 
     # Generated
     Layer/Source/CommandBuffer.Gen.cpp

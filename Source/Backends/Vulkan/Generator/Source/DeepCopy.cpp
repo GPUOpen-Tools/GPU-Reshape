@@ -206,7 +206,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                     std::string mutableName = AssignPtrAndGetMutable(state, destAccessorPrefix, memberType, memberName, indent);
 
                     // Copy
-                    state.deepCopy << Pad(indent) << "std::memcpy(" << mutableName << ", &" << sourceAccessorPrefix << memberName->GetText();
+                    state.deepCopy << Pad(indent) << "std::memcpy(" << mutableName << ", " << sourceAccessorPrefix << memberName->GetText();
                     state.deepCopy << ", sizeof(char) * " << sizeVar << ");\n";
 
                     // Offset
@@ -248,7 +248,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
 
                     // If end, this is a POD type
                     if (elementType == md.lookup.end()) {
-                        state.deepCopy << Pad(indent) << "std::memcpy(" << mutableName << ", " << "&" << sourceAccessorPrefix << memberName->GetText();
+                        state.deepCopy << Pad(indent) << "std::memcpy(" << mutableName << ", " << "" << sourceAccessorPrefix << memberName->GetText();
                         state.deepCopy << ", sizeof(" << sizeType << ") * " << sizeVar << ");\n";
 
                         // Offset
@@ -297,7 +297,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
 
                 // If end, this is a POD type
                 if (elementType == md.lookup.end()) {
-                    state.deepCopy << Pad(indent) << "std::memcpy(, " << mutableName << ", &" << sourceAccessorPrefix << memberName->GetText();
+                    state.deepCopy << Pad(indent) << "std::memcpy(, " << mutableName << ", " << sourceAccessorPrefix << memberName->GetText();
                     state.deepCopy << ", sizeof(" << sizeType <<  "));\n";
                 } else {
                     // Copy the tree
