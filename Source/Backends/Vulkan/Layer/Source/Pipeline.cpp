@@ -49,8 +49,18 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
 
     // Destroy the state
     PipelineState* state = table->states_pipeline.Get(pipeline);
+
+    // The original shader module is now inaccessible
+    //  ? To satisfy the pAllocator constraints, the original object must be released now
+    state->object = nullptr;
+
+    // Release a reference to the object
     destroyRef(state, table->allocators);
 
     // Pass down callchain
     table->next_vkDestroyPipeline(device, pipeline, pAllocator);
+}
+
+PipelineState::~PipelineState() {
+
 }

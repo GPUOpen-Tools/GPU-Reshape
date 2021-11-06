@@ -3,6 +3,7 @@ include(ExternalProject)
 # Install all third party libraries
 # TODO: While the pulled objects are generally trusted, there should be some safety mechanism
 include(Catch2.cmake)
+include(SPIRV.cmake)
 include(Vulkan.cmake)
 include(ArgParser.cmake)
 include(TinyXML2.cmake)

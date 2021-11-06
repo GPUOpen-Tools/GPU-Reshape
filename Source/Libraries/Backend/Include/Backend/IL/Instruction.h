@@ -9,6 +9,12 @@ namespace IL {
         OpCode opCode;
     };
 
+    struct UnexposedInstruction : public Instruction {
+        ID result;
+
+        uint32_t backendOpCode;
+    };
+
     struct LoadInstruction : public Instruction {
         ID address;
         ID result;
