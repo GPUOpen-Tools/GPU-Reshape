@@ -36,7 +36,7 @@ set(DeepCopyTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(VkHooks vkCmdDrawIndexed)
 
 # White list
-set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkEndCommandBuffer)
+set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkEndCommandBuffer,vkCmdBindPipeline)
 
 # Object list
 set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo)
@@ -112,6 +112,8 @@ add_library(
     Layer/Source/Pipeline.cpp
     Layer/Source/Queue.cpp
     Layer/Source/Shader/SPIRVModule.cpp
+    Layer/Source/Shader/ShaderCompiler.cpp
+    Layer/Source/Controllers/InstrumentationController.cpp
 
     # Generated
     Layer/Source/CommandBuffer.Gen.cpp
@@ -123,7 +125,7 @@ add_library(
 )
 
 # Link against backend
-target_link_libraries(Backends.Vulkan.Layer PUBLIC Libraries.Backend Libraries.Common)
+target_link_libraries(Backends.Vulkan.Layer PUBLIC Libraries.Backend Libraries.Bridge Libraries.Common)
 
 # Include directories
 target_include_directories(
@@ -162,6 +164,12 @@ add_executable(
     Tests/Source/Layer.cpp
 )
 
+# Includes
+target_include_directories(Backends.Vulkan.Tests PUBLIC Layer/Include)
+
+# Links
+target_link_libraries(Backends.Vulkan.Tests Libraries.Common Backends.Vulkan.Layer)
+
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Tests Catch2)
 ExternalProject_Link(Backends.Vulkan.Tests VulkanLoader vulkan-1)
@@ -176,5 +184,4 @@ target_compile_definitions(
 add_dependencies(
     Backends.Vulkan.Tests
     Backends.Vulkan.Tests.UserDataLayer
-    Backends.Vulkan.Layer
 )

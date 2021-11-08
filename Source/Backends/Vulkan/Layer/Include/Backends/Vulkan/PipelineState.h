@@ -11,6 +11,10 @@
 // Std
 #include <atomic>
 
+// Forward declarations
+struct DeviceDispatchTable;
+struct ShaderModuleState;
+
 enum class PipelineType {
     Graphics,
     Compute
@@ -19,6 +23,9 @@ enum class PipelineType {
 struct PipelineState : public ReferenceObject {
     /// Reference counted destructor
     virtual ~PipelineState();
+
+    /// Backwards reference
+    DeviceDispatchTable* table;
 
     /// User pipeline
     ///  ! May be nullptr if the top pipeline has been destroyed
@@ -30,8 +37,14 @@ struct PipelineState : public ReferenceObject {
     /// Replaced pipeline object, fx. instrumented version
     std::atomic<VkPipeline> hotSwapObject{VK_NULL_HANDLE};
 
+    ///Referenced shader modules
+    std::vector<ShaderModuleState*> shaderModules;
+
     /// Instrumentation info
     InstrumentationInfo instrumentationInfo;
+
+    /// Unique identifier, unique for the type
+    uint64_t uid;
 };
 
 struct GraphicsPipelineState : public PipelineState {

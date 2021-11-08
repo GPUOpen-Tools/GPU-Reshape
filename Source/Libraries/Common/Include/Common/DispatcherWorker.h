@@ -2,6 +2,7 @@
 
 // Common
 #include "Assert.h"
+#include "DispatcherBucket.h"
 #include "DispatcherJobPool.h"
 
 // Std
@@ -36,6 +37,11 @@ private:
 
             // Invoke
             job.delegate.Invoke(job.userData);
+
+            // Invoke bucket functor if reached zero
+            if (job.bucket) {
+                job.bucket->Decrement();
+            }
         }
     }
 

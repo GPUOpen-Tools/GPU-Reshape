@@ -15,6 +15,7 @@ struct DispatcherJobPool {
     void Add(const DispatcherJob* jobs, uint32_t count) {
         std::lock_guard guard(mutex);
         pool.insert(pool.end(), jobs, jobs + count);
+        var.notify_all();
     }
 
     /// Pop a job from the pool

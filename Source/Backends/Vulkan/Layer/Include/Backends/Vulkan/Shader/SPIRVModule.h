@@ -14,9 +14,19 @@ public:
     /// \param wordCount number of words within the module stream
     bool ParseModule(const uint32_t* code, uint32_t wordCount);
 
+    /// Recompile the program
+    /// \return
+    bool Recompile();
+
     /// Get the produced program
     /// \return
     const IL::Program& GetProgram() const {
+        return program;
+    }
+
+    /// Get the produced program
+    /// \return
+    IL::Program& GetProgram() {
         return program;
     }
 

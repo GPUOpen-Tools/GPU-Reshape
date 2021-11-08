@@ -1,8 +1,11 @@
 #include <Backends/Vulkan/Instance.h>
+#include <Backends/Vulkan/Layer.h>
 #include <Backends/Vulkan/InstanceDispatchTable.h>
+#include <Backends/Vulkan/Shader/ShaderCompiler.h>
 
 // Common
 #include <Common/Dispatcher.h>
+#include <Common/Registry.h>
 
 // Vulkan
 #include <vulkan/vk_layer.h>
@@ -10,12 +13,15 @@
 // Std
 #include <cstring>
 
-static void* InstanceAllocateDefault(size_t size) {
-    return malloc(size);
-}
+/// Find a structure type
+template<typename T, typename U>
+inline const T *FindStructureType(const U *chain, uint64_t type) {
+    const U *current = chain;
+    while (current && current->sType != type) {
+        current = reinterpret_cast<const U *>(current->pNext);
+    }
 
-static void InstanceFreeDefault(void* ptr, size_t) {
-    free(ptr);
+    return reinterpret_cast<const T *>(current);
 }
 
 VkResult VKAPI_PTR Hook_vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount, VkLayerProperties *pProperties) {
@@ -70,15 +76,25 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     // Create dispatch table
     auto table = InstanceDispatchTable::Add(GetInternalTable(*pInstance), new InstanceDispatchTable{});
 
-    // Setup the default allocators
-    table->allocators.alloc = InstanceAllocateDefault;
-    table->allocators.free  = InstanceFreeDefault;
-
-    // Create the default dispatcher
-    table->dispatcher = new Dispatcher();
-
     // Populate the table
     table->Populate(*pInstance, getInstanceProcAddr);
+
+    // Find optional create info
+    if (auto createInfo = FindStructureType<VkGPUOpenGPUValidationCreateInfo>(pCreateInfo, VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO)) {
+        table->registry = createInfo->registry;
+    } else {
+        ASSERT(false, "Not supported... for now!");
+    }
+
+    // Setup the default allocators
+    table->allocators = table->registry->GetAllocators();
+
+    // Create the dispatcher
+    table->registry->Add(new (table->allocators) Dispatcher());
+
+    // Create the shader compiler
+    auto shaderCompiler = table->registry->Add(new (table->allocators) ShaderCompiler());
+    shaderCompiler->Initialize();
 
     // OK
     return VK_SUCCESS;

@@ -7,6 +7,9 @@
 #include <Backends/Vulkan/DeviceDispatchTable.h>
 #include <Backends/Vulkan/CommandBufferObject.h>
 
+// Backend
+#include <Backend/IFeature.h>
+
 // Std
 #include <cstring>
 

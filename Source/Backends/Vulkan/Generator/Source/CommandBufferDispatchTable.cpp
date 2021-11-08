@@ -84,6 +84,9 @@ bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateE
             // Generate feature bit set
             callbacks << "\tuint64_t featureBitSet_" << prototypeName->GetText() << "{0};\n";
 
+            // Generate feature bit set mask
+            callbacks << "\tuint64_t featureBitSetMask_" << prototypeName->GetText() << "{0};\n";
+
             // Generate feature callbacks
             callbacks << "\tFeatureHook_" << prototypeName->GetText() << "::Hook featureHooks_" << prototypeName->GetText() << "[64];\n";
         }

@@ -1,8 +1,11 @@
 #pragma once
 
+// Std
+#include <malloc.h>
+
 /// Allocator callbacks
 using TAllocatorAlloc  = void*(*)(size_t size);
-using TAllocatorFree = void(*)(void* ptr, size_t size);
+using TAllocatorFree = void(*)(void* ptr);
 
 /// Contains basic allocators
 struct Allocators {
@@ -27,5 +30,15 @@ inline void destroy(T* object, const Allocators& allocators) {
         return;
 
     object->~T();
-    allocators.free(object, sizeof(T));
+    allocators.free(object);
+}
+
+/// Default allocator
+inline void *AllocateDefault(size_t size) {
+    return malloc(size);
+}
+
+/// Default free
+inline void FreeDefault(void *ptr) {
+    free(ptr);
 }

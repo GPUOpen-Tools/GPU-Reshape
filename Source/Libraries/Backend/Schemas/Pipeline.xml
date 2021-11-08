@@ -3,9 +3,13 @@
         <field name="featureBitSet" type="uint64">
             Feature set to be enabled globally
         </field>
+        <field name="specialization" type="stream"/>
     </message>
 
     <message name="SetShaderInstrumentation">
+        <field name="shaderUID" type="uint64">
+            Shader identifier
+        </field>
         <field name="featureBitSet" type="uint64">
             Feature set to be enabled for the given shader
         </field>
@@ -13,6 +17,9 @@
     </message>
 
     <message name="SetPipelineInstrumentation">
+        <field name="pipelineUID" type="uint64">
+            pipeline identifier
+        </field>
         <field name="featureBitSet" type="uint64">
             Feature set to be enabled for the given pipeline
         </field>

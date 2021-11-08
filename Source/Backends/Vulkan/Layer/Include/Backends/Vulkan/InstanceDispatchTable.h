@@ -2,14 +2,16 @@
 
 // Layer
 #include "Vulkan.h"
-#include "Allocators.h"
+
+// Common
+#include <Common/Allocators.h>
 
 // Std
 #include <mutex>
 #include <map>
 
 // Forward declarations
-class Dispatcher;
+class Registry;
 
 struct InstanceDispatchTable {
     /// Add a new table
@@ -48,8 +50,8 @@ struct InstanceDispatchTable {
     /// Allocators
     Allocators allocators;
 
-    /// Dispatcher, simple job work pool
-    Dispatcher* dispatcher;
+    /// Shared registry
+    Registry* registry;
 
     /// Callbacks
     PFN_vkGetInstanceProcAddr next_vkGetInstanceProcAddr;

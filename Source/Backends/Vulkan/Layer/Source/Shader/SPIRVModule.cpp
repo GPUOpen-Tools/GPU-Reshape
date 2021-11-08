@@ -150,3 +150,7 @@ bool SPIRVModule::ParseInstruction(ParseContext &context) {
     // OK
     return true;
 }
+
+bool SPIRVModule::Recompile() {
+    return true;
+}

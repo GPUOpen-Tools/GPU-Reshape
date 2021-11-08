@@ -81,6 +81,9 @@ bool Generators::CPP(const GeneratorInfo& info, TemplateEngine& templateEngine) 
                     { "int8",   { "int8_t",   1 } },
                     { "float",  { "float",    4 } },
                     { "double", { "double",   8 } },
+
+                    // TODO: Packing support? Needed?
+                    { "bool",   { "int32_t",   4 } },
                 };
 
                 // Primitive?

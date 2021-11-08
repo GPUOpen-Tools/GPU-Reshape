@@ -4,10 +4,12 @@
 # Generate the schemas
 Project_AddSchema(GeneratedLib Schemas/Pipeline.xml Include/Schemas)
 Project_AddSchema(GeneratedLib Schemas/ShaderMetadata.xml Include/Schemas)
+Project_AddSchema(GeneratedLib Schemas/Config.xml Include/Schemas)
 
 add_library(
     Libraries.Backend STATIC
     Source/Backend.cpp
+    Source/FeatureHost.cpp
 
     # Generated schemas
     ${GeneratedLib}

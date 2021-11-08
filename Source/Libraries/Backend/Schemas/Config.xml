@@ -1,0 +1,7 @@
+<schema>
+    <message name="SetInstrumentationConfig">
+        <field name="synchronousRecording" type="bool">
+            Set the compilation to be synchronous with command recording
+        </field>
+    </message>
+</schema>

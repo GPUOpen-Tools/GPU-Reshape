@@ -33,6 +33,7 @@ void DeviceDispatchTable::Populate(VkDevice device, PFN_vkGetInstanceProcAddr ge
     next_vkCreateGraphicsPipelines = reinterpret_cast<PFN_vkCreateGraphicsPipelines>(getDeviceProcAddr(device, "vkCreateGraphicsPipelines"));
     next_vkCreateComputePipelines = reinterpret_cast<PFN_vkCreateComputePipelines>(getDeviceProcAddr(device, "vkCreateComputePipelines"));
     next_vkDestroyPipeline = reinterpret_cast<PFN_vkDestroyPipeline>(getDeviceProcAddr(device, "vkDestroyPipeline"));
+    next_vkCmdBindPipeline = reinterpret_cast<PFN_vkCmdBindPipeline>(getDeviceProcAddr(device, "vkCmdBindPipeline"));
 
     // Populate all generated commands
     commandBufferDispatchTable.Populate(device, getDeviceProcAddr);
@@ -86,6 +87,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkQueueSubmit"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueueSubmit);
+
+    if (!std::strcmp(name, "vkCmdBindPipeline"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdBindPipeline);
 
     // Check command hooks
     if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(name)) {
