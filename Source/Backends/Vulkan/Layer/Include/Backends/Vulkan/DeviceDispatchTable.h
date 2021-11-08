@@ -2,8 +2,11 @@
 
 // Layer
 #include "Vulkan.h"
-#include "Allocators.h"
 #include "TrackedObject.h"
+#include "DependentObject.h"
+
+// Common
+#include <Common/Allocators.h>
 
 // Generated
 #include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
@@ -13,10 +16,13 @@
 #include <map>
 
 // Forward declarations
+class InstrumentationController;
 struct CommandPoolState;
 struct ShaderModuleState;
 struct PipelineState;
-class Dispatcher;
+class Registry;
+class IFeature;
+class IBridge;
 
 struct DeviceDispatchTable {
     /// Add a new table
@@ -55,13 +61,25 @@ struct DeviceDispatchTable {
     /// Allocators
     Allocators allocators;
 
-    /// Dispatcher, simple job work pool
-    Dispatcher* dispatcher;
+    /// Shared registry
+    Registry* registry;
+
+    /// Message bridge
+    IBridge* bridge;
+
+    /// All features
+    std::vector<IFeature*> features;
 
     /// Tracked objects
     TrackedObject<VkCommandPool, CommandPoolState>   states_commandPool;
     TrackedObject<VkShaderModule, ShaderModuleState> states_shaderModule;
     TrackedObject<VkPipeline, PipelineState>         states_pipeline;
+
+    /// Dependency objects
+    DependentObject<ShaderModuleState, PipelineState> dependencies_shaderModulesPipelines;
+
+    /// Controllers
+    InstrumentationController* instrumentationController;
 
     /// Callbacks
     PFN_vkGetInstanceProcAddr     next_vkGetInstanceProcAddr;
@@ -79,6 +97,7 @@ struct DeviceDispatchTable {
     PFN_vkCreateGraphicsPipelines next_vkCreateGraphicsPipelines;
     PFN_vkCreateComputePipelines  next_vkCreateComputePipelines;
     PFN_vkDestroyPipeline         next_vkDestroyPipeline;
+    PFN_vkCmdBindPipeline         next_vkCmdBindPipeline;
 
     /// Command buffer dispatch table
     CommandBufferDispatchTable commandBufferDispatchTable;

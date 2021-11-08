@@ -8,6 +8,9 @@
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/FeatureProxies.h>
 
+// Forward declarations
+class IFeature;
+
 struct CommandBufferDispatchTable
 {
     /// Populate this table

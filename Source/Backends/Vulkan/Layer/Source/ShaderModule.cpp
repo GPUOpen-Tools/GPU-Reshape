@@ -13,14 +13,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateShaderModule(VkDevice device, const 
 
     // Allocate state
     auto state =  table->states_shaderModule.Add(*pShaderModule, new (table->allocators) ShaderModuleState);
+    state->table = table;
     state->object = *pShaderModule;
 
     // Create a deep copy
     state->createInfoDeepCopy.DeepCopy(table->allocators, *pCreateInfo);
-
-    // Parse the module
-    // TODO: This will be latent later on, only done when the module is actually needed
-    state->spirvModule.ParseModule(state->createInfoDeepCopy.createInfo.pCode, state->createInfoDeepCopy.createInfo.codeSize / 4u);
 
     // OK
     return VK_SUCCESS;
@@ -36,6 +33,10 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyShaderModule(VkDevice device, VkShaderM
     //  ? To satisfy the pAllocator constraints, the original object must be released now
     state->object = nullptr;
 
+    // Remove logical object from lookup
+    //  Logical reference to state is invalid after this function
+    table->states_shaderModule.RemoveLogical(shaderModule);
+
     // Release a reference to the object
     destroyRef(state, table->allocators);
 
@@ -44,5 +45,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyShaderModule(VkDevice device, VkShaderM
 }
 
 ShaderModuleState::~ShaderModuleState() {
+    // Remove state lookup
+    table->states_shaderModule.RemoveState(this);
 
+    // If there's any dangling dependencies, someone forgot to add a reference
+    ASSERT(table->dependencies_shaderModulesPipelines.Count(this) == 0, "Dangling pipeline references");
 }

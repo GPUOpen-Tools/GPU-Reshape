@@ -4,6 +4,12 @@
 #include <catch2/catch.hpp>
 #include <vulkan/vulkan.h>
 
+// Common
+#include <Common/Registry.h>
+
+// Bridge
+#include <Bridge/IBridge.h>
+
 // Std
 #include <vector>
 
@@ -64,6 +70,18 @@ public:
         return queue;
     }
 
+    /// Get the registry
+    [[nodiscard]]
+    Registry* GetRegistry() {
+        return &registry;
+    }
+
+    /// Get the bridge
+    [[nodiscard]]
+    IBridge* GetBridge() {
+        return bridge;
+    }
+
 private:
 	VkInstance       instance      {VK_NULL_HANDLE};
 	VkPhysicalDevice physicalDevice{VK_NULL_HANDLE};
@@ -80,4 +98,9 @@ private:
     std::vector<const char*> enabledInstanceLayers;
     std::vector<const char*> enabledInstanceExtensions;
     std::vector<const char*> enabledDeviceExtensions;
+
+private:
+    Registry registry;
+
+    IBridge* bridge;
 };

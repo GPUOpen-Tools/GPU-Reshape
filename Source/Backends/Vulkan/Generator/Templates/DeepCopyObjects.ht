@@ -6,9 +6,9 @@
 
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
-#include <Backends/Vulkan/Allocators.h>
 
 // Common
 #include <Common/Assert.h>
+#include <Common/Allocators.h>
 
 $OBJECTS

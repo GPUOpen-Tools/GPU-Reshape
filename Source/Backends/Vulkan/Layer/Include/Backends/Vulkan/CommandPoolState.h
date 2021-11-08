@@ -13,4 +13,7 @@ struct CommandBufferObject;
 struct CommandPoolState {
     /// Allocated command buffers
     std::vector<CommandBufferObject*> commandBuffers;
+
+    /// Unique identifier, unique for the type
+    uint64_t uid;
 };

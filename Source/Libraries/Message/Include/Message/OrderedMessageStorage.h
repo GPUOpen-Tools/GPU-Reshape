@@ -2,6 +2,7 @@
 
 // Message
 #include "IMessageStorage.h"
+#include "MessageStream.h"
 
 // Std
 #include <vector>

@@ -18,6 +18,13 @@ struct MessageSubStream {
         count = stream.GetCount();
     }
 
+    /// Transfer the sub stream data to a stream
+    /// \param out
+    void Transfer(MessageStream& out) const {
+        out.SetSchema(schema);
+        out.SetData(data.Get(), data.count, count);
+    }
+
     /// Swap this stream with another, schema must match
     void ValidateOrSetSchema(const MessageSchema& value) {
         if (schema.type != MessageSchemaType::None) {

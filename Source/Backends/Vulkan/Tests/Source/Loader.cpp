@@ -1,6 +1,14 @@
 #include "Loader.h"
+
+// Std
 #include <cstdlib>
 #include <filesystem>
+
+// Bridge
+#include <Bridge/MemoryBridge.h>
+
+// Layer
+#include <Backends/Vulkan/Layer.h>
 
 Loader::Loader() {
     // Redirect layer path
@@ -22,6 +30,10 @@ Loader::Loader() {
     // Enumerate instance extensions
     instanceExtensions.resize(instanceExtensionCount);
     REQUIRE(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, instanceExtensions.data()) == VK_SUCCESS);
+
+    // Create memory bridge
+    bridge = new (registry.GetAllocators()) MemoryBridge();
+    registry.Add(bridge);
 }
 
 bool Loader::SupportsInstanceLayer(const char *name) const {
@@ -77,9 +89,14 @@ void Loader::CreateInstance() {
     applicationInfo.pApplicationName = "GPUOpen GBV";
     applicationInfo.pEngineName      = "GPUOpen GBV";
 
+    VkGPUOpenGPUValidationCreateInfo gpuOpenInfo{};
+    gpuOpenInfo.sType    = VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO;
+    gpuOpenInfo.registry = &registry;
+
     // Instance info
     VkInstanceCreateInfo instanceCreateInfo{};
     instanceCreateInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    instanceCreateInfo.pNext                   = &gpuOpenInfo;
     instanceCreateInfo.pApplicationInfo        = &applicationInfo;
     instanceCreateInfo.enabledExtensionCount   = enabledInstanceExtensions.size();
     instanceCreateInfo.ppEnabledExtensionNames = enabledInstanceExtensions.data();

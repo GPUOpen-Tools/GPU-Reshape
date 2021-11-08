@@ -1,5 +1,8 @@
 #pragma once
 
+// Message
+#include "Message/MessageStream.h"
+
 // Std
 #include <cstdint>
 
@@ -7,4 +10,7 @@
 struct InstrumentationInfo {
     /// The bit set of all active features
     uint64_t featureBitSet{0};
+
+    /// Specialization stream
+    MessageStream specialization;
 };

@@ -5,6 +5,7 @@
 
 // Std
 #include <cstring>
+#include <string_view>
 
 /// Represents an inline message indirection
 template<typename T>

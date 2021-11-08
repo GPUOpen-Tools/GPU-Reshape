@@ -21,6 +21,11 @@ struct Delegate<R(A...)> {
         return handle(frame, args...);
     }
 
+    /// Is this delegate valid?
+    bool IsValid() const {
+        return handle != nullptr;
+    }
+
 private:
     void* frame{nullptr};
     Handle handle{nullptr};

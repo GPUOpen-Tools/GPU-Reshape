@@ -55,6 +55,25 @@ struct MessageStream {
         schema = value;
     }
 
+    /// Validate against a schema or set a new one
+    /// \param value
+    void Validate(const MessageSchema& value) const {
+        if (schema.type != MessageSchemaType::None) {
+            ASSERT(schema == value, "Source schema incompatible with destination schema");
+            return;
+        }
+    }
+
+    /// Set the data of this stream
+    /// \param data the data pointer, byte size [dataSize]
+    /// \param dataSize byte siz eof data
+    /// \param messageCount the number of messages within this stream
+    void SetData(const void* data, uint64_t dataSize, uint32_t messageCount) {
+        buffer.resize(dataSize);
+        std::memcpy(buffer.data(), data, dataSize);
+        count = messageCount;
+    }
+
     /// Check if this stream hosts a given message
     template<typename T>
     bool Is() {
@@ -406,6 +425,7 @@ template<typename T = void, typename STREAM = MessageStream>
 struct MessageStreamView {
     using MessageSchema       = typename T::Schema;
     using MessageStreamSchema = MessageStreamSchema<MessageSchema, STREAM>;
+    using ConstIterator       = typename MessageStreamSchema::template ConstIterator<T>;
 
     MessageStreamView(STREAM& stream) : schema(stream) {
         stream.ValidateOrSetSchema(MessageSchema::GetSchema(T::kID));
@@ -418,7 +438,7 @@ struct MessageStreamView {
 
     /// Get the iterator
     [[nodiscard]]
-    typename MessageStreamSchema::template ConstIterator<T> GetIterator() const {
+    ConstIterator GetIterator() const {
         return schema.template GetIterator<T>();
     }
 
@@ -438,6 +458,7 @@ template<typename STREAM>
 struct MessageStreamView<void, STREAM> {
     using MessageSchema       = OrderedMessageSchema;
     using MessageStreamSchema = MessageStreamSchema<MessageSchema, STREAM>;
+    using ConstIterator       = typename MessageStreamSchema::ConstIterator;
 
     MessageStreamView(STREAM& stream) : schema(stream) {
         stream.ValidateOrSetSchema(MessageSchema::GetSchema());
@@ -451,7 +472,64 @@ struct MessageStreamView<void, STREAM> {
 
     /// Get the iterator
     [[nodiscard]]
-    typename MessageStreamSchema::ConstIterator GetIterator() const {
+    ConstIterator GetIterator() const {
+        return schema.GetIterator();
+    }
+
+    /// Get the message stream
+    [[nodiscard]]
+    MessageStream& GetStream() const {
+        return schema.GetStream();
+    }
+
+private:
+    MessageStreamSchema schema;
+};
+
+/// Static and dynamic message stream views
+///  fx.  MessageStreamView<FooMessage> view
+/// , schema selection is deduced from the type.
+template<typename T = void, typename STREAM = MessageStream>
+struct ConstMessageStreamView {
+    using MessageSchema       = typename T::Schema;
+    using MessageStreamSchema = MessageStreamSchema<MessageSchema, const STREAM>;
+    using ConstIterator       = typename MessageStreamSchema::template ConstIterator<T>;
+
+    ConstMessageStreamView(const STREAM& stream) : schema(stream) {
+        stream.Validate(MessageSchema::GetSchema(T::kID));
+    }
+
+    /// Get the iterator
+    [[nodiscard]]
+    ConstIterator GetIterator() const {
+        return schema.template GetIterator<T>();
+    }
+
+    /// Get the message stream
+    [[nodiscard]]
+    MessageStream& GetStream() const {
+        return schema.GetStream();
+    }
+
+private:
+    MessageStreamSchema schema;
+};
+
+/// Ordered message stream view
+///  fx. MessageStreamView view
+template<typename STREAM>
+struct ConstMessageStreamView<void, STREAM> {
+    using MessageSchema       = OrderedMessageSchema;
+    using MessageStreamSchema = MessageStreamSchema<MessageSchema, const STREAM>;
+    using ConstIterator       = typename MessageStreamSchema::ConstIterator;
+
+    ConstMessageStreamView(const STREAM& stream) : schema(stream) {
+        stream.Validate(MessageSchema::GetSchema());
+    }
+
+    /// Get the iterator
+    [[nodiscard]]
+    ConstIterator GetIterator() const {
         return schema.GetIterator();
     }
 
