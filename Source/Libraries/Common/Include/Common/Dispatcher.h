@@ -67,6 +67,11 @@ public:
         }
     }
 
+    /// Get the number of workers
+    uint32_t WorkerCount() const {
+        return workers.size();
+    }
+
 private:
     /// Shared pool
     DispatcherJobPool pool;

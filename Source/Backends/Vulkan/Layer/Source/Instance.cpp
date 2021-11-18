@@ -1,7 +1,8 @@
 #include <Backends/Vulkan/Instance.h>
 #include <Backends/Vulkan/Layer.h>
 #include <Backends/Vulkan/InstanceDispatchTable.h>
-#include <Backends/Vulkan/Shader/ShaderCompiler.h>
+#include <Backends/Vulkan/Compiler/ShaderCompiler.h>
+#include <Backends/Vulkan/Compiler/PipelineCompiler.h>
 
 // Common
 #include <Common/Dispatcher.h>
@@ -95,6 +96,10 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     // Create the shader compiler
     auto shaderCompiler = table->registry->Add(new (table->allocators) ShaderCompiler());
     shaderCompiler->Initialize();
+
+    // Create the pipeline compiler
+    auto pipelineCompiler = table->registry->Add(new (table->allocators) PipelineCompiler());
+    pipelineCompiler->Initialize();
 
     // OK
     return VK_SUCCESS;

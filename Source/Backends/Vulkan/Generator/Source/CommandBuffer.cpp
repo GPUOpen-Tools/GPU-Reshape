@@ -164,8 +164,8 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         // Hooked?
         if (info.hooks.count(prototypeName->GetText())) {
             hooks << "\tApplyFeatureHook<FeatureHook_" << prototypeName->GetText() << ">(\n";
-            hooks << "\t\t" << wrappedObject << "->table->commandBufferDispatchTable.featureBitSet_" << prototypeName->GetText() << ",\n";
-            hooks << "\t\t" << wrappedObject << "->table->commandBufferDispatchTable.featureHooks_" << prototypeName->GetText() << ",\n";
+            hooks << "\t\t" << wrappedObject << "->dispatchTable.featureBitSet_" << prototypeName->GetText() << ",\n";
+            hooks << "\t\t" << wrappedObject << "->dispatchTable.featureHooks_" << prototypeName->GetText() << ",\n";
             hooks << "\t\t";
 
             // Generate arguments
@@ -208,7 +208,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Pass down the call chain
-        hooks << wrappedObject << "->table->commandBufferDispatchTable.next_" << prototypeName->GetText() << "(";
+        hooks << wrappedObject << "->dispatchTable.next_" << prototypeName->GetText() << "(";
 
         // Generate arguments
         parameterIndex = 0;

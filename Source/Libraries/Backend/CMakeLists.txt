@@ -32,6 +32,7 @@ add_executable(
     Tests/Source/Main.cpp
     Tests/Source/Emitter.cpp
     Tests/Source/Feature.cpp
+    Tests/Source/BasicBlock.cpp
 
     # Generated
     ${Generated}

@@ -13,7 +13,7 @@ void CreateDeviceCommandProxies(DeviceDispatchTable* table);
 /// Set the feature set
 /// \param table
 /// \param featureSet
-void SetDeviceCommandFeatureSet(DeviceDispatchTable* table, uint64_t featureSet);
+void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable* table, uint64_t featureSet);
 
 /// Hooks
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkCommandPool *pCommandPool);

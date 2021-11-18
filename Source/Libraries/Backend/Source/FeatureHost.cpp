@@ -13,7 +13,7 @@ void FeatureHost::Deregister(IFeature *feature) {
 
 void FeatureHost::Enumerate(uint32_t *count, IFeature **_features) {
     if (_features) {
-        std::copy(_features, _features + *count, features.data());
+        std::copy(features.begin(), features.begin() + *count, _features);
     } else {
         *count = static_cast<uint32_t>(features.size());
     }

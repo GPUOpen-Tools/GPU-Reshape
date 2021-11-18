@@ -3,7 +3,7 @@
 #include <Backends/Vulkan/InstanceDispatchTable.h>
 #include <Backends/Vulkan/CommandBuffer.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
-#include <Backends/Vulkan/Shader/ShaderCompiler.h>
+#include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 
 // Common
 #include <Common/Registry.h>

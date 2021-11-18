@@ -111,8 +111,9 @@ add_library(
     Layer/Source/ShaderModule.cpp
     Layer/Source/Pipeline.cpp
     Layer/Source/Queue.cpp
-    Layer/Source/Shader/SPIRVModule.cpp
-    Layer/Source/Shader/ShaderCompiler.cpp
+    Layer/Source/Compiler/SPIRVModule.cpp
+    Layer/Source/Compiler/ShaderCompiler.cpp
+    Layer/Source/Compiler/PipelineCompiler.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
 
     # Generated
@@ -155,6 +156,10 @@ configure_file(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json ${CMAKE_LIBRAR
 
 #----- Test Application -----#
 
+# Hlsl files
+set(Generated "")
+Project_AddHLSL(Generated cs_6_0 Tests/Data/WriteUAV.hlsl Tests/Include/Data/WriteUAV.h kSPIRVWriteUAV)
+
 # Create test app
 add_executable(
     Backends.Vulkan.Tests
@@ -162,16 +167,21 @@ add_executable(
     Tests/Source/Loader.cpp
     Tests/Source/UserData.cpp
     Tests/Source/Layer.cpp
+    Tests/Source/VMA.cpp
+
+    # Generated
+    ${Generated}
 )
 
 # Includes
-target_include_directories(Backends.Vulkan.Tests PUBLIC Layer/Include)
+target_include_directories(Backends.Vulkan.Tests PUBLIC Layer/Include Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
 
 # Links
 target_link_libraries(Backends.Vulkan.Tests Libraries.Common Backends.Vulkan.Layer)
 
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Tests Catch2)
+ExternalProject_Link(Backends.Vulkan.Tests VMA)
 ExternalProject_Link(Backends.Vulkan.Tests VulkanLoader vulkan-1)
 
 # Compiler definitions

@@ -52,6 +52,12 @@ public:
 		return physicalDevice;
 	}
 
+    /// Get the instance
+    [[nodiscard]]
+    VkInstance GetInstance() const {
+        return instance;
+    }
+
 	/// Get the device
 	[[nodiscard]]
 	VkDevice GetDevice() const {
