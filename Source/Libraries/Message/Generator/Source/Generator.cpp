@@ -106,8 +106,8 @@ int main(int argc, char *const argv[]) {
         }
 
         // Output path
-        std::filesystem::path outputFilename = std::filesystem::path(schemaxml).stem().string() + languageOutMappings[lang];
-        std::filesystem::path outputPath = std::filesystem::path(outputpath) / outputFilename;
+        std::string outputFilename = std::filesystem::path(schemaxml).stem().string() + languageOutMappings[lang];
+        std::string outputPath = outputpath  + "/" + outputFilename;
 
         // Open output
         std::ofstream out(outputPath.c_str());

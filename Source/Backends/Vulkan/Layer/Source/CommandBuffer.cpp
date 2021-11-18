@@ -22,7 +22,9 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
     }
 }
 
-void SetDeviceCommandFeatureSet(DeviceDispatchTable *table, uint64_t featureSet) {
+void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t featureSet) {
+    std::lock_guard lock(table->commandBufferMutex);
+
     table->commandBufferDispatchTable.featureBitSet_vkCmdDrawIndexed = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexed & featureSet;
 }
 
@@ -78,6 +80,12 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, co
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *commandBuffer, const VkCommandBufferBeginInfo *pBeginInfo) {
+    // Acquire the device command table
+    {
+        std::lock_guard lock(commandBuffer->table->commandBufferMutex);
+        commandBuffer->dispatchTable = commandBuffer->table->commandBufferDispatchTable;
+    }
+
     // Pass down the controller
     commandBuffer->table->instrumentationController->BeginCommandBuffer();
 

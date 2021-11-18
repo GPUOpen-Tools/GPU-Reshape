@@ -12,6 +12,18 @@
 // Layer
 #include "Loader.h"
 
+// Backend
+#include <Backend/FeatureHost.h>
+#include <Backend/IFeature.h>
+#include <Backend/IL/Program.h>
+#include <Backend/IL/Emitter.h>
+
+// VMA
+#include <VMA/vk_mem_alloc.h>
+
+// HLSL
+#include <Data/WriteUAV.h>
+
 TEST_CASE_METHOD(Loader, "Layer.StartupAndShutdown", "[Vulkan]") {
     REQUIRE(AddInstanceLayer("VK_GPUOpen_GBV"));
 
@@ -20,20 +32,101 @@ TEST_CASE_METHOD(Loader, "Layer.StartupAndShutdown", "[Vulkan]") {
     CreateDevice();
 }
 
+class OffsetStoresByOneFeature : public IFeature {
+public:
+    FeatureHookTable GetHookTable() override {
+        return FeatureHookTable{};
+    }
+
+    void CollectMessages(IMessageStorage *storage) override {
+
+    }
+
+    void Inject(IL::Program &program) override {
+        IL::IdentifierMap& map = program.GetIdentifierMap();
+
+        for (IL::Function& fn : program) {
+            for (IL::BasicBlock& bb : fn) {
+                for (auto it = bb.begin(); it != bb.end(); ++it) {
+                    if (Instrument(program, bb, it)) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    bool Instrument(IL::Program &program, IL::BasicBlock& bb, const IL::BasicBlock::Iterator& it) {
+        switch (it->opCode) {
+            default:
+                return false;
+
+            case IL::OpCode::StoreBuffer: {
+                auto storeBuffer = it.Ref<IL::StoreBufferInstruction>();
+
+                // Bias the op
+                IL::Emitter<> append(program, bb, it.Ref());
+                auto bias = append.Add(storeBuffer->value, append.Integral(32, 1));
+
+                // Replace the store operation
+                IL::Emitter<IL::EmitterOpReplace> storeEmitter(program, bb, it.Ref());
+                storeEmitter.StoreBuffer(storeBuffer->buffer, storeBuffer->index, bias);
+                return true;
+            }
+        }
+    }
+};
+
 TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
     REQUIRE(AddInstanceLayer("VK_GPUOpen_GBV"));
+
+    Registry* registry = GetRegistry();
+
+    auto* host = new (registry->GetAllocators()) FeatureHost();
+    {
+        host->Register(new (registry->GetAllocators()) OffsetStoresByOneFeature());
+    }
+    registry->Add(host);
 
     // Create the instance & device
     CreateInstance();
     CreateDevice();
 
-    VkCommandPoolCreateInfo info{};
-    info.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    info.queueFamilyIndex = GetPrimaryQueueFamily();
+    VmaAllocator allocator;
+
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.instance = GetInstance();
+    allocatorInfo.physicalDevice = GetPhysicalDevice();
+    allocatorInfo.device = GetDevice();
+    vmaCreateAllocator(&allocatorInfo, &allocator);
+
+    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.size = sizeof(uint32_t) * 4;
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
+
+    VkBuffer buffer;
+    VmaAllocation allocation;
+    vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &buffer, &allocation, nullptr);
+
+    VkBufferViewCreateInfo bufferViewInfo{};
+    bufferViewInfo.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+    bufferViewInfo.buffer = buffer;
+    bufferViewInfo.format = VK_FORMAT_R32_UINT;
+    bufferViewInfo.range = sizeof(uint32_t) * 4;
+
+    VkBufferView bufferView;
+    REQUIRE(vkCreateBufferView(GetDevice(), &bufferViewInfo, nullptr, &bufferView) == VK_SUCCESS);
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.queueFamilyIndex = GetPrimaryQueueFamily();
 
     // Attempt to create the pool
     VkCommandPool pool;
-    REQUIRE(vkCreateCommandPool(GetDevice(), &info, nullptr, &pool) == VK_SUCCESS);
+    REQUIRE(vkCreateCommandPool(GetDevice(), &poolInfo, nullptr, &pool) == VK_SUCCESS);
 
     VkCommandBufferAllocateInfo allocateInfo{};
     allocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -50,43 +143,32 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
     barrier.srcAccessMask = VK_ACCESS_HOST_READ_BIT;
     barrier.dstAccessMask = VK_ACCESS_HOST_WRITE_BIT;
 
+    VkDescriptorSetLayoutBinding bindingInfo{};
+    bindingInfo.binding = 0;
+    bindingInfo.descriptorCount = 1;
+    bindingInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    bindingInfo.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
+    descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorLayoutInfo.bindingCount = 1;
+    descriptorLayoutInfo.pBindings = &bindingInfo;
+
+    VkDescriptorSetLayout setLayout;
+    REQUIRE(vkCreateDescriptorSetLayout(GetDevice(), &descriptorLayoutInfo, nullptr, &setLayout) == VK_SUCCESS);
+
     VkPipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.setLayoutCount = 1;
+    layoutInfo.pSetLayouts = &setLayout;
 
     VkPipelineLayout layout;
     REQUIRE(vkCreatePipelineLayout(GetDevice(), &layoutInfo, nullptr, &layout) == VK_SUCCESS);
 
-    // Empty compute kernel, SPIRV
-    static constexpr uint32_t kCode[] =
-    {
-        0x07230203,0x00010000,0x000d000a,0x0000000a,
-        0x00000000,0x00020011,0x00000001,0x0006000b,
-        0x00000001,0x4c534c47,0x6474732e,0x3035342e,
-        0x00000000,0x0003000e,0x00000000,0x00000001,
-        0x0005000f,0x00000005,0x00000004,0x6e69616d,
-        0x00000000,0x00060010,0x00000004,0x00000011,
-        0x00000001,0x00000001,0x00000001,0x00030003,
-        0x00000002,0x000001b8,0x000a0004,0x475f4c47,
-        0x4c474f4f,0x70635f45,0x74735f70,0x5f656c79,
-        0x656e696c,0x7269645f,0x69746365,0x00006576,
-        0x00080004,0x475f4c47,0x4c474f4f,0x6e695f45,
-        0x64756c63,0x69645f65,0x74636572,0x00657669,
-        0x00040005,0x00000004,0x6e69616d,0x00000000,
-        0x00040047,0x00000009,0x0000000b,0x00000019,
-        0x00020013,0x00000002,0x00030021,0x00000003,
-        0x00000002,0x00040015,0x00000006,0x00000020,
-        0x00000000,0x00040017,0x00000007,0x00000006,
-        0x00000003,0x0004002b,0x00000006,0x00000008,
-        0x00000001,0x0006002c,0x00000007,0x00000009,
-        0x00000008,0x00000008,0x00000008,0x00050036,
-        0x00000002,0x00000004,0x00000000,0x00000003,
-        0x000200f8,0x00000005,0x000100fd,0x00010038
-    };
-
     VkShaderModuleCreateInfo moduleCreateInfo{};
     moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleCreateInfo.codeSize = sizeof(kCode);
-    moduleCreateInfo.pCode = kCode;
+    moduleCreateInfo.codeSize = sizeof(kSPIRVWriteUAV);
+    moduleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(kSPIRVWriteUAV);
 
     VkShaderModule module;
     REQUIRE(vkCreateShaderModule(GetDevice(), &moduleCreateInfo, nullptr, &module) == VK_SUCCESS);
@@ -105,44 +187,128 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
     VkPipeline pipeline;
     REQUIRE(vkCreateComputePipelines(GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) == VK_SUCCESS);
 
-    IBridge* bridge = GetBridge();
+    VkDescriptorPoolSize poolSize{};
+    poolSize.descriptorCount = 1;
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 
-    MessageStream stream;
+    VkDescriptorPoolCreateInfo descriptorPoolInfo{};
+    descriptorPoolInfo.sType  = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolInfo.pPoolSizes = &poolSize;
+    descriptorPoolInfo.poolSizeCount = 1;
+    descriptorPoolInfo.maxSets = 1;
+
+    VkDescriptorPool descriptorPool;
+    REQUIRE(vkCreateDescriptorPool(GetDevice(), &descriptorPoolInfo, nullptr, &descriptorPool) == VK_SUCCESS);
+
+    VkDescriptorSetAllocateInfo setInfo{};
+    setInfo.sType  = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    setInfo.pSetLayouts = &setLayout;
+    setInfo.descriptorPool = descriptorPool;
+    setInfo.descriptorSetCount = 1;
+
+    VkDescriptorSet set;
+    REQUIRE(vkAllocateDescriptorSets(GetDevice(), &setInfo, &set) == VK_SUCCESS);
+
+    VkWriteDescriptorSet write{};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.descriptorCount = 1;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    write.dstBinding = 0;
+    write.dstSet = set;
+    write.pTexelBufferView = &bufferView;
+    vkUpdateDescriptorSets(GetDevice(), 1, &write, 0, nullptr);
+
+    SECTION("Buffer Write")
     {
-        MessageStreamView view(stream);
+        {
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            REQUIRE(vkBeginCommandBuffer(commandBuffer, &beginInfo) == VK_SUCCESS);
 
-        // Make the recording wait for compilation
-        auto config = view.Add<SetInstrumentationConfigMessage>();
-        config->synchronousRecording = 1;
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &set, 0, nullptr);
 
-        // Global instrumentation
-        auto msg = view.Add<SetGlobalInstrumentationMessage>();
-        msg->featureBitSet = ~0ull;
+            vkCmdDispatch(commandBuffer, 4, 1, 1);
+
+            vkEndCommandBuffer(commandBuffer);
+
+            // Submit the command buffer
+            VkSubmitInfo submit{};
+            submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submit.pCommandBuffers = &commandBuffer;
+            submit.commandBufferCount = 1;
+            REQUIRE(vkQueueSubmit(GetPrimaryQueue(), 1, &submit, VK_NULL_HANDLE) == VK_SUCCESS);
+        }
+
+        // Wait for the results
+        vkQueueWaitIdle(GetPrimaryQueue());
+
+        void* data;
+        vmaMapMemory(allocator, allocation, &data);
+
+        auto* formatData = static_cast<uint32_t*>(data);
+        REQUIRE(formatData[0] == 0);
+        REQUIRE(formatData[1] == 1);
+        REQUIRE(formatData[2] == 2);
+        REQUIRE(formatData[3] == 3);
+
+        vmaUnmapMemory(allocator, allocation);
     }
 
-    bridge->GetOutput()->AddStream(stream);
-    bridge->Commit();
-
-    SECTION("Dispatch Table")
+    SECTION("Instrumented Buffer Write")
     {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        REQUIRE(vkBeginCommandBuffer(commandBuffer, &beginInfo) == VK_SUCCESS);
+        IBridge* bridge = GetBridge();
 
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-        vkCmdDispatch(commandBuffer, 0, 1, 1);
+        MessageStream stream;
+        {
+            MessageStreamView view(stream);
 
-        vkEndCommandBuffer(commandBuffer);
+            // Make the recording wait for compilation
+            auto config = view.Add<SetInstrumentationConfigMessage>();
+            config->synchronousRecording = 1;
 
-        // Submit the command buffer
-        VkSubmitInfo submit{};
-        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit.pCommandBuffers = &commandBuffer;
-        submit.commandBufferCount = 1;
-        REQUIRE(vkQueueSubmit(GetPrimaryQueue(), 1, &submit, VK_NULL_HANDLE) == VK_SUCCESS);
+            // Global instrumentation
+            auto msg = view.Add<SetGlobalInstrumentationMessage>();
+            msg->featureBitSet = ~0ull;
+        }
+
+        bridge->GetOutput()->AddStream(stream);
+        bridge->Commit();
+
+        {
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            REQUIRE(vkBeginCommandBuffer(commandBuffer, &beginInfo) == VK_SUCCESS);
+
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &set, 0, nullptr);
+
+            vkCmdDispatch(commandBuffer, 4, 1, 1);
+
+            vkEndCommandBuffer(commandBuffer);
+
+            // Submit the command buffer
+            VkSubmitInfo submit{};
+            submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            submit.pCommandBuffers = &commandBuffer;
+            submit.commandBufferCount = 1;
+            REQUIRE(vkQueueSubmit(GetPrimaryQueue(), 1, &submit, VK_NULL_HANDLE) == VK_SUCCESS);
+        }
+
+        // Wait for the results
+        vkQueueWaitIdle(GetPrimaryQueue());
+
+        void* data;
+        vmaMapMemory(allocator, allocation, &data);
+
+        auto* formatData = static_cast<uint32_t*>(data);
+        REQUIRE(formatData[0] == 1);
+        REQUIRE(formatData[1] == 2);
+        REQUIRE(formatData[2] == 3);
+        REQUIRE(formatData[3] == 4);
+
+        vmaUnmapMemory(allocator, allocation);
     }
-
-    vkQueueWaitIdle(GetPrimaryQueue());
 
     // Release handles
     vkDestroyPipeline(GetDevice(), pipeline, nullptr);

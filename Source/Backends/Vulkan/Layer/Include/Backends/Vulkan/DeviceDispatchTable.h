@@ -100,6 +100,7 @@ struct DeviceDispatchTable {
     PFN_vkCmdBindPipeline         next_vkCmdBindPipeline;
 
     /// Command buffer dispatch table
+    std::mutex                 commandBufferMutex;
     CommandBufferDispatchTable commandBufferDispatchTable;
 
 private:

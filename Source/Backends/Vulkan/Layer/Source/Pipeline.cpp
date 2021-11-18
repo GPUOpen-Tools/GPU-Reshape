@@ -34,6 +34,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
             table->dependencies_shaderModulesPipelines.Add(shaderModuleState, state);
         }
 
+        // TODO: Register with instrumentation controller, in case there is already instrumentation
+
         // Store lookup
         table->states_pipeline.Add(pPipelines[i], state);
     }
@@ -67,6 +69,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
 
         // Add dependency, shader module -> pipeline
         table->dependencies_shaderModulesPipelines.Add(shaderModuleState, state);
+
+        // TODO: Register with instrumentation controller, in case there is already instrumentation
 
         // Store lookup
         table->states_pipeline.Add(pPipelines[i], state);

@@ -7,10 +7,13 @@ include(SPIRV.cmake)
 include(Vulkan.cmake)
 include(ArgParser.cmake)
 include(TinyXML2.cmake)
+include(VMA.cmake)
 
 # Standard project installation
 function(ExternalProject_Link Project Name)
-    add_dependencies(${Project} ${Name})
+    if (TARGET ${Name})
+        add_dependencies(${Project} ${Name})
+    endif()
 
     target_include_directories(${Project} PUBLIC ${CMAKE_BINARY_DIR}/External/include)
     target_link_directories(${Project} PUBLIC ${CMAKE_BINARY_DIR}/External/lib)

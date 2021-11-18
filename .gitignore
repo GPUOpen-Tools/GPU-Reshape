@@ -9,4 +9,9 @@ cmake-build-*/
 Bin/
 
 # Pulled third party dependencies
-ThirdParty/**/
+ThirdParty/ArgParse/
+ThirdParty/Catch2/
+ThirdParty/SPIRVHeaders/
+ThirdParty/TinyXML2/
+ThirdParty/VulkanHeaders/
+ThirdParty/VulkanLoader/

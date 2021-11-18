@@ -24,6 +24,7 @@ struct PipelineState;
 struct ShaderModuleState;
 struct ReferenceObject;
 class ShaderCompiler;
+class PipelineCompiler;
 
 class InstrumentationController final : public IBridgeListener {
 public:
@@ -60,6 +61,7 @@ private:
     Registry* registry;
     DeviceDispatchTable* table;
     ShaderCompiler* shaderCompiler;
+    PipelineCompiler* pipelineCompiler;
     Dispatcher* dispatcher;
 
     /// The global info

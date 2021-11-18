@@ -199,10 +199,9 @@ struct MessageStreamSchema<StaticMessageSchema, STREAM> {
 
         /// Post increment
         ConstIterator operator++(int) const {
-            ConstIterator iterator;
-            iterator.ptr = ptr + sizeof(T);
-            iterator.end = end;
-            return iterator;
+            ConstIterator self = *this;
+            ++(*this);
+            return self;
         }
 
         /// Pre increment
@@ -268,10 +267,9 @@ struct MessageStreamSchema<DynamicMessageSchema, STREAM> {
 
         /// Post increment
         ConstIterator operator++(int) const {
-            ConstIterator iterator;
-            iterator.ptr = ptr + sizeof(DynamicMessageSchema::Header) + reinterpret_cast<const DynamicMessageSchema::Header*>(ptr)->byteSize;
-            iterator.end = end;
-            return iterator;
+            ConstIterator self = *this;
+            ++(*this);
+            return self;
         }
 
         /// Pre increment
@@ -360,10 +358,9 @@ struct MessageStreamSchema<OrderedMessageSchema, STREAM> {
 
         /// Post increment
         ConstIterator operator++(int) const {
-            ConstIterator iterator;
-            iterator.ptr = ptr + sizeof(OrderedMessageSchema::Header) + reinterpret_cast<const OrderedMessageSchema::Header*>(ptr)->byteSize;
-            iterator.end = end;
-            return iterator;
+            ConstIterator self = *this;
+            ++(*this);
+            return self;
         }
 
         /// Pre increment

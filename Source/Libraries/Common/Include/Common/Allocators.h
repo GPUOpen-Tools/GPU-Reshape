@@ -7,10 +7,20 @@
 using TAllocatorAlloc  = void*(*)(size_t size);
 using TAllocatorFree = void(*)(void* ptr);
 
+/// Default allocator
+inline void *AllocateDefault(size_t size) {
+    return malloc(size);
+}
+
+/// Default free
+inline void FreeDefault(void *ptr) {
+    free(ptr);
+}
+
 /// Contains basic allocators
 struct Allocators {
-    TAllocatorAlloc alloc;
-    TAllocatorFree  free;
+    TAllocatorAlloc alloc = AllocateDefault;
+    TAllocatorFree  free = FreeDefault;
 };
 
 /// Allocation overload
@@ -31,14 +41,4 @@ inline void destroy(T* object, const Allocators& allocators) {
 
     object->~T();
     allocators.free(object);
-}
-
-/// Default allocator
-inline void *AllocateDefault(size_t size) {
-    return malloc(size);
-}
-
-/// Default free
-inline void FreeDefault(void *ptr) {
-    free(ptr);
 }

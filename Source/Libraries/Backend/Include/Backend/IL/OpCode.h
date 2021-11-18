@@ -8,11 +8,27 @@ namespace IL {
         /// Unexposed by the abstraction layer
         Unexposed,
 
+        /// Literal value
+        Literal,
+
+        /// Math
+        Add,
+        // Sub,
+        // Div,
+        // Mul,
+
+        /// Bit manipulation
+        // BitShiftLeft,
+        // BitShiftRight,
+
         /// SSA
         Load,
         Store,
 
-        // Texture
+        /// Texture
         LoadTexture,
+
+        /// Buffer
+        StoreBuffer,
     };
 }

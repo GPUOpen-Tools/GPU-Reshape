@@ -1,5 +1,8 @@
 #pragma once
 
+// Layer
+#include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
+
 // Vulkan
 #include "Vulkan.h"
 
@@ -13,4 +16,7 @@ struct CommandBufferObject {
     VkCommandBuffer      object;
     DeviceDispatchTable* table;
     CommandPoolState*    pool;
+
+    /// Acquired dispatch table
+    CommandBufferDispatchTable dispatchTable;
 };

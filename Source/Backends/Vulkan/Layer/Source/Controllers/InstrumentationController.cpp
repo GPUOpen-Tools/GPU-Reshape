@@ -1,5 +1,6 @@
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
-#include <Backends/Vulkan/Shader/ShaderCompiler.h>
+#include <Backends/Vulkan/Compiler/ShaderCompiler.h>
+#include <Backends/Vulkan/Compiler/PipelineCompiler.h>
 #include <Backends/Vulkan/DeviceDispatchTable.h>
 #include <Backends/Vulkan/ShaderModuleState.h>
 #include <Backends/Vulkan/PipelineState.h>
@@ -22,6 +23,7 @@
 
 InstrumentationController::InstrumentationController(Registry* registry, DeviceDispatchTable *table) : registry(registry), table(table) {
     shaderCompiler = registry->Get<ShaderCompiler>();
+    pipelineCompiler = registry->Get<PipelineCompiler>();
     dispatcher = registry->Get<Dispatcher>();
 }
 
@@ -158,6 +160,7 @@ void InstrumentationController::Commit() {
     batch->featureBitSet = SummarizeFeatureBitSet();
 
     // Task group
+    // TODO: Tie lifetime of this task group to the controller
     TaskGroup group(dispatcher);
     group.Chain(BindDelegate(this, InstrumentationController::CommitShaders), batch);
     group.Chain(BindDelegate(this, InstrumentationController::CommitPipelines), batch);
@@ -182,20 +185,69 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
     for (ShaderModuleState* state : batch->dirtyShaderModules) {
         uint64_t featureSet = globalInstrumentationInfo.featureBitSet | state->instrumentationInfo.featureBitSet;
 
-        // TODO: Not accurate, pipeline needs to feed back!
-        shaderCompiler->Add(state, featureSet, bucket);
+        // Inject the primary state
+        shaderCompiler->Add(table, state, featureSet, bucket);
+
+        // Perform feedback from the dependent objects
+        for (PipelineState* dependentObject : table->dependencies_shaderModulesPipelines.Get(state)) {
+            // If no pipeline specific instrumentation, skip
+            if (!dependentObject->instrumentationInfo.featureBitSet) {
+                continue;
+            }
+
+            // Get the super feature set
+            uint32_t superFeatureSet = featureSet | dependentObject->instrumentationInfo.featureBitSet;
+
+            // Inject the feedback state
+            shaderCompiler->Add(table, state, superFeatureSet, bucket);
+        }
     }
 }
 
 void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *data) {
-    // Under construction...
+    auto* batch = static_cast<Batch*>(data);
+
+    // Allocate batch
+    auto jobs = new (registry->GetAllocators()) PipelineJob[batch->dirtyPipelines.size()];
+
+    // Submit compiler jobs
+    for (size_t i = 0; i < batch->dirtyPipelines.size(); i++) {
+        PipelineState* state = batch->dirtyPipelines[i];
+
+        // Setup the job
+        PipelineJob& job = jobs[i];
+        job.state = state;
+        job.featureBitSet = globalInstrumentationInfo.featureBitSet | state->instrumentationInfo.featureBitSet;
+
+        // Allocate feature bit sets
+        job.shaderModuleFeatureBitSets = new (registry->GetAllocators()) uint64_t[state->shaderModules.size()];
+
+        // Set the module feature bit sets
+        for (uint32_t shaderIndex = 0; shaderIndex < state->shaderModules.size(); shaderIndex++) {
+            uint64_t featureBitSet = 0;
+
+            // Create super feature bit set (global -> shader -> pipeline)
+            // ? Pipeline specific bit set fed back during shader compilation
+            featureBitSet |= globalInstrumentationInfo.featureBitSet;
+            featureBitSet |= state->shaderModules[i]->instrumentationInfo.featureBitSet;
+            featureBitSet |= state->instrumentationInfo.featureBitSet;
+
+            job.shaderModuleFeatureBitSets[shaderIndex] = featureBitSet;
+        }
+    }
+
+    // Submit all jobs
+    pipelineCompiler->AddBatch(table, jobs, batch->dirtyPipelines.size(), bucket);
+
+    // Free up
+    destroy(jobs, registry->GetAllocators());
 }
 
 void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data) {
     auto* batch = static_cast<Batch*>(data);
 
     // Set the enabled feature bit set
-    SetDeviceCommandFeatureSet(table, batch->featureBitSet);
+    SetDeviceCommandFeatureSetAndCommit(table, batch->featureBitSet);
 
     // Mark as done
     compilationEvent.IncrementCounter();
