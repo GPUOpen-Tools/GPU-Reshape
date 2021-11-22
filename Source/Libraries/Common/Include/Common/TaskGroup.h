@@ -51,7 +51,6 @@ private:
         Controller(Dispatcher* dispatcher) : dispatcher(dispatcher) {
             bucket.userData = nullptr;
             bucket.functor = BindDelegate(this, Controller::OnLinkCompleted);
-            bucket.SetCounter(1);
         }
 
         /// Invoked once a link has been completed
@@ -65,9 +64,6 @@ private:
                 Release();
                 return;
             }
-
-            // Mark the primary job as needing counting
-            bucket.SetCounter(1);
 
             // Pop the job
             DispatcherJob job = jobs.front();

@@ -65,11 +65,11 @@ public:
                 auto storeBuffer = it.Ref<IL::StoreBufferInstruction>();
 
                 // Bias the op
-                IL::Emitter<> append(program, bb, it.Ref());
+                IL::Emitter<> append(program, bb, storeBuffer);
                 auto bias = append.Add(storeBuffer->value, append.Integral(32, 1));
 
                 // Replace the store operation
-                IL::Emitter<IL::EmitterOpReplace> storeEmitter(program, bb, it.Ref());
+                IL::Emitter<IL::Op::Instrument> storeEmitter(program, bb, storeBuffer);
                 storeEmitter.StoreBuffer(storeBuffer->buffer, storeBuffer->index, bias);
                 return true;
             }

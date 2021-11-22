@@ -15,12 +15,6 @@
 #include <Schemas/Config.h>
 #include <Schemas/ShaderMetadata.h>
 
-/**
- * TODO: This really isn't ready yet
- *
- *  Submission should include the enabled bit set, it has to. Otherwise we risk race conditions with the enabled feature sets.
- */
-
 InstrumentationController::InstrumentationController(Registry* registry, DeviceDispatchTable *table) : registry(registry), table(table) {
     shaderCompiler = registry->Get<ShaderCompiler>();
     pipelineCompiler = registry->Get<PipelineCompiler>();
@@ -177,9 +171,6 @@ void InstrumentationController::Commit() {
 
 void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *data) {
     auto* batch = static_cast<Batch*>(data);
-
-    // Set completion
-    bucket->AddCounter(batch->dirtyShaderModules.size());
 
     // Submit compiler jobs
     for (ShaderModuleState* state : batch->dirtyShaderModules) {

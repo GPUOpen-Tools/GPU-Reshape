@@ -7,22 +7,25 @@
 #include <Backend/IL/Program.h>
 #include <Backend/IL/Emitter.h>
 
-class SPIRVModule {
+// Layer
+#include <Backends/Vulkan/Compiler/SpvTypeMap.h>
+
+class SpvModule {
 public:
-    SPIRVModule(const Allocators& allocators);
-    ~SPIRVModule();
+    SpvModule(const Allocators& allocators);
+    ~SpvModule();
 
     /// No copy
-    SPIRVModule(const SPIRVModule& other) = delete;
-    SPIRVModule& operator=(const SPIRVModule& other) = delete;
+    SpvModule(const SpvModule& other) = delete;
+    SpvModule& operator=(const SpvModule& other) = delete;
 
     /// No move
-    SPIRVModule(SPIRVModule&& other) = delete;
-    SPIRVModule& operator=(SPIRVModule&& other) = delete;
+    SpvModule(SpvModule&& other) = delete;
+    SpvModule& operator=(SpvModule&& other) = delete;
 
     /// Copy this module
     /// \return
-    SPIRVModule* Copy() const;
+    SpvModule* Copy() const;
 
     /// Parse a module
     /// \param code the SPIRV module pointer
@@ -60,6 +63,13 @@ public:
 private:
     /// Parsing context
     struct ParseContext {
+        template<typename T>
+        const T& Read() {
+            auto* ptr = reinterpret_cast<const T*>(code);
+            code += sizeof(T) / sizeof(uint32_t);
+            return *ptr;
+        }
+
         uint32_t operator*() const {
             ASSERT(code < end, "End of stream");
             return *code;
@@ -83,15 +93,24 @@ private:
             return end > code;
         }
 
+        uint32_t Source() const {
+            return code - start;
+        }
+
         /// Code pointers
+        const uint32_t* start;
         const uint32_t* code;
         const uint32_t* end;
 
         /// Current function
         IL::Function* function{nullptr};
 
-        /// Emitter, holds current basic block
-        IL::Emitter<> emitter;
+        /// Current basic block
+        IL::BasicBlock* basicBlock{nullptr};
+
+        /// Current source spans
+        IL::SourceSpan functionSourceSpan{};
+        IL::SourceSpan basicBlockSourceSpan{};
     };
 
     /// Parse the header
@@ -107,6 +126,7 @@ private:
 private:
     /// Header specification
     struct ProgramHeader {
+        uint32_t magic;
         uint32_t version;
         uint32_t generator;
         uint32_t bound;
@@ -121,6 +141,9 @@ private:
 
     /// JIT'ed program
     std::vector<uint32_t> spirvProgram;
+
+    /// The type map
+    SpvTypeMap* typeMap{nullptr};
 
     /// Abstracted program
     IL::Program* program{nullptr};

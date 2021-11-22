@@ -5,46 +5,63 @@
 #include "Program.h"
 
 namespace IL {
-    /// Append operation
-    struct EmitterOpAppend {
-        using Opaque = ConstOpaqueInstructionRef;
+    namespace Op {
+        /// Append operation
+        struct Append {
+            using Opaque = ConstOpaqueInstructionRef;
 
-        /// Operation
-        template<typename T>
-        static InstructionRef <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, const T &instruction) {
-            if (insertionPoint.IsValid()) {
-                auto value = basicBlock->Insert(insertionPoint, instruction);
-                insertionPoint = value;
-                return value;
-            } else {
-                auto value = basicBlock->Insert(instruction);
-                insertionPoint = value;
-                return value;
+            /// Operation
+            template<typename T>
+            static InstructionRef <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, const T &instruction) {
+                if (insertionPoint.IsValid()) {
+                    auto value = basicBlock->Insert(insertionPoint, instruction);
+                    insertionPoint = std::next(value);
+                    return value.template Ref<T>();
+                } else {
+                    auto value = basicBlock->Append(instruction);
+                    insertionPoint = std::next(value);
+                    return value.template Ref<T>();
+                }
             }
-        }
-    };
+        };
 
-    /// Replacement operation
-    struct EmitterOpReplace {
-        using Opaque = OpaqueInstructionRef;
+        /// Replacement operation
+        struct Replace {
+            using Opaque = OpaqueInstructionRef;
 
-        /// Operation
-        template<typename T>
-        static InstructionRef <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, const T &instruction) {
-            if (insertionPoint.IsValid()) {
+            /// Operation
+            template<typename T>
+            static InstructionRef <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, const T &instruction) {
+                ASSERT(insertionPoint.IsValid(), "Must have insertion point");
+
                 auto value = basicBlock->Replace(insertionPoint, instruction);
                 insertionPoint = value;
-                return value;
-            } else {
-                auto value = basicBlock->Insert(instruction);
-                insertionPoint = value;
-                return value;
+                return value.template Ref<T>();
             }
-        }
-    };
+        };
+
+        /// Instrumentation operation
+        struct Instrument {
+            using Opaque = OpaqueInstructionRef;
+
+            /// Operation
+            template<typename T>
+            static InstructionRef <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, T &instruction) {
+                ASSERT(insertionPoint.IsValid(), "Must have insertion point");
+
+                // Instrumentation must inherit the source instruction for specialized backend operands
+                //  ? Not all instruction parameters are exposed, and altering these may change the intended behaviour
+                instruction.source = InstructionRef<>(insertionPoint)->source;
+
+                auto value = basicBlock->Replace(insertionPoint, instruction);
+                insertionPoint = value;
+                return value.template Ref<T>();
+            }
+        };
+    }
 
     /// Emitter, easy instruction emitting
-    template<typename OP = EmitterOpAppend>
+    template<typename OP = Op::Append>
     struct Emitter {
         using Opaque = typename OP::Opaque;
 
@@ -82,8 +99,10 @@ namespace IL {
         InstructionRef <LiteralInstruction> Integral(ID result, uint8_t bitWidth, int64_t value) {
             LiteralInstruction instr{};
             instr.opCode = OpCode::Literal;
+            instr.source = InvalidSource;
             instr.result = result;
             instr.type = LiteralType::Int;
+            instr.signedness = true;
             instr.bitWidth = bitWidth;
             instr.value.integral = value;
             return Op(instr);
@@ -105,8 +124,10 @@ namespace IL {
         InstructionRef <LiteralInstruction> FP(ID result, uint8_t bitWidth, double value) {
             LiteralInstruction instr{};
             instr.opCode = OpCode::Literal;
+            instr.source = InvalidSource;
             instr.result = result;
             instr.type = LiteralType::FP;
+            instr.signedness = true;
             instr.bitWidth = bitWidth;
             instr.value.fp = value;
             return Op(instr);
@@ -127,6 +148,7 @@ namespace IL {
         InstructionRef <UnexposedInstruction> Unexposed(ID result, uint32_t backendOpCode) {
             UnexposedInstruction instr{};
             instr.opCode = OpCode::Unexposed;
+            instr.source = InvalidSource;
             instr.result = result;
             return Op(instr);
         }
@@ -137,6 +159,7 @@ namespace IL {
         InstructionRef <LoadInstruction> Load(ID address) {
             LoadInstruction instr{};
             instr.opCode = OpCode::Load;
+            instr.source = InvalidSource;
             instr.address = address;
             instr.result = map->AllocID();
             return Op(instr);
@@ -148,8 +171,9 @@ namespace IL {
         /// \return instruction reference
         InstructionRef <StoreInstruction> Store(ID address, ID value) {
             StoreInstruction instr{};
-            instr.result = InvalidID;
             instr.opCode = OpCode::Store;
+            instr.source = InvalidSource;
+            instr.result = InvalidID;
             instr.address = address;
             instr.value = value;
             return Op(instr);
@@ -163,6 +187,7 @@ namespace IL {
         InstructionRef <StoreBufferInstruction> StoreBuffer(ID buffer, ID index, ID value) {
             StoreBufferInstruction instr{};
             instr.opCode = OpCode::StoreBuffer;
+            instr.source = InvalidSource;
             instr.buffer = buffer;
             instr.index = index;
             instr.value = value;
@@ -178,10 +203,10 @@ namespace IL {
         InstructionRef <AddInstruction> Add(ID result, ID lhs, ID rhs) {
             AddInstruction instr{};
             instr.opCode = OpCode::Add;
+            instr.source = InvalidSource;
             instr.result = result;
             instr.lhs = lhs;
             instr.rhs = rhs;
-            instr.result = InvalidID;
             return Op(instr);
         }
 
@@ -211,7 +236,7 @@ namespace IL {
     private:
         /// Perform the operation
         template<typename T>
-        InstructionRef <T> Op(const T &instruction) {
+        InstructionRef <T> Op(T &instruction) {
             return OP::template Op<T>(basicBlock, insertionPoint, instruction);
         }
 

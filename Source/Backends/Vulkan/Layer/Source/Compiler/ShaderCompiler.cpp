@@ -1,5 +1,5 @@
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
-#include <Backends/Vulkan/Compiler/SPIRVModule.h>
+#include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/DeviceDispatchTable.h>
 
 // Backend
@@ -9,6 +9,13 @@
 // Common
 #include <Common/Dispatcher.h>
 #include <Common/Registry.h>
+
+// Std
+#include <fstream>
+
+// Debugging
+// TODO: Expand into a more versatile system
+#define SPV_SHADER_COMPILER_DUMP 0
 
 bool ShaderCompiler::Initialize() {
     dispatcher = registry->Get<Dispatcher>();
@@ -52,7 +59,7 @@ void ShaderCompiler::Worker(void *data) {
 void ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Create the module on demand
     if (!job.state->spirvModule) {
-        job.state->spirvModule = new(registry->GetAllocators()) SPIRVModule(allocators);
+        job.state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators);
 
         // Parse the module
         bool result = job.state->spirvModule->ParseModule(
@@ -67,7 +74,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     }
 
     // Create a copy of the module, don't modify the source
-    SPIRVModule* module = job.state->spirvModule->Copy();
+    SpvModule* module = job.state->spirvModule->Copy();
 
     // Pass through all features
     for (IFeature *feature: features) {
@@ -81,6 +88,12 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     )) {
         return;
     }
+
+#if SPV_SHADER_COMPILER_DUMP
+    std::ofstream outBefore("module.before.spirv", std::ios_base::binary);
+    outBefore.write(reinterpret_cast<const char*>(job.state->createInfoDeepCopy.createInfo.pCode), job.state->createInfoDeepCopy.createInfo.codeSize);
+    outBefore.close();
+#endif
 
     // Copy the deep creation info
     //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
@@ -96,6 +109,12 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     if (result != VK_SUCCESS) {
         return;
     }
+
+#if SPV_SHADER_COMPILER_DUMP
+    std::ofstream outAfter("module.after.spirv", std::ios_base::binary);
+    outAfter.write(reinterpret_cast<const char*>(createInfo.pCode), createInfo.codeSize);
+    outAfter.close();
+#endif
 
     // Assign the instrument
     job.state->AddInstrument(job.featureBitSet, instrument);
