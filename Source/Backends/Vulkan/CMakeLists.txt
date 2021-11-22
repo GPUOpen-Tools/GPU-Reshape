@@ -111,7 +111,7 @@ add_library(
     Layer/Source/ShaderModule.cpp
     Layer/Source/Pipeline.cpp
     Layer/Source/Queue.cpp
-    Layer/Source/Compiler/SPIRVModule.cpp
+    Layer/Source/Compiler/SpvModule.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp
     Layer/Source/Compiler/PipelineCompiler.cpp
     Layer/Source/Controllers/InstrumentationController.cpp

@@ -16,7 +16,7 @@
 // Forward declarations
 struct DeviceDispatchTable;
 struct PipelineState;
-class SPIRVModule;
+class SpvModule;
 
 struct ShaderModuleState : public ReferenceObject {
     /// Reference counted destructor
@@ -58,7 +58,7 @@ struct ShaderModuleState : public ReferenceObject {
 
     /// SPIRV module of the originating shader
     ///    ! On demand, may be nullptr
-    SPIRVModule* spirvModule{nullptr};
+    SpvModule* spirvModule{nullptr};
 
     /// Instrumentation info
     InstrumentationInfo instrumentationInfo;

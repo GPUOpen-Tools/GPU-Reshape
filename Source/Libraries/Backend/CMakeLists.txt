@@ -10,6 +10,7 @@ add_library(
     Libraries.Backend STATIC
     Source/Backend.cpp
     Source/FeatureHost.cpp
+    Source/IL/PrettyPrint.cpp
 
     # Generated schemas
     ${GeneratedLib}

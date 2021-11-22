@@ -7,6 +7,7 @@
 #include "RelocationAllocator.h"
 #include "Instruction.h"
 #include "IdentifierMap.h"
+#include "PrettyPrint.h"
 
 namespace IL {
     /// Instruction reference
@@ -72,6 +73,12 @@ namespace IL {
     struct BasicBlock {
         /// Mutable iterator
         struct Iterator {
+            using iterator_category = std::forward_iterator_tag;
+            using difference_type   = std::ptrdiff_t;
+            using value_type        = const Instruction*;
+            using pointer           = value_type*;
+            using reference         = value_type&;
+
             /// Comparison
             bool operator!=(const Iterator &other) const {
                 Validate();
@@ -101,9 +108,18 @@ namespace IL {
                 return Get();
             }
 
+            /// Reinterpret instruction
+            template<typename T>
+            const T* As() const {
+                ASSERT(Get()->opCode == T::kOpCode, "Invalid cast");
+                return static_cast<const T*>(Get());
+            }
+
             /// Get an instruction reference
             template<typename T>
             InstructionRef<T> Ref() const {
+                Validate();
+
                 // Validation
                 if constexpr(!std::is_same_v<T, Instruction>) {
                     ASSERT(Get()->opCode == T::kOpCode, "Invalid cast");
@@ -117,10 +133,22 @@ namespace IL {
 
             /// Get an opaque instruction reference
             OpaqueInstructionRef Ref() const {
+                Validate();
+
                 OpaqueInstructionRef ref;
                 ref.basicBlock = block;
                 ref.relocationOffset = block->GetRelocationOffset(relocationIndex);
                 return ref;
+            }
+
+            /// To opaque instruction ref
+            operator OpaqueInstructionRef() const {
+                return Ref();
+            }
+
+            /// To const opaque instruction ref
+            operator ConstOpaqueInstructionRef() const {
+                return Ref();
             }
 
             /// Get the op code
@@ -164,8 +192,42 @@ namespace IL {
 #endif
         };
 
+        /// Typed iterator for sugar syntax
+        template<typename T>
+        struct TypedIterator : public Iterator {
+            TypedIterator(const Iterator& it) : Iterator(it) {
+
+            }
+
+            /// Ref cast
+            operator InstructionRef<T>() const {
+                return Ref<T>();
+            }
+
+            /// Dereference
+            const T *operator*() const {
+                return As<T>();
+            }
+
+            /// Accessor
+            const T *operator->() const {
+                return As<T>();
+            }
+
+            /// Implicit to instruction
+            operator const T *() const {
+                return As<T>();
+            }
+        };
+
         /// Immutable iterator
         struct ConstIterator {
+            using iterator_category = std::forward_iterator_tag;
+            using difference_type   = std::ptrdiff_t;
+            using value_type        = const Instruction*;
+            using pointer           = value_type*;
+            using reference         = value_type&;
+
             /// Comparison
             bool operator!=(const ConstIterator &other) const {
                 Validate();
@@ -198,6 +260,8 @@ namespace IL {
             /// Get a const instruction reference
             template<typename T>
             ConstInstructionRef<T> Ref() const {
+                Validate();
+
                 // Validation
                 if constexpr(!std::is_same_v<T, Instruction>) {
                     ASSERT(Get()->opCode == T::kOpCode, "Invalid cast");
@@ -211,10 +275,17 @@ namespace IL {
 
             /// Get a const opaque instruction reference
             ConstOpaqueInstructionRef Ref() const {
+                Validate();
+
                 ConstOpaqueInstructionRef ref;
                 ref.basicBlock = block;
                 ref.relocationOffset = block->GetRelocationOffset(relocationIndex);
                 return ref;
+            }
+
+            /// To const opaque instruction ref
+            operator ConstOpaqueInstructionRef() const {
+                return Ref();
             }
 
             /// Get the op code
@@ -281,6 +352,7 @@ namespace IL {
             bb.count = count;
             bb.dirty = dirty;
             bb.data = data;
+            bb.sourceSpan = sourceSpan;
 
             // Preallocate
             bb.relocationTable.resize(relocationTable.size());
@@ -304,21 +376,20 @@ namespace IL {
             return bb;
         }
 
-        /// Insert an instruction
+        /// Append an instruction
         /// \param instruction the instruction to be inserted
         /// \return inserted reference
         template<typename T>
-        InstructionRef<T> Insert(const T &instruction) {
+        TypedIterator<T> Append(const T &instruction) {
             MarkAsDirty();
-
-            InstructionRef<T> ref;
-            ref.basicBlock = this;
-            ref.relocationOffset = relocationAllocator.Allocate();
 
             size_t offset = data.size();
             data.resize(data.size() + sizeof(T));
             std::memcpy(&data[offset], &instruction, sizeof(T));
 
+            InstructionRef<T> ref;
+            ref.basicBlock = this;
+            ref.relocationOffset = relocationAllocator.Allocate();
             ref.relocationOffset->offset = offset;
 
             relocationTable.push_back(ref.relocationOffset);
@@ -333,45 +404,38 @@ namespace IL {
             debugRevision++;
 #endif
 
-            return ref;
+            return Offset(ref.relocationOffset, relocationTable.size() - 1);
         }
 
-        /// Insert an instruction at a given point
-        /// \param insertion the insertion point
+        /// Append an instruction at a given point
+        /// \param insertion the insertion point, inserted before this iterator
         /// \param instr the instruction to be inserted
         /// \return the inserted reference
         template<typename T>
-        InstructionRef<T> Insert(const ConstOpaqueInstructionRef &insertion, const T &instr) {
+        TypedIterator<T> Insert(const ConstOpaqueInstructionRef &insertion, const T &instr) {
             ASSERT(insertion.basicBlock == this, "Instruction offset not from the same basic block");
 
             MarkAsDirty();
 
-            InstructionRef<T> ref;
-            ref.basicBlock = this;
-            ref.relocationOffset = relocationAllocator.Allocate();
-
-            size_t size = GetSize(GetRelocationInstruction(insertion.relocationOffset)->opCode);
-
-            size_t offset = insertion.relocationOffset->offset + size;
+            size_t offset = insertion.relocationOffset->offset;
 
             auto *newPtr = reinterpret_cast<const uint8_t *>(&instr);
             data.insert(data.begin() + offset, newPtr, newPtr + sizeof(T));
 
+            InstructionRef<T> ref;
+            ref.basicBlock = this;
+            ref.relocationOffset = relocationAllocator.Allocate();
             ref.relocationOffset->offset = offset;
-
-            relocationTable.push_back(ref.relocationOffset);
 
             if (instr.result != InvalidID) {
                 map.AddInstruction(ref, instr.result);
             }
 
-            ResummarizeRelocationTable();
-
 #ifndef NDEBUG
             debugRevision++;
 #endif
 
-            return ref;
+            return InsertRelocationOffset(insertion.relocationOffset, ref.relocationOffset);
         }
 
         /// Remove an instruction
@@ -393,7 +457,7 @@ namespace IL {
             // Remove relocation offset
             RemoveRelocationOffset(instruction.relocationOffset);
 
-            ResummarizeRelocationTable();
+            ResummarizeRelocationTable(instruction.relocationOffset);
 
 #ifndef NDEBUG
             debugRevision++;
@@ -405,7 +469,7 @@ namespace IL {
         /// \param replacement the replacement
         /// \return the replaced reference
         template<typename T>
-        InstructionRef<T> Replace(const OpaqueInstructionRef &instruction, const T &replacement) {
+        TypedIterator<T> Replace(const OpaqueInstructionRef &instruction, const T &replacement) {
             ASSERT(instruction.basicBlock == this, "Instruction offset not from the same basic block");
 
             MarkAsDirty();
@@ -435,17 +499,55 @@ namespace IL {
                 map.AddInstruction(instruction, replacement.result);
             }
 
-            ResummarizeRelocationTable();
-
 #ifndef NDEBUG
             debugRevision++;
 #endif
 
-            return instruction;
+            return ResummarizeRelocationTable(instruction.relocationOffset);
+        }
+
+        /// Insert a new relocation offset
+        /// \param insertion the insertion relocation offset
+        /// \param offset the new offset to be inserted
+        /// \return the new iterator
+        Iterator InsertRelocationOffset(const RelocationOffset* insertion, RelocationOffset* offset) {
+            auto relocationIt = std::find(relocationTable.begin(), relocationTable.end(), insertion);
+            ASSERT(relocationIt != relocationTable.end(), "Missing relocation offset");
+
+            // Get the relocation index
+            auto it = relocationTable.insert(relocationIt, offset);
+            uint32_t index = it - relocationTable.begin();
+
+            // Resumarrize from the index
+            ResummarizeRelocationTable(offset, index);
+            return Offset(offset, index);
         }
 
         /// Resummarize the relocation table for references
-        /// TODO: Resummarize AFTER the inserted instruction, bit of a waste otherwise
+        /// \param offset the starting offset
+        /// \return the iterator for a given offset
+        Iterator ResummarizeRelocationTable(const RelocationOffset* offset) {
+            auto relocationIt = std::find(relocationTable.begin(), relocationTable.end(), offset);
+            ASSERT(relocationIt != relocationTable.end(), "Missing relocation offset");
+
+            // Get the relocation index
+            uint32_t index = relocationIt - relocationTable.begin();
+
+            // Resumarrize from the index
+            ResummarizeRelocationTable(offset, index);
+            return Offset(offset, index);
+        }
+
+        /// Resummarize the relocation table for references
+        /// \param offset the offset to start from
+        /// \param relocationIndex the relocation index to start from
+        void ResummarizeRelocationTable(const RelocationOffset* offset, uint32_t relocationIndex) {
+            for (auto it = Offset(offset, relocationIndex); it != end(); it++) {
+                relocationTable[it.relocationIndex]->offset = it.ptr - data.data();
+            }
+        }
+
+        /// Resummarize the relocation table for references
         void ResummarizeRelocationTable() {
             for (auto it = begin(); it != end(); it++) {
                 relocationTable[it.relocationIndex]->offset = it.ptr - data.data();
@@ -463,8 +565,9 @@ namespace IL {
         }
 
         /// Immortalize this basic block
-        void Immortalize() {
+        void Immortalize(SourceSpan span) {
             dirty = false;
+            sourceSpan = span;
         }
 
         /// Get the number of instructions
@@ -475,6 +578,21 @@ namespace IL {
         /// Get the id of this basic block
         ID GetID() const {
             return id;
+        }
+
+        /// Get an iterator from a relocation offset
+        /// \param offset the relocation offset
+        /// \param relocationIndex the index of the relocation offset
+        /// \return
+        Iterator Offset(const RelocationOffset* offset, uint32_t relocationIndex) {
+            Iterator it;
+            it.block = this;
+            it.ptr = data.data() + offset->offset;
+            it.relocationIndex = relocationIndex;
+#ifndef NDEBUG
+            it.debugRevision = debugRevision;
+#endif
+            return it;
         }
 
         /// Iterator
@@ -519,6 +637,11 @@ namespace IL {
             it.debugRevision = debugRevision;
 #endif
             return it;
+        }
+
+        /// Get the source span of this basic block
+        SourceSpan GetSourceSpan() const {
+            return sourceSpan;
         }
 
         /// Get a relocation offset from an index
@@ -566,6 +689,9 @@ namespace IL {
 
         /// Number of instructions
         uint32_t count{0};
+
+        /// Source spain
+        SourceSpan sourceSpan;
 
         /// The shared identifier map
         IdentifierMap &map;

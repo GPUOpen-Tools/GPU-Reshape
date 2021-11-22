@@ -26,6 +26,7 @@ namespace IL {
         /// \return
         Program* Copy() const {
             auto program = new (allocators) Program(allocators);
+            program->map.SetBound(map.GetMaxID());
 
             // Copy all functions
             for (const Function& fn : functions) {

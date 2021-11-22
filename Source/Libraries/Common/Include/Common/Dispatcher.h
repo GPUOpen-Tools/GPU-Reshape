@@ -46,6 +46,10 @@ public:
     /// Add a job to the dispatcher
     /// \param job the job to be added
     void Add(const DispatcherJob& job) {
+        if (job.bucket) {
+            job.bucket->Increment();
+        }
+
         pool.Add(&job, 1);
     }
 

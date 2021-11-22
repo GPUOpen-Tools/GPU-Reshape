@@ -4,14 +4,41 @@
 #include <Common/Assert.h>
 
 // Backend
+#include "Source.h"
 #include "OpCode.h"
 #include "LiteralType.h"
 #include "ID.h"
 
 namespace IL {
     struct Instruction {
+        /// Reinterpret this instruction, asserts on validity
+        /// \return the casted instruction
+        template<typename T>
+        const T* As() const {
+            ASSERT(Is<T>(), "Bad instruction cast");
+            return static_cast<const T*>(this);
+        }
+
+        /// Cast this instruction
+        /// \return the casted instruction, nullptr if invalid
+        template<typename T>
+        const T* Cast() const {
+            if (!Is<T>()) {
+                return nullptr;
+            }
+
+            return static_cast<T*>(this);
+        }
+
+        /// Check if this instruction is of type
+        template<typename T>
+        bool Is() const {
+            return T::kOpCode == opCode;
+        }
+
         OpCode opCode;
         ID result;
+        Source source;
     };
 
     struct UnexposedInstruction : public Instruction {
@@ -25,12 +52,12 @@ namespace IL {
 
         LiteralType type;
         uint8_t bitWidth;
+        bool signedness;
 
         union {
             double  fp;
             int64_t integral;
         } value;
-
     };
 
     struct LoadInstruction : public Instruction {

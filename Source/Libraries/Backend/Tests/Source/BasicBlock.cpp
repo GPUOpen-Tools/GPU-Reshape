@@ -20,7 +20,7 @@ TEST_CASE("Backend.IL.BasicBlock") {
     a.type = IL::LiteralType::Int;
     a.bitWidth = 8;
     a.value.integral = 1;
-    auto aRef = bb->Insert(a);
+    auto aRef = bb->Append(a);
 
     IL::LiteralInstruction b;
     b.opCode = IL::OpCode::Literal;
@@ -28,14 +28,14 @@ TEST_CASE("Backend.IL.BasicBlock") {
     b.type = IL::LiteralType::Int;
     b.bitWidth = 8;
     b.value.integral = 1;
-    IL::InstructionRef<IL::LiteralInstruction> bRef = bb->Insert(b);
+    IL::InstructionRef<IL::LiteralInstruction> bRef = bb->Append(b);
 
     IL::AddInstruction add;
     add.opCode = IL::OpCode::Add;
     add.result = map.AllocID();
     add.lhs = a.result;
     add.rhs = b.result;
-    auto addRef = bb->Insert(add);
+    auto addRef = bb->Append(add);
 
     REQUIRE(aRef->value.integral == 1);
     REQUIRE(bRef.As<IL::LiteralInstruction>()->value.integral == 1);

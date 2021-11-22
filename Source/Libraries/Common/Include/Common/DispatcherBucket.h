@@ -13,9 +13,14 @@ struct DispatcherBucket {
         counter = count;
     }
 
-    /// Increment the counter
+    /// Increment the counter by a vlaue
     void AddCounter(uint32_t count) {
         counter += count;
+    }
+
+    /// Increment the counter
+    void Increment() {
+        counter++;
     }
 
     /// Decrement the counter, signal if done
