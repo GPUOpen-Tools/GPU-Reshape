@@ -19,7 +19,6 @@ namespace IL {
                     return value.template Ref<T>();
                 } else {
                     auto value = basicBlock->Append(instruction);
-                    insertionPoint = std::next(value);
                     return value.template Ref<T>();
                 }
             }
@@ -51,7 +50,7 @@ namespace IL {
 
                 // Instrumentation must inherit the source instruction for specialized backend operands
                 //  ? Not all instruction parameters are exposed, and altering these may change the intended behaviour
-                instruction.source = InstructionRef<>(insertionPoint)->source;
+                instruction.source = InstructionRef<>(insertionPoint)->source.Modify();
 
                 auto value = basicBlock->Replace(insertionPoint, instruction);
                 insertionPoint = value;
@@ -91,20 +90,29 @@ namespace IL {
             insertionPoint = ref;
         }
 
-        /// Add an integral instruction
-        /// \param result the result id
-        /// \param bitWidth the bit width of the type
-        /// \param value the constant value
+        /// Declare int type
+        /// \param bitWidth bit width of the integer
+        /// \param _signed signed state
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Integral(ID result, uint8_t bitWidth, int64_t value) {
-            LiteralInstruction instr{};
-            instr.opCode = OpCode::Literal;
-            instr.source = InvalidSource;
-            instr.result = result;
-            instr.type = LiteralType::Int;
+        InstructionRef <IntTypeInstruction> IntType(uint8_t bitWidth, bool _signed) {
+            IntTypeInstruction instr{};
+            instr.opCode = OpCode::IntType;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
             instr.signedness = true;
             instr.bitWidth = bitWidth;
-            instr.value.integral = value;
+            return Op(instr);
+        }
+
+        /// Declare floating point type
+        /// \param bitWidth bit width of the floating point
+        /// \return instruction reference
+        InstructionRef <FPTypeInstruction> FPType(uint8_t bitWidth) {
+            FPTypeInstruction instr{};
+            instr.opCode = OpCode::FPType;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.bitWidth = bitWidth;
             return Op(instr);
         }
 
@@ -112,8 +120,74 @@ namespace IL {
         /// \param bitWidth the bit width of the type
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Integral(uint8_t bitWidth, int64_t value) {
-            return Integral(map->AllocID(), bitWidth, value);
+        InstructionRef <LiteralInstruction> Integral(uint8_t bitWidth, int64_t value, bool signedness) {
+            LiteralInstruction instr{};
+            instr.opCode = OpCode::Literal;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.type = LiteralType::Int;
+            instr.signedness = signedness;
+            instr.bitWidth = bitWidth;
+            instr.value.integral = value;
+            return Op(instr);
+        }
+
+        /// Add an int constant
+        /// \param bitWidth the bit width of the type
+        /// \param value the constant value
+        /// \return instruction reference
+        InstructionRef <LiteralInstruction> Int(uint8_t bitWidth, int64_t value) {
+            return Integral(bitWidth, value, true);
+        }
+
+        /// Add a uint constant
+        /// \param bitWidth the bit width of the type
+        /// \param value the constant value
+        /// \return instruction reference
+        InstructionRef <LiteralInstruction> UInt(uint8_t bitWidth, int64_t value) {
+            return Integral(bitWidth, value, false);
+        }
+
+        /// Add a 32 bit integral instruction
+        /// \param value the constant value
+        /// \return instruction reference
+        InstructionRef <LiteralInstruction> Int(int32_t value) {
+            return Int(32, value);
+        }
+
+        /// Add a 16 bit integral instruction
+        /// \param value the constant value
+        /// \return instruction reference
+        InstructionRef <LiteralInstruction> Int(int16_t value) {
+            return Int(16, value);
+        }
+
+        /// Add a 8 bit integral instruction
+        /// \param value the constant value
+        /// \return instruction reference
+        InstructionRef <LiteralInstruction> Int(int8_t value) {
+            return Int(8, value);
+        }
+
+        /// Add a 32 bit integral instruction
+        /// \param value the constant value
+        /// \return instruction reference
+        InstructionRef <LiteralInstruction> UInt(uint32_t value) {
+            return UInt(32, value);
+        }
+
+        /// Add a 16 bit integral instruction
+        /// \param value the constant value
+        /// \return instruction reference
+        InstructionRef <LiteralInstruction> UInt(uint16_t value) {
+            return UInt(16, value);
+        }
+
+        /// Add a 8 bit integral instruction
+        /// \param value the constant value
+        /// \return instruction reference
+        InstructionRef <LiteralInstruction> UInt(uint8_t value) {
+            return UInt(8, value);
         }
 
         /// Add a floating point instruction
@@ -121,11 +195,11 @@ namespace IL {
         /// \param bitWidth the bit width of the type
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> FP(ID result, uint8_t bitWidth, double value) {
+        InstructionRef <LiteralInstruction> FP(uint8_t bitWidth, double value) {
             LiteralInstruction instr{};
             instr.opCode = OpCode::Literal;
-            instr.source = InvalidSource;
-            instr.result = result;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
             instr.type = LiteralType::FP;
             instr.signedness = true;
             instr.bitWidth = bitWidth;
@@ -133,33 +207,15 @@ namespace IL {
             return Op(instr);
         }
 
-        /// Add a floating point instruction
-        /// \param bitWidth the bit width of the type
-        /// \param value the constant value
-        /// \return instruction reference
-        InstructionRef <LiteralInstruction> FP(uint8_t bitWidth, double value) {
-            return FP(map->AllocID(), bitWidth, value);
-        }
-
-        /// Emit an unexposed instruction
-        /// \param result optional, the result id
-        /// \param backendOpCode the unexposed opcode value
-        /// \return instruction reference
-        InstructionRef <UnexposedInstruction> Unexposed(ID result, uint32_t backendOpCode) {
-            UnexposedInstruction instr{};
-            instr.opCode = OpCode::Unexposed;
-            instr.source = InvalidSource;
-            instr.result = result;
-            return Op(instr);
-        }
-
         /// Load an address
         /// \param address the address to be loaded
         /// \return instruction reference
         InstructionRef <LoadInstruction> Load(ID address) {
+            ASSERT(IsMapped(address), "Unmapped identifier");
+
             LoadInstruction instr{};
             instr.opCode = OpCode::Load;
-            instr.source = InvalidSource;
+            instr.source = Source::Invalid();
             instr.address = address;
             instr.result = map->AllocID();
             return Op(instr);
@@ -170,9 +226,11 @@ namespace IL {
         /// \param value the value to be stored
         /// \return instruction reference
         InstructionRef <StoreInstruction> Store(ID address, ID value) {
+            ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
+
             StoreInstruction instr{};
             instr.opCode = OpCode::Store;
-            instr.source = InvalidSource;
+            instr.source = Source::Invalid();
             instr.result = InvalidID;
             instr.address = address;
             instr.value = value;
@@ -185,9 +243,11 @@ namespace IL {
         /// \param value the element data
         /// \return instruction reference
         InstructionRef <StoreBufferInstruction> StoreBuffer(ID buffer, ID index, ID value) {
+            ASSERT(IsMapped(buffer) && IsMapped(index) && IsMapped(value), "Unmapped identifier");
+
             StoreBufferInstruction instr{};
             instr.opCode = OpCode::StoreBuffer;
-            instr.source = InvalidSource;
+            instr.source = Source::Invalid();
             instr.buffer = buffer;
             instr.index = index;
             instr.value = value;
@@ -196,26 +256,305 @@ namespace IL {
         }
 
         /// Binary add two values
-        /// \param result the result id
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <AddInstruction> Add(ID result, ID lhs, ID rhs) {
+        InstructionRef <AddInstruction> Add(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
             AddInstruction instr{};
             instr.opCode = OpCode::Add;
-            instr.source = InvalidSource;
-            instr.result = result;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
             return Op(instr);
         }
 
-        /// Binary add two values
+        /// Binary sub two values
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <AddInstruction> Add(ID lhs, ID rhs) {
-            return Add(map->AllocID(), lhs, rhs);
+        InstructionRef <SubInstruction> Sub(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            SubInstruction instr{};
+            instr.opCode = OpCode::Sub;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Binary div two values
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <DivInstruction> Div(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            DivInstruction instr{};
+            instr.opCode = OpCode::Div;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Binary mul two values
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <MulInstruction> Mul(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            MulInstruction instr{};
+            instr.opCode = OpCode::Mul;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Check for equality
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <EqualInstruction> Equal(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            EqualInstruction instr{};
+            instr.opCode = OpCode::Equal;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Check if two values are not equal
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <NotEqualInstruction> NotEqual(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            NotEqualInstruction instr{};
+            instr.opCode = OpCode::NotEqual;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Check if one value is greater than another
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <GreaterThanInstruction> GreaterThan(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            GreaterThanInstruction instr{};
+            instr.opCode = OpCode::GreaterThan;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Check if one value is greater than or equal to another
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <GreaterThanEqualInstruction> GreaterThanEqual(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            GreaterThanEqualInstruction instr{};
+            instr.opCode = OpCode::GreaterThanEqual;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Check if one value is less than another
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <LessThanInstruction> LessThan(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            LessThanInstruction instr{};
+            instr.opCode = OpCode::LessThan;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Check if one value is less than or equal to another
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <LessThanEqualInstruction> LessThanEqual(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            LessThanEqualInstruction instr{};
+            instr.opCode = OpCode::LessThanEqual;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Perform a bitwise or
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <BitOrInstruction> BitOr(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            BitOrInstruction instr{};
+            instr.opCode = OpCode::BitOr;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Perform a bitwise and
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <BitAndInstruction> BitAnd(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            BitAndInstruction instr{};
+            instr.opCode = OpCode::BitAnd;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Perform a bitwise left shift
+        /// \param lhs value the value to be shifted
+        /// \param rhs shift the bit shift count
+        /// \return instruction reference
+        InstructionRef <BitShiftLeftInstruction> BitShiftLeft(ID value, ID shift) {
+            ASSERT(IsMapped(value) && IsMapped(shift), "Unmapped identifier");
+
+            BitShiftLeftInstruction instr{};
+            instr.opCode = OpCode::BitShiftLeft;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            instr.shift = shift;
+            return Op(instr);
+        }
+
+        /// Perform a bitwise right shift
+        /// \param lhs value the value to be shifted
+        /// \param rhs shift the bit shift count
+        /// \return instruction reference
+        InstructionRef <BitShiftRightInstruction> BitShiftRight(ID value, ID shift) {
+            ASSERT(IsMapped(value) && IsMapped(shift), "Unmapped identifier");
+
+            BitShiftRightInstruction instr{};
+            instr.opCode = OpCode::BitShiftRight;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            instr.shift = shift;
+            return Op(instr);
+        }
+
+        /// Branch to a block
+        /// \param branch the destination block
+        /// \return instruction reference
+        InstructionRef <BranchInstruction> Branch(BasicBlock* branch) {
+            ASSERT(branch, "Invalid branch");
+
+            BranchInstruction instr{};
+            instr.opCode = OpCode::Branch;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.branch = branch->GetID();
+            return Op(instr);
+        }
+
+        /// Conditionally branch to a block
+        /// \param cond the condition
+        /// \param pass the block branched to if cond is true
+        /// \param fail the block branched ot if cond is false
+        /// \return instruction reference
+        InstructionRef <BranchConditionalInstruction> BranchConditional(ID cond, BasicBlock* pass, BasicBlock* fail) {
+            ASSERT(IsMapped(cond), "Unmapped identifier");
+            ASSERT(pass && fail, "Invalid branch");
+
+            BranchConditionalInstruction instr{};
+            instr.opCode = OpCode::BranchConditional;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.cond = cond;
+            instr.pass = pass->GetID();
+            instr.fail = fail->GetID();
+            return Op(instr);
+        }
+
+        /// Export a shader export
+        /// \param exportID the allocation id for the export
+        /// \param value the value to be exported
+        /// \return instruction reference
+        InstructionRef <ExportInstruction> Export(ShaderExportID exportID, ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            ExportInstruction instr{};
+            instr.opCode = OpCode::Export;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.exportID = exportID;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Construct and export a shader export
+        /// \param exportID the allocation id for the export
+        /// \param value the value to be exported, constructed internally
+        /// \return instruction reference
+        template<typename T>
+        InstructionRef <ExportInstruction> Export(ShaderExportID exportID, const T& value) {
+            ExportInstruction instr{};
+            instr.opCode = OpCode::Export;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.exportID = exportID;
+            instr.value = value.Construct(*this);
+            return Op(instr);
+        }
+
+        /// Alloca a varaible
+        /// \param type the varaible type
+        /// \return instruction reference
+        InstructionRef <AllocaInstruction> Alloca(ID type) {
+            ASSERT(IsMapped(type), "Unmapped identifier");
+
+            AllocaInstruction instr{};
+            instr.opCode = OpCode::Alloca;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.type = type;
+            return Op(instr);
         }
 
         /// Is this emitter good?
@@ -234,6 +573,11 @@ namespace IL {
         }
 
     private:
+        /// Check if an id is mapped
+        bool IsMapped(ID id) const {
+            return id != InvalidID;
+        }
+
         /// Perform the operation
         template<typename T>
         InstructionRef <T> Op(T &instruction) {

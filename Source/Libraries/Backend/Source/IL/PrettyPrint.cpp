@@ -41,6 +41,9 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
     }
 
     switch (instr->opCode) {
+        default:
+            ASSERT(false, "Unknown instruction");
+            break;
         case OpCode::None: {
             line << "None";
             break;
@@ -111,10 +114,117 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "StoreBuffer buffer:%" << store->buffer << " index:%" << store->index << " value:%" << store->value;
             break;
         }
+        case OpCode::IntType: {
+            auto type = instr->As<IL::IntTypeInstruction>();
+            line << "IntType width:%" << type->bitWidth << " signed:%" << type->signedness;
+            break;
+        }
+        case OpCode::FPType: {
+            auto type = instr->As<IL::FPTypeInstruction>();
+            line << "IntType width:%" << type->bitWidth;
+            break;
+        }
+        case OpCode::Sub: {
+            auto sub = instr->As<IL::SubInstruction>();
+            line << "Sub %" << sub->lhs << " %" << sub->rhs;
+            break;
+        }
+        case OpCode::Div: {
+            auto sub = instr->As<IL::SubInstruction>();
+            line << "Sub %" << sub->lhs << " %" << sub->rhs;
+            break;
+        }
+        case OpCode::Mul: {
+            auto mul = instr->As<IL::MulInstruction>();
+            line << "Mul %" << mul->lhs << " %" << mul->rhs;
+            break;
+        }
+        case OpCode::Or: {
+            auto _or = instr->As<IL::OrInstruction>();
+            line << "Or %" << _or->lhs << " %" << _or->rhs;
+            break;
+        }
+        case OpCode::And: {
+            auto _and = instr->As<IL::AndInstruction>();
+            line << "And %" << _and->lhs << " %" << _and->rhs;
+            break;
+        }
+        case OpCode::Equal: {
+            auto equal = instr->As<IL::EqualInstruction>();
+            line << "Equal %" << equal->lhs << " %" << equal->rhs;
+            break;
+        }
+        case OpCode::NotEqual: {
+            auto notEqual = instr->As<IL::NotEqualInstruction>();
+            line << "NotEqual %" << notEqual->lhs << " %" << notEqual->rhs;
+            break;
+        }
+        case OpCode::LessThan: {
+            auto lessThan = instr->As<IL::LessThanInstruction>();
+            line << "LessThan %" << lessThan->lhs << " %" << lessThan->rhs;
+            break;
+        }
+        case OpCode::LessThanEqual: {
+            auto lessThanEqual = instr->As<IL::LessThanEqualInstruction>();
+            line << "LessThanEqual %" << lessThanEqual->lhs << " %" << lessThanEqual->rhs;
+            break;
+        }
+        case OpCode::GreaterThan: {
+            auto greaterThan = instr->As<IL::GreaterThanInstruction>();
+            line << "GreaterThan %" << greaterThan->lhs << " %" << greaterThan->rhs;
+            break;
+        }
+        case OpCode::GreaterThanEqual: {
+            auto greaterThanEqual = instr->As<IL::GreaterThanEqualInstruction>();
+            line << "GreaterThanEqual %" << greaterThanEqual->lhs << " %" << greaterThanEqual->rhs;
+            break;
+        }
+        case OpCode::Branch: {
+            auto branch = instr->As<IL::BranchInstruction>();
+            line << "Branch %" << branch->branch;
+            break;
+        }
+        case OpCode::BranchConditional: {
+            auto branch = instr->As<IL::BranchConditionalInstruction>();
+            line << "BranchConditional cond:%" << branch->cond << " pass:%" << branch->pass << " fail:%" << branch->fail;
+            break;
+        }
+        case OpCode::BitOr: {
+            auto bitOr = instr->As<IL::BitOrInstruction>();
+            line << "BitOr %" << bitOr->lhs << " %" << bitOr->rhs;
+            break;
+        }
+        case OpCode::BitAnd: {
+            auto bitAnd = instr->As<IL::BitAndInstruction>();
+            line << "BitAnd %" << bitAnd->lhs << " %" << bitAnd->rhs;
+            break;
+        }
+        case OpCode::BitShiftLeft: {
+            auto bitShiftLeft = instr->As<IL::BitShiftLeftInstruction>();
+            line << "BitShiftLeft %" << bitShiftLeft->value << " shift:%" << bitShiftLeft->shift;
+            break;
+        }
+        case OpCode::BitShiftRight: {
+            auto bitShiftRight = instr->As<IL::BitShiftRightInstruction>();
+            line << "BitShiftRight %" << bitShiftRight->value << " shift:%" << bitShiftRight->shift;
+            break;
+        }
+        case OpCode::Export: {
+            auto _export = instr->As<IL::ExportInstruction>();
+            line << "Export value:%" << _export->value << " exportID:" << _export->exportID;
+            break;
+        }
+        case OpCode::Alloca: {
+            auto _alloca = instr->As<IL::AllocaInstruction>();
+            line << "Alloca %" << _alloca->type;
+            break;
+        }
+        case OpCode::StoreTexture:
+            break;
     }
 
-    if (instr->source != IL::InvalidSource) {
-        line << " [" << instr->source << "]";
+    if (instr->source.Valid()) {
+        line << " [" << instr->source.codeOffset << "]";
     }
 
     line << "\n";

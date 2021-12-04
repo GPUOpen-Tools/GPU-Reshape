@@ -1,0 +1,12 @@
+/* Generated */
+
+#include <Common/Align.h>
+#include <Message/MessageStream.h>
+#include <Message/MessageContainers.h>
+#include <Message/MessageSubStream.h>
+
+$HEADER
+
+$MESSAGES
+
+$FOOTER

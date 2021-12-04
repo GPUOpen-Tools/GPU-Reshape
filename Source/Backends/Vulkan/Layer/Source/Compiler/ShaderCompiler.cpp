@@ -5,6 +5,7 @@
 // Backend
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
+#include <Backend/IShaderFeature.h>
 
 // Common
 #include <Common/Dispatcher.h>
@@ -17,7 +18,7 @@
 // TODO: Expand into a more versatile system
 #define SPV_SHADER_COMPILER_DUMP 0
 
-bool ShaderCompiler::Initialize() {
+bool ShaderCompiler::Install() {
     dispatcher = registry->Get<Dispatcher>();
     if (!dispatcher) {
         return false;
@@ -37,11 +38,18 @@ bool ShaderCompiler::Initialize() {
     features.resize(featureCount);
     host->Enumerate(&featureCount, features.data());
 
+    // Get all shader features
+    for (IFeature *feature: features) {
+        if (IShaderFeature *shaderFeature = feature->QueryInterface<IShaderFeature>()) {
+            shaderFeatures.push_back(shaderFeature);
+        }
+    }
+
     // OK
     return true;
 }
 
-void ShaderCompiler::Add(DeviceDispatchTable* table, ShaderModuleState *state, uint64_t featureBitSet, DispatcherBucket *bucket) {
+void ShaderCompiler::Add(DeviceDispatchTable *table, ShaderModuleState *state, uint64_t featureBitSet, DispatcherBucket *bucket) {
     auto data = new(registry->GetAllocators()) ShaderJob{
         .table = table,
         .state = state,
@@ -73,13 +81,25 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         }
     }
 
+#if SPV_SHADER_COMPILER_DUMP
+    std::ofstream outBeforeIL("module.before.txt");
+    IL::PrettyPrint(*job.state->spirvModule->GetProgram(), outBeforeIL);
+    outBeforeIL.close();
+#endif
+
     // Create a copy of the module, don't modify the source
-    SpvModule* module = job.state->spirvModule->Copy();
+    SpvModule *module = job.state->spirvModule->Copy();
 
     // Pass through all features
-    for (IFeature *feature: features) {
-        feature->Inject(*module->GetProgram());
+    for (IShaderFeature *shaderFeature: shaderFeatures) {
+        shaderFeature->Inject(*module->GetProgram());
     }
+
+#if SPV_SHADER_COMPILER_DUMP
+    std::ofstream outAfterIL("module.after.txt");
+    IL::PrettyPrint(*module->GetProgram(), outAfterIL);
+    outAfterIL.close();
+#endif
 
     // Recompile the program
     if (!module->Recompile(

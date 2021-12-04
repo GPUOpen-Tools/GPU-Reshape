@@ -27,8 +27,8 @@ class PipelineCompiler : public IComponent {
 public:
     COMPONENT(PipelineCompiler);
 
-    /// Initialize this compiler
-    bool Initialize();
+    /// Install this compiler
+    bool Install();
 
     /// Add a pipeline batch job
     /// \param states all pipeline states

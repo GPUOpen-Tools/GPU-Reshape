@@ -3,16 +3,54 @@
 #include <cstdint>
 
 namespace IL {
-    /// Source value, word offset for the source instruction
-    using Source = uint32_t;
-
     /// Invalid, unmapped, source
-    static constexpr Source InvalidSource = 0xFFFFFFFF;
+    static constexpr uint32_t InvalidOffset = 0x7FFFFFFF;
+
+    /// Source value, word offset for the source instruction
+    struct Source {
+        /// Create source from code
+        static Source Code(uint32_t code) {
+            Source source;
+            source.codeOffset = code;
+            source.modified = 0;
+            return source;
+        }
+
+        /// Invalid source
+        static Source Invalid() {
+            Source source;
+            source.codeOffset = InvalidOffset;
+            source.modified = 0;
+            return source;
+        }
+
+        /// Modify this source, only applies if the code offset is valid
+        Source Modify() const {
+            Source source;
+            source.codeOffset = codeOffset;
+            source.modified = Valid();
+            return source;
+        }
+
+        /// Is this source valid?
+        bool Valid() const {
+            return codeOffset != InvalidOffset;
+        }
+
+        /// Can this source be trivially copied? (fx. memcpy)
+        bool TriviallyCopyable() const {
+            return codeOffset != InvalidOffset && !modified;
+        }
+
+        uint32_t codeOffset : 31;
+        uint32_t modified   : 1;
+    };
+
 
     /// Source span, represents a word region for the source instructions
     struct SourceSpan {
-        Source begin;
-        Source end;
+        uint32_t begin{InvalidOffset};
+        uint32_t end{InvalidOffset};
     };
 
     /// Get the word count of a type

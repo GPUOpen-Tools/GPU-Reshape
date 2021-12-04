@@ -64,7 +64,7 @@ struct SpvRelocationStream {
     /// Stitch this stream
     /// \param out the output vector
     void Stitch(std::vector<uint32_t> &out) {
-        IL::Source offset = 0;
+        uint32_t offset = 0;
 
         // Stitch all blocks
         for (auto it = blocks.begin(); it != blocks.end(); it++) {

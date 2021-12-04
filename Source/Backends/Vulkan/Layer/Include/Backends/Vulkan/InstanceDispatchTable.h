@@ -3,15 +3,20 @@
 // Layer
 #include "Vulkan.h"
 
+// Backend
+#include <Backend/Environment.h>
+
 // Common
 #include <Common/Allocators.h>
 
 // Std
 #include <mutex>
+#include <vector>
 #include <map>
 
 // Forward declarations
 class Registry;
+class IFeature;
 
 struct InstanceDispatchTable {
     /// Add a new table
@@ -52,6 +57,12 @@ struct InstanceDispatchTable {
 
     /// Shared registry
     Registry* registry;
+
+    /// Optional environment, ignored if creation parameters supply a registry
+    Backend::Environment environment;
+
+    /// All features
+    std::vector<IFeature*> features;
 
     /// Callbacks
     PFN_vkGetInstanceProcAddr next_vkGetInstanceProcAddr;

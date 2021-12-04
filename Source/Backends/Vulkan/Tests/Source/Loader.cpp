@@ -1,8 +1,11 @@
-#include "Loader.h"
+#include <Loader.h>
 
 // Std
 #include <cstdlib>
 #include <filesystem>
+
+// Backend
+#include <Backend/EnvironmentInfo.h>
 
 // Bridge
 #include <Bridge/MemoryBridge.h>
@@ -31,9 +34,8 @@ Loader::Loader() {
     instanceExtensions.resize(instanceExtensionCount);
     REQUIRE(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, instanceExtensions.data()) == VK_SUCCESS);
 
-    // Create memory bridge
-    bridge = new (registry.GetAllocators()) MemoryBridge();
-    registry.Add(bridge);
+    // Load the environment
+    environment.Install(Backend::EnvironmentInfo{});
 }
 
 bool Loader::SupportsInstanceLayer(const char *name) const {
@@ -89,9 +91,10 @@ void Loader::CreateInstance() {
     applicationInfo.pApplicationName = "GPUOpen GBV";
     applicationInfo.pEngineName      = "GPUOpen GBV";
 
+    // Pass down the environment
     VkGPUOpenGPUValidationCreateInfo gpuOpenInfo{};
     gpuOpenInfo.sType    = VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO;
-    gpuOpenInfo.registry = &registry;
+    gpuOpenInfo.registry = environment.GetRegistry();
 
     // Instance info
     VkInstanceCreateInfo instanceCreateInfo{};

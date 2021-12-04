@@ -1,15 +1,31 @@
+#----- Generator lib -----#
+
+# Create generator
+add_library(
+    Libraries.Message.Generator.Lib STATIC
+    Generator/Source/Generators/PrimitiveTypeMap.cpp
+    Generator/Source/Generators/MessageGenerator.cpp
+)
+
+# Includes
+target_include_directories(Libraries.Message.Generator.Lib PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
+
+# Local links
+target_link_libraries(Libraries.Message.Generator.Lib Libraries.Common)
+
 #----- Generator -----#
 
 # Create generator
 add_executable(
     Libraries.Message.Generator
     Generator/Source/Generator.cpp
-    Generator/Source/CPP.cpp
-    Generator/Source/CS.cpp
 )
 
+# Includes
+target_include_directories(Libraries.Message.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
+
 # Local links
-target_link_libraries(Libraries.Message.Generator Libraries.Common)
+target_link_libraries(Libraries.Message.Generator Libraries.Common Libraries.Message.Generator.Lib)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
@@ -21,27 +37,33 @@ ExternalProject_Link(Libraries.Message.Generator ArgParse)
 ExternalProject_Link(Libraries.Message.Generator TinyXML2 tinyxml2)
 
 # Schema helper
-function(Project_AddSchema OUT_GENERATED SCHEMA SCHEMA_OUT_PATH)
+function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir Libraries.Message.Generator SOURCE_DIR)
 
     # Schema
     set(Schema ${CMAKE_CURRENT_SOURCE_DIR}/${SCHEMA})
-    set(Template ${GeneratorSourceDir}/Generator/Templates/Message)
+    set(Templates ${GeneratorSourceDir}/Generator/Templates)
 
     # Set output path
     get_filename_component(SchemaName ${SCHEMA} NAME_WE)
     set(OutputPath ${SCHEMA_OUT_PATH}/${SchemaName}.h)
+
+    if (NOT ${LIBS} STREQUAL "")
+        set(LibPaths -libs ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${LIBS})
+    endif()
 
     # Generate the schema
     add_custom_command(
         OUTPUT ${OutputPath}
         DEPENDS
             Libraries.Message.Generator
+            ${LIBS}
             ${Schema}
         COMMAND Libraries.Message.Generator
             -schemaxml ${Schema}
-            -template ${Template}
+            -templates ${Templates}
+            ${LibPaths}
             -lang cpp
             -opath ${SCHEMA_OUT_PATH}
     )
@@ -49,6 +71,11 @@ function(Project_AddSchema OUT_GENERATED SCHEMA SCHEMA_OUT_PATH)
     # Set output
     set(${OUT_GENERATED} "${${OUT_GENERATED}};${OutputPath}" PARENT_SCOPE)
 endfunction()
+
+# Default schema helper
+macro(Project_AddSchema OUT_GENERATED SCHEMA SCHEMA_OUT_PATH)
+    Project_AddSchemaEx(${OUT_GENERATED} "" ${SCHEMA} ${SCHEMA_OUT_PATH})
+endmacro()
 
 #----- Message -----#
 

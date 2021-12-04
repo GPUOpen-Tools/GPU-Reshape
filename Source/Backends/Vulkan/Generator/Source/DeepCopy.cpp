@@ -7,7 +7,7 @@
 
 // Common
 #include <Common/Assert.h>
-#include <Common/Trim.h>
+#include <Common/String.h>
 
 /// Generator metadata
 struct ObjectTreeMetadata {

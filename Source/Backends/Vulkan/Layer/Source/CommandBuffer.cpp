@@ -1,5 +1,6 @@
 #include <Backends/Vulkan/CommandBuffer.h>
 #include <Backends/Vulkan/DeviceDispatchTable.h>
+#include <Backends/Vulkan/InstanceDispatchTable.h>
 #include <Backends/Vulkan/CommandPoolState.h>
 #include <Backends/Vulkan/PipelineState.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
@@ -8,8 +9,10 @@
 #include <Backend/IFeature.h>
 
 void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
-    for (uint32_t i = 0; i < static_cast<uint32_t>(table->features.size()); i++) {
-        IFeature *feature = table->features[i];
+    InstanceDispatchTable* instance = table->parent;
+
+    for (uint32_t i = 0; i < static_cast<uint32_t>(instance->features.size()); i++) {
+        IFeature *feature = instance->features[i];
 
         // Get the hook table
         FeatureHookTable hookTable = feature->GetHookTable();
@@ -52,7 +55,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, co
     CommandPoolState *poolState = table->states_commandPool.Get(pAllocateInfo->commandPool);
 
     // Returned vulkan handles
-    auto *vkCommandBuffers = AllocaArray(VkCommandBuffer, pAllocateInfo->commandBufferCount);
+    auto *vkCommandBuffers = ALLOCA_ARRAY(VkCommandBuffer, pAllocateInfo->commandBufferCount);
 
     // Pass down callchain
     VkResult result = table->next_vkAllocateCommandBuffers(device, pAllocateInfo, vkCommandBuffers);
@@ -116,7 +119,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkFreeCommandBuffers(VkDevice device, VkCommandP
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
     // Unwrapped states
-    auto vkCommandBuffers = AllocaArray(VkCommandBuffer, commandBufferCount);
+    auto vkCommandBuffers = ALLOCA_ARRAY(VkCommandBuffer, commandBufferCount);
 
     // Unwrap and release wrappers
     for (uint32_t i = 0; i < commandBufferCount; i++) {

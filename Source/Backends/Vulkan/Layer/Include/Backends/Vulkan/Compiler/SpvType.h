@@ -3,11 +3,15 @@
 #include <cstdint>
 
 enum class SpvTypeKind : uint8_t {
+    Bool,
+    Void,
     Int,
     FP,
     Vector,
     Matrix,
-    Compound
+    Compound,
+    Pointer,
+    Unexposed
 };
 
 struct SpvType {
@@ -15,12 +19,55 @@ struct SpvType {
 
     }
 
+    /// Reinterpret this type
+    /// \tparam T the target type
+    template<typename T>
+    const T* As() const {
+        ASSERT(kind == T::kKind, "Invalid cast");
+        return static_cast<const T*>(this);
+    }
+
+    /// Cast this type
+    /// \tparam T the target type
+    /// \return nullptr is invalid cast
+    template<typename T>
+    const T* Cast() const {
+        if (kind != T::kKind) {
+            return nullptr;
+        }
+
+        return static_cast<const T*>(this);
+    }
+
+    /// Check if this type is valid
+    bool Valid() const {
+        return id != InvalidSpvId;
+    }
+
     SpvTypeKind kind;
     SpvId id{InvalidSpvId};
 };
 
+struct SpvBoolType : public SpvType {
+    static constexpr SpvTypeKind kKind = SpvTypeKind::Bool;
+
+    SpvBoolType() : SpvType(kKind) {
+
+    }
+};
+
+struct SpvVoidType : public SpvType {
+    static constexpr SpvTypeKind kKind = SpvTypeKind::Void;
+
+    SpvVoidType() : SpvType(kKind) {
+
+    }
+};
+
 struct SpvIntType : public SpvType {
-    SpvIntType() : SpvType(SpvTypeKind::Int) {
+    static constexpr SpvTypeKind kKind = SpvTypeKind::Int;
+
+    SpvIntType() : SpvType(kKind) {
 
     }
 
@@ -29,7 +76,9 @@ struct SpvIntType : public SpvType {
 };
 
 struct SpvFPType : public SpvType {
-    SpvFPType() : SpvType(SpvTypeKind::FP) {
+    static constexpr SpvTypeKind kKind = SpvTypeKind::Int;
+
+    SpvFPType() : SpvType(kKind) {
 
     }
 
@@ -37,20 +86,34 @@ struct SpvFPType : public SpvType {
 };
 
 struct SpvVectorType : public SpvType {
-    SpvVectorType() : SpvType(SpvTypeKind::Vector) {
+    static constexpr SpvTypeKind kKind = SpvTypeKind::Int;
+
+    SpvVectorType() : SpvType(kKind) {
 
     }
 
-    SpvType* containedType;
-    uint8_t  dimension;
+    const SpvType* containedType;
+    uint8_t dimension;
 };
 
 struct SpvMatrixType : public SpvType {
-    SpvMatrixType() : SpvType(SpvTypeKind::Matrix) {
+    static constexpr SpvTypeKind kKind = SpvTypeKind::Int;
+
+    SpvMatrixType() : SpvType(kKind) {
 
     }
 
-    SpvType* containedType;
-    uint8_t  rows;
-    uint8_t  columns;
+    const SpvType* containedType;
+    uint8_t rows;
+    uint8_t columns;
+};
+
+struct SpvPointerType : public SpvType {
+    static constexpr SpvTypeKind kKind = SpvTypeKind::Pointer;
+
+    SpvPointerType() : SpvType(kKind) {
+
+    }
+
+    const SpvType* pointee;
 };

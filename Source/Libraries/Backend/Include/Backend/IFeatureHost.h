@@ -1,7 +1,9 @@
 #pragma once
 
+// Common
 #include <Common/IComponent.h>
 
+// Forward declarations
 class IFeature;
 
 class IFeatureHost : public IComponent {

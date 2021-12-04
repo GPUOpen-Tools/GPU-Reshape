@@ -5,8 +5,8 @@
 #include <cctype>
 #include <locale>
 
-// https://stackoverflow.com/questions/216823/how-to-trim-a-stdstring
 namespace std {
+    // https://stackoverflow.com/questions/216823/how-to-trim-a-stdstring
     static inline void ltrim(std::string &s) {
         s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
             return !std::isspace(ch);
@@ -37,5 +37,15 @@ namespace std {
     static inline std::string trim_copy(std::string s) {
         trim(s);
         return s;
+    }
+
+    static inline bool iequals(const string &a, const string &b) {
+        return std::equal(
+            a.begin(), a.end(),
+            b.begin(), b.end(),
+            [](char a, char b) {
+                return tolower(a) == tolower(b);
+            }
+        );
     }
 }

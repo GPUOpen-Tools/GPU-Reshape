@@ -12,13 +12,14 @@
 class Dispatcher;
 struct DispatcherBucket;
 class IFeature;
+class IShaderFeature;
 
 class ShaderCompiler : public IComponent {
 public:
     COMPONENT(ShaderCompiler);
 
-    /// Initialize this compiler
-    bool Initialize();
+    /// Install this compiler
+    bool Install();
 
     /// Add a shader job
     /// \param state the state to be compiled
@@ -45,4 +46,5 @@ private:
 
     /// All features
     std::vector<IFeature *> features;
+    std::vector<IShaderFeature *> shaderFeatures;
 };

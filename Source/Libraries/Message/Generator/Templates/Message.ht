@@ -1,8 +1,10 @@
-/* Generated */
+struct ALIGN_TO(4) $NAME {
+	static constexpr MessageID kID = $ID;
 
-#include <Common/Align.h>
-#include <Message/MessageStream.h>
-#include <Message/MessageContainers.h>
-#include <Message/MessageSubStream.h>
+$TYPES
 
-$MESSAGES
+$FUNCTIONS
+
+$MEMBERS
+};
+

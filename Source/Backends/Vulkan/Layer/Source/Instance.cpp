@@ -3,10 +3,16 @@
 #include <Backends/Vulkan/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Compiler/PipelineCompiler.h>
+#include <Backends/Vulkan/Export/ShaderExportHost.h>
 
 // Common
 #include <Common/Dispatcher.h>
 #include <Common/Registry.h>
+
+// Backend
+#include <Backend/EnvironmentInfo.h>
+#include <Backend/IFeatureHost.h>
+#include <Backend/IFeature.h>
 
 // Vulkan
 #include <vulkan/vk_layer.h>
@@ -48,6 +54,27 @@ VkResult VKAPI_PTR Hook_vkEnumerateInstanceExtensionProperties(uint32_t *pProper
     return VK_SUCCESS;
 }
 
+static void PoolAndInstallFeatures(InstanceDispatchTable* table) {
+    // Get the feature host
+    IFeatureHost* host = table->registry->Get<IFeatureHost>();
+    if (!host) {
+        return;
+    }
+
+    // Pool feature count
+    uint32_t featureCount;
+    host->Enumerate(&featureCount, nullptr);
+
+    // Pool features
+    table->features.resize(featureCount);
+    host->Enumerate(&featureCount, table->features.data());
+
+    // Install features
+    for (IFeature* feature : table->features) {
+        feature->Install();
+    }
+}
+
 VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
     auto chainInfo = static_cast<const VkLayerInstanceCreateInfo *>(pCreateInfo->pNext);
 
@@ -82,24 +109,30 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
 
     // Find optional create info
     if (auto createInfo = FindStructureType<VkGPUOpenGPUValidationCreateInfo>(pCreateInfo, VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO)) {
+        // Environment is pre-created at this point
         table->registry = createInfo->registry;
     } else {
-        ASSERT(false, "Not supported... for now!");
+        // Initialize the standard environment
+        table->environment.Install(Backend::EnvironmentInfo());
+        table->registry = table->environment.GetRegistry();
     }
 
     // Setup the default allocators
     table->allocators = table->registry->GetAllocators();
 
-    // Create the dispatcher
-    table->registry->Add(new (table->allocators) Dispatcher());
+    // Install the shader export host
+    table->registry->AddNew<ShaderExportHost>();
 
-    // Create the shader compiler
-    auto shaderCompiler = table->registry->Add(new (table->allocators) ShaderCompiler());
-    shaderCompiler->Initialize();
+    // Install the shader compiler
+    auto shaderCompiler = table->registry->AddNew<ShaderCompiler>();
+    shaderCompiler->Install();
 
-    // Create the pipeline compiler
-    auto pipelineCompiler = table->registry->Add(new (table->allocators) PipelineCompiler());
-    pipelineCompiler->Initialize();
+    // Install the pipeline compiler
+    auto pipelineCompiler = table->registry->AddNew<PipelineCompiler>();
+    pipelineCompiler->Install();
+
+    // Install all features
+    PoolAndInstallFeatures(table);
 
     // OK
     return VK_SUCCESS;
