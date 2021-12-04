@@ -23,6 +23,7 @@ struct PipelineState;
 class Registry;
 class IFeature;
 class IBridge;
+struct InstanceDispatchTable;
 
 struct DeviceDispatchTable {
     /// Add a new table
@@ -58,6 +59,9 @@ struct DeviceDispatchTable {
     /// States
     VkDevice object;
 
+    /// Parent table
+    InstanceDispatchTable* parent{nullptr};
+
     /// Allocators
     Allocators allocators;
 
@@ -66,9 +70,6 @@ struct DeviceDispatchTable {
 
     /// Message bridge
     IBridge* bridge;
-
-    /// All features
-    std::vector<IFeature*> features;
 
     /// Tracked objects
     TrackedObject<VkCommandPool, CommandPoolState>   states_commandPool;

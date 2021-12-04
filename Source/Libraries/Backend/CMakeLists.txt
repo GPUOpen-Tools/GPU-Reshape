@@ -1,4 +1,3 @@
-
 #----- Backend -----#
 
 # Generate the schemas
@@ -10,6 +9,7 @@ add_library(
     Libraries.Backend STATIC
     Source/Backend.cpp
     Source/FeatureHost.cpp
+    Source/Environment.cpp
     Source/IL/PrettyPrint.cpp
 
     # Generated schemas
@@ -20,7 +20,26 @@ add_library(
 target_include_directories(Libraries.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(Libraries.Backend PUBLIC Libraries.Message)
+target_link_libraries(Libraries.Backend PUBLIC Libraries.Message Libraries.Bridge)
+
+#----- Generators -----#
+
+add_library(
+    Libraries.Backend.Generator SHARED
+    Generator/Source/ShaderExportGenerator.cpp
+    Generator/Source/Plugin.cpp
+)
+
+# Includes
+target_include_directories(Libraries.Backend.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
+
+# Links
+target_link_libraries(Libraries.Backend.Generator PUBLIC Libraries.Backend Libraries.Message.Generator.Lib)
+
+# Default schema helper
+macro(Project_AddShaderSchema OUT_GENERATED SCHEMA SCHEMA_OUT_PATH)
+    Project_AddSchemaEx(${OUT_GENERATED} Libraries.Backend.Generator ${SCHEMA} ${SCHEMA_OUT_PATH})
+endmacro()
 
 #----- Tests -----#
 

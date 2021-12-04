@@ -12,7 +12,7 @@ add_library(
     Include/Common/DispatcherWorker.h
     Include/Common/DispatcherJobPool.h
     Include/Common/DispatcherJob.h
-    Include/Common/Trim.h
+    Include/Common/String.h
 )
 
 # Include directories

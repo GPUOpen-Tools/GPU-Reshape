@@ -9,12 +9,13 @@
 #include <Schemas/Pipeline.h>
 #include <Schemas/Config.h>
 
-// Layer
-#include "Loader.h"
+// Tests
+#include <Loader.h>
 
 // Backend
 #include <Backend/FeatureHost.h>
 #include <Backend/IFeature.h>
+#include <Backend/IShaderFeature.h>
 #include <Backend/IL/Program.h>
 #include <Backend/IL/Emitter.h>
 
@@ -24,16 +25,14 @@
 // HLSL
 #include <Data/WriteUAV.h>
 
-TEST_CASE_METHOD(Loader, "Layer.StartupAndShutdown", "[Vulkan]") {
-    REQUIRE(AddInstanceLayer("VK_GPUOpen_GBV"));
-
-    // Create the instance & device
-    CreateInstance();
-    CreateDevice();
-}
-
-class OffsetStoresByOneFeature : public IFeature {
+class OffsetStoresByOneFeature : public IFeature, public IShaderFeature {
 public:
+    COMPONENT(OffsetStoresByOneFeature);
+
+    bool Install() override {
+        return true;
+    }
+
     FeatureHookTable GetHookTable() override {
         return FeatureHookTable{};
     }
@@ -66,7 +65,7 @@ public:
 
                 // Bias the op
                 IL::Emitter<> append(program, bb, storeBuffer);
-                auto bias = append.Add(storeBuffer->value, append.Integral(32, 1));
+                auto bias = append.Add(storeBuffer->value, append.UInt(32, 1));
 
                 // Replace the store operation
                 IL::Emitter<IL::Op::Instrument> storeEmitter(program, bb, storeBuffer);
@@ -75,18 +74,26 @@ public:
             }
         }
     }
+
+    void *QueryInterface(ComponentID id) override {
+        switch (id) {
+            case IFeature::kID:
+                return static_cast<IFeature*>(this);
+            case IShaderFeature::kID:
+                return static_cast<IShaderFeature*>(this);
+        }
+
+        return nullptr;
+    }
 };
 
-TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
+TEST_CASE_METHOD(Loader, "Layer.Feature.OffsetStoresByOne", "[Vulkan]") {
     REQUIRE(AddInstanceLayer("VK_GPUOpen_GBV"));
 
     Registry* registry = GetRegistry();
 
-    auto* host = new (registry->GetAllocators()) FeatureHost();
-    {
-        host->Register(new (registry->GetAllocators()) OffsetStoresByOneFeature());
-    }
-    registry->Add(host);
+    auto* host = registry->Get<IFeatureHost>();
+    host->Register(registry->New<OffsetStoresByOneFeature>());
 
     // Create the instance & device
     CreateInstance();
@@ -125,13 +132,13 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
     poolInfo.queueFamilyIndex = GetPrimaryQueueFamily();
 
     // Attempt to create the pool
-    VkCommandPool pool;
-    REQUIRE(vkCreateCommandPool(GetDevice(), &poolInfo, nullptr, &pool) == VK_SUCCESS);
+    VkCommandPool commandPool;
+    REQUIRE(vkCreateCommandPool(GetDevice(), &poolInfo, nullptr, &commandPool) == VK_SUCCESS);
 
     VkCommandBufferAllocateInfo allocateInfo{};
     allocateInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocateInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocateInfo.commandPool        = pool;
+    allocateInfo.commandPool        = commandPool;
     allocateInfo.commandBufferCount = 1;
 
     // Attempt to allocate the command buffer
@@ -162,26 +169,26 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
     layoutInfo.setLayoutCount = 1;
     layoutInfo.pSetLayouts = &setLayout;
 
-    VkPipelineLayout layout;
-    REQUIRE(vkCreatePipelineLayout(GetDevice(), &layoutInfo, nullptr, &layout) == VK_SUCCESS);
+    VkPipelineLayout pipelineLayout;
+    REQUIRE(vkCreatePipelineLayout(GetDevice(), &layoutInfo, nullptr, &pipelineLayout) == VK_SUCCESS);
 
     VkShaderModuleCreateInfo moduleCreateInfo{};
     moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     moduleCreateInfo.codeSize = sizeof(kSPIRVWriteUAV);
     moduleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(kSPIRVWriteUAV);
 
-    VkShaderModule module;
-    REQUIRE(vkCreateShaderModule(GetDevice(), &moduleCreateInfo, nullptr, &module) == VK_SUCCESS);
+    VkShaderModule shaderModule;
+    REQUIRE(vkCreateShaderModule(GetDevice(), &moduleCreateInfo, nullptr, &shaderModule) == VK_SUCCESS);
 
     VkPipelineShaderStageCreateInfo stageInfo{};
     stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stageInfo.pName = "main";
-    stageInfo.module = module;
+    stageInfo.module = shaderModule;
     stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkComputePipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipelineInfo.layout = layout;
+    pipelineInfo.layout = pipelineLayout;
     pipelineInfo.stage  = stageInfo;
 
     VkPipeline pipeline;
@@ -226,7 +233,7 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
             REQUIRE(vkBeginCommandBuffer(commandBuffer, &beginInfo) == VK_SUCCESS);
 
             vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &set, 0, nullptr);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &set, 0, nullptr);
 
             vkCmdDispatch(commandBuffer, 4, 1, 1);
 
@@ -257,7 +264,7 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
 
     SECTION("Instrumented Buffer Write")
     {
-        IBridge* bridge = GetBridge();
+        IBridge* bridge = registry->Get<IBridge>();
 
         MessageStream stream;
         {
@@ -281,7 +288,7 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
             REQUIRE(vkBeginCommandBuffer(commandBuffer, &beginInfo) == VK_SUCCESS);
 
             vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &set, 0, nullptr);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &set, 0, nullptr);
 
             vkCmdDispatch(commandBuffer, 4, 1, 1);
 
@@ -312,8 +319,8 @@ TEST_CASE_METHOD(Loader, "Layer.ComputeDispatch", "[Vulkan]") {
 
     // Release handles
     vkDestroyPipeline(GetDevice(), pipeline, nullptr);
-    vkDestroyShaderModule(GetDevice(), module, nullptr);
-    vkDestroyPipelineLayout(GetDevice(), layout, nullptr);
-    vkFreeCommandBuffers(GetDevice(), pool, 1, &commandBuffer);
-    vkDestroyCommandPool(GetDevice(), pool, nullptr);
+    vkDestroyShaderModule(GetDevice(), shaderModule, nullptr);
+    vkDestroyPipelineLayout(GetDevice(), pipelineLayout, nullptr);
+    vkFreeCommandBuffers(GetDevice(), commandPool, 1, &commandBuffer);
+    vkDestroyCommandPool(GetDevice(), commandPool, nullptr);
 }

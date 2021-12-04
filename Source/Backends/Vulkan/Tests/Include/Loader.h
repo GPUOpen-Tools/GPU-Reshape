@@ -4,8 +4,8 @@
 #include <catch2/catch.hpp>
 #include <vulkan/vulkan.h>
 
-// Common
-#include <Common/Registry.h>
+// Backend
+#include <Backend/Environment.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -79,13 +79,7 @@ public:
     /// Get the registry
     [[nodiscard]]
     Registry* GetRegistry() {
-        return &registry;
-    }
-
-    /// Get the bridge
-    [[nodiscard]]
-    IBridge* GetBridge() {
-        return bridge;
+        return environment.GetRegistry();
     }
 
 private:
@@ -106,7 +100,5 @@ private:
     std::vector<const char*> enabledDeviceExtensions;
 
 private:
-    Registry registry;
-
-    IBridge* bridge;
+    Backend::Environment environment;
 };

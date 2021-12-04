@@ -3,23 +3,25 @@
 // Backend
 #include "FeatureHookTable.h"
 
+// Common
+#include <Common/IComponent.h>
+
 // Forward declarations
 class IMessageStorage;
-namespace IL {
-    struct Program;
-}
 
-class IFeature {
+class IFeature : public IComponent {
 public:
+    COMPONENT(IFeature);
+
+    /// Install this feature
+    /// \return success code
+    virtual bool Install() = 0;
+
     /// Get the hook table of this feature
     /// \return constructed hook table
-    virtual FeatureHookTable GetHookTable() = 0;
+    virtual FeatureHookTable GetHookTable() { return {}; }
 
     /// Collect all produced messages
     /// \param storage the output storage
-    virtual void CollectMessages(IMessageStorage* storage) = 0;
-
-    /// Perform injection into a program
-    /// \param program the program to be injected to
-    virtual void Inject(IL::Program& program) { /* no injection */ }
+    virtual void CollectMessages(IMessageStorage* storage) { }
 };

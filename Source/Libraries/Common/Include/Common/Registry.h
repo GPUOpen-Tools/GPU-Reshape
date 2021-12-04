@@ -33,8 +33,9 @@ public:
         std::lock_guard<std::mutex> guard(mutex);
 
         // Set the registry
-        component->allocators = allocators;
-        component->registry   = this;
+        component->allocators  = allocators;
+        component->registry    = this;
+        component->componentID = T::kID;
 
         // Append
         ASSERT(!components.count(T::kID), "Component already registered");
@@ -45,17 +46,51 @@ public:
     /// Add a component
     /// \param id the id of the component
     /// \param component the component to be added
+    template<typename T, typename... A>
+    T* AddNew(A&&... args) {
+        return Add(new (allocators) T(args...));
+    }
+
+    /// Add a component
+    /// \param id the id of the component
+    /// \param component the component to be added
+    template<typename T, typename... A>
+    T* New(A&&... args) {
+        auto* component = new (allocators) T(args...);
+
+        // Set the registry
+        component->allocators  = allocators;
+        component->registry    = this;
+        component->componentID = T::kID;
+
+        return component;
+    }
+
+    /// Add a component
+    /// \param id the id of the component
+    /// \param component the component to be added
     IComponent* Add(uint32_t id, IComponent* component) {
         std::lock_guard<std::mutex> guard(mutex);
 
         // Set the state
-        component->allocators = allocators;
-        component->registry   = this;
+        component->allocators  = allocators;
+        component->registry    = this;
+        component->componentID = id;
 
         // Append
         ASSERT(!components.count(id), "Component already registered");
         components[id] = component;
         return component;
+    }
+
+    /// Remove a component from this registry
+    /// \param component component to be removed
+    void Remove(IComponent* component) {
+        std::lock_guard<std::mutex> guard(mutex);
+
+        // Remove
+        ASSERT(components.count(component->componentID), "Component not registered");
+        components.erase(component->componentID);
     }
 
     /// Get a component

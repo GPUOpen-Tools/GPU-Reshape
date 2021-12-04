@@ -132,6 +132,18 @@ struct MessageStream {
         buffer.swap(other.buffer);
     }
 
+    /// Append another container
+    template<typename T>
+    void Append(const T& other) {
+        // Attempt to inherit the schema
+        ValidateOrSetSchema(other.GetSchema());
+
+        // Copy all data
+        buffer.resize(other.GetByteSize());
+        std::memcpy(buffer.data(), other.GetDataBegin(), buffer.size());
+        count = other.GetCount();
+    }
+
     /// Get the data begin pointer
     [[nodiscard]]
     const uint8_t* GetDataBegin() const {

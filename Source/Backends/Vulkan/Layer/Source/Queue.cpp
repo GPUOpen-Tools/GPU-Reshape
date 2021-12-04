@@ -6,7 +6,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(queue));
 
     // Unwrapped submits
-    auto* vkSubmits = AllocaArray(VkSubmitInfo, submitCount);
+    auto* vkSubmits = ALLOCA_ARRAY(VkSubmitInfo, submitCount);
 
     // Number of command buffers
     uint32_t commandBufferCount = 0;
@@ -15,7 +15,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     }
 
     // Unwrapped command buffers
-    auto* vkCommandBuffers = AllocaArray(VkCommandBuffer, commandBufferCount);
+    auto* vkCommandBuffers = ALLOCA_ARRAY(VkCommandBuffer, commandBufferCount);
 
     // Unwrap all internal states
     for (uint32_t i = 0; i < submitCount; i++) {

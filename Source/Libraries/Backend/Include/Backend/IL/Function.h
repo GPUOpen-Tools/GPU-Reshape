@@ -9,6 +9,7 @@
 
 // Std
 #include <list>
+#include <map>
 
 namespace IL {
     struct Function {
@@ -41,10 +42,29 @@ namespace IL {
         }
 
         /// Allocate a new basic block
-        /// \return
+        /// \return allocated basic block
         BasicBlock* AllocBlock(ID bid) {
-            basicBlocks.emplace_back(allocators, std::ref(map), bid);
-            return &basicBlocks.back();
+            BasicBlock& bb = basicBlocks.emplace_back(allocators, std::ref(map), bid);
+            blockMap[bid] = &bb;
+            return &bb;
+        }
+
+        /// Allocate a new basic block
+        /// \return allocated basic block
+        BasicBlock* AllocBlock() {
+            return AllocBlock(map.AllocID());
+        }
+
+        /// Get a block from an identifier
+        /// \param bid basic block identifier
+        /// \return nullptr if not found
+        BasicBlock* GetBlock(ID bid) const {
+            auto it = blockMap.find(bid);
+            if (it == blockMap.end()) {
+                return nullptr;
+            }
+
+            return it->second;
         }
 
         /// Immortalize this function
@@ -126,5 +146,8 @@ namespace IL {
 
         /// Basic blocks
         std::list<BasicBlock> basicBlocks;
+
+        /// Block map
+        std::map<ID, BasicBlock*> blockMap;
     };
 }

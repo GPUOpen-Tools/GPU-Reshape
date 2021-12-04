@@ -3,7 +3,7 @@
 # Create generator
 add_executable(
     Backends.Vulkan.Generator
-    Generator/Source/Generator.cpp
+    Generator/Source/IGenerator.cpp
     Generator/Source/CommandBuffer.cpp
     Generator/Source/CommandBufferDispatchTable.cpp
     Generator/Source/DeepCopyObjects.cpp
@@ -112,9 +112,12 @@ add_library(
     Layer/Source/Pipeline.cpp
     Layer/Source/Queue.cpp
     Layer/Source/Compiler/SpvModule.cpp
+    Layer/Source/Compiler/SpvModuleParse.cpp
+    Layer/Source/Compiler/SpvModuleRecompile.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp
     Layer/Source/Compiler/PipelineCompiler.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
+    Layer/Source/Export/ShaderExportHost.cpp
 
     # Generated
     Layer/Source/CommandBuffer.Gen.cpp
@@ -160,13 +163,18 @@ configure_file(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json ${CMAKE_LIBRAR
 set(Generated "")
 Project_AddHLSL(Generated cs_6_0 Tests/Data/WriteUAV.hlsl Tests/Include/Data/WriteUAV.h kSPIRVWriteUAV)
 
+# Generate the schema
+Project_AddShaderSchema(Generated Tests/Schemas/WritingNegativeValue.xml Tests/Include/Schemas)
+
 # Create test app
 add_executable(
     Backends.Vulkan.Tests
     Tests/Source/Main.cpp
     Tests/Source/Loader.cpp
     Tests/Source/UserData.cpp
-    Tests/Source/Layer.cpp
+    Tests/Source/Layer/Layer.cpp
+    Tests/Source/Layer/OffsetStoresByOne.cpp
+    Tests/Source/Layer/WritingNegativeValue.cpp
     Tests/Source/VMA.cpp
 
     # Generated

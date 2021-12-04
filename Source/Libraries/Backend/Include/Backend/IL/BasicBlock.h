@@ -195,8 +195,14 @@ namespace IL {
         /// Typed iterator for sugar syntax
         template<typename T>
         struct TypedIterator : public Iterator {
-            TypedIterator(const Iterator& it) : Iterator(it) {
+            using iterator_category = std::forward_iterator_tag;
+            using difference_type   = std::ptrdiff_t;
+            using value_type        = const T*;
+            using pointer           = value_type*;
+            using reference         = value_type&;
 
+            TypedIterator(const Iterator& it) : Iterator(it) {
+                ASSERT(it.GetOpCode() == T::kOpCode, "Invalid cast");
             }
 
             /// Ref cast
@@ -379,23 +385,22 @@ namespace IL {
         /// Append an instruction
         /// \param instruction the instruction to be inserted
         /// \return inserted reference
-        template<typename T>
-        TypedIterator<T> Append(const T &instruction) {
+        Iterator Append(const Instruction* instruction, uint32_t size) {
             MarkAsDirty();
 
             size_t offset = data.size();
-            data.resize(data.size() + sizeof(T));
-            std::memcpy(&data[offset], &instruction, sizeof(T));
+            data.resize(data.size() + size);
+            std::memcpy(&data[offset], instruction, size);
 
-            InstructionRef<T> ref;
+            InstructionRef<> ref;
             ref.basicBlock = this;
             ref.relocationOffset = relocationAllocator.Allocate();
             ref.relocationOffset->offset = offset;
 
             relocationTable.push_back(ref.relocationOffset);
 
-            if (instruction.result != InvalidID) {
-                map.AddInstruction(ref, instruction.result);
+            if (instruction->result != InvalidID) {
+                map.AddInstruction(ref, instruction->result);
             }
 
             count++;
@@ -405,6 +410,21 @@ namespace IL {
 #endif
 
             return Offset(ref.relocationOffset, relocationTable.size() - 1);
+        }
+
+        /// Append an instruction
+        /// \param instruction the instruction to be inserted
+        /// \return inserted reference
+        Iterator Append(const Instruction* instruction) {
+            return Append(instruction, IL::GetSize(instruction->opCode));
+        }
+
+        /// Append an instruction
+        /// \param instruction the instruction to be inserted
+        /// \return inserted reference
+        template<typename T>
+        TypedIterator<T> Append(const T &instruction) {
+            return Append(static_cast<const Instruction*>(&instruction), sizeof(T));
         }
 
         /// Append an instruction at a given point
@@ -506,52 +526,61 @@ namespace IL {
             return ResummarizeRelocationTable(instruction.relocationOffset);
         }
 
-        /// Insert a new relocation offset
-        /// \param insertion the insertion relocation offset
-        /// \param offset the new offset to be inserted
-        /// \return the new iterator
-        Iterator InsertRelocationOffset(const RelocationOffset* insertion, RelocationOffset* offset) {
-            auto relocationIt = std::find(relocationTable.begin(), relocationTable.end(), insertion);
-            ASSERT(relocationIt != relocationTable.end(), "Missing relocation offset");
+        /// Split this basic block from an iterator onwards
+        /// \param destBlock the destination basic block in which all [splitIterator, end) will be inserted
+        /// \param splitIterator the iterator from which on the block is splitted, inclusive
+        /// \return the first iterator in the new basic block
+        Iterator Split(BasicBlock* destBlock, const Iterator& splitIterator) {
+            ASSERT(destBlock->IsEmpty(), "Cannot split into a filled basic block");
 
-            // Get the relocation index
-            auto it = relocationTable.insert(relocationIt, offset);
-            uint32_t index = it - relocationTable.begin();
-
-            // Resumarrize from the index
-            ResummarizeRelocationTable(offset, index);
-            return Offset(offset, index);
-        }
-
-        /// Resummarize the relocation table for references
-        /// \param offset the starting offset
-        /// \return the iterator for a given offset
-        Iterator ResummarizeRelocationTable(const RelocationOffset* offset) {
-            auto relocationIt = std::find(relocationTable.begin(), relocationTable.end(), offset);
-            ASSERT(relocationIt != relocationTable.end(), "Missing relocation offset");
-
-            // Get the relocation index
-            uint32_t index = relocationIt - relocationTable.begin();
-
-            // Resumarrize from the index
-            ResummarizeRelocationTable(offset, index);
-            return Offset(offset, index);
-        }
-
-        /// Resummarize the relocation table for references
-        /// \param offset the offset to start from
-        /// \param relocationIndex the relocation index to start from
-        void ResummarizeRelocationTable(const RelocationOffset* offset, uint32_t relocationIndex) {
-            for (auto it = Offset(offset, relocationIndex); it != end(); it++) {
-                relocationTable[it.relocationIndex]->offset = it.ptr - data.data();
+            // Append all instructions after the split point to the new basic block
+            Iterator moveIterator = splitIterator;
+            for (; moveIterator != end(); moveIterator++) {
+                destBlock->Append(moveIterator.Get());
+                count--;
             }
+
+            auto ptr = reinterpret_cast<IL::Instruction*>(data.data() + relocationTable[splitIterator.relocationIndex]->offset);
+
+            // Erase moved instruction data
+            data.erase(data.begin() + relocationTable[splitIterator.relocationIndex]->offset, data.end());
+
+            // Free relocation indices
+            auto relocationIt = relocationTable.begin() + splitIterator.relocationIndex;
+            for (auto it = relocationIt; it != relocationTable.end(); it++) {
+                relocationAllocator.Free(*it);
+            }
+
+            // Erase relocation indices
+            relocationTable.erase(relocationIt, relocationTable.end());
+
+            // Return first iterator
+            return destBlock->begin();
         }
 
-        /// Resummarize the relocation table for references
-        void ResummarizeRelocationTable() {
-            for (auto it = begin(); it != end(); it++) {
-                relocationTable[it.relocationIndex]->offset = it.ptr - data.data();
-            }
+        /// Split this basic block from an iterator onwards
+        /// \param destBlock the destination basic block in which all [splitIterator, end) will be inserted
+        /// \param splitIterator the iterator from which on the block is splitted, inclusive
+        /// \return the first iterator in the new basic block
+        template<typename T>
+        TypedIterator<T> Split(BasicBlock* destBlock, const Iterator& splitIterator) {
+            return Split(destBlock, splitIterator);
+        }
+
+        /// Split this basic block from an iterator onwards
+        /// \param destBlock the destination basic block in which all [splitIterator, end) will be inserted
+        /// \param splitIterator the iterator from which on the block is splitted, inclusive
+        /// \return the first iterator in the new basic block
+        template<typename T>
+        TypedIterator<T> Split(BasicBlock* destBlock, const TypedIterator<T>& splitIterator) {
+            return Split(destBlock, static_cast<Iterator>(splitIterator));
+        }
+
+        /// Get the terminator instruction
+        /// \return the terminator instruction
+        Iterator GetTerminator() {
+            ASSERT(count, "No instructions");
+            return Offset(relocationTable.back(), relocationTable.size() - 1);
         }
 
         /// Mark this basic block as dirty
@@ -562,6 +591,16 @@ namespace IL {
         /// Check if this basic block has been modified
         bool IsModified() const {
             return dirty;
+        }
+
+        /// Check if this basic block is empty
+        bool IsEmpty() const {
+            return data.empty();
+        }
+
+        /// Set the source span
+        void SetSourceSpan(SourceSpan span) {
+            sourceSpan = span;
         }
 
         /// Immortalize this basic block
@@ -578,21 +617,6 @@ namespace IL {
         /// Get the id of this basic block
         ID GetID() const {
             return id;
-        }
-
-        /// Get an iterator from a relocation offset
-        /// \param offset the relocation offset
-        /// \param relocationIndex the index of the relocation offset
-        /// \return
-        Iterator Offset(const RelocationOffset* offset, uint32_t relocationIndex) {
-            Iterator it;
-            it.block = this;
-            it.ptr = data.data() + offset->offset;
-            it.relocationIndex = relocationIndex;
-#ifndef NDEBUG
-            it.debugRevision = debugRevision;
-#endif
-            return it;
         }
 
         /// Iterator
@@ -674,11 +698,77 @@ namespace IL {
 #endif
 
     private:
+        /// Insert a new relocation offset
+        /// \param insertion the insertion relocation offset
+        /// \param offset the new offset to be inserted
+        /// \return the new iterator
+        Iterator InsertRelocationOffset(const RelocationOffset* insertion, RelocationOffset* offset) {
+            auto relocationIt = std::find(relocationTable.begin(), relocationTable.end(), insertion);
+            ASSERT(relocationIt != relocationTable.end(), "Missing relocation offset");
+
+            // Get the relocation index
+            auto it = relocationTable.insert(relocationIt, offset);
+            uint32_t index = it - relocationTable.begin();
+
+            // Resumarrize from the index
+            ResummarizeRelocationTable(offset, index);
+            return Offset(offset, index);
+        }
+
+        /// Resummarize the relocation table for references
+        /// \param offset the starting offset
+        /// \return the iterator for a given offset
+        Iterator ResummarizeRelocationTable(const RelocationOffset* offset) {
+            auto relocationIt = std::find(relocationTable.begin(), relocationTable.end(), offset);
+            ASSERT(relocationIt != relocationTable.end(), "Missing relocation offset");
+
+            // Get the relocation index
+            uint32_t index = relocationIt - relocationTable.begin();
+
+            // Resumarrize from the index
+            ResummarizeRelocationTable(offset, index);
+            return Offset(offset, index);
+        }
+
+        /// Resummarize the relocation table for references
+        /// \param offset the offset to start from
+        /// \param relocationIndex the relocation index to start from
+        void ResummarizeRelocationTable(const RelocationOffset* offset, uint32_t relocationIndex) {
+            for (auto it = Offset(offset, relocationIndex); it != end(); it++) {
+                // TODO: Stop when the offset is the same! (Not guaranteed atm, for the future)
+                relocationTable[it.relocationIndex]->offset = it.ptr - data.data();
+            }
+        }
+
+        /// Resummarize the relocation table for references
+        void ResummarizeRelocationTable() {
+            for (auto it = begin(); it != end(); it++) {
+                // TODO: Stop when the offset is the same! (Not guaranteed atm, for the future)
+                relocationTable[it.relocationIndex]->offset = it.ptr - data.data();
+            }
+        }
+
+        /// Get an iterator from a relocation offset
+        /// \param offset the relocation offset
+        /// \param relocationIndex the index of the relocation offset
+        /// \return
+        Iterator Offset(const RelocationOffset* offset, uint32_t relocationIndex) {
+            Iterator it;
+            it.block = this;
+            it.ptr = data.data() + offset->offset;
+            it.relocationIndex = relocationIndex;
+#ifndef NDEBUG
+            it.debugRevision = debugRevision;
+#endif
+            return it;
+        }
+
         /// Remove a relocation offset
         void RemoveRelocationOffset(RelocationOffset *offset) {
             auto it = std::find(relocationTable.begin(), relocationTable.end(), offset);
             ASSERT(it != relocationTable.end(), "Dangling relocation offset");
             relocationTable.erase(it);
+            relocationAllocator.Free(offset);
         }
 
     private:

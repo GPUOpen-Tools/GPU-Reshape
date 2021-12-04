@@ -6,6 +6,9 @@
 #include <Backends/Vulkan/PipelineState.h>
 #include <Backends/Vulkan/CommandBuffer.h>
 
+// Bridge
+#include <Bridge/IBridge.h>
+
 // Common
 #include <Common/Registry.h>
 #include <Common/TaskGroup.h>
@@ -15,10 +18,17 @@
 #include <Schemas/Config.h>
 #include <Schemas/ShaderMetadata.h>
 
-InstrumentationController::InstrumentationController(Registry* registry, DeviceDispatchTable *table) : registry(registry), table(table) {
+InstrumentationController::InstrumentationController(DeviceDispatchTable *table) : table(table) {
+
+}
+
+void InstrumentationController::Install() {
     shaderCompiler = registry->Get<ShaderCompiler>();
     pipelineCompiler = registry->Get<PipelineCompiler>();
     dispatcher = registry->Get<Dispatcher>();
+
+    auto* bridge = registry->Get<IBridge>();
+    bridge->Register(this);
 }
 
 void InstrumentationController::Handle(const MessageStream *streams, uint32_t count) {

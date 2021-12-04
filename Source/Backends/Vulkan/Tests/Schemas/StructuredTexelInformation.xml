@@ -1,0 +1,6 @@
+<schema>
+    <shader-export name="StructuredTexelWriteInformation" structured="true">
+        <field name="index" type="array" element="uint32" length="3"/>
+        <field name="texel" type="array" element="float" length="4"/>
+    </shader-export>
+</schema>

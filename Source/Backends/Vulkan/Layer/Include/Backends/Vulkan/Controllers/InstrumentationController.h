@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/Vulkan/InstrumentationInfo.h>
+#include <Backends/Vulkan/Controllers/IController.h>
 
 // Common
 #include <Common/EventCounter.h>
@@ -26,9 +27,11 @@ struct ReferenceObject;
 class ShaderCompiler;
 class PipelineCompiler;
 
-class InstrumentationController final : public IBridgeListener {
+class InstrumentationController final : public IController, public IBridgeListener {
 public:
-    InstrumentationController(Registry* registry, DeviceDispatchTable* table);
+    InstrumentationController(DeviceDispatchTable* table);
+
+    void Install();
 
     /// Overrides
     void Handle(const MessageStream *streams, uint32_t count) final;
@@ -58,7 +61,6 @@ protected:
     void SetInstrumentationInfo(InstrumentationInfo& info, uint64_t bitSet, const MessageSubStream& stream);
 
 private:
-    Registry* registry;
     DeviceDispatchTable* table;
     ShaderCompiler* shaderCompiler;
     PipelineCompiler* pipelineCompiler;

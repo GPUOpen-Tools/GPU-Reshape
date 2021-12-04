@@ -36,41 +36,35 @@ struct SpvStream {
     /// Allocate an appended type
     /// \tparam T the type to be appended
     /// \return the allocated type, invalidated upon next insertion
-    template<typename T>
-    T* Allocate() {
-        uint32_t wordCount = sizeof(T) / sizeof(uint32_t);
-
+    SpvInstruction& Allocate(SpvOp op, uint32_t wordCount) {
         size_t offset = stream.size();
         stream.resize(stream.size() + wordCount);
-
-        return new (reinterpret_cast<T*>(&stream[offset])) T();
+        return *new (&stream[offset]) SpvInstruction(op, wordCount);
     }
 
     /// Template a source instruction
     /// \tparam T the templated instruction type
     /// \param source the source word offset
     /// \return the allocated instruction
-    template<typename T = SpvInstruction>
-    T* Template(uint32_t source) {
-        ASSERT(source != IL::InvalidSource, "Cannot template instruction without source");
-        auto* instruction = reinterpret_cast<const SpvInstruction*>(code + source);
+    SpvInstruction& Template(const IL::Source& source) {
+        ASSERT(source.Valid(), "Cannot template instruction without source");
+        auto* instruction = reinterpret_cast<const SpvInstruction*>(code + source.codeOffset);
 
         size_t offset = stream.size();
-        stream.insert(stream.end(), code + source, code + source + instruction->GetWordCount());
-        return reinterpret_cast<T*>(&stream[offset]);
+        stream.insert(stream.end(), code + source.codeOffset, code + source.codeOffset + instruction->GetWordCount());
+        return *reinterpret_cast<SpvInstruction*>(&stream[offset]);
     }
 
     /// Template a source instruction if the source operand is valid, otherwise allocate a new one
     /// \tparam T the templated instruction type
     /// \param source the source word offset
     /// \return the allocated instruction
-    template<typename T = SpvInstruction>
-    T* TemplateOrAllocate(uint32_t source) {
-        if (source == IL::InvalidSource) {
-            return Allocate<T>();
+    SpvInstruction& TemplateOrAllocate(SpvOp op, uint32_t wordCount, const IL::Source& source) {
+        if (!source.Valid()) {
+            return Allocate(op, wordCount);
         }
 
-        return Template<T>(source);
+        return Template(source);
     }
 
     /// Clear this stream

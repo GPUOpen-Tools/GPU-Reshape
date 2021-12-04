@@ -6,7 +6,7 @@
 #include <Common/Dispatcher.h>
 #include <Common/Registry.h>
 
-bool PipelineCompiler::Initialize() {
+bool PipelineCompiler::Install() {
     dispatcher = registry->Get<Dispatcher>();
     if (!dispatcher) {
         return false;
@@ -93,7 +93,7 @@ void PipelineCompiler::WorkerCompute(void *data) {
 
 void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     // Allocate creation info
-    auto createInfos = AllocaArray(VkGraphicsPipelineCreateInfo, batch.count);
+    auto createInfos = ALLOCA_ARRAY(VkGraphicsPipelineCreateInfo, batch.count);
 
     // Get the number of stages
     uint32_t stageCount = 0;
@@ -103,7 +103,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     }
 
     // Allocate stage infos
-    auto stageInfos = AllocaArray(VkPipelineShaderStageCreateInfo, stageCount);
+    auto stageInfos = ALLOCA_ARRAY(VkPipelineShaderStageCreateInfo, stageCount);
 
     // Populate all creation infos
     for (uint32_t i = 0; i < batch.count; i++) {
@@ -129,7 +129,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     }
 
     // Created pipelines
-    auto pipelines = AllocaArray(VkPipeline, batch.count);
+    auto pipelines = ALLOCA_ARRAY(VkPipeline, batch.count);
 
     // TODO: Pipeline cache?
     VkResult result = batch.table->next_vkCreateGraphicsPipelines(batch.table->object, nullptr, batch.count, createInfos, nullptr, pipelines);
@@ -161,7 +161,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 
 void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
     // Allocate creation info
-    auto createInfos = AllocaArray(VkComputePipelineCreateInfo, batch.count);
+    auto createInfos = ALLOCA_ARRAY(VkComputePipelineCreateInfo, batch.count);
 
     // Populate all creation infos
     for (uint32_t i = 0; i < batch.count; i++) {
@@ -183,7 +183,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
     }
 
     // Created pipelines
-    auto pipelines = AllocaArray(VkPipeline, batch.count);
+    auto pipelines = ALLOCA_ARRAY(VkPipeline, batch.count);
 
     // TODO: Pipeline cache?
     VkResult result = batch.table->next_vkCreateComputePipelines(batch.table->object, nullptr, batch.count, createInfos, nullptr, pipelines);

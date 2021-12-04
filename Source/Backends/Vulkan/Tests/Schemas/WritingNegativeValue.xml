@@ -1,0 +1,5 @@
+<schema>
+    <shader-export name="WritingNegativeValue">
+        <field name="ergo" type="uint32" bits="16"/>
+    </shader-export>
+</schema>

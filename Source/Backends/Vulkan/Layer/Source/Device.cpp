@@ -8,9 +8,6 @@
 // Common
 #include <Common/Registry.h>
 
-// Backend
-#include <Backend/IFeatureHost.h>
-
 // Bridge
 #include <Bridge/IBridge.h>
 
@@ -43,22 +40,6 @@ VkResult VKAPI_PTR Hook_vkEnumerateDeviceExtensionProperties(uint32_t *pProperty
     return VK_SUCCESS;
 }
 
-void PoolDeviceFeatures(DeviceDispatchTable* table) {
-    // Get the feature host
-    IFeatureHost* host = table->registry->Get<IFeatureHost>();
-    if (!host) {
-        return;
-    }
-
-    // Pool feature count
-    uint32_t featureCount;
-    host->Enumerate(&featureCount, nullptr);
-
-    // Pool features
-    table->features.resize(featureCount);
-    host->Enumerate(&featureCount, table->features.data());
-}
-
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     auto chainInfo = static_cast<const VkLayerDeviceCreateInfo *>(pCreateInfo->pNext);
 
@@ -89,6 +70,7 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     auto table = DeviceDispatchTable::Add(GetInternalTable(*pDevice), new DeviceDispatchTable{});
 
     // Inherit shared utilities from the instance
+    table->parent     = instanceTable;
     table->allocators = instanceTable->allocators;
     table->registry   = instanceTable->registry;
 
@@ -98,15 +80,12 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Populate the table
     table->Populate(*pDevice, getInstanceProcAddr, getDeviceProcAddr);
 
-    // Pool all features
-    PoolDeviceFeatures(table);
-
     // Create the proxies / associations between the backend vulkan commands and the features
     CreateDeviceCommandProxies(table);
 
-    // Create the instrumentation controller
-    table->instrumentationController = new (table->allocators) InstrumentationController(table->registry, table);
-    table->bridge->Register(table->instrumentationController);
+    // Install the instrumentation controller
+    table->instrumentationController = table->registry->New<InstrumentationController>(table);
+    table->instrumentationController->Install();
 
     // OK
     return VK_SUCCESS;
