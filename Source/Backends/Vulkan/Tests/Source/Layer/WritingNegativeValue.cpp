@@ -19,13 +19,19 @@
 #include <Backend/IShaderFeature.h>
 #include <Backend/IL/Program.h>
 #include <Backend/IL/Emitter.h>
-#include "Backend/IShaderExportHost.h"
+#include <Backend/IShaderExportHost.h>
+
+// Bridge
+#include <Bridge/IBridgeListener.h>
 
 // VMA
 #include <VMA/vk_mem_alloc.h>
 
 // HLSL
 #include <Data/WriteUAV.h>
+
+/// Dummy value for validation
+static constexpr uint32_t kProxy = 'p' + 'r' + 'o' + 'x' + 'y';
 
 class WritingNegativeValueFeature : public IFeature, public IShaderFeature {
 public:
@@ -86,7 +92,7 @@ public:
 
                     WritingNegativeValueMessage::ShaderExport msg;
                     msg.sguid = emitter.UInt(32, 0);
-                    msg.ergo = emitter.UInt(32, 'p' + 'r' + 'o' + 'x' + 'y');
+                    msg.ergo = emitter.UInt(32, kProxy);
                     emitter.Export(exportID, msg);
 
                     // Branch back
@@ -116,6 +122,28 @@ private:
     uint32_t messageUID{};
 
     MessageStream stream;
+};
+
+class WritingNegativeValueListener : public IBridgeListener {
+public:
+    void Handle(const MessageStream *streams, uint32_t count) override {
+        for (uint32_t i = 0; i < count; i++) {
+            ConstMessageStreamView<WritingNegativeValueMessage> view(streams[i]);
+
+            // Must have 4 messages (number of cs threads)
+            REQUIRE(view.GetCount() == 4);
+
+            // Validate all messages
+            for (auto it = view.GetIterator(); it; ++it) {
+                REQUIRE(it->sguid == 0);
+                REQUIRE(it->ergo == kProxy);
+            }
+
+            visited = true;
+        }
+    }
+
+    bool visited{false};
 };
 
 TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
@@ -258,6 +286,9 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
 
     IBridge* bridge = registry->Get<IBridge>();
 
+    WritingNegativeValueListener listener;
+    bridge->Register(WritingNegativeValueMessage::kID, &listener);
+
     MessageStream stream;
     {
         MessageStreamView view(stream);
@@ -296,6 +327,9 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
 
     // Wait for the results
     vkQueueWaitIdle(GetPrimaryQueue());
+
+    // Listener must have been invoked
+    REQUIRE(listener.visited);
 
     // Release handles
     vkDestroyPipeline(GetDevice(), pipeline, nullptr);

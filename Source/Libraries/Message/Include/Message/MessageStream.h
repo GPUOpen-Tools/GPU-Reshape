@@ -520,6 +520,12 @@ struct ConstMessageStreamView {
         return schema.GetStream();
     }
 
+    /// Get the number of messages
+    [[nodiscard]]
+    uint32_t GetCount() const {
+        return schema.GetStream().GetCount();
+    }
+
 private:
     MessageStreamSchema schema;
 };
@@ -546,6 +552,12 @@ struct ConstMessageStreamView<void, STREAM> {
     [[nodiscard]]
     MessageStream& GetStream() const {
         return schema.GetStream();
+    }
+
+    /// Get the number of messages
+    [[nodiscard]]
+    uint32_t GetCount() const {
+        return schema.GetStream().GetCount();
     }
 
 private:

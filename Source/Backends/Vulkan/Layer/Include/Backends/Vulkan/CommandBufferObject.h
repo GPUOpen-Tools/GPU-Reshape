@@ -2,9 +2,13 @@
 
 // Layer
 #include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
+#include "ReferenceObject.h"
 
 // Vulkan
 #include "Vulkan.h"
+
+// Std
+#include <vector>
 
 /// Forward declarations
 struct DeviceDispatchTable;
@@ -19,4 +23,7 @@ struct CommandBufferObject {
 
     /// Acquired dispatch table
     CommandBufferDispatchTable dispatchTable;
+
+    /// GPU lifetime references
+    std::vector<ReferenceObject*> gpuReferences;
 };

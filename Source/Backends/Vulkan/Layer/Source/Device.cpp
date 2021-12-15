@@ -74,6 +74,13 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->allocators = instanceTable->allocators;
     table->registry   = instanceTable->registry;
 
+    // Create the shared allocator
+    VmaAllocatorCreateInfo allocatorInfo{};
+    allocatorInfo.instance = instanceTable->object;
+    allocatorInfo.physicalDevice = physicalDevice;
+    allocatorInfo.device = *pDevice;
+    vmaCreateAllocator(&allocatorInfo, &table->vmaAllocator);
+
     // Get common components
     table->bridge = table->registry->Get<IBridge>();
 
