@@ -17,10 +17,12 @@ struct ShaderExportTypeInfo {
         info.messageSchema = Schema::GetSchema(T::kID);
         info.noSGUID = ShaderExport::kNoSGUID;
         info.structured = ShaderExport::kStructured;
+        info.typeSize = sizeof(T);
         return info;
     }
 
     MessageSchema messageSchema{};
     bool noSGUID{false};
     bool structured{false};
+    size_t typeSize{0};
 };

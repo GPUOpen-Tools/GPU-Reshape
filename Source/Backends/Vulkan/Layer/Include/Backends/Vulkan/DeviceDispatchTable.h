@@ -2,6 +2,7 @@
 
 // Layer
 #include "Vulkan.h"
+#include "VMA.h"
 #include "TrackedObject.h"
 #include "DependentObject.h"
 
@@ -99,6 +100,9 @@ struct DeviceDispatchTable {
     PFN_vkCreateComputePipelines  next_vkCreateComputePipelines;
     PFN_vkDestroyPipeline         next_vkDestroyPipeline;
     PFN_vkCmdBindPipeline         next_vkCmdBindPipeline;
+
+    /// Shared allocator
+    VmaAllocator vmaAllocator;
 
     /// Command buffer dispatch table
     std::mutex                 commandBufferMutex;

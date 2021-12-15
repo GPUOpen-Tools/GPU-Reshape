@@ -11,7 +11,7 @@
 struct ReferenceObject {
     virtual ~ReferenceObject() {
         // Ensure the object is fully released
-        ASSERT(users.load() == 0, "Dangling users to referenced object, use ReferenceObject::Release");
+        ASSERT(users.load() == 0, "Dangling users to referenced object, use destroyRef");
     }
 
     /// Add a user to this object

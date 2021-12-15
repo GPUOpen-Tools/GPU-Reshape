@@ -118,6 +118,9 @@ add_library(
     Layer/Source/Compiler/PipelineCompiler.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Export/ShaderExportHost.cpp
+    Layer/Source/Export/ShaderExportStreamAllocator.cpp
+    Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
+    Layer/Source/Export/ShaderExportStreamer.cpp
 
     # Generated
     Layer/Source/CommandBuffer.Gen.cpp
@@ -139,6 +142,7 @@ target_include_directories(
 
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Layer VulkanHeaders)
+ExternalProject_Link(Backends.Vulkan.Layer VMA)
 
 # Copy layer definition (configuration time)
 configure_file(Layer/Resources/VK_GPUOpen_GBV.json ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/VK_GPUOpen_GBV.json COPYONLY)
