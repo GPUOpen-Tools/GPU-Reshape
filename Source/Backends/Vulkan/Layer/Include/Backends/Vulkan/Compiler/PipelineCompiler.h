@@ -1,7 +1,8 @@
 #pragma once
 
 // Layer
-#include <Backends/Vulkan/PipelineState.h>
+#include <Backends/Vulkan/States/PipelineState.h>
+#include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
 
 // Common
 #include <Common/IComponent.h>
@@ -17,7 +18,7 @@ struct PipelineJob {
     PipelineState* state;
 
     /// TODO: Stack fallback
-    uint64_t* shaderModuleFeatureBitSets{nullptr};
+    ShaderModuleInstrumentationKey* shaderModuleInstrumentationKeys{nullptr};
 
     /// Pipeline specific feature bit set
     uint64_t featureBitSet;

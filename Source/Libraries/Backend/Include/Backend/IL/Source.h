@@ -49,6 +49,10 @@ namespace IL {
 
     /// Source span, represents a word region for the source instructions
     struct SourceSpan {
+        SourceSpan AppendSpan() const {
+            return {end, end};
+        }
+
         uint32_t begin{InvalidOffset};
         uint32_t end{InvalidOffset};
     };

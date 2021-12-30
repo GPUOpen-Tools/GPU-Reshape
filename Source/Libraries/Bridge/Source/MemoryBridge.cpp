@@ -47,14 +47,24 @@ void MemoryBridge::Commit() {
     storageConsumeCache.resize(streamCount);
     sharedStorage.ConsumeStreams(&streamCount, storageConsumeCache.data());
 
+    // TODO: Don't waste memory
+    storageOrderedCache.clear();
+
     // Collect all ordered streams
     for (MessageStream& stream : storageConsumeCache) {
+        // Skip unordered
+        if (stream.GetSchema().type != MessageSchemaType::Ordered) {
+            continue;
+        }
+
         storageOrderedCache.emplace_back().Swap(stream);
     }
 
     // Invoke ordered listeners
-    for (IBridgeListener* listener : orderedListeners) {
-        listener->Handle(storageOrderedCache.data(), static_cast<uint32_t>(storageOrderedCache.size()));
+    if (!storageOrderedCache.empty()) {
+        for (IBridgeListener* listener : orderedListeners) {
+            listener->Handle(storageOrderedCache.data(), static_cast<uint32_t>(storageOrderedCache.size()));
+        }
     }
 
     // Process all streams
@@ -77,7 +87,7 @@ void MemoryBridge::Commit() {
         MessageBucket& bucket = bucketIt->second;
 
         // Pass through all listeners
-        for (IBridgeListener* listener : orderedListeners) {
+        for (IBridgeListener* listener : bucket.listeners) {
             listener->Handle(&stream, 1);
         }
     }

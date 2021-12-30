@@ -2,6 +2,9 @@ project(gpu-validation)
 
 cmake_minimum_required(VERSION 3.19)
 
+# All options
+option(INSTALL_THIRD_PARTY "Fetch and install third party libraries" 0)
+
 # Ensure 64 bit
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     # Supported
@@ -12,14 +15,15 @@ endif()
 # Toolchain support
 if (MSVC)
     # Supported
+    add_compile_options(/std:c++latest)
 elseif(MINGW)
     message(WARNING "MinGW support not complete")
+
+    # Set the standard
+    set(CMAKE_CXX_STANDARD 17)
 else()
     message(FATAL_ERROR "Unsupported compiler ${CMAKE_CXX_COMPILER_ID}")
 endif()
-
-# Set the standard
-set(CMAKE_CXX_STANDARD 17)
 
 # Set all outputs to Bin/Config
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE})

@@ -1,9 +1,11 @@
 #pragma once
 
 // Layer
-#include "Vulkan.h"
-#include "ReferenceObject.h"
-#include "InstrumentationInfo.h"
+#include <Backends/Vulkan/Vulkan.h>
+#include <Backends/Vulkan/InstrumentationInfo.h>
+
+// Common
+#include <Common/ReferenceObject.h>
 
 // Deep Copy
 #include <Backends/Vulkan/DeepCopyObjects.Gen.h>
@@ -16,10 +18,12 @@
 // Forward declarations
 struct DeviceDispatchTable;
 struct ShaderModuleState;
+struct PipelineLayoutState;
 
 enum class PipelineType {
     Graphics,
-    Compute
+    Compute,
+    Count
 };
 
 struct PipelineState : public ReferenceObject {
@@ -59,6 +63,9 @@ struct PipelineState : public ReferenceObject {
 
     /// Replaced pipeline object, fx. instrumented version
     std::atomic<VkPipeline> hotSwapObject{VK_NULL_HANDLE};
+
+    /// Layout for this pipeline
+    PipelineLayoutState* layout;
 
     ///Referenced shader modules
     std::vector<ShaderModuleState*> shaderModules;

@@ -1,9 +1,10 @@
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Compiler/PipelineCompiler.h>
-#include <Backends/Vulkan/DeviceDispatchTable.h>
-#include <Backends/Vulkan/ShaderModuleState.h>
-#include <Backends/Vulkan/PipelineState.h>
+#include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/States/ShaderModuleState.h>
+#include <Backends/Vulkan/States/PipelineLayoutState.h>
+#include <Backends/Vulkan/States/PipelineState.h>
 #include <Backends/Vulkan/CommandBuffer.h>
 
 // Bridge
@@ -184,23 +185,28 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 
     // Submit compiler jobs
     for (ShaderModuleState* state : batch->dirtyShaderModules) {
-        uint64_t featureSet = globalInstrumentationInfo.featureBitSet | state->instrumentationInfo.featureBitSet;
-
-        // Inject the primary state
-        shaderCompiler->Add(table, state, featureSet, bucket);
+        uint64_t shaderFeatureBitSet = globalInstrumentationInfo.featureBitSet | state->instrumentationInfo.featureBitSet;
 
         // Perform feedback from the dependent objects
         for (PipelineState* dependentObject : table->dependencies_shaderModulesPipelines.Get(state)) {
-            // If no pipeline specific instrumentation, skip
-            if (!dependentObject->instrumentationInfo.featureBitSet) {
+            // Get the super feature set
+            uint64_t featureBitSet = shaderFeatureBitSet | dependentObject->instrumentationInfo.featureBitSet;
+
+            // Number of slots used by the pipeline
+            uint32_t pipelineLayoutUserSlots = dependentObject->layout->boundUserDescriptorStates;
+
+            // Create the instrumentation key
+            ShaderModuleInstrumentationKey instrumentationKey{};
+            instrumentationKey.featureBitSet = featureBitSet;
+            instrumentationKey.pipelineLayoutUserSlots = pipelineLayoutUserSlots;
+
+            // Attempt to reserve
+            if (!state->Reserve(instrumentationKey)) {
                 continue;
             }
 
-            // Get the super feature set
-            uint32_t superFeatureSet = featureSet | dependentObject->instrumentationInfo.featureBitSet;
-
             // Inject the feedback state
-            shaderCompiler->Add(table, state, superFeatureSet, bucket);
+            shaderCompiler->Add(table, state, instrumentationKey, bucket);
         }
     }
 }
@@ -221,7 +227,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         job.featureBitSet = globalInstrumentationInfo.featureBitSet | state->instrumentationInfo.featureBitSet;
 
         // Allocate feature bit sets
-        job.shaderModuleFeatureBitSets = new (registry->GetAllocators()) uint64_t[state->shaderModules.size()];
+        job.shaderModuleInstrumentationKeys = new (registry->GetAllocators()) ShaderModuleInstrumentationKey[state->shaderModules.size()];
 
         // Set the module feature bit sets
         for (uint32_t shaderIndex = 0; shaderIndex < state->shaderModules.size(); shaderIndex++) {
@@ -233,7 +239,16 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             featureBitSet |= state->shaderModules[i]->instrumentationInfo.featureBitSet;
             featureBitSet |= state->instrumentationInfo.featureBitSet;
 
-            job.shaderModuleFeatureBitSets[shaderIndex] = featureBitSet;
+            // Number of slots used by the pipeline
+            uint32_t pipelineLayoutUserSlots = state->layout->boundUserDescriptorStates;
+
+            // Create the instrumentation key
+            ShaderModuleInstrumentationKey instrumentationKey{};
+            instrumentationKey.featureBitSet = featureBitSet;
+            instrumentationKey.pipelineLayoutUserSlots = pipelineLayoutUserSlots;
+
+            // Assign key
+            job.shaderModuleInstrumentationKeys[shaderIndex] = instrumentationKey;
         }
     }
 

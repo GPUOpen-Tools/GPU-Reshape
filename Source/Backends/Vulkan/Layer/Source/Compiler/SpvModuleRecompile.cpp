@@ -3,7 +3,7 @@
 #include <Backends/Vulkan/Compiler/SpvStream.h>
 #include <Backends/Vulkan/Compiler/SpvRelocationStream.h>
 
-bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount) {
+bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount, const SpvJob& job) {
     // Get the identifier map
     IL::IdentifierMap& ilIdentifierMap = program->GetIdentifierMap();
 
@@ -20,11 +20,13 @@ bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount) {
     // Set the type counter
     typeMap->SetIdCounter(&jitHeader.bound);
 
+    // Inject the export records
+    InsertExportRecords(jitHeader, relocationStream, job);
+
     // Go through all functions
     for (auto fn = program->begin(); fn != program->end(); fn++) {
         // Create the declaration relocation block
         SpvRelocationBlock &declarationRelocationBlock = relocationStream.AllocateBlock(fn->GetDeclarationSourceSpan());
-        typeMap->SetDeclarationStream(&declarationRelocationBlock.stream);
 
         // Find all dirty basic blocks
         for (auto bb = fn->begin(); bb != fn->end(); bb++) {
@@ -449,8 +451,102 @@ bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount) {
                     case IL::OpCode::Export: {
                         auto *_export = instr.As<IL::ExportInstruction>();
 
-                        // Noop! Not done
-                        SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpNop, 1, instr->source);
+                        // Note: This is quite ugly, will be changed
+
+                        // UInt32
+                        SpvIntType typeInt;
+                        typeInt.bitWidth = 32;
+                        typeInt.signedness = false;
+                        const SpvType* uintType = typeMap->FindTypeOrAdd(typeInt);
+
+                        // Uint32*
+                        SpvPointerType typeUintImagePtr;
+                        typeUintImagePtr.pointee = uintType;
+                        typeUintImagePtr.storageClass = SpvStorageClassImage;
+                        const SpvType* uintImagePtrType = typeMap->FindTypeOrAdd(typeUintImagePtr);
+
+                        // Constant identifiers
+                        uint32_t zeroUintId = jitHeader.bound++;
+                        uint32_t streamOffsetId = jitHeader.bound++;
+                        uint32_t scopeId = jitHeader.bound++;
+                        uint32_t memSemanticId = jitHeader.bound++;
+                        uint32_t offsetAdditionId = jitHeader.bound++;
+
+                        // 0
+                        SpvInstruction& spv = declarationRelocationBlock.stream.Allocate(SpvOpConstant, 4);
+                        spv[1] = uintType->id;
+                        spv[2] = zeroUintId;
+                        spv[3] = 0;
+
+                        // Index of the stream
+                        SpvInstruction& spvOffset = declarationRelocationBlock.stream.Allocate(SpvOpConstant, 4);
+                        spvOffset[1] = uintType->id;
+                        spvOffset[2] = streamOffsetId;
+                        spvOffset[3] = _export->exportID;
+
+                        // Device scope
+                        SpvInstruction& spvScope = declarationRelocationBlock.stream.Allocate(SpvOpConstant, 4);
+                        spvScope[1] = uintType->id;
+                        spvScope[2] = scopeId;
+                        spvScope[3] = SpvScopeDevice;
+
+                        // No memory mask
+                        SpvInstruction& spvMemSem = declarationRelocationBlock.stream.Allocate(SpvOpConstant, 4);
+                        spvMemSem[1] = uintType->id;
+                        spvMemSem[2] = memSemanticId;
+                        spvMemSem[3] = SpvMemorySemanticsMaskNone;
+
+                        // The offset addition (will change for dynamic types in the future)
+                        SpvInstruction& spvSize = declarationRelocationBlock.stream.Allocate(SpvOpConstant, 4);
+                        spvSize[1] = uintType->id;
+                        spvSize[2] = offsetAdditionId;
+                        spvSize[3] = 1u;
+
+                        uint32_t texelPtrId = jitHeader.bound++;
+
+                        // Get the address of the texel to be atomically incremented
+                        SpvInstruction& texelPtr = stream.Allocate(SpvOpImageTexelPointer, 6);
+                        texelPtr[1] = uintImagePtrType->id;
+                        texelPtr[2] = texelPtrId;
+                        texelPtr[3] = metaData.exportMd.counterId;
+                        texelPtr[4] = streamOffsetId;
+                        texelPtr[5] = zeroUintId;
+
+                        uint32_t atomicPositionId = jitHeader.bound++;
+
+                        // Atomically increment the texel
+                        SpvInstruction& atom = stream.Allocate(SpvOpAtomicIAdd, 7);
+                        atom[1] = uintType->id;
+                        atom[2] = atomicPositionId;
+                        atom[3] = texelPtrId;
+                        atom[4] = scopeId;
+                        atom[5] = memSemanticId;
+                        atom[6] = offsetAdditionId;
+
+                        uint32_t accessId = jitHeader.bound++;
+
+                        // Get the destination stream
+                        SpvInstruction& chain = stream.Allocate(SpvOpAccessChain, 5);
+                        chain[1] = metaData.exportMd.image32UIRWPtr->id;
+                        chain[2] = accessId;
+                        chain[3] = metaData.exportMd.streamId;
+                        chain[4] = streamOffsetId;
+
+                        uint32_t accessLoadId = jitHeader.bound++;
+
+                        // Load the stream
+                        SpvInstruction &load = stream.Allocate(SpvOpLoad, 4);
+                        load[1] = metaData.exportMd.image32UIRW->id;
+                        load[2] = accessLoadId;
+                        load[3] = accessId;
+
+                        // Write to the stream
+                        SpvInstruction &write = stream.Allocate(SpvOpImageWrite, 5);
+                        write[1] = accessLoadId;
+                        write[2] = atomicPositionId;
+                        write[3] = _export->value;
+                        write[4] = SpvImageOperandsMaskNone;
+
                         break;
                     }
                     case IL::OpCode::Alloca: {
@@ -509,4 +605,94 @@ bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount) {
 
     // OK!
     return true;
+}
+
+void SpvModule::InsertExportRecords(ProgramHeader& jitHeader, SpvRelocationStream &stream, const SpvJob& job) {
+    // Note: This is quite ugly, will be changed
+
+    // Get the layout sections
+    const LayoutSection& capabilitySection = GetSection(LayoutSectionType::Capability);
+    const LayoutSection& annotationSection = GetSection(LayoutSectionType::Annotation);
+    const LayoutSection& declarationSection = GetSection(LayoutSectionType::Declarations);
+
+    // Allocate new blocks
+    SpvStream& capabilities = stream.AllocateBlock(capabilitySection.sourceSpan.AppendSpan()).stream;
+    SpvStream& annotations = stream.AllocateBlock(annotationSection.sourceSpan.AppendSpan()).stream;
+    SpvStream& declarations = stream.AllocateBlock(declarationSection.sourceSpan.AppendSpan()).stream;
+
+    // Set insertion stream
+    typeMap->SetDeclarationStream(&declarations);
+
+    // UInt32
+    SpvIntType intDecl;
+    intDecl.bitWidth = 32;
+    intDecl.signedness = false;
+    const SpvType* intType = typeMap->FindTypeOrAdd(intDecl);
+
+    // RWBuffer<uint>
+    SpvImageType imageDecl;
+    imageDecl.sampledType = intType;
+    imageDecl.dimension = SpvDim::SpvDimBuffer;
+    imageDecl.depth = 2;
+    imageDecl.arrayed = 0;
+    imageDecl.multisampled = 0;
+    imageDecl.sampled = 2;
+    imageDecl.format = SpvImageFormatR32ui;
+    metaData.exportMd.image32UIRW = typeMap->FindTypeOrAdd(imageDecl);
+
+    // RWBuffer<uint>*
+    SpvPointerType imagePtrDecl;
+    imagePtrDecl.storageClass = SpvStorageClassUniformConstant;
+    imagePtrDecl.pointee = metaData.exportMd.image32UIRW;
+    metaData.exportMd.image32UIRWPtr = typeMap->FindTypeOrAdd(imagePtrDecl);
+
+    // RWBuffer<uint>[N]
+    SpvArrayType arrayDecl;
+    arrayDecl.elementType = metaData.exportMd.image32UIRW;
+    arrayDecl.count = std::max(1u, job.streamCount);
+    const SpvType* image32UIWWArray = typeMap->FindTypeOrAdd(arrayDecl);
+
+    // RWBuffer<uint>[N]*
+    imagePtrDecl.pointee = image32UIWWArray;
+    metaData.exportMd.image32UIRWArrayPtr = typeMap->FindTypeOrAdd(imagePtrDecl);
+
+    // Id allocations
+    metaData.exportMd.counterId = jitHeader.bound++;
+    metaData.exportMd.streamId = jitHeader.bound++;
+
+    // Counter
+    SpvInstruction& spvCounterVar = declarations.Allocate(SpvOpVariable, 4);
+    spvCounterVar[1] = metaData.exportMd.image32UIRWPtr->id;
+    spvCounterVar[2] = metaData.exportMd.counterId;
+    spvCounterVar[3] = SpvStorageClassUniformConstant;
+
+    // Streams
+    SpvInstruction& spvStreamVar = declarations.Allocate(SpvOpVariable, 4);
+    spvStreamVar[1] = metaData.exportMd.image32UIRWArrayPtr->id;
+    spvStreamVar[2] = metaData.exportMd.streamId;
+    spvStreamVar[3] = SpvStorageClassUniformConstant;
+
+    // Descriptor set
+    SpvInstruction& spvCounterSet = annotations.Allocate(SpvOpDecorate, 4);
+    spvCounterSet[1] = metaData.exportMd.counterId;
+    spvCounterSet[2] = SpvDecorationDescriptorSet;
+    spvCounterSet[3] = job.instrumentationKey.pipelineLayoutUserSlots;
+
+    // Binding
+    SpvInstruction& spvCounterBinding = annotations.Allocate(SpvOpDecorate, 4);
+    spvCounterBinding[1] = metaData.exportMd.counterId;
+    spvCounterBinding[2] = SpvDecorationBinding;
+    spvCounterBinding[3] = 0;
+
+    // Descriptor set
+    SpvInstruction& spvStreamSet = annotations.Allocate(SpvOpDecorate, 4);
+    spvStreamSet[1] = metaData.exportMd.streamId;
+    spvStreamSet[2] = SpvDecorationDescriptorSet;
+    spvStreamSet[3] = job.instrumentationKey.pipelineLayoutUserSlots;
+
+    // Binding
+    SpvInstruction& spvStreamBinding = annotations.Allocate(SpvOpDecorate, 4);
+    spvStreamBinding[1] = metaData.exportMd.streamId;
+    spvStreamBinding[2] = SpvDecorationBinding;
+    spvStreamBinding[3] = 1;
 }

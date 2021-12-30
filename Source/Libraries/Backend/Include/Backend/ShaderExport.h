@@ -9,6 +9,9 @@ using ShaderExportID = uint32_t;
 /// Shader source guid identifier
 using ShaderSGUID = uint32_t;
 
+/// Shader export counter type
+using ShaderExportCounter = uint32_t;
+
 /// Invalid values
 static constexpr ShaderExportID InvalidShaderExportID = ~0u;
 static constexpr ShaderSGUID InvalidShaderSGUID = ~0u;

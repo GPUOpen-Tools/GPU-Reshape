@@ -1,7 +1,6 @@
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/Compiler/SpvInstruction.h>
 #include <Backends/Vulkan/Compiler/SpvStream.h>
-#include <Backends/Vulkan/Compiler/SpvRelocationStream.h>
 
 bool SpvModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
     program = new(allocators) IL::Program(allocators);
@@ -16,6 +15,9 @@ bool SpvModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
     if (!ParseHeader(context)) {
         return false;
     }
+
+    // Summarize all sections
+    SummarizePhysicalSections(context);
 
     // Parse instruction stream
     while (context.Good()) {
@@ -109,6 +111,12 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
 
     // Handled op codes
     switch (opCode) {
+        case SpvOpCapability: {
+            auto capability = static_cast<SpvCapability>(context++);
+            metaData.capabilities.insert(capability);
+            break;
+        }
+
         // Start of a function
         case SpvOpFunction: {
             ASSERT(hasResult, "Expected result for instruction type");
@@ -171,7 +179,25 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             break;
         }
 
-            // Integer type
+        // Metadata decoration
+        case SpvOpDecorate: {
+            uint32_t target = context++;
+            auto decoration = static_cast<SpvDecoration>(context++);
+
+            // Handle decoration
+            switch (decoration) {
+                default: {
+                    break;
+                }
+                case SpvDecorationDescriptorSet: {
+                    metaData.boundDescriptorSets = std::max(metaData.boundDescriptorSets, context++);
+                    break;
+                }
+            }
+            break;
+        }
+
+        // Integer type
         case SpvOpTypeInt: {
             ASSERT(hasResult, "Expected result for instruction type");
 
@@ -242,14 +268,39 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
         case SpvOpTypePointer: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            // Eat storage
-            context++;
-
-            const SpvType* pointee = typeMap->GetType(context++);
-
             SpvPointerType type;
             type.id = id;
-            type.pointee = pointee;
+            type.storageClass = static_cast<SpvStorageClass>(context++);
+            type.pointee = typeMap->GetType(context++);
+            typeMap->AddType(type);
+            break;
+        }
+
+        case SpvOpTypeArray: {
+            ASSERT(hasResult, "Expected result for instruction type");
+
+            SpvArrayType type;
+            type.id = id;
+            type.elementType = typeMap->GetType(context++);
+            type.count = context++;
+
+            typeMap->AddType(type);
+            break;
+        }
+
+        case SpvOpTypeImage: {
+            ASSERT(hasResult, "Expected result for instruction type");
+
+            SpvImageType type;
+            type.id = id;
+            type.sampledType = typeMap->GetType(context++);
+            type.dimension = static_cast<SpvDim>(context++);
+            type.depth = context++;
+            type.arrayed = context++;
+            type.multisampled = context++;
+            type.sampled = context++;
+            type.format = static_cast<SpvImageFormat>(context++);
+
             typeMap->AddType(type);
             break;
         }
@@ -631,5 +682,130 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
     context.code = end;
 
     // OK
+    return true;
+}
+
+const SpvModule::LayoutSection &SpvModule::GetSection(LayoutSectionType type) {
+    return metaData.sections[static_cast<uint32_t>(type)];
+}
+
+bool SpvModule::SummarizePhysicalSections(ParseContext context) {
+    uint32_t sectionBegin = context.Source();
+
+    bool isFunction{false};
+
+    // Init sections
+    for (LayoutSection& section : metaData.sections) {
+        section.sourceSpan.begin = ~0u;
+        section.sourceSpan.end = 0u;
+    }
+
+    // Parse instruction stream
+    while (context.Good()) {
+        // Instruction pointer
+        auto *instruction = reinterpret_cast<const SpvInstruction *>(context.code);
+
+        // Instruction span
+        IL::SourceSpan span = {context.Source(), context.Source() + instruction->GetWordCount()};
+
+        // Operation code
+        SpvOp op = instruction->GetOp();
+
+        // Handled op codes
+        LayoutSectionType type{LayoutSectionType::Count};
+        switch (op) {
+            default:
+                // Type, constant and other semantic operations, are filled out during patching
+                type = isFunction ? LayoutSectionType::FunctionDeclaration : LayoutSectionType::Declarations;
+                break;
+
+            case SpvOpCapability:
+                type = LayoutSectionType::Capability;
+                break;
+            case SpvOpExtension:
+                type = LayoutSectionType::Extension;
+                break;
+
+            case SpvOpExtInstImport:
+                type = LayoutSectionType::InstImport;
+                break;
+
+            case SpvOpMemoryModel:
+                type = LayoutSectionType::MemoryModel;
+                break;
+
+            case SpvOpEntryPoint:
+                type = LayoutSectionType::Entry;
+                break;
+
+            case SpvOpExecutionMode:
+            case SpvOpExecutionModeId:
+                type = LayoutSectionType::Execution;
+                break;
+
+            case SpvOpString:
+            case SpvOpSourceExtension:
+            case SpvOpSource:
+            case SpvOpSourceContinued:
+                type = LayoutSectionType::DebugString;
+                break;
+
+            case SpvOpName:
+            case SpvOpMemberName:
+                type = LayoutSectionType::DebugName;
+                break;
+
+            case SpvOpModuleProcessed:
+                type = LayoutSectionType::DebugModule;
+                break;
+
+            case SpvOpDecorate:
+            case SpvOpMemberDecorate:
+            case SpvOpDecorationGroup:
+            case SpvOpGroupDecorate:
+            case SpvOpGroupMemberDecorate:
+            case SpvOpDecorateId:
+            case SpvOpDecorateString:
+            case SpvOpMemberDecorateString:
+                type = LayoutSectionType::Annotation;
+                break;
+
+            case SpvOpFunction:
+            case SpvOpFunctionEnd:
+                isFunction = true;
+                type = LayoutSectionType::FunctionDeclaration;
+                break;
+        }
+
+        // Relevant?
+        if (type != LayoutSectionType::Count) {
+            LayoutSection& section = metaData.sections[static_cast<uint32_t>(type)];
+            section.sourceSpan.begin = std::min(section.sourceSpan.begin, span.begin);
+            section.sourceSpan.end = std::max(section.sourceSpan.end, span.end);
+        }
+
+        // Next
+        context.code += instruction->GetWordCount();
+    }
+
+    // Fill all missing sections
+    for (auto i = 0; i < static_cast<uint32_t>(LayoutSectionType::Count); i++) {
+        LayoutSection& section = metaData.sections[i];
+
+        // Skip valid sections
+        if (section.sourceSpan.end != IL::InvalidOffset)
+            continue;
+
+        // May be missing capabilities
+        if (i == 0) {
+            // Start at base
+            section.sourceSpan = {sectionBegin, sectionBegin};
+        } else {
+            // Start after the previous
+            LayoutSection& previous = metaData.sections[i - 1];
+            section.sourceSpan = {previous.sourceSpan.end, previous.sourceSpan.end};
+        }
+    }
+
     return true;
 }

@@ -1,6 +1,7 @@
-#include <Backends/Vulkan/PipelineState.h>
-#include <Backends/Vulkan/ShaderModuleState.h>
-#include <Backends/Vulkan/DeviceDispatchTable.h>
+#include <Backends/Vulkan/States/PipelineState.h>
+#include <Backends/Vulkan/States/ShaderModuleState.h>
+#include <Backends/Vulkan/States/PipelineLayoutState.h>
+#include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo *pCreateInfos, const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
@@ -18,6 +19,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
         state->table = table;
         state->object = pPipelines[i];
         state->createInfoDeepCopy.DeepCopy(table->allocators, pCreateInfos[i]);
+
+        // Add a reference to the layout
+        state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
+        state->layout->AddUser();
 
         // Collect all shader modules
         for (uint32_t stageIndex = 0; stageIndex < state->createInfoDeepCopy.createInfo.stageCount; stageIndex++) {
@@ -60,6 +65,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
         state->object = pPipelines[i];
         state->createInfoDeepCopy.DeepCopy(table->allocators, pCreateInfos[i]);
 
+        // Add a reference to the layout
+        state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
+        state->layout->AddUser();
+
         // Get the proxied shader state
         ShaderModuleState* shaderModuleState = table->states_shaderModule.Get(state->createInfoDeepCopy.createInfo.stage.module);
 
@@ -88,6 +97,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
     // The original shader module is now inaccessible
     //  ? To satisfy the pAllocator constraints, the original object must be released now
     state->object = nullptr;
+
+    // Free the layout
+    state->layout->ReleaseUser();
 
     // Remove logical object from lookup
     //  Logical reference to state is invalid after this function

@@ -1,7 +1,7 @@
 #pragma once
 
 // Layer
-#include <Backends/Vulkan/ShaderModuleState.h>
+#include <Backends/Vulkan/States/ShaderModuleState.h>
 
 // Common
 #include <Common/IComponent.h>
@@ -25,13 +25,13 @@ public:
     /// \param state the state to be compiled
     /// \param featureBitSet the enabled feature set
     /// \param bucket optional, the dispatcher bucket
-    void Add(DeviceDispatchTable* table, ShaderModuleState *state, uint64_t featureBitSet, DispatcherBucket *bucket = nullptr);
+    void Add(DeviceDispatchTable* table, ShaderModuleState *state, const ShaderModuleInstrumentationKey& instrumentationKey, DispatcherBucket *bucket = nullptr);
 
 protected:
     struct ShaderJob {
         DeviceDispatchTable *table;
         ShaderModuleState *state;
-        uint64_t featureBitSet;
+        ShaderModuleInstrumentationKey instrumentationKey;
     };
 
     /// Compile a given job
@@ -47,4 +47,7 @@ private:
     /// All features
     std::vector<IFeature *> features;
     std::vector<IShaderFeature *> shaderFeatures;
+
+    /// Number of exports
+    uint32_t exportCount{0};
 };

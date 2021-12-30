@@ -17,5 +17,6 @@ SpvModule *SpvModule::Copy() const {
     module->spirvProgram = spirvProgram;
     module->program = program->Copy();
     module->typeMap = typeMap->Copy();
+    module->metaData = metaData;
     return module;
 }

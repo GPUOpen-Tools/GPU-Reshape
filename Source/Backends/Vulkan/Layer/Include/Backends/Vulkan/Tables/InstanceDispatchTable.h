@@ -1,7 +1,7 @@
 #pragma once
 
 // Layer
-#include "Vulkan.h"
+#include <Backends/Vulkan/Vulkan.h>
 
 // Backend
 #include <Backend/Environment.h>
@@ -65,8 +65,12 @@ struct InstanceDispatchTable {
     std::vector<IFeature*> features;
 
     /// Callbacks
-    PFN_vkGetInstanceProcAddr next_vkGetInstanceProcAddr;
-    PFN_vkDestroyInstance     next_vkDestroyInstance;
+    PFN_vkGetInstanceProcAddr                   next_vkGetInstanceProcAddr;
+    PFN_vkDestroyInstance                       next_vkDestroyInstance;
+    PFN_vkGetPhysicalDeviceMemoryProperties     next_vkGetPhysicalDeviceMemoryProperties;
+    PFN_vkGetPhysicalDeviceMemoryProperties2KHR next_vkGetPhysicalDeviceMemoryProperties2KHR;
+    PFN_vkGetPhysicalDeviceProperties           next_vkGetPhysicalDeviceProperties;
+    PFN_vkGetPhysicalDeviceFeatures2            next_vkGetPhysicalDeviceFeatures2;
 
 private:
     /// Lookup

@@ -48,11 +48,6 @@ bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateE
             continue;
         }
 
-        // Whitelisted?
-        if (info.whitelist.count(prototypeName->GetText())) {
-            continue;
-        }
-
         // First parameter
         tinyxml2::XMLElement *firstParam = command->FirstChildElement("param");
 

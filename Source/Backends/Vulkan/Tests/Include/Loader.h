@@ -46,6 +46,10 @@ public:
     /// Add a device extension, instance must be created
     bool AddDeviceExtension(const char* name);
 
+    /// Enable validation layers
+    /// \return success state
+    bool EnableValidation();
+
 	/// Get the physical device
 	[[nodiscard]]
 	VkPhysicalDevice GetPhysicalDevice() const {
@@ -88,9 +92,13 @@ private:
 	VkDevice         device        {VK_NULL_HANDLE};
     VkQueue          queue         {VK_NULL_HANDLE};
 
+    VkDebugUtilsMessengerEXT debugMessenger{VK_NULL_HANDLE};
+
     uint32_t queueFamilyIndex{0xFFFFFFFF};
 
 private:
+    bool enableValidation{false};
+
     std::vector<VkLayerProperties>     instanceLayers;
     std::vector<VkExtensionProperties> instanceExtensions;
     std::vector<VkExtensionProperties> deviceExtensions;

@@ -52,11 +52,6 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
             return false;
         }
 
-        // Whitelisted?
-        if (info.whitelist.count(prototypeName->GetText())) {
-            continue;
-        }
-
         // First parameter
         tinyxml2::XMLElement *firstParam = command->FirstChildElement("param");
 
@@ -91,6 +86,11 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         populate << "\tnext_" << prototypeName->GetText() << " = reinterpret_cast<PFN_" << prototypeName->GetText() << ">(";
         populate << "getProcAddr(device, \"" << prototypeName->GetText() << "\")";
         populate << ");\n";
+
+        // Whitelisted?
+        if (info.whitelist.count(prototypeName->GetText())) {
+            continue;
+        }
 
         // Add get hook address, must be done after white listing
         gethookaddress << "\tif (!std::strcmp(\"" << prototypeName->GetText() << "\", name))\n";

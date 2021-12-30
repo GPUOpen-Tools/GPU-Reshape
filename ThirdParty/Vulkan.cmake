@@ -6,6 +6,7 @@ ExternalProject_Add(
     GIT_TAG sdk-1.2.189
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/VulkanHeaders
     USES_TERMINAL_INSTALL 0
+    UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/External
         -DCMAKE_INSTALL_LIBDIR=${CMAKE_BINARY_DIR}/External/lib
@@ -29,6 +30,7 @@ ExternalProject_Add(
     GIT_TAG sdk-1.2.189.0
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/VulkanLoader
     USES_TERMINAL_INSTALL 0
+    UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/External
         -DCMAKE_INSTALL_LIBDIR=${CMAKE_BINARY_DIR}/External/lib

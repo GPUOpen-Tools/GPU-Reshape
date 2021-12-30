@@ -1,9 +1,12 @@
 #pragma once
 
 // Layer
-#include "Vulkan.h"
-#include "ReferenceObject.h"
-#include "InstrumentationInfo.h"
+#include <Backends/Vulkan/Vulkan.h>
+#include <Backends/Vulkan/InstrumentationInfo.h>
+#include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
+
+// Common
+#include <Common/ReferenceObject.h>
 
 // Deep Copy
 #include <Backends/Vulkan/DeepCopyObjects.Gen.h>
@@ -25,17 +28,17 @@ struct ShaderModuleState : public ReferenceObject {
     /// Add an instrument to this module
     /// \param featureBitSet the enabled feature set
     /// \param module the module in question
-    void AddInstrument(uint64_t featureBitSet, VkShaderModule module) {
+    void AddInstrument(const ShaderModuleInstrumentationKey& key, VkShaderModule module) {
         std::lock_guard lock(mutex);
-        instrumentObjects[featureBitSet] = module;
+        instrumentObjects[key] = module;
     }
 
     /// Get an instrument
     /// \param featureBitSet the enabled feature set
     /// \return nullptr if not found
-    VkShaderModule GetInstrument(uint64_t featureBitSet) {
+    VkShaderModule GetInstrument(const ShaderModuleInstrumentationKey& key) {
         std::lock_guard lock(mutex);
-        auto&& it = instrumentObjects.find(featureBitSet);
+        auto&& it = instrumentObjects.find(key);
         if (it == instrumentObjects.end()) {
             return nullptr;
         }
@@ -43,12 +46,20 @@ struct ShaderModuleState : public ReferenceObject {
         return it->second;
     }
 
+    bool Reserve(const ShaderModuleInstrumentationKey& key) {
+        std::lock_guard lock(mutex);
+        auto&& it = instrumentObjects.find(key);
+        if (it == instrumentObjects.end()) {
+            instrumentObjects[key] = nullptr;
+            return true;
+        }
+
+        return false;
+    }
+
     /// User module
     ///  ! May be nullptr if the top shader module has been destroyed
     VkShaderModule object{VK_NULL_HANDLE};
-
-    /// Replaced shader module object, fx. instrumented version
-    std::atomic<VkShaderModule> hotSwapObject{VK_NULL_HANDLE};
 
     /// Backwards reference
     DeviceDispatchTable* table;
@@ -65,7 +76,7 @@ struct ShaderModuleState : public ReferenceObject {
 
     /// Instrumented objects lookup
     /// TODO: How do we manage lifetimes here?
-    std::map<uint64_t, VkShaderModule> instrumentObjects;
+    std::map<ShaderModuleInstrumentationKey, VkShaderModule> instrumentObjects;
 
     /// Module specific lock
     std::mutex mutex;
