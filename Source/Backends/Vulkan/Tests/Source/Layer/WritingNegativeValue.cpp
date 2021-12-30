@@ -28,7 +28,7 @@
 #include <VMA/vk_mem_alloc.h>
 
 // HLSL
-#include <Data/WriteUAV.h>
+#include <Data/WriteUAVNegative.h>
 
 /// Dummy value for validation
 static constexpr uint32_t kProxy = 'p' + 'r' + 'o' + 'x' + 'y';
@@ -100,7 +100,7 @@ public:
                 }
 
                 IL::Emitter<> pre(program, bb);
-                pre.BranchConditional(pre.LessThan(storeBuffer->value, pre.UInt(32, 0)), resumeBlock, failBlock);
+                pre.BranchConditional(pre.LessThan(storeBuffer->value, pre.Int(32, 0)), failBlock, resumeBlock);
                 return true;
             }
         }
@@ -130,8 +130,8 @@ public:
         for (uint32_t i = 0; i < count; i++) {
             ConstMessageStreamView<WritingNegativeValueMessage> view(streams[i]);
 
-            // Must have 4 messages (number of cs threads)
-            REQUIRE(view.GetCount() == 4);
+            // Must have 4 messages (number of cs threads, except the first zero id)
+            REQUIRE(view.GetCount() == 3);
 
             // Validate all messages
             for (auto it = view.GetIterator(); it; ++it) {
@@ -167,8 +167,8 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
     vmaCreateAllocator(&allocatorInfo, &allocator);
 
     VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-    bufferInfo.size = sizeof(uint32_t) * 4;
-    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    bufferInfo.size = sizeof(int32_t) * 4;
+    bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
@@ -180,8 +180,8 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
     VkBufferViewCreateInfo bufferViewInfo{};
     bufferViewInfo.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
     bufferViewInfo.buffer = buffer;
-    bufferViewInfo.format = VK_FORMAT_R32_UINT;
-    bufferViewInfo.range = sizeof(uint32_t) * 4;
+    bufferViewInfo.format = VK_FORMAT_R32_SINT;
+    bufferViewInfo.range = sizeof(int32_t) * 4;
 
     VkBufferView bufferView;
     REQUIRE(vkCreateBufferView(GetDevice(), &bufferViewInfo, nullptr, &bufferView) == VK_SUCCESS);
@@ -212,7 +212,7 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
     VkDescriptorSetLayoutBinding bindingInfo{};
     bindingInfo.binding = 0;
     bindingInfo.descriptorCount = 1;
-    bindingInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    bindingInfo.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
     bindingInfo.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
@@ -233,8 +233,8 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
 
     VkShaderModuleCreateInfo moduleCreateInfo{};
     moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleCreateInfo.codeSize = sizeof(kSPIRVWriteUAV);
-    moduleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(kSPIRVWriteUAV);
+    moduleCreateInfo.codeSize = sizeof(kSPIRVWriteUAVNegative);
+    moduleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(kSPIRVWriteUAVNegative);
 
     VkShaderModule shaderModule;
     REQUIRE(vkCreateShaderModule(GetDevice(), &moduleCreateInfo, nullptr, &shaderModule) == VK_SUCCESS);
@@ -255,7 +255,7 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
 
     VkDescriptorPoolSize poolSize{};
     poolSize.descriptorCount = 1;
-    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
 
     VkDescriptorPoolCreateInfo descriptorPoolInfo{};
     descriptorPoolInfo.sType  = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -278,13 +278,13 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
     VkWriteDescriptorSet write{};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.descriptorCount = 1;
-    write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
     write.dstBinding = 0;
     write.dstSet = set;
     write.pTexelBufferView = &bufferView;
     vkUpdateDescriptorSets(GetDevice(), 1, &write, 0, nullptr);
 
-    IBridge* bridge = registry->Get<IBridge>();
+    auto* bridge = registry->Get<IBridge>();
 
     WritingNegativeValueListener listener;
     bridge->Register(WritingNegativeValueMessage::kID, &listener);

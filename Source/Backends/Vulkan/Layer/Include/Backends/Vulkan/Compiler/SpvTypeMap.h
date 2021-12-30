@@ -151,6 +151,22 @@ private:
                 }
                 break;
             }
+            case SpvTypeKind::Array: {
+                auto&& decl = static_cast<const SpvArrayType &>(type);
+
+                if (auto it = arrayMap.find(decl.SortKey()); it != arrayMap.end()) {
+                    return it->second;
+                }
+                break;
+            }
+            case SpvTypeKind::Image: {
+                auto&& decl = static_cast<const SpvImageType &>(type);
+
+                if (auto it = imageMap.find(decl.SortKey()); it != imageMap.end()) {
+                    return it->second;
+                }
+                break;
+            }
             case SpvTypeKind::Compound:
                 ASSERT(false, "Not implemented");
                 break;
@@ -244,6 +260,26 @@ private:
 
                 return typePtr;
             }
+            case SpvTypeKind::Array: {
+                auto&& decl = static_cast<const SpvArrayType&>(type);
+
+                auto &typeImage = arrayMap[decl.SortKey()];
+                if (!typeImage) {
+                    typeImage = AllocateType<SpvArrayType>(decl);
+                }
+
+                return typeImage;
+            }
+            case SpvTypeKind::Image: {
+                auto&& decl = static_cast<const SpvImageType&>(type);
+
+                auto &typeImage = imageMap[decl.SortKey()];
+                if (!typeImage) {
+                    typeImage = AllocateType<SpvImageType>(decl);
+                }
+
+                return typeImage;
+            }
             case SpvTypeKind::Compound: {
                 ASSERT(false, "Not implemented");
                 return nullptr;
@@ -303,9 +339,9 @@ private:
     }
 
     void EmitSpvType(const SpvPointerType* type) {
-        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypePointer, 3);
+        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypePointer, 4);
         spv[1] = type->id;
-        spv[2] = SpvStorageClassGeneric; // TODO: Probably have to expose this
+        spv[2] = type->storageClass;
         spv[3] = type->pointee->id;
     }
 
@@ -326,6 +362,37 @@ private:
         spv[1] = type->id;
         spv[2] = columnType->id;
         spv[3] = type->columns;
+    }
+
+    void EmitSpvType(const SpvArrayType* type) {
+        SpvIntType typeDecl;
+        typeDecl.signedness = false;
+        typeDecl.bitWidth = 32;
+        const SpvType* dimType = FindSpvTypeOrAdd(typeDecl);
+
+        uint32_t dimId = (*counter)++;
+
+        SpvInstruction& _const = declarationStream->Allocate(SpvOpConstant, 4);
+        _const[1] = dimType->id;
+        _const[2] = dimId;
+        _const[3] = type->count;
+
+        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeArray, 4);
+        spv[1] = type->id;
+        spv[2] = type->elementType->id;
+        spv[3] = dimId;
+    }
+
+    void EmitSpvType(const SpvImageType* type) {
+        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeImage, 9);
+        spv[1] = type->id;
+        spv[2] = type->sampledType->id;
+        spv[3] = type->dimension;
+        spv[4] = type->depth;
+        spv[5] = type->arrayed;
+        spv[6] = type->multisampled;
+        spv[7] = type->sampled;
+        spv[8] = type->format;
     }
 
 private:
@@ -356,6 +423,10 @@ private:
     std::map<uint8_t, SpvFPType *>      fpMap;
     std::map<SpvId,   SpvPointerType *> ptrMap;
     std::map<SpvId,   VectorizedBucket> vectorizedMap;
+
+    /// Complex type cache
+    std::map<SpvArraySortKeyType, SpvArrayType*> arrayMap;
+    std::map<SpvImageSortKeyType, SpvImageType*> imageMap;
 
     /// Id lookup
     std::vector<const SpvType*> idMap;

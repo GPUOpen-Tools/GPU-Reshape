@@ -83,6 +83,12 @@ struct TrackedObject {
     }
 
     /// Remove an object
+    void Remove(T object) {
+        RemoveLogical(object);
+        RemoveState(Get(object));
+    }
+
+    /// Remove an object
     void RemoveLogical(T object) {
         std::lock_guard<std::mutex> guard(mutex);
 

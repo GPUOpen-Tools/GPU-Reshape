@@ -22,3 +22,16 @@ inline void *GetInternalTable(T inst) {
 
     return *(void **) inst;
 }
+
+/// Get the internally stored table
+template<typename T>
+inline void *&GetInternalTableRef(T inst) {
+    return *(void **) inst;
+}
+
+
+/// Get the internally stored table
+template<typename T, typename U>
+inline void PatchInternalTable(T dst, U src) {
+    GetInternalTableRef(dst) = GetInternalTable(src);
+}

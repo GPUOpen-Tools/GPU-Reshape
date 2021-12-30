@@ -1,6 +1,6 @@
 #include <Backends/Vulkan/Compiler/PipelineCompiler.h>
-#include <Backends/Vulkan/ShaderModuleState.h>
-#include <Backends/Vulkan/DeviceDispatchTable.h>
+#include <Backends/Vulkan/States/ShaderModuleState.h>
+#include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 
 // Common
 #include <Common/Dispatcher.h>
@@ -120,7 +120,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             ShaderModuleState *shaderState = state->shaderModules[shaderIndex];
 
             std::memcpy(&stageInfos[shaderIndex], &createInfos[i].pStages[shaderIndex], sizeof(VkPipelineShaderStageCreateInfo));
-            stageInfos[i].module = shaderState->GetInstrument(job.shaderModuleFeatureBitSets[shaderIndex]);
+            stageInfos[i].module = shaderState->GetInstrument(job.shaderModuleInstrumentationKeys[shaderIndex]);
         }
 
         // Set new stage info
@@ -152,7 +152,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 
     // Free bit sets
     for (uint32_t i = 0; i < batch.count; i++) {
-        destroy(batch.jobs[i].shaderModuleFeatureBitSets, allocators);
+        destroy(batch.jobs[i].shaderModuleInstrumentationKeys, allocators);
     }
 
     // Free job
@@ -178,7 +178,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         ShaderModuleState *shaderState = state->shaderModules[0];
 
         // Assign instrumented version
-        createInfos[i].stage.module = shaderState->GetInstrument(job.shaderModuleFeatureBitSets[0]);
+        createInfos[i].stage.module = shaderState->GetInstrument(job.shaderModuleInstrumentationKeys[0]);
         ASSERT(createInfos[i].stage.module, "Invalid module");
     }
 
@@ -206,7 +206,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
 
     // Free bit sets
     for (uint32_t i = 0; i < batch.count; i++) {
-        destroy(batch.jobs[i].shaderModuleFeatureBitSets, allocators);
+        destroy(batch.jobs[i].shaderModuleInstrumentationKeys, allocators);
     }
 
     // Free job

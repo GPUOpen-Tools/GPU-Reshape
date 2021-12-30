@@ -1,9 +1,10 @@
 #include <Backends/Vulkan/CommandBuffer.h>
-#include <Backends/Vulkan/DeviceDispatchTable.h>
-#include <Backends/Vulkan/InstanceDispatchTable.h>
-#include <Backends/Vulkan/CommandPoolState.h>
-#include <Backends/Vulkan/PipelineState.h>
+#include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
+#include <Backends/Vulkan/States/CommandPoolState.h>
+#include <Backends/Vulkan/States/PipelineState.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
+#include <Backends/Vulkan/Export/ShaderExportStreamer.h>
 
 // Backend
 #include <Backend/IFeature.h>
@@ -71,8 +72,12 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, co
         wrapped->table = table;
         wrapped->pool = poolState;
 
+        // Allocate the streaming state
+        wrapped->streamState = table->exportStreamer->AllocateStreamState();
+
         // Ensure the internal dispatch table is preserved
         wrapped->next_dispatchTable = GetInternalTable(vkCommandBuffers[i]);
+        PatchInternalTable(vkCommandBuffers[i], device);
 
         // OK
         poolState->commandBuffers.push_back(wrapped);
@@ -93,7 +98,16 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     commandBuffer->table->instrumentationController->BeginCommandBuffer();
 
     // Pass down callchain
-    return commandBuffer->table->next_vkBeginCommandBuffer(commandBuffer->object, pBeginInfo);
+    VkResult result = commandBuffer->table->next_vkBeginCommandBuffer(commandBuffer->object, pBeginInfo);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    // Begin the streaming state
+    commandBuffer->table->exportStreamer->BeginCommandBuffer(commandBuffer->streamState, commandBuffer->object);
+
+    // OK
+    return VK_SUCCESS;
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) {
@@ -101,13 +115,17 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
     PipelineState *state = commandBuffer->table->states_pipeline.Get(pipeline);
 
     // Attempt to load the hot swapped object
-    if (VkPipeline hotSwapObject = state->hotSwapObject.load()) {
+    VkPipeline hotSwapObject = state->hotSwapObject.load();
+    if (hotSwapObject) {
         // Replace the bound pipeline by the hot one
         pipeline = hotSwapObject;
     }
 
     // Pass down callchain
-    commandBuffer->table->next_vkCmdBindPipeline(commandBuffer->object, pipelineBindPoint, pipeline);
+    commandBuffer->dispatchTable.next_vkCmdBindPipeline(commandBuffer->object, pipelineBindPoint, pipeline);
+
+    // Migrate environments
+    commandBuffer->table->exportStreamer->BindPipeline(commandBuffer->streamState, state, hotSwapObject != nullptr, commandBuffer->object);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {
@@ -132,6 +150,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkFreeCommandBuffers(VkDevice device, VkCommandP
             pCommandBuffers[i]->pool->commandBuffers.erase(poolIt);
         }
 
+        // Free the streaming state
+        table->exportStreamer->Free(pCommandBuffers[i]->streamState);
+
         // Free the memory
         destroy(pCommandBuffers[i], table->allocators);
     }
@@ -148,6 +169,10 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyCommandPool(VkDevice device, VkCommandP
 
     // Free all command objects
     for (CommandBufferObject *object: state->commandBuffers) {
+        // Free the streaming state
+        table->exportStreamer->Free(object->streamState);
+
+        // Destroy the object
         destroy(object, table->allocators);
     }
 

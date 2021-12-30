@@ -7,3 +7,21 @@ ShaderExportID ShaderExportHost::Allocate(const ShaderExportTypeInfo &typeInfo) 
     // OK
     return static_cast<ShaderExportID>(exports.size() - 1);
 }
+
+void ShaderExportHost::Enumerate(uint32_t *count, ShaderExportID *out) {
+    if (out) {
+        for (uint32_t i = 0; i < *count; i++) {
+            out[i] = i;
+        }
+    } else {
+        *count = exports.size();
+    }
+}
+
+uint32_t ShaderExportHost::GetBound() {
+    return exports.size();
+}
+
+ShaderExportTypeInfo ShaderExportHost::GetTypeInfo(ShaderExportID id) {
+    return exports.at(id).typeInfo;
+}

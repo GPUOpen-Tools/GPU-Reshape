@@ -13,6 +13,14 @@
 // Layer
 #include <Backends/Vulkan/Layer.h>
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData
+) {
+    WARN(pCallbackData->pMessage);
+    return VK_FALSE;
+}
+
 Loader::Loader() {
     // Redirect layer path
     std::filesystem::path cwd = std::filesystem::current_path();
@@ -128,6 +136,23 @@ void Loader::CreateInstance() {
     // Enumerate device extensions
     deviceExtensions.resize(deviceExtensionCount);
     REQUIRE(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &deviceExtensionCount, deviceExtensions.data()) == VK_SUCCESS);
+
+    if (enableValidation) {
+        // Validation create info
+        VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.pfnUserCallback = DebugCallback;
+        createInfo.pUserData = nullptr;
+
+        // Validation proc
+        auto next_vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        REQUIRE(next_vkCreateDebugUtilsMessengerEXT);
+
+        // Attempt to create the validation messenger
+        REQUIRE(next_vkCreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) == VK_SUCCESS);
+    }
 }
 
 void Loader::CreateDevice() {
@@ -188,7 +213,29 @@ void Loader::CreateDevice() {
 
 Loader::~Loader() {
     vkDestroyDevice(device, nullptr);
+
+    // Release validation messenger if needed
+    if (debugMessenger) {
+        auto next_vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        REQUIRE(next_vkDestroyDebugUtilsMessengerEXT);
+
+        next_vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+    }
+
     vkDestroyInstance(instance, nullptr);
+}
+
+bool Loader::EnableValidation() {
+    if (!AddInstanceLayer("VK_LAYER_KHRONOS_validation")) {
+        return false;
+    }
+
+    if (!AddInstanceExtension("VK_EXT_debug_utils")) {
+        return false;
+    }
+
+    enableValidation = true;
+    return true;
 }
 
 TEST_CASE_METHOD(Loader, "Loader.Startup", "[Vulkan]") {

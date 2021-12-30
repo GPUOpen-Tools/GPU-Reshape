@@ -1,8 +1,8 @@
 #pragma once
 
 // Common
-#include <Common/Assert.h>
-#include <Common/Allocators.h>
+#include "Assert.h"
+#include "Allocators.h"
 
 // Std
 #include <atomic>

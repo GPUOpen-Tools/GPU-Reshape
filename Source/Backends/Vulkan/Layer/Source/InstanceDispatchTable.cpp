@@ -1,4 +1,4 @@
-#include <Backends/Vulkan/InstanceDispatchTable.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Instance.h>
 
 // Std
@@ -14,6 +14,10 @@ void InstanceDispatchTable::Populate(VkInstance instance, PFN_vkGetInstanceProcA
 
     // Populate instance
     next_vkDestroyInstance = reinterpret_cast<PFN_vkDestroyInstance>(getProcAddr(instance, "vkDestroyInstance"));
+    next_vkGetPhysicalDeviceMemoryProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties>(getProcAddr(object, "vkGetPhysicalDeviceMemoryProperties"));
+    next_vkGetPhysicalDeviceMemoryProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2KHR>(getProcAddr(object, "vkGetPhysicalDeviceMemoryProperties2KHR"));
+    next_vkGetPhysicalDeviceProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties>(getProcAddr(object, "vkGetPhysicalDeviceProperties"));
+    next_vkGetPhysicalDeviceFeatures2 = reinterpret_cast<PFN_vkGetPhysicalDeviceFeatures2>(getProcAddr(object, "vkGetPhysicalDeviceFeatures2"));
 }
 
 PFN_vkVoidFunction InstanceDispatchTable::GetHookAddress(const char *name) {

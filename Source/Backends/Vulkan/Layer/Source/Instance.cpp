@@ -1,6 +1,6 @@
 #include <Backends/Vulkan/Instance.h>
 #include <Backends/Vulkan/Layer.h>
-#include <Backends/Vulkan/InstanceDispatchTable.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Compiler/PipelineCompiler.h>
 #include <Backends/Vulkan/Export/ShaderExportHost.h>
@@ -76,7 +76,7 @@ static void PoolAndInstallFeatures(InstanceDispatchTable* table) {
 }
 
 VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
-    auto chainInfo = static_cast<const VkLayerInstanceCreateInfo *>(pCreateInfo->pNext);
+    auto chainInfo = static_cast<VkLayerInstanceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
     // Attempt to find link info
     while (chainInfo && !(chainInfo->sType == VK_STRUCTURE_TYPE_LOADER_INSTANCE_CREATE_INFO && chainInfo->function == VK_LAYER_LINK_INFO)) {
@@ -92,8 +92,7 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     PFN_vkGetInstanceProcAddr getInstanceProcAddr = chainInfo->u.pLayerInfo->pfnNextGetInstanceProcAddr;
 
     // Advance layer
-    // TODO: ... there has to be a better way
-    const_cast<VkLayerInstanceCreateInfo *>(chainInfo)->u.pLayerInfo = chainInfo->u.pLayerInfo->pNext;
+    chainInfo->u.pLayerInfo = chainInfo->u.pLayerInfo->pNext;
 
     // Pass down the chain
     VkResult result = reinterpret_cast<PFN_vkCreateInstance>(getInstanceProcAddr(nullptr, "vkCreateInstance"))(pCreateInfo, pAllocator, pInstance);

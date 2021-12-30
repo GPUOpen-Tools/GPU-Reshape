@@ -1,6 +1,6 @@
 #include <Backends/Vulkan/Vulkan.h>
-#include <Backends/Vulkan/DeviceDispatchTable.h>
-#include <Backends/Vulkan/InstanceDispatchTable.h>
+#include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 
 // Vulkan
 #include <vulkan/vk_layer.h>

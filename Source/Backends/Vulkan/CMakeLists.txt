@@ -36,7 +36,7 @@ set(DeepCopyTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(VkHooks vkCmdDrawIndexed)
 
 # White list
-set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkEndCommandBuffer,vkCmdBindPipeline)
+set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkEndCommandBuffer,vkCmdBindPipeline,vkCmdBindDescriptorSets)
 
 # Object list
 set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo)
@@ -108,9 +108,13 @@ add_library(
     Layer/Source/Device.cpp
     Layer/Source/Instance.cpp
     Layer/Source/CommandBuffer.cpp
+    Layer/Source/DescriptorSet.cpp
     Layer/Source/ShaderModule.cpp
+    Layer/Source/QueueSegment.cpp
     Layer/Source/Pipeline.cpp
+    Layer/Source/Fence.cpp
     Layer/Source/Queue.cpp
+    Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Compiler/SpvModule.cpp
     Layer/Source/Compiler/SpvModuleParse.cpp
     Layer/Source/Compiler/SpvModuleRecompile.cpp
@@ -121,6 +125,9 @@ add_library(
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
     Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
     Layer/Source/Export/ShaderExportStreamer.cpp
+
+    # VMA implementation
+    Layer/Source/VMA.cpp
 
     # Generated
     Layer/Source/CommandBuffer.Gen.cpp
@@ -166,6 +173,7 @@ configure_file(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json ${CMAKE_LIBRAR
 # Hlsl files
 set(Generated "")
 Project_AddHLSL(Generated cs_6_0 Tests/Data/WriteUAV.hlsl Tests/Include/Data/WriteUAV.h kSPIRVWriteUAV)
+Project_AddHLSL(Generated cs_6_0 Tests/Data/WriteUAVNegative.hlsl Tests/Include/Data/WriteUAVNegative.h kSPIRVWriteUAVNegative)
 
 # Generate the schema
 Project_AddShaderSchema(Generated Tests/Schemas/WritingNegativeValue.xml Tests/Include/Schemas)

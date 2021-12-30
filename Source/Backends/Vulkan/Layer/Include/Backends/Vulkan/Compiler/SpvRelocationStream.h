@@ -31,7 +31,7 @@ struct SpvRelocationBlock {
     /// Optional, the constant data
     const void* ptr{nullptr};
 
-    /// The spirv data stream, ignroed if [ptr] is valid
+    /// The spirv data stream, ignored if [ptr] is valid
     SpvStream stream;
 };
 

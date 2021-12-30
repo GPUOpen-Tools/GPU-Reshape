@@ -3,12 +3,20 @@
 // Common
 #include <Common/Assert.h>
 
+// Std
+#include <set>
+
 // Backend
 #include <Backend/IL/Program.h>
 #include <Backend/IL/Emitter.h>
 
 // Layer
 #include <Backends/Vulkan/Compiler/SpvTypeMap.h>
+#include <Backends/Vulkan/Compiler/SpvJob.h>
+#include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
+
+// Forward declarations
+struct SpvRelocationStream;
 
 class SpvModule {
 public:
@@ -36,7 +44,7 @@ public:
     /// \param code the SPIRV module pointer
     /// \param wordCount number of words within the module stream
     /// \return success state
-    bool Recompile(const uint32_t* code, uint32_t wordCount);
+    bool Recompile(const uint32_t* code, uint32_t wordCount, const SpvJob& job);
 
     /// Get the produced program
     /// \return
@@ -118,6 +126,11 @@ private:
     /// \return
     bool ParseHeader(ParseContext& context);
 
+    /// Summarize all physical sections
+    /// \param context parsing context, copied
+    /// \return success state
+    bool SummarizePhysicalSections(ParseContext context);
+
     /// Parse an instruction
     /// \param context
     /// \return
@@ -133,8 +146,72 @@ private:
         uint32_t reserved;
     };
 
+    /// Sectiont ype
+    enum class LayoutSectionType {
+        Capability,
+        Extension,
+        InstImport,
+        MemoryModel,
+        Entry,
+        Execution,
+        DebugString,
+        DebugName,
+        DebugModule,
+        Annotation,
+        Declarations,
+        FunctionDeclaration,
+        FunctionDefinition,
+        Count
+    };
+
+    /// Single section
+    struct LayoutSection {
+        IL::SourceSpan sourceSpan;
+    };
+
+    /// All export metadata
+    struct ExportMetaData {
+        /// Spv identifiers
+        uint32_t counterId{0};
+        uint32_t streamId{0};
+
+        /// Type map
+        const SpvType* image32UIRWArrayPtr;
+        const SpvType* image32UIRWPtr;
+        const SpvType* image32UIRW;
+    };
+
+    /// Program metadata
+    struct MetaData {
+        /// Number of bound descriptor sets
+        uint32_t boundDescriptorSets{0};
+
+        /// All capabilities
+        std::set<SpvCapability> capabilities;
+
+        /// All physical sections
+        LayoutSection sections[static_cast<uint32_t>(LayoutSectionType::Count)]{};
+
+        /// Export metadata
+        ExportMetaData exportMd;
+    };
+
     /// Header
     ProgramHeader header;
+
+    /// Copyable meta data
+    MetaData metaData;
+
+private:
+    /// Get a single section
+    /// \param type type of the section
+    const LayoutSection& GetSection(LayoutSectionType type);
+
+    /// Insert the export records
+    /// \param jitHeader the jitted program header
+    /// \param stream the final relocation stream
+    /// \param job current job
+    void InsertExportRecords(ProgramHeader& jitHeader, SpvRelocationStream &stream, const SpvJob& job);
 
 private:
     Allocators allocators;

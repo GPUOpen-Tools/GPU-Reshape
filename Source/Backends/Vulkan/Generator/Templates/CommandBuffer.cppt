@@ -4,8 +4,8 @@
 
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
-#include <Backends/Vulkan/DeviceDispatchTable.h>
-#include <Backends/Vulkan/CommandBufferObject.h>
+#include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Objects/CommandBufferObject.h>
 
 // Backend
 #include <Backend/IFeature.h>

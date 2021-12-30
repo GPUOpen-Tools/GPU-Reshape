@@ -1,6 +1,6 @@
-#include <Backends/Vulkan/ShaderModuleState.h>
+#include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/ShaderModule.h>
-#include <Backends/Vulkan/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateShaderModule(VkDevice device, const VkShaderModuleCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkShaderModule* pShaderModule) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));

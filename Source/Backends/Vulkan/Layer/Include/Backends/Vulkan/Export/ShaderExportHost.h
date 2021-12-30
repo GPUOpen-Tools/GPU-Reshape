@@ -9,6 +9,9 @@
 class ShaderExportHost : public IShaderExportHost {
 public:
     ShaderExportID Allocate(const ShaderExportTypeInfo &typeInfo) override;
+    void Enumerate(uint32_t *count, ShaderExportID *out) override;
+    ShaderExportTypeInfo GetTypeInfo(ShaderExportID id) override;
+    uint32_t GetBound() override;
 
 private:
     struct ShaderExportInfo {

@@ -1,11 +1,12 @@
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Compiler/SpvModule.h>
-#include <Backends/Vulkan/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
 #include <Backend/IShaderFeature.h>
+#include <Backend/IShaderExportHost.h>
 
 // Common
 #include <Common/Dispatcher.h>
@@ -25,7 +26,7 @@ bool ShaderCompiler::Install() {
     }
 
     // Get the feature host
-    IFeatureHost *host = registry->Get<IFeatureHost>();
+    auto *host = registry->Get<IFeatureHost>();
     if (!host) {
         return false;
     }
@@ -40,20 +41,25 @@ bool ShaderCompiler::Install() {
 
     // Get all shader features
     for (IFeature *feature: features) {
-        if (IShaderFeature *shaderFeature = feature->QueryInterface<IShaderFeature>()) {
-            shaderFeatures.push_back(shaderFeature);
-        }
+        auto *shaderFeature = feature->QueryInterface<IShaderFeature>();
+
+        // Append null even if not found
+        shaderFeatures.push_back(shaderFeature);
     }
+
+    // Get the export host
+    auto* exportHost = registry->Get<IShaderExportHost>();
+    exportHost->Enumerate(&exportCount, nullptr);
 
     // OK
     return true;
 }
 
-void ShaderCompiler::Add(DeviceDispatchTable *table, ShaderModuleState *state, uint64_t featureBitSet, DispatcherBucket *bucket) {
+void ShaderCompiler::Add(DeviceDispatchTable *table, ShaderModuleState *state, const ShaderModuleInstrumentationKey& instrumentationKey, DispatcherBucket *bucket) {
     auto data = new(registry->GetAllocators()) ShaderJob{
         .table = table,
         .state = state,
-        .featureBitSet = featureBitSet
+        .instrumentationKey = instrumentationKey
     };
 
     dispatcher->Add(BindDelegate(this, ShaderCompiler::Worker), data, bucket);
@@ -91,8 +97,13 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     SpvModule *module = job.state->spirvModule->Copy();
 
     // Pass through all features
-    for (IShaderFeature *shaderFeature: shaderFeatures) {
-        shaderFeature->Inject(*module->GetProgram());
+    for (size_t i = 0; i < shaderFeatures.size(); i++) {
+        if (!(job.instrumentationKey.featureBitSet & (1u << i))) {
+            continue;
+        }
+
+        // Inject marked shader feature
+        shaderFeatures[i]->Inject(*module->GetProgram());
     }
 
 #if SPV_SHADER_COMPILER_DUMP
@@ -101,10 +112,16 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     outAfterIL.close();
 #endif
 
+    // Spv job
+    SpvJob spvJob;
+    spvJob.instrumentationKey = job.instrumentationKey;
+    spvJob.streamCount = exportCount;
+
     // Recompile the program
     if (!module->Recompile(
         job.state->createInfoDeepCopy.createInfo.pCode,
-        job.state->createInfoDeepCopy.createInfo.codeSize / 4u
+        job.state->createInfoDeepCopy.createInfo.codeSize / 4u,
+        spvJob
     )) {
         return;
     }
@@ -137,7 +154,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 #endif
 
     // Assign the instrument
-    job.state->AddInstrument(job.featureBitSet, instrument);
+    job.state->AddInstrument(job.instrumentationKey, instrument);
 
     // Destroy the module
     destroy(module, allocators);
