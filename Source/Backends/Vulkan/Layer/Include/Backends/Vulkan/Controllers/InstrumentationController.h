@@ -31,7 +31,7 @@ class InstrumentationController final : public IController, public IBridgeListen
 public:
     InstrumentationController(DeviceDispatchTable* table);
 
-    void Install();
+    bool Install();
 
     /// Overrides
     void Handle(const MessageStream *streams, uint32_t count) final;

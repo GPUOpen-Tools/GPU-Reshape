@@ -22,6 +22,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE HLSL HEADER VAR)
             ${Hlsl}
             -Fh ${HEADER}
             -Vn ${VAR}
+            -Zi -Od
     )
 
     # Set output

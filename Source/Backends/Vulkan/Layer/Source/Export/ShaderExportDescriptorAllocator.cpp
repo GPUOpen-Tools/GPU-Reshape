@@ -12,7 +12,7 @@
 ShaderExportDescriptorAllocator::ShaderExportDescriptorAllocator(DeviceDispatchTable *table) : table(table) {
 }
 
-void ShaderExportDescriptorAllocator::Install() {
+bool ShaderExportDescriptorAllocator::Install() {
     auto *host = registry->Get<IShaderExportHost>();
     host->Enumerate(&exportBound, nullptr);
 
@@ -50,11 +50,13 @@ void ShaderExportDescriptorAllocator::Install() {
     setInfo.bindingCount = 2; /* Counters + Streams */
     setInfo.pBindings = bindings;
     if (table->next_vkCreateDescriptorSetLayout(table->object, &setInfo, nullptr, &layout) != VK_SUCCESS) {
-        return;
+        return false;
     }
 
     // Create the dummy buffer
     CreateDummyBuffer();
+
+    return true;
 }
 
 ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate() {

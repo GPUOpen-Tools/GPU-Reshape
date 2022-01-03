@@ -13,6 +13,9 @@
 // Tests
 #include <Loader.h>
 
+// Common
+#include <Common/String.h>
+
 // Backend
 #include <Backend/FeatureHost.h>
 #include <Backend/IFeature.h>
@@ -20,6 +23,7 @@
 #include <Backend/IL/Program.h>
 #include <Backend/IL/Emitter.h>
 #include <Backend/IShaderExportHost.h>
+#include <Backend/IShaderSGUIDHost.h>
 
 // Bridge
 #include <Bridge/IBridgeListener.h>
@@ -39,8 +43,9 @@ public:
 
     bool Install() override {
         auto* exportHost = registry->Get<IShaderExportHost>();
-
         exportID = exportHost->Allocate<WritingNegativeValueMessage>();
+
+        guidHost = registry->Get<IShaderSGUIDHost>();
         return true;
     }
 
@@ -74,6 +79,8 @@ public:
                 return false;
 
             case IL::OpCode::StoreBuffer: {
+                ShaderSGUID sguid = guidHost->Bind(program, it);
+
                 // Pre:
                 //   BrCond Fail Resume
                 // Fail:
@@ -91,8 +98,8 @@ public:
                     IL::Emitter<> emitter(program, *failBlock);
 
                     WritingNegativeValueMessage::ShaderExport msg;
-                    msg.sguid = emitter.UInt(32, 0);
-                    msg.ergo = emitter.UInt(32, kProxy);
+                    msg.sguid = emitter.UInt(sguid);
+                    msg.ergo = emitter.UInt(kProxy);
                     emitter.Export(exportID, msg);
 
                     // Branch back
@@ -118,14 +125,19 @@ public:
     }
 
 private:
+    IShaderSGUIDHost* guidHost{nullptr};
+
     ShaderExportID exportID{};
-    uint32_t messageUID{};
 
     MessageStream stream;
 };
 
 class WritingNegativeValueListener : public IBridgeListener {
 public:
+    WritingNegativeValueListener(Registry* registry) {
+        sguidHost = registry->Get<IShaderSGUIDHost>();
+    }
+
     void Handle(const MessageStream *streams, uint32_t count) override {
         for (uint32_t i = 0; i < count; i++) {
             ConstMessageStreamView<WritingNegativeValueMessage> view(streams[i]);
@@ -135,7 +147,11 @@ public:
 
             // Validate all messages
             for (auto it = view.GetIterator(); it; ++it) {
-                REQUIRE(it->sguid == 0);
+                REQUIRE(it->sguid != InvalidShaderSGUID);
+
+                std::string_view line = sguidHost->GetSource(it->sguid);
+                REQUIRE(std::trim_copy(std::string(line)) == "output[dtid.x] = -(int)dtid;");
+
                 REQUIRE(it->ergo == kProxy);
             }
 
@@ -144,6 +160,9 @@ public:
     }
 
     bool visited{false};
+
+private:
+    IShaderSGUIDHost* sguidHost;
 };
 
 TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
@@ -286,7 +305,7 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
 
     auto* bridge = registry->Get<IBridge>();
 
-    WritingNegativeValueListener listener;
+    WritingNegativeValueListener listener(registry);
     bridge->Register(WritingNegativeValueMessage::kID, &listener);
 
     MessageStream stream;

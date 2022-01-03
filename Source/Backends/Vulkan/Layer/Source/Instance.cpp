@@ -1,9 +1,6 @@
 #include <Backends/Vulkan/Instance.h>
 #include <Backends/Vulkan/Layer.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
-#include <Backends/Vulkan/Compiler/ShaderCompiler.h>
-#include <Backends/Vulkan/Compiler/PipelineCompiler.h>
-#include <Backends/Vulkan/Export/ShaderExportHost.h>
 
 // Common
 #include <Common/Dispatcher.h>
@@ -54,27 +51,6 @@ VkResult VKAPI_PTR Hook_vkEnumerateInstanceExtensionProperties(uint32_t *pProper
     return VK_SUCCESS;
 }
 
-static void PoolAndInstallFeatures(InstanceDispatchTable* table) {
-    // Get the feature host
-    IFeatureHost* host = table->registry->Get<IFeatureHost>();
-    if (!host) {
-        return;
-    }
-
-    // Pool feature count
-    uint32_t featureCount;
-    host->Enumerate(&featureCount, nullptr);
-
-    // Pool features
-    table->features.resize(featureCount);
-    host->Enumerate(&featureCount, table->features.data());
-
-    // Install features
-    for (IFeature* feature : table->features) {
-        feature->Install();
-    }
-}
-
 VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
     auto chainInfo = static_cast<VkLayerInstanceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
@@ -118,20 +94,6 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
 
     // Setup the default allocators
     table->allocators = table->registry->GetAllocators();
-
-    // Install the shader export host
-    table->registry->AddNew<ShaderExportHost>();
-
-    // Install the shader compiler
-    auto shaderCompiler = table->registry->AddNew<ShaderCompiler>();
-    shaderCompiler->Install();
-
-    // Install the pipeline compiler
-    auto pipelineCompiler = table->registry->AddNew<PipelineCompiler>();
-    pipelineCompiler->Install();
-
-    // Install all features
-    PoolAndInstallFeatures(table);
 
     // OK
     return VK_SUCCESS;

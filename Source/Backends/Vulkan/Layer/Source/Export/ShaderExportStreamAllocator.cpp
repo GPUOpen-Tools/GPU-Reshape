@@ -14,7 +14,7 @@ ShaderExportStreamAllocator::ShaderExportStreamAllocator(DeviceDispatchTable *ta
 
 }
 
-void ShaderExportStreamAllocator::Install() {
+bool ShaderExportStreamAllocator::Install() {
     deviceAllocator = registry->Get<DeviceAllocator>();
 
     auto* host = registry->Get<IShaderExportHost>();
@@ -37,6 +37,8 @@ void ShaderExportStreamAllocator::Install() {
         info.typeInfo = host->GetTypeInfo(id);
         info.dataSize = baseDataSize;
     }
+
+    return true;
 }
 
 ShaderExportSegmentInfo *ShaderExportStreamAllocator::AllocateSegment() {

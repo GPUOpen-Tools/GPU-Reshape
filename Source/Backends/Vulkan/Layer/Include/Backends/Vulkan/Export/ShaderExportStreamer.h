@@ -27,7 +27,7 @@ public:
 
     ShaderExportStreamer(DeviceDispatchTable* table);
 
-    void Install();
+    bool Install();
 
     /// Allocate a new queue state
     /// \param state the given queue

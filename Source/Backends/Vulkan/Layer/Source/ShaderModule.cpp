@@ -12,7 +12,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateShaderModule(VkDevice device, const 
     }
 
     // Allocate state
-    auto state =  table->states_shaderModule.Add(*pShaderModule, new (table->allocators) ShaderModuleState);
+    auto state = table->states_shaderModule.Add(*pShaderModule, new (table->allocators) ShaderModuleState);
     state->table = table;
     state->object = *pShaderModule;
 

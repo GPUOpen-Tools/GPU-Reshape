@@ -23,12 +23,14 @@ ShaderExportStreamer::ShaderExportStreamer(DeviceDispatchTable *table) : table(t
 
 }
 
-void ShaderExportStreamer::Install() {
+bool ShaderExportStreamer::Install() {
     bridge = registry->Get<IBridge>();
 
     deviceAllocator = registry->Get<DeviceAllocator>();
     descriptorAllocator = registry->Get<ShaderExportDescriptorAllocator>();
     streamAllocator = registry->Get<ShaderExportStreamAllocator>();
+
+    return true;
 }
 
 ShaderExportQueueState *ShaderExportStreamer::AllocateQueueState(QueueState* queue) {

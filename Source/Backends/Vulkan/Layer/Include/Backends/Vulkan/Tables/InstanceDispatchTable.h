@@ -61,9 +61,6 @@ struct InstanceDispatchTable {
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;
 
-    /// All features
-    std::vector<IFeature*> features;
-
     /// Callbacks
     PFN_vkGetInstanceProcAddr                   next_vkGetInstanceProcAddr;
     PFN_vkDestroyInstance                       next_vkDestroyInstance;
