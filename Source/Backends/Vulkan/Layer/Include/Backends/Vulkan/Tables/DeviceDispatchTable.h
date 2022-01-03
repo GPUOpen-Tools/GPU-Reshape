@@ -158,6 +158,9 @@ struct DeviceDispatchTable {
     std::mutex                 commandBufferMutex;
     CommandBufferDispatchTable commandBufferDispatchTable;
 
+    /// All features
+    std::vector<IFeature*> features;
+
 private:
     /// Lookup
     static std::mutex                              Mutex;

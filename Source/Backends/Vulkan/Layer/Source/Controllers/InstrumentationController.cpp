@@ -23,13 +23,15 @@ InstrumentationController::InstrumentationController(DeviceDispatchTable *table)
 
 }
 
-void InstrumentationController::Install() {
+bool InstrumentationController::Install() {
     shaderCompiler = registry->Get<ShaderCompiler>();
     pipelineCompiler = registry->Get<PipelineCompiler>();
     dispatcher = registry->Get<Dispatcher>();
 
     auto* bridge = registry->Get<IBridge>();
     bridge->Register(this);
+
+    return true;
 }
 
 void InstrumentationController::Handle(const MessageStream *streams, uint32_t count) {

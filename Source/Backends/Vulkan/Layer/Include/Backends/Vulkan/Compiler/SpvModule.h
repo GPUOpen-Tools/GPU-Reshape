@@ -17,10 +17,12 @@
 
 // Forward declarations
 struct SpvRelocationStream;
+struct SpvDebugMap;
+struct SpvSourceMap;
 
 class SpvModule {
 public:
-    SpvModule(const Allocators& allocators);
+    SpvModule(const Allocators& allocators, uint64_t shaderGUID);
     ~SpvModule();
 
     /// No copy
@@ -66,6 +68,16 @@ public:
     /// Get the byte size of the code
     uint64_t GetSize() const {
         return spirvProgram.size() * sizeof(uint32_t);
+    }
+
+    /// Get the source map for this module
+    const SpvSourceMap* GetSourceMap() const {
+        return sourceMap;
+    }
+
+    /// Get the debug map for this module
+    const SpvDebugMap* GetDebugMap() const {
+        return debugMap;
     }
 
 private:
@@ -202,6 +214,15 @@ private:
     /// Copyable meta data
     MetaData metaData;
 
+    /// Debug map
+    SpvDebugMap* debugMap{nullptr};
+
+    /// Source map
+    SpvSourceMap* sourceMap{nullptr};
+
+    /// Parent instance
+    const SpvModule* parent{nullptr};
+
 private:
     /// Get a single section
     /// \param type type of the section
@@ -215,6 +236,9 @@ private:
 
 private:
     Allocators allocators;
+
+    /// Global GUID
+    uint64_t shaderGUID{~0ull};
 
     /// JIT'ed program
     std::vector<uint32_t> spirvProgram;

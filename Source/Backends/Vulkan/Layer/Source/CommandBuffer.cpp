@@ -10,10 +10,8 @@
 #include <Backend/IFeature.h>
 
 void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
-    InstanceDispatchTable* instance = table->parent;
-
-    for (uint32_t i = 0; i < static_cast<uint32_t>(instance->features.size()); i++) {
-        IFeature *feature = instance->features[i];
+    for (uint32_t i = 0; i < static_cast<uint32_t>(table->features.size()); i++) {
+        IFeature *feature = table->features[i];
 
         // Get the hook table
         FeatureHookTable hookTable = feature->GetHookTable();

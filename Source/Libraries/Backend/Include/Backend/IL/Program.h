@@ -10,7 +10,7 @@
 
 namespace IL {
     struct Program {
-        Program(const Allocators& allocators) : allocators(allocators) {
+        Program(const Allocators& allocators, uint64_t shaderGUID) : allocators(allocators), shaderGUID(shaderGUID) {
 
         }
 
@@ -25,7 +25,7 @@ namespace IL {
         /// Copy this program
         /// \return
         Program* Copy() const {
-            auto program = new (allocators) Program(allocators);
+            auto program = new (allocators) Program(allocators, shaderGUID);
             program->map.SetBound(map.GetMaxID());
 
             // Copy all functions
@@ -34,6 +34,11 @@ namespace IL {
             }
 
             return program;
+        }
+
+        /// Get the shader guid
+        uint64_t GetShaderGUID() const {
+            return shaderGUID;
         }
 
         /// Allocate a new basic block
@@ -86,5 +91,8 @@ namespace IL {
 
         /// The identifier map
         IdentifierMap map;
+
+        /// Shader guid of this program
+        uint64_t shaderGUID{~0ull};
     };
 }

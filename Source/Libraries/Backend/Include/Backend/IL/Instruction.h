@@ -48,6 +48,14 @@ namespace IL {
         uint32_t backendOpCode;
     };
 
+    struct SourceAssociationInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::SourceAssociation;
+
+        uint32_t file;
+        uint32_t line;
+        uint32_t column;
+    };
+
     struct IntTypeInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::IntType;
 
@@ -313,6 +321,8 @@ namespace IL {
                 return sizeof(AllocaInstruction);
             case OpCode::StoreTexture:
                 return sizeof(StoreBufferInstruction);
+            case OpCode::SourceAssociation:
+                return sizeof(SourceAssociationInstruction);
         }
     }
 }

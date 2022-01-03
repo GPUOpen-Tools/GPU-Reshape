@@ -73,7 +73,7 @@ void ShaderCompiler::Worker(void *data) {
 void ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Create the module on demand
     if (!job.state->spirvModule) {
-        job.state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators);
+        job.state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators, job.state->uid);
 
         // Parse the module
         bool result = job.state->spirvModule->ParseModule(

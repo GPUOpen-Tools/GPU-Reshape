@@ -28,7 +28,7 @@ public:
 
     ShaderExportStreamAllocator(DeviceDispatchTable* table);
 
-    void Install();
+    bool Install();
 
     /// Allocate a new allocation
     /// \return the allocation

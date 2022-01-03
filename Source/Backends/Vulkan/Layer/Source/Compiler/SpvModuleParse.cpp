@@ -1,10 +1,14 @@
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/Compiler/SpvInstruction.h>
 #include <Backends/Vulkan/Compiler/SpvStream.h>
+#include <Backends/Vulkan/Compiler/SpvDebugMap.h>
+#include "Backends/Vulkan/Compiler/SpvSourceMap.h"
 
 bool SpvModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
-    program = new(allocators) IL::Program(allocators);
+    program = new(allocators) IL::Program(allocators, shaderGUID);
     typeMap = new(allocators) SpvTypeMap(allocators);
+    debugMap = new(allocators) SpvDebugMap();
+    sourceMap = new(allocators) SpvSourceMap();
 
     ParseContext context;
     context.start = code;
@@ -53,6 +57,9 @@ bool SpvModule::ParseHeader(ParseContext &context) {
 
     // Set the type head
     typeMap->SetIdBound(header.bound);
+
+    // Set the debug head
+    debugMap->SetBound(header.bound);
 
     // OK
     return true;
@@ -194,6 +201,54 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
                     break;
                 }
             }
+            break;
+        }
+
+        // Debug
+
+        case SpvOpString: {
+            ASSERT(hasResult, "Expected result for instruction type");
+            debugMap->Add(id, SpvOpString, std::string_view(reinterpret_cast<const char*>(context.code), (sourceWordCount - 2) * sizeof(uint32_t)));
+            break;
+        }
+
+        case SpvOpSource: {
+            auto language = static_cast<SpvSourceLanguage>(context++);
+            uint32_t version = context++;
+
+            // Optional filename
+            uint32_t fileId{InvalidSpvId};
+            if (context.code < end) {
+                fileId = context++;
+                sourceMap->AddPhysicalSource(fileId, language, version, debugMap->Get(fileId, SpvOpString));
+            }
+
+            // Optional fragment?
+            if (context.code < end) {
+                sourceMap->AddSource(fileId, std::string_view(reinterpret_cast<const char*>(context.code), (sourceWordCount - 4) * sizeof(uint32_t)));
+            }
+            break;
+        }
+
+        case SpvOpSourceContinued: {
+            sourceMap->AddSource(sourceMap->GetPendingSource(), std::string_view(reinterpret_cast<const char*>(context.code), (sourceWordCount - 1) * sizeof(uint32_t)));
+            break;
+        }
+
+        case SpvOpLine: {
+            if (!context.basicBlock) {
+                break;
+            }
+
+            // Append
+            IL::SourceAssociationInstruction instr{};
+            instr.opCode = IL::OpCode::SourceAssociation;
+            instr.result = IL::InvalidID;
+            instr.source = source;
+            instr.file = sourceMap->GetFileIndex(context++);
+            instr.line = (context++) - 1;
+            instr.column = (context++) - 1;
+            context.basicBlock->Append(instr);
             break;
         }
 

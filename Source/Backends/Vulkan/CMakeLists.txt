@@ -125,6 +125,8 @@ add_library(
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
     Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
     Layer/Source/Export/ShaderExportStreamer.cpp
+    Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
+    Layer/Source/Compiler/SpvSourceMap.cpp
 
     # VMA implementation
     Layer/Source/VMA.cpp
