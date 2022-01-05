@@ -47,7 +47,7 @@ struct SpvStream {
     /// \param source the source word offset
     /// \return the allocated instruction
     SpvInstruction& Template(const IL::Source& source) {
-        ASSERT(source.Valid(), "Cannot template instruction without source");
+        ASSERT(source.IsValid(), "Cannot template instruction without source");
         auto* instruction = reinterpret_cast<const SpvInstruction*>(code + source.codeOffset);
 
         size_t offset = stream.size();
@@ -60,7 +60,7 @@ struct SpvStream {
     /// \param source the source word offset
     /// \return the allocated instruction
     SpvInstruction& TemplateOrAllocate(SpvOp op, uint32_t wordCount, const IL::Source& source) {
-        if (!source.Valid()) {
+        if (!source.IsValid()) {
             return Allocate(op, wordCount);
         }
 

@@ -28,12 +28,12 @@ namespace IL {
         Source Modify() const {
             Source source;
             source.codeOffset = codeOffset;
-            source.modified = Valid();
+            source.modified = IsValid();
             return source;
         }
 
         /// Is this source valid?
-        bool Valid() const {
+        bool IsValid() const {
             return codeOffset != InvalidOffset;
         }
 

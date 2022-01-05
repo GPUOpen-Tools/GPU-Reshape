@@ -61,5 +61,6 @@ namespace IL {
 
         /// Buffer
         StoreBuffer,
+        LoadBuffer,
     };
 }

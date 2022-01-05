@@ -6,6 +6,7 @@
 // Backend
 #include "BasicBlock.h"
 #include "IdentifierMap.h"
+#include "FunctionFlag.h"
 
 // Std
 #include <list>
@@ -32,6 +33,8 @@ namespace IL {
         Function Copy(IdentifierMap& copyMap) const {
             Function function(allocators, copyMap, id);
             function.sourceSpan = sourceSpan;
+            function.basicBlockRevision = basicBlockRevision;
+            function.flags = flags;
 
             // Copy all basic blocks
             for (const BasicBlock& bb : basicBlocks) {
@@ -41,9 +44,30 @@ namespace IL {
             return function;
         }
 
+        /// Add a new flag to this function
+        /// \param value flag to be added
+        void AddFlag(FunctionFlagSet value) {
+            flags |= value;
+        }
+
+        /// Remove a flag from this function
+        /// \param value flag to be removed
+        void RemoveFlag(FunctionFlagSet value) {
+            flags &= ~value;
+        }
+
+        /// Check if this function has a flag
+        /// \param value flag to be checked
+        /// \return true if present
+        bool HasFlag(FunctionFlag value) {
+            return flags & value;
+        }
+
         /// Allocate a new basic block
         /// \return allocated basic block
         BasicBlock* AllocBlock(ID bid) {
+            basicBlockRevision++;
+
             BasicBlock& bb = basicBlocks.emplace_back(allocators, std::ref(map), bid);
             blockMap[bid] = &bb;
             return &bb;
@@ -82,6 +106,11 @@ namespace IL {
             return id;
         }
 
+        /// Get all flags
+        FunctionFlagSet GetFlags() const {
+            return flags;
+        }
+
         /// Get the source span of this function
         SourceSpan GetSourceSpan() const {
             return sourceSpan;
@@ -90,6 +119,11 @@ namespace IL {
         /// Get the declaration source span
         SourceSpan GetDeclarationSourceSpan() const {
             return {sourceSpan.begin, sourceSpan.begin};
+        }
+
+        /// Get the current basic block revision
+        uint32_t GetBasicBlockRevision() const {
+            return basicBlockRevision;
         }
 
         /// Iterator
@@ -147,7 +181,13 @@ namespace IL {
         /// Basic blocks
         std::list<BasicBlock> basicBlocks;
 
+        /// Basic block revision
+        uint32_t basicBlockRevision{0};
+
         /// Block map
         std::map<ID, BasicBlock*> blockMap;
+
+        /// Function flags
+        FunctionFlagSet flags{0};
     };
 }

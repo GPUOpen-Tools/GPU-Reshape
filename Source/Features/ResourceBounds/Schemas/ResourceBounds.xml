@@ -1,0 +1,6 @@
+<schema>
+    <shader-export name="ResourceIndexOutOfBounds">
+        <field name="isTexture" type="uint32" bits="1"/>
+        <field name="isWrite" type="uint32" bits="1"/>
+    </shader-export>
+</schema>

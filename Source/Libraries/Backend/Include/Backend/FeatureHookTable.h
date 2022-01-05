@@ -3,6 +3,9 @@
 // Common
 #include <Common/Delegate.h>
 
+// Std
+#include <cstdint>
+
 // Hook types
 namespace Hooks {
     using DrawIndexed = Delegate<void(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)>;
