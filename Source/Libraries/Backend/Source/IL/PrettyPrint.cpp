@@ -223,7 +223,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             break;
     }
 
-    if (instr->source.Valid()) {
+    if (instr->source.IsValid()) {
         line << " [" << instr->source.codeOffset << "]";
     }
 

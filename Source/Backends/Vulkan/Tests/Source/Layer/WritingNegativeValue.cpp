@@ -98,8 +98,8 @@ public:
                     IL::Emitter<> emitter(program, *failBlock);
 
                     WritingNegativeValueMessage::ShaderExport msg;
-                    msg.sguid = emitter.UInt(sguid);
-                    msg.ergo = emitter.UInt(kProxy);
+                    msg.sguid = emitter.UInt32(sguid);
+                    msg.ergo = emitter.UInt32(kProxy);
                     emitter.Export(exportID, msg);
 
                     // Branch back

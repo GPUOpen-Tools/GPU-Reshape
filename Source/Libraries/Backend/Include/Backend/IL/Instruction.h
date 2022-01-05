@@ -37,6 +37,12 @@ namespace IL {
             return T::kOpCode == opCode;
         }
 
+        /// Is this instruction part of the original source code?
+        /// \return true if user instruction
+        bool IsUserInstruction() const {
+            return source.IsValid();
+        }
+
         OpCode opCode;
         ID result;
         Source source;

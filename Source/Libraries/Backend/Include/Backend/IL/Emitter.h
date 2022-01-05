@@ -90,6 +90,16 @@ namespace IL {
             insertionPoint = ref;
         }
 
+        /// Get the insertion point
+        Opaque GetInsertionPoint() {
+            return insertionPoint;
+        }
+
+        /// Add a new flag
+        void AddBlockFlag(BasicBlockFlagSet flags) {
+            basicBlock->AddFlag(flags);
+        }
+
         /// Declare int type
         /// \param bitWidth bit width of the integer
         /// \param _signed signed state
@@ -151,42 +161,42 @@ namespace IL {
         /// Add a 32 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Int(int32_t value) {
+        InstructionRef <LiteralInstruction> Int32(int32_t value) {
             return Int(32, value);
         }
 
         /// Add a 16 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Int(int16_t value) {
+        InstructionRef <LiteralInstruction> Int16(int16_t value) {
             return Int(16, value);
         }
 
         /// Add a 8 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Int(int8_t value) {
+        InstructionRef <LiteralInstruction> Int8(int8_t value) {
             return Int(8, value);
         }
 
         /// Add a 32 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> UInt(uint32_t value) {
+        InstructionRef <LiteralInstruction> UInt32(uint32_t value) {
             return UInt(32, value);
         }
 
         /// Add a 16 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> UInt(uint16_t value) {
+        InstructionRef <LiteralInstruction> UInt16(uint16_t value) {
             return UInt(16, value);
         }
 
         /// Add a 8 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> UInt(uint8_t value) {
+        InstructionRef <LiteralInstruction> UInt8(uint8_t value) {
             return UInt(8, value);
         }
 

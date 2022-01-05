@@ -27,6 +27,7 @@ namespace IL {
         Program* Copy() const {
             auto program = new (allocators) Program(allocators, shaderGUID);
             program->map.SetBound(map.GetMaxID());
+            program->functionRevision = functionRevision;
 
             // Copy all functions
             for (const Function& fn : functions) {
@@ -44,6 +45,8 @@ namespace IL {
         /// Allocate a new basic block
         /// \return
         Function* AllocFunction(ID id) {
+            functionRevision++;
+            
             functions.emplace_back(allocators, map, id);
             return &functions.back();
         }
@@ -83,6 +86,11 @@ namespace IL {
             return map;
         }
 
+        /// Get the current basic block revision
+        uint32_t GetFunctionRevision() const {
+            return functionRevision;
+        }
+
     private:
         Allocators allocators;
 
@@ -91,6 +99,9 @@ namespace IL {
 
         /// The identifier map
         IdentifierMap map;
+
+        /// Function revision
+        uint32_t functionRevision{0};
 
         /// Shader guid of this program
         uint64_t shaderGUID{~0ull};

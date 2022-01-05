@@ -7,7 +7,7 @@
 #include "RelocationAllocator.h"
 #include "Instruction.h"
 #include "IdentifierMap.h"
-#include "PrettyPrint.h"
+#include "BasicBlockFlag.h"
 
 namespace IL {
     /// Instruction reference
@@ -177,8 +177,13 @@ namespace IL {
 #endif
             }
 
+            /// Valid iterator?
+            bool IsValid() const {
+                return ptr != nullptr;
+            }
+
             /// Current offset
-            const uint8_t *ptr;
+            const uint8_t *ptr{nullptr};
 
             /// Relocation index for references
             uint32_t relocationIndex{0};
@@ -320,8 +325,13 @@ namespace IL {
 #endif
             }
 
+            /// Is this iterator valid?
+            bool IsValid() const {
+                return ptr != nullptr;
+            }
+
             /// Current offset
-            const uint8_t *ptr;
+            const uint8_t *ptr{nullptr};
 
             /// Current relocation index for references
             uint32_t relocationIndex{0};
@@ -359,6 +369,7 @@ namespace IL {
             bb.dirty = dirty;
             bb.data = data;
             bb.sourceSpan = sourceSpan;
+            bb.flags = flags;
 
             // Preallocate
             bb.relocationTable.resize(relocationTable.size());
@@ -380,6 +391,25 @@ namespace IL {
             }
 
             return bb;
+        }
+
+        /// Add a new flag to this block
+        /// \param value flag to be added
+        void AddFlag(BasicBlockFlagSet value) {
+            flags |= value;
+        }
+
+        /// Remove a flag from this block
+        /// \param value flag to be removed
+        void RemoveFlag(BasicBlockFlagSet value) {
+            flags &= ~value;
+        }
+
+        /// Check if this block has a flag
+        /// \param value flag to be checked
+        /// \return true if present
+        bool HasFlag(BasicBlockFlag value) {
+            return flags & value;
         }
 
         /// Append an instruction
@@ -609,6 +639,11 @@ namespace IL {
             sourceSpan = span;
         }
 
+        /// Get all flags
+        BasicBlockFlagSet GetFlags() const {
+            return flags;
+        }
+
         /// Get the number of instructions
         uint32_t GetCount() const {
             return count;
@@ -794,6 +829,9 @@ namespace IL {
 
         /// Relocation block allocator
         RelocationAllocator relocationAllocator;
+
+        /// Block flags
+        BasicBlockFlagSet flags{0};
 
         /// Dirty flag
         bool dirty{true};
