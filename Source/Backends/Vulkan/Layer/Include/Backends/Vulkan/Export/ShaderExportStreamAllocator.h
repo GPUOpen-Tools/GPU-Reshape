@@ -2,8 +2,8 @@
 
 // Common
 #include <Common/IComponent.h>
-#include <Common/ObjectPool.h>
-#include <Common/TrivialObjectPool.h>
+#include <Common/Containers/ObjectPool.h>
+#include <Common/Containers/TrivialObjectPool.h>
 
 // Backend
 #include <Backend/ShaderExportTypeInfo.h>

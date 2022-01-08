@@ -2,6 +2,7 @@
 
 // Common
 #include <Common/Registry.h>
+#include <Common/Plugin/PluginList.h>
 
 namespace Backend {
     struct EnvironmentInfo;
@@ -26,5 +27,8 @@ namespace Backend {
     private:
         /// Internal registry
         Registry registry;
+
+        /// Listed plugins
+        PluginList plugins;
     };
 }

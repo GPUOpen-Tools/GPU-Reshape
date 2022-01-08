@@ -5,7 +5,7 @@
 #include <Backends/Vulkan/InstrumentationInfo.h>
 
 // Common
-#include <Common/ReferenceObject.h>
+#include <Common/Containers/ReferenceObject.h>
 
 // Deep Copy
 #include <Backends/Vulkan/DeepCopyObjects.Gen.h>

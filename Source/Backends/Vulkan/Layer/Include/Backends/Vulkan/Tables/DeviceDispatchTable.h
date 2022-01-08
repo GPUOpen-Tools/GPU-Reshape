@@ -8,7 +8,7 @@
 
 // Common
 #include "Common/Allocators.h"
-#include "Common/ObjectPool.h"
+#include "Common/Containers/ObjectPool.h"
 
 // Generated
 #include "Backends/Vulkan/CommandBufferDispatchTable.Gen.h"

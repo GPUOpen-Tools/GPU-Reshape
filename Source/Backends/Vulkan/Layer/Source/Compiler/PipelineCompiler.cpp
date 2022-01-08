@@ -3,7 +3,7 @@
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 
 // Common
-#include <Common/Dispatcher.h>
+#include "Common/Dispatcher/Dispatcher.h"
 #include <Common/Registry.h>
 
 bool PipelineCompiler::Install() {

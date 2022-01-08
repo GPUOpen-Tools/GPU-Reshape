@@ -4,7 +4,7 @@
 #include "Backends/Vulkan/CommandBufferDispatchTable.Gen.h"
 
 // Common
-#include "Common/ReferenceObject.h"
+#include "Common/Containers/ReferenceObject.h"
 
 // Vulkan
 #include "Backends/Vulkan/Vulkan.h"

@@ -3,7 +3,7 @@
 // Common
 #include "DispatcherWorker.h"
 #include "DispatcherJobPool.h"
-#include "IComponent.h"
+#include <Common/IComponent.h>
 
 // Std
 #include <list>

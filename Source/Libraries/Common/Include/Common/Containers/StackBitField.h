@@ -1,7 +1,7 @@
 #pragma once
 
 // Common
-#include "TrivialStackVector.h"
+#include <Common/Containers/TrivialStackVector.h>
 
 /// Stack bit field, bit field with default stack container, and optional heap fallback
 struct StackBitField {

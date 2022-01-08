@@ -4,7 +4,7 @@
 #include "VisitContext.h"
 
 // Common
-#include <Common/TrivialStackVector.h>
+#include <Common/Containers/TrivialStackVector.h>
 
 namespace IL {
     /// Implementation details
