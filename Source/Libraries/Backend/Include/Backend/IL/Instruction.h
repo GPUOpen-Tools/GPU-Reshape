@@ -124,6 +124,19 @@ namespace IL {
         ID value;
     };
 
+    struct LoadBufferInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::LoadBuffer;
+
+        ID buffer;
+        ID index;
+    };
+
+    struct ResourceSizeInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::ResourceSize;
+
+        ID resource;
+    };
+
     struct LoadTextureInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::LoadTexture;
 
@@ -250,6 +263,18 @@ namespace IL {
         ID type;
     };
 
+    struct AnyInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Any;
+
+        ID value;
+    };
+
+    struct AllInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::All;
+
+        ID value;
+    };
+
     /// Get the size of an instruction
     /// \param op
     /// \return the byte size
@@ -312,6 +337,18 @@ namespace IL {
                 return sizeof(StoreBufferInstruction);
             case OpCode::SourceAssociation:
                 return sizeof(SourceAssociationInstruction);
+            case OpCode::Any:
+                return sizeof(AnyInstruction);
+            case OpCode::All:
+                return sizeof(AllInstruction);
+            case OpCode::Or:
+                return sizeof(OrInstruction);
+            case OpCode::And:
+                return sizeof(AndInstruction);
+            case OpCode::LoadBuffer:
+                return sizeof(LoadBufferInstruction);
+            case OpCode::ResourceSize:
+                return sizeof(ResourceSizeInstruction);
         }
     }
 }

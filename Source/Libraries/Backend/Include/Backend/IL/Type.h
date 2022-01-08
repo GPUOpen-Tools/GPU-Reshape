@@ -148,6 +148,18 @@ namespace Backend::IL {
         Format format{Format::R32UInt};
     };
 
+    struct BufferType : public Type {
+        static constexpr TypeKind kKind = TypeKind::Buffer;
+
+        auto SortKey() const {
+            return std::make_tuple(elementType, texelType);
+        }
+
+        const Type* elementType{nullptr};
+
+        Format texelType{Format::None};
+    };
+
     /// Sort key helper
     template<typename T>
     using SortKey = decltype(std::declval<T>().SortKey());

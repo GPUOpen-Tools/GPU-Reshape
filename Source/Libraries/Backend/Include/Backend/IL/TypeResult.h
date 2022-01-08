@@ -82,6 +82,11 @@ namespace Backend::IL {
         return texture->As<TextureType>()->sampledType;
     }
 
+    inline const Type* ResultOf(Program& program, const LoadBufferInstruction* instr) {
+        const Type* buffer = program.GetTypeMap().GetType(instr->buffer);
+        return buffer->As<BufferType>()->elementType;
+    }
+
     inline const Type* ResultOf(Program& program, const LiteralInstruction* instr) {
         switch (instr->type) {
             default:
@@ -98,6 +103,31 @@ namespace Backend::IL {
                 typeFP.bitWidth = instr->bitWidth;
                 return program.GetTypeMap().FindTypeOrAdd(typeFP);
             }
+        }
+    }
+
+    inline const Type* ResultOf(Program& program, const AnyInstruction* instr) {
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+    }
+
+    inline const Type* ResultOf(Program& program, const AllInstruction* instr) {
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+    }
+
+    inline const Type* ResultOf(Program& program, const ResourceSizeInstruction* instr) {
+        const Type* resource = program.GetTypeMap().GetType(instr->resource);
+
+        switch (resource->kind) {
+            default:
+                ASSERT(false, "Invalid ResourceSize instruction");
+                return nullptr;
+            case TypeKind::Texture:
+                return program.GetTypeMap().FindTypeOrAdd(VectorType {
+                    .containedType = program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false }),
+                    .dimension = static_cast<uint8_t>(GetDimensionSize(resource->As<TextureType>()->dimension))
+                });
+            case TypeKind::Buffer:
+                return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
         }
     }
 }

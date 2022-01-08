@@ -114,6 +114,7 @@ namespace Backend::IL {
         template<> SortMap<PointerType>& GetSortMap<PointerType>() { return maps.pointerMap; }
         template<> SortMap<ArrayType>& GetSortMap<ArrayType>() { return maps.arrayMap; }
         template<> SortMap<TextureType>& GetSortMap<TextureType>() { return maps.textureMap; }
+        template<> SortMap<BufferType>& GetSortMap<BufferType>() { return maps.bufferMap; }
 
     private:
         Allocators allocators;
@@ -133,6 +134,7 @@ namespace Backend::IL {
             SortMap<PointerType> pointerMap;
             SortMap<ArrayType> arrayMap;
             SortMap<TextureType> textureMap;
+            SortMap<BufferType> bufferMap;
         };
 
         TypeMaps maps;

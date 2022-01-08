@@ -96,6 +96,8 @@ private:
                 return EmitSpvType(static_cast<const Backend::IL::ArrayType*>(type));
             case Backend::IL::TypeKind::Texture:
                 return EmitSpvType(static_cast<const Backend::IL::TextureType*>(type));
+            case Backend::IL::TypeKind::Buffer:
+                return EmitSpvType(static_cast<const Backend::IL::BufferType*>(type));
         }
     }
 
@@ -230,7 +232,7 @@ private:
         bool isArray{false};
         switch (type->dimension) {
             default:
-                ASSERT(false, "Invalid dimension");
+            ASSERT(false, "Invalid dimension");
                 return InvalidSpvId;
             case Backend::IL::TextureDimension::Texture1D:
                 dim = SpvDim1D;
@@ -252,9 +254,6 @@ private:
             case Backend::IL::TextureDimension::Texture2DCube:
                 dim = SpvDimCube;
                 break;
-            case Backend::IL::TextureDimension::TexelBuffer:
-                dim = SpvDimBuffer;
-                break;
         }
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeImage, 9);
@@ -266,6 +265,31 @@ private:
         spv[6] = type->multisampled;
         spv[7] = type->requiresSampler;
         spv[8] = Translate(type->format);
+
+        AddMapping(id, type);
+        return id;
+    }
+
+    SpvId EmitSpvType(const Backend::IL::BufferType* type) {
+        SpvId id = AllocateId();
+
+        SpvId element = GetSpvTypeId(type->elementType);
+
+        // Texel buffer?
+        if (type->texelType != Backend::IL::Format::None) {
+            SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeImage, 9);
+            spv[1] = id;
+            spv[2] = element;
+            spv[3] = SpvDimBuffer;
+            spv[4] = 0;
+            spv[5] = false;
+            spv[6] = 0;
+            spv[7] = 0;
+            spv[8] = Translate(type->texelType);
+        } else {
+            ASSERT(false, "Structured buffers not implemented");
+            return InvalidSpvId;
+        }
 
         AddMapping(id, type);
         return id;

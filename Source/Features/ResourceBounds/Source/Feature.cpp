@@ -113,7 +113,12 @@ void ResourceBoundsFeature::Inject(IL::Program &program) {
 
         // Perform instrumentation check
         IL::Emitter<> pre(program, context.basicBlock);
-        pre.BranchConditional(pre.LessThan(storeBuffer->value, pre.Int(32, 0)), oob.GetBasicBlock(), resumeBlock);
+
+        // Is any of the indices larger than the resource size
+        auto cond = pre.Any(pre.GreaterThanEqual(storeBuffer->value, pre.ResourceSize(storeBuffer->buffer)));
+
+        // If so, branch to failure, otherwise resume
+        pre.BranchConditional(cond, oob.GetBasicBlock(), resumeBlock);
 
         // Next block
         return context.basicBlock.end();

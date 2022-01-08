@@ -338,31 +338,52 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
         case SpvOpTypeImage: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            Backend::IL::TextureType type;
-            type.sampledType = typeMap->GetTypeFromId(context++);
-            type.dimension = Translate(static_cast<SpvDim>(context++));
+            // Sampled type
+            const Backend::IL::Type* sampledType = typeMap->GetTypeFromId(context++);
+
+            // Dimension of the image
+            SpvDim dim = static_cast<SpvDim>(context++);
+
+            // Cap operands
             bool isDepth = context++;
             bool isArrayed = context++;
+            bool multisampled = context++;
+            bool requiresSampler = context++;
 
-            if (isArrayed) {
-                switch (type.dimension) {
-                    default:
-                        type.dimension = Backend::IL::TextureDimension::Unexposed;
-                        break;
-                    case Backend::IL::TextureDimension::Texture1D:
-                        type.dimension = Backend::IL::TextureDimension::Texture1DArray;
-                        break;
-                    case Backend::IL::TextureDimension::Texture2D:
-                        type.dimension = Backend::IL::TextureDimension::Texture2DArray;
-                        break;
+            // Format, if present
+            Backend::IL::Format format = Translate(static_cast<SpvImageFormat>(context++));
+
+            // Texel buffer?
+            if (dim == SpvDimBuffer) {
+                Backend::IL::BufferType type;
+                type.elementType = sampledType;
+                type.texelType = format;
+                typeMap->AddType(id, type);
+            } else {
+                Backend::IL::TextureType type;
+                type.sampledType = sampledType;
+                type.dimension = Translate(dim);
+
+                if (isArrayed) {
+                    switch (type.dimension) {
+                        default:
+                            type.dimension = Backend::IL::TextureDimension::Unexposed;
+                            break;
+                        case Backend::IL::TextureDimension::Texture1D:
+                            type.dimension = Backend::IL::TextureDimension::Texture1DArray;
+                            break;
+                        case Backend::IL::TextureDimension::Texture2D:
+                            type.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                            break;
+                    }
                 }
+
+                type.multisampled = multisampled;
+                type.requiresSampler = requiresSampler;
+                type.format = format;
+
+                typeMap->AddType(id, type);
             }
-
-            type.multisampled = context++;
-            type.requiresSampler = context++;
-            type.format = Translate(static_cast<SpvImageFormat>(context++));
-
-            typeMap->AddType(id, type);
             break;
         }
 
