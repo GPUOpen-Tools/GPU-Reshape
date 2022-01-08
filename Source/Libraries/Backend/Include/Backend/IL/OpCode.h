@@ -11,12 +11,12 @@ namespace IL {
         /// Debug
         SourceAssociation,
 
-        /// Types
-        IntType,
-        FPType,
-
         /// Literal value
         Literal,
+
+        /// Logical
+        Any,
+        All,
 
         /// Math
         Add,
@@ -55,12 +55,11 @@ namespace IL {
         Load,
         Store,
 
-        /// Texture
+        /// Resource
         StoreTexture,
         LoadTexture,
-
-        /// Buffer
         StoreBuffer,
         LoadBuffer,
+        ResourceSize
     };
 }

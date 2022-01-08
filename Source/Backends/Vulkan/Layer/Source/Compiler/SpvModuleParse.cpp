@@ -6,7 +6,7 @@
 
 bool SpvModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
     program = new(allocators) IL::Program(allocators, shaderGUID);
-    typeMap = new(allocators) SpvTypeMap(allocators);
+    typeMap = new(allocators) SpvTypeMap(allocators, &program->GetTypeMap());
     debugMap = new(allocators) SpvDebugMap();
     sourceMap = new(allocators) SpvSourceMap();
 
@@ -54,9 +54,6 @@ bool SpvModule::ParseHeader(ParseContext &context) {
 
     // Set the number of bound IDs for further allocation
     program->GetIdentifierMap().SetBound(header.bound);
-
-    // Set the type head
-    typeMap->SetIdBound(header.bound);
 
     // Set the debug head
     debugMap->SetBound(header.bound);
@@ -108,11 +105,14 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
 
         // If there's an associated type, map it
         if (idType != IL::InvalidID) {
-            const SpvType* type = typeMap->GetType(idType);
-            ASSERT(type != nullptr, "Unexposed types not implemented");
+            const Backend::IL::Type* type = typeMap->GetTypeFromId(idType);
+            if (!type) {
+                // Map as unexposed
+                type = typeMap->AddType(idType, Backend::IL::UnexposedType{});
+            }
 
             // Create type -> id mapping
-            typeMap->SetType(id, type);
+            program->GetTypeMap().SetType(id, type);
         }
     }
 
@@ -256,107 +256,113 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
         case SpvOpTypeInt: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            SpvIntType type;
-            type.id = id;
+            Backend::IL::IntType type;
             type.bitWidth = context++;
             type.signedness = context++;
-            typeMap->AddType(type);
+            typeMap->AddType(id, type);
             break;
         }
 
         case SpvOpTypeVoid: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            SpvVoidType type;
-            type.id = id;
-            typeMap->AddType(type);
+            Backend::IL::VoidType type;
+            typeMap->AddType(id, type);
             break;
         }
 
         case SpvOpTypeBool: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            SpvBoolType type;
-            type.id = id;
-            typeMap->AddType(type);
+            Backend::IL::BoolType type;
+            typeMap->AddType(id, type);
             break;
         }
 
         case SpvOpTypeFloat: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            SpvFPType type;
-            type.id = id;
+            Backend::IL::FPType type;
             type.bitWidth = context++;
-            typeMap->AddType(type);
+            typeMap->AddType(id, type);
             break;
         }
 
         case SpvOpTypeVector: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            SpvVectorType type;
-            type.id = id;
-            type.containedType = typeMap->GetType(context++);
+            Backend::IL::VectorType type;
+            type.containedType = typeMap->GetTypeFromId(context++);
             type.dimension = context++;
-            typeMap->AddType(type);
+            typeMap->AddType(id, type);
             break;
         }
 
         case SpvOpTypeMatrix: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            const SpvType* columnType = typeMap->GetType(context++);
+            const Backend::IL::Type* columnType = typeMap->GetTypeFromId(context++);
 
-            auto* columnVector = columnType->Cast<SpvVectorType>();
+            auto* columnVector = columnType->Cast<Backend::IL::VectorType>();
             ASSERT(columnVector, "Column type must be vector");
 
-            SpvMatrixType type;
-            type.id = id;
+            Backend::IL::MatrixType type;
             type.containedType = columnVector->containedType;
             type.rows = columnVector->dimension;
             type.columns = context++;
-            typeMap->AddType(type);
+            typeMap->AddType(id, type);
             break;
         }
 
         case SpvOpTypePointer: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            SpvPointerType type;
-            type.id = id;
-            type.storageClass = static_cast<SpvStorageClass>(context++);
-            type.pointee = typeMap->GetType(context++);
-            typeMap->AddType(type);
+            Backend::IL::PointerType type;
+            type.addressSpace = Translate(static_cast<SpvStorageClass>(context++));
+            type.pointee = typeMap->GetTypeFromId(context++);
+            typeMap->AddType(id, type);
             break;
         }
 
         case SpvOpTypeArray: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            SpvArrayType type;
-            type.id = id;
-            type.elementType = typeMap->GetType(context++);
+            Backend::IL::ArrayType type;
+            type.elementType = typeMap->GetTypeFromId(context++);
             type.count = context++;
 
-            typeMap->AddType(type);
+            typeMap->AddType(id, type);
             break;
         }
 
         case SpvOpTypeImage: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            SpvImageType type;
-            type.id = id;
-            type.sampledType = typeMap->GetType(context++);
-            type.dimension = static_cast<SpvDim>(context++);
-            type.depth = context++;
-            type.arrayed = context++;
-            type.multisampled = context++;
-            type.sampled = context++;
-            type.format = static_cast<SpvImageFormat>(context++);
+            Backend::IL::TextureType type;
+            type.sampledType = typeMap->GetTypeFromId(context++);
+            type.dimension = Translate(static_cast<SpvDim>(context++));
+            bool isDepth = context++;
+            bool isArrayed = context++;
 
-            typeMap->AddType(type);
+            if (isArrayed) {
+                switch (type.dimension) {
+                    default:
+                        type.dimension = Backend::IL::TextureDimension::Unexposed;
+                        break;
+                    case Backend::IL::TextureDimension::Texture1D:
+                        type.dimension = Backend::IL::TextureDimension::Texture1DArray;
+                        break;
+                    case Backend::IL::TextureDimension::Texture2D:
+                        type.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                        break;
+                }
+            }
+
+            type.multisampled = context++;
+            type.requiresSampler = context++;
+            type.format = Translate(static_cast<SpvImageFormat>(context++));
+
+            typeMap->AddType(id, type);
             break;
         }
 
@@ -665,8 +671,8 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             ASSERT(hasResult, "Expected result for instruction type");
             ASSERT(hasResultType, "Expected result type for instruction type");
 
-            const SpvType* type = typeMap->GetType(idType);
-            typeMap->SetType(id, type);
+            const Backend::IL::Type* type = typeMap->GetTypeFromId(idType);
+            program->GetTypeMap().SetType(id, type);
 
             // Append
             IL::AllocaInstruction instr{};
@@ -747,11 +753,9 @@ const SpvModule::LayoutSection &SpvModule::GetSection(LayoutSectionType type) {
 bool SpvModule::SummarizePhysicalSections(ParseContext context) {
     uint32_t sectionBegin = context.Source();
 
-    bool isFunction{false};
-
     // Init sections
     for (LayoutSection& section : metaData.sections) {
-        section.sourceSpan.begin = ~0u;
+        section.sourceSpan.begin = IL::InvalidOffset;
         section.sourceSpan.end = 0u;
     }
 
@@ -766,12 +770,14 @@ bool SpvModule::SummarizePhysicalSections(ParseContext context) {
         // Operation code
         SpvOp op = instruction->GetOp();
 
+        bool isFunction{false};
+
         // Handled op codes
         LayoutSectionType type{LayoutSectionType::Count};
         switch (op) {
             default:
                 // Type, constant and other semantic operations, are filled out during patching
-                type = isFunction ? LayoutSectionType::FunctionDeclaration : LayoutSectionType::Declarations;
+                type = LayoutSectionType::Declarations;
                 break;
 
             case SpvOpCapability:
@@ -828,8 +834,11 @@ bool SpvModule::SummarizePhysicalSections(ParseContext context) {
             case SpvOpFunction:
             case SpvOpFunctionEnd:
                 isFunction = true;
-                type = LayoutSectionType::FunctionDeclaration;
                 break;
+        }
+
+        if (isFunction) {
+            break;
         }
 
         // Relevant?
@@ -848,7 +857,7 @@ bool SpvModule::SummarizePhysicalSections(ParseContext context) {
         LayoutSection& section = metaData.sections[i];
 
         // Skip valid sections
-        if (section.sourceSpan.end != IL::InvalidOffset)
+        if (section.sourceSpan.begin != IL::InvalidOffset)
             continue;
 
         // May be missing capabilities

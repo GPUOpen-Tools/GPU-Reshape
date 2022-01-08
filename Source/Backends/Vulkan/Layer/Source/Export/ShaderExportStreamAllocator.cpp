@@ -10,6 +10,9 @@
 #include <Common/Assert.h>
 #include <Common/Registry.h>
 
+// Std
+#include <algorithm>
+
 ShaderExportStreamAllocator::ShaderExportStreamAllocator(DeviceDispatchTable *table) : table(table) {
 
 }
