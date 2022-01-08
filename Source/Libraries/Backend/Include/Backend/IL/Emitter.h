@@ -3,6 +3,7 @@
 // Backend
 #include "BasicBlock.h"
 #include "Program.h"
+#include "TypeResult.h"
 
 namespace IL {
     namespace Op {
@@ -78,6 +79,7 @@ namespace IL {
         void SetProgram(Program *value) {
             program = value;
             map = &value->GetIdentifierMap();
+            typeMap = &value->GetTypeMap();
         }
 
         /// Set the current basic block
@@ -98,32 +100,6 @@ namespace IL {
         /// Add a new flag
         void AddBlockFlag(BasicBlockFlagSet flags) {
             basicBlock->AddFlag(flags);
-        }
-
-        /// Declare int type
-        /// \param bitWidth bit width of the integer
-        /// \param _signed signed state
-        /// \return instruction reference
-        InstructionRef <IntTypeInstruction> IntType(uint8_t bitWidth, bool _signed) {
-            IntTypeInstruction instr{};
-            instr.opCode = OpCode::IntType;
-            instr.source = Source::Invalid();
-            instr.result = map->AllocID();
-            instr.signedness = true;
-            instr.bitWidth = bitWidth;
-            return Op(instr);
-        }
-
-        /// Declare floating point type
-        /// \param bitWidth bit width of the floating point
-        /// \return instruction reference
-        InstructionRef <FPTypeInstruction> FPType(uint8_t bitWidth) {
-            FPTypeInstruction instr{};
-            instr.opCode = OpCode::FPType;
-            instr.source = Source::Invalid();
-            instr.result = map->AllocID();
-            instr.bitWidth = bitWidth;
-            return Op(instr);
         }
 
         /// Add an integral instruction
@@ -591,6 +567,12 @@ namespace IL {
         /// Perform the operation
         template<typename T>
         InstructionRef <T> Op(T &instruction) {
+            // Set type of the instruction if relevant
+            if (const Backend::IL::Type* type = Backend::IL::ResultOf(*program, &instruction)) {
+                program->GetTypeMap().SetType(instruction.result, type);
+            }
+
+            // Perform the insertion
             return OP::template Op<T>(basicBlock, insertionPoint, instruction);
         }
 
@@ -603,6 +585,9 @@ namespace IL {
 
         /// Current identifier map
         IdentifierMap *map{nullptr};
+
+        /// Current type map
+        Backend::IL::TypeMap* typeMap{nullptr};
 
         /// Current basic block
         BasicBlock *basicBlock{nullptr};

@@ -62,19 +62,6 @@ namespace IL {
         uint32_t column;
     };
 
-    struct IntTypeInstruction : public Instruction {
-        static constexpr OpCode kOpCode = OpCode::IntType;
-
-        uint8_t bitWidth;
-        bool signedness;
-    };
-
-    struct FPTypeInstruction : public Instruction {
-        static constexpr OpCode kOpCode = OpCode::FPType;
-
-        uint8_t bitWidth;
-    };
-
     struct LiteralInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Literal;
 
@@ -287,10 +274,6 @@ namespace IL {
                 return sizeof(AddInstruction);
             case OpCode::Literal:
                 return sizeof(LiteralInstruction);
-            case OpCode::IntType:
-                return sizeof(IntTypeInstruction);
-            case OpCode::FPType:
-                return sizeof(FPTypeInstruction);
             case OpCode::Sub:
                 return sizeof(SubInstruction);
             case OpCode::Div:

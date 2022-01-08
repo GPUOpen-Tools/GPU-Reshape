@@ -3,6 +3,7 @@
 // Backend
 #include "Function.h"
 #include "IdentifierMap.h"
+#include "TypeMap.h"
 
 // Std
 #include <list>
@@ -10,7 +11,7 @@
 
 namespace IL {
     struct Program {
-        Program(const Allocators& allocators, uint64_t shaderGUID) : allocators(allocators), shaderGUID(shaderGUID) {
+        Program(const Allocators& allocators, uint64_t shaderGUID) : allocators(allocators), typeMap(allocators), shaderGUID(shaderGUID) {
 
         }
 
@@ -26,12 +27,13 @@ namespace IL {
         /// \return
         Program* Copy() const {
             auto program = new (allocators) Program(allocators, shaderGUID);
-            program->map.SetBound(map.GetMaxID());
+            program->identifierMap.SetBound(identifierMap.GetMaxID());
             program->functionRevision = functionRevision;
+            program->typeMap = typeMap.Copy();
 
             // Copy all functions
             for (const Function& fn : functions) {
-                program->functions.emplace_back(fn.Copy(program->map));
+                program->functions.emplace_back(fn.Copy(program->identifierMap));
             }
 
             return program;
@@ -47,7 +49,7 @@ namespace IL {
         Function* AllocFunction(ID id) {
             functionRevision++;
             
-            functions.emplace_back(allocators, map, id);
+            functions.emplace_back(allocators, identifierMap, id);
             return &functions.back();
         }
 
@@ -78,12 +80,22 @@ namespace IL {
 
         /// Get the identifier map
         IdentifierMap& GetIdentifierMap() {
-            return map;
+            return identifierMap;
+        }
+
+        /// Get the identifier map
+        Backend::IL::TypeMap& GetTypeMap() {
+            return typeMap;
+        }
+
+        /// Get the identifier map
+        const Backend::IL::TypeMap& GetTypeMap() const {
+            return typeMap;
         }
 
         /// Get the identifier map
         const IdentifierMap& GetIdentifierMap() const {
-            return map;
+            return identifierMap;
         }
 
         /// Get the current basic block revision
@@ -98,7 +110,10 @@ namespace IL {
         std::list<Function> functions;
 
         /// The identifier map
-        IdentifierMap map;
+        IdentifierMap identifierMap;
+
+        /// The type map
+        Backend::IL::TypeMap typeMap;
 
         /// Function revision
         uint32_t functionRevision{0};

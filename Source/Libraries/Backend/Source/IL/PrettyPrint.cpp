@@ -114,16 +114,6 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "StoreBuffer buffer:%" << store->buffer << " index:%" << store->index << " value:%" << store->value;
             break;
         }
-        case OpCode::IntType: {
-            auto type = instr->As<IL::IntTypeInstruction>();
-            line << "IntType width:%" << type->bitWidth << " signed:%" << type->signedness;
-            break;
-        }
-        case OpCode::FPType: {
-            auto type = instr->As<IL::FPTypeInstruction>();
-            line << "IntType width:%" << type->bitWidth;
-            break;
-        }
         case OpCode::Sub: {
             auto sub = instr->As<IL::SubInstruction>();
             line << "Sub %" << sub->lhs << " %" << sub->rhs;
@@ -219,7 +209,23 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "Alloca %" << _alloca->type;
             break;
         }
-        case OpCode::StoreTexture:
+        case OpCode::StoreTexture: {
+            auto load = instr->As<IL::StoreTextureInstruction>();
+            line << "StoreTexture texture:%" << load->texture << " index:%" << load->index << " texel:%" << load->texel;
+            break;
+        }
+        case OpCode::SourceAssociation: {
+            auto load = instr->As<IL::SourceAssociationInstruction>();
+            line << "SourceAssociation file:" << load->file << " line:" << load->line << " column:" << load->column;
+            break;
+        }
+        case OpCode::Any:
+            break;
+        case OpCode::All:
+            break;
+        case OpCode::LoadBuffer:
+            break;
+        case OpCode::ResourceSize:
             break;
     }
 

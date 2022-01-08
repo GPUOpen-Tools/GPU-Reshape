@@ -5,6 +5,7 @@
 
 // Std
 #include <vector>
+#include <string_view>
 
 struct SpvDebugMap {
     /// Set the id bound

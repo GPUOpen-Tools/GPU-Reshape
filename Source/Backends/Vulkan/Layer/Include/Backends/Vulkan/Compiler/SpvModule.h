@@ -171,14 +171,16 @@ private:
         DebugModule,
         Annotation,
         Declarations,
-        FunctionDeclaration,
-        FunctionDefinition,
         Count
     };
 
     /// Single section
     struct LayoutSection {
+        /// Source span of this section
         IL::SourceSpan sourceSpan;
+
+        /// Relocation stream
+        SpvStream* stream{nullptr};
     };
 
     /// All export metadata
@@ -188,9 +190,9 @@ private:
         uint32_t streamId{0};
 
         /// Type map
-        const SpvType* image32UIRWArrayPtr;
-        const SpvType* image32UIRWPtr;
-        const SpvType* image32UIRW;
+        const Backend::IL::Type* image32UIRWArrayPtr;
+        const Backend::IL::Type* image32UIRWPtr;
+        const Backend::IL::Type* image32UIRW;
     };
 
     /// Program metadata
@@ -228,11 +230,29 @@ private:
     /// \param type type of the section
     const LayoutSection& GetSection(LayoutSectionType type);
 
+private:
+    /// Allocate all physical section blocks
+    /// \param stream the relocation stream to be allocated against
+    void AllocateSectionBlocks(SpvRelocationStream& stream);
+
     /// Insert the export records
     /// \param jitHeader the jitted program header
     /// \param stream the final relocation stream
     /// \param job current job
-    void InsertExportRecords(ProgramHeader& jitHeader, SpvRelocationStream &stream, const SpvJob& job);
+    void InsertExportRecords(SpvRelocationStream &stream, const SpvJob& job);
+
+    /// Recompile a function
+    /// \param relocationStream the relocation stream
+    /// \param fn function to be recompiled
+    /// \return true if successful
+    bool RecompileFunction(SpvRelocationStream& relocationStream, IL::Function& fn);
+
+    /// Recompile a basic block
+    /// \param relocationStream the relocation stream
+    /// \param fn function in which the basic block resides
+    /// \param bb the basic block to be recompiled
+    /// \return true if successful
+    bool RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::Function& fn, std::list<IL::BasicBlock>::iterator bb);
 
 private:
     Allocators allocators;
