@@ -241,6 +241,36 @@ namespace IL {
             return Op(instr);
         }
 
+        /// Load an element from a buffer
+        /// \param buffer the destination buffer
+        /// \param index the index of the element
+        /// \return instruction reference
+        InstructionRef <LoadBufferInstruction> LoadBuffer(ID buffer, ID index) {
+            ASSERT(IsMapped(buffer) && IsMapped(index), "Unmapped identifier");
+
+            LoadBufferInstruction instr{};
+            instr.opCode = OpCode::LoadBuffer;
+            instr.source = Source::Invalid();
+            instr.buffer = buffer;
+            instr.index = index;
+            instr.result = InvalidID;
+            return Op(instr);
+        }
+
+        /// Get the size of a resource
+        /// \param resource the resource to be queried
+        /// \return instruction reference
+        InstructionRef <ResourceSizeInstruction> ResourceSize(ID resource) {
+            ASSERT(IsMapped(resource), "Unmapped identifier");
+
+            ResourceSizeInstruction instr{};
+            instr.opCode = OpCode::ResourceSize;
+            instr.source = Source::Invalid();
+            instr.resource = resource;
+            instr.result = InvalidID;
+            return Op(instr);
+        }
+
         /// Binary add two values
         /// \param lhs lhs operand
         /// \param rhs rhs operand
@@ -430,6 +460,68 @@ namespace IL {
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Perform a logical or
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <OrInstruction> Or(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            OrInstruction instr{};
+            instr.opCode = OpCode::Or;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Perform a logical and
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <AndInstruction> And(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            AndInstruction instr{};
+            instr.opCode = OpCode::And;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Check if all components may be evaluated to true
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <AllInstruction> All(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            AllInstruction instr{};
+            instr.opCode = OpCode::All;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Check if any components may be evaluated to true
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <AnyInstruction> Any(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            AnyInstruction instr{};
+            instr.opCode = OpCode::Any;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
             return Op(instr);
         }
 

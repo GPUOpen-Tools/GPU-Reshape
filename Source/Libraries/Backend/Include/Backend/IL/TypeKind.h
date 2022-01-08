@@ -15,6 +15,7 @@ namespace Backend::IL {
         Pointer,
         Array,
         Texture,
+        Buffer,
         Unexposed
     };
 }

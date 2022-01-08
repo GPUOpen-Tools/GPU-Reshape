@@ -64,27 +64,26 @@ void SpvModule::InsertExportRecords(SpvRelocationStream &stream, const SpvJob& j
     });
 
     // RWBuffer<uint>
-    metaData.exportMd.image32UIRW = ilTypeMap.FindTypeOrAdd(Backend::IL::TextureType {
-        .sampledType = intType,
-        .dimension = Backend::IL::TextureDimension::TexelBuffer,
-        .format = Backend::IL::Format::R32UInt
+    metaData.exportMd.buffer32UIRW = ilTypeMap.FindTypeOrAdd(Backend::IL::BufferType {
+        .elementType = intType,
+        .texelType = Backend::IL::Format::R32UInt
     });
 
     // RWBuffer<uint>*
-    metaData.exportMd.image32UIRWPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
-        .pointee = metaData.exportMd.image32UIRW,
+    metaData.exportMd.buffer32UIRWPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = metaData.exportMd.buffer32UIRW,
         .addressSpace = Backend::IL::AddressSpace::Resource,
     });
 
     // RWBuffer<uint>[N]
-    const Backend::IL::Type* image32UIWWArray = ilTypeMap.FindTypeOrAdd(Backend::IL::ArrayType {
-        .elementType = metaData.exportMd.image32UIRW,
+    const Backend::IL::Type* buffer32UIWWArray = ilTypeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+        .elementType = metaData.exportMd.buffer32UIRW,
         .count = std::max(1u, job.streamCount)
     });
 
     // RWBuffer<uint>[N]*
-    metaData.exportMd.image32UIRWArrayPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
-        .pointee = image32UIWWArray,
+    metaData.exportMd.buffer32UIRWArrayPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = buffer32UIWWArray,
         .addressSpace = Backend::IL::AddressSpace::Resource,
     });
 
@@ -93,18 +92,18 @@ void SpvModule::InsertExportRecords(SpvRelocationStream &stream, const SpvJob& j
     metaData.exportMd.streamId = header.bound++;
 
     // SpvIds
-    SpvId image32UIRWPtrId = typeMap->GetSpvTypeId(metaData.exportMd.image32UIRWPtr);
-    SpvId image32UIRWArrayPtrId = typeMap->GetSpvTypeId(metaData.exportMd.image32UIRWArrayPtr);
+    SpvId buffer32UIRWPtrId = typeMap->GetSpvTypeId(metaData.exportMd.buffer32UIRWPtr);
+    SpvId buffer32UIRWArrayPtrId = typeMap->GetSpvTypeId(metaData.exportMd.buffer32UIRWArrayPtr);
 
     // Counter
     SpvInstruction& spvCounterVar = declarations.Allocate(SpvOpVariable, 4);
-    spvCounterVar[1] = image32UIRWPtrId;
+    spvCounterVar[1] = buffer32UIRWPtrId;
     spvCounterVar[2] = metaData.exportMd.counterId;
     spvCounterVar[3] = SpvStorageClassUniformConstant;
 
     // Streams
     SpvInstruction& spvStreamVar = declarations.Allocate(SpvOpVariable, 4);
-    spvStreamVar[1] = image32UIRWArrayPtrId;
+    spvStreamVar[1] = buffer32UIRWArrayPtrId;
     spvStreamVar[2] = metaData.exportMd.streamId;
     spvStreamVar[3] = SpvStorageClassUniformConstant;
 
@@ -217,9 +216,31 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 spv[3] = literal->value.integral;
                 break;
             }
-            case IL::OpCode::LoadTexture:
-            case IL::OpCode::StoreTexture:  {
-                ASSERT(false, "Not implemented");
+            case IL::OpCode::LoadTexture: {
+                auto *loadTexture = instr.As<IL::LoadTextureInstruction>();
+
+                // Get the texture type
+                const auto* textureType = ilTypeMap.GetType(loadTexture->texture)->As<Backend::IL::TextureType>();
+
+                // Load image
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageRead, 5, instr->source);
+                spv[1] = typeMap->GetSpvTypeId(textureType->sampledType);
+                spv[2] = loadTexture->result;
+                spv[3] = loadTexture->texture;
+                spv[4] = loadTexture->index;
+                break;
+            }
+            case IL::OpCode::StoreTexture: {
+                auto *storeTexture = instr.As<IL::StoreTextureInstruction>();
+
+                // Get the texture type
+                const auto* textureType = ilTypeMap.GetType(storeTexture->texture)->As<Backend::IL::TextureType>();
+
+                // Write image
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
+                spv[1] = storeTexture->texture;
+                spv[2] = storeTexture->index;
+                spv[3] = storeTexture->texel;
                 break;
             }
             case IL::OpCode::Add: {
@@ -293,6 +314,24 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 spv[2] = _and->result;
                 spv[3] = _and->lhs;
                 spv[4] = _and->rhs;
+                break;
+            }
+            case IL::OpCode::Any: {
+                auto *any = instr.As<IL::AnyInstruction>();
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpAny, 4, any->source);
+                spv[1] = typeMap->GetSpvTypeId(resultType);
+                spv[2] = any->result;
+                spv[3] = any->value;
+                break;
+            }
+            case IL::OpCode::All: {
+                auto *all = instr.As<IL::AllInstruction>();
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpAll, 4, all->source);
+                spv[1] = typeMap->GetSpvTypeId(resultType);
+                spv[2] = all->result;
+                spv[3] = all->value;
                 break;
             }
             case IL::OpCode::Equal: {
@@ -582,7 +621,7 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
 
                 // Get the destination stream
                 SpvInstruction& chain = stream.Allocate(SpvOpAccessChain, 5);
-                chain[1] = typeMap->GetSpvTypeId(metaData.exportMd.image32UIRWPtr);
+                chain[1] = typeMap->GetSpvTypeId(metaData.exportMd.buffer32UIRWPtr);
                 chain[2] = accessId;
                 chain[3] = metaData.exportMd.streamId;
                 chain[4] = streamOffsetId;
@@ -591,7 +630,7 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
 
                 // Load the stream
                 SpvInstruction &load = stream.Allocate(SpvOpLoad, 4);
-                load[1] = typeMap->GetSpvTypeId(metaData.exportMd.image32UIRW);
+                load[1] = typeMap->GetSpvTypeId(metaData.exportMd.buffer32UIRW);
                 load[2] = accessLoadId;
                 load[3] = accessId;
 
@@ -630,14 +669,78 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 spv[2] = load->value;
                 break;
             }
+            case IL::OpCode::LoadBuffer: {
+                auto *loadBuffer = instr.As<IL::LoadBufferInstruction>();
+
+                // Get the buffer type
+                const auto* bufferType = ilTypeMap.GetType(loadBuffer->buffer)->As<Backend::IL::BufferType>();
+
+                // Texel buffer?
+                if (bufferType->texelType != Backend::IL::Format::None) {
+                    // Load image
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageRead, 5, instr->source);
+                    spv[1] = typeMap->GetSpvTypeId(bufferType->elementType);
+                    spv[2] = loadBuffer->result;
+                    spv[3] = loadBuffer->buffer;
+                    spv[4] = loadBuffer->index;
+                } else {
+                    ASSERT(false, "Not implemented");
+                }
+                break;
+            }
             case IL::OpCode::StoreBuffer: {
                 auto *storeBuffer = instr.As<IL::StoreBufferInstruction>();
 
-                // Write image
-                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
-                spv[1] = storeBuffer->buffer;
-                spv[2] = storeBuffer->index;
-                spv[3] = storeBuffer->value;
+                // Get the buffer type
+                const auto* bufferType = ilTypeMap.GetType(storeBuffer->buffer)->As<Backend::IL::BufferType>();
+
+                // Texel buffer?
+                if (bufferType->texelType != Backend::IL::Format::None) {
+                    // Write image
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
+                    spv[1] = storeBuffer->buffer;
+                    spv[2] = storeBuffer->index;
+                    spv[3] = storeBuffer->value;
+                } else {
+                    ASSERT(false, "Not implemented");
+                    return false;
+                }
+                break;
+            }
+            case IL::OpCode::ResourceSize: {
+                auto *size = instr.As<IL::ResourceSizeInstruction>();
+
+                // Get the resource type
+                const auto* resourceType = ilTypeMap.GetType(size->resource);
+
+                switch (resourceType->kind) {
+                    default:{
+                        ASSERT(false, "Invalid ResourceSize type kind");
+                        return false;
+                    }
+                    case Backend::IL::TypeKind::Texture: {
+                        // Query image
+                        SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageQuerySize, 4, instr->source);
+                        spv[1] = typeMap->GetSpvTypeId(resultType);
+                        spv[2] = size->result;
+                        spv[3] = size->resource;
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Buffer: {
+                        // Texel buffer?
+                        if (resourceType->As<Backend::IL::BufferType>()->texelType != Backend::IL::Format::None) {
+                            // Query image
+                            SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageQuerySize, 4, instr->source);
+                            spv[1] = typeMap->GetSpvTypeId(resultType);
+                            spv[2] = size->result;
+                            spv[3] = size->resource;
+                        } else {
+                            ASSERT(false, "Not implemented");
+                        }
+                        break;
+                    }
+                }
+
                 break;
             }
         }

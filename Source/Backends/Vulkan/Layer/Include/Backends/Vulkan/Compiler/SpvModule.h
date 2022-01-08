@@ -190,9 +190,9 @@ private:
         uint32_t streamId{0};
 
         /// Type map
-        const Backend::IL::Type* image32UIRWArrayPtr;
-        const Backend::IL::Type* image32UIRWPtr;
-        const Backend::IL::Type* image32UIRW;
+        const Backend::IL::Type* buffer32UIRWArrayPtr;
+        const Backend::IL::Type* buffer32UIRWPtr;
+        const Backend::IL::Type* buffer32UIRW;
     };
 
     /// Program metadata
