@@ -49,3 +49,15 @@ public:
     Allocators allocators{};
     Registry* registry{nullptr};
 };
+
+/// Destruction
+inline void destroy(IComponent* object) {
+    if (!object)
+        return;
+
+    // Copy allocators
+    Allocators allocators = object->allocators;
+
+    object->~IComponent();
+    allocators.free(object);
+}

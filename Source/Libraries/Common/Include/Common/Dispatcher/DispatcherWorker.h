@@ -1,7 +1,7 @@
 #pragma once
 
 // Common
-#include "Assert.h"
+#include <Common/Assert.h>
 #include "DispatcherBucket.h"
 #include "DispatcherJobPool.h"
 

@@ -8,8 +8,8 @@
 #include <Backends/Vulkan/Export/StreamState.h>
 
 // Common
-#include <Common/ObjectPool.h>
-#include <Common/TrivialObjectPool.h>
+#include <Common/Containers/ObjectPool.h>
+#include <Common/Containers/TrivialObjectPool.h>
 
 // Forward declarations
 struct ShaderExportDescriptorAllocator;

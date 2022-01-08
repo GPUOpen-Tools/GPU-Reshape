@@ -1,7 +1,7 @@
 #pragma once
 
 // Common
-#include <Common/ReferenceObject.h>
+#include <Common/Containers/ReferenceObject.h>
 
 // Backend
 #include <Backend/ShaderExportTypeInfo.h>

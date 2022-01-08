@@ -1,7 +1,7 @@
 #pragma once
 
 // Common
-#include "Delegate.h"
+#include <Common/Delegate.h>
 
 // Forward declarations
 struct DispatcherBucket;

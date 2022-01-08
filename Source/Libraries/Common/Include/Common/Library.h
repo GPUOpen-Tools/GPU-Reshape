@@ -1,10 +1,14 @@
 #pragma once
 
+// Platform
 #ifdef _WIN32
 #include <Windows.h>
 #else
 #error Not implemented
 #endif
+
+// Std
+#include <string>
 
 /// Simple library loading
 struct Library {
@@ -41,6 +45,11 @@ struct Library {
     /// \return
     const std::string& Path() const {
         return sourcePath;
+    }
+
+    /// Is this library in a good state
+    bool IsGood() const {
+        return handle != nullptr;
     }
 
 private:

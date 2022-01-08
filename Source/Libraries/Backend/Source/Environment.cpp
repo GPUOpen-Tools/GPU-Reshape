@@ -6,7 +6,8 @@
 #include <Bridge/MemoryBridge.h>
 
 // Common
-#include <Common/Dispatcher.h>
+#include <Common/Dispatcher/Dispatcher.h>
+#include <Common/Plugin/PluginResolver.h>
 
 using namespace Backend;
 
@@ -17,6 +18,9 @@ Environment::~Environment() {
 
 }
 bool Environment::Install(const EnvironmentInfo &info) {
+    // Install the plugin resolver
+    auto* resolver = registry.AddNew<PluginResolver>();
+
     // Install the dispatcher
     registry.AddNew<Dispatcher>();
 
@@ -31,6 +35,14 @@ bool Environment::Install(const EnvironmentInfo &info) {
 
     // Install feature host
     registry.AddNew<FeatureHost>();
+
+    // Find all plugins
+    if (!resolver->FindPlugins("backend", &plugins)) {
+        return false;
+    }
+
+    // Install all found plugins
+    resolver->InstallPlugins(plugins);
 
     // OK
     return true;

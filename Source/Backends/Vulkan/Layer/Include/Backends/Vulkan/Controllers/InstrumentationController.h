@@ -5,7 +5,7 @@
 #include <Backends/Vulkan/Controllers/IController.h>
 
 // Common
-#include <Common/EventCounter.h>
+#include <Common/Dispatcher/EventCounter.h>
 
 // Bridge
 #include <Bridge/IBridgeListener.h>

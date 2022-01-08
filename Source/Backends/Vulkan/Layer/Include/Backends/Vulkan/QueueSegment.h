@@ -5,7 +5,7 @@
 
 // Common
 #include <Common/Assert.h>
-#include <Common/ReferenceObject.h>
+#include <Common/Containers/ReferenceObject.h>
 
 // Std
 #include <vector>

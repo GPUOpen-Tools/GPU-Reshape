@@ -14,6 +14,7 @@
 #include <Common/TemplateEngine.h>
 #include <Common/Registry.h>
 #include <Common/IDHash.h>
+#include <Common/Library.h>
 
 // Generator
 #include <GeneratorHost.h>
@@ -21,7 +22,6 @@
 #include <Plugin.h>
 #include <Schema.h>
 #include <Language.h>
-#include <Library.h>
 
 int main(int argc, char *const argv[]) {
     argparse::ArgumentParser program("GPUOpen GBV - Message Generator");

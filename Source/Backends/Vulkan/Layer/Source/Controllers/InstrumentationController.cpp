@@ -12,7 +12,7 @@
 
 // Common
 #include <Common/Registry.h>
-#include <Common/TaskGroup.h>
+#include <Common/Dispatcher/TaskGroup.h>
 
 // Schemas
 #include <Schemas/Pipeline.h>

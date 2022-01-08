@@ -1,8 +1,8 @@
 #pragma once
 
 // Common
-#include "Dispatcher.h"
-#include "DispatcherBucket.h"
+#include <Common/Dispatcher/Dispatcher.h>
+#include <Common/Dispatcher/DispatcherBucket.h>
 
 // Std
 #include <atomic>

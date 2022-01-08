@@ -10,7 +10,7 @@
 #include <Backend/IL/PrettyPrint.h>
 
 // Common
-#include <Common/Dispatcher.h>
+#include "Common/Dispatcher/Dispatcher.h"
 #include <Common/Registry.h>
 
 // Std
