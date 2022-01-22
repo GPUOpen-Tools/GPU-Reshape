@@ -11,7 +11,7 @@ add_executable(
 )
 
 # Local links
-target_link_libraries(Backends.Vulkan.Generator Libraries.Common)
+target_link_libraries(Backends.Vulkan.Generator PUBLIC Libraries.Common)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
@@ -154,7 +154,26 @@ ExternalProject_Link(Backends.Vulkan.Layer VulkanHeaders)
 ExternalProject_Link(Backends.Vulkan.Layer VMA)
 
 # Copy layer definition (configuration time)
-configure_file(Layer/Resources/VK_GPUOpen_GBV.json ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/VK_GPUOpen_GBV.json COPYONLY)
+configure_file(Layer/Resources/VK_GPUOpen_GBV.json ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/VK_GPUOpen_GBV.json COPYONLY)
+
+#----- Test Device -----#
+
+# Create test layer
+add_library(
+    Backends.Vulkan.TestDevice STATIC
+    TestDevice/Source/Device.cpp
+    TestDevice/Source/VMA.cpp
+)
+
+# Include
+target_include_directories(Backends.Vulkan.TestDevice PUBLIC TestDevice/Include)
+
+# Link
+target_link_libraries(Backends.Vulkan.TestDevice PUBLIC Backends.Vulkan.Layer Test.Device)
+
+# Setup dependencies
+ExternalProject_Link(Backends.Vulkan.TestDevice VulkanHeaders)
+ExternalProject_Link(Backends.Vulkan.TestDevice VMA)
 
 #----- Test Layer -----#
 
@@ -168,7 +187,7 @@ add_library(
 ExternalProject_Link(Backends.Vulkan.Tests.UserDataLayer VulkanHeaders)
 
 # Copy layer definition (configuration time)
-configure_file(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/VK_GPUOpen_Test_UserDataLayer.json COPYONLY)
+configure_file(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/VK_GPUOpen_Test_UserDataLayer.json COPYONLY)
 
 #----- Test Application -----#
 
@@ -199,7 +218,7 @@ add_executable(
 target_include_directories(Backends.Vulkan.Tests PUBLIC Layer/Include Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
 
 # Links
-target_link_libraries(Backends.Vulkan.Tests Libraries.Common Backends.Vulkan.Layer)
+target_link_libraries(Backends.Vulkan.Tests PUBLIC Libraries.Common Backends.Vulkan.Layer)
 
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Tests Catch2)

@@ -11,7 +11,7 @@ add_library(
 target_include_directories(Libraries.Message.Generator.Lib PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
 
 # Local links
-target_link_libraries(Libraries.Message.Generator.Lib Libraries.Common)
+target_link_libraries(Libraries.Message.Generator.Lib PUBLIC Libraries.Common)
 
 #----- Generator -----#
 
@@ -25,7 +25,7 @@ add_executable(
 target_include_directories(Libraries.Message.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
 
 # Local links
-target_link_libraries(Libraries.Message.Generator Libraries.Common Libraries.Message.Generator.Lib)
+target_link_libraries(Libraries.Message.Generator PUBLIC Libraries.Common Libraries.Message.Generator.Lib)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
@@ -86,7 +86,7 @@ add_library(
 )
 
 # Links
-target_link_libraries(Libraries.Message Libraries.Common)
+target_link_libraries(Libraries.Message PUBLIC Libraries.Common)
 
 # Includes
 target_include_directories(Libraries.Message PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
@@ -117,4 +117,4 @@ target_include_directories(Libraries.Message.Tests PUBLIC Tests/Include ${CMAKE_
 ExternalProject_Link(Libraries.Message.Tests Catch2)
 
 # Links
-target_link_libraries(Libraries.Message.Tests Libraries.Message)
+target_link_libraries(Libraries.Message.Tests PUBLIC Libraries.Message)

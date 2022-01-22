@@ -71,7 +71,7 @@ namespace Backend::IL {
     };
 
     struct FPType : public Type {
-        static constexpr TypeKind kKind = TypeKind::Int;
+        static constexpr TypeKind kKind = TypeKind::FP;
 
         auto SortKey() const {
             return std::make_tuple(bitWidth);
@@ -81,7 +81,7 @@ namespace Backend::IL {
     };
 
     struct VectorType : public Type {
-        static constexpr TypeKind kKind = TypeKind::Int;
+        static constexpr TypeKind kKind = TypeKind::Vector;
 
         auto SortKey() const {
             return std::make_tuple(containedType, dimension);
@@ -93,7 +93,7 @@ namespace Backend::IL {
     };
 
     struct MatrixType : public Type {
-        static constexpr TypeKind kKind = TypeKind::Int;
+        static constexpr TypeKind kKind = TypeKind::Matrix;
 
         auto SortKey() const {
             return std::make_tuple(containedType, rows, columns);

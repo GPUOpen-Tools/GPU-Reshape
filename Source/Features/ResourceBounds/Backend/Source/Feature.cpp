@@ -44,7 +44,7 @@ void ResourceBoundsFeature::CollectMessages(IMessageStorage *storage) {
 }
 
 void ResourceBoundsFeature::Inject(IL::Program &program) {
-    IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) {
+    IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
         bool isTexture;
         bool isWrite;
 
@@ -95,7 +95,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program) {
 
         // Split this basic block, move all instructions post and including the instrumented instruction to resume
         // ! iterator invalidated
-        auto storeBuffer = context.basicBlock.Split<IL::StoreBufferInstruction>(resumeBlock, it);
+        auto instr = context.basicBlock.Split(resumeBlock, it);
 
         // Out of bounds block
         IL::Emitter<> oob(program, *context.function.AllocBlock());
@@ -115,13 +115,36 @@ void ResourceBoundsFeature::Inject(IL::Program &program) {
         IL::Emitter<> pre(program, context.basicBlock);
 
         // Is any of the indices larger than the resource size
-        auto cond = pre.Any(pre.GreaterThanEqual(storeBuffer->value, pre.ResourceSize(storeBuffer->buffer)));
+        IL::ID cond{};
+        switch (instr->opCode) {
+            default:
+                ASSERT(false, "Unexpected opcode");
+                break;
+            case IL::OpCode::StoreBuffer: {
+                auto storeBuffer = instr->As<IL::StoreBufferInstruction>();
+                cond = pre.Any(pre.GreaterThanEqual(storeBuffer->index, pre.ResourceSize(storeBuffer->buffer)));
+                break;
+            }
+            case IL::OpCode::LoadBuffer: {
+                auto loadBuffer = instr->As<IL::LoadBufferInstruction>();
+                cond = pre.Any(pre.GreaterThanEqual(loadBuffer->index, pre.ResourceSize(loadBuffer->buffer)));
+                break;
+            }
+            case IL::OpCode::StoreTexture: {
+                auto storeTexture = instr->As<IL::StoreTextureInstruction>();
+                cond = pre.Any(pre.GreaterThanEqual(storeTexture->index, pre.ResourceSize(storeTexture->texture)));
+                break;
+            }
+            case IL::OpCode::LoadTexture: {
+                auto loadTexture = instr->As<IL::LoadTextureInstruction>();
+                cond = pre.Any(pre.GreaterThanEqual(loadTexture->index, pre.ResourceSize(loadTexture->texture)));
+                break;
+            }
+        }
 
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(cond, oob.GetBasicBlock(), resumeBlock);
-
-        // Next block
-        return context.basicBlock.end();
+        return instr;
     });
 }
 

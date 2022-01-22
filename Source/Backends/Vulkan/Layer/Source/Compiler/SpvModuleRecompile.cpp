@@ -3,6 +3,9 @@
 #include <Backends/Vulkan/Compiler/SpvStream.h>
 #include <Backends/Vulkan/Compiler/SpvRelocationStream.h>
 
+// Backend
+#include <Backend/IL/TypeCommon.h>
+
 void SpvModule::AllocateSectionBlocks(SpvRelocationStream& stream) {
     // Get the header
     stream.AllocateFixedBlock(IL::SourceSpan{0, IL::WordCount<ProgramHeader>()}, &header);
@@ -18,8 +21,11 @@ void SpvModule::AllocateSectionBlocks(SpvRelocationStream& stream) {
     // Set insertion stream
     typeMap->SetDeclarationStream(GetSection(LayoutSectionType::Declarations).stream);
 
-    // Set the type counter
-    typeMap->SetIdCounter(&header.bound);
+    // Set bound
+    idMap.SetBound(&header.bound);
+
+    // Set the id map
+    typeMap->SetIdMap(&idMap);
 }
 
 bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount, const SpvJob& job) {
@@ -226,8 +232,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageRead, 5, instr->source);
                 spv[1] = typeMap->GetSpvTypeId(textureType->sampledType);
                 spv[2] = loadTexture->result;
-                spv[3] = loadTexture->texture;
-                spv[4] = loadTexture->index;
+                spv[3] = idMap.Get(loadTexture->texture);
+                spv[4] = idMap.Get(loadTexture->index);
                 break;
             }
             case IL::OpCode::StoreTexture: {
@@ -239,8 +245,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 // Write image
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
                 spv[1] = storeTexture->texture;
-                spv[2] = storeTexture->index;
-                spv[3] = storeTexture->texel;
+                spv[2] = idMap.Get(storeTexture->index);
+                spv[3] = idMap.Get(storeTexture->texel);
                 break;
             }
             case IL::OpCode::Add: {
@@ -251,8 +257,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = add->result;
-                spv[3] = add->lhs;
-                spv[4] = add->rhs;
+                spv[3] = idMap.Get(add->lhs);
+                spv[4] = idMap.Get(add->rhs);
                 break;
             }
             case IL::OpCode::Sub: {
@@ -263,8 +269,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = add->result;
-                spv[3] = add->lhs;
-                spv[4] = add->rhs;
+                spv[3] = idMap.Get(add->lhs);
+                spv[4] = idMap.Get(add->rhs);
                 break;
             }
             case IL::OpCode::Div: {
@@ -280,8 +286,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = add->result;
-                spv[3] = add->lhs;
-                spv[4] = add->rhs;
+                spv[3] = idMap.Get(add->lhs);
+                spv[4] = idMap.Get(add->rhs);
                 break;
             }
             case IL::OpCode::Mul: {
@@ -292,8 +298,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = add->result;
-                spv[3] = add->lhs;
-                spv[4] = add->rhs;
+                spv[3] = idMap.Get(add->lhs);
+                spv[4] = idMap.Get(add->rhs);
                 break;
             }
             case IL::OpCode::Or: {
@@ -302,8 +308,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpLogicalOr, 5, _or->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = _or->result;
-                spv[3] = _or->lhs;
-                spv[4] = _or->rhs;
+                spv[3] = idMap.Get(_or->lhs);
+                spv[4] = idMap.Get(_or->rhs);
                 break;
             }
             case IL::OpCode::And: {
@@ -312,26 +318,40 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpLogicalAnd, 5, _and->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = _and->result;
-                spv[3] = _and->lhs;
-                spv[4] = _and->rhs;
+                spv[3] = idMap.Get(_and->lhs);
+                spv[4] = idMap.Get(_and->rhs);
                 break;
             }
             case IL::OpCode::Any: {
                 auto *any = instr.As<IL::AnyInstruction>();
 
-                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpAny, 4, any->source);
-                spv[1] = typeMap->GetSpvTypeId(resultType);
-                spv[2] = any->result;
-                spv[3] = any->value;
+                const Backend::IL::Type* type = ilTypeMap.GetType(any->value);
+
+                if (type->kind != Backend::IL::TypeKind::Vector) {
+                    // Non vector bool types, just set the value directly
+                    idMap.Set(any->result, any->value);
+                } else {
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpAny, 4, any->source);
+                    spv[1] = typeMap->GetSpvTypeId(resultType);
+                    spv[2] = any->result;
+                    spv[3] = idMap.Get(any->value);
+                }
                 break;
             }
             case IL::OpCode::All: {
                 auto *all = instr.As<IL::AllInstruction>();
 
-                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpAll, 4, all->source);
-                spv[1] = typeMap->GetSpvTypeId(resultType);
-                spv[2] = all->result;
-                spv[3] = all->value;
+                const Backend::IL::Type* type = ilTypeMap.GetType(all->value);
+
+                if (type->kind != Backend::IL::TypeKind::Vector) {
+                    // Non vector bool types, just set the value directly
+                    idMap.Set(all->result, all->value);
+                } else {
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpAll, 4, all->source);
+                    spv[1] = typeMap->GetSpvTypeId(resultType);
+                    spv[2] = all->result;
+                    spv[3] = idMap.Get(all->value);
+                }
                 break;
             }
             case IL::OpCode::Equal: {
@@ -340,8 +360,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpLogicalEqual, 5, equal->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = equal->result;
-                spv[3] = equal->lhs;
-                spv[4] = equal->rhs;
+                spv[3] = idMap.Get(equal->lhs);
+                spv[4] = idMap.Get(equal->rhs);
                 break;
             }
             case IL::OpCode::NotEqual: {
@@ -350,18 +370,19 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpLogicalNotEqual, 5, notEqual->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = notEqual->result;
-                spv[3] = notEqual->lhs;
-                spv[4] = notEqual->rhs;
+                spv[3] = idMap.Get(notEqual->lhs);
+                spv[4] = idMap.Get(notEqual->rhs);
                 break;
             }
             case IL::OpCode::LessThan: {
                 auto *lessThan = instr.As<IL::LessThanInstruction>();
 
                 const Backend::IL::Type* lhsType = ilTypeMap.GetType(lessThan->lhs);
+                const Backend::IL::Type* component = GetComponentType(lhsType);
 
                 SpvOp op;
-                if (lhsType->kind == Backend::IL::TypeKind::Int) {
-                    op = lhsType->As<Backend::IL::IntType>()->signedness ? SpvOpSLessThan : SpvOpULessThan;
+                if (component->kind == Backend::IL::TypeKind::Int) {
+                    op = component->As<Backend::IL::IntType>()->signedness ? SpvOpSLessThan : SpvOpULessThan;
                 } else {
                     op = SpvOpFOrdLessThan;
                 }
@@ -369,18 +390,19 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, lessThan->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = lessThan->result;
-                spv[3] = lessThan->lhs;
-                spv[4] = lessThan->rhs;
+                spv[3] = idMap.Get(lessThan->lhs);
+                spv[4] = idMap.Get(lessThan->rhs);
                 break;
             }
             case IL::OpCode::LessThanEqual: {
                 auto *lessThanEqual = instr.As<IL::LessThanEqualInstruction>();
 
                 const Backend::IL::Type* lhsType = ilTypeMap.GetType(lessThanEqual->lhs);
+                const Backend::IL::Type* component = GetComponentType(lhsType);
 
                 SpvOp op;
-                if (lhsType->kind == Backend::IL::TypeKind::Int) {
-                    op = lhsType->As<Backend::IL::IntType>()->signedness ? SpvOpSLessThanEqual : SpvOpULessThanEqual;
+                if (component->kind == Backend::IL::TypeKind::Int) {
+                    op = component->As<Backend::IL::IntType>()->signedness ? SpvOpSLessThanEqual : SpvOpULessThanEqual;
                 } else {
                     op = SpvOpFOrdLessThanEqual;
                 }
@@ -388,18 +410,19 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, lessThanEqual->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = lessThanEqual->result;
-                spv[3] = lessThanEqual->lhs;
-                spv[4] = lessThanEqual->rhs;
+                spv[3] = idMap.Get(lessThanEqual->lhs);
+                spv[4] = idMap.Get(lessThanEqual->rhs);
                 break;
             }
             case IL::OpCode::GreaterThan: {
                 auto *greaterThan = instr.As<IL::GreaterThanInstruction>();
 
                 const Backend::IL::Type* lhsType = ilTypeMap.GetType(greaterThan->lhs);
+                const Backend::IL::Type* component = GetComponentType(lhsType);
 
                 SpvOp op;
-                if (lhsType->kind == Backend::IL::TypeKind::Int) {
-                    op = lhsType->As<Backend::IL::IntType>()->signedness ? SpvOpSGreaterThan : SpvOpUGreaterThan;
+                if (component->kind == Backend::IL::TypeKind::Int) {
+                    op = component->As<Backend::IL::IntType>()->signedness ? SpvOpSGreaterThan : SpvOpUGreaterThan;
                 } else {
                     op = SpvOpFOrdGreaterThan;
                 }
@@ -407,18 +430,19 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, greaterThan->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = greaterThan->result;
-                spv[3] = greaterThan->lhs;
-                spv[4] = greaterThan->rhs;
+                spv[3] = idMap.Get(greaterThan->lhs);
+                spv[4] = idMap.Get(greaterThan->rhs);
                 break;
             }
             case IL::OpCode::GreaterThanEqual: {
                 auto *greaterThanEqual = instr.As<IL::GreaterThanEqualInstruction>();
 
                 const Backend::IL::Type* lhsType = ilTypeMap.GetType(greaterThanEqual->lhs);
+                const Backend::IL::Type* component = GetComponentType(lhsType);
 
                 SpvOp op;
-                if (lhsType->kind == Backend::IL::TypeKind::Int) {
-                    op = lhsType->As<Backend::IL::IntType>()->signedness ? SpvOpSGreaterThanEqual : SpvOpUGreaterThanEqual;
+                if (component->kind == Backend::IL::TypeKind::Int) {
+                    op = component->As<Backend::IL::IntType>()->signedness ? SpvOpSGreaterThanEqual : SpvOpUGreaterThanEqual;
                 } else {
                     op = SpvOpFOrdGreaterThanEqual;
                 }
@@ -426,8 +450,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, greaterThanEqual->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = greaterThanEqual->result;
-                spv[3] = greaterThanEqual->lhs;
-                spv[4] = greaterThanEqual->rhs;
+                spv[3] = idMap.Get(greaterThanEqual->lhs);
+                spv[4] = idMap.Get(greaterThanEqual->rhs);
                 break;
             }
             case IL::OpCode::Branch: {
@@ -497,7 +521,7 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
 
                 // Perform the branch, must be after cfg instruction
                 SpvInstruction& spv = stream.Allocate(SpvOpBranchConditional, 4);
-                spv[1] = branch->cond;
+                spv[1] = idMap.Get(branch->cond);
                 spv[2] = branch->pass;
                 spv[3] = branch->fail;
                 break;
@@ -508,8 +532,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpBitwiseOr, 5, bitOr->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = bitOr->result;
-                spv[3] = bitOr->lhs;
-                spv[4] = bitOr->rhs;
+                spv[3] = idMap.Get(bitOr->lhs);
+                spv[4] = idMap.Get(bitOr->rhs);
                 break;
             }
             case IL::OpCode::BitAnd: {
@@ -518,8 +542,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpBitwiseAnd, 5, bitAnd->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = bitAnd->result;
-                spv[3] = bitAnd->lhs;
-                spv[4] = bitAnd->rhs;
+                spv[3] = idMap.Get(bitAnd->lhs);
+                spv[4] = idMap.Get(bitAnd->rhs);
                 break;
             }
             case IL::OpCode::BitShiftLeft: {
@@ -528,8 +552,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpShiftLeftLogical, 5, bsl->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = bsl->result;
-                spv[3] = bsl->value;
-                spv[4] = bsl->shift;
+                spv[3] = idMap.Get(bsl->value);
+                spv[4] = idMap.Get(bsl->shift);
                 break;
             }
             case IL::OpCode::BitShiftRight: {
@@ -538,8 +562,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpShiftRightLogical, 5, bsr->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = bsr->result;
-                spv[3] = bsr->value;
-                spv[4] = bsr->shift;
+                spv[3] = idMap.Get(bsr->value);
+                spv[4] = idMap.Get(bsr->shift);
                 break;
             }
             case IL::OpCode::Export: {
@@ -638,7 +662,7 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction &write = stream.Allocate(SpvOpImageWrite, 5);
                 write[1] = accessLoadId;
                 write[2] = atomicPositionId;
-                write[3] = _export->value;
+                write[3] = idMap.Get(_export->value);
                 write[4] = SpvImageOperandsMaskNone;
 
                 break;
@@ -658,15 +682,15 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = declarationStream->TemplateOrAllocate(SpvOpLoad, 4, load->source);
                 spv[1] = typeMap->GetSpvTypeId(resultType->As<Backend::IL::PointerType>()->pointee);
                 spv[2] = load->result;
-                spv[3] = SpvStorageClassFunction;
+                spv[3] = idMap.Get(load->address);
                 break;
             }
             case IL::OpCode::Store: {
                 auto *load = instr.As<IL::StoreInstruction>();
 
                 SpvInstruction& spv = declarationStream->TemplateOrAllocate(SpvOpStore, 3, load->source);
-                spv[1] = load->address;
-                spv[2] = load->value;
+                spv[1] = idMap.Get(load->address);
+                spv[2] = idMap.Get(load->value);
                 break;
             }
             case IL::OpCode::LoadBuffer: {
@@ -681,8 +705,8 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                     SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageRead, 5, instr->source);
                     spv[1] = typeMap->GetSpvTypeId(bufferType->elementType);
                     spv[2] = loadBuffer->result;
-                    spv[3] = loadBuffer->buffer;
-                    spv[4] = loadBuffer->index;
+                    spv[3] = idMap.Get(loadBuffer->buffer);
+                    spv[4] = idMap.Get(loadBuffer->index);
                 } else {
                     ASSERT(false, "Not implemented");
                 }
@@ -698,9 +722,9 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 if (bufferType->texelType != Backend::IL::Format::None) {
                     // Write image
                     SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
-                    spv[1] = storeBuffer->buffer;
-                    spv[2] = storeBuffer->index;
-                    spv[3] = storeBuffer->value;
+                    spv[1] = idMap.Get(storeBuffer->buffer);
+                    spv[2] = idMap.Get(storeBuffer->index);
+                    spv[3] = idMap.Get(storeBuffer->value);
                 } else {
                     ASSERT(false, "Not implemented");
                     return false;
@@ -709,6 +733,9 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
             }
             case IL::OpCode::ResourceSize: {
                 auto *size = instr.As<IL::ResourceSizeInstruction>();
+
+                // Capability set
+                EnsureCapability(SpvCapabilityImageQuery);
 
                 // Get the resource type
                 const auto* resourceType = ilTypeMap.GetType(size->resource);
@@ -723,7 +750,7 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                         SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageQuerySize, 4, instr->source);
                         spv[1] = typeMap->GetSpvTypeId(resultType);
                         spv[2] = size->result;
-                        spv[3] = size->resource;
+                        spv[3] = idMap.Get(size->resource);
                         break;
                     }
                     case Backend::IL::TypeKind::Buffer: {
@@ -733,7 +760,7 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                             SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageQuerySize, 4, instr->source);
                             spv[1] = typeMap->GetSpvTypeId(resultType);
                             spv[2] = size->result;
-                            spv[3] = size->resource;
+                            spv[3] = idMap.Get(size->resource);
                         } else {
                             ASSERT(false, "Not implemented");
                         }
@@ -747,4 +774,18 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
     }
 
     return true;
+}
+
+void SpvModule::EnsureCapability(SpvCapability capability) {
+    if (metaData.capabilities.count(capability)) {
+        return;
+    }
+
+    // Get block
+    SpvStream& block = *GetSection(LayoutSectionType::Capability).stream;
+
+    // Insert capability
+    SpvInstruction& instruction = block.Allocate(SpvOpCapability, 2);
+    instruction[1] = capability;
+    metaData.capabilities.insert(capability);
 }

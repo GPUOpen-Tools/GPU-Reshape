@@ -2,10 +2,16 @@
 # Base set of libraries
 add_subdirectory(Libraries)
 
+# Testing suite
+add_subdirectory(Test)
+
 # Common implementations / variants of libraries
 add_subdirectory(Backends)
+
+# All user features
 add_subdirectory(Features)
 
 # Standalone applications
 add_subdirectory(Services)
 add_subdirectory(UIX)
+

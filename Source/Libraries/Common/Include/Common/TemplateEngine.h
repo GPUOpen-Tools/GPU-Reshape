@@ -46,6 +46,14 @@ struct TemplateEngine {
         return true;
     }
 
+    /// Substitute all templated entries
+    /// \param key the entry to look for
+    /// \param value the value to be replaced with
+    /// \return success
+    void SubstituteAll(const char* key, const char* value) {
+        while (Substitute(key, value));
+    }
+
     /// Reset this template
     void Reset() {
         currentStr = templateStr;

@@ -28,4 +28,4 @@ target_include_directories(Libraries.Bridge.Tests PUBLIC Tests/Include ${CMAKE_C
 ExternalProject_Link(Libraries.Bridge.Tests Catch2)
 
 # Links
-target_link_libraries(Libraries.Bridge.Tests Libraries.Bridge)
+target_link_libraries(Libraries.Bridge.Tests PUBLIC Libraries.Bridge)

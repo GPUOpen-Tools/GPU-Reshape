@@ -1,0 +1,56 @@
+
+/// Message descriptor
+struct $TEST_NAMEMessageInfo {
+    uint32_t count{0};
+    uint32_t visited{0};
+    uint32_t line{0};
+$FIELDS
+};
+
+/// Listener that performs constraint validation
+class $TEST_NAMEMessageConstraint : public IComponent, public IBridgeListener {
+public:
+    void Install() {
+$INITS
+    }
+
+    void Handle(const MessageStream *streams, uint32_t count) override {
+        auto* sguidHost = registry->Get<IShaderSGUIDHost>();
+
+        for (uint32_t i = 0; i < count; i++) {
+            ConstMessageStreamView<$MESSAGE_TYPEMessage> view(streams[i]);
+
+            // Validate all messages
+            for (auto it = view.GetIterator(); it; ++it) {
+                REQUIRE_FORMAT(it->sguid != InvalidShaderSGUID, "Message $MESSAGE_TYPE missing sguid");
+
+                uint32_t line = sguidHost->GetMapping(it->sguid).line;
+
+                // Find the respective message
+                $TEST_NAMEMessageInfo* bucket{nullptr};
+                for (auto&& message : messages) {
+                    if (message.line == line) {
+                        bucket = &message;
+                        break;
+                    }
+                }
+
+                REQUIRE_FORMAT(bucket != nullptr, "Message $MESSAGE_TYPE reported, but no match found");
+
+$TESTS
+
+                // Increment visited
+                bucket->visited++;
+            }
+        }
+    }
+
+    void Validate() {
+        for (auto&& message : messages) {
+            REQUIRE_FORMAT(message.visited == message.count, "Expected " << message.count << " $MESSAGE_TYPE (line " << (message.line + 1) << "), but got " << message.visited);
+        }
+    }
+
+private:
+    std::vector<$TEST_NAMEMessageInfo> messages;
+};

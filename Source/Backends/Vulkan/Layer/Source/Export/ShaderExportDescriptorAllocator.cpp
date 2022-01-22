@@ -9,6 +9,9 @@
 // Backend
 #include <Backend/IShaderExportHost.h>
 
+// Std
+#include <algorithm>
+
 ShaderExportDescriptorAllocator::ShaderExportDescriptorAllocator(DeviceDispatchTable *table) : table(table) {
 }
 
@@ -122,7 +125,7 @@ ShaderExportDescriptorAllocator::PoolInfo &ShaderExportDescriptorAllocator::Find
     // Pool size, both the counter and stream are uniform texel buffers, one of each (hence x2)
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-    poolSize.descriptorCount = exportBound * 2;
+    poolSize.descriptorCount = std::max(1u, exportBound * 2);
 
     // Descriptor pool create info
     VkDescriptorPoolCreateInfo createInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};

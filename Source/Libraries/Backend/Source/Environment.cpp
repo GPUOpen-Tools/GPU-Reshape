@@ -17,6 +17,7 @@ Environment::Environment() {
 Environment::~Environment() {
 
 }
+
 bool Environment::Install(const EnvironmentInfo &info) {
     // Install the plugin resolver
     auto* resolver = registry.AddNew<PluginResolver>();
@@ -36,13 +37,16 @@ bool Environment::Install(const EnvironmentInfo &info) {
     // Install feature host
     registry.AddNew<FeatureHost>();
 
-    // Find all plugins
-    if (!resolver->FindPlugins("backend", &plugins)) {
-        return false;
-    }
+    // Need plugins?
+    if (info.loadPlugins) {
+        // Find all plugins
+        if (!resolver->FindPlugins("backend", &plugins)) {
+            return false;
+        }
 
-    // Install all found plugins
-    resolver->InstallPlugins(plugins);
+        // Install all found plugins
+        resolver->InstallPlugins(plugins);
+    }
 
     // OK
     return true;

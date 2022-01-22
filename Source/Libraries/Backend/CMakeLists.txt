@@ -65,4 +65,4 @@ target_include_directories(Libraries.Backend.Tests PUBLIC Tests/Include ${CMAKE_
 ExternalProject_Link(Libraries.Backend.Tests Catch2)
 
 # Links
-target_link_libraries(Libraries.Backend.Tests Libraries.Backend)
+target_link_libraries(Libraries.Backend.Tests PUBLIC Libraries.Backend)

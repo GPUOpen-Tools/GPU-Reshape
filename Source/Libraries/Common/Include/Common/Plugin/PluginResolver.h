@@ -9,12 +9,15 @@
 
 // Std
 #include <string_view>
+#include <filesystem>
 #include <string>
 #include <map>
 
 class PluginResolver : public IComponent {
 public:
     COMPONENT(PluginResolver);
+
+    PluginResolver();
 
     /// Find all plugins of a certain category
     /// \param category the category to be found
@@ -51,6 +54,9 @@ private:
     PluginState& GetPluginOrLoad(const std::string& path);
 
 private:
+    /// Plugins path
+    std::filesystem::path pluginPath;
+
     /// All loaded plugins
     std::map<std::string, PluginState> plugins;
 };

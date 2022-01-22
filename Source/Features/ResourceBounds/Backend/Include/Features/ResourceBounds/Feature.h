@@ -5,6 +5,7 @@
 #include <Backend/IShaderFeature.h>
 #include <Backend/ShaderExport.h>
 #include <Backend/IL/BasicBlock.h>
+#include <Backend/IL/VisitContext.h>
 
 // Message
 #include <Message/MessageStream.h>

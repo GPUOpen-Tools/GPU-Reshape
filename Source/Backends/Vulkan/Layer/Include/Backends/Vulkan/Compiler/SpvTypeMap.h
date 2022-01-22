@@ -5,6 +5,7 @@
 #include "SpvStream.h"
 #include "SpvInstruction.h"
 #include "SpvTranslation.h"
+#include "SpvIdMap.h"
 
 // Backend
 #include <Backend/IL/Type.h>
@@ -28,8 +29,8 @@ struct SpvTypeMap {
     }
 
     /// Set the id counter for allocations
-    void SetIdCounter(SpvId* value) {
-        counter = value;
+    void SetIdMap(SpvIdMap* value) {
+        map = value;
     }
 
     /// Set the declaration stream for allocations
@@ -101,17 +102,13 @@ private:
         }
     }
 
-    SpvId AllocateId() {
-        return (*counter)++;
-    }
-
     void AddMapping(SpvId id, const Backend::IL::Type* type) {
         spvMap[type] = id;
         idMap[id] = type;
     }
 
     SpvId EmitSpvType(const Backend::IL::IntType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeInt, 4);
         spv[1] = id;
@@ -123,7 +120,7 @@ private:
     }
 
     SpvId EmitSpvType(const Backend::IL::FPType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeFloat, 3);
         spv[1] = id;
@@ -133,7 +130,7 @@ private:
     }
 
     SpvId EmitSpvType(const Backend::IL::VoidType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeVoid, 3);
         spv[1] = id;
@@ -143,7 +140,7 @@ private:
     }
 
     SpvId EmitSpvType(const Backend::IL::BoolType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeBool, 2);
         spv[1] = id;
@@ -153,7 +150,7 @@ private:
     }
 
     SpvId EmitSpvType(const Backend::IL::PointerType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvId pointee = GetSpvTypeId(type->pointee);
 
@@ -167,11 +164,11 @@ private:
     }
 
     SpvId EmitSpvType(const Backend::IL::VectorType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvId contained = GetSpvTypeId(type->containedType);
 
-        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeVector, 3);
+        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeVector, 4);
         spv[1] = id;
         spv[2] = contained;
         spv[3] = type->dimension;
@@ -181,7 +178,7 @@ private:
     }
 
     SpvId EmitSpvType(const Backend::IL::MatrixType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvId column = GetSpvTypeId(programMap->FindTypeOrAdd(Backend::IL::VectorType {
             .containedType = type->containedType,
@@ -198,7 +195,7 @@ private:
     }
 
     SpvId EmitSpvType(const Backend::IL::ArrayType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvId element = GetSpvTypeId(type->elementType);
 
@@ -207,7 +204,7 @@ private:
             .signedness = false
         }));
 
-        uint32_t dimId = AllocateId();
+        uint32_t dimId = map->Allocate();
 
         SpvInstruction& _const = declarationStream->Allocate(SpvOpConstant, 4);
         _const[1] = dim;
@@ -224,7 +221,7 @@ private:
     }
 
     SpvId EmitSpvType(const Backend::IL::TextureType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvId sampled = GetSpvTypeId(type->sampledType);
 
@@ -271,7 +268,7 @@ private:
     }
 
     SpvId EmitSpvType(const Backend::IL::BufferType* type) {
-        SpvId id = AllocateId();
+        SpvId id = map->Allocate();
 
         SpvId element = GetSpvTypeId(type->elementType);
 
@@ -298,8 +295,8 @@ private:
 private:
     Allocators allocators;
 
-    /// External id counter
-    SpvId* counter{nullptr};
+    /// Id map
+    SpvIdMap* map{nullptr};
 
     /// External declaration stream for allocations
     SpvStream *declarationStream{nullptr};

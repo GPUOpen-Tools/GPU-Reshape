@@ -1,0 +1,146 @@
+// Generated File
+
+// Test
+#include <Test/Device/IDevice.h>
+#include <Test/Device/Catch2.h>
+
+// Backend
+#include <Backend/IShaderSGUIDHost.h>
+#include <Backend/Environment.h>
+#include <Backend/EnvironmentInfo.h>
+#include <Backend/FeatureHost.h>
+
+// Bridge
+#include <Bridge/IBridgeListener.h>
+#include <Bridge/IBridge.h>
+
+// Message
+#include <Message/IMessageStorage.h>
+
+// Devices
+#include <Test/Device/Vulkan/Device.h>
+
+// Common
+#include <Common/Registry.h>
+
+// Shared schemas
+#include <Schemas/Config.h>
+#include <Schemas/Pipeline.h>
+
+$INCLUDES
+
+using namespace Test;
+
+$CONSTRAINTS;
+
+template<typename DEVICE>
+class $TEST_NAMERunner {
+public:
+    void Run() {
+        environment.Install(Backend::EnvironmentInfo{});
+
+        // Get the shared registry
+        Registry* registry = environment.GetRegistry();
+
+        // Get common objects
+        auto* bridge = registry->Get<IBridge>();
+
+$CONSTRAINT_INSTALL
+
+        Execute();
+        Validate();
+    }
+
+private:
+    void ConfigureBridge() {
+        // Get common objects
+        auto* bridge = environment.GetRegistry()->Get<IBridge>();
+
+        // Ordered stream
+        MessageStream stream;
+        MessageStreamView view(stream);
+
+        // Make the recording wait for compilation
+        auto config = view.Add<SetInstrumentationConfigMessage>();
+        config->synchronousRecording = 1;
+
+        // Global instrumentation
+        auto msg = view.Add<SetGlobalInstrumentationMessage>();
+        msg->featureBitSet = ~0ull;
+
+        // Submit configuration
+        bridge->GetOutput()->AddStream(stream);
+        bridge->Commit();
+    }
+
+    void Execute() {
+        Registry* registry = environment.GetRegistry();
+
+        // Create a device
+        IDevice* device = registry->AddNew<DEVICE>();
+
+        // Install the device
+        Test::DeviceInfo info{};
+        info.enableValidation = true;
+        device->Install(info);
+
+        // Create all resources
+$RESOURCES_CREATE
+
+        // Types for layout definition
+        ResourceType resourceTypes[] = {
+$RESOURCES_TYPES
+        };
+
+        // Create layout
+        ResourceLayoutID layout = device->CreateResourceLayout(resourceTypes, sizeof(resourceTypes) / sizeof(ResourceType));
+
+        // Resources for set
+        ResourceID resources[] = {
+$RESOURCES_SET
+        };
+
+        // Create set
+        ResourceSetID resourceSet = device->CreateResourceSet(layout, resources, sizeof(resources) / sizeof(ResourceID));
+
+        // Create pipeline
+        PipelineID pipeline = device->CreateComputePipeline(&layout, 1u, kShaderCode, sizeof(kShaderCode));
+
+        // Set the bridge up for the expected communication
+        ConfigureBridge();
+
+        // Create command buffer
+        CommandBufferID commandBuffer = device->CreateCommandBuffer(QueueType::Graphics);
+
+        // Begin!
+        device->BeginCommandBuffer(commandBuffer);
+
+        // Bind pipeline and resources
+        device->BindPipeline(commandBuffer, pipeline);
+        device->BindResourceSet(commandBuffer, resourceSet);
+
+$COMMANDS
+
+        // End!
+        device->EndCommandBuffer(commandBuffer);
+
+        // Submit on generic graphics
+        device->Submit(device->GetQueue(QueueType::Graphics), commandBuffer);
+        device->Flush();
+    }
+
+    void Validate() {
+$CONSTRAINT_VALIDATE
+    }
+
+private:
+    Backend::Environment environment;
+
+$CONSTRAINT_FIELDS
+};
+
+TEST_CASE("Features.$FEATURE_NAME.$TEST_NAME") {
+    SECTION("Vulkan") {
+        $TEST_NAMERunner<Vulkan::Device>{}.Run();
+    }
+}
