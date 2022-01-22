@@ -10,12 +10,14 @@
 // Std
 #include <iostream>
 
-bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* list) {
-    std::filesystem::path pluginPath = std::filesystem::current_path() / "Plugins";
+PluginResolver::PluginResolver() {
+    pluginPath = std::filesystem::current_path() / "Plugins";
+}
 
-    for (const auto & entry : std::filesystem::directory_iterator()) {
+bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* list) {
+    for (const auto & entry : std::filesystem::directory_iterator(pluginPath)) {
         // TODO: Casing?
-        if (entry.path().extension() != "xml") {
+        if (entry.path().extension() != ".xml") {
             continue;
         }
 
@@ -36,6 +38,9 @@ bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* l
         // Process all nodes
         for (tinyxml2::XMLNode *catNode = specNode->FirstChild(); catNode; catNode = catNode->NextSibling()) {
             tinyxml2::XMLElement *cat = catNode->ToElement();
+            if (!cat) {
+                continue;
+            }
 
             // Not a match?
             if (category != cat->Name()) {
@@ -165,7 +170,7 @@ PluginResolver::PluginState &PluginResolver::GetPluginOrLoad(const std::string &
     }
 
     PluginState& state = plugins[path];
-    if (!state.library.Load(path)) {
+    if (!state.library.Load((pluginPath / path).string().c_str())) {
         std::cerr << "Failed to load plugin '" << path << "'" << std::endl;
     }
 

@@ -253,7 +253,7 @@ namespace IL {
             instr.source = Source::Invalid();
             instr.buffer = buffer;
             instr.index = index;
-            instr.result = InvalidID;
+            instr.result = map->AllocID();
             return Op(instr);
         }
 
@@ -267,7 +267,7 @@ namespace IL {
             instr.opCode = OpCode::ResourceSize;
             instr.source = Source::Invalid();
             instr.resource = resource;
-            instr.result = InvalidID;
+            instr.result = map->AllocID();
             return Op(instr);
         }
 

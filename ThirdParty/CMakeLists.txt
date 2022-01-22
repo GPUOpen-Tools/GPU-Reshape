@@ -29,6 +29,6 @@ function(ExternalProject_Link Project Name)
     target_link_directories(${Project} PUBLIC ${CMAKE_BINARY_DIR}/External/lib)
 
     if (NOT "${ARGN}" STREQUAL "")
-        target_link_libraries(${Project} ${ARGN})
+        target_link_libraries(${Project} PUBLIC ${ARGN})
     endif()
 endfunction()

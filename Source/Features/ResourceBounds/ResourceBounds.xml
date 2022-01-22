@@ -1,6 +1,6 @@
 <spec>
     <backend>
-        <plugin name="ResourceBounds.Backend"/>
+        <plugin name="Features.ResourceBounds.Backend"/>
     </backend>
     <!--<uix>
         <plugin name="ResourceBounds.UIX"/>

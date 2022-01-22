@@ -120,15 +120,19 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
 }
 
 void ShaderExportStreamer::SyncPoint() {
+    // ! Linear view locks
     for (QueueState* queueState : table->states_queue.GetLinear()) {
-        ProcessSegments(queueState->exportState);
+        ProcessSegmentsNoQueueLock(queueState->exportState);
     }
 
     bridge->Commit();
 }
 
 void ShaderExportStreamer::SyncPoint(ShaderExportQueueState* queueState) {
-    ProcessSegments(queueState);
+    {
+        std::lock_guard guard(table->states_queue.GetLock());
+        ProcessSegmentsNoQueueLock(queueState);
+    }
 
     bridge->Commit();
 }
@@ -213,7 +217,7 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
     descriptorAllocator->Update(state->segmentDescriptorInfo, segment->allocation);
 }
 
-void ShaderExportStreamer::ProcessSegments(ShaderExportQueueState* queue) {
+void ShaderExportStreamer::ProcessSegmentsNoQueueLock(ShaderExportQueueState* queue) {
     // TODO: Does not hold true for all queues
     auto it = queue->liveSegments.begin();
 
@@ -225,7 +229,7 @@ void ShaderExportStreamer::ProcessSegments(ShaderExportQueueState* queue) {
         }
 
         // Add back to pool
-        FreeSegment(queue, *it);
+        FreeSegmentNoQueueLock(queue, *it);
     }
 
     // Remove dead segments
@@ -277,8 +281,8 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
     return true;
 }
 
-void ShaderExportStreamer::FreeSegment(ShaderExportQueueState* queue, ShaderExportStreamSegment *segment) {
-    QueueState* queueState = table->states_queue.Get(queue->queue);
+void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue, ShaderExportStreamSegment *segment) {
+    QueueState* queueState = table->states_queue.GetNoLock(queue->queue);
 
     // Release fence usage
     segment->fence->ReleaseUser();

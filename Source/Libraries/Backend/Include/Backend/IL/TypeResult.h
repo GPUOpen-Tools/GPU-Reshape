@@ -4,6 +4,28 @@
 #include "Instruction.h"
 
 namespace Backend::IL {
+    inline const Type* ReplaceVectorizedType(Program& program, const Type* type, const Type* component) {
+        switch (type->kind) {
+            default:
+                return component;
+            case TypeKind::Vector: {
+                auto* vector = type->As<VectorType>();
+                return program.GetTypeMap().FindTypeOrAdd(VectorType{
+                    .containedType = component,
+                    .dimension = vector->dimension
+                });
+            }
+            case TypeKind::Matrix: {
+                auto* vector = type->As<MatrixType>();
+                return program.GetTypeMap().FindTypeOrAdd(MatrixType{
+                    .containedType = component,
+                    .rows = vector->rows,
+                    .columns = vector->columns
+                });
+            }
+        }
+    }
+
     inline const Type* ResultOf(Program& program, const Instruction* instr) {
         return nullptr;
     }
@@ -54,27 +76,33 @@ namespace Backend::IL {
     }
 
     inline const Type* ResultOf(Program& program, const EqualInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+        const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const NotEqualInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+        const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const GreaterThanInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+        const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const GreaterThanEqualInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+        const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const LessThanInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+        const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const LessThanEqualInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+        const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const LoadTextureInstruction* instr) {

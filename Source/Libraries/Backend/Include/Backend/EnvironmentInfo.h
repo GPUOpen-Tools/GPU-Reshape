@@ -11,5 +11,8 @@ namespace Backend {
 
         /// Optional, bridge override
         IBridge* bridge{nullptr};
+
+        /// Load plugins?
+        bool loadPlugins{true};
     };
 }

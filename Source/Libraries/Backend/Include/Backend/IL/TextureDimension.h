@@ -3,6 +3,9 @@
 // Std
 #include <cstdint>
 
+// Common
+#include <Common/Assert.h>
+
 namespace Backend::IL {
     enum class TextureDimension {
         Texture1D,

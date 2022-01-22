@@ -43,7 +43,9 @@ Loader::Loader() {
     REQUIRE(vkEnumerateInstanceExtensionProperties(nullptr, &instanceExtensionCount, instanceExtensions.data()) == VK_SUCCESS);
 
     // Load the environment
-    environment.Install(Backend::EnvironmentInfo{});
+    Backend::EnvironmentInfo info{};
+    info.loadPlugins = false;
+    environment.Install(info);
 }
 
 bool Loader::SupportsInstanceLayer(const char *name) const {

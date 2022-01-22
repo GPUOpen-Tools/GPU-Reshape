@@ -28,6 +28,7 @@ SpvModule *SpvModule::Copy() const {
     module->metaData = metaData;
     module->debugMap = debugMap;
     module->sourceMap = sourceMap;
+    module->idMap = idMap;
     module->parent = this;
     return module;
 }

@@ -111,13 +111,13 @@ private:
 
     /// Process all segments within a queue
     /// \param queue the queue state
-    void ProcessSegments(ShaderExportQueueState* queue);
+    void ProcessSegmentsNoQueueLock(ShaderExportQueueState* queue);
 
     /// Process a segment
     bool ProcessSegment(ShaderExportStreamSegment* segment);
 
     /// Free a segment
-    void FreeSegment(ShaderExportQueueState* queue, ShaderExportStreamSegment* segment);
+    void FreeSegmentNoQueueLock(ShaderExportQueueState* queue, ShaderExportStreamSegment* segment);
 
 private:
     DeviceDispatchTable* table;

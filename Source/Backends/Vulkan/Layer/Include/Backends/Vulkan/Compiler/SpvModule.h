@@ -247,6 +247,10 @@ private:
     /// \return true if successful
     bool RecompileFunction(SpvRelocationStream& relocationStream, IL::Function& fn);
 
+    /// Ensure a capability has been added
+    /// \param capability the capability to check
+    void EnsureCapability(SpvCapability capability);
+
     /// Recompile a basic block
     /// \param relocationStream the relocation stream
     /// \param fn function in which the basic block resides
@@ -268,4 +272,7 @@ private:
 
     /// Abstracted program
     IL::Program* program{nullptr};
+
+    /// The identifier map
+    SpvIdMap idMap;
 };

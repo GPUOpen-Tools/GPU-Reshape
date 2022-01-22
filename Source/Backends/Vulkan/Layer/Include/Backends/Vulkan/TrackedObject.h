@@ -124,6 +124,10 @@ struct TrackedObject {
         return LinearView(mutex, linear);
     }
 
+    std::mutex& GetLock() {
+        return mutex;
+    }
+
 private:
     struct MapEntry {
         U*       state;

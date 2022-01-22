@@ -701,7 +701,11 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             instr.result = id;
             instr.source = source;
             instr.type = idType;
-            // context.basicBlock->Append(instr);
+
+            // TODO: This, is definitely not correct, needs to be managed
+            if (context.basicBlock) {
+                context.basicBlock->Append(instr);
+            }
             break;
         }
 
@@ -709,7 +713,6 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
         case SpvOpConstant: {
             ASSERT(hasResult, "Expected result for instruction type");
 
-            uint32_t type = context++;
             uint32_t value = context++;
 
             // Append
@@ -721,7 +724,40 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             instr.signedness = true;
             instr.bitWidth = 32;
             instr.value.integral = value;
-            context.basicBlock->Append(instr);
+
+            // TODO: This, is definitely not correct, needs to be managed
+            if (context.basicBlock) {
+                context.basicBlock->Append(instr);
+            }
+            break;
+        }
+
+            // Image store operation, fx. texture & buffer writes
+        case SpvOpImageRead: {
+            uint32_t image = context++;
+            uint32_t coordinate = context++;
+
+            const Backend::IL::Type* type = program->GetTypeMap().GetType(image);
+
+            if (type->kind == Backend::IL::TypeKind::Buffer) {
+                // Append
+                IL::LoadBufferInstruction instr{};
+                instr.opCode = IL::OpCode::LoadBuffer;
+                instr.result = id;
+                instr.source = source;
+                instr.buffer = image;
+                instr.index = coordinate;
+                context.basicBlock->Append(instr);
+            } else {
+                // Append
+                IL::LoadTextureInstruction instr{};
+                instr.opCode = IL::OpCode::LoadTexture;
+                instr.result = id;
+                instr.source = source;
+                instr.texture = image;
+                instr.index = coordinate;
+                context.basicBlock->Append(instr);
+            }
             break;
         }
 
@@ -731,15 +767,29 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             uint32_t coordinate = context++;
             uint32_t texel = context++;
 
-            // Append
-            IL::StoreBufferInstruction instr{};
-            instr.opCode = IL::OpCode::StoreBuffer;
-            instr.result = id;
-            instr.source = source;
-            instr.buffer = image;
-            instr.index = coordinate;
-            instr.value = texel;
-            context.basicBlock->Append(instr);
+            const Backend::IL::Type* type = program->GetTypeMap().GetType(image);
+
+            if (type->kind == Backend::IL::TypeKind::Buffer) {
+                // Append
+                IL::StoreBufferInstruction instr{};
+                instr.opCode = IL::OpCode::StoreBuffer;
+                instr.result = id;
+                instr.source = source;
+                instr.buffer = image;
+                instr.index = coordinate;
+                instr.value = texel;
+                context.basicBlock->Append(instr);
+            } else {
+                // Append
+                IL::StoreTextureInstruction instr{};
+                instr.opCode = IL::OpCode::StoreTexture;
+                instr.result = id;
+                instr.source = source;
+                instr.texture = image;
+                instr.index = coordinate;
+                instr.texel = texel;
+                context.basicBlock->Append(instr);
+            }
             break;
         }
 

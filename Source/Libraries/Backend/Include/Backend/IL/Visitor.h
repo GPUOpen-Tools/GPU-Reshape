@@ -10,9 +10,11 @@ namespace IL {
     /// Implementation details
     namespace Detail {
         template<typename F>
-        void VisitUserInstructions(IL::Program& program, IL::Function& function, IL::BasicBlock& basicBlock, F&& functor) {
+        bool VisitUserInstructions(IL::Program& program, IL::Function& function, IL::BasicBlock* basicBlock, F&& functor) {
+            bool migratedBlock{false};
+
             // Visit all instructions
-            for (auto instruction = basicBlock.begin(); instruction != basicBlock.end(); ++instruction) {
+            for (auto instruction = basicBlock->begin(); instruction != basicBlock->end(); ++instruction) {
                 if (!instruction->IsUserInstruction()) {
                     continue;
                 }
@@ -21,20 +23,30 @@ namespace IL {
                 VisitContext context {
                         .program = program,
                         .function = function,
-                        .basicBlock = basicBlock,
+                        .basicBlock = *basicBlock,
                 };
 
                 // Pass through visitor
                 instruction = functor(context, instruction);
 
-                // Exit?
-                if (context.flags & VisitFlag::Stop) {
-                    return;
+                // Migrated block?
+                if (instruction.block != basicBlock) {
+                    basicBlock = instruction.block;
+
+                    // Invalidate the parent iteration
+                    migratedBlock = true;
+
+                    // Mark as visited
+                    basicBlock->AddFlag(BasicBlockFlag::Visited);
                 }
 
-                // Must be the same block
-                ASSERT(instruction.block == &basicBlock, "Returned visitor iterator must be of the same basic block");
+                // Exit?
+                if (context.flags & VisitFlag::Stop) {
+                    return migratedBlock;
+                }
             }
+
+            return migratedBlock;
         }
 
         template<typename F>
@@ -52,14 +64,18 @@ namespace IL {
                         continue;
                     }
 
+                    // Mark as visited
+                    basicBlock.AddFlag(BasicBlockFlag::Visited);
+
                     // Visit all instructions
-                    VisitUserInstructions(program, function, basicBlock, functor);
+                    bool migratedBlock = VisitUserInstructions(program, function, &basicBlock, functor);
 
-                    // Mark as mutated
-                    mutated = true;
+                    // If the fn revision has changed (block removed, moved, added), we need to re-visit
+                    if (migratedBlock || revision != function.GetBasicBlockRevision()) {
+                        // Mark as mutated
+                        mutated = true;
 
-                    // If the bb revision has changed (block removed, moved, added), we need to re-visit
-                    if (revision != function.GetBasicBlockRevision()) {
+                        // Stop!
                         break;
                     }
                 }
@@ -89,11 +105,15 @@ namespace IL {
                     // Visit all instructions
                     VisitUserInstructions(program, function, functor);
 
-                    // Mark as mutated
-                    mutated = true;
+                    // Mark as visited
+                    function.AddFlag(FunctionFlag::Visited);
 
-                    // If the bb revision has changed (block removed, moved, added), we need to re-visit
+                    // If the pg revision has changed (block removed, moved, added), we need to re-visit
                     if (revision != program.GetFunctionRevision()) {
+                        // Mark as mutated
+                        mutated = true;
+
+                        // Stop!
                         break;
                     }
                 }

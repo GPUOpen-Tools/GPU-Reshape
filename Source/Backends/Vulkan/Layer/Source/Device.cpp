@@ -21,6 +21,8 @@
 #include <Backend/EnvironmentInfo.h>
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
+#include <Backend/IL/Format.h>
+#include <Backend/IL/TextureDimension.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -30,6 +32,7 @@
 
 // Std
 #include <cstring>
+
 
 VkResult VKAPI_PTR Hook_vkEnumerateDeviceLayerProperties(uint32_t *pPropertyCount, VkLayerProperties *pProperties) {
     if (pPropertyCount) {
@@ -145,9 +148,6 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     auto* deviceAllocator = table->registry->AddNew<DeviceAllocator>();
     deviceAllocator->Install(table);
 
-    // Create the proxies / associations between the backend vulkan commands and the features
-    CreateDeviceCommandProxies(table);
-
     // Install the shader export host
     table->registry->AddNew<ShaderExportHost>();
 
@@ -157,6 +157,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Install all features
     PoolAndInstallFeatures(table);
+
+    // Create the proxies / associations between the backend vulkan commands and the features
+    CreateDeviceCommandProxies(table);
 
     // Install the stream allocator
     auto shaderExportStreamAllocator = table->registry->AddNew<ShaderExportStreamAllocator>(table);

@@ -219,14 +219,26 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "SourceAssociation file:" << load->file << " line:" << load->line << " column:" << load->column;
             break;
         }
-        case OpCode::Any:
+        case OpCode::Any: {
+            auto _or = instr->As<IL::AnyInstruction>();
+            line << "Any %" << _or->value;
             break;
-        case OpCode::All:
+        }
+        case OpCode::All: {
+            auto load = instr->As<IL::AllInstruction>();
+            line << "All %" << load->value;
             break;
-        case OpCode::LoadBuffer:
+        }
+        case OpCode::LoadBuffer: {
+            auto load = instr->As<IL::LoadBufferInstruction>();
+            line << "LoadBuffer buffer:%" << load->buffer << " index:%" << load->index;
             break;
-        case OpCode::ResourceSize:
+        }
+        case OpCode::ResourceSize: {
+            auto load = instr->As<IL::ResourceSizeInstruction>();
+            line << "ResourceSize %" << load->resource;
             break;
+        }
     }
 
     if (instr->source.IsValid()) {
