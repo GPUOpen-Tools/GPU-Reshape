@@ -2,6 +2,9 @@ project(gpu-validation)
 
 cmake_minimum_required(VERSION 3.19)
 
+# Visual Studio
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 # All options
 option(INSTALL_THIRD_PARTY "Fetch and install third party libraries" 0)
 
