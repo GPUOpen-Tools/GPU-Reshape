@@ -35,7 +35,6 @@ Project_AddBackendTest(Generated ResourceBounds Tests/Data/SimpleTest.hlsl)
 # Create test app
 add_executable(
     Features.ResourceBounds.Tests
-    Tests/Source/main.cpp
 
     # Generated
     ${Generated}
