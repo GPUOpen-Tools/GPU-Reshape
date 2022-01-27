@@ -69,7 +69,8 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
     )
 
     # Set output
-    set(${OUT_GENERATED} "${${OUT_GENERATED}};${OutputPath}" PARENT_SCOPE)
+    list(APPEND ${OUT_GENERATED} ${OutputPath})
+    set(${OUT_GENERATED} "${${OUT_GENERATED}}" PARENT_SCOPE)
 endfunction()
 
 # Default schema helper

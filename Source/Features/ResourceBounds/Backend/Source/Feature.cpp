@@ -6,7 +6,7 @@
 #include <Backend/IL/Visitor.h>
 
 // Generated schema
-#include <Schemas/Features/ResourceBounds/ResourceBounds.h>
+#include <Schemas/Features/ResourceBounds.h>
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -121,22 +121,22 @@ void ResourceBoundsFeature::Inject(IL::Program &program) {
                 ASSERT(false, "Unexpected opcode");
                 break;
             case IL::OpCode::StoreBuffer: {
-                auto storeBuffer = instr->As<IL::StoreBufferInstruction>();
+                auto* storeBuffer = instr->As<IL::StoreBufferInstruction>();
                 cond = pre.Any(pre.GreaterThanEqual(storeBuffer->index, pre.ResourceSize(storeBuffer->buffer)));
                 break;
             }
             case IL::OpCode::LoadBuffer: {
-                auto loadBuffer = instr->As<IL::LoadBufferInstruction>();
+                auto* loadBuffer = instr->As<IL::LoadBufferInstruction>();
                 cond = pre.Any(pre.GreaterThanEqual(loadBuffer->index, pre.ResourceSize(loadBuffer->buffer)));
                 break;
             }
             case IL::OpCode::StoreTexture: {
-                auto storeTexture = instr->As<IL::StoreTextureInstruction>();
+                auto* storeTexture = instr->As<IL::StoreTextureInstruction>();
                 cond = pre.Any(pre.GreaterThanEqual(storeTexture->index, pre.ResourceSize(storeTexture->texture)));
                 break;
             }
             case IL::OpCode::LoadTexture: {
-                auto loadTexture = instr->As<IL::LoadTextureInstruction>();
+                auto* loadTexture = instr->As<IL::LoadTextureInstruction>();
                 cond = pre.Any(pre.GreaterThanEqual(loadTexture->index, pre.ResourceSize(loadTexture->texture)));
                 break;
             }

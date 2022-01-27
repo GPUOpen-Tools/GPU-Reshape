@@ -81,7 +81,7 @@ private:
 
         // Install the device
         Test::DeviceInfo info{};
-        info.enableValidation = true;
+        info.enableValidation = false;
         device->Install(info);
 
         // Create all resources
