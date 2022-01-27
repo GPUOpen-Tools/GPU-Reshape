@@ -1,6 +1,6 @@
 project(gpu-validation)
 
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.17)
 
 # Visual Studio
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

@@ -4,7 +4,7 @@ Build instructions for Windows. _Linux support pending._
 
 ## Supported environments
 
-A minimum version of CMake 3.19 is required to configure and build the project.
+A minimum version of CMake 3.17 is required to configure and build the project.
 
 ### Windows
 
