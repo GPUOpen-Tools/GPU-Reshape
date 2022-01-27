@@ -30,6 +30,17 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${CMAKE_BUILD
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${CMAKE_BUILD_TYPE})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE})
 
+# Configure file for multi-configurators
+function(ConfigureOutput FILE OUT)
+    if ("${CMAKE_BUILD_TYPE}" STREQUAL "")
+        foreach(Config ${CMAKE_CONFIGURATION_TYPES})
+            configure_file(${FILE} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${Config}/${OUT} COPYONLY)
+        endforeach()
+    else()
+        configure_file(${FILE} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${OUT} COPYONLY)
+    endif()
+endfunction()
+
 # Add all projects
 add_subdirectory(ThirdParty)
 add_subdirectory(Tools)

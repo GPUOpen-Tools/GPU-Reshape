@@ -23,6 +23,10 @@ public:
 
     }
 
+    bool Install() override {
+        return true;
+    }
+
     uint32_t testIndexCount = 0;
 
 protected:
@@ -50,6 +54,10 @@ public:
 
     void CollectMessages(IMessageStorage *storage) override {
         storage->AddStreamAndSwap(messages);
+    }
+
+    bool Install() override {
+        return true;
     }
 
     MessageStream messages;
@@ -112,6 +120,10 @@ public:
     void CollectMessages(IMessageStorage *storage) override {
         storage->AddStreamAndSwap(emptyDrawMessages);
         storage->AddStreamAndSwap(complexMessages);
+    }
+
+    bool Install() override {
+        return true;
     }
 
     MessageStream emptyDrawMessages;

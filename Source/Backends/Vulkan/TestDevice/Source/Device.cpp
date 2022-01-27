@@ -1,11 +1,12 @@
 #include <Test/Device/Vulkan/Device.h>
 #include <Test/Device/Catch2.h>
 
+// Vulkan
 #include <Backends/Vulkan/Layer.h>
 #include <Backends/Vulkan/Translation.h>
 
-// Std
-#include <filesystem>
+// Common
+#include <Common/Path.h>
 
 using namespace Test;
 using namespace Test::Vulkan;
@@ -40,8 +41,7 @@ void Device::Install(const DeviceInfo &creationInfo) {
 
 void Device::EnumerateInstanceExtensions() {
     // Redirect layer path
-    std::filesystem::path cwd = std::filesystem::current_path();
-    _putenv_s("VK_LAYER_PATH", (cwd.string()).c_str());
+    _putenv_s("VK_LAYER_PATH", CurrentExecutableDirectory().string().c_str());
 
     // Get number of instance layers
     uint32_t instanceLayerCount;

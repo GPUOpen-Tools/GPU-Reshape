@@ -49,7 +49,7 @@ bool ShaderExportDescriptorAllocator::Install() {
     // Set layout create info
     VkDescriptorSetLayoutCreateInfo setInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
     setInfo.pNext = &bindingCreateInfo;
-    setInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;;
+    setInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
     setInfo.bindingCount = 2; /* Counters + Streams */
     setInfo.pBindings = bindings;
     if (table->next_vkCreateDescriptorSetLayout(table->object, &setInfo, nullptr, &layout) != VK_SUCCESS) {

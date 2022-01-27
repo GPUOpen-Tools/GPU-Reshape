@@ -6,7 +6,7 @@
 TEST_CASE("Backend.IL.BasicBlock") {
     Allocators allocators;
 
-    IL::Program program(allocators);
+    IL::Program program(allocators, 0x0);
 
     IL::IdentifierMap& map = program.GetIdentifierMap();
 

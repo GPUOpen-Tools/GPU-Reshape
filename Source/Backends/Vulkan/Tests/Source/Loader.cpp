@@ -2,7 +2,9 @@
 
 // Std
 #include <cstdlib>
-#include <filesystem>
+
+// Common
+#include <Common/Path.h>
 
 // Backend
 #include <Backend/EnvironmentInfo.h>
@@ -23,8 +25,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 
 Loader::Loader() {
     // Redirect layer path
-    std::filesystem::path cwd = std::filesystem::current_path();
-   _putenv_s("VK_LAYER_PATH", (cwd.string()).c_str());
+    _putenv_s("VK_LAYER_PATH", CurrentExecutableDirectory().string().c_str());
 
     // Get number of instance layers
     uint32_t instancelayerCount;

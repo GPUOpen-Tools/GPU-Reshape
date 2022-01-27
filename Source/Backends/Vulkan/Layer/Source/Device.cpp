@@ -153,7 +153,7 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Install the shader sguid host
     auto* sguidHost = table->registry->AddNew<ShaderSGUIDHost>(table);
-    ASSERT(sguidHost->Install(), "Failed to install shader sguid host");
+    ENSURE(sguidHost->Install(), "Failed to install shader sguid host");
 
     // Install all features
     PoolAndInstallFeatures(table);
@@ -163,27 +163,27 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Install the stream allocator
     auto shaderExportStreamAllocator = table->registry->AddNew<ShaderExportStreamAllocator>(table);
-    ASSERT(shaderExportStreamAllocator->Install(), "Failed to install stream allocator");
+    ENSURE(shaderExportStreamAllocator->Install(), "Failed to install stream allocator");
 
     // Install the stream descriptor allocator
     table->exportDescriptorAllocator = table->registry->AddNew<ShaderExportDescriptorAllocator>(table);
-    ASSERT(table->exportDescriptorAllocator->Install(), "Failed to install stream descriptor allocator");
+    ENSURE(table->exportDescriptorAllocator->Install(), "Failed to install stream descriptor allocator");
 
     // Install the streamer
     table->exportStreamer = table->registry->AddNew<ShaderExportStreamer>(table);
-    ASSERT(table->exportStreamer->Install(), "Failed to install export streamer allocator");
+    ENSURE(table->exportStreamer->Install(), "Failed to install export streamer allocator");
 
     // Install the shader compiler
     auto shaderCompiler = table->registry->AddNew<ShaderCompiler>();
-    ASSERT(shaderCompiler->Install(), "Failed to install shader compiler");
+    ENSURE(shaderCompiler->Install(), "Failed to install shader compiler");
 
     // Install the pipeline compiler
     auto pipelineCompiler = table->registry->AddNew<PipelineCompiler>();
-    ASSERT(pipelineCompiler->Install(), "Failed to install shader compiler");
+    ENSURE(pipelineCompiler->Install(), "Failed to install shader compiler");
 
     // Install the instrumentation controller
     table->instrumentationController = table->registry->New<InstrumentationController>(table);
-    ASSERT(table->instrumentationController->Install(), "Failed to install shader compiler");
+    ENSURE(table->instrumentationController->Install(), "Failed to install shader compiler");
 
     // Create queue states
     for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
