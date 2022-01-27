@@ -50,7 +50,7 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
     set(OutputPath ${SCHEMA_OUT_PATH}/${SchemaName}.h)
 
     if (NOT ${LIBS} STREQUAL "")
-        set(LibPaths -libs ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${LIBS})
+        set(LibPaths -libs ${LIBS})
     endif()
 
     # Generate the schema

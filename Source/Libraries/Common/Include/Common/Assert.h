@@ -11,3 +11,10 @@ namespace Detail {
 #else
 #   define ASSERT(EXPRESSION, MESSAGE) if (!(EXPRESSION)) { ::Detail::Break(MESSAGE); } (void)0
 #endif
+
+/// Ensure
+#if defined(NDEBUG)
+#   define ENSURE(EXPRESSION, MESSAGE) EXPRESSION
+#else
+#   define ENSURE(EXPRESSION, MESSAGE) ASSERT(EXPRESSION, MESSAGE)
+#endif

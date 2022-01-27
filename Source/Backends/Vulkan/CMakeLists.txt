@@ -154,7 +154,7 @@ ExternalProject_Link(Backends.Vulkan.Layer VulkanHeaders)
 ExternalProject_Link(Backends.Vulkan.Layer VMA)
 
 # Copy layer definition (configuration time)
-configure_file(Layer/Resources/VK_GPUOpen_GBV.json ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/VK_GPUOpen_GBV.json COPYONLY)
+ConfigureOutput(Layer/Resources/VK_GPUOpen_GBV.json VK_GPUOpen_GBV.json)
 
 #----- Test Device -----#
 
@@ -187,7 +187,7 @@ add_library(
 ExternalProject_Link(Backends.Vulkan.Tests.UserDataLayer VulkanHeaders)
 
 # Copy layer definition (configuration time)
-configure_file(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/VK_GPUOpen_Test_UserDataLayer.json COPYONLY)
+ConfigureOutput(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json VK_GPUOpen_Test_UserDataLayer.json)
 
 #----- Test Application -----#
 

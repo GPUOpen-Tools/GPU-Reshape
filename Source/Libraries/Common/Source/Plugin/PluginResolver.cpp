@@ -1,17 +1,15 @@
 #include <Common/Plugin/PluginResolver.h>
 #include <Common/Plugin/Plugin.h>
+#include <Common/Path.h>
 
 // Xml
 #include <tinyxml2.h>
 
 // Std
-#include <filesystem>
-
-// Std
 #include <iostream>
 
 PluginResolver::PluginResolver() {
-    pluginPath = std::filesystem::current_path() / "Plugins";
+    pluginPath = CurrentExecutableDirectory() / "Plugins";
 }
 
 bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* list) {

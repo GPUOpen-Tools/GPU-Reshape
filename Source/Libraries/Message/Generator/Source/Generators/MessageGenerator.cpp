@@ -108,7 +108,7 @@ bool MessageGenerator::GenerateCPP(const Message &message, const MessageStream &
                 out.members << "\t" << it->second.cxxType << " " << field.name;
 
                 if (defaultValue) {
-                    out.members << " = " << defaultValue;
+                    out.members << " = " << defaultValue->value;
                 }
 
                 out.members << ";\n";
