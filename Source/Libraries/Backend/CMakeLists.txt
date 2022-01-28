@@ -66,10 +66,3 @@ ExternalProject_Link(Libraries.Backend.Tests Catch2)
 
 # Links
 target_link_libraries(Libraries.Backend.Tests PUBLIC Libraries.Backend)
-
-#----- Visual Studio -----#
-
-# Folder structure
-set_target_properties(Libraries.Backend PROPERTIES FOLDER Libraries/Backend)
-set_target_properties(Libraries.Backend.Generator PROPERTIES FOLDER Libraries/Backend)
-set_target_properties(Libraries.Backend.Tests PROPERTIES FOLDER Libraries/Backend)

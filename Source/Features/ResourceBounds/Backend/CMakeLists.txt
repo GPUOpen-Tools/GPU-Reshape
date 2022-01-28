@@ -41,9 +41,3 @@ add_executable(
 
 # Links
 target_link_libraries(Features.ResourceBounds.Tests PUBLIC Test.Device Features.ResourceBounds.Backend)
-
-#----- Visual Studio -----#
-
-# Folder structure
-set_target_properties(Features.ResourceBounds.Backend PROPERTIES FOLDER Features/ResourceBounds)
-set_target_properties(Features.ResourceBounds.Tests PROPERTIES FOLDER Features/ResourceBounds)

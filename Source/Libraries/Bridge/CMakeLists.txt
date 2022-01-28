@@ -29,9 +29,3 @@ ExternalProject_Link(Libraries.Bridge.Tests Catch2)
 
 # Links
 target_link_libraries(Libraries.Bridge.Tests PUBLIC Libraries.Bridge)
-
-#----- Visual Studio -----#
-
-# Folder structure
-set_target_properties(Libraries.Bridge PROPERTIES FOLDER Libraries/Bridge)
-set_target_properties(Libraries.Bridge.Tests PROPERTIES FOLDER Libraries/Bridge)

@@ -58,8 +58,11 @@ private:
 
         // Ordered stream
         MessageStream stream;
+#ifdef _MSC_VER // Clang-cl bug, works fine for other tests
+        MessageStreamView<void, MessageStream> view(stream);
+#else
         MessageStreamView view(stream);
-
+#endif
         // Make the recording wait for compilation
         auto config = view.Add<SetInstrumentationConfigMessage>();
         config->synchronousRecording = 1;

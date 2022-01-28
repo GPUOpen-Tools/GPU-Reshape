@@ -90,9 +90,3 @@ target_link_libraries(
 ExternalProject_Link(Test.Device Catch2)
 ExternalProject_Link(Test.Device VMA)
 ExternalProject_Link(Test.Device VulkanLoader vulkan-1)
-
-#----- Visual Studio -----#
-
-# Folder structure
-set_target_properties(Test.Device.Generator PROPERTIES FOLDER Test/Device)
-set_target_properties(Test.Device PROPERTIES FOLDER Test/Device)
