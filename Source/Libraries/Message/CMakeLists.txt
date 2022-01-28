@@ -119,11 +119,3 @@ ExternalProject_Link(Libraries.Message.Tests Catch2)
 
 # Links
 target_link_libraries(Libraries.Message.Tests PUBLIC Libraries.Message)
-
-#----- Visual Studio -----#
-
-# Folder structure
-set_target_properties(Libraries.Message PROPERTIES FOLDER Libraries/Message)
-set_target_properties(Libraries.Message.Generator.Lib PROPERTIES FOLDER Libraries/Message)
-set_target_properties(Libraries.Message.Generator PROPERTIES FOLDER Libraries/Message)
-set_target_properties(Libraries.Message.Tests PROPERTIES FOLDER Libraries/Message)

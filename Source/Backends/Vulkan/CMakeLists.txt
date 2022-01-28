@@ -236,12 +236,3 @@ add_dependencies(
     Backends.Vulkan.Tests
     Backends.Vulkan.Tests.UserDataLayer
 )
-
-#----- Visual Studio -----#
-
-# Folder structure
-set_target_properties(Backends.Vulkan.Generator PROPERTIES FOLDER Backends/Vulkan)
-set_target_properties(Backends.Vulkan.Layer PROPERTIES FOLDER Backends/Vulkan)
-set_target_properties(Backends.Vulkan.TestDevice PROPERTIES FOLDER Backends/Vulkan)
-set_target_properties(Backends.Vulkan.Tests.UserDataLayer PROPERTIES FOLDER Backends/Vulkan)
-set_target_properties(Backends.Vulkan.Tests PROPERTIES FOLDER Backends/Vulkan)

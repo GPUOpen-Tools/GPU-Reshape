@@ -45,6 +45,7 @@ function(ConfigureOutput FILE OUT)
 endfunction()
 
 # Add all projects
+add_subdirectory(Build)
 add_subdirectory(ThirdParty)
 add_subdirectory(Tools)
 add_subdirectory(Source)
