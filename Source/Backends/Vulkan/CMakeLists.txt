@@ -10,6 +10,9 @@ add_executable(
     Generator/Source/DeepCopy.cpp
 )
 
+# IDE source discovery
+SetSourceDiscovery(Backends.Vulkan.Generator Generator)
+
 # Local links
 target_link_libraries(Backends.Vulkan.Generator PUBLIC Libraries.Common)
 
@@ -140,6 +143,9 @@ add_library(
     Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
 )
 
+# IDE source discovery
+SetSourceDiscovery(Backends.Vulkan.Layer Layer)
+
 # Link against backend
 target_link_libraries(Backends.Vulkan.Layer PUBLIC Libraries.Backend Libraries.Bridge Libraries.Common)
 
@@ -165,6 +171,9 @@ add_library(
     TestDevice/Source/VMA.cpp
 )
 
+# IDE source discovery
+SetSourceDiscovery(Backends.Vulkan.TestDevice TestDevice)
+
 # Include
 target_include_directories(Backends.Vulkan.TestDevice PUBLIC TestDevice/Include)
 
@@ -182,6 +191,9 @@ add_library(
     Backends.Vulkan.Tests.UserDataLayer SHARED
     Tests/Layer/UserDataLayer.cpp
 )
+
+# IDE source discovery
+SetSourceDiscovery(Backends.Vulkan.Tests.UserDataLayer Tests/Layer)
 
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Tests.UserDataLayer VulkanHeaders)
@@ -213,6 +225,9 @@ add_executable(
     # Generated
     ${Generated}
 )
+
+# IDE source discovery
+SetSourceDiscovery(Backends.Vulkan.Tests Tests)
 
 # Includes
 target_include_directories(Backends.Vulkan.Tests PUBLIC Layer/Include Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)

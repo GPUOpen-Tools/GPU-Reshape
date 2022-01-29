@@ -13,6 +13,9 @@ add_library(
     ${Generated}
 )
 
+# IDE source discovery
+SetSourceDiscovery(Features.ResourceBounds.Backend Include Source Schemas)
+
 # Includes
 target_include_directories(Features.ResourceBounds.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
@@ -38,6 +41,9 @@ add_executable(
     # Generated
     ${Generated}
 )
+
+# IDE source discovery
+SetSourceDiscovery(Features.ResourceBounds.Tests Tests)
 
 # Links
 target_link_libraries(Features.ResourceBounds.Tests PUBLIC Test.Device Features.ResourceBounds.Backend)
