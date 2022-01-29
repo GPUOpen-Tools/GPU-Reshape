@@ -44,6 +44,14 @@ function(ConfigureOutput FILE OUT)
     endif()
 endfunction()
 
+# Post build copy for multi-configurators
+function(PostBuildCopy NAME DIR)
+    add_custom_command(
+        TARGET ${NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${NAME}> $<TARGET_FILE_DIR:${NAME}>/${DIR}/$<TARGET_FILE_NAME:${NAME}>
+    )
+endfunction()
+
 # Add all projects
 add_subdirectory(Build)
 add_subdirectory(ThirdParty)

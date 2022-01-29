@@ -3,6 +3,7 @@
 add_subdirectory(Common)
 add_subdirectory(Message)
 add_subdirectory(Backend)
+add_subdirectory(Discovery)
 add_subdirectory(Analysis)
 add_subdirectory(Frontend)
 
