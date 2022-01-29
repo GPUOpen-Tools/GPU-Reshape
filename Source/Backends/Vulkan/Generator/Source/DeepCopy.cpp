@@ -177,6 +177,26 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
 
         // Indirection?
         if (isIndirection) {
+            // Additional attributes
+            const char* optional = memberNode->Attribute("optional");
+            const char* noAutoValidity = memberNode->Attribute("noautovalidity");
+
+            // Optional?
+            const bool isOptional = optional && !std::strcmp(optional, "true");
+            const bool isNoAutoValidity = noAutoValidity && !std::strcmp(noAutoValidity, "true");
+
+            // May be null?
+            const bool canBeNull = isOptional || isNoAutoValidity;
+
+            // Wrap in check
+            if (canBeNull) {
+                const char* reason = isNoAutoValidity ? "no-auto-validity" : "optional";
+
+                state.byteSize << Pad(indent) << "if (" << sourceAccessorPrefix + memberName->GetText() << ") /* " << reason << " */ {\n";
+                state.deepCopy << Pad(indent) << "if (" << sourceAccessorPrefix + memberName->GetText() << ") /* " << reason << " */ {\n";
+                indent++;
+            }
+
             // Get the length, try alt-len first
             const char* length = memberNode->Attribute("altlen", nullptr);
 
@@ -305,6 +325,14 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                         return false;
                     }
                 }
+            }
+
+            // Wrap in check
+            if (canBeNull) {
+                indent--;
+
+                state.byteSize <<  Pad(indent) << "}\n";
+                state.deepCopy <<  Pad(indent) << "}\n";
             }
         } else if (isArray) {
             // POD array copy
