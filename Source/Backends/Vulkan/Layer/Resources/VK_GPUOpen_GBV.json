@@ -11,6 +11,7 @@
       "vkGetInstanceProcAddr": "Hook_vkGetInstanceProcAddr",
       "vkGetDeviceProcAddr": "Hook_vkGetDeviceProcAddr",
       "vkNegotiateLoaderLayerInterfaceVersion": "Hook_vkNegotiateLoaderLayerInterfaceVersion"
-    }
+    },
+    "disable_environment": { "DISABLE_VK_LAYER_GPUOpen_GBV": "1" }
   }
 }
