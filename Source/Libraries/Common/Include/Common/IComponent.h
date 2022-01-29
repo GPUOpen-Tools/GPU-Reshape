@@ -26,6 +26,8 @@ class IComponent {
 public:
     COMPONENT(IComponent);
 
+    virtual ~IComponent() = default;
+
     /// Query an interface from this component
     /// \param id the interface component id
     /// \return nullptr if not found

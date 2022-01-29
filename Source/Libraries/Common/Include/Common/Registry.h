@@ -93,6 +93,13 @@ public:
         components.erase(component->componentID);
     }
 
+    /// Remove a component from this registry
+    /// \param component component to be removed
+    void RemoveDestroy(IComponent* component) {
+        Remove(component);
+        destroy(component);
+    }
+
     /// Get a component
     /// \return the component, nullptr if not found
     template<typename T>

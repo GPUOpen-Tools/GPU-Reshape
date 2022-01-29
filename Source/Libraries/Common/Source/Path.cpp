@@ -26,3 +26,24 @@ std::filesystem::path CurrentExecutableDirectory() {
     return std::filesystem::path(std::string(path, length)).parent_path().string();
 #endif
 }
+
+#if defined(_MSC_VER)
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+#endif
+
+std::filesystem::path CurrentModuleDirectory() {
+#if defined(_MSC_VER)
+    wchar_t buffer[FILENAME_MAX]{};
+    char path[MAX_PATH];
+    HMODULE hm = NULL;
+
+    GetModuleFileNameW((HINSTANCE)&__ImageBase, buffer, FILENAME_MAX);
+    if (!*buffer) {
+        return {};
+    }
+
+    return std::filesystem::path(buffer).parent_path().string();
+#else
+#    error Not implemented
+#endif
+}

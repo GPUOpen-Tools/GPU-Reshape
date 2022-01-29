@@ -1,2 +1,2 @@
 
-# Poof
+add_subdirectory(Discovery)

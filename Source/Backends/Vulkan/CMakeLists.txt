@@ -162,6 +162,31 @@ ExternalProject_Link(Backends.Vulkan.Layer VMA)
 # Copy layer definition (configuration time)
 ConfigureOutput(Layer/Resources/VK_GPUOpen_GBV.json VK_GPUOpen_GBV.json)
 
+#----- Discovery -----#
+
+# Create feature
+add_library(
+    Backends.Vulkan.Discovery SHARED
+    Discovery/Source/Plugin.cpp
+    Discovery/Source/VulkanDiscoveryListener.cpp
+    Vulkan.xml
+)
+
+# IDE source discovery
+SetSourceDiscovery(Backends.Vulkan.Discovery Discovery)
+
+# Includes
+target_include_directories(Backends.Vulkan.Discovery PUBLIC Discovery/Include)
+
+# Links
+target_link_libraries(Backends.Vulkan.Discovery PUBLIC Libraries.Discovery Backends.Vulkan.Layer)
+
+# Set all outputs to Plugins/.
+PostBuildCopy(Backends.Vulkan.Discovery Plugins)
+
+# Copy spec xml
+ConfigureOutput(Vulkan.xml Plugins/Vulkan.xml)
+
 #----- Test Device -----#
 
 # Create test layer
