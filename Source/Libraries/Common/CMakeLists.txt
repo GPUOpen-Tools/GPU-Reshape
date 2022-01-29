@@ -17,6 +17,9 @@ add_library(
     Include/Common/String.h
 )
 
+# IDE source discovery
+SetSourceDiscovery(Libraries.Common Include Source)
+
 # Include directories
 target_include_directories(Libraries.Common PUBLIC Include)
 

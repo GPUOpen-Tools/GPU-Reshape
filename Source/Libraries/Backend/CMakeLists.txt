@@ -16,6 +16,9 @@ add_library(
     ${GeneratedLib}
 )
 
+# IDE source discovery
+SetSourceDiscovery(Libraries.Backend Include Source Schemas)
+
 # Includes
 target_include_directories(Libraries.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
@@ -29,6 +32,9 @@ add_library(
     Generator/Source/ShaderExportGenerator.cpp
     Generator/Source/Plugin.cpp
 )
+
+# IDE source discovery
+SetSourceDiscovery(Libraries.Backend.Generator Generator)
 
 # Includes
 target_include_directories(Libraries.Backend.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
@@ -57,6 +63,9 @@ add_executable(
     # Generated
     ${Generated}
 )
+
+# IDE source discovery
+SetSourceDiscovery(Libraries.Backend.Tests Tests)
 
 # Includes
 target_include_directories(Libraries.Backend.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)

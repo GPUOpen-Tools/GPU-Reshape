@@ -6,6 +6,9 @@ add_library(
     Source/MemoryBridge.cpp
 )
 
+# IDE source discovery
+SetSourceDiscovery(Libraries.Bridge Include Source)
+
 # Includes
 target_include_directories(Libraries.Bridge PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
@@ -20,6 +23,9 @@ add_executable(
     Tests/Source/Main.cpp
     Tests/Source/Emitter.cpp
 )
+
+# IDE source discovery
+SetSourceDiscovery(Libraries.Bridge.Tests Tests)
 
 # Includes
 target_include_directories(Libraries.Bridge.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)

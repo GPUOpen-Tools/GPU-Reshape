@@ -7,6 +7,9 @@ add_library(
     Generator/Source/Generators/MessageGenerator.cpp
 )
 
+# IDE source discovery
+SetSourceDiscovery(Libraries.Message.Generator.Lib Generator)
+
 # Includes
 target_include_directories(Libraries.Message.Generator.Lib PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
 
@@ -20,6 +23,9 @@ add_executable(
     Libraries.Message.Generator
     Generator/Source/Generator.cpp
 )
+
+# IDE source discovery
+SetSourceDiscovery(Libraries.Message.Generator Generator)
 
 # Includes
 target_include_directories(Libraries.Message.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
@@ -86,6 +92,9 @@ add_library(
     Source/OrderedMessageStream.cpp
 )
 
+# IDE source discovery
+SetSourceDiscovery(Libraries.Message Include Source)
+
 # Links
 target_link_libraries(Libraries.Message PUBLIC Libraries.Common)
 
@@ -110,6 +119,9 @@ add_executable(
     # Generated
     ${Generated}
 )
+
+# IDE source discovery
+SetSourceDiscovery(Libraries.Message.Tests Tests)
 
 # Include
 target_include_directories(Libraries.Message.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)

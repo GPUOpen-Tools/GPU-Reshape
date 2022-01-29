@@ -7,6 +7,9 @@ add_executable(
     Generator/Source/main.cpp
 )
 
+# IDE source discovery
+SetSourceDiscovery(Test.Device.Generator Generator)
+
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
     target_compile_options(Test.Device.Generator PRIVATE /EHa)
@@ -70,6 +73,9 @@ add_library(
     Test.Device STATIC
     Source/main.cpp
 )
+
+# IDE source discovery
+SetSourceDiscovery(Test.Device Include Source)
 
 # Includes
 target_include_directories(Test.Device PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
