@@ -98,6 +98,11 @@ IMessageStorage *NetworkBridge::GetOutput() {
 }
 
 void NetworkBridge::Commit() {
+    // Endpoint must be in a good state
+    if (!endpoint->IsOpen() && !endpoint->Connect()) {
+        return;
+    }
+
     // Get number of streams
     uint32_t streamCount;
     storage.ConsumeStreams(&streamCount, nullptr);

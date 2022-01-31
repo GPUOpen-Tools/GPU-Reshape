@@ -7,7 +7,8 @@
 #include <functional>
 
 /// Read delegate
-using AsioReadDelegate = std::function<uint64_t(const void* data, uint64_t size)>;
+using AsioReadDelegate = std::function<uint64_t(const void *data, uint64_t size)>;
+using AsioErrorDelegate = std::function<void(const char* message)>;
 
 /// Shared socket handler
 class AsioSocketHandler {
@@ -28,15 +29,21 @@ public:
     }
 
     /// No copy or move
-    AsioSocketHandler(const AsioSocketHandler&) = delete;
-    AsioSocketHandler(AsioSocketHandler&&) = delete;
-    AsioSocketHandler& operator=(const AsioSocketHandler&) = delete;
-    AsioSocketHandler& operator=(AsioSocketHandler&&) = delete;
+    AsioSocketHandler(const AsioSocketHandler &) = delete;
+    AsioSocketHandler(AsioSocketHandler &&) = delete;
+    AsioSocketHandler &operator=(const AsioSocketHandler &) = delete;
+    AsioSocketHandler &operator=(AsioSocketHandler &&) = delete;
 
     /// Set the async read callback
     /// \param delegate
-    void SetReadCallback(const AsioReadDelegate& delegate) {
+    void SetReadCallback(const AsioReadDelegate &delegate) {
         onRead = delegate;
+    }
+
+    /// Set the async read callback
+    /// \param delegate
+    void SetErrorCallback(const AsioErrorDelegate &delegate) {
+        onError = delegate;
     }
 
     /// Install this handler
@@ -47,15 +54,24 @@ public:
     /// Write async
     /// \param data data to be sent, lifetime bound to this call
     /// \param size byte count of data
-    void WriteAsync(const void *data, uint64_t size) {
-        ASSERT(socket.is_open(), "Socket lost");
+    bool WriteAsync(const void *data, uint64_t size) {
+        try {
+            socket.async_write_some(
+                asio::buffer(data, size),
+                [this](const std::error_code &error, size_t bytes) {
+                    OnWrite(error, bytes);
+                }
+            );
 
-        socket.async_write_some(
-            asio::buffer(data, size),
-            [this](const std::error_code &error, size_t bytes) {
-                OnWrite(error, bytes);
-            }
-        );
+            return true;
+        } catch (asio::system_error) {
+            return false;
+        }
+    }
+
+    /// Check if the socket is open
+    bool IsOpen() const {
+        return socket.is_open();
     }
 
     /// Get the socket
@@ -68,19 +84,25 @@ private:
     void Read() {
         ASSERT(socket.is_open(), "Socket lost");
 
-        socket.async_read_some(
-            asio::buffer(buffer, kBufferSize),
-            [this](const std::error_code &error, size_t bytes) {
-                OnRead(error, bytes);
-            }
-        );
+        try {
+            socket.async_read_some(
+                asio::buffer(buffer, kBufferSize),
+                [this](const std::error_code &error, size_t bytes) {
+                    OnRead(error, bytes);
+                }
+            );
+        } catch (asio::system_error) {
+        }
     }
 
     /// Async read callback
     /// \param error error code
     /// \param bytes number of bytes read
     void OnRead(const std::error_code &error, size_t bytes) {
-        ASSERT(!error, error.message().c_str());
+        if (error && onError) {
+            onError(error.message().c_str());
+        }
+
         enqueuedBuffer.insert(enqueuedBuffer.end(), buffer, buffer + bytes);
 
         // Consume enqueued data
@@ -96,15 +118,18 @@ private:
     /// \param error error code
     /// \param bytes number of bytes written
     void OnWrite(const std::error_code &error, size_t bytes) {
-        ASSERT(!error, error.message().c_str());
+        if (error && onError) {
+            onError(error.message().c_str());
+        }
     }
 
 private:
     /// Underlying socket
     asio::ip::tcp::socket socket;
 
-    /// Read callback
+    /// Delegates
     AsioReadDelegate onRead;
+    AsioErrorDelegate onError;
 
     /// Current enqueued data
     std::vector<char> enqueuedBuffer;
