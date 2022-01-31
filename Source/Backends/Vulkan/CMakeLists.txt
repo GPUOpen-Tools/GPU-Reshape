@@ -147,7 +147,15 @@ add_library(
 SetSourceDiscovery(Backends.Vulkan.Layer Layer)
 
 # Link against backend
-target_link_libraries(Backends.Vulkan.Layer PUBLIC Libraries.Backend Libraries.Bridge Libraries.Common)
+target_link_libraries(
+    Backends.Vulkan.Layer PUBLIC
+    Libraries.Backend
+    Libraries.Bridge
+    Libraries.Common
+
+    # Win32
+    $<$<PLATFORM_ID:Windows>:Dbghelp>
+)
 
 # Include directories
 target_include_directories(

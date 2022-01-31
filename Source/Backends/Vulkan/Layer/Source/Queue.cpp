@@ -108,6 +108,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     // Get the state
     QueueState* queueState = table->states_queue.Get(queue);
 
+    // Check all in-flight streams
+    table->exportStreamer->Process(queueState->exportState);
+
     // Acquire fence
     FenceState* fenceState = AcquireOrCreateFence(table, queueState, userFence);
 
@@ -190,7 +193,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueWaitIdle(VkQueue queue) {
     }
 
     // Inform the streamer of the sync point
-    table->exportStreamer->SyncPoint(queueState->exportState);
+    table->exportStreamer->Process(queueState->exportState);
 
     // Commit bridge data
     BridgeSyncPoint(table->parent);
@@ -209,7 +212,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkDeviceWaitIdle(VkDevice device) {
     }
 
     // Inform the streamer of the sync point
-    table->exportStreamer->SyncPoint();
+    table->exportStreamer->Process();
 
     // Commit bridge data
     BridgeSyncPoint(table->parent);

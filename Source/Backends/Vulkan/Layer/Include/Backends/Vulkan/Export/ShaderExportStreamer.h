@@ -90,11 +90,11 @@ public:
 
 public:
     /// Whole device sync point
-    void SyncPoint();
+    void Process();
 
     /// Queue specific sync point
     /// \param queueState the queue state
-    void SyncPoint(ShaderExportQueueState* queueState);
+    void Process(ShaderExportQueueState* queueState);
 
 private:
     /// Migrate the descriptor environment to a new pipeline state

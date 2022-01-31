@@ -1,2 +1,2 @@
 
-xcopy "%1" "%2" /s /d
+xcopy "%1" "%2" /s /d /Y /i
