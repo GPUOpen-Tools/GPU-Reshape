@@ -64,8 +64,7 @@ VkResult VKAPI_PTR Hook_vkEnumerateInstanceExtensionProperties(uint32_t *pProper
 }
 
 #ifdef WIN32_EXCEPTION_HANDLER
-LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
-{
+LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo) {
     // Create console
     AllocConsole();
     freopen("CONIN$", "r", stdin);

@@ -6,6 +6,7 @@
 
 // Std
 #include <vector>
+#include <mutex>
 #include <map>
 
 /// Simple batch ordered message storage
@@ -19,6 +20,8 @@ public:
     uint32_t StreamCount() override;
 
 private:
+    std::mutex mutex;
+
     /// Cache for message types
     struct MessageBucket {
         std::vector<MessageStream> freeStreams;

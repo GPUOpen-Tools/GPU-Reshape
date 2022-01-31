@@ -120,14 +120,14 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
     }
 }
 
-void ShaderExportStreamer::SyncPoint() {
+void ShaderExportStreamer::Process() {
     // ! Linear view locks
     for (QueueState* queueState : table->states_queue.GetLinear()) {
         ProcessSegmentsNoQueueLock(queueState->exportState);
     }
 }
 
-void ShaderExportStreamer::SyncPoint(ShaderExportQueueState* queueState) {
+void ShaderExportStreamer::Process(ShaderExportQueueState* queueState) {
     std::lock_guard guard(table->states_queue.GetLock());
     ProcessSegmentsNoQueueLock(queueState);
 }
