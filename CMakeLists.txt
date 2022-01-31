@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.17)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # All options
-option(INSTALL_THIRD_PARTY "Fetch and install third party libraries" 0)
+option(INSTALL_THIRD_PARTY "Fetch and install third party libraries" ON)
 
 # Ensure 64 bit
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)

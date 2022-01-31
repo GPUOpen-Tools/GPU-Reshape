@@ -34,6 +34,12 @@ the below set-ups are supported:
 - **Catch2** </br>
   Testing framework
 
+- **Asio** </br>
+  Boost (standalone) networking library
+
+- **Fmt** </br>
+  C++ 20 compliant string formatting library
+
 - **SPIRVHeaders** </br>
   SPIRV registry and headers
 

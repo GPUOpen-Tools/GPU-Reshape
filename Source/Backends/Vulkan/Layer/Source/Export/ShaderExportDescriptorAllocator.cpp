@@ -1,6 +1,7 @@
 #include <Backends/Vulkan/Export/ShaderExportDescriptorAllocator.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Export/SegmentInfo.h>
 
 // Common
@@ -109,6 +110,10 @@ ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate() {
 
     // Update the descriptor set
     table->next_vkUpdateDescriptorSets(table->object, 2u, writes, 0, nullptr);
+
+#ifdef LOG_ALLOCATION
+    table->parent->logBuffer.Add("Vulkan", "Allocated segment descriptors");
+#endif
 
     // OK
     return info;

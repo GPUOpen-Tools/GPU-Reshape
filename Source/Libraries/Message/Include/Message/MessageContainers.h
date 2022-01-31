@@ -52,6 +52,15 @@ struct ALIGN_TO(4) MessageString {
         return *this;
     }
 
+    bool Empty() const {
+        return data.count == 0;
+    }
+
+    void Set(const std::string_view& view) {
+        ASSERT(view.length() <= data.count, "View length exceeds buffer size");
+        std::memcpy(data.Get(), view.data(), view.length());
+    }
+
     [[nodiscard]]
     std::string_view View() const {
         return std::string_view(data.Get(), data.count);

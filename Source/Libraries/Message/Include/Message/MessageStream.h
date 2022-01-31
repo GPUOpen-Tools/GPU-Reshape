@@ -74,6 +74,14 @@ struct MessageStream {
         count = messageCount;
     }
 
+    /// Resize this stream
+    /// \param dataSize size of the stream
+    /// \return stream start
+    uint8_t* ResizeData(uint64_t dataSize) {
+        buffer.resize(dataSize);
+        return buffer.data();
+    }
+
     /// Check if this stream hosts a given message
     template<typename T>
     bool Is() {
@@ -171,7 +179,7 @@ struct MessageStream {
     /// Check if this stream is empty
     [[nodiscard]]
     bool IsEmpty() const {
-        return count == 0;
+        return buffer.empty();
     }
 
 private:

@@ -17,6 +17,9 @@
 // Std
 #include <cstring>
 
+// Bridge
+#include <Bridge/IBridge.h>
+
 // Debugging
 #ifdef _WIN32
 #   ifndef NDEBUG
@@ -131,8 +134,14 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
         table->registry = table->environment.GetRegistry();
     }
 
+    // Get common components
+    table->bridge = table->registry->Get<IBridge>();
+
     // Setup the default allocators
     table->allocators = table->registry->GetAllocators();
+
+    // Diagnostic
+    table->logBuffer.Add("Vulkan", "Instance created");
 
     // OK
     return VK_SUCCESS;
@@ -147,4 +156,12 @@ void VKAPI_PTR Hook_vkDestroyInstance(VkInstance instance, const VkAllocationCal
 
     // Release table
     delete table;
+}
+
+void BridgeSyncPoint(InstanceDispatchTable *table) {
+    // Commit all logging to bridge
+    table->logBuffer.Commit(table->bridge);
+
+    // Commit bridge
+    table->bridge->Commit();
 }

@@ -3,11 +3,16 @@
 // Layer
 #include "Common.h"
 
-// Ensure the beta extensions are enabled
+/// Ensure the beta extensions are enabled
 #define VK_ENABLE_BETA_EXTENSIONS 1
 
-// No prototypes
+/// No prototypes
 #define VK_NO_PROTOTYPES 1
+
+/// Diagnostic logging
+#ifndef NDEBUG
+#   define LOG_ALLOCATION
+#endif
 
 // Vulkan
 #include <vulkan/vulkan_core.h>

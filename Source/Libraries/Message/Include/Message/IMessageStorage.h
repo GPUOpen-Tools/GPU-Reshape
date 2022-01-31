@@ -25,4 +25,7 @@ public:
     /// Free a consumed message stream
     /// \param stream
     virtual void Free(const MessageStream& stream) = 0;
+
+    /// Get the number of streams
+    virtual uint32_t StreamCount() = 0;
 };

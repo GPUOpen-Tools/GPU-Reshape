@@ -46,6 +46,7 @@ Loader::Loader() {
     // Load the environment
     Backend::EnvironmentInfo info{};
     info.loadPlugins = false;
+    info.memoryBridge = true;
     environment.Install(info);
 }
 
