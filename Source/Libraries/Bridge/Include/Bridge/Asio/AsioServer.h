@@ -21,13 +21,42 @@ public:
         onRead = delegate;
     }
 
+    /// Set the async read callback
+    /// \param delegate
+    void SetErrorCallback(const AsioErrorDelegate& delegate) override {
+        onError = delegate;
+    }
+
+    /// Check if the client is open
+    bool IsOpen() override {
+        return acceptor.is_open();
+    }
+
+    /// Connect to the endpoint
+    /// \return success state
+    bool Connect() override {
+        if (acceptor.is_open()) {
+            return true;
+        }
+
+        // TODO: Retry acceptor?
+        return false;
+    }
+
     /// Write async
     /// \param data data to be sent, lifetime bound to this call
     /// \param size byte count of data
     void WriteAsync(const void *data, uint64_t size) override {
-        for (auto& connection : connections) {
+        connections.erase(std::remove_if(connections.begin(), connections.end(), [data, size](const std::shared_ptr<Connection>& connection) {
+            // Remove if closed
+            if (!connection->handler.IsOpen()) {
+                return true;
+            }
+
+            // Write to handler
             connection->handler.WriteAsync(data, size);
-        }
+            return false;
+        }), connections.end());
     }
 
     /// Run this server
@@ -36,7 +65,7 @@ public:
     }
 
 private:
-    /// Connections tate
+    /// Connection state
     struct Connection {
         Connection(asio::io_service &io_service) : handler(io_service) {
             /* */
@@ -87,6 +116,7 @@ private:
 
     /// Read delegate
     AsioReadDelegate onRead;
+    AsioErrorDelegate onError;
 
     /// Acceptor helper
     asio::ip::tcp::acceptor acceptor;
