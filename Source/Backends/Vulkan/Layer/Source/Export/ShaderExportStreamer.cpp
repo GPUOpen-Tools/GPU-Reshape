@@ -7,6 +7,7 @@
 #include <Backends/Vulkan/States/FenceState.h>
 #include <Backends/Vulkan/States/QueueState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 
 // Bridge
@@ -124,17 +125,11 @@ void ShaderExportStreamer::SyncPoint() {
     for (QueueState* queueState : table->states_queue.GetLinear()) {
         ProcessSegmentsNoQueueLock(queueState->exportState);
     }
-
-    bridge->Commit();
 }
 
 void ShaderExportStreamer::SyncPoint(ShaderExportQueueState* queueState) {
-    {
-        std::lock_guard guard(table->states_queue.GetLock());
-        ProcessSegmentsNoQueueLock(queueState);
-    }
-
-    bridge->Commit();
+    std::lock_guard guard(table->states_queue.GetLock());
+    ProcessSegmentsNoQueueLock(queueState);
 }
 
 void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState *state, const PipelineState *pipeline, VkCommandBuffer commandBuffer) {

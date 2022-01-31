@@ -357,3 +357,4 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
     vkFreeCommandBuffers(GetDevice(), commandPool, 1, &commandBuffer);
     vkDestroyCommandPool(GetDevice(), commandPool, nullptr);
 }
+

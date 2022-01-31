@@ -1,0 +1,10 @@
+<schema>
+    <message name="Log">
+        <field name="system" type="string">
+            The system that this message came from, optional
+        </field>
+        <field name="message" type="string">
+            Message contents
+        </field>
+    </message>
+</schema>

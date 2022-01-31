@@ -78,3 +78,7 @@ void OrderedMessageStorage::Free(const MessageStream &stream) {
     MessageBucket& bucket = messageBuckets[schema.id];
     bucket.freeStreams.push_back(stream);
 }
+
+uint32_t OrderedMessageStorage::StreamCount() {
+    return storage.size();
+}

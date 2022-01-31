@@ -1,4 +1,6 @@
 #include <Services/Discovery/DiscoveryService.h>
+
+// Discovery
 #include <Discovery/DiscoveryHost.h>
 #include <Discovery/IDiscoveryListener.h>
 
@@ -29,7 +31,12 @@ bool DiscoveryService::Install() {
     }
 
     // Try to install the listeners
-    return InstallListeners();
+    if (!InstallListeners()) {
+        return false;
+    }
+
+    // OK
+    return true;
 }
 
 bool DiscoveryService::InstallListeners() {

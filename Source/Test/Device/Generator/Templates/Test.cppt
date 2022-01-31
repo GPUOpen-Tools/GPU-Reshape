@@ -37,7 +37,9 @@ template<typename DEVICE>
 class $TEST_NAMERunner {
 public:
     void Run() {
-        environment.Install(Backend::EnvironmentInfo{});
+        Backend::EnvironmentInfo info;
+        info.memoryBridge = true;
+        environment.Install(info);
 
         // Get the shared registry
         Registry* registry = environment.GetRegistry();

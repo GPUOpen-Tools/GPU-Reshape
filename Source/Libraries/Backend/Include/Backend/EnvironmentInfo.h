@@ -9,8 +9,8 @@ namespace Backend {
         /// Allocators
         Allocators allocators;
 
-        /// Optional, bridge override
-        IBridge* bridge{nullptr};
+        /// In memory bridge?
+        bool memoryBridge{false};
 
         /// Load plugins?
         bool loadPlugins{true};

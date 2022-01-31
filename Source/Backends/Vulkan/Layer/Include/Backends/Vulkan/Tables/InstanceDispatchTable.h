@@ -9,6 +9,9 @@
 // Common
 #include <Common/Allocators.h>
 
+// Bridge
+#include <Bridge/Log/LogBuffer.h>
+
 // Std
 #include <mutex>
 #include <vector>
@@ -57,6 +60,12 @@ struct InstanceDispatchTable {
 
     /// Shared registry
     Registry* registry;
+
+    /// Message bridge
+    IBridge* bridge;
+
+    /// Shared logging buffer
+    LogBuffer logBuffer;
 
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;

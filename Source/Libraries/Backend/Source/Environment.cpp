@@ -4,6 +4,7 @@
 
 // Bridge
 #include <Bridge/MemoryBridge.h>
+#include <Bridge/NetworkBridge.h>
 
 // Common
 #include <Common/Dispatcher/Dispatcher.h>
@@ -26,12 +27,17 @@ bool Environment::Install(const EnvironmentInfo &info) {
     registry.AddNew<Dispatcher>();
 
     // Install bridge
-    if (info.bridge) {
-        registry.Add(info.bridge);
-    } else {
-        // Default to memory bridge
-        //  Will be changed to network bridge once that's up and working
+    if (info.memoryBridge) {
+        // Intra process
         registry.AddNew<MemoryBridge>();
+    } else {
+        // Networked
+        auto* network = registry.AddNew<NetworkBridge>();
+
+        // Attempt to install as server
+        if (!network->InstallServer(EndpointConfig{})) {
+            return false;
+        }
     }
 
     // Install feature host

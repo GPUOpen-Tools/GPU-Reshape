@@ -15,6 +15,11 @@ public:
     /// \return success state
     bool Install();
 
+    /// Get the registry
+    Registry* GetRegistry() {
+        return &registry;
+    }
+
 private:
     /// Install all listeners
     /// \return success state

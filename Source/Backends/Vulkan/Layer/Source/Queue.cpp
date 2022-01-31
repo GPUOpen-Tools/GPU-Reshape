@@ -1,5 +1,7 @@
 #include <Backends/Vulkan/Queue.h>
+#include <Backends/Vulkan/Instance.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/States/FenceState.h>
 #include <Backends/Vulkan/States/QueueState.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
@@ -190,6 +192,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueWaitIdle(VkQueue queue) {
     // Inform the streamer of the sync point
     table->exportStreamer->SyncPoint(queueState->exportState);
 
+    // Commit bridge data
+    BridgeSyncPoint(table->parent);
+
     // OK
     return VK_SUCCESS;
 }
@@ -205,6 +210,25 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkDeviceWaitIdle(VkDevice device) {
 
     // Inform the streamer of the sync point
     table->exportStreamer->SyncPoint();
+
+    // Commit bridge data
+    BridgeSyncPoint(table->parent);
+
+    // OK
+    return VK_SUCCESS;
+}
+
+VkResult Hook_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
+    DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(queue));
+
+    // Pass down callchain
+    VkResult result = table->next_vkQueuePresentKHR(queue, pPresentInfo);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    // Commit bridge data
+    BridgeSyncPoint(table->parent);
 
     // OK
     return VK_SUCCESS;

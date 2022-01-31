@@ -16,6 +16,7 @@ public:
     void AddStreamAndSwap(MessageStream& stream) override;
     void ConsumeStreams(uint32_t *count, MessageStream *streams) override;
     void Free(const MessageStream& stream) override;
+    uint32_t StreamCount() override;
 
 private:
     /// Cache for message types

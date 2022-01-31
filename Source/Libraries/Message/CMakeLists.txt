@@ -86,10 +86,16 @@ endmacro()
 
 #----- Message -----#
 
+# Generate the schemas
+Project_AddSchema(GeneratedSchema Schemas/Log.xml Include/Schemas)
+
 add_library(
     Libraries.Message STATIC
     Source/Message.cpp
     Source/OrderedMessageStream.cpp
+
+    # Generated
+    ${GeneratedSchema}
 )
 
 # IDE source discovery

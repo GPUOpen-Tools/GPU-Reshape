@@ -10,6 +10,9 @@
 #include <Common/Assert.h>
 #include <Common/Registry.h>
 
+// Bridge
+#include <Bridge/Log/LogFormat.h>
+
 // Std
 #include <algorithm>
 
@@ -63,6 +66,10 @@ ShaderExportSegmentInfo *ShaderExportStreamAllocator::AllocateSegment() {
     for (const ExportInfo& exportInfo : exportInfos) {
         segment->streams[exportInfo.id] = AllocateStreamInfo(exportInfo.id);
     }
+
+#ifdef LOG_ALLOCATION
+    table->parent->logBuffer.Add("Vulkan", Format("Allocated segment with {} streams", segment->streams.size()));
+#endif
 
     // OK
     return segment;
