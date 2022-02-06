@@ -73,19 +73,19 @@ uint64_t NetworkBridge::OnReadAsync(const void *data, uint64_t size) {
     return sizeof(MessageStreamHeaderProtocol) + protocol->size;
 }
 
-void NetworkBridge::Register(MessageID mid, IBridgeListener *listener) {
+void NetworkBridge::Register(MessageID mid, const ComRef<IBridgeListener>& listener) {
     memoryBridge.Register(mid, listener);
 }
 
-void NetworkBridge::Deregister(MessageID mid, IBridgeListener *listener) {
+void NetworkBridge::Deregister(MessageID mid, const ComRef<IBridgeListener>& listener) {
     memoryBridge.Deregister(mid, listener);
 }
 
-void NetworkBridge::Register(IBridgeListener *listener) {
+void NetworkBridge::Register(const ComRef<IBridgeListener>& listener) {
     memoryBridge.Register(listener);
 }
 
-void NetworkBridge::Deregister(IBridgeListener *listener) {
+void NetworkBridge::Deregister(const ComRef<IBridgeListener>& listener) {
     memoryBridge.Deregister(listener);
 }
 

@@ -6,7 +6,7 @@
 // Common
 #include <Common/IComponent.h>
 
-class IShaderExportHost : public IComponent {
+class IShaderExportHost : public TComponent<IShaderExportHost> {
 public:
     COMPONENT(IShaderExportHost);
 

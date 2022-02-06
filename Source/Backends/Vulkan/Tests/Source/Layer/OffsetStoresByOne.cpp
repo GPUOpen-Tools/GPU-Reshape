@@ -5,6 +5,9 @@
 #include <Message/IMessageStorage.h>
 #include <Message/MessageStream.h>
 
+// Common
+#include <Common/ComponentTemplate.h>
+
 // Schemas
 #include <Schemas/Pipeline.h>
 #include <Schemas/Config.h>
@@ -77,6 +80,8 @@ public:
 
     void *QueryInterface(ComponentID id) override {
         switch (id) {
+            case IComponent::kID:
+                return static_cast<IComponent*>(this);
             case IFeature::kID:
                 return static_cast<IFeature*>(this);
             case IShaderFeature::kID:
@@ -92,8 +97,8 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.OffsetStoresByOne", "[Vulkan]") {
 
     Registry* registry = GetRegistry();
 
-    auto* host = registry->Get<IFeatureHost>();
-    host->Register(registry->New<OffsetStoresByOneFeature>());
+    auto host = registry->Get<IFeatureHost>();
+    host->Register(registry->New<ComponentTemplate<OffsetStoresByOneFeature>>());
 
     // Create the instance & device
     CreateInstance();
@@ -225,6 +230,8 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.OffsetStoresByOne", "[Vulkan]") {
     write.pTexelBufferView = &bufferView;
     vkUpdateDescriptorSets(GetDevice(), 1, &write, 0, nullptr);
 
+    auto bridge = registry->Get<IBridge>();
+
     SECTION("Buffer Write")
     {
         {
@@ -264,8 +271,6 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.OffsetStoresByOne", "[Vulkan]") {
 
     SECTION("Instrumented Buffer Write")
     {
-        IBridge* bridge = registry->Get<IBridge>();
-
         MessageStream stream;
         {
             MessageStreamView view(stream);

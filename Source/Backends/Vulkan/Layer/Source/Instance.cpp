@@ -126,18 +126,18 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     // Find optional create info
     if (auto createInfo = FindStructureType<VkGPUOpenGPUValidationCreateInfo>(pCreateInfo, VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO)) {
         // Environment is pre-created at this point
-        table->registry = createInfo->registry;
+        table->registry.SetParent(createInfo->registry);
     } else {
         // Initialize the standard environment
         table->environment.Install(Backend::EnvironmentInfo());
-        table->registry = table->environment.GetRegistry();
+        table->registry.SetParent(table->environment.GetRegistry());
     }
 
     // Get common components
-    table->bridge = table->registry->Get<IBridge>();
+    table->bridge = table->registry.Get<IBridge>();
 
     // Setup the default allocators
-    table->allocators = table->registry->GetAllocators();
+    table->allocators = table->registry.GetAllocators();
 
     // Diagnostic
     table->logBuffer.Add("Vulkan", "Instance created");
@@ -150,16 +150,20 @@ void VKAPI_PTR Hook_vkDestroyInstance(VkInstance instance, const VkAllocationCal
     // Get table
     auto table = InstanceDispatchTable::Get(GetInternalTable(instance));
 
-    // Pass down callchain
-    table->next_vkDestroyInstance(instance, pAllocator);
+    // Copy destroy
+    PFN_vkDestroyInstance next_vkDestroyInstance = table->next_vkDestroyInstance;
 
     // Release table
+    //  ? Done before instance destruction for references
     delete table;
+
+    // Pass down callchain
+    next_vkDestroyInstance(instance, pAllocator);
 }
 
 void BridgeSyncPoint(InstanceDispatchTable *table) {
     // Commit all logging to bridge
-    table->logBuffer.Commit(table->bridge);
+    table->logBuffer.Commit(table->bridge.GetUnsafe());
 
     // Commit bridge
     table->bridge->Commit();

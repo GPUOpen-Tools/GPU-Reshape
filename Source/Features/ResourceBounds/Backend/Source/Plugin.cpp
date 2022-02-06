@@ -1,5 +1,6 @@
 // Common
 #include <Common/Registry.h>
+#include <Common/ComponentTemplate.h>
 #include <Common/Plugin/Plugin.h>
 #include <Common/Plugin/PluginInfo.h>
 
@@ -9,7 +10,7 @@
 // ResourceBounds
 #include <Features/ResourceBounds/Feature.h>
 
-static ResourceBoundsFeature* feature{nullptr};
+static ComRef<ComponentTemplate<ResourceBoundsFeature>> feature{nullptr};
 
 DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
     info->name = "ResourceBounds";
@@ -17,13 +18,13 @@ DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
 }
 
 DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
-    auto* host = registry->Get<IFeatureHost>();
+    auto host = registry->Get<IFeatureHost>();
     if (!host) {
         return false;
     }
 
     // Install the resource bounds feature
-    feature = registry->New<ResourceBoundsFeature>();
+    feature = registry->New<ComponentTemplate<ResourceBoundsFeature>>();
     host->Register(feature);
 
     // OK
@@ -31,12 +32,11 @@ DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
 }
 
 DLL_EXPORT_C void PLUGIN_UNINSTALL(Registry* registry) {
-    auto* host = registry->Get<IFeatureHost>();
+    auto host = registry->Get<IFeatureHost>();
     if (!host) {
         return;
     }
 
     // Uninstall the feature
     host->Deregister(feature);
-    destroy(feature);
 }

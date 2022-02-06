@@ -17,7 +17,7 @@ ShaderExportDescriptorAllocator::ShaderExportDescriptorAllocator(DeviceDispatchT
 }
 
 bool ShaderExportDescriptorAllocator::Install() {
-    auto *host = registry->Get<IShaderExportHost>();
+    auto host = registry->Get<IShaderExportHost>();
     host->Enumerate(&exportBound, nullptr);
 
     // Binding for counter data
@@ -60,7 +60,61 @@ bool ShaderExportDescriptorAllocator::Install() {
     // Create the dummy buffer
     CreateDummyBuffer();
 
+    // OK
     return true;
+}
+
+void ShaderExportDescriptorAllocator::CreateDummyBuffer() {
+    deviceAllocator = registry->Get<DeviceAllocator>();
+
+    // Dummy buffer info
+    VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferInfo.size = sizeof(ShaderExportCounter);
+
+    // Attempt to create the buffer
+    if (table->next_vkCreateBuffer(table->object, &bufferInfo, nullptr, &dummyBuffer) != VK_SUCCESS) {
+        return;
+    }
+
+    // Get the requirements
+    VkMemoryRequirements requirements;
+    table->next_vkGetBufferMemoryRequirements(table->object, dummyBuffer, &requirements);
+
+    // Create the allocation
+    dummyAllocation = deviceAllocator->Allocate(requirements);
+
+    // Bind against the device allocation
+    deviceAllocator->BindBuffer(dummyAllocation, dummyBuffer);
+
+    // View creation info
+    VkBufferViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
+    viewInfo.buffer = dummyBuffer;
+    viewInfo.format = VK_FORMAT_R32_UINT;
+    viewInfo.range = VK_WHOLE_SIZE;
+
+    // Create the view
+    if (table->next_vkCreateBufferView(table->object, &viewInfo, nullptr, &dummyBufferView) != VK_SUCCESS) {
+        return;
+    }
+}
+
+ShaderExportDescriptorAllocator::~ShaderExportDescriptorAllocator() {
+    // Release all pools
+    for (const PoolInfo& info : pools) {
+        table->next_vkDestroyDescriptorPool(table->object, info.pool, nullptr);
+    }
+
+    // Release the dummy buffer
+    table->next_vkDestroyBufferView(table->object, dummyBufferView, nullptr);
+    table->next_vkDestroyBuffer(table->object, dummyBuffer, nullptr);
+
+    // Release the dummy allocation
+    deviceAllocator->Free(dummyAllocation);
+
+    // Release the set layout
+    table->next_vkDestroyDescriptorSetLayout(table->object, layout, nullptr);
 }
 
 ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate() {
@@ -134,7 +188,7 @@ ShaderExportDescriptorAllocator::PoolInfo &ShaderExportDescriptorAllocator::Find
 
     // Descriptor pool create info
     VkDescriptorPoolCreateInfo createInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    createInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+    createInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     createInfo.maxSets = setsPerPool;
     createInfo.poolSizeCount = 1;
     createInfo.pPoolSizes = &poolSize;
@@ -208,38 +262,3 @@ void ShaderExportDescriptorAllocator::Update(const ShaderExportSegmentDescriptor
     }
 }
 
-void ShaderExportDescriptorAllocator::CreateDummyBuffer() {
-    auto deviceAllocator = registry->Get<DeviceAllocator>();
-
-    // Dummy buffer info
-    VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    bufferInfo.size = sizeof(ShaderExportCounter);
-
-    // Attempt to create the buffer
-    if (table->next_vkCreateBuffer(table->object, &bufferInfo, nullptr, &dummyBuffer) != VK_SUCCESS) {
-        return;
-    }
-
-    // Get the requirements
-    VkMemoryRequirements requirements;
-    table->next_vkGetBufferMemoryRequirements(table->object, dummyBuffer, &requirements);
-
-    // Create the allocation
-    dummyAllocation = deviceAllocator->Allocate(requirements);
-
-    // Bind against the device allocation
-    deviceAllocator->BindBuffer(dummyAllocation, dummyBuffer);
-
-    // View creation info
-    VkBufferViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
-    viewInfo.buffer = dummyBuffer;
-    viewInfo.format = VK_FORMAT_R32_UINT;
-    viewInfo.range = VK_WHOLE_SIZE;
-
-    // Create the view
-    if (table->next_vkCreateBufferView(table->object, &viewInfo, nullptr, &dummyBufferView) != VK_SUCCESS) {
-        return;
-    }
-}

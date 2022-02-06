@@ -1,0 +1,10 @@
+<schema>
+    <struct name="ShaderSourceMapping">
+        <field name="shaderGUID" type="uint64"/>
+        <field name="fileUID" type="uint32"/>
+        <field name="line" type="uint32"/>
+        <field name="column" type="uint32"/>
+        <field name="sguid" type="uint32"/>
+        <field name="contents" type="string"/>
+    </struct>
+</schema>

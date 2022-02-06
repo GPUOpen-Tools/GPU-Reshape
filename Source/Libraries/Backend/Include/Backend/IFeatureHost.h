@@ -1,25 +1,25 @@
 #pragma once
 
 // Common
-#include <Common/IComponent.h>
+#include <Common/ComRef.h>
 
 // Forward declarations
-class IFeature;
+class IComponentTemplate;
 
-class IFeatureHost : public IComponent {
+class IFeatureHost : public TComponent<IFeatureHost> {
 public:
     COMPONENT(IFeatureHost);
 
     /// Register a feature
     /// \param feature
-    virtual void Register(IFeature* feature) = 0;
+    virtual void Register(const ComRef<IComponentTemplate>& feature) = 0;
 
     /// Deregister a feature
     /// \param feature
-    virtual void Deregister(IFeature* feature) = 0;
+    virtual void Deregister(const ComRef<IComponentTemplate>& feature) = 0;
 
     /// Enumerate all features
     /// \param count if [features] is null, filled with the number of features
     /// \param features if not null, [count] elements are written to
-    virtual void Enumerate(uint32_t* count, IFeature** features) = 0;
+    virtual void Enumerate(uint32_t* count, ComRef<IComponentTemplate>* features) = 0;
 };

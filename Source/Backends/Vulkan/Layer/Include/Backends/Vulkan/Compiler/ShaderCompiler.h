@@ -5,6 +5,7 @@
 
 // Common
 #include <Common/IComponent.h>
+#include <Common/ComRef.h>
 
 // Std
 #include <mutex>
@@ -14,9 +15,11 @@ struct DispatcherBucket;
 class IFeature;
 class IShaderFeature;
 
-class ShaderCompiler : public IComponent {
+class ShaderCompiler : public TComponent<ShaderCompiler> {
 public:
     COMPONENT(ShaderCompiler);
+
+    ShaderCompiler(DeviceDispatchTable* table);
 
     /// Install this compiler
     bool Install();
@@ -41,12 +44,13 @@ protected:
     void Worker(void *userData);
 
 private:
+    DeviceDispatchTable* table{nullptr};
+
     /// Async dispatcher
-    Dispatcher *dispatcher{nullptr};
+    ComRef<Dispatcher> dispatcher{nullptr};
 
     /// All features
-    std::vector<IFeature *> features;
-    std::vector<IShaderFeature *> shaderFeatures;
+    std::vector<ComRef<IShaderFeature>> shaderFeatures;
 
     /// Number of exports
     uint32_t exportCount{0};

@@ -62,10 +62,17 @@ void QueueState::PushCommandBuffer(VkCommandBuffer commandBuffer) {
 
 QueueState::~QueueState() {
     // Destroy the command buffers
-    table->next_vkFreeCommandBuffers(table->object, commandPool, commandBuffers.size(), commandBuffers.data());
+    if (!commandBuffers.empty()) {
+        table->next_vkFreeCommandBuffers(table->object, commandPool, commandBuffers.size(), commandBuffers.data());
+    }
 
     // Destroy the pool
     table->next_vkDestroyCommandPool(table->object, commandPool, nullptr);
+
+    // Release export state
+    if (exportState) {
+        table->exportStreamer->Free(exportState);
+    }
 }
 
 static FenceState* AcquireOrCreateFence(DeviceDispatchTable* table, QueueState* queue, VkFence userFence) {
@@ -97,6 +104,12 @@ static FenceState* AcquireOrCreateFence(DeviceDispatchTable* table, QueueState* 
     if (result != VK_SUCCESS) {
         return nullptr;
     }
+
+    // Internal user
+    state->AddUser();
+
+    // Store lookup
+    table->states_fence.Add(state->object, state);
 
     // OK
     return state;

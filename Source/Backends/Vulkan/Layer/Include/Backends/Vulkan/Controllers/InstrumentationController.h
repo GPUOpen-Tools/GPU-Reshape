@@ -6,6 +6,7 @@
 
 // Common
 #include <Common/Dispatcher/EventCounter.h>
+#include <Common/ComRef.h>
 
 // Bridge
 #include <Bridge/IBridgeListener.h>
@@ -31,7 +32,11 @@ class InstrumentationController final : public IController, public IBridgeListen
 public:
     InstrumentationController(DeviceDispatchTable* table);
 
+    /// Install the controller
     bool Install();
+
+    /// Uninstall the controller
+    void Uninstall();
 
     /// Overrides
     void Handle(const MessageStream *streams, uint32_t count) final;
@@ -62,9 +67,9 @@ protected:
 
 private:
     DeviceDispatchTable* table;
-    ShaderCompiler* shaderCompiler;
-    PipelineCompiler* pipelineCompiler;
-    Dispatcher* dispatcher;
+    ComRef<ShaderCompiler> shaderCompiler;
+    ComRef<PipelineCompiler> pipelineCompiler;
+    ComRef<Dispatcher> dispatcher;
 
     /// The global info
     InstrumentationInfo globalInstrumentationInfo;

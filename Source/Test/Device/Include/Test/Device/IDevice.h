@@ -14,7 +14,7 @@
 #include "ResourceType.h"
 
 namespace Test {
-    class IDevice : public IComponent {
+    class IDevice : public TComponent<IDevice> {
     public:
         COMPONENT(ITestDevice);
 
@@ -99,6 +99,10 @@ namespace Test {
         /// \param queue the queue to submit to
         /// \param commandBuffer the command buffer to be submitted
         virtual void Submit(QueueID queue, CommandBufferID commandBuffer) = 0;
+
+        /// Initialize all resources
+        /// \param commandBuffer the command buffer to be recorded into
+        virtual void InitializeResources(CommandBufferID commandBuffer) = 0;
 
         /// Flush and wait for all work
         virtual void Flush() = 0;

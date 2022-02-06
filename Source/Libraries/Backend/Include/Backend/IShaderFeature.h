@@ -14,7 +14,7 @@ namespace IL {
     struct Program;
 }
 
-class IShaderFeature {
+class IShaderFeature : public IInterface {
 public:
     COMPONENT(IShaderFeature);
 

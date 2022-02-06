@@ -6,6 +6,7 @@
 
 // Common
 #include <Common/IComponent.h>
+#include <Common/ComRef.h>
 
 // Std
 #include <mutex>
@@ -24,9 +25,11 @@ struct PipelineJob {
     uint64_t featureBitSet;
 };
 
-class PipelineCompiler : public IComponent {
+class PipelineCompiler : public TComponent<PipelineCompiler> {
 public:
     COMPONENT(PipelineCompiler);
+
+    PipelineCompiler(DeviceDispatchTable* table);
 
     /// Install this compiler
     bool Install();
@@ -59,10 +62,12 @@ protected:
     void WorkerCompute(void* userData);
 
 private:
+    DeviceDispatchTable* table{nullptr};
+
     /// Job buckets
     std::vector<PipelineJob> graphicsJobs;
     std::vector<PipelineJob> computeJobs;
 
     /// Async dispatcher
-    Dispatcher* dispatcher{nullptr};
+    ComRef<Dispatcher> dispatcher{nullptr};
 };

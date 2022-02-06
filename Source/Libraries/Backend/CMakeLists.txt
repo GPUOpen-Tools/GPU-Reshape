@@ -4,12 +4,14 @@
 Project_AddSchema(GeneratedLib Schemas/Pipeline.xml Include/Schemas)
 Project_AddSchema(GeneratedLib Schemas/ShaderMetadata.xml Include/Schemas)
 Project_AddSchema(GeneratedLib Schemas/Config.xml Include/Schemas)
+Project_AddSchema(GeneratedLib Schemas/SGUID.xml Include/Schemas)
 
 add_library(
     Libraries.Backend STATIC
     Source/Backend.cpp
     Source/FeatureHost.cpp
     Source/Environment.cpp
+    Source/ShaderSGUIDHostListener.cpp
     Source/IL/PrettyPrint.cpp
 
     # Generated schemas

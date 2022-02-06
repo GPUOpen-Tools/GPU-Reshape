@@ -26,12 +26,30 @@ ShaderExportStreamer::ShaderExportStreamer(DeviceDispatchTable *table) : table(t
 
 bool ShaderExportStreamer::Install() {
     bridge = registry->Get<IBridge>();
-
     deviceAllocator = registry->Get<DeviceAllocator>();
     descriptorAllocator = registry->Get<ShaderExportDescriptorAllocator>();
     streamAllocator = registry->Get<ShaderExportStreamAllocator>();
 
     return true;
+}
+
+ShaderExportStreamer::~ShaderExportStreamer() {
+    // Free all live segments
+    for (ShaderExportQueueState* queue : queuePool) {
+        for (ShaderExportStreamSegment* segment : queue->liveSegments) {
+            FreeSegmentNoQueueLock(queue, segment);
+        }
+    }
+
+    // Free all segments
+    for (ShaderExportStreamSegment* segment : segmentPool) {
+        streamAllocator->FreeSegment(segment->allocation);
+    }
+
+    // Free all states
+    for (ShaderExportStreamState* state : streamStatePool) {
+        descriptorAllocator->Free(state->segmentDescriptorInfo);
+    }
 }
 
 ShaderExportQueueState *ShaderExportStreamer::AllocateQueueState(QueueState* queue) {
@@ -63,9 +81,6 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
 }
 
 void ShaderExportStreamer::Free(ShaderExportStreamState *state) {
-    // Free the descriptor set
-    descriptorAllocator->Free(state->segmentDescriptorInfo);
-
     // Done
     streamStatePool.Push(state);
 }
@@ -280,7 +295,8 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
     QueueState* queueState = table->states_queue.GetNoLock(queue->queue);
 
     // Release fence usage
-    segment->fence->ReleaseUser();
+    destroyRef(segment->fence, allocators);
+    queueState->pools_fences.Push(segment->fence);
 
     // Remove fence reference
     segment->fence = nullptr;

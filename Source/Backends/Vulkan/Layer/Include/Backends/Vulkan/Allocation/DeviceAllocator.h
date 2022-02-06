@@ -13,7 +13,7 @@
 struct DeviceDispatchTable;
 
 /// Handles device memory allocations and binding
-class DeviceAllocator : public IComponent {
+class DeviceAllocator : public TComponent<DeviceAllocator> {
 public:
     COMPONENT(DeviceAllocator);
 

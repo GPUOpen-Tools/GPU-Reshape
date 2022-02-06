@@ -10,12 +10,17 @@
 // Forward declarations
 struct DeviceDispatchTable;
 struct SpvSourceMap;
+class IBridge;
 
 class ShaderSGUIDHost final : public IShaderSGUIDHost {
 public:
     explicit ShaderSGUIDHost(DeviceDispatchTable* table);
 
     bool Install();
+
+    /// Commit all messages
+    /// \param bridge
+    void Commit(IBridge* bridge);
 
     /// Overrides
     ShaderSGUID Bind(const IL::Program &program, const IL::ConstOpaqueInstructionRef& instruction) override;
@@ -47,4 +52,7 @@ private:
 
     /// Reverse sguid lookup
     std::vector<ShaderSourceMapping> sguidLookup;
+
+    /// All pending bridge submissions
+    std::vector<ShaderSGUID> pendingSubmissions;
 };

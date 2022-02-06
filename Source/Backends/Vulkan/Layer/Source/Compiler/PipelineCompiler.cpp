@@ -6,6 +6,10 @@
 #include "Common/Dispatcher/Dispatcher.h"
 #include <Common/Registry.h>
 
+PipelineCompiler::PipelineCompiler(DeviceDispatchTable *table) : table(table) {
+
+}
+
 bool PipelineCompiler::Install() {
     dispatcher = registry->Get<Dispatcher>();
     if (!dispatcher) {

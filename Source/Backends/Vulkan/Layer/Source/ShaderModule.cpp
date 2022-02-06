@@ -1,6 +1,7 @@
 #include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/ShaderModule.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Compiler/SpvModule.h>
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateShaderModule(VkDevice device, const VkShaderModuleCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkShaderModule* pShaderModule) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
@@ -15,6 +16,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateShaderModule(VkDevice device, const 
     auto state = table->states_shaderModule.Add(*pShaderModule, new (table->allocators) ShaderModuleState);
     state->table = table;
     state->object = *pShaderModule;
+
+    // External user
+    state->AddUser();
 
     // Create a deep copy
     state->createInfoDeepCopy.DeepCopy(table->allocators, *pCreateInfo);
@@ -47,6 +51,16 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyShaderModule(VkDevice device, VkShaderM
 ShaderModuleState::~ShaderModuleState() {
     // Remove state lookup
     table->states_shaderModule.RemoveState(this);
+
+    // Release instrumented modules
+    for (auto&& kv : instrumentObjects) {
+        table->next_vkDestroyShaderModule(table->object, kv.second, nullptr);
+    }
+
+    // Release spirv module
+    if (spirvModule) {
+        destroy(spirvModule, table->allocators);
+    }
 
     // If there's any dangling dependencies, someone forgot to add a reference
     ASSERT(table->dependencies_shaderModulesPipelines.Count(this) == 0, "Dangling pipeline references");

@@ -8,6 +8,8 @@
 
 // Common
 #include <Common/Allocators.h>
+#include <Common/ComRef.h>
+#include <Common/Registry.h>
 
 // Bridge
 #include <Bridge/Log/LogBuffer.h>
@@ -18,7 +20,6 @@
 #include <map>
 
 // Forward declarations
-class Registry;
 class IFeature;
 
 struct InstanceDispatchTable {
@@ -59,10 +60,10 @@ struct InstanceDispatchTable {
     Allocators allocators;
 
     /// Shared registry
-    Registry* registry;
+    Registry registry;
 
     /// Message bridge
-    IBridge* bridge;
+    ComRef<IBridge> bridge;
 
     /// Shared logging buffer
     LogBuffer logBuffer;

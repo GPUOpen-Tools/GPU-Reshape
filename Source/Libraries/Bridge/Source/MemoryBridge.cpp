@@ -4,12 +4,12 @@
 // Message
 #include <Message/MessageStream.h>
 
-void MemoryBridge::Register(MessageID mid, IBridgeListener *listener) {
+void MemoryBridge::Register(MessageID mid, const ComRef<IBridgeListener>& listener) {
     MessageBucket& bucket = buckets[mid];
     bucket.listeners.push_back(listener);
 }
 
-void MemoryBridge::Deregister(MessageID mid, IBridgeListener *listener) {
+void MemoryBridge::Deregister(MessageID mid, const ComRef<IBridgeListener>& listener) {
     MessageBucket& bucket = buckets[mid];
 
     auto&& it = std::find(bucket.listeners.begin(), bucket.listeners.end(), listener);
@@ -18,11 +18,11 @@ void MemoryBridge::Deregister(MessageID mid, IBridgeListener *listener) {
     }
 }
 
-void MemoryBridge::Register(IBridgeListener *listener) {
+void MemoryBridge::Register(const ComRef<IBridgeListener>& listener) {
     orderedListeners.push_back(listener);
 }
 
-void MemoryBridge::Deregister(IBridgeListener *listener) {
+void MemoryBridge::Deregister(const ComRef<IBridgeListener>& listener) {
     auto&& it = std::find(orderedListeners.begin(), orderedListeners.end(), listener);
     if (it != orderedListeners.end()) {
         orderedListeners.erase(it);
@@ -62,7 +62,7 @@ void MemoryBridge::Commit() {
 
     // Invoke ordered listeners
     if (!storageOrderedCache.empty()) {
-        for (IBridgeListener* listener : orderedListeners) {
+        for (const ComRef<IBridgeListener>& listener : orderedListeners) {
             listener->Handle(storageOrderedCache.data(), static_cast<uint32_t>(storageOrderedCache.size()));
         }
     }
@@ -87,7 +87,7 @@ void MemoryBridge::Commit() {
         MessageBucket& bucket = bucketIt->second;
 
         // Pass through all listeners
-        for (IBridgeListener* listener : bucket.listeners) {
+        for (const ComRef<IBridgeListener>& listener : bucket.listeners) {
             listener->Handle(&stream, 1);
         }
     }

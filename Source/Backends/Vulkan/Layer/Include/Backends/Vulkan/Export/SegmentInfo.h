@@ -41,7 +41,7 @@ struct ShaderExportSegmentCounterInfo {
 };
 
 /// A single allocation, partitioning is up to the allocation modes
-struct ShaderExportSegmentInfo : public ReferenceObject {
+struct ShaderExportSegmentInfo {
     /// Stream container, will reach stable size after a set submissions
     std::vector<ShaderExportStreamInfo> streams;
 

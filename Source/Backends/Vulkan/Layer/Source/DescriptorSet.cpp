@@ -42,6 +42,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
     state->object = *pPipelineLayout;
     state->exhausted = exhausted;
 
+    // External user
+    state->AddUser();
+
     // Number of bound descriptor sets
     state->boundUserDescriptorStates = pCreateInfo->setLayoutCount;
 

@@ -260,7 +260,7 @@ private:
         spv[4] = 0;
         spv[5] = isArray;
         spv[6] = type->multisampled;
-        spv[7] = type->requiresSampler;
+        spv[7] = 1;
         spv[8] = Translate(type->format);
 
         AddMapping(id, type);
@@ -281,7 +281,7 @@ private:
             spv[4] = 0;
             spv[5] = false;
             spv[6] = 0;
-            spv[7] = 0;
+            spv[7] = 2;
             spv[8] = Translate(type->texelType);
         } else {
             ASSERT(false, "Structured buffers not implemented");

@@ -103,7 +103,7 @@ void Assembler::AssembleConstraints() {
 
     // Generate messages
     for (auto &&kv: buckets) {
-        fields << "\t" << assembleInfo.program << "MessageConstraint* " << kv.first << "Constraint{nullptr};\n";
+        fields << "\tComRef<" << assembleInfo.program << "MessageConstraint> " << kv.first << "Constraint{nullptr};\n";
 
         install << "\t\t" << kv.first << "Constraint = registry->New<" << assembleInfo.program << "MessageConstraint>();\n";
         install << "\t\t" << kv.first << "Constraint->Install();\n\n";

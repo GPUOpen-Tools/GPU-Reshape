@@ -3,10 +3,13 @@
 // Std
 #include <cstdint>
 
+// Common
+#include <Common/IComponent.h>
+
 // Forward declarations
 struct MessageStream;
 
-class IBridgeListener {
+class IBridgeListener : public IInterface {
 public:
     virtual ~IBridgeListener() = default;
 

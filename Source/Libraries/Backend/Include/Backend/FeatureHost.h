@@ -8,10 +8,10 @@
 
 class FeatureHost : public IFeatureHost {
 public:
-    void Register(IFeature *feature) override;
-    void Deregister(IFeature *feature) override;
-    void Enumerate(uint32_t *count, IFeature **features) override;
+    void Register(const ComRef<IComponentTemplate>& feature) override;
+    void Deregister(const ComRef<IComponentTemplate>& feature) override;
+    void Enumerate(uint32_t *count, ComRef<IComponentTemplate> *features) override;
 
 private:
-    std::vector<IFeature*> features;
+    std::vector<ComRef<IComponentTemplate>> features;
 };

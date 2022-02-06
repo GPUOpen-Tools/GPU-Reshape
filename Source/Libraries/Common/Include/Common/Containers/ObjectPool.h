@@ -15,11 +15,13 @@ struct ObjectPool {
     }
 
     ~ObjectPool() {
-        ASSERT(count == 0, "Dangling object references not free'd to ObjectPool");
-
         // Free all objects
         for (T* obj : pool) {
-            destroy(obj, allocators);
+            if constexpr(IsReferenceObject<T>) {
+                destroyRef(obj, allocators);
+            } else {
+                destroy(obj, allocators);
+            }
         }
     }
 
@@ -28,10 +30,6 @@ struct ObjectPool {
     /// \return the object
     template<typename... A>
     T* Pop(A&&... args) {
-#ifndef NDEBUG
-        count++;
-#endif
-
         if (!pool.empty()) {
             T* obj = pool.back();
             pool.pop_back();
@@ -58,10 +56,6 @@ struct ObjectPool {
     /// \return the constructed object
     template<typename... A>
     T* PopConstruct(A&&... args) {
-#ifndef NDEBUG
-        count++;
-#endif
-
         if (!pool.empty()) {
             T* obj = pool.back();
             pool.pop_back();
@@ -77,11 +71,23 @@ struct ObjectPool {
     /// Push an object to this pool
     /// \param object the object
     void Push(T* object) {
-#ifndef NDEBUG
-        count--;
-#endif
-
         pool.push_back(object);
+    }
+
+    typename std::vector<T*>::iterator begin() {
+        return pool.begin();
+    }
+
+    typename std::vector<T*>::iterator end() {
+        return pool.end();
+    }
+
+    typename std::vector<T*>::const_iterator begin() const {
+        return pool.begin();
+    }
+
+    typename std::vector<T*>::const_iterator end() const {
+        return pool.end();
     }
 
 private:
@@ -89,9 +95,4 @@ private:
 
     /// Pool of objects
     std::vector<T*> pool;
-
-    /// Debug
-#ifndef NDEBUG
-    uint32_t count{0};
-#endif
 };

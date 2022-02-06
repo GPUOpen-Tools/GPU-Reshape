@@ -9,12 +9,14 @@
 #include <Schemas/Pipeline.h>
 #include <Schemas/Config.h>
 #include <Schemas/WritingNegativeValue.h>
+#include <Schemas/SGUID.h>
 
 // Tests
 #include <Loader.h>
 
 // Common
 #include <Common/String.h>
+#include <Common/ComponentTemplate.h>
 
 // Backend
 #include <Backend/FeatureHost.h>
@@ -24,6 +26,7 @@
 #include <Backend/IL/Emitter.h>
 #include <Backend/IShaderExportHost.h>
 #include <Backend/IShaderSGUIDHost.h>
+#include <Backend/ShaderSGUIDHostListener.h>
 
 // Bridge
 #include <Bridge/IBridgeListener.h>
@@ -42,7 +45,7 @@ public:
     COMPONENT(WritingNegativeValueFeature);
 
     bool Install() override {
-        auto* exportHost = registry->Get<IShaderExportHost>();
+        auto exportHost = registry->Get<IShaderExportHost>();
         exportID = exportHost->Allocate<WritingNegativeValueMessage>();
 
         guidHost = registry->Get<IShaderSGUIDHost>();
@@ -115,6 +118,8 @@ public:
 
     void *QueryInterface(ComponentID id) override {
         switch (id) {
+            case IComponent::kID:
+                return static_cast<IComponent*>(this);
             case IFeature::kID:
                 return static_cast<IFeature*>(this);
             case IShaderFeature::kID:
@@ -125,17 +130,19 @@ public:
     }
 
 private:
-    IShaderSGUIDHost* guidHost{nullptr};
+    ComRef<IShaderSGUIDHost> guidHost{nullptr};
 
     ShaderExportID exportID{};
 
     MessageStream stream;
 };
 
-class WritingNegativeValueListener : public IBridgeListener {
+class WritingNegativeValueListener : public TComponent<WritingNegativeValueListener>, public IBridgeListener {
 public:
+    COMPONENT(WritingNegativeValueListener);
+
     WritingNegativeValueListener(Registry* registry) {
-        sguidHost = registry->Get<IShaderSGUIDHost>();
+        sguidHost = registry->Get<ShaderSGUIDHostListener>();
     }
 
     void Handle(const MessageStream *streams, uint32_t count) override {
@@ -162,7 +169,7 @@ public:
     bool visited{false};
 
 private:
-    IShaderSGUIDHost* sguidHost;
+    ComRef<ShaderSGUIDHostListener> sguidHost;
 };
 
 TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
@@ -170,8 +177,8 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
 
     Registry* registry = GetRegistry();
 
-    auto* host = registry->Get<IFeatureHost>();
-    host->Register(registry->New<WritingNegativeValueFeature>());
+    auto host = registry->Get<IFeatureHost>();
+    host->Register(registry->New<ComponentTemplate<WritingNegativeValueFeature>>());
 
     // Create the instance & device
     CreateInstance();
@@ -303,10 +310,12 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
     write.pTexelBufferView = &bufferView;
     vkUpdateDescriptorSets(GetDevice(), 1, &write, 0, nullptr);
 
-    auto* bridge = registry->Get<IBridge>();
+    auto bridge = registry->Get<IBridge>();
 
-    WritingNegativeValueListener listener(registry);
-    bridge->Register(WritingNegativeValueMessage::kID, &listener);
+    bridge->Register(ShaderSourceMappingMessage::kID, registry->AddNew<ShaderSGUIDHostListener>());
+
+    auto listener = registry->New<WritingNegativeValueListener>(registry);
+    bridge->Register(WritingNegativeValueMessage::kID, listener);
 
     MessageStream stream;
     {
@@ -348,7 +357,7 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
     vkQueueWaitIdle(GetPrimaryQueue());
 
     // Listener must have been invoked
-    REQUIRE(listener.visited);
+    REQUIRE(listener->visited);
 
     // Release handles
     vkDestroyPipeline(GetDevice(), pipeline, nullptr);

@@ -290,7 +290,8 @@ void Device::CreateSharedDescriptorPool() {
 
     // Create info
     VkDescriptorPoolCreateInfo descriptorPoolInfo{};
-    descriptorPoolInfo.sType  = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     descriptorPoolInfo.pPoolSizes = poolSizes;
     descriptorPoolInfo.poolSizeCount = 4;
     descriptorPoolInfo.maxSets = 512;
@@ -387,6 +388,9 @@ void Device::ReleaseResources() {
                 break;
         }
     }
+
+    // Destroy allocator
+    vmaDestroyAllocator(allocator);
 }
 
 void Device::ReleaseShared() {
@@ -555,7 +559,16 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
     // Attempt to create view
     REQUIRE(vkCreateImageView(device, &imageViewInfo, nullptr, &resource.texture.view) == VK_SUCCESS);
 
-    return TextureID(ResourceID(resources.size() - 1));
+    // Texture id
+    TextureID id(ResourceID(resources.size() - 1));
+
+    // Enqueue command
+    UpdateCommand command;
+    command.texture.type = UpdateCommandType::TransitionTexture;
+    command.texture.id = id;
+    updateCommands.push_back(command);
+
+    return id;
 }
 
 ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_t count) {
@@ -835,4 +848,39 @@ void Device::Submit(QueueID queueID, CommandBufferID commandBuffer) {
 
 void Device::Flush() {
     vkDeviceWaitIdle(device);
+}
+
+void Device::InitializeResources(CommandBufferID commandBuffer) {
+    CommandBufferInfo& info = commandBuffers.at(commandBuffer);
+
+    for (const UpdateCommand& cmd : updateCommands) {
+        switch (cmd.type) {
+            case UpdateCommandType::TransitionTexture: {
+                VkImageMemoryBarrier barrier{};
+                barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                barrier.subresourceRange.levelCount = 1;
+                barrier.subresourceRange.layerCount = 1;
+                barrier.subresourceRange.baseMipLevel = 0;
+                barrier.subresourceRange.baseArrayLayer = 0;
+                barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                barrier.srcAccessMask = VK_ACCESS_NONE_KHR;
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+                barrier.image = resources.at(cmd.texture.id.value).texture.image;
+
+                vkCmdPipelineBarrier(
+                    info.commandBuffer,
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                    0x0,
+                    0, nullptr,
+                    0, nullptr,
+                    1, &barrier
+                );
+                break;
+            }
+        }
+    }
 }
