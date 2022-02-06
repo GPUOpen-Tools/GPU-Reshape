@@ -9,6 +9,7 @@
 #include <Backend/Environment.h>
 #include <Backend/EnvironmentInfo.h>
 #include <Backend/FeatureHost.h>
+#include <Backend/ShaderSGUIDHostListener.h>
 
 // Bridge
 #include <Bridge/IBridgeListener.h>
@@ -26,6 +27,7 @@
 // Shared schemas
 #include <Schemas/Config.h>
 #include <Schemas/Pipeline.h>
+#include <Schemas/SGUID.h>
 
 $INCLUDES
 
@@ -45,7 +47,10 @@ public:
         Registry* registry = environment.GetRegistry();
 
         // Get common objects
-        auto* bridge = registry->Get<IBridge>();
+        auto bridge = registry->Get<IBridge>();
+
+        // Add sguid listener
+        bridge->Register(ShaderSourceMappingMessage::kID, registry->AddNew<ShaderSGUIDHostListener>());
 
 $CONSTRAINT_INSTALL
 
@@ -56,7 +61,7 @@ $CONSTRAINT_INSTALL
 private:
     void ConfigureBridge() {
         // Get common objects
-        auto* bridge = environment.GetRegistry()->Get<IBridge>();
+        auto bridge = environment.GetRegistry()->Get<IBridge>();
 
         // Ordered stream
         MessageStream stream;
@@ -82,7 +87,7 @@ private:
         Registry* registry = environment.GetRegistry();
 
         // Create a device
-        IDevice* device = registry->AddNew<DEVICE>();
+        auto device = registry->AddNew<DEVICE>();
 
         // Install the device
         Test::DeviceInfo info{};
@@ -119,6 +124,9 @@ $RESOURCES_SET
 
         // Begin!
         device->BeginCommandBuffer(commandBuffer);
+
+        // Init all resources
+        device->InitializeResources(commandBuffer);
 
         // Bind pipeline and resources
         device->BindPipeline(commandBuffer, pipeline);

@@ -20,36 +20,26 @@
 // TODO: Expand into a more versatile system
 #define SPV_SHADER_COMPILER_DUMP 0
 
+ShaderCompiler::ShaderCompiler(DeviceDispatchTable *table) : table(table) {
+
+}
+
 bool ShaderCompiler::Install() {
     dispatcher = registry->Get<Dispatcher>();
     if (!dispatcher) {
         return false;
     }
 
-    // Get the feature host
-    auto *host = registry->Get<IFeatureHost>();
-    if (!host) {
-        return false;
-    }
-
-    // Pool feature count
-    uint32_t featureCount;
-    host->Enumerate(&featureCount, nullptr);
-
-    // Pool features
-    features.resize(featureCount);
-    host->Enumerate(&featureCount, features.data());
-
     // Get all shader features
-    for (IFeature *feature: features) {
-        auto *shaderFeature = feature->QueryInterface<IShaderFeature>();
+    for (const ComRef<IFeature>& feature : table->features) {
+        auto shaderFeature = Cast<IShaderFeature>(feature);
 
         // Append null even if not found
         shaderFeatures.push_back(shaderFeature);
     }
 
     // Get the export host
-    auto* exportHost = registry->Get<IShaderExportHost>();
+    auto exportHost = registry->Get<IShaderExportHost>();
     exportHost->Enumerate(&exportCount, nullptr);
 
     // OK
@@ -69,6 +59,7 @@ void ShaderCompiler::Add(DeviceDispatchTable *table, ShaderModuleState *state, c
 void ShaderCompiler::Worker(void *data) {
     auto *job = static_cast<ShaderJob *>(data);
     CompileShader(*job);
+    destroy(job, allocators);
 }
 
 void ShaderCompiler::CompileShader(const ShaderJob &job) {

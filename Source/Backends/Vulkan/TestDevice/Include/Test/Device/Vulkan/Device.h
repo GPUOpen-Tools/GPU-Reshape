@@ -31,6 +31,7 @@ namespace Test::Vulkan {
         void Dispatch(CommandBufferID commandBuffer, uint32_t x, uint32_t y, uint32_t z) override;
         void Submit(QueueID queue, CommandBufferID commandBuffer) override;
         void Flush() override;
+        void InitializeResources(CommandBufferID commandBuffer) override;
 
     private:
         /// Creation utilities
@@ -144,6 +145,27 @@ namespace Test::Vulkan {
         std::vector<ResourceSetInfo> resourceSets;
         std::vector<CommandBufferInfo> commandBuffers;
         std::vector<PipelineInfo> pipelines;
+
+    private:
+        enum class UpdateCommandType {
+            TransitionTexture
+        };
+
+        union UpdateCommand {
+            UpdateCommand() {
+
+            }
+
+            UpdateCommandType type;
+
+            struct {
+                UpdateCommandType type;
+                TextureID id;
+            } texture;
+        };
+
+        /// Queued initialization commands
+        std::vector<UpdateCommand> updateCommands;
 
     private:
         /// Shared descriptor pool

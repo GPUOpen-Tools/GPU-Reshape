@@ -4,6 +4,7 @@
 #include <Common/IComponent.h>
 #include <Common/Containers/ObjectPool.h>
 #include <Common/Containers/TrivialObjectPool.h>
+#include <Common/ComRef.h>
 
 // Backend
 #include <Backend/ShaderExportTypeInfo.h>
@@ -22,11 +23,13 @@ struct CommandBufferObject;
 struct DeviceDispatchTable;
 class DeviceAllocator;
 
-class ShaderExportStreamAllocator : public IComponent {
+class ShaderExportStreamAllocator : public TComponent<ShaderExportStreamAllocator> {
 public:
     COMPONENT(ShaderExportStreamAllocator);
 
     ShaderExportStreamAllocator(DeviceDispatchTable* table);
+
+    ~ShaderExportStreamAllocator();
 
     bool Install();
 
@@ -64,7 +67,7 @@ private:
     std::vector<ExportInfo> exportInfos;
 
 private:
-    DeviceAllocator* deviceAllocator{};
+    ComRef<DeviceAllocator> deviceAllocator{};
 
     /// Pools
     ObjectPool<ShaderExportSegmentInfo> segmentPool;

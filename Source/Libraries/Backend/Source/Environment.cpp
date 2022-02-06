@@ -21,7 +21,7 @@ Environment::~Environment() {
 
 bool Environment::Install(const EnvironmentInfo &info) {
     // Install the plugin resolver
-    auto* resolver = registry.AddNew<PluginResolver>();
+    auto resolver = registry.AddNew<PluginResolver>();
 
     // Install the dispatcher
     registry.AddNew<Dispatcher>();
@@ -32,7 +32,7 @@ bool Environment::Install(const EnvironmentInfo &info) {
         registry.AddNew<MemoryBridge>();
     } else {
         // Networked
-        auto* network = registry.AddNew<NetworkBridge>();
+        auto network = registry.AddNew<NetworkBridge>();
 
         // Attempt to install as server
         if (!network->InstallServer(EndpointConfig{})) {

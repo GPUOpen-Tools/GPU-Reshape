@@ -6,7 +6,7 @@
 // Forward declarations
 class IDiscoveryListener;
 
-class IDiscoveryHost : public IComponent {
+class IDiscoveryHost : public TComponent<IDiscoveryHost> {
 public:
     COMPONENT(IDiscoveryHost);
 

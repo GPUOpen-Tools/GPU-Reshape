@@ -7,6 +7,16 @@
 // Backend
 #include <Backend/IL/Program.h>
 
+// Message
+#include <Message/IMessageStorage.h>
+#include <Message/MessageStream.h>
+
+// Bridge
+#include <Bridge/IBridge.h>
+
+// Schemas
+#include <Schemas/SGUID.h>
+
 ShaderSGUIDHost::ShaderSGUIDHost(DeviceDispatchTable *table) : table(table) {
 
 }
@@ -14,6 +24,40 @@ ShaderSGUIDHost::ShaderSGUIDHost(DeviceDispatchTable *table) : table(table) {
 bool ShaderSGUIDHost::Install() {
     sguidLookup.resize(1u << kShaderSGUIDBitCount);
     return true;
+}
+
+void ShaderSGUIDHost::Commit(IBridge *bridge) {
+    MessageStream stream;
+    MessageStreamView<ShaderSourceMappingMessage> view(stream);
+
+    // Write all pending
+    for (ShaderSGUID sguid : pendingSubmissions) {
+        std::string_view sourceContents = GetSource(sguid);
+
+        // Allocate message
+        ShaderSourceMappingMessage* message = view.Add(ShaderSourceMappingMessage::AllocationInfo {
+            .contentsLength = sourceContents.length()
+        });
+
+        // Set SGUID
+        message->sguid = sguid;
+
+        // Fill mapping
+        ShaderSourceMapping mapping = GetMapping(sguid);
+        message->shaderGUID = mapping.shaderGUID;
+        message->fileUID = mapping.fileUID;
+        message->line = mapping.line;
+        message->column = mapping.column;
+
+        // Fill contents
+        message->contents.Set(sourceContents);
+    }
+
+    // Export to bridge
+    bridge->GetOutput()->AddStream(stream);
+
+    // Reset
+    pendingSubmissions.clear();
 }
 
 ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpaqueInstructionRef& instruction) {
@@ -76,6 +120,9 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpa
         else {
             return InvalidShaderSGUID;
         }
+
+        // Add to pending
+        pendingSubmissions.push_back(mapping.sguid);
 
         // Insert mappings
         shaderEntry.mappings[mapping.GetInlineSortKey()] = mapping;

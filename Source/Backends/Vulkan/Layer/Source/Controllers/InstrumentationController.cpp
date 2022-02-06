@@ -6,6 +6,7 @@
 #include <Backends/Vulkan/States/PipelineLayoutState.h>
 #include <Backends/Vulkan/States/PipelineState.h>
 #include <Backends/Vulkan/CommandBuffer.h>
+#include <Backends/Vulkan/Symbolizer/ShaderSGUIDHost.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -28,10 +29,15 @@ bool InstrumentationController::Install() {
     pipelineCompiler = registry->Get<PipelineCompiler>();
     dispatcher = registry->Get<Dispatcher>();
 
-    auto* bridge = registry->Get<IBridge>();
+    auto bridge = registry->Get<IBridge>();
     bridge->Register(this);
 
     return true;
+}
+
+void InstrumentationController::Uninstall() {
+    auto bridge = registry->Get<IBridge>();
+    bridge->Deregister(this);
 }
 
 void InstrumentationController::Handle(const MessageStream *streams, uint32_t count) {
@@ -168,7 +174,7 @@ void InstrumentationController::Commit() {
 
     // Task group
     // TODO: Tie lifetime of this task group to the controller
-    TaskGroup group(dispatcher);
+    TaskGroup group(dispatcher.GetUnsafe());
     group.Chain(BindDelegate(this, InstrumentationController::CommitShaders), batch);
     group.Chain(BindDelegate(this, InstrumentationController::CommitPipelines), batch);
     group.Chain(BindDelegate(this, InstrumentationController::CommitTable), batch);
@@ -264,11 +270,18 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data) {
     auto* batch = static_cast<Batch*>(data);
 
+    // Commit all sguid changes
+    auto bridge = registry->Get<IBridge>();
+    table->sguidHost->Commit(bridge.GetUnsafe());
+
     // Set the enabled feature bit set
     SetDeviceCommandFeatureSetAndCommit(table, batch->featureBitSet);
 
     // Mark as done
     compilationEvent.IncrementCounter();
+
+    // Release batch
+    destroy(batch, allocators);
 }
 
 uint64_t InstrumentationController::SummarizeFeatureBitSet() {

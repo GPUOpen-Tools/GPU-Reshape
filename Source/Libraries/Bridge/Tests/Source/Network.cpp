@@ -10,8 +10,10 @@
 // Common
 #include <Common/Registry.h>
 
-class Listener : public IComponent, public IBridgeListener {
+class Listener : public TComponent<Listener>, public IBridgeListener {
 public:
+    COMPONENT(Listener);
+
     void Handle(const MessageStream *streams, uint32_t count) override {
         for (uint32_t i = 0; i < count; i++) {
             ConstMessageStreamView<LogMessage> view(streams[i]);

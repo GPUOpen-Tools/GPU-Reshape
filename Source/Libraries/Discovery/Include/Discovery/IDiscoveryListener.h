@@ -2,7 +2,7 @@
 
 #include <Common/IComponent.h>
 
-class IDiscoveryListener : public IComponent {
+class IDiscoveryListener : public TComponent<IDiscoveryListener> {
 public:
     COMPONENT(IDiscoveryListener);
 

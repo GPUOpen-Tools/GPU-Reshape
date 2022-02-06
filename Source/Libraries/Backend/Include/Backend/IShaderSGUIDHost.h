@@ -15,7 +15,7 @@ namespace IL {
     struct ConstOpaqueInstructionRef;
 }
 
-class IShaderSGUIDHost : public IComponent {
+class IShaderSGUIDHost : public TComponent<IShaderSGUIDHost> {
 public:
     COMPONENT(IShaderSGUIDHost);
 

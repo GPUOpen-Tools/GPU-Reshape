@@ -39,9 +39,12 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkCreateBuffer = reinterpret_cast<PFN_vkCreateBuffer>(getDeviceProcAddr(object, "vkCreateBuffer"));
     next_vkDestroyBuffer = reinterpret_cast<PFN_vkDestroyBuffer>(getDeviceProcAddr(object, "vkDestroyBuffer"));
     next_vkCreateBufferView = reinterpret_cast<PFN_vkCreateBufferView>(getDeviceProcAddr(object, "vkCreateBufferView"));
+    next_vkDestroyBufferView = reinterpret_cast<PFN_vkDestroyBufferView>(getDeviceProcAddr(object, "vkDestroyBufferView"));
     next_vkGetBufferMemoryRequirements = reinterpret_cast<PFN_vkGetBufferMemoryRequirements>(getDeviceProcAddr(object, "vkGetBufferMemoryRequirements"));
     next_vkCreateDescriptorPool = reinterpret_cast<PFN_vkCreateDescriptorPool>(getDeviceProcAddr(object, "vkCreateDescriptorPool"));
+    next_vkDestroyDescriptorPool = reinterpret_cast<PFN_vkDestroyDescriptorPool>(getDeviceProcAddr(object, "vkDestroyDescriptorPool"));
     next_vkCreateDescriptorSetLayout = reinterpret_cast<PFN_vkCreateDescriptorSetLayout>(getDeviceProcAddr(object, "vkCreateDescriptorSetLayout"));
+    next_vkDestroyDescriptorSetLayout = reinterpret_cast<PFN_vkDestroyDescriptorSetLayout>(getDeviceProcAddr(object, "vkDestroyDescriptorSetLayout"));
     next_vkAllocateDescriptorSets = reinterpret_cast<PFN_vkAllocateDescriptorSets>(getDeviceProcAddr(object, "vkAllocateDescriptorSets"));
     next_vkFreeDescriptorSets = reinterpret_cast<PFN_vkFreeDescriptorSets>(getDeviceProcAddr(object, "vkFreeDescriptorSets"));
     next_vkCreatePipelineLayout = reinterpret_cast<PFN_vkCreatePipelineLayout>(getDeviceProcAddr(object, "vkCreatePipelineLayout"));

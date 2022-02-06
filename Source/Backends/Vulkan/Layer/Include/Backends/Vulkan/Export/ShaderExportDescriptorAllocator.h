@@ -7,6 +7,7 @@
 
 // Common
 #include <Common/IComponent.h>
+#include <Common/ComRef.h>
 
 // Std
 #include <vector>
@@ -14,12 +15,15 @@
 // Forward declarations
 struct DeviceDispatchTable;
 struct ShaderExportSegmentInfo;
+class DeviceAllocator;
 
-class ShaderExportDescriptorAllocator : public IComponent {
+class ShaderExportDescriptorAllocator : public TComponent<ShaderExportDescriptorAllocator> {
 public:
     COMPONENT(ShaderExportDescriptorAllocator);
 
     ShaderExportDescriptorAllocator(DeviceDispatchTable* table);
+
+    ~ShaderExportDescriptorAllocator();
 
     bool Install();
 
@@ -76,4 +80,6 @@ private:
 
 private:
     DeviceDispatchTable* table;
+
+    ComRef<DeviceAllocator> deviceAllocator;
 };

@@ -10,7 +10,7 @@
 #include <algorithm>
 
 /// Simple work dispatcher
-class Dispatcher : public IComponent {
+class Dispatcher : public TComponent<Dispatcher> {
 public:
     COMPONENT(Dispatcher);
 

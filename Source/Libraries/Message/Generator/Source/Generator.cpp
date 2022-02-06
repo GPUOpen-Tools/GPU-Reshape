@@ -70,13 +70,12 @@ int main(int argc, char *const argv[]) {
     Registry registry;
 
     // Install the message generator
-    MessageGenerator messageGenerator;
-    registry.Add(&messageGenerator);
+    auto messageGenerator = registry.AddNew<MessageGenerator>();
 
     // Setup the host
     GeneratorHost host;
-    host.AddMessage("struct", &messageGenerator);
-    host.AddMessage("message", &messageGenerator);
+    host.AddMessage("struct", messageGenerator);
+    host.AddMessage("message", messageGenerator);
 
     // Install all libraries
     for (Library& lib : libraries) {
@@ -240,7 +239,7 @@ int main(int argc, char *const argv[]) {
         };
 
         // Invoke generator on schema
-        for (IGenerator* gen : host.GetSchemaGenerators()) {
+        for (const ComRef<IGenerator>& gen : host.GetSchemaGenerators()) {
             if (!gen->Generate(schema, lang, schemaStreamOut)) {
                 std::cerr << "Schema generator failed" << std::endl;
                 return 1;
@@ -270,7 +269,7 @@ int main(int argc, char *const argv[]) {
             };
 
             // Invoke generator on message
-            for (IGenerator* gen : host.GetMessageGenerators(message.type)) {
+            for (const ComRef<IGenerator>& gen : host.GetMessageGenerators(message.type)) {
                 if (!gen->Generate(message, lang, messageStreamOut)) {
                     std::cerr << "Message generator failed" << std::endl;
                     return 1;

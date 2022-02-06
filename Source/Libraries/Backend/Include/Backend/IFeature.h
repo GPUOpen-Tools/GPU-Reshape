@@ -9,7 +9,7 @@
 // Forward declarations
 class IMessageStorage;
 
-class IFeature : public IComponent {
+class IFeature : public TComponent<IFeature> {
 public:
     COMPONENT(IFeature);
 

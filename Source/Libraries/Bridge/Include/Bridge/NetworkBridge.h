@@ -26,10 +26,10 @@ public:
     bool InstallClient(const EndpointResolve& resolve);
 
     /// Overrides
-    void Register(MessageID mid, IBridgeListener *listener) override;
-    void Deregister(MessageID mid, IBridgeListener *listener) override;
-    void Register(IBridgeListener *listener) override;
-    void Deregister(IBridgeListener *listener) override;
+    void Register(MessageID mid, const ComRef<IBridgeListener>& listener) override;
+    void Deregister(MessageID mid, const ComRef<IBridgeListener>& listener) override;
+    void Register(const ComRef<IBridgeListener>& listener) override;
+    void Deregister(const ComRef<IBridgeListener>& listener) override;
     IMessageStorage *GetInput() override;
     IMessageStorage *GetOutput() override;
     void Commit() override;

@@ -23,7 +23,7 @@ ShaderExportStreamAllocator::ShaderExportStreamAllocator(DeviceDispatchTable *ta
 bool ShaderExportStreamAllocator::Install() {
     deviceAllocator = registry->Get<DeviceAllocator>();
 
-    auto* host = registry->Get<IShaderExportHost>();
+    auto host = registry->Get<IShaderExportHost>();
 
     // Get the number of exports
     uint32_t exportCount;
@@ -45,6 +45,23 @@ bool ShaderExportStreamAllocator::Install() {
     }
 
     return true;
+}
+
+ShaderExportStreamAllocator::~ShaderExportStreamAllocator() {
+    for (ShaderExportSegmentInfo* segment : segmentPool) {
+        // Release streams
+        for (const ShaderExportStreamInfo& stream : segment->streams) {
+            table->next_vkDestroyBufferView(table->object, stream.view, nullptr);
+            table->next_vkDestroyBuffer(table->object, stream.buffer, nullptr);
+            deviceAllocator->Free(stream.allocation);
+        }
+
+        // Release counter
+        table->next_vkDestroyBufferView(table->object, segment->counter.view, nullptr);
+        table->next_vkDestroyBuffer(table->object, segment->counter.buffer, nullptr);
+        table->next_vkDestroyBuffer(table->object, segment->counter.bufferHost, nullptr);
+        deviceAllocator->Free(segment->counter.allocation);
+    }
 }
 
 ShaderExportSegmentInfo *ShaderExportStreamAllocator::AllocateSegment() {

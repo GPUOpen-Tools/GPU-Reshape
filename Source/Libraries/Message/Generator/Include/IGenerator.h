@@ -26,7 +26,7 @@ struct MessageStream {
 };
 
 /// Schema and message generator
-class IGenerator : public IComponent {
+class IGenerator : public TComponent<IGenerator> {
 public:
     COMPONENT(IGenerator);
 

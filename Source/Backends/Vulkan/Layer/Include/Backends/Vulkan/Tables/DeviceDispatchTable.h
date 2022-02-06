@@ -8,6 +8,8 @@
 
 // Common
 #include "Common/Allocators.h"
+#include "Common/ComRef.h"
+#include "Common/Registry.h"
 #include "Common/Containers/ObjectPool.h"
 
 // Generated
@@ -25,12 +27,12 @@ struct PipelineState;
 struct PipelineLayoutState;
 struct FenceState;
 struct QueueState;
-class Registry;
 class IFeature;
 class IBridge;
 class InstrumentationController;
 class ShaderExportStreamer;
 class ShaderExportDescriptorAllocator;
+class ShaderSGUIDHost;
 
 struct DeviceDispatchTable {
     /// Add a new table
@@ -74,10 +76,10 @@ struct DeviceDispatchTable {
     Allocators allocators;
 
     /// Shared registry
-    Registry* registry;
+    Registry registry;
 
     /// Message bridge
-    IBridge* bridge;
+    ComRef<IBridge> bridge;
 
     /// Tracked objects
     TrackedObject<VkCommandPool, CommandPoolState>       states_commandPool;
@@ -91,11 +93,14 @@ struct DeviceDispatchTable {
     DependentObject<ShaderModuleState, PipelineState> dependencies_shaderModulesPipelines;
 
     /// Controllers
-    InstrumentationController* instrumentationController{nullptr};
+    ComRef<InstrumentationController> instrumentationController{nullptr};
+
+    /// SGUID
+    ComRef<ShaderSGUIDHost> sguidHost{nullptr};
 
     /// Export streamer
-    ShaderExportStreamer* exportStreamer{nullptr};
-    ShaderExportDescriptorAllocator* exportDescriptorAllocator{nullptr};
+    ComRef<ShaderExportStreamer> exportStreamer{nullptr};
+    ComRef<ShaderExportDescriptorAllocator> exportDescriptorAllocator{nullptr};
 
     /// Callbacks
     PFN_vkGetInstanceProcAddr             next_vkGetInstanceProcAddr;
@@ -121,7 +126,9 @@ struct DeviceDispatchTable {
     PFN_vkDestroyBufferView               next_vkDestroyBufferView;
     PFN_vkGetBufferMemoryRequirements     next_vkGetBufferMemoryRequirements;
     PFN_vkCreateDescriptorPool            next_vkCreateDescriptorPool;
+    PFN_vkDestroyDescriptorPool           next_vkDestroyDescriptorPool;
     PFN_vkCreateDescriptorSetLayout       next_vkCreateDescriptorSetLayout;
+    PFN_vkDestroyDescriptorSetLayout      next_vkDestroyDescriptorSetLayout;
     PFN_vkAllocateDescriptorSets          next_vkAllocateDescriptorSets;
     PFN_vkFreeDescriptorSets              next_vkFreeDescriptorSets;
     PFN_vkCreatePipelineLayout            next_vkCreatePipelineLayout;
@@ -160,7 +167,7 @@ struct DeviceDispatchTable {
     CommandBufferDispatchTable commandBufferDispatchTable;
 
     /// All features
-    std::vector<IFeature*> features;
+    std::vector<ComRef<IFeature>> features;
 
 private:
     /// Lookup

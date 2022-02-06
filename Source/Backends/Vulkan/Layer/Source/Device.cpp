@@ -13,9 +13,11 @@
 #include <Backends/Vulkan/Export/ShaderExportHost.h>
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Compiler/PipelineCompiler.h>
+#include <Backends/Vulkan/States/QueueState.h>
 
 // Common
 #include <Common/Registry.h>
+#include <Common/IComponentTemplate.h>
 
 // Backend
 #include <Backend/EnvironmentInfo.h>
@@ -57,25 +59,38 @@ VkResult VKAPI_PTR Hook_vkEnumerateDeviceExtensionProperties(uint32_t *pProperty
     return VK_SUCCESS;
 }
 
-static void PoolAndInstallFeatures(DeviceDispatchTable* table) {
+static bool PoolAndInstallFeatures(DeviceDispatchTable* table) {
     // Get the feature host
-    auto* host = table->registry->Get<IFeatureHost>();
+    auto host = table->registry.Get<IFeatureHost>();
     if (!host) {
-        return;
+        return false;
     }
+
+    // All templates
+    std::vector<ComRef<IComponentTemplate>> templates;
 
     // Pool feature count
     uint32_t featureCount;
     host->Enumerate(&featureCount, nullptr);
 
     // Pool features
-    table->features.resize(featureCount);
-    host->Enumerate(&featureCount, table->features.data());
+    templates.resize(featureCount);
+    host->Enumerate(&featureCount, templates.data());
 
     // Install features
-    for (IFeature* feature : table->features) {
-        feature->Install();
+    for (const ComRef<IComponentTemplate>& _template : templates) {
+        // Instantiate feature to this registry
+        auto feature = Cast<IFeature>(_template->Instantiate(&table->registry));
+
+        // Try to install feature
+        if (!feature->Install()) {
+            return false;
+        }
+
+        table->features.push_back(feature);
     }
+
+    return true;
 }
 
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
@@ -107,7 +122,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Inherit shared utilities from the instance
     table->parent     = instanceTable;
     table->allocators = instanceTable->allocators;
-    table->registry   = instanceTable->registry;
+
+    // Initialize registry
+    table->registry.SetParent(&instanceTable->registry);
 
     // Get the device properties
     table->parent->next_vkGetPhysicalDeviceProperties(physicalDevice, &table->physicalDeviceProperties);
@@ -139,50 +156,50 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->physicalDevice = physicalDevice;
 
     // Get common components
-    table->bridge = table->registry->Get<IBridge>();
+    table->bridge = table->registry.Get<IBridge>();
 
     // Populate the table
     table->Populate(getInstanceProcAddr, getDeviceProcAddr);
 
     // Create the shared allocator
-    auto* deviceAllocator = table->registry->AddNew<DeviceAllocator>();
+    auto deviceAllocator = table->registry.AddNew<DeviceAllocator>();
     deviceAllocator->Install(table);
 
     // Install the shader export host
-    table->registry->AddNew<ShaderExportHost>();
+    table->registry.AddNew<ShaderExportHost>();
 
     // Install the shader sguid host
-    auto* sguidHost = table->registry->AddNew<ShaderSGUIDHost>(table);
-    ENSURE(sguidHost->Install(), "Failed to install shader sguid host");
+    table->sguidHost = table->registry.AddNew<ShaderSGUIDHost>(table);
+    ENSURE(table->sguidHost->Install(), "Failed to install shader sguid host");
 
     // Install all features
-    PoolAndInstallFeatures(table);
+    ENSURE(PoolAndInstallFeatures(table), "Failed to install features");
 
     // Create the proxies / associations between the backend vulkan commands and the features
     CreateDeviceCommandProxies(table);
 
     // Install the stream allocator
-    auto shaderExportStreamAllocator = table->registry->AddNew<ShaderExportStreamAllocator>(table);
+    auto shaderExportStreamAllocator = table->registry.AddNew<ShaderExportStreamAllocator>(table);
     ENSURE(shaderExportStreamAllocator->Install(), "Failed to install stream allocator");
 
     // Install the stream descriptor allocator
-    table->exportDescriptorAllocator = table->registry->AddNew<ShaderExportDescriptorAllocator>(table);
+    table->exportDescriptorAllocator = table->registry.AddNew<ShaderExportDescriptorAllocator>(table);
     ENSURE(table->exportDescriptorAllocator->Install(), "Failed to install stream descriptor allocator");
 
     // Install the streamer
-    table->exportStreamer = table->registry->AddNew<ShaderExportStreamer>(table);
+    table->exportStreamer = table->registry.AddNew<ShaderExportStreamer>(table);
     ENSURE(table->exportStreamer->Install(), "Failed to install export streamer allocator");
 
     // Install the shader compiler
-    auto shaderCompiler = table->registry->AddNew<ShaderCompiler>();
+    auto shaderCompiler = table->registry.AddNew<ShaderCompiler>(table);
     ENSURE(shaderCompiler->Install(), "Failed to install shader compiler");
 
     // Install the pipeline compiler
-    auto pipelineCompiler = table->registry->AddNew<PipelineCompiler>();
+    auto pipelineCompiler = table->registry.AddNew<PipelineCompiler>(table);
     ENSURE(pipelineCompiler->Install(), "Failed to install shader compiler");
 
     // Install the instrumentation controller
-    table->instrumentationController = table->registry->New<InstrumentationController>(table);
+    table->instrumentationController = table->registry.New<InstrumentationController>(table);
     ENSURE(table->instrumentationController->Install(), "Failed to install shader compiler");
 
     // Create queue states
@@ -207,9 +224,30 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
     // Get table
     auto table = DeviceDispatchTable::Get(GetInternalTable(device));
 
-    // Pass down callchain
-    table->next_vkDestroyDevice(device, pAllocator);
+    // Ensure all work is done
+    table->next_vkDeviceWaitIdle(device);
+
+    // Process all remaining work
+    table->exportStreamer->Process();
+
+    // Manual uninstalls
+    table->instrumentationController->Uninstall();
+
+    // Release all features
+    table->features.clear();
+
+    // Destroy all queue states
+    for (QueueState* queueState : table->states_queue.GetLinear()) {
+        destroy(queueState, table->allocators);
+    }
+
+    // Copy destroy
+    PFN_vkDestroyDevice next_vkDestroyDevice = table->next_vkDestroyDevice;
 
     // Release table
+    //  ? Done before device destruction for references
     delete table;
+
+    // Pass down callchain
+    next_vkDestroyDevice(device, pAllocator);
 }

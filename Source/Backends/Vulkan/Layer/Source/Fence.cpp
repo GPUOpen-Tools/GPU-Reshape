@@ -16,6 +16,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateFence(VkDevice device, const VkFence
     state->table = table;
     state->object = *pFence;
 
+    // External user
+    state->AddUser();
+
     // Store lookup
     table->states_fence.Add(*pFence, state);
 

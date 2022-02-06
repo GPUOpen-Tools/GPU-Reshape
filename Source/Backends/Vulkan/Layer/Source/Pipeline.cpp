@@ -20,6 +20,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
         state->object = pPipelines[i];
         state->createInfoDeepCopy.DeepCopy(table->allocators, pCreateInfos[i]);
 
+        // External user
+        state->AddUser();
+
         // Add a reference to the layout
         state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
         state->layout->AddUser();
@@ -65,6 +68,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
         state->object = pPipelines[i];
         state->createInfoDeepCopy.DeepCopy(table->allocators, pCreateInfos[i]);
 
+        // External user
+        state->AddUser();
+
         // Add a reference to the layout
         state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
         state->layout->AddUser();
@@ -99,7 +105,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
     state->object = nullptr;
 
     // Free the layout
-    state->layout->ReleaseUser();
+    destroyRef(state->layout, table->allocators);
 
     // Remove logical object from lookup
     //  Logical reference to state is invalid after this function
@@ -115,6 +121,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
 PipelineState::~PipelineState() {
     // Remove state lookup
     table->states_pipeline.RemoveState(this);
+
+    // Release all instrumented objects
+    for (auto&& kv : instrumentObjects) {
+        table->next_vkDestroyPipeline(table->object, kv.second, nullptr);
+    }
 
     // Release all references to the shader modules
     for (ShaderModuleState* module : shaderModules) {

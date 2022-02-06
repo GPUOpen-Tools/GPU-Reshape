@@ -16,7 +16,7 @@
 
 bool ResourceBoundsFeature::Install() {
     // Must have the export host
-    auto* exportHost = registry->Get<IShaderExportHost>();
+    auto exportHost = registry->Get<IShaderExportHost>();
     if (!exportHost) {
         return false;
     }

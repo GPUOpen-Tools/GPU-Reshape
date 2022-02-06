@@ -13,7 +13,7 @@
 #include <string>
 #include <map>
 
-class PluginResolver : public IComponent {
+class PluginResolver : public TComponent<PluginResolver> {
 public:
     COMPONENT(PluginResolver);
 

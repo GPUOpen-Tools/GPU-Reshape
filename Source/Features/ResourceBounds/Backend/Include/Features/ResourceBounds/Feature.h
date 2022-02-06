@@ -1,5 +1,8 @@
 #pragma once
 
+// Common
+#include <Common/ComRef.h>
+
 // Backend
 #include <Backend/IFeature.h>
 #include <Backend/IShaderFeature.h>
@@ -29,6 +32,8 @@ public:
     /// Interface querying
     void *QueryInterface(ComponentID id) override {
         switch (id) {
+            case IComponent::kID:
+                return static_cast<IComponent*>(this);
             case IFeature::kID:
                 return static_cast<IFeature*>(this);
             case IShaderFeature::kID:
@@ -40,7 +45,7 @@ public:
 
 private:
     /// Shader SGUID
-    IShaderSGUIDHost* sguidHost{nullptr};
+    ComRef<IShaderSGUIDHost> sguidHost{nullptr};
 
     /// Export id for this feature
     ShaderExportID exportID{};

@@ -15,7 +15,7 @@ $INITS
     }
 
     void Handle(const MessageStream *streams, uint32_t count) override {
-        auto* sguidHost = registry->Get<IShaderSGUIDHost>();
+        auto sguidHost = registry->Get<ShaderSGUIDHostListener>();
 
         for (uint32_t i = 0; i < count; i++) {
             ConstMessageStreamView<$MESSAGE_TYPEMessage> view(streams[i]);

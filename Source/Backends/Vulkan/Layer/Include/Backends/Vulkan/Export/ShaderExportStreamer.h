@@ -2,6 +2,7 @@
 
 // Common
 #include <Common/IComponent.h>
+#include <Common/ComRef.h>
 
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
@@ -21,11 +22,13 @@ struct FenceState;
 struct QueueState;
 class IBridge;
 
-class ShaderExportStreamer : public IComponent {
+class ShaderExportStreamer : public TComponent<ShaderExportStreamer> {
 public:
     COMPONENT(ShaderExportStreamer);
 
     ShaderExportStreamer(DeviceDispatchTable* table);
+
+    ~ShaderExportStreamer();
 
     bool Install();
 
@@ -126,11 +129,8 @@ private:
     ObjectPool<ShaderExportStreamSegment> segmentPool;
     ObjectPool<ShaderExportQueueState> queuePool;
 
-    DeviceAllocator* deviceAllocator{nullptr};
-
-    ShaderExportDescriptorAllocator* descriptorAllocator{nullptr};
-
-    ShaderExportStreamAllocator* streamAllocator{nullptr};
-
-    IBridge* bridge{nullptr};
+    ComRef<DeviceAllocator> deviceAllocator{nullptr};
+    ComRef<ShaderExportDescriptorAllocator> descriptorAllocator{nullptr};
+    ComRef<ShaderExportStreamAllocator> streamAllocator{nullptr};
+    ComRef<IBridge> bridge{nullptr};
 };

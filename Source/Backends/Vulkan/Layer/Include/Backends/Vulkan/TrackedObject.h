@@ -103,9 +103,14 @@ struct TrackedObject {
 
         // Relocate entry with back
         if (entry.slotRelocation != linear.size() - 1) {
+            MapEntry& newEntry = uidMap.at(linear.back()->uid);
+            newEntry.slotRelocation = entry.slotRelocation;
+
             std::swap(linear[entry.slotRelocation], linear.back());
-            linear.pop_back();
         }
+
+        // Remove linear view
+        linear.pop_back();
 
         // Remove from map
         uidMap.erase(state->uid);
