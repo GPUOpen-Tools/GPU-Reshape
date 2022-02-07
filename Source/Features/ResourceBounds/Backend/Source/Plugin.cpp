@@ -39,4 +39,5 @@ DLL_EXPORT_C void PLUGIN_UNINSTALL(Registry* registry) {
 
     // Uninstall the feature
     host->Deregister(feature);
+    feature.Release();
 }

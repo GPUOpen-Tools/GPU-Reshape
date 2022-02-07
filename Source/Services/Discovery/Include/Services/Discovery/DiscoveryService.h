@@ -30,8 +30,8 @@ private:
     Registry registry;
 
     /// Shared listener host
-    IDiscoveryHost* host{nullptr};
+    ComRef<IDiscoveryHost> host{nullptr};
 
     /// Shared resolver
-    PluginResolver* resolver{nullptr};
+    ComRef<PluginResolver> resolver{nullptr};
 };

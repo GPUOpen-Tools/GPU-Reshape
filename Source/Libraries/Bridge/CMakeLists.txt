@@ -1,12 +1,19 @@
 
 #----- Bridge -----#
 
+# Generate the schemas
+Project_AddSchema(GeneratedLib Schemas/PingPong.xml Include/Schemas)
+
 add_library(
     Libraries.Bridge STATIC
     Source/MemoryBridge.cpp
     Source/NetworkBridge.cpp
+    Source/Network/PingPongListener.cpp
     Source/Log/LogConsoleListener.cpp
     Source/Log/LogBuffer.cpp
+
+    # Generated
+    ${GeneratedLib}
 )
 
 # IDE source discovery

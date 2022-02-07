@@ -5,6 +5,10 @@
 // Bridge
 #include <Bridge/MemoryBridge.h>
 #include <Bridge/NetworkBridge.h>
+#include <Bridge/Network/PingPongListener.h>
+
+// Schemas
+#include <Schemas/PingPong.h>
 
 // Common
 #include <Common/Dispatcher/Dispatcher.h>
@@ -38,6 +42,9 @@ bool Environment::Install(const EnvironmentInfo &info) {
         if (!network->InstallServer(EndpointConfig{})) {
             return false;
         }
+
+        // Add default ping pong listener
+        network->Register(PingPongMessage::kID, registry.New<PingPongListener>(network.GetUnsafe()));
     }
 
     // Install feature host

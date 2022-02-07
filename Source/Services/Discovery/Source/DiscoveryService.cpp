@@ -6,10 +6,6 @@
 
 DiscoveryService::~DiscoveryService() {
     resolver->Uninstall();
-
-    // Cleanup registry
-    registry.RemoveDestroy(resolver);
-    registry.RemoveDestroy(host);
 }
 
 bool DiscoveryService::Install() {
@@ -45,11 +41,11 @@ bool DiscoveryService::InstallListeners() {
     host->Enumerate(&listenerCount, nullptr);
 
     // Get all listeners
-    std::vector<IDiscoveryListener*> listeners(listenerCount);
+    std::vector<ComRef<IDiscoveryListener>> listeners(listenerCount);
     host->Enumerate(&listenerCount, listeners.data());
 
     // Install all
-    for (IDiscoveryListener* listener : listeners) {
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
         if (!listener->Install()) {
             return false;
         }

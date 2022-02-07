@@ -9,7 +9,7 @@
 // Vulkan
 #include <Backends/Vulkan/VulkanDiscoveryListener.h>
 
-static VulkanDiscoveryListener* listener{nullptr};
+static ComRef<VulkanDiscoveryListener> listener{nullptr};
 
 DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
     info->name = "VulkanDiscovery";
@@ -17,7 +17,7 @@ DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
 }
 
 DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
-    auto* host = registry->Get<IDiscoveryHost>();
+    auto host = registry->Get<IDiscoveryHost>();
     if (!host) {
         return false;
     }
@@ -31,12 +31,12 @@ DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
 }
 
 DLL_EXPORT_C void PLUGIN_UNINSTALL(Registry* registry) {
-    auto* host = registry->Get<IDiscoveryHost>();
+    auto host = registry->Get<IDiscoveryHost>();
     if (!host) {
         return;
     }
 
     // Uninstall the listener
     host->Deregister(listener);
-    destroy(listener);
+    listener.Release();
 }
