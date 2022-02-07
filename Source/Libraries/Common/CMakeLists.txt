@@ -4,6 +4,7 @@ add_library(
     Libraries.Common STATIC
     Source/Assert.cpp
     Source/Path.cpp
+    Source/CrashHandler.cpp
     Source/Plugin/PluginResolver.cpp
 
     # For IDE's

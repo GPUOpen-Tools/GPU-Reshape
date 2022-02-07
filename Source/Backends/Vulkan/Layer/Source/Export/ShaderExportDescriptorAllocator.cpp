@@ -136,6 +136,7 @@ ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate() {
 
     // Attempt to allocate a set
     if (table->next_vkAllocateDescriptorSets(table->object, &allocateInfo, &info.set) != VK_SUCCESS) {
+        ASSERT(false, "Failed to allocate descriptor sets");
         return {};
     }
 
@@ -184,7 +185,7 @@ ShaderExportDescriptorAllocator::PoolInfo &ShaderExportDescriptorAllocator::Find
     // Pool size, both the counter and stream are uniform texel buffers, one of each (hence x2)
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-    poolSize.descriptorCount = std::max(1u, exportBound * 2);
+    poolSize.descriptorCount = std::max(1u, exportBound * 2) * setsPerPool;
 
     // Descriptor pool create info
     VkDescriptorPoolCreateInfo createInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};

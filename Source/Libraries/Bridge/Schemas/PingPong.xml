@@ -1,0 +1,5 @@
+<schema>
+    <message name="PingPong">
+        <field name="timeStamp" type="uint64"/>
+    </message>
+</schema>

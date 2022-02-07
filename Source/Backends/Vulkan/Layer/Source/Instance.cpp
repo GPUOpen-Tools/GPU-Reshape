@@ -5,6 +5,7 @@
 // Common
 #include "Common/Dispatcher/Dispatcher.h"
 #include <Common/Registry.h>
+#include <Common/CrashHandler.h>
 
 // Backend
 #include <Backend/EnvironmentInfo.h>
@@ -19,15 +20,6 @@
 
 // Bridge
 #include <Bridge/IBridge.h>
-
-// Debugging
-#ifdef _WIN32
-#   ifndef NDEBUG
-#       define WIN32_EXCEPTION_HANDLER
-#       include <iostream>
-#       include <Windows.h>
-#   endif
-#endif
 
 /// Find a structure type
 template<typename T, typename U>
@@ -63,34 +55,10 @@ VkResult VKAPI_PTR Hook_vkEnumerateInstanceExtensionProperties(uint32_t *pProper
     return VK_SUCCESS;
 }
 
-#ifdef WIN32_EXCEPTION_HANDLER
-LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo) {
-    // Create console
-    AllocConsole();
-    freopen("CONIN$", "r", stdin);
-    freopen("CONOUT$", "w", stdout);
-    freopen("CONOUT$", "w", stderr);
-
-    // Notify user
-    std::cerr << "Layer crashed, waiting for debugger... "  << std::flush;
-
-    // Wait for debugger
-    while (!IsDebuggerPresent()) {
-        Sleep(100);
-    }
-
-    // Notify user
-    std::cerr << "Attached."  << std::endl;
-
-    // Break!
-    DebugBreak();
-    return EXCEPTION_CONTINUE_SEARCH;
-}
-#endif
-
 VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkInstance *pInstance) {
-#ifdef WIN32_EXCEPTION_HANDLER
-    SetUnhandledExceptionFilter(TopLevelExceptionHandler);
+    // Add crash handler for debugging
+#ifndef NDEBUG
+    SetDebugCrashHandler();
 #endif
 
     auto chainInfo = static_cast<VkLayerInstanceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));

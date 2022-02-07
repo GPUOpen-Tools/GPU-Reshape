@@ -12,7 +12,7 @@ SetSourceDiscovery(Services.Discovery Include Source)
 target_include_directories(Services.Discovery PUBLIC Include)
 
 # Dependencies
-target_link_libraries(Services.Discovery PUBLIC Libraries.Discovery Libraries.Bridge)
+target_link_libraries(Services.Discovery PUBLIC Libraries.Discovery Libraries.Bridge Libraries.Backend)
 
 #------ Standalone ------#
 
