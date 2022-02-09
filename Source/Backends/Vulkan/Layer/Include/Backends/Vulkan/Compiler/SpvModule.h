@@ -106,7 +106,7 @@ private:
         }
 
         uint32_t WordCount() const {
-            return end - code;
+            return static_cast<uint32_t>(end - code);
         }
 
         uint32_t Good() const {
@@ -114,7 +114,7 @@ private:
         }
 
         uint32_t Source() const {
-            return code - start;
+            return static_cast<uint32_t>(code - start);
         }
 
         /// Code pointers

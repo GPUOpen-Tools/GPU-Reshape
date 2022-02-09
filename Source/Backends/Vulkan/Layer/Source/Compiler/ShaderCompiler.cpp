@@ -70,7 +70,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         // Parse the module
         bool result = job.state->spirvModule->ParseModule(
             job.state->createInfoDeepCopy.createInfo.pCode,
-            job.state->createInfoDeepCopy.createInfo.codeSize / 4u
+            static_cast<uint32_t>(job.state->createInfoDeepCopy.createInfo.codeSize / 4u)
         );
 
         // Failed?
@@ -90,7 +90,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Pass through all features
     for (size_t i = 0; i < shaderFeatures.size(); i++) {
-        if (!(job.instrumentationKey.featureBitSet & (1u << i))) {
+        if (!(job.instrumentationKey.featureBitSet & (1ull << i))) {
             continue;
         }
 
@@ -112,7 +112,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Recompile the program
     if (!module->Recompile(
         job.state->createInfoDeepCopy.createInfo.pCode,
-        job.state->createInfoDeepCopy.createInfo.codeSize / 4u,
+        static_cast<uint32_t>(job.state->createInfoDeepCopy.createInfo.codeSize / 4u),
         spvJob
     )) {
         return;

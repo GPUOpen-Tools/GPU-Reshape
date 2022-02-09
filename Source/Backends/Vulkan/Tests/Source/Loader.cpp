@@ -113,9 +113,9 @@ void Loader::CreateInstance() {
     instanceCreateInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pNext                   = &gpuOpenInfo;
     instanceCreateInfo.pApplicationInfo        = &applicationInfo;
-    instanceCreateInfo.enabledExtensionCount   = enabledInstanceExtensions.size();
+    instanceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledInstanceExtensions.size());
     instanceCreateInfo.ppEnabledExtensionNames = enabledInstanceExtensions.data();
-    instanceCreateInfo.enabledLayerCount       = enabledInstanceLayers.size();
+    instanceCreateInfo.enabledLayerCount       = static_cast<uint32_t>(enabledInstanceLayers.size());
     instanceCreateInfo.ppEnabledLayerNames     = enabledInstanceLayers.data();
     REQUIRE(vkCreateInstance(&instanceCreateInfo, nullptr, &instance) == VK_SUCCESS);
 
@@ -192,7 +192,7 @@ void Loader::CreateDevice() {
         // Valid candidate for Graphics & Compute?
         if (family.queueCount && (family.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)))
         {
-            primaryQueueInfo.queueFamilyIndex = i;
+            primaryQueueInfo.queueFamilyIndex = static_cast<uint32_t>(i);
         }
     }
 
@@ -203,7 +203,7 @@ void Loader::CreateDevice() {
     // Create the device
     VkDeviceCreateInfo deviceCreateInfo{};
     deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.enabledExtensionCount   = enabledDeviceExtensions.size();
+    deviceCreateInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledDeviceExtensions.size());
     deviceCreateInfo.ppEnabledExtensionNames = enabledDeviceExtensions.data();
     deviceCreateInfo.queueCreateInfoCount    = 1;
     deviceCreateInfo.pEnabledFeatures        = &enabledFeatures;

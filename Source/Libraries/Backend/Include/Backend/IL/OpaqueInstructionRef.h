@@ -3,7 +3,7 @@
 #include <cstdint>
 
 namespace IL {
-    class BasicBlock;
+    struct BasicBlock;
     struct RelocationOffset;
 
     /// Immutable opaque instruction reference

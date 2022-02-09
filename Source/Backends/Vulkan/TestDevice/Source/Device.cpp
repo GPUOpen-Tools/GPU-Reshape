@@ -119,9 +119,9 @@ void Device::CreateInstance() {
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pNext = &gpuOpenInfo;
     instanceCreateInfo.pApplicationInfo = &applicationInfo;
-    instanceCreateInfo.enabledExtensionCount = enabledExtensions.size();
+    instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size());
     instanceCreateInfo.ppEnabledExtensionNames = enabledExtensions.data();
-    instanceCreateInfo.enabledLayerCount = enabledLayers.size();
+    instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(enabledLayers.size());
     instanceCreateInfo.ppEnabledLayerNames = enabledLayers.data();
     REQUIRE(vkCreateInstance(&instanceCreateInfo, nullptr, &instance) == VK_SUCCESS);
 
@@ -211,11 +211,11 @@ void Device::CreateDevice() {
 
         // Test candidates
         if (family.queueCount && (family.queueFlags & kGraphicsFlags) == kGraphicsFlags) {
-            graphicsQueue.family = i;
+            graphicsQueue.family = static_cast<uint32_t>(i);
         } else if (family.queueCount && (family.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
-            computeQueue.family = i;
+            computeQueue.family = static_cast<uint32_t>(i);
         } else if (family.queueCount && (family.queueFlags & VK_QUEUE_TRANSFER_BIT)) {
-            transferQueue.family = i;
+            transferQueue.family = static_cast<uint32_t>(i);
         }
     }
 
@@ -259,7 +259,7 @@ void Device::CreateDevice() {
     deviceCreateInfo.ppEnabledExtensionNames = nullptr;
     deviceCreateInfo.queueCreateInfoCount = 1;
     deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
-    deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
+    deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
     REQUIRE(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) == VK_SUCCESS);
 
@@ -471,7 +471,7 @@ BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format
     // Attempt to create buffer view
     REQUIRE(vkCreateBufferView(device, &bufferViewInfo, nullptr, &resource.texelBuffer.view) == VK_SUCCESS);
 
-    return BufferID(ResourceID(resources.size() - 1));
+    return BufferID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
 }
 
 TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, void *data) {
@@ -560,7 +560,7 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
     REQUIRE(vkCreateImageView(device, &imageViewInfo, nullptr, &resource.texture.view) == VK_SUCCESS);
 
     // Texture id
-    TextureID id(ResourceID(resources.size() - 1));
+    TextureID id(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
 
     // Enqueue command
     UpdateCommand command;
@@ -607,13 +607,13 @@ ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_
     // Set layout create info
     VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
     descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptorLayoutInfo.bindingCount = bindings.size();
+    descriptorLayoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     descriptorLayoutInfo.pBindings = bindings.data();
 
     // Attempt to create
     REQUIRE(vkCreateDescriptorSetLayout(device, &descriptorLayoutInfo, nullptr, &info.layout) == VK_SUCCESS);
 
-    return Test::ResourceLayoutID(resourceLayouts.size() - 1);
+    return Test::ResourceLayoutID(static_cast<uint32_t>(resourceLayouts.size()) - 1);
 }
 
 ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceID *setResources, uint32_t count) {
@@ -708,7 +708,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
     // Submit writes
     vkUpdateDescriptorSets(device, count, writes.data(), 0, nullptr);
 
-    return Test::ResourceSetID(resourceSets.size() - 1);
+    return Test::ResourceSetID(static_cast<uint32_t>(resourceSets.size()) - 1);
 }
 
 PipelineID Device::CreateComputePipeline(const ResourceLayoutID* layouts, uint32_t layoutCount, const void *shaderCode, uint32_t shaderSize) {
@@ -737,7 +737,7 @@ PipelineID Device::CreateComputePipeline(const ResourceLayoutID* layouts, uint32
 
     // Layout create info
     VkPipelineLayoutCreateInfo layoutInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-    layoutInfo.setLayoutCount = vkLayouts.size();
+    layoutInfo.setLayoutCount = static_cast<uint32_t>(vkLayouts.size());
     layoutInfo.pSetLayouts = vkLayouts.data();
 
     // Attempt to create layout
@@ -755,7 +755,7 @@ PipelineID Device::CreateComputePipeline(const ResourceLayoutID* layouts, uint32
     // Free module
     vkDestroyShaderModule(device, module, nullptr);
 
-    return Test::PipelineID(pipelines.size() - 1);
+    return Test::PipelineID(static_cast<uint32_t>(pipelines.size()) - 1);
 }
 
 CommandBufferID Device::CreateCommandBuffer(QueueType type) {
@@ -784,7 +784,7 @@ CommandBufferID Device::CreateCommandBuffer(QueueType type) {
     // Attempt to allocate the command buffer
     REQUIRE(vkAllocateCommandBuffers(device, &allocateInfo, &info.commandBuffer) == VK_SUCCESS);
 
-    return Test::CommandBufferID(commandBuffers.size() - 1);
+    return Test::CommandBufferID(static_cast<uint32_t>(commandBuffers.size()) - 1);
 }
 
 void Device::BeginCommandBuffer(CommandBufferID commandBuffer) {

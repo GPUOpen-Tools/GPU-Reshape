@@ -34,7 +34,7 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 std::filesystem::path CurrentModuleDirectory() {
 #if defined(_MSC_VER)
     wchar_t buffer[FILENAME_MAX]{};
-    char path[MAX_PATH];
+    char path[MAX_PATH]{};
     HMODULE hm = NULL;
 
     GetModuleFileNameW((HINSTANCE)&__ImageBase, buffer, FILENAME_MAX);

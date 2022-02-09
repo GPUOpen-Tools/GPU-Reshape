@@ -74,7 +74,7 @@ namespace IL {
 
         /// Allocation block
         struct RelocationAddressBlock {
-            RelocationOffset indices[kBlockSize];
+            RelocationOffset indices[kBlockSize]{};
             uint32_t head{0};
         };
 

@@ -18,5 +18,5 @@ struct Field {
     AttributeMap attributes;
 
     /// Source line
-    uint32_t line;
+    uint32_t line{};
 };

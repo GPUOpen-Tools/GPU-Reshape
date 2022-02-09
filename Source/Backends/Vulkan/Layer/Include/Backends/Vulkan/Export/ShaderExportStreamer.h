@@ -13,9 +13,9 @@
 #include <Common/Containers/TrivialObjectPool.h>
 
 // Forward declarations
-struct ShaderExportDescriptorAllocator;
-struct ShaderExportStreamAllocator;
-struct DeviceAllocator;
+class ShaderExportDescriptorAllocator;
+class ShaderExportStreamAllocator;
+class DeviceAllocator;
 struct DeviceDispatchTable;
 struct PipelineState;
 struct FenceState;

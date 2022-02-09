@@ -51,7 +51,7 @@ void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, const std::vec
     constexpr uint32_t kMaxBatchSize = 64;
 
     // The maximum number of jobs per worker
-    const uint32_t maxJobsPerWorker = jobs.size() / dispatcher->WorkerCount();
+    const uint32_t maxJobsPerWorker = static_cast<uint32_t>(jobs.size() / dispatcher->WorkerCount());
 
     // The ideal batch size, in case the batch size is small, take the max number of jobs per worker
     const uint32_t batchSize = std::max(1u, std::min(maxJobsPerWorker, kMaxBatchSize));
@@ -103,7 +103,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     uint32_t stageCount = 0;
     for (uint32_t i = 0; i < batch.count; i++) {
         PipelineJob &job = batch.jobs[i];
-        stageCount += job.state->shaderModules.size();
+        stageCount += static_cast<uint32_t>(job.state->shaderModules.size());
     }
 
     // Allocate stage infos

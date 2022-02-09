@@ -73,7 +73,7 @@ public:
 
     /// Get the number of workers
     uint32_t WorkerCount() const {
-        return workers.size();
+        return static_cast<uint32_t>(workers.size());
     }
 
 private:

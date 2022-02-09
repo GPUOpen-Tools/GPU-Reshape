@@ -261,7 +261,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
     }
 
     // Submit all jobs
-    pipelineCompiler->AddBatch(table, jobs, batch->dirtyPipelines.size(), bucket);
+    pipelineCompiler->AddBatch(table, jobs, static_cast<uint32_t>(batch->dirtyPipelines.size()), bucket);
 
     // Free up
     destroy(jobs, registry->GetAllocators());

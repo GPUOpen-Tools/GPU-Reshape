@@ -61,7 +61,7 @@ void OrderedMessageStorage::ConsumeStreams(uint32_t *count, MessageStream *strea
 
         storage.erase(storage.begin(), storage.begin() + *count);
     } else if (count) {
-        *count = storage.size();
+        *count = static_cast<uint32_t>(storage.size());
     }
 }
 
@@ -88,5 +88,5 @@ void OrderedMessageStorage::Free(const MessageStream &stream) {
 
 uint32_t OrderedMessageStorage::StreamCount() {
     std::lock_guard guard(mutex);
-    return storage.size();
+    return static_cast<uint32_t>(storage.size());
 }
