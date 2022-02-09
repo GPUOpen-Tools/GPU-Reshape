@@ -33,16 +33,16 @@ inline void ApplyFeatureHook(uint64_t featureBitSet, typename T::Hook featureHoo
         return;
 
     // Current mask
-    unsigned long bitMask = featureBitSet;
+    uint64_t bitMask = featureBitSet;
 
     // Scan for all set hooks
     unsigned long index;
-    while (_BitScanReverse(&index, bitMask)) {
+    while (_BitScanReverse64(&index, bitMask)) {
         // Forward the hook to the appropriate handler
         T{featureHooks[index]}(args...);
 
         // Next!
-        bitMask &= ~(1ul << index);
+        bitMask &= ~(1ull << index);
     }
 }
 

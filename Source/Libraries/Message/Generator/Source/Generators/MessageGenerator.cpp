@@ -14,6 +14,8 @@ bool MessageGenerator::Generate(const Message &message, Language language, const
         case Language::CS:
             return GenerateCS(message, out);
     }
+
+    return false;
 }
 
 bool MessageGenerator::GenerateCPP(const Message &message, const MessageStream &out) {
@@ -82,7 +84,7 @@ bool MessageGenerator::GenerateCPP(const Message &message, const MessageStream &
             if (bits) {
                 int32_t bitCount = std::atoi(bits->value.c_str());
 
-                const uint32_t bitSize = bitFieldType.size * 8;
+                const uint32_t bitSize = static_cast<uint32_t>(bitFieldType.size) * 8;
 
                 if (!bitFieldOffset || bitFieldOffset % bitSize == 0) {
                     cxxSizeType += bitFieldType.size;
@@ -91,8 +93,8 @@ bool MessageGenerator::GenerateCPP(const Message &message, const MessageStream &
 
                 out.members << "\t" << bitFieldType.cxxType << " " << field.name << " : " << bitCount << ";\n";
 
-                const uint32_t bitElementBefore = bitFieldOffset / bitFieldType.size;
-                const uint32_t bitElementAfter = bitFieldOffset / bitFieldType.size;
+                const uint32_t bitElementBefore = static_cast<uint32_t>(bitFieldOffset / bitFieldType.size);
+                const uint32_t bitElementAfter = static_cast<uint32_t>(bitFieldOffset / bitFieldType.size);
 
                 if (bitElementAfter > bitElementBefore && (bitFieldOffset && bitFieldOffset % bitSize != 0)) {
                     std::cerr << "Malformed command in line: " << field.line << ", bit field size exceeded type size of " << bitFieldType.size << std::endl;

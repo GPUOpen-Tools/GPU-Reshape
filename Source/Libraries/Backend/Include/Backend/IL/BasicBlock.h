@@ -193,7 +193,7 @@ namespace IL {
 
             /// Debug revision for iterate after modified validation
 #ifndef NDEBUG
-            uint32_t debugRevision;
+            uint32_t debugRevision{};
 #endif
         };
 
@@ -341,7 +341,7 @@ namespace IL {
 
             /// Debug revision for iterate after modified validation
 #ifndef NDEBUG
-            uint32_t debugRevision;
+            uint32_t debugRevision{};
 #endif
         };
 
@@ -425,7 +425,7 @@ namespace IL {
             InstructionRef<> ref;
             ref.basicBlock = this;
             ref.relocationOffset = relocationAllocator.Allocate();
-            ref.relocationOffset->offset = offset;
+            ref.relocationOffset->offset = static_cast<uint32_t>(offset);
 
             relocationTable.push_back(ref.relocationOffset);
 
@@ -439,14 +439,14 @@ namespace IL {
             debugRevision++;
 #endif
 
-            return Offset(ref.relocationOffset, relocationTable.size() - 1);
+            return Offset(ref.relocationOffset, static_cast<uint32_t>(relocationTable.size()) - 1);
         }
 
         /// Append an instruction
         /// \param instruction the instruction to be inserted
         /// \return inserted reference
         Iterator Append(const Instruction* instruction) {
-            return Append(instruction, IL::GetSize(instruction->opCode));
+            return Append(instruction, static_cast<uint32_t>(IL::GetSize(instruction->opCode)));
         }
 
         /// Append an instruction
@@ -475,7 +475,7 @@ namespace IL {
             InstructionRef<T> ref;
             ref.basicBlock = this;
             ref.relocationOffset = relocationAllocator.Allocate();
-            ref.relocationOffset->offset = offset;
+            ref.relocationOffset->offset = static_cast<uint32_t>(offset);
 
             if (instr.result != InvalidID) {
                 map.AddInstruction(ref, instr.result);
@@ -610,7 +610,7 @@ namespace IL {
         /// \return the terminator instruction
         Iterator GetTerminator() {
             ASSERT(count, "No instructions");
-            return Offset(relocationTable.back(), relocationTable.size() - 1);
+            return Offset(relocationTable.back(), static_cast<uint32_t>(relocationTable.size()) - 1);
         }
 
         /// Mark this basic block as dirty
@@ -743,7 +743,7 @@ namespace IL {
 
             // Get the relocation index
             auto it = relocationTable.insert(relocationIt, offset);
-            uint32_t index = it - relocationTable.begin();
+            uint32_t index = static_cast<uint32_t>(it - relocationTable.begin());
 
             // Resumarrize from the index
             ResummarizeRelocationTable(offset, index);
@@ -758,7 +758,7 @@ namespace IL {
             ASSERT(relocationIt != relocationTable.end(), "Missing relocation offset");
 
             // Get the relocation index
-            uint32_t index = relocationIt - relocationTable.begin();
+            uint32_t index = static_cast<uint32_t>(relocationIt - relocationTable.begin());
 
             // Resumarrize from the index
             ResummarizeRelocationTable(offset, index);
@@ -771,7 +771,7 @@ namespace IL {
         void ResummarizeRelocationTable(const RelocationOffset* offset, uint32_t relocationIndex) {
             for (auto it = Offset(offset, relocationIndex); it != end(); it++) {
                 // TODO: Stop when the offset is the same! (Not guaranteed atm, for the future)
-                relocationTable[it.relocationIndex]->offset = it.ptr - data.data();
+                relocationTable[it.relocationIndex]->offset = static_cast<uint32_t>(it.ptr - data.data());
             }
         }
 
@@ -779,7 +779,7 @@ namespace IL {
         void ResummarizeRelocationTable() {
             for (auto it = begin(); it != end(); it++) {
                 // TODO: Stop when the offset is the same! (Not guaranteed atm, for the future)
-                relocationTable[it.relocationIndex]->offset = it.ptr - data.data();
+                relocationTable[it.relocationIndex]->offset = static_cast<uint32_t>(it.ptr - data.data());
             }
         }
 

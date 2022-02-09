@@ -7,9 +7,14 @@
 #include <cstring>
 #include <string_view>
 
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif
+
 /// Represents an inline message indirection
 template<typename T>
-struct ALIGN_TO(4) MessagePtr {
+struct ALIGN_PACK MessagePtr {
     uint64_t thisOffset;
 
     T* Get() {
@@ -21,7 +26,7 @@ static_assert(sizeof(MessagePtr<void>) == 8, "Malformed message pointer size");
 
 /// Represents an inline message array
 template<typename T>
-struct ALIGN_TO(4) MessageArray {
+struct ALIGN_PACK MessageArray {
     uint64_t thisOffset;
     uint64_t count;
 
@@ -46,7 +51,7 @@ struct ALIGN_TO(4) MessageArray {
 
 static_assert(sizeof(MessageArray<uint32_t>) == 16, "Malformed message array size");
 
-struct ALIGN_TO(4) MessageString {
+struct ALIGN_PACK MessageString {
     MessageString& operator=(const char* str) {
         std::memcpy(data.Get(), str, data.count * sizeof(char));
         return *this;
@@ -70,3 +75,8 @@ struct ALIGN_TO(4) MessageString {
 };
 
 static_assert(sizeof(MessageString) == 16, "Malformed message string size");
+
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif

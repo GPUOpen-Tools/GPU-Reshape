@@ -1,12 +1,25 @@
 /* Generated */
 
+// Common
 #include <Common/Align.h>
+
+// Message
 #include <Message/MessageStream.h>
 #include <Message/MessageContainers.h>
 #include <Message/MessageSubStream.h>
+
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif
 
 $HEADER
 
 $MESSAGES
 
 $FOOTER
+
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif

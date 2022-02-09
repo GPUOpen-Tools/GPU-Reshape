@@ -18,7 +18,7 @@
 // Forward declarations
 class Registry;
 class Dispatcher;
-class DispatcherBucket;
+struct DispatcherBucket;
 struct DeviceDispatchTable;
 struct MessageSubStream;
 struct MessageStream;

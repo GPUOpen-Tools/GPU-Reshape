@@ -275,7 +275,7 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
         // Copy into stream
         MessageStream messageStream;
         messageStream.SetSchema(streamInfo.typeInfo.messageSchema);
-        messageStream.SetData(stream, size, size / streamInfo.typeInfo.typeSize);
+        messageStream.SetData(stream, size, static_cast<uint32_t>(size / streamInfo.typeInfo.typeSize));
 
         // Add output
         output->AddStream(messageStream);
