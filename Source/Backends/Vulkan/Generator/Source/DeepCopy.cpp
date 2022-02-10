@@ -331,8 +331,12 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
             if (canBeNull) {
                 indent--;
 
-                state.byteSize <<  Pad(indent) << "}\n";
-                state.deepCopy <<  Pad(indent) << "}\n";
+                state.byteSize << Pad(indent) << "}\n";
+
+                // If not specified, set mutable state to nullptr
+                state.deepCopy << Pad(indent) << "} else {\n";
+                state.deepCopy << Pad(indent + 1) << destAccessorPrefix << memberName->GetText() << " = nullptr;\n";
+                state.deepCopy << Pad(indent) << "}\n";
             }
         } else if (isArray) {
             // POD array copy
