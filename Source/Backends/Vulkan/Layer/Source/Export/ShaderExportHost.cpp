@@ -14,12 +14,12 @@ void ShaderExportHost::Enumerate(uint32_t *count, ShaderExportID *out) {
             out[i] = i;
         }
     } else {
-        *count = exports.size();
+        *count = static_cast<uint32_t>(exports.size());
     }
 }
 
 uint32_t ShaderExportHost::GetBound() {
-    return exports.size();
+    return static_cast<uint32_t>(exports.size());
 }
 
 ShaderExportTypeInfo ShaderExportHost::GetTypeInfo(ShaderExportID id) {

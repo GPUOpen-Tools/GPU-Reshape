@@ -16,7 +16,7 @@ namespace IL {
         /// \return
         ID AllocID() {
             map.emplace_back();
-            return map.size() - 1;
+            return static_cast<ID>(map.size() - 1);
         }
 
         /// Set the number of bound ids
@@ -31,7 +31,7 @@ namespace IL {
 
         /// Get the maximum id
         ID GetMaxID() const {
-            return map.size();
+            return static_cast<ID>(map.size());
         }
 
         /// Add a mapped instruction

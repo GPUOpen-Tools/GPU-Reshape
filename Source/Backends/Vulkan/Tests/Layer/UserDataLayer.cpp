@@ -147,8 +147,8 @@ VkResult GetLayerProperties(uint32_t *pPropertyCount, VkLayerProperties *pProper
     }
 
     if(pProperties) {
-        strcpy(pProperties->layerName, LAYER_NAME);
-        strcpy(pProperties->description, "");
+        strcpy_s(pProperties->layerName, LAYER_NAME);
+        strcpy_s(pProperties->description, "");
         pProperties->implementationVersion = 1;
         pProperties->specVersion = VK_API_VERSION_1_0;
     }
@@ -277,7 +277,7 @@ VkResult VKAPI_PTR CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceC
                 continue;
 
             table->dispatchIndirectFeatureSetMany[i] = table->feature;
-            table->dispatchIndirectFeatureSetBitsMany |= (1 << i);
+            table->dispatchIndirectFeatureSetBitsMany |= (1ull << i);
         }
 
         table->dispatchIndirectFeatureSetBitsManyFewEnabled |= (1 << 4);
@@ -403,13 +403,13 @@ VKAPI_ATTR void VKAPI_CALL CmdDispatchIndirect(VkCommandBuffer commandBuffer, Vk
             // Vector, bit loop
             if (wrapped->table->dispatchIndirectFeatureSetBits)
             {
-                unsigned long bitMask = wrapped->table->dispatchIndirectFeatureSetBits;
+                uint64_t bitMask = wrapped->table->dispatchIndirectFeatureSetBits;
 
                 unsigned long index;
-                while (_BitScanReverse(&index, bitMask))
+                while (_BitScanReverse64(&index, bitMask))
                 {
                     wrapped->table->dispatchIndirectFeatureSet[index]->Foo();
-                    bitMask &= ~(1ul << index);
+                    bitMask &= ~(1ull << index);
                 }
             }
 
@@ -433,13 +433,13 @@ VKAPI_ATTR void VKAPI_CALL CmdDispatchIndirect(VkCommandBuffer commandBuffer, Vk
             // Vector, many features, bit loop
             if (wrapped->table->dispatchIndirectFeatureSetBitsMany)
             {
-                unsigned long bitMask = wrapped->table->dispatchIndirectFeatureSetBitsMany;
+                uint64_t bitMask = wrapped->table->dispatchIndirectFeatureSetBitsMany;
 
                 unsigned long index;
-                while (_BitScanReverse(&index, bitMask))
+                while (_BitScanReverse64(&index, bitMask))
                 {
                     wrapped->table->dispatchIndirectFeatureSetMany[index]->Foo();
-                    bitMask &= ~(1ul << index);
+                    bitMask &= ~(1ull << index);
                 }
             }
 
@@ -450,13 +450,13 @@ VKAPI_ATTR void VKAPI_CALL CmdDispatchIndirect(VkCommandBuffer commandBuffer, Vk
             // Vector, many features, few enabled, bit loop
             if (wrapped->table->dispatchIndirectFeatureSetBitsManyFewEnabled)
             {
-                unsigned long bitMask = wrapped->table->dispatchIndirectFeatureSetBitsManyFewEnabled;
+                uint64_t bitMask = wrapped->table->dispatchIndirectFeatureSetBitsManyFewEnabled;
 
                 unsigned long index;
-                while (_BitScanReverse(&index, bitMask))
+                while (_BitScanReverse64(&index, bitMask))
                 {
                     wrapped->table->dispatchIndirectFeatureSetMany[index]->Foo();
-                    bitMask &= ~(1ul << index);
+                    bitMask &= ~(1ull << index);
                 }
             }
 

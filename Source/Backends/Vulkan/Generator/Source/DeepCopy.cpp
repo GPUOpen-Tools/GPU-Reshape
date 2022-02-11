@@ -31,7 +31,7 @@ static std::string Pad(uint32_t n) {
 /// \param separators the accepted separators
 /// \return length of the token
 static uint32_t StrTokKeepSeparators(const char*& token, const char* separators) {
-    const uint32_t separatorLength = std::strlen(separators);
+    const uint32_t separatorLength = static_cast<uint32_t>(std::strlen(separators));
 
     // Start offset
     const char* start = token;
@@ -44,13 +44,13 @@ static uint32_t StrTokKeepSeparators(const char*& token, const char* separators)
                 ++token;
 
                 // Return size
-                return token - start;
+                return static_cast<uint32_t>(token - start);
             }
         }
     }
 
     // Return size
-    return token - start;
+    return static_cast<uint32_t>(token - start);
 }
 
 /// Parse a specification array length

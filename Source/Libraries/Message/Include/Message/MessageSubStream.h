@@ -22,7 +22,7 @@ struct MessageSubStream {
     /// \param out
     void Transfer(MessageStream& out) const {
         out.SetSchema(schema);
-        out.SetData(data.Get(), data.count, count);
+        out.SetData(data.Get(), data.count, static_cast<uint32_t>(count));
     }
 
     /// Swap this stream with another, schema must match

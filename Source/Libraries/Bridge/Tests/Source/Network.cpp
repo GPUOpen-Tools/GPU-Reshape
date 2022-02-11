@@ -32,10 +32,10 @@ public:
 TEST_CASE("Bridge.Network") {
     Registry registry;
 
-    auto* server = registry.New<NetworkBridge>();
+    auto server = registry.New<NetworkBridge>();
     REQUIRE(server->InstallServer(EndpointConfig{}));
 
-    auto* client = registry.New<NetworkBridge>();
+    auto client = registry.New<NetworkBridge>();
     REQUIRE(client->InstallClient(EndpointResolve {
         .ipvxAddress = "127.0.0.1"
     }));
@@ -43,10 +43,10 @@ TEST_CASE("Bridge.Network") {
     // Wait for the operations to finish (very dirty)
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    auto* serverListener = registry.New<Listener>();
+    auto serverListener = registry.New<Listener>();
     server->Register(LogMessage::kID, serverListener);
 
-    auto* clientListener = registry.New<Listener>();
+    auto clientListener = registry.New<Listener>();
     client->Register(LogMessage::kID, clientListener);
 
     MessageStream stream;

@@ -33,6 +33,16 @@ inline void* operator new[](size_t size, const Allocators& allocators) {
     return allocators.alloc(size);
 }
 
+/// Placement delete for exception handling
+inline void operator delete (void* data, const Allocators& allocators) {
+    return allocators.free(data);
+}
+
+/// Placement delete for exception handling
+inline void operator delete[](void* data, const Allocators& allocators) {
+    return allocators.free(data);
+}
+
 /// Destruction (can't overload deletion)
 template<typename T>
 inline void destroy(T* object, const Allocators& allocators) {

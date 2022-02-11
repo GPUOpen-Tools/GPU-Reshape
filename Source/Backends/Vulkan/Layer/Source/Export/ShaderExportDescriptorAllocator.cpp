@@ -196,7 +196,7 @@ ShaderExportDescriptorAllocator::PoolInfo &ShaderExportDescriptorAllocator::Find
 
     // Create new info
     PoolInfo &info = pools.emplace_back();
-    info.index = pools.size() - 1;
+    info.index = static_cast<uint32_t>(pools.size() - 1);
     info.freeSets = setsPerPool;
 
     // Attempt to create the pool
@@ -246,7 +246,7 @@ void ShaderExportDescriptorAllocator::Update(const ShaderExportSegmentDescriptor
         // All streams
         VkWriteDescriptorSet streamWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         streamWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        streamWrite.descriptorCount = segment->streams.size();
+        streamWrite.descriptorCount = static_cast<uint32_t>(segment->streams.size());
         streamWrite.pTexelBufferView = streamWrites;
         streamWrite.dstArrayElement = 0;
         streamWrite.dstSet = info.set;

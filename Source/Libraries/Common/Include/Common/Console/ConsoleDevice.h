@@ -45,7 +45,7 @@ public:
     }
 
     uint32_t ArgCount() {
-        return segments.empty() ? 0 : segments.size() - 1;
+        return segments.empty() ? 0 : static_cast<uint32_t>(segments.size()) - 1;
     }
 
     std::string Arg(uint32_t n) const {

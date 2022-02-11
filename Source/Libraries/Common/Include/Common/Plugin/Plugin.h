@@ -4,7 +4,7 @@
 #include <Common/Linkage.h>
 
 // Forward declarations
-struct Registry;
+class Registry;
 
 // Forward declarations
 struct PluginInfo;

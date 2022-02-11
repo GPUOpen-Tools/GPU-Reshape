@@ -63,7 +63,7 @@ void QueueState::PushCommandBuffer(VkCommandBuffer commandBuffer) {
 QueueState::~QueueState() {
     // Destroy the command buffers
     if (!commandBuffers.empty()) {
-        table->next_vkFreeCommandBuffers(table->object, commandPool, commandBuffers.size(), commandBuffers.data());
+        table->next_vkFreeCommandBuffers(table->object, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
     }
 
     // Destroy the pool
