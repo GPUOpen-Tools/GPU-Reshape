@@ -31,7 +31,7 @@ SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(SpvId id) {
     }
 
     if (sourceMappings[id] == InvalidSpvId) {
-        sourceMappings[id] = physicalSources.size();
+        sourceMappings[id] = static_cast<uint32_t>(physicalSources.size());
         return physicalSources.emplace_back();
     }
 
@@ -39,7 +39,7 @@ SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(SpvId id) {
 }
 
 SpvId SpvSourceMap::GetPendingSource() const {
-    return physicalSources.size() - 1;
+    return static_cast<SpvId>(physicalSources.size() - 1);
 }
 
 std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const {
@@ -52,7 +52,7 @@ std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const 
 
     // Find appropriate fragment
     for (const Fragment& fragment : source.fragments) {
-        uint32_t next = fragmentLineOffset + fragment.lineOffsets.size();
+        uint32_t next = fragmentLineOffset + static_cast<uint32_t>(fragment.lineOffsets.size());
 
         // Within bounds?
         if (line < next) {
@@ -63,7 +63,7 @@ std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const 
             const char* end = std::strchr(begin, '\n');
 
             // Determine length
-            uint32_t length = end ? (end - begin) : (fragment.source.length() - offset);
+            uint32_t length = static_cast<uint32_t>(end ? (end - begin) : (fragment.source.length() - offset));
 
             return std::string_view(begin, length);
         }

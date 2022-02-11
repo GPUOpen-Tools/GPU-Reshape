@@ -16,13 +16,13 @@ struct DispatcherBucket;
 struct DeviceDispatchTable;
 
 struct PipelineJob {
-    PipelineState* state;
+    PipelineState* state{ nullptr };
 
     /// TODO: Stack fallback
     ShaderModuleInstrumentationKey* shaderModuleInstrumentationKeys{nullptr};
 
     /// Pipeline specific feature bit set
-    uint64_t featureBitSet;
+    uint64_t featureBitSet{ 0 };
 };
 
 class PipelineCompiler : public TComponent<PipelineCompiler> {

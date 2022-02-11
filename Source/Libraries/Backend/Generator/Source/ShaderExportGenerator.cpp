@@ -31,6 +31,8 @@ bool ShaderExportGenerator::Generate(const Message &message, Language language, 
         case Language::CS:
             return GenerateCS(message, out);
     }
+
+    return false;
 }
 
 bool ShaderExportGenerator::GenerateCPP(const Message &message, const MessageStream &out) {
@@ -69,7 +71,7 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, const MessageStr
             auto bits = field.attributes.Get("bits");
 
             // Determine the size of this field
-            uint32_t bitSize = bits ? std::atoi(bits->value.c_str()) : (it->second.size * 8);
+            uint32_t bitSize = bits ? std::atoi(bits->value.c_str()) : (static_cast<uint32_t>(it->second.size) * 8);
 
             // Append value
             out.types << "\t\t\tvalue = emitter.BitOr(value, emitter.BitShiftLeft(" << field.name << ", emitter.UInt(32, " << bitOffset << ")));\n";

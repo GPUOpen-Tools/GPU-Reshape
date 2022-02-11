@@ -7,6 +7,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # All options
 option(INSTALL_THIRD_PARTY "Fetch and install third party libraries" ON)
+option(ENABLE_ASAN         "Enables ASAN" OFF)
 
 # Ensure 64 bit
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)

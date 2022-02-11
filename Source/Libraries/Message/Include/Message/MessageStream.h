@@ -531,7 +531,7 @@ struct ConstMessageStreamView {
     /// Get the number of messages
     [[nodiscard]]
     uint32_t GetCount() const {
-        return schema.GetStream().GetCount();
+        return static_cast<uint32_t>(schema.GetStream().GetCount());
     }
 
 private:

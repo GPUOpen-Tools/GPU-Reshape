@@ -219,7 +219,7 @@ bool SpvModule::RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::F
                 SpvInstruction& spv = declarationStream->Allocate(SpvOpConstant, 4);
                 spv[1] = typeMap->GetSpvTypeId(resultType);
                 spv[2] = literal->result;
-                spv[3] = literal->value.integral;
+                spv[3] = static_cast<uint32_t>(literal->value.integral);
                 break;
             }
             case IL::OpCode::LoadTexture: {

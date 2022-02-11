@@ -14,7 +14,7 @@
 #include <Message/MessageStream.h>
 
 // Forward declarations
-struct IShaderSGUIDHost;
+class IShaderSGUIDHost;
 
 class ResourceBoundsFeature final : public IFeature, public IShaderFeature {
 public:

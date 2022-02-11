@@ -44,8 +44,8 @@ private:
     struct Controller {
         struct LinkData {
             TaskGroupFunctor functor;
-            void* userData;
-            DispatcherBucket* bucket;
+            void* userData{nullptr};
+            DispatcherBucket* bucket{ nullptr };
         };
 
         Controller(Dispatcher* dispatcher) : dispatcher(dispatcher) {
