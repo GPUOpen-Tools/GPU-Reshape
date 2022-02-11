@@ -1,6 +1,7 @@
 #pragma once
 
 // Format
+#define FMT_CONSTEVAL
 #include <fmt/core.h>
 
 /// Format a message

@@ -1,4 +1,5 @@
 /* Generated */
+#pragma once
 
 // Common
 #include <Common/Align.h>
@@ -8,12 +9,12 @@
 #include <Message/MessageContainers.h>
 #include <Message/MessageSubStream.h>
 
+$HEADER
+
 // MSVC tight packing
 #ifdef _MSC_VER
 #pragma pack(push, 1)
 #endif
-
-$HEADER
 
 $MESSAGES
 
