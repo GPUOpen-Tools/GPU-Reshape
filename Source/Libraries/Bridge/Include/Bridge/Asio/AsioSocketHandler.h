@@ -3,12 +3,19 @@
 // Bridge
 #include "Asio.h"
 
+// Common
+#include <Common/Assert.h>
+#include <Common/GlobalUID.h>
+
 // Std
 #include <functional>
 
+// Forward declarations
+class AsioSocketHandler;
+
 /// Read delegate
-using AsioReadDelegate = std::function<uint64_t(const void *data, uint64_t size)>;
-using AsioErrorDelegate = std::function<void(const char* message)>;
+using AsioReadDelegate = std::function<uint64_t(AsioSocketHandler& handler, const void *data, uint64_t size)>;
+using AsioErrorDelegate = std::function<void(AsioSocketHandler& handler, const char* message)>;
 
 /// Shared socket handler
 class AsioSocketHandler {
@@ -19,13 +26,17 @@ public:
     /// Create from ASIO service
     /// \param ioService service
     AsioSocketHandler(asio::io_service &ioService) : socket(ioService) {
-        /**/
-    }
+        uuid = GlobalUID::New();
 
-    /// Create from existing socket
-    /// \param socket socket to be moved
-    AsioSocketHandler(asio::ip::tcp::socket &&socket) : socket(std::move(socket)) {
-        /**/
+        // Create buffer
+        buffer = std::make_unique<char[]>(kBufferSize);
+
+        // Default error handler
+#if ASIO_DEBUG
+        onError = [](AsioSocketHandler& handler, const char* message) {
+            fprintf(stderr, "AsioSocketHandler : %s", message);
+        };
+#endif
     }
 
     /// No copy or move
@@ -74,6 +85,11 @@ public:
         return socket.is_open();
     }
 
+    /// Get the GUID
+    const GlobalUID& GetGlobalUID() const {
+        return uuid;
+    }
+
     /// Get the socket
     asio::ip::tcp::socket &Socket() {
         return socket;
@@ -86,7 +102,7 @@ private:
 
         try {
             socket.async_read_some(
-                asio::buffer(buffer, kBufferSize),
+                asio::buffer(buffer.get(), kBufferSize),
                 [this](const std::error_code &error, size_t bytes) {
                     OnRead(error, bytes);
                 }
@@ -100,14 +116,14 @@ private:
     /// \param bytes number of bytes read
     void OnRead(const std::error_code &error, size_t bytes) {
         if (error && onError) {
-            onError(error.message().c_str());
+            onError(*this, error.message().c_str());
         }
 
-        enqueuedBuffer.insert(enqueuedBuffer.end(), buffer, buffer + bytes);
+        enqueuedBuffer.insert(enqueuedBuffer.end(), buffer.get(), buffer.get() + bytes);
 
         // Consume enqueued data
         if (onRead) {
-            uint64_t consumed = onRead(enqueuedBuffer.data(), enqueuedBuffer.size());
+            uint64_t consumed = onRead(*this, enqueuedBuffer.data(), enqueuedBuffer.size());
             enqueuedBuffer.erase(enqueuedBuffer.begin(), enqueuedBuffer.begin() + consumed);
         }
 
@@ -119,13 +135,16 @@ private:
     /// \param bytes number of bytes written
     void OnWrite(const std::error_code &error, size_t bytes) {
         if (error && onError) {
-            onError(error.message().c_str());
+            onError(*this, error.message().c_str());
         }
     }
 
 private:
     /// Underlying socket
     asio::ip::tcp::socket socket;
+
+    /// UUID for this socket
+    GlobalUID uuid;
 
     /// Delegates
     AsioReadDelegate onRead;
@@ -135,5 +154,5 @@ private:
     std::vector<char> enqueuedBuffer;
 
     /// Streaming buffer
-    char buffer[kBufferSize];
+    std::unique_ptr<char[]> buffer;
 };

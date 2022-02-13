@@ -5,6 +5,7 @@ add_library(
     Source/Assert.cpp
     Source/Path.cpp
     Source/CrashHandler.cpp
+    Source/GlobalUID.cpp
     Source/Plugin/PluginResolver.cpp
 
     # For IDE's

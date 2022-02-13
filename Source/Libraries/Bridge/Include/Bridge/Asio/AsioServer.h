@@ -2,12 +2,18 @@
 
 // Bridge
 #include "AsioSocketHandler.h"
-#include "IAsioEndpoint.h"
+
+// Common
+#include <Common/EventHandler.h>
 
 // Std
 #include <vector>
+#include <mutex>
 
-class AsioServer : public IAsioEndpoint {
+/// Delegates
+using AsioClientConnectedDelegate = std::function<void(AsioSocketHandler& handler)>;
+
+class AsioServer {
 public:
     /// Initialize this server
     /// \param port port to be used
@@ -15,72 +21,98 @@ public:
         Accept();
     }
 
+    /// Destructor
+    ~AsioServer() {
+        ioService.stop();
+    }
+
     /// Set the async read callback
     /// \param delegate
-    void SetReadCallback(const AsioReadDelegate& delegate) override {
+    void SetReadCallback(const AsioReadDelegate& delegate) {
         onRead = delegate;
     }
 
     /// Set the async read callback
     /// \param delegate
-    void SetErrorCallback(const AsioErrorDelegate& delegate) override {
+    void SetErrorCallback(const AsioErrorDelegate& delegate) {
         onError = delegate;
     }
 
     /// Check if the client is open
-    bool IsOpen() override {
+    bool IsOpen() {
         return acceptor.is_open();
     }
 
-    /// Connect to the endpoint
-    /// \return success state
-    bool Connect() override {
-        if (acceptor.is_open()) {
-            return true;
-        }
-
-        // TODO: Retry acceptor?
-        return false;
+    /// Get the number of connections
+    uint32_t GetConnectionCount() {
+        std::lock_guard guard(mutex);
+        return static_cast<uint32_t>(connections.size());
     }
 
     /// Write async
     /// \param data data to be sent, lifetime bound to this call
     /// \param size byte count of data
-    void WriteAsync(const void *data, uint64_t size) override {
-        connections.erase(std::remove_if(connections.begin(), connections.end(), [data, size](const std::shared_ptr<Connection>& connection) {
-            // Remove if closed
-            if (!connection->handler.IsOpen()) {
-                return true;
-            }
+    void WriteAsync(const void *data, uint64_t size) {
+        std::lock_guard guard(mutex);
 
-            // Write to handler
-            connection->handler.WriteAsync(data, size);
-            return false;
-        }), connections.end());
+        // Prune beforehand
+        Prune();
+
+        // Write to handlers
+        for (const std::shared_ptr<AsioSocketHandler>& connection : connections) {
+            connection->WriteAsync(data, size);
+        }
+    }
+
+    /// Get a socket handler
+    /// \param uuid the socket handler guid
+    /// \return nullptr if not found
+    std::shared_ptr<AsioSocketHandler> GetSocketHandler(const GlobalUID& uuid) {
+        std::lock_guard guard(mutex);
+
+        for (const std::shared_ptr<AsioSocketHandler>& connection : connections) {
+            if (connection->GetGlobalUID() == uuid) {
+                return connection;
+            }
+        }
+
+        return nullptr;
     }
 
     /// Run this server
-    void Run() override {
+    void Run() {
         ioService.run();
     }
 
-private:
-    /// Connection state
-    struct Connection {
-        Connection(asio::io_service &io_service) : handler(io_service) {
-            /* */
-        }
+    /// Stop this server
+    void Stop() {
+        ioService.stop();
+    }
 
-        AsioSocketHandler handler;
-    };
+    /// Get the allocated port
+    uint16_t GetPort() const {
+        return acceptor.local_endpoint().port();
+    }
+
+public:
+    /// All events
+    EventHandler<AsioClientConnectedDelegate> onClientConnected;
+
+private:
+    /// Prune all dead handlers
+    void Prune() {
+        connections.erase(std::remove_if(connections.begin(), connections.end(), [](const std::shared_ptr<AsioSocketHandler>& handler) {
+            return !handler->IsOpen();
+        }), connections.end());
+    }
 
     /// Accept an ingoing connection
     void Accept() {
         // Create connection
-        auto connection = std::make_shared<Connection>(ioService);
+        auto connection = std::make_shared<AsioSocketHandler>(ioService);
 
         // Start the accept
-        acceptor.async_accept(connection->handler.Socket(), [this, connection](const std::error_code &error) {
+        acceptor.async_accept(connection->Socket(), [this, connection](const std::error_code &error) {
             OnAccept(connection, error);
         });
     }
@@ -88,19 +120,30 @@ private:
     /// Invoked during an accept
     /// \param connection the connection candidate
     /// \param error the error code, if any
-    void OnAccept(const std::shared_ptr<Connection>& connection, const std::error_code &error) {
+    void OnAccept(const std::shared_ptr<AsioSocketHandler>& connection, const std::error_code &error) {
         // Success?
         if (!error) {
             // Add as valid connection
-            connections.emplace_back(connection);
+            {
+                std::lock_guard guard(mutex);
+                connections.emplace_back(connection);
+            }
 
             // Set read
             if (onRead) {
-                connection->handler.SetReadCallback(onRead);
+                connection->SetReadCallback(onRead);
+            }
+
+            // Set error
+            if (onError) {
+                connection->SetErrorCallback(onError);
             }
 
             // Begin listening
-            connection->handler.Install();
+            connection->Install();
+
+            // Invoke listeners
+            onClientConnected.Invoke(*connection);
         }
 
         // Accept next
@@ -111,8 +154,11 @@ private:
     /// ASIO service
     asio::io_service ioService;
 
+    /// Shared lock
+    std::mutex mutex;
+
     /// All active connections
-    std::vector<std::shared_ptr<Connection>> connections;
+    std::vector<std::shared_ptr<AsioSocketHandler>> connections;
 
     /// Read delegate
     AsioReadDelegate onRead;

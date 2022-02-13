@@ -25,7 +25,7 @@ SetSourceDiscovery(Libraries.Backend Include Source Schemas)
 target_include_directories(Libraries.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(Libraries.Backend PUBLIC Libraries.Message Libraries.Bridge)
+target_link_libraries(Libraries.Backend PUBLIC Libraries.Message Libraries.Bridge Services.HostResolver)
 
 #----- Generators -----#
 

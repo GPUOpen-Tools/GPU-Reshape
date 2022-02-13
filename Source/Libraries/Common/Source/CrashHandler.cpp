@@ -129,6 +129,8 @@ static LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo) 
 void SetDebugCrashHandler() {
     // Win32
 #ifdef WIN32_EXCEPTION_HANDLER
-    SetUnhandledExceptionFilter(TopLevelExceptionHandler);
+    if (!IsDebuggerPresent()) {
+        SetUnhandledExceptionFilter(TopLevelExceptionHandler);
+    }
 #endif
 }

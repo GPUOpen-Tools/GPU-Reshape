@@ -3,11 +3,14 @@
 // Std
 #include <cstdint>
 
-static constexpr uint32_t kBridgeDefaultEndpointPort = 34'213;
+static constexpr uint32_t kBridgeSharedPort = 34'213;
 
 struct EndpointConfig {
-    /// Port of the endpoint
-    uint32_t port = kBridgeDefaultEndpointPort;
+    /// Shared port for resolving
+    uint32_t sharedPort = kBridgeSharedPort;
+
+    /// Name of the application
+    const char* applicationName{"Unknown"};
 };
 
 struct EndpointResolve {

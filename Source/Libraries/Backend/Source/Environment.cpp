@@ -4,8 +4,11 @@
 
 // Bridge
 #include <Bridge/MemoryBridge.h>
-#include <Bridge/NetworkBridge.h>
+#include <Bridge/HostServerBridge.h>
 #include <Bridge/Network/PingPongListener.h>
+
+// Services
+#include <Services/HostResolver/HostResolverService.h>
 
 // Schemas
 #include <Schemas/PingPong.h>
@@ -35,11 +38,18 @@ bool Environment::Install(const EnvironmentInfo &info) {
         // Intra process
         registry.AddNew<MemoryBridge>();
     } else {
+        // Install the host resolver
+        //  ? Ensures that the host resolver is running on the system
+        HostResolverService hostResolverService;
+        if (!hostResolverService.Install()) {
+            return false;
+        }
+
         // Networked
-        auto network = registry.AddNew<NetworkBridge>();
+        auto network = registry.AddNew<HostServerBridge>();
 
         // Attempt to install as server
-        if (!network->InstallServer(EndpointConfig{})) {
+        if (!network->Install(EndpointConfig{})) {
             return false;
         }
 

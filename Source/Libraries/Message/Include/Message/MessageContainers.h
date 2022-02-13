@@ -66,6 +66,11 @@ struct ALIGN_PACK MessageString {
         std::memcpy(data.Get(), view.data(), view.length());
     }
 
+    void Set(const char* buffer, uint32_t length) {
+        ASSERT(length <= data.count, "Length exceeds buffer size");
+        std::memcpy(data.Get(), buffer, length);
+    }
+
     [[nodiscard]]
     std::string_view View() const {
         return std::string_view(data.Get(), data.count);

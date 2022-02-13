@@ -2,9 +2,8 @@
 
 // Backend
 #include "AsioSocketHandler.h"
-#include "IAsioEndpoint.h"
 
-class AsioClient : public IAsioEndpoint {
+class AsioClient {
 public:
     /// Initialize this client
     /// \param ipvxAddress ip address of the connecting endpoint
@@ -13,33 +12,38 @@ public:
         OpenConnection();
     }
 
+    /// Destructor
+    ~AsioClient() {
+        ioService.stop();
+    }
+
     /// Set the async read callback
     /// \param delegate
-    void SetReadCallback(const AsioReadDelegate& delegate) override {
+    void SetReadCallback(const AsioReadDelegate& delegate) {
         connection.SetReadCallback(delegate);
     }
 
     /// Set the async read callback
     /// \param delegate
-    void SetErrorCallback(const AsioErrorDelegate& delegate) override {
+    void SetErrorCallback(const AsioErrorDelegate& delegate) {
         connection.SetErrorCallback(delegate);
     }
 
     /// Write async
     /// \param data data to be sent, lifetime bound to this call
     /// \param size byte count of data
-    void WriteAsync(const void *data, uint64_t size) override {
+    void WriteAsync(const void *data, uint64_t size) {
         connection.WriteAsync(data, size);
     }
 
     /// Check if the client is open
-    bool IsOpen() override {
+    bool IsOpen() {
         return connection.IsOpen();
     }
 
     /// Connect to the endpoint
     /// \return success state
-    bool Connect() override {
+    bool Connect() {
         if (connection.IsOpen()) {
             return true;
         }
@@ -48,8 +52,13 @@ public:
     }
 
     /// Run this client
-    void Run() override {
+    void Run() {
         ioService.run();
+    }
+
+    /// Stop the client
+    void Stop() {
+        ioService.stop();
     }
 
 private:

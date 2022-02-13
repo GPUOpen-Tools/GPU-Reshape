@@ -14,17 +14,33 @@ std::filesystem::path CurrentExecutableDirectory() {
     if (!*buffer) {
         return {};
     }
-
-    return std::filesystem::path(buffer).parent_path().string();
 #else
     char buffer[FILENAME_MAX];
     const ssize_t length = readlink("/proc/self/exe", buffer, sizeof(buffer));
     if (length <= 0) {
         return {};
     }
-
-    return std::filesystem::path(std::string(path, length)).parent_path().string();
 #endif
+
+    return std::filesystem::path(buffer).parent_path();
+}
+
+std::string CurrentExecutableName() {
+#if defined(_MSC_VER)
+    wchar_t buffer[FILENAME_MAX]{};
+    GetModuleFileNameW(nullptr, buffer, FILENAME_MAX);
+    if (!*buffer) {
+        return {};
+    }
+#else
+    char buffer[FILENAME_MAX];
+    const ssize_t length = readlink("/proc/self/exe", buffer, sizeof(buffer));
+    if (length <= 0) {
+        return {};
+    }
+#endif
+
+    return std::filesystem::path(buffer).filename().string();
 }
 
 #if defined(_MSC_VER)
@@ -42,7 +58,7 @@ std::filesystem::path CurrentModuleDirectory() {
         return {};
     }
 
-    return std::filesystem::path(buffer).parent_path().string();
+    return std::filesystem::path(buffer).parent_path();
 #else
 #    error Not implemented
 #endif
