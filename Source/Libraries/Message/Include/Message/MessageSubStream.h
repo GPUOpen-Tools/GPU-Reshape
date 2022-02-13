@@ -26,6 +26,13 @@ struct MessageSubStream {
     }
 
     /// Swap this stream with another, schema must match
+    void Validate(const MessageSchema& value) const {
+        if (schema.type != MessageSchemaType::None) {
+            ASSERT(schema == value, "Source schema incompatible with destination schema");
+        }
+    }
+
+    /// Swap this stream with another, schema must match
     void ValidateOrSetSchema(const MessageSchema& value) {
         if (schema.type != MessageSchemaType::None) {
             ASSERT(schema == value, "Source schema incompatible with destination schema");
@@ -62,7 +69,7 @@ struct MessageSubStream {
     /// Check if this stream is empty
     [[nodiscard]]
     bool IsEmpty() const {
-        return count == 0;
+        return data.count == 0;
     }
 
     /// Get the view for this container

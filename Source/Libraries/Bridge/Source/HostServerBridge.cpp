@@ -1,58 +1,48 @@
-#include <Bridge/NetworkBridge.h>
+#include <Bridge/HostServerBridge.h>
 #include <Bridge/IBridgeListener.h>
 #include <Bridge/EndpointConfig.h>
 #include <Bridge/NetworkProtocol.h>
-#include <Bridge/Asio/AsioClient.h>
-#include <Bridge/Asio/AsioServer.h>
+#include <Bridge/Asio/AsioHostServer.h>
+
+// Common
+#include <Common/Path.h>
 
 // Message
 #include <Message/MessageStream.h>
 
-bool NetworkBridge::InstallServer(const EndpointConfig &config) {
-    // Create endpoint
-    endpoint = new(allocators) AsioServer(config.port);
+bool HostServerBridge::Install(const EndpointConfig &config) {
+    // Port config
+    AsioConfig asioConfig;
+    asioConfig.hostResolvePort = config.sharedPort;
 
-    // Set read
-    endpoint->SetReadCallback([this](const void *data, uint64_t size) {
+    // Local info
+    AsioHostClientInfo asioInfo;
+    strcpy_s(asioInfo.applicationName, config.applicationName);
+    strcpy_s(asioInfo.applicationName, CurrentExecutableName().c_str());
+
+    // Platform info
+#ifdef _WIN64
+    asioInfo.processId = GetProcessId(GetCurrentProcess());
+#endif
+
+    // Create the server
+    server = new(allocators) AsioHostServer(asioConfig, asioInfo);
+
+    // Set read callback
+    server->SetServerReadCallback([this](AsioSocketHandler& handler, const void *data, uint64_t size) {
         return OnReadAsync(data, size);
     });
-
-    // Start worker
-    workerThread = std::thread([this] { Worker(); });
 
     // OK
     return true;
 }
 
-bool NetworkBridge::InstallClient(const EndpointResolve &resolve) {
-    // Create endpoint
-    endpoint = new(allocators) AsioClient(resolve.ipvxAddress, resolve.config.port);
-
-    // Set read
-    endpoint->SetReadCallback([this](const void *data, uint64_t size) {
-        return OnReadAsync(data, size);
-    });
-
-    // Start worker
-    workerThread = std::thread([this] { Worker(); });
-
-    // OK
-    return true;
-}
-
-NetworkBridge::~NetworkBridge() {
-    // Wait for worker
-    workerThread.join();
-
+HostServerBridge::~HostServerBridge() {
     // Release endpoint
-    destroy(endpoint, allocators);
+    destroy(server, allocators);
 }
 
-void NetworkBridge::Worker() {
-    endpoint->Run();
-}
-
-uint64_t NetworkBridge::OnReadAsync(const void *data, uint64_t size) {
+uint64_t HostServerBridge::OnReadAsync(const void *data, uint64_t size) {
     auto *protocol = static_cast<const MessageStreamHeaderProtocol *>(data);
 
     // Entire stream present?
@@ -73,33 +63,33 @@ uint64_t NetworkBridge::OnReadAsync(const void *data, uint64_t size) {
     return sizeof(MessageStreamHeaderProtocol) + protocol->size;
 }
 
-void NetworkBridge::Register(MessageID mid, const ComRef<IBridgeListener>& listener) {
+void HostServerBridge::Register(MessageID mid, const ComRef<IBridgeListener>& listener) {
     memoryBridge.Register(mid, listener);
 }
 
-void NetworkBridge::Deregister(MessageID mid, const ComRef<IBridgeListener>& listener) {
+void HostServerBridge::Deregister(MessageID mid, const ComRef<IBridgeListener>& listener) {
     memoryBridge.Deregister(mid, listener);
 }
 
-void NetworkBridge::Register(const ComRef<IBridgeListener>& listener) {
+void HostServerBridge::Register(const ComRef<IBridgeListener>& listener) {
     memoryBridge.Register(listener);
 }
 
-void NetworkBridge::Deregister(const ComRef<IBridgeListener>& listener) {
+void HostServerBridge::Deregister(const ComRef<IBridgeListener>& listener) {
     memoryBridge.Deregister(listener);
 }
 
-IMessageStorage *NetworkBridge::GetInput() {
+IMessageStorage *HostServerBridge::GetInput() {
     return &storage;
 }
 
-IMessageStorage *NetworkBridge::GetOutput() {
+IMessageStorage *HostServerBridge::GetOutput() {
     return &storage;
 }
 
-void NetworkBridge::Commit() {
+void HostServerBridge::Commit() {
     // Endpoint must be in a good state
-    if (!endpoint->IsOpen() && !endpoint->Connect()) {
+    if (!server->IsOpen()) {
         return;
     }
 
@@ -118,8 +108,8 @@ void NetworkBridge::Commit() {
         protocol.size = stream.GetByteSize();
 
         // Send header and stream data (sync)
-        endpoint->WriteAsync(&protocol, sizeof(protocol));
-        endpoint->WriteAsync(stream.GetDataBegin(), protocol.size);
+        server->BroadcastServerAsync(&protocol, sizeof(protocol));
+        server->BroadcastServerAsync(stream.GetDataBegin(), protocol.size);
     }
 
     // Commit all inbound streams

@@ -177,7 +177,11 @@ bool MessageGenerator::GenerateCPP(const Message &message, const MessageStream &
 
             // Add patch
             patch << "\t\t\tmessage->" << field.name << ".data.count = " << field.name << "ByteSize;\n";
-            patch << "\t\t\tmessage->" << field.name << ".data.thisOffset = offset + sizeof(" << message.name << "Message) - offsetof(" << message.name << "Message, " << field.name << ");\n";
+            patch << "\t\t\tmessage->"
+            << field.name << ".data.thisOffset = offset"
+            << " + sizeof(" << message.name << "Message)"
+            << " - offsetof(" << message.name << "Message, " << field.name << ")"
+            << " - offsetof(MessageSubStream, data);\n";
             patch << "\t\t\toffset += " << field.name << "ByteSize * sizeof(uint8_t); \n\n";
 
             // Requires the dynamic schema

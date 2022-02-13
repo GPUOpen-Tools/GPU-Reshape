@@ -10,20 +10,16 @@
 #include <condition_variable>
 
 // Forward declarations
-class IAsioEndpoint;
+class AsioHostServer;
 
 /// Network Bridge
-class NetworkBridge final : public IBridge {
+class HostServerBridge final : public IBridge {
 public:
-    ~NetworkBridge();
+    ~HostServerBridge();
 
     /// Install this bridge
     /// \return success state
-    bool InstallServer(const EndpointConfig& config);
-
-    /// Install this bridge
-    /// \return success state
-    bool InstallClient(const EndpointResolve& resolve);
+    bool Install(const EndpointConfig& config);
 
     /// Overrides
     void Register(MessageID mid, const ComRef<IBridgeListener>& listener) override;
@@ -35,9 +31,6 @@ public:
     void Commit() override;
 
 private:
-    /// Worker thread
-    void Worker();
-
     /// Async read callback
     /// \param data the enqueued data
     /// \param size the enqueued size
@@ -46,7 +39,7 @@ private:
 
 private:
     /// Current endpoint
-    IAsioEndpoint* endpoint{nullptr};
+    AsioHostServer* server{nullptr};
 
     /// Local storage
     OrderedMessageStorage storage;
@@ -56,7 +49,4 @@ private:
 
     /// Cache for commits
     std::vector<MessageStream> streamCache;
-
-    /// Worker
-    std::thread workerThread;
 };

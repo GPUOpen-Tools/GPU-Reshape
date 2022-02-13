@@ -1,4 +1,4 @@
-struct $NAME {
+struct ALIGN_PACK $NAME {
 	static constexpr MessageID kID = $ID;
 
 $TYPES

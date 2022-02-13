@@ -9,6 +9,9 @@ namespace Backend {
         /// Allocators
         Allocators allocators;
 
+        /// Application name
+        const char* applicationName{"Unknown"};
+
         /// In memory bridge?
         bool memoryBridge{false};
 

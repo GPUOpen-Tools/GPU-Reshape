@@ -96,8 +96,14 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
         // Environment is pre-created at this point
         table->registry.SetParent(createInfo->registry);
     } else {
+        // Setup info
+        Backend::EnvironmentInfo environmentInfo;
+        environmentInfo.applicationName = pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->pApplicationName : "Unknown";
+
         // Initialize the standard environment
-        table->environment.Install(Backend::EnvironmentInfo());
+        table->environment.Install(environmentInfo);
+
+        // Reparent
         table->registry.SetParent(table->environment.GetRegistry());
     }
 

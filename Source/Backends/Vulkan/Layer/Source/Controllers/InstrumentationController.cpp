@@ -2,6 +2,7 @@
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Compiler/PipelineCompiler.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/States/PipelineLayoutState.h>
 #include <Backends/Vulkan/States/PipelineState.h>
@@ -10,6 +11,9 @@
 
 // Bridge
 #include <Bridge/IBridge.h>
+
+// Bridge
+#include <Bridge/Log/LogFormat.h>
 
 // Common
 #include <Common/Registry.h>
@@ -166,6 +170,15 @@ void InstrumentationController::SetInstrumentationInfo(InstrumentationInfo &info
 void InstrumentationController::Commit() {
     compilationEvent.IncrementHead();
 
+    // Diagnostic
+#ifdef LOG_ALLOCATION
+    table->parent->logBuffer.Add("Vulkan", Format(
+        "Committing {} shaders and {} pipelines for instrumentation",
+        immediateBatch.dirtyShaderModules.size(),
+        immediateBatch.dirtyPipelines.size()
+    ));
+#endif
+
     // Copy batch
     auto* batch = new (registry->GetAllocators()) Batch(immediateBatch);
 
@@ -276,6 +289,15 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Set the enabled feature bit set
     SetDeviceCommandFeatureSetAndCommit(table, batch->featureBitSet);
+
+    // Diagnostic
+#ifdef LOG_ALLOCATION
+    table->parent->logBuffer.Add("Vulkan", Format(
+        "Instrumented {} shaders and {} pipelines",
+        batch->dirtyShaderModules.size(),
+        batch->dirtyPipelines.size()
+    ));
+#endif
 
     // Mark as done
     compilationEvent.IncrementCounter();

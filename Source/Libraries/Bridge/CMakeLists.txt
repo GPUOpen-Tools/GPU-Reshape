@@ -3,14 +3,17 @@
 
 # Generate the schemas
 Project_AddSchema(GeneratedLib Schemas/PingPong.xml Include/Schemas)
+Project_AddSchema(GeneratedLib Schemas/HostResolve.xml Include/Schemas)
 
 add_library(
     Libraries.Bridge STATIC
     Source/MemoryBridge.cpp
-    Source/NetworkBridge.cpp
+    Source/HostServerBridge.cpp
+    Source/RemoteClientBridge.cpp
     Source/Network/PingPongListener.cpp
     Source/Log/LogConsoleListener.cpp
     Source/Log/LogBuffer.cpp
+    Source/Asio/AsioDebug.cpp
 
     # Generated
     ${GeneratedLib}
@@ -42,7 +45,13 @@ add_executable(
     Tests/Source/Main.cpp
     Tests/Source/Emitter.cpp
     Tests/Source/Network.cpp
+    Tests/Source/Asio.cpp
 )
+
+# Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
+if (MSVC)
+    target_compile_options(Libraries.Bridge.Tests PRIVATE /EHa)
+endif()
 
 # IDE source discovery
 SetSourceDiscovery(Libraries.Bridge.Tests Tests)

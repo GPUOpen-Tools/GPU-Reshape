@@ -1,0 +1,14 @@
+<schema>
+    <message name="HostServerInfo">
+        <field name="guid" type="string"/>
+        <field name="process" type="string"/>
+        <field name="processId" type="uint64"/>
+        <field name="application" type="string"/>
+    </message>
+    <message name="HostDiscovery">
+        <field name="infos" type="stream"/>
+    </message>
+    <message name="HostConnected">
+        <field name="unused" type="uint32"/>
+    </message>
+</schema>
