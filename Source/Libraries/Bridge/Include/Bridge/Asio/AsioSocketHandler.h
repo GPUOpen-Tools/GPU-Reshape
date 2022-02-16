@@ -15,7 +15,7 @@ class AsioSocketHandler;
 
 /// Read delegate
 using AsioReadDelegate = std::function<uint64_t(AsioSocketHandler& handler, const void *data, uint64_t size)>;
-using AsioErrorDelegate = std::function<void(AsioSocketHandler& handler, const char* message)>;
+using AsioErrorDelegate = std::function<bool(AsioSocketHandler& handler, const std::error_code& code, uint32_t repeatCount)>;
 
 /// Shared socket handler
 class AsioSocketHandler {
@@ -115,8 +115,8 @@ private:
     /// \param error error code
     /// \param bytes number of bytes read
     void OnRead(const std::error_code &error, size_t bytes) {
-        if (error && onError) {
-            onError(*this, error.message().c_str());
+        if (!CheckError(error)) {
+            return;
         }
 
         enqueuedBuffer.insert(enqueuedBuffer.end(), buffer.get(), buffer.get() + bytes);
@@ -134,9 +134,22 @@ private:
     /// \param error error code
     /// \param bytes number of bytes written
     void OnWrite(const std::error_code &error, size_t bytes) {
-        if (error && onError) {
-            onError(*this, error.message().c_str());
+        if (!CheckError(error)) {
+            return;
         }
+    }
+
+    bool CheckError(const std::error_code& code) {
+        if (!code) {
+            errorRepeatCount = 0;
+            return true;
+        }
+
+        if (onError) {
+            return onError(*this, code, errorRepeatCount++);
+        }
+
+        return false;
     }
 
 private:
@@ -149,6 +162,9 @@ private:
     /// Delegates
     AsioReadDelegate onRead;
     AsioErrorDelegate onError;
+
+    /// Numbers of successive errors
+    uint32_t errorRepeatCount{0};
 
     /// Current enqueued data
     std::vector<char> enqueuedBuffer;

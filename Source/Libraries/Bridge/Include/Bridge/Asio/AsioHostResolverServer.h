@@ -26,6 +26,11 @@ struct AsioHostResolverServer {
             return OnReadAsync(handler, data, size);
         });
 
+        // Client lost
+        server.onClientLost.Add(0, [this](AsioSocketHandler& handler) {
+            OnClientLost(handler);
+        });
+
         runner.RunAsync(server);
     }
 
@@ -177,6 +182,20 @@ protected:
 
         // Proxy to handler
         tokenHandler->WriteAsync(response, sizeof(*response));
+    }
+
+    void OnClientLost(AsioSocketHandler& handler) {
+        std::lock_guard guard(mutex);
+
+        // Find the handler
+        auto it = std::find_if(clients.begin(), clients.end(), [&handler](const ClientInfo& candidate) {
+            return candidate.token == handler.GetGlobalUID();
+        });
+
+        // Consider the client lost
+        if (it != clients.end()) {
+            clients.erase(it);
+        }
     }
 
 private:

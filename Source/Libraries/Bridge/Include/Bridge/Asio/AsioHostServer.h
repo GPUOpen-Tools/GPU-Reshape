@@ -65,16 +65,6 @@ struct AsioHostServer {
         }
     }
 
-    /// Set the error callback
-    /// \param delegate the event delegate
-    void SetServerErrorCallback(const AsioErrorDelegate& delegate) {
-        onError = delegate;
-
-        if (server) {
-            server->SetErrorCallback(delegate);
-        }
-    }
-
 protected:
     /// Allocate a new client token
     void AllocateToken() {
@@ -160,7 +150,6 @@ protected:
 
         // Set callbacks
         server->SetReadCallback(onRead);
-        server->SetErrorCallback(onError);
 
         // Start the runner
         serverRunner.RunAsync(*server);
