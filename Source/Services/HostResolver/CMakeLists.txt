@@ -7,6 +7,15 @@ add_executable(
     Standalone/main.cpp
 )
 
+# Build convenience, kill the process
+if (WIN32)
+    add_custom_command(
+        TARGET Services.HostResolver.Standalone
+        PRE_BUILD
+        COMMAND START /wait taskkill /f /im Services.HostResolver.Standalone.exe
+    )
+endif()
+
 # IDE source discovery
 SetSourceDiscovery(Services.HostResolver.Standalone Standalone)
 

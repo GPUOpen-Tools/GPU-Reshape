@@ -12,6 +12,7 @@
 
 /// Delegates
 using AsioClientConnectedDelegate = std::function<void(AsioSocketHandler& handler)>;
+using AsioClientLostDelegate = std::function<void(AsioSocketHandler& handler)>;
 
 class AsioServer {
 public:
@@ -29,13 +30,13 @@ public:
     /// Set the async read callback
     /// \param delegate
     void SetReadCallback(const AsioReadDelegate& delegate) {
+        std::lock_guard guard(mutex);
         onRead = delegate;
-    }
 
-    /// Set the async read callback
-    /// \param delegate
-    void SetErrorCallback(const AsioErrorDelegate& delegate) {
-        onError = delegate;
+        // Propagate to children
+        for (const std::shared_ptr<AsioSocketHandler>& connection : connections) {
+            connection->SetReadCallback(delegate);
+        }
     }
 
     /// Check if the client is open
@@ -97,6 +98,7 @@ public:
 public:
     /// All events
     EventHandler<AsioClientConnectedDelegate> onClientConnected;
+    EventHandler<AsioClientLostDelegate> onClientLost;
 
 private:
     /// Prune all dead handlers
@@ -129,14 +131,14 @@ private:
                 connections.emplace_back(connection);
             }
 
+            // Set shared error handler
+            connection->SetErrorCallback([this](AsioSocketHandler& handler, const std::error_code& error, uint32_t repeatCount) {
+                return OnError(handler, error, repeatCount);
+            });
+
             // Set read
             if (onRead) {
                 connection->SetReadCallback(onRead);
-            }
-
-            // Set error
-            if (onError) {
-                connection->SetErrorCallback(onError);
             }
 
             // Begin listening
@@ -148,6 +150,29 @@ private:
 
         // Accept next
         Accept();
+    }
+
+    bool OnError(AsioSocketHandler& handler, const std::error_code& error, uint32_t repeatCount) {
+        // Incredibly naive handling
+        if (repeatCount < 10) {
+            return true;
+        }
+
+        std::lock_guard guard(mutex);
+
+        // Find the handler
+        auto it = std::find_if(connections.begin(), connections.end(), [&handler](const std::shared_ptr<AsioSocketHandler>& candidate) {
+            return candidate->GetGlobalUID() == handler.GetGlobalUID();
+        });
+
+        // Consider the socket lost
+        if (it != connections.end()) {
+            onClientLost.Invoke(handler);
+            connections.erase(it);
+        }
+
+        // Stop listening
+        return false;
     }
 
 private:
