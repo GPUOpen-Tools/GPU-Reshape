@@ -124,7 +124,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             ShaderModuleState *shaderState = state->shaderModules[shaderIndex];
 
             std::memcpy(&stageInfos[shaderIndex], &createInfos[i].pStages[shaderIndex], sizeof(VkPipelineShaderStageCreateInfo));
-            stageInfos[i].module = shaderState->GetInstrument(job.shaderModuleInstrumentationKeys[shaderIndex]);
+            stageInfos[shaderIndex].module = shaderState->GetInstrument(job.shaderModuleInstrumentationKeys[shaderIndex]);
         }
 
         // Set new stage info
