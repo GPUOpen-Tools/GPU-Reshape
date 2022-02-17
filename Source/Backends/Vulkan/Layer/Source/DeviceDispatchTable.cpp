@@ -6,6 +6,7 @@
 #include <Backends/Vulkan/Pipeline.h>
 #include <Backends/Vulkan/ShaderModule.h>
 #include <Backends/Vulkan/Fence.h>
+#include <Backends/Vulkan/RenderPass.h>
 
 // Std
 #include <cstring>
@@ -54,6 +55,8 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkCreateFence = reinterpret_cast<PFN_vkCreateFence>(getDeviceProcAddr(object, "vkCreateFence"));
     next_vkDestroyFence = reinterpret_cast<PFN_vkDestroyFence>(getDeviceProcAddr(object, "vkDestroyFence"));
     next_vkResetFences = reinterpret_cast<PFN_vkResetFences>(getDeviceProcAddr(object, "vkResetFences"));
+    next_vkCreateRenderPass = reinterpret_cast<PFN_vkCreateRenderPass>(getDeviceProcAddr(object, "vkCreateRenderPass"));
+    next_vkDestroyRenderPass = reinterpret_cast<PFN_vkDestroyRenderPass>(getDeviceProcAddr(object, "vkDestroyRenderPass"));
     next_vkBindBufferMemory = reinterpret_cast<PFN_vkBindBufferMemory>(getDeviceProcAddr(object, "vkBindBufferMemory"));
     next_vkUpdateDescriptorSets = reinterpret_cast<PFN_vkUpdateDescriptorSets>(getDeviceProcAddr(object, "vkUpdateDescriptorSets"));
     next_vkGetDeviceQueue = reinterpret_cast<PFN_vkGetDeviceQueue>(getDeviceProcAddr(object, "vkGetDeviceQueue"));
@@ -158,6 +161,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkResetFences"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkResetFences);
+
+    if (!std::strcmp(name, "vkCreateRenderPass"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateRenderPass);
 
     // Check command hooks
     if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(name)) {

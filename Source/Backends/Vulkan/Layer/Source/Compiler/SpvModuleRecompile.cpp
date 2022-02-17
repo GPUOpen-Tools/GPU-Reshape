@@ -56,6 +56,9 @@ bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount, const SpvJob
 void SpvModule::InsertExportRecords(SpvRelocationStream &stream, const SpvJob& job) {
     // Note: This is quite ugly, will be changed
 
+    // Capability set
+    EnsureCapability(SpvCapabilityImageBuffer);
+
     // IL type map
     Backend::IL::TypeMap& ilTypeMap = program->GetTypeMap();
 

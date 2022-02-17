@@ -63,6 +63,11 @@ void ShaderCompiler::Worker(void *data) {
 }
 
 void ShaderCompiler::CompileShader(const ShaderJob &job) {
+#if SPV_SHADER_COMPILER_DUMP
+    static std::mutex mutex;
+    std::lock_guard guard(mutex);
+#endif
+
     // Create the module on demand
     if (!job.state->spirvModule) {
         job.state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators, job.state->uid);
