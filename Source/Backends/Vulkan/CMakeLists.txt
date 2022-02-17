@@ -117,6 +117,7 @@ add_library(
     Layer/Source/Pipeline.cpp
     Layer/Source/Fence.cpp
     Layer/Source/Queue.cpp
+    Layer/Source/RenderPass.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Compiler/SpvModule.cpp
     Layer/Source/Compiler/SpvModuleParse.cpp

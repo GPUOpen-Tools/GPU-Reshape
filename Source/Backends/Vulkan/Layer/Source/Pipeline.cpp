@@ -1,6 +1,7 @@
 #include <Backends/Vulkan/States/PipelineState.h>
 #include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/States/PipelineLayoutState.h>
+#include <Backends/Vulkan/States/RenderPassState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo *pCreateInfos, const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines) {
@@ -26,6 +27,12 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
         // Add a reference to the layout
         state->layout = table->states_pipelineLayout.Get(pCreateInfos[i].layout);
         state->layout->AddUser();
+
+        // Add reference to the render pass
+        if (pCreateInfos[i].renderPass) {
+            state->renderPass = table->states_renderPass.Get(pCreateInfos[i].renderPass);
+            state->renderPass->AddUser();
+        }
 
         // Collect all shader modules
         for (uint32_t stageIndex = 0; stageIndex < state->createInfoDeepCopy.createInfo.stageCount; stageIndex++) {
@@ -106,6 +113,21 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
 
     // Free the layout
     destroyRef(state->layout, table->allocators);
+
+    // Type specific info
+    switch (state->type) {
+        default:
+            break;
+        case PipelineType::Graphics: {
+            auto* graphics = static_cast<GraphicsPipelineState*>(state);
+
+            // Free the render pass
+            if (graphics->renderPass) {
+                destroyRef(graphics->renderPass, table->allocators);
+            }
+            break;
+        }
+    }
 
     // Remove logical object from lookup
     //  Logical reference to state is invalid after this function

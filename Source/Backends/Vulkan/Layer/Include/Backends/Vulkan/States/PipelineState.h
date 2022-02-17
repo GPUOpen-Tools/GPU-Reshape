@@ -19,6 +19,7 @@
 struct DeviceDispatchTable;
 struct ShaderModuleState;
 struct PipelineLayoutState;
+struct RenderPassState;
 
 enum class PipelineType {
     Graphics,
@@ -87,6 +88,9 @@ struct PipelineState : public ReferenceObject {
 struct GraphicsPipelineState : public PipelineState {
     /// Recreation info
     VkGraphicsPipelineCreateInfoDeepCopy createInfoDeepCopy;
+
+    /// Render pass for this pipeline
+    RenderPassState* renderPass{nullptr};
 };
 
 struct ComputePipelineState : public PipelineState {

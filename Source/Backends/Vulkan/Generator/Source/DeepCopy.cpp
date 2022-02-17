@@ -131,6 +131,9 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
         if (!std::strcmp(memberName->GetText(), "pNext")) {
             // Add check
             state.byteSize << Pad(indent) << "ASSERT(!" << sourceAccessorPrefix << memberName->GetText() << ", \"Extension pointers not yet supported for deep copies\");\n";
+
+            state.deepCopy << "\n" << Pad(indent) << "// " << sourceAccessorPrefix << memberName->GetText() << "\n";
+            state.deepCopy << Pad(indent) << destAccessorPrefix << memberName->GetText() << " = nullptr;\n";
             continue;
         }
 
@@ -212,11 +215,11 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                 if (std::strstr(length, "null-terminated")) {
                     // Size variable
                     std::string sizeVar = "size_" + std::to_string(state.counter++);
-                    state.byteSize << Pad(indent) << "uint64_t " << sizeVar << " = std::strlen(" << sourceAccessorPrefix << memberName->GetText() << ");\n";
+                    state.byteSize << Pad(indent) << "uint64_t " << sizeVar << " = std::strlen(" << sourceAccessorPrefix << memberName->GetText() << ") + 1;\n";
 
                     // Repeat for deep copy if scope requires it
                     if (indent > 1) {
-                        state.deepCopy << Pad(indent) << "uint64_t " << sizeVar << " = std::strlen(" << sourceAccessorPrefix << memberName->GetText() << ");\n";
+                        state.deepCopy << Pad(indent) << "uint64_t " << sizeVar << " = std::strlen(" << sourceAccessorPrefix << memberName->GetText() << ") + 1;\n";
                     }
 
                     // Byte size
