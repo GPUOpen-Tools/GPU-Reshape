@@ -135,6 +135,9 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     createInfo.pCode = module->GetCode();
     createInfo.codeSize = module->GetSize();
 
+    // Naive validation
+    ASSERT(*createInfo.pCode == SpvMagicNumber, "Invalid SPIR-V magic number");
+
     // Resulting module
     VkShaderModule instrument;
 
