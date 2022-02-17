@@ -11,8 +11,7 @@ add_executable(
 if (WIN32)
     add_custom_command(
         TARGET Services.HostResolver.Standalone
-        PRE_BUILD
-        COMMAND START /wait taskkill /f /im Services.HostResolver.Standalone.exe
+        PRE_BUILD COMMAND ${CMAKE_SOURCE_DIR}/Build/Utils/KillHostResolverService.bat
     )
 endif()
 

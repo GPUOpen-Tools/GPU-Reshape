@@ -10,5 +10,5 @@ ExternalProject_Add(
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
-    INSTALL_COMMAND COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/Utils/Copy "${CMAKE_CURRENT_SOURCE_DIR}/Asio/asio/include" "${CMAKE_BINARY_DIR}/External/include" /s /d
+    INSTALL_COMMAND COMMAND ${CMAKE_SOURCE_DIR}/Build/Utils/Copy "${CMAKE_CURRENT_SOURCE_DIR}/Asio/asio/include" "${CMAKE_BINARY_DIR}/External/include" /s /d
 )
