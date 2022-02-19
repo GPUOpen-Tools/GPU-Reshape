@@ -42,7 +42,7 @@ set(VkHooks vkCmdDrawIndexed)
 set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkEndCommandBuffer,vkCmdBindPipeline,vkCmdBindDescriptorSets)
 
 # Object list
-set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo)
+set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo)
 
 # Generate the deep copy objects
 add_custom_command(
@@ -123,6 +123,7 @@ add_library(
     Layer/Source/Compiler/SpvModuleParse.cpp
     Layer/Source/Compiler/SpvModuleRecompile.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp
+    Layer/Source/Compiler/ShaderCompilerDebug.cpp
     Layer/Source/Compiler/PipelineCompiler.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Export/ShaderExportHost.cpp

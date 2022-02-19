@@ -1,4 +1,5 @@
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
+#include <Backends/Vulkan/Compiler/ShaderCompilerDebug.h>
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 
@@ -16,10 +17,6 @@
 // Std
 #include <fstream>
 
-// Debugging
-// TODO: Expand into a more versatile system
-#define SPV_SHADER_COMPILER_DUMP 0
-
 ShaderCompiler::ShaderCompiler(DeviceDispatchTable *table) : table(table) {
 
 }
@@ -29,6 +26,9 @@ bool ShaderCompiler::Install() {
     if (!dispatcher) {
         return false;
     }
+
+    // Optional debug
+    debug = registry->Get<ShaderCompilerDebug>();
 
     // Get all shader features
     for (const ComRef<IFeature>& feature : table->features) {
@@ -63,11 +63,6 @@ void ShaderCompiler::Worker(void *data) {
 }
 
 void ShaderCompiler::CompileShader(const ShaderJob &job) {
-#if SPV_SHADER_COMPILER_DUMP
-    static std::mutex mutex;
-    std::lock_guard guard(mutex);
-#endif
-
     // Create the module on demand
     if (!job.state->spirvModule) {
         job.state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators, job.state->uid);
@@ -84,11 +79,15 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         }
     }
 
-#if SPV_SHADER_COMPILER_DUMP
-    std::ofstream outBeforeIL("module.before.txt");
-    IL::PrettyPrint(*job.state->spirvModule->GetProgram(), outBeforeIL);
-    outBeforeIL.close();
-#endif
+    // Debug
+    std::filesystem::path debugPath;
+    if (debug) {
+        // Allocate path
+        debugPath = debug->AllocatePath(job.state->spirvModule);
+
+        // Dump source
+        debug->Add(debugPath, "source", job.state->spirvModule, job.state->createInfoDeepCopy.createInfo.pCode, job.state->createInfoDeepCopy.createInfo.codeSize);
+    }
 
     // Create a copy of the module, don't modify the source
     SpvModule *module = job.state->spirvModule->Copy();
@@ -102,12 +101,6 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         // Inject marked shader feature
         shaderFeatures[i]->Inject(*module->GetProgram());
     }
-
-#if SPV_SHADER_COMPILER_DUMP
-    std::ofstream outAfterIL("module.after.txt");
-    IL::PrettyPrint(*module->GetProgram(), outAfterIL);
-    outAfterIL.close();
-#endif
 
     // Spv job
     SpvJob spvJob;
@@ -123,11 +116,10 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         return;
     }
 
-#if SPV_SHADER_COMPILER_DUMP
-    std::ofstream outBefore("module.before.spirv", std::ios_base::binary);
-    outBefore.write(reinterpret_cast<const char*>(job.state->createInfoDeepCopy.createInfo.pCode), job.state->createInfoDeepCopy.createInfo.codeSize);
-    outBefore.close();
-#endif
+    // Dump instrumented
+    if (!debugPath.empty()) {
+        debug->Add(debugPath, "instrumented", module, module->GetCode(), module->GetSize());
+    }
 
     // Copy the deep creation info
     //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
@@ -146,12 +138,6 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     if (result != VK_SUCCESS) {
         return;
     }
-
-#if SPV_SHADER_COMPILER_DUMP
-    std::ofstream outAfter("module.after.spirv", std::ios_base::binary);
-    outAfter.write(reinterpret_cast<const char*>(createInfo.pCode), createInfo.codeSize);
-    outAfter.close();
-#endif
 
     // Assign the instrument
     job.state->AddInstrument(job.instrumentationKey, instrument);

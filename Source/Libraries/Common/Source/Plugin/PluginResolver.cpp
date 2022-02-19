@@ -1,6 +1,6 @@
 #include <Common/Plugin/PluginResolver.h>
 #include <Common/Plugin/Plugin.h>
-#include <Common/Path.h>
+#include <Common/FileSystem.h>
 
 // Xml
 #include <tinyxml2.h>
@@ -9,7 +9,7 @@
 #include <iostream>
 
 PluginResolver::PluginResolver() {
-    pluginPath = CurrentModuleDirectory() / "Plugins";
+    pluginPath = GetCurrentModuleDirectory() / "Plugins";
 }
 
 bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* list) {
