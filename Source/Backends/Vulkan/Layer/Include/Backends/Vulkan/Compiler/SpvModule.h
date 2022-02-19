@@ -80,6 +80,11 @@ public:
         return debugMap;
     }
 
+    /// Get the parent module
+    const SpvModule* GetParent() const {
+        return parent;
+    }
+
 private:
     /// Parsing context
     struct ParseContext {

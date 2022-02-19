@@ -1,6 +1,8 @@
 #include <Backends/Vulkan/Instance.h>
 #include <Backends/Vulkan/Layer.h>
+#include <Backends/Vulkan/DeepCopyObjects.Gen.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
+#include <Backends/Vulkan/Compiler/ShaderCompilerDebug.h>
 
 // Common
 #include "Common/Dispatcher/Dispatcher.h"
@@ -112,6 +114,17 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
 
     // Setup the default allocators
     table->allocators = table->registry.GetAllocators();
+
+    // Create application info deep copy
+    if (pCreateInfo->pApplicationInfo) {
+        table->applicationInfo.DeepCopy(table->allocators, *pCreateInfo->pApplicationInfo);
+    }
+
+    // Install shader compiler
+#ifndef NDEBUG
+    auto shaderDebug = table->registry.AddNew<ShaderCompilerDebug>(table);
+    ENSURE(shaderDebug->Install(), "Failed to install shader debug");
+#endif
 
     // Diagnostic
     table->logBuffer.Add("Vulkan", "Instance created");

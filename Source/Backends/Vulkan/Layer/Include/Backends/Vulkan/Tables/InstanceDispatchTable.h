@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
+#include <Backends/Vulkan/DeepCopyObjects.Gen.h>
 
 // Backend
 #include <Backend/Environment.h>
@@ -70,6 +71,9 @@ struct InstanceDispatchTable {
 
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;
+
+    /// Creation info
+    VkApplicationInfoDeepCopy applicationInfo;
 
     /// Callbacks
     PFN_vkGetInstanceProcAddr                   next_vkGetInstanceProcAddr;

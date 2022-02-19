@@ -1,4 +1,7 @@
-#include <Common/Path.h>
+#include <Common/FileSystem.h>
+
+// Std
+#include <fstream>
 
 // System
 #if defined(_MSC_VER)
@@ -7,7 +10,7 @@
 #include <unistd.h>
 #endif
 
-std::filesystem::path CurrentExecutableDirectory() {
+std::filesystem::path GetCurrentExecutableDirectory() {
 #if defined(_MSC_VER)
     wchar_t buffer[FILENAME_MAX]{};
     GetModuleFileNameW(nullptr, buffer, FILENAME_MAX);
@@ -25,7 +28,7 @@ std::filesystem::path CurrentExecutableDirectory() {
     return std::filesystem::path(buffer).parent_path();
 }
 
-std::string CurrentExecutableName() {
+std::string GetCurrentExecutableName() {
 #if defined(_MSC_VER)
     wchar_t buffer[FILENAME_MAX]{};
     GetModuleFileNameW(nullptr, buffer, FILENAME_MAX);
@@ -47,7 +50,7 @@ std::string CurrentExecutableName() {
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 #endif
 
-std::filesystem::path CurrentModuleDirectory() {
+std::filesystem::path GetCurrentModuleDirectory() {
 #if defined(_MSC_VER)
     wchar_t buffer[FILENAME_MAX]{};
     char path[MAX_PATH]{};
@@ -62,4 +65,35 @@ std::filesystem::path CurrentModuleDirectory() {
 #else
 #    error Not implemented
 #endif
+}
+
+void CreateDirectoryTree(const std::filesystem::path &path) {
+    if (!std::filesystem::exists(path)) {
+        std::filesystem::create_directories(path);
+    }
+}
+
+std::filesystem::path GetIntermediatePath(const std::string_view &category) {
+    std::filesystem::path path = GetCurrentModuleDirectory();
+
+    // TODO: Ugly
+    if (path.filename() == "Plugins") {
+        path = path.parent_path();
+    }
+
+    // Append
+    path /= "Intermediate";
+    path /= category;
+
+    // Make sure it exists
+    CreateDirectoryTree(path);
+    return path;
+}
+
+std::filesystem::path GetIntermediateDebugPath() {
+    return GetIntermediatePath("Debug");
+}
+
+std::filesystem::path GetIntermediateCachePath() {
+    return GetIntermediatePath("Cache");
 }

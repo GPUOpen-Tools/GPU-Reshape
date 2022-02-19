@@ -25,6 +25,10 @@ struct SpvSourceMap {
     /// \return the line, empty if OOB
     std::string_view GetLine(uint32_t fileIndex, uint32_t line) const;
 
+    /// Get the root filename
+    /// \return
+    std::string_view GetFilename() const;
+
     /// Get the last pending source spv identifier
     SpvId GetPendingSource() const;
 

@@ -6,7 +6,7 @@
 #include <Backends/Vulkan/Translation.h>
 
 // Common
-#include <Common/Path.h>
+#include <Common/FileSystem.h>
 
 using namespace Test;
 using namespace Test::Vulkan;
@@ -41,7 +41,7 @@ void Device::Install(const DeviceInfo &creationInfo) {
 
 void Device::EnumerateInstanceExtensions() {
     // Redirect layer path
-    _putenv_s("VK_LAYER_PATH", CurrentExecutableDirectory().string().c_str());
+    _putenv_s("VK_LAYER_PATH", GetCurrentExecutableDirectory().string().c_str());
 
     // Get number of instance layers
     uint32_t instanceLayerCount;

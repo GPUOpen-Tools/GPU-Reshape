@@ -3,7 +3,7 @@
 #include <Services/HostResolver/IPGlobalLock.h>
 
 // Common
-#include <Common/Path.h>
+#include <Common/FileSystem.h>
 
 // System
 #ifdef _WIN64
@@ -22,7 +22,7 @@ bool HostResolverService::Install() {
 
 bool HostResolverService::StartProcess() {
     // Process path
-    std::filesystem::path path = CurrentModuleDirectory() / "Services.HostResolver.Standalone";
+    std::filesystem::path path = GetCurrentModuleDirectory() / "Services.HostResolver.Standalone";
 
 #ifdef _WIN64
     // Startup info

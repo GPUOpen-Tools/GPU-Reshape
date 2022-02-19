@@ -4,7 +4,7 @@
 #include <cstdlib>
 
 // Common
-#include <Common/Path.h>
+#include <Common/FileSystem.h>
 
 // Backend
 #include <Backend/EnvironmentInfo.h>
@@ -25,7 +25,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 
 Loader::Loader() {
     // Redirect layer path
-    _putenv_s("VK_LAYER_PATH", CurrentExecutableDirectory().string().c_str());
+    _putenv_s("VK_LAYER_PATH", GetCurrentExecutableDirectory().string().c_str());
 
     // Get number of instance layers
     uint32_t instancelayerCount;

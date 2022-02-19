@@ -74,3 +74,11 @@ std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const 
     // Not found
     return {};
 }
+
+std::string_view SpvSourceMap::GetFilename() const {
+    if (physicalSources.empty()) {
+        return {};
+    }
+
+    return physicalSources[0].filename;
+}

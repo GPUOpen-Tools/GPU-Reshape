@@ -14,6 +14,7 @@ class Dispatcher;
 struct DispatcherBucket;
 class IFeature;
 class IShaderFeature;
+class ShaderCompilerDebug;
 
 class ShaderCompiler : public TComponent<ShaderCompiler> {
 public:
@@ -47,7 +48,8 @@ private:
     DeviceDispatchTable* table{nullptr};
 
     /// Async dispatcher
-    ComRef<Dispatcher> dispatcher{nullptr};
+    ComRef<Dispatcher> dispatcher;
+    ComRef<ShaderCompilerDebug> debug;
 
     /// All features
     std::vector<ComRef<IShaderFeature>> shaderFeatures;

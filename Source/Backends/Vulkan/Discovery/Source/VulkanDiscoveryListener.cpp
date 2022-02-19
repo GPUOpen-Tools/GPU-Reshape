@@ -2,7 +2,7 @@
 #include <Backends/Vulkan/Layer.h>
 
 // Common
-#include <Common/Path.h>
+#include <Common/FileSystem.h>
 
 // System
 #ifdef _WIN32
@@ -36,7 +36,7 @@ bool VulkanDiscoveryListener::Install() {
 #ifdef _WIN32
 bool VulkanDiscoveryListener::InstallImplicitLayer() {
     // Determine the json path
-    std::filesystem::path modulePath    = CurrentExecutableDirectory();
+    std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
     std::filesystem::path layerJsonPath = modulePath / "VK_GPUOpen_GBV.json";
 
     // Key name
