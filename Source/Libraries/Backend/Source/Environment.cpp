@@ -23,7 +23,11 @@ Environment::Environment() {
 }
 
 Environment::~Environment() {
+    // Resolver may not be installed (uninitialized environments, valid usage)
     auto resolver = registry.Get<PluginResolver>();
+    if (!resolver) {
+        return;
+    }
 
     // Uninstall all plugins
     resolver->Uninstall();
