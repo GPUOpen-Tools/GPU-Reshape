@@ -136,6 +136,9 @@ bool PluginResolver::InstallPlugins(const PluginList &list) {
                     std::cerr << "Plugin '" << entry.plugin << "' failed to install" << std::endl;
                     return false;
                 }
+
+                // Mark as installed
+                state.mode = PluginMode::Installed;
             }
 
             // Remove

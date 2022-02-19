@@ -294,8 +294,7 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
 void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue, ShaderExportStreamSegment *segment) {
     QueueState* queueState = table->states_queue.GetNoLock(queue->queue);
 
-    // Release fence usage
-    destroyRef(segment->fence, allocators);
+    // Move ownership to queue (don't release the reference count, queue owns it now)
     queueState->pools_fences.Push(segment->fence);
 
     // Remove fence reference

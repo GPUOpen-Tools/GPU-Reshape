@@ -23,7 +23,10 @@ Environment::Environment() {
 }
 
 Environment::~Environment() {
+    auto resolver = registry.Get<PluginResolver>();
 
+    // Uninstall all plugins
+    resolver->Uninstall();
 }
 
 bool Environment::Install(const EnvironmentInfo &info) {
