@@ -78,6 +78,8 @@ struct InstanceDispatchTable {
     PFN_vkGetPhysicalDeviceMemoryProperties2KHR next_vkGetPhysicalDeviceMemoryProperties2KHR;
     PFN_vkGetPhysicalDeviceProperties           next_vkGetPhysicalDeviceProperties;
     PFN_vkGetPhysicalDeviceFeatures2            next_vkGetPhysicalDeviceFeatures2;
+    PFN_vkEnumerateDeviceLayerProperties        next_vkEnumerateDeviceLayerProperties;
+    PFN_vkEnumerateDeviceExtensionProperties    next_vkEnumerateDeviceExtensionProperties;
 
 private:
     /// Lookup

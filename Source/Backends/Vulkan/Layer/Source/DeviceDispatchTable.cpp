@@ -87,12 +87,6 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
     if (!std::strcmp(name, "vkDestroyDevice"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyDevice);
 
-    if (!std::strcmp(name, "vkEnumerateDeviceLayerProperties"))
-        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkEnumerateDeviceLayerProperties);
-
-    if (!std::strcmp(name, "vkEnumerateDeviceExtensionProperties"))
-        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkEnumerateDeviceExtensionProperties);
-
     if (!std::strcmp(name, "vkCreateShaderModule"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateShaderModule);
 

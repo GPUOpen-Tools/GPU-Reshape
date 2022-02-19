@@ -1,8 +1,5 @@
 #pragma once
 
-// Layer
-#include "Common.h"
-
 /// Ensure the beta extensions are enabled
 #define VK_ENABLE_BETA_EXTENSIONS 1
 
@@ -17,6 +14,10 @@
 // Vulkan
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_beta.h>
+
+// Layer
+#include "Common.h"
+#include "Layer.h"
 
 /// Get the internally stored table
 template<typename T>

@@ -36,27 +36,48 @@
 #include <cstring>
 
 
-VkResult VKAPI_PTR Hook_vkEnumerateDeviceLayerProperties(uint32_t *pPropertyCount, VkLayerProperties *pProperties) {
-    if (pPropertyCount) {
-        *pPropertyCount = 1;
+VkResult VKAPI_PTR Hook_vkEnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount, VkLayerProperties *pProperties) {
+    auto table = InstanceDispatchTable::Get(GetInternalTable(physicalDevice));
+
+    // Enumerate base layer count
+    VkResult result = table->next_vkEnumerateDeviceLayerProperties(physicalDevice, pPropertyCount, nullptr);
+    if (result != VK_SUCCESS) {
+        return result;
     }
 
+    // Local layer
+    *pPropertyCount += 1;
+
+    // Filling?
     if (pProperties) {
-        strcpy_s(pProperties->layerName, "VK_GPUOpen_GBV");
-        strcpy_s(pProperties->description, "");
-        pProperties->implementationVersion = 1;
-        pProperties->specVersion = VK_API_VERSION_1_0;
+        // Enumerate base layers
+        result = table->next_vkEnumerateDeviceLayerProperties(physicalDevice, pPropertyCount, pProperties);
+        if (result != VK_SUCCESS) {
+            return result;
+        }
+
+        // Fill local layer
+        VkLayerProperties& localProperty = pProperties[*pPropertyCount - 1];
+        strcpy_s(localProperty.layerName, VK_GPUOPEN_GPUVALIDATION_LAYER_NAME);
+        strcpy_s(localProperty.description, "");
+        localProperty.implementationVersion = 1;
+        localProperty.specVersion = VK_API_VERSION_1_0;
     }
 
+    // OK
     return VK_SUCCESS;
 }
 
-VkResult VKAPI_PTR Hook_vkEnumerateDeviceExtensionProperties(uint32_t *pPropertyCount, VkExtensionProperties *pProperties) {
-    if (pPropertyCount) {
+VkResult VKAPI_PTR Hook_vkEnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice, const char* pLayerName, uint32_t *pPropertyCount, VkExtensionProperties *pProperties) {
+    auto table = InstanceDispatchTable::Get(GetInternalTable(physicalDevice));
+
+    // Local layer?
+    if (pLayerName && !std::strcmp(pLayerName, VK_GPUOPEN_GPUVALIDATION_LAYER_NAME)) {
         *pPropertyCount = 0;
+        return VK_SUCCESS;
     }
 
-    return VK_SUCCESS;
+    return table->next_vkEnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pPropertyCount, pProperties);
 }
 
 static bool PoolAndInstallFeatures(DeviceDispatchTable* table) {
