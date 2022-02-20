@@ -5,16 +5,23 @@
 
 // Std
 #include <filesystem>
+#include <mutex>
 
 class SpvModule;
 struct InstanceDispatchTable;
 struct VkShaderModuleCreateInfo;
+
+namespace spvtools {
+    class SpirvTools;
+}
 
 class ShaderCompilerDebug : public TComponent<ShaderCompilerDebug> {
 public:
     COMPONENT(ShaderCompilerDebug);
 
     ShaderCompilerDebug(InstanceDispatchTable* table);
+
+    ~ShaderCompilerDebug();
 
     /// Install this component
     /// \return
@@ -40,6 +47,12 @@ public:
 
 private:
     InstanceDispatchTable* table;
+
+    /// Shared lock for printing
+    std::mutex sharedLock;
+
+    /// Tools handle
+    spvtools::SpirvTools* tools{nullptr};
 
     /// Base path for all debugging data
     std::filesystem::path path;

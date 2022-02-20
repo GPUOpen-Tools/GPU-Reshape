@@ -3,7 +3,7 @@
 ExternalProject_Add(
     SPIRVHeaders
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Headers
-    GIT_TAG 1.5.4
+    GIT_TAG sdk-1.2.198.0
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SPIRVHeaders
     USES_TERMINAL_INSTALL 0
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
@@ -14,3 +14,22 @@ ExternalProject_Add(
         -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
         -G ${CMAKE_GENERATOR}
 )
+
+# SPIRV-Tools
+ExternalProject_Add(
+    SPIRVTools
+    GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Tools
+    GIT_TAG sdk-1.2.198.0
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SPIRVTools
+    USES_TERMINAL_INSTALL 0
+    UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
+    CMAKE_ARGS
+    -DSPIRV-Headers_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/SPIRVHeaders
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/External
+    -DCMAKE_INSTALL_LIBDIR=${CMAKE_BINARY_DIR}/External/lib
+    -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+    -G ${CMAKE_GENERATOR}
+)
+
+add_dependencies(SPIRVTools SPIRVHeaders)
