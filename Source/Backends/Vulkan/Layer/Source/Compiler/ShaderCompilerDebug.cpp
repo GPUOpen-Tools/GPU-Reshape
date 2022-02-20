@@ -18,6 +18,11 @@
 // Std
 #include <fstream>
 
+// System
+#if defined(_MSC_VER)
+#   include <Windows.h>
+#endif
+
 ShaderCompilerDebug::ShaderCompilerDebug(InstanceDispatchTable *table) : table(table) {
     path = GetIntermediateDebugPath();
 
@@ -61,6 +66,10 @@ static void OnValidationMessage(spv_message_level_t level, const char* source, c
             break;
     }
 
+#ifdef _MSC_VER
+    OutputDebugString(message);
+#endif
+
     // Print it
     fprintf(out, "%s\n", message);
 }
@@ -91,6 +100,10 @@ bool ShaderCompilerDebug::Validate(SpvModule *module) {
     if (!tools->Disassemble(module->GetCode(), module->GetSize() / sizeof(uint32_t), &disassembled)) {
         return false;
     }
+
+#ifdef _MSC_VER
+    OutputDebugString(disassembled.c_str());
+#endif
 
     fprintf(stderr, "%s\n", disassembled.c_str());
     return false;

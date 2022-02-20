@@ -342,12 +342,45 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                 state.deepCopy << Pad(indent) << "}\n";
             }
         } else if (isArray) {
-            // POD array copy
-            state.deepCopy << Pad(indent) << "std::memcpy(" << destAccessorPrefix << memberName->GetText() << ", " << sourceAccessorPrefix << memberName->GetText();
-            state.deepCopy << ", sizeof(" << sourceAccessorPrefix + memberName->GetText() <<  "));\n";
+            // Find the element type
+            auto elementType = md.lookup.find(memberType->GetText());
+
+            // If end, this is a POD type
+            if (elementType == md.lookup.end()) {
+                // POD array copy
+                state.deepCopy << Pad(indent) << "std::memcpy(" << destAccessorPrefix << memberName->GetText() << ", " << sourceAccessorPrefix << memberName->GetText();
+                state.deepCopy << ", sizeof(" << sourceAccessorPrefix + memberName->GetText() <<  "));\n";
+            } else {
+                // Counter var
+                std::string counterVar = "i" + std::to_string(state.counter++);
+                state.deepCopy << Pad(indent) << "for (size_t " << counterVar << " = 0; " << counterVar << " < " << arrayCount << "; " << counterVar << "++) {\n";
+
+                // Copy the tree
+                if (!DeepCopyObjectTree(
+                        md, state, elementType->second,
+                        sourceAccessorPrefix + memberName->GetText() + "[" + counterVar + "]",
+                        destAccessorPrefix + memberName->GetText() + "[" + counterVar + "]",
+                        indent
+                )) {
+                    return false;
+                }
+
+                state.deepCopy << Pad(indent) << "}\n";
+            }
+
         } else {
-            // POD copy
-            state.deepCopy << Pad(indent) << destAccessorPrefix << memberName->GetText() << " = " << sourceAccessorPrefix << memberName->GetText() << ";\n";
+            // Find the element type
+            auto elementType = md.lookup.find(memberType->GetText());
+
+            // If end, this is a POD type
+            if (elementType == md.lookup.end()) {
+                state.deepCopy << Pad(indent) << destAccessorPrefix << memberName->GetText() << " = " << sourceAccessorPrefix << memberName->GetText() << ";\n";
+            } else {
+                // Copy the tree
+                if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + ".", destAccessorPrefix + memberName->GetText() + ".", indent)) {
+                    return false;
+                }
+            }
         }
     }
 
