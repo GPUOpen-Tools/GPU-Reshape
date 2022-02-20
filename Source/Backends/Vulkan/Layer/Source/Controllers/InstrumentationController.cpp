@@ -257,7 +257,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             // Create super feature bit set (global -> shader -> pipeline)
             // ? Pipeline specific bit set fed back during shader compilation
             featureBitSet |= globalInstrumentationInfo.featureBitSet;
-            featureBitSet |= state->shaderModules[i]->instrumentationInfo.featureBitSet;
+            featureBitSet |= state->shaderModules[shaderIndex]->instrumentationInfo.featureBitSet;
             featureBitSet |= state->instrumentationInfo.featureBitSet;
 
             // Number of slots used by the pipeline

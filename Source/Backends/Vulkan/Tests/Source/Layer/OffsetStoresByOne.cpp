@@ -93,7 +93,7 @@ public:
 };
 
 TEST_CASE_METHOD(Loader, "Layer.Feature.OffsetStoresByOne", "[Vulkan]") {
-    REQUIRE(AddInstanceLayer("VK_GPUOpen_GBV"));
+    REQUIRE(AddInstanceLayer("VK_LAYER_GPUOPEN_GBV"));
 
     Registry* registry = GetRegistry();
 

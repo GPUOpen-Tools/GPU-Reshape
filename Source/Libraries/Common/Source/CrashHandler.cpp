@@ -1,5 +1,8 @@
 #include <Common/CrashHandler.h>
 
+// Std
+#include <mutex>
+
 // Win32
 #ifdef _WIN32
 #   ifndef NDEBUG
@@ -12,6 +15,9 @@
 
 #ifdef WIN32_EXCEPTION_HANDLER
 static LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo) {
+    static std::mutex globalLock;
+    std::lock_guard guard(globalLock);
+
     // Create console
     AllocConsole();
 

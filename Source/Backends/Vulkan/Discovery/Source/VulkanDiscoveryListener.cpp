@@ -11,36 +11,11 @@
 #   error Not implemented
 #endif
 
-VulkanDiscoveryListener::~VulkanDiscoveryListener() {
-    if (!keyOwner) {
-        return;
-    }
-
-    // Remove layer
-    UninstallImplicitLayer();
-}
-
-bool VulkanDiscoveryListener::Install() {
-    // Attempt to install implicit layer
-    if (!InstallImplicitLayer()) {
-        return false;
-    }
-
-    // Key is owned
-    keyOwner = true;
-
-    // OK
-    return true;
-}
-
 #ifdef _WIN32
-bool VulkanDiscoveryListener::InstallImplicitLayer() {
+bool InstallImplicitLayer(HKEY key, const wchar_t* path) {
     // Determine the json path
     std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
-    std::filesystem::path layerJsonPath = modulePath / "VK_GPUOpen_GBV.json";
-
-    // Key name
-    key = L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers";
+    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GBV.json";
 
     // Create properties
     HKEY keyHandle{};
@@ -48,8 +23,8 @@ bool VulkanDiscoveryListener::InstallImplicitLayer() {
 
     // Create or open the implicit layer key
     DWORD error = RegCreateKeyExW(
-        HKEY_CURRENT_USER,
-        key.c_str(),
+        key,
+        path,
         0, nullptr, 0,
         KEY_WRITE, nullptr,
         &keyHandle, &dwDisposition
@@ -87,8 +62,17 @@ bool VulkanDiscoveryListener::InstallImplicitLayer() {
     // OK
     return true;
 }
-
-void VulkanDiscoveryListener::UninstallImplicitLayer() {
-    // ...
-}
 #endif
+
+bool VulkanDiscoveryListener::Install() {
+    // Attempt to install implicit non-administrator layer
+    if (!InstallImplicitLayer(HKEY_CURRENT_USER, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers")) {
+        return false;
+    }
+
+    // Attempt to install implicit administrator layer, optional success
+    InstallImplicitLayer(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers");
+
+    // OK
+    return true;
+}

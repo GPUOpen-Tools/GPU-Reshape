@@ -4,22 +4,10 @@
 #include <Discovery/IDiscoveryListener.h>
 
 // Std
-#include <string>
+#include <string_view>
 
 class VulkanDiscoveryListener final : public IDiscoveryListener {
 public:
-    ~VulkanDiscoveryListener();
-
     /// Overrides
     bool Install() override;
-
-private:
-    bool InstallImplicitLayer();
-    void UninstallImplicitLayer();
-
-private:
-    std::wstring key;
-
-    // Does this listener own the key?
-    bool keyOwner{false};
 };

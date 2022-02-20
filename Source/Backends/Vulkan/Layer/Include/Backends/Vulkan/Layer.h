@@ -8,7 +8,7 @@
 static constexpr VkStructureType VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO = static_cast<VkStructureType>(1100000001);
 
 // Layer name
-#define VK_GPUOPEN_GPUVALIDATION_LAYER_NAME "VK_GPUOpen_GBV"
+#define VK_GPUOPEN_GPUVALIDATION_LAYER_NAME "VK_LAYER_GPUOPEN_GBV"
 
 // Forward declarations
 class Registry;

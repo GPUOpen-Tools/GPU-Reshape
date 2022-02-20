@@ -1,10 +1,10 @@
 {
   "file_format_version" : "1.2.0",
   "layer" : {
-    "name": "VK_GPUOpen_GBV",
+    "name": "VK_LAYER_GPUOPEN_GBV",
     "type": "GLOBAL",
     "library_path": ".\\Backends.Vulkan.Layer.dll",
-    "api_version": "1.0.0",
+    "api_version": "1.2.0",
     "implementation_version": "1",
     "description": "GPUOpen GPU-Based-Validation, https://github.com/GPUOpen-Tools/gpu-validation",
     "functions": {
