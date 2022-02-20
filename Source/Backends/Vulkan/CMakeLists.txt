@@ -173,7 +173,7 @@ ExternalProject_Link(Backends.Vulkan.Layer VMA)
 ExternalProject_Link(Backends.Vulkan.Layer SPIRVTools SPIRV-Tools)
 
 # Copy layer definition (configuration time)
-ConfigureOutput(Layer/Resources/VK_GPUOpen_GBV.json VK_GPUOpen_GBV.json)
+ConfigureOutput(Layer/Resources/VK_LAYER_GPUOPEN_GBV.json VK_LAYER_GPUOPEN_GBV.json)
 
 #----- Discovery -----#
 

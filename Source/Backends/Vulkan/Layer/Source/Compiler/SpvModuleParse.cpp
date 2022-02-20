@@ -525,7 +525,7 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             ASSERT(hasResult, "Expected result for instruction type");
 
             // Append
-            IL::EqualInstruction instr{};
+            IL::NotEqualInstruction instr{};
             instr.opCode = IL::OpCode::NotEqual;
             instr.result = id;
             instr.source = source;
@@ -559,7 +559,7 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             ASSERT(hasResult, "Expected result for instruction type");
 
             // Append
-            IL::LessThanInstruction instr{};
+            IL::LessThanEqualInstruction instr{};
             instr.opCode = IL::OpCode::LessThanEqual;
             instr.result = id;
             instr.source = source;
@@ -593,7 +593,7 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             ASSERT(hasResult, "Expected result for instruction type");
 
             // Append
-            IL::GreaterThanInstruction instr{};
+            IL::GreaterThanEqualInstruction instr{};
             instr.opCode = IL::OpCode::GreaterThanEqual;
             instr.result = id;
             instr.source = source;
@@ -621,7 +621,7 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             ASSERT(hasResult, "Expected result for instruction type");
 
             // Append
-            IL::BitOrInstruction instr{};
+            IL::BitAndInstruction instr{};
             instr.opCode = IL::OpCode::BitAnd;
             instr.result = id;
             instr.source = source;
@@ -650,7 +650,7 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
             ASSERT(hasResult, "Expected result for instruction type");
 
             // Append
-            IL::BitShiftLeftInstruction instr{};
+            IL::BitShiftRightInstruction instr{};
             instr.opCode = IL::OpCode::BitShiftRight;
             instr.result = id;
             instr.source = source;
@@ -661,8 +661,6 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
         }
 
         case SpvOpBranch: {
-            ASSERT(hasResult, "Expected result for instruction type");
-
             // Append
             IL::BranchInstruction instr{};
             instr.opCode = IL::OpCode::Branch;
@@ -674,8 +672,6 @@ bool SpvModule::ParseInstruction(ParseContext &context) {
         }
 
         case SpvOpBranchConditional: {
-            ASSERT(hasResult, "Expected result for instruction type");
-
             // Append
             IL::BranchConditionalInstruction instr{};
             instr.opCode = IL::OpCode::BranchConditional;

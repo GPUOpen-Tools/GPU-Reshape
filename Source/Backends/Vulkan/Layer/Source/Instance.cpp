@@ -40,7 +40,7 @@ VkResult VKAPI_PTR Hook_vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCo
     }
 
     if (pProperties) {
-        strcpy_s(pProperties->layerName, "VK_GPUOpen_GBV");
+        strcpy_s(pProperties->layerName, "VK_LAYER_GPUOPEN_GBV");
         strcpy_s(pProperties->description, "");
         pProperties->implementationVersion = 1;
         pProperties->specVersion = VK_API_VERSION_1_0;

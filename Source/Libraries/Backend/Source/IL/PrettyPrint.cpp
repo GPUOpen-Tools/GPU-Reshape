@@ -120,7 +120,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             break;
         }
         case OpCode::Div: {
-            auto sub = instr->As<IL::SubInstruction>();
+            auto sub = instr->As<IL::DivInstruction>();
             line << "Sub %" << sub->lhs << " %" << sub->rhs;
             break;
         }
