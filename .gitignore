@@ -13,9 +13,10 @@ ThirdParty/Fmt/
 ThirdParty/Asio/
 ThirdParty/ArgParse/
 ThirdParty/Catch2/
-ThirdParty/SPIRVHeaders/
 ThirdParty/TinyXML2/
 ThirdParty/VulkanHeaders/
+ThirdParty/SPIRVHeaders/
+ThirdParty/SPIRVTools/
 ThirdParty/VulkanLoader/
 
 ## Ignore Visual Studio temporary files, build results, and

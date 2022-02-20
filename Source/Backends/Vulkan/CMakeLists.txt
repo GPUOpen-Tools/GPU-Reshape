@@ -169,6 +169,9 @@ target_include_directories(
 ExternalProject_Link(Backends.Vulkan.Layer VulkanHeaders)
 ExternalProject_Link(Backends.Vulkan.Layer VMA)
 
+# Validation dependencies
+ExternalProject_Link(Backends.Vulkan.Layer SPIRVTools SPIRV-Tools)
+
 # Copy layer definition (configuration time)
 ConfigureOutput(Layer/Resources/VK_GPUOpen_GBV.json VK_GPUOpen_GBV.json)
 

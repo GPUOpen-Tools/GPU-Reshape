@@ -8,6 +8,9 @@
 #include <Backend/IL/Program.h>
 #include <Backend/IL/PrettyPrint.h>
 
+// SPIRV-Tools
+#include <spirv-tools/libspirv.hpp>
+
 // Common
 #include <Common/FileSystem.h>
 #include <Common/GlobalUID.h>
@@ -29,19 +32,68 @@ ShaderCompilerDebug::ShaderCompilerDebug(InstanceDispatchTable *table) : table(t
     }
 
     // Clear the sub-tree
-    std::filesystem::remove_all(path);
+    std::error_code ignored;
+    std::filesystem::remove_all(path, ignored);
 
     // Ensure the tree exists
     CreateDirectoryTree(path);
 }
 
+ShaderCompilerDebug::~ShaderCompilerDebug() {
+    if (tools) {
+        destroy(tools, allocators);
+    }
+}
+
+static void OnValidationMessage(spv_message_level_t level, const char* source, const spv_position_t& position, const char* message) {
+    // Determine stream
+    FILE* out{nullptr};
+    switch (level) {
+        case SPV_MSG_FATAL:
+        case SPV_MSG_INTERNAL_ERROR:
+        case SPV_MSG_ERROR:
+            out = stderr;
+            break;
+        case SPV_MSG_WARNING:
+        case SPV_MSG_INFO:
+        case SPV_MSG_DEBUG:
+            out = stdout;
+            break;
+    }
+
+    // Print it
+    fprintf(out, "%s\n", message);
+}
+
 bool ShaderCompilerDebug::Install() {
+    // Create tools
+    tools = new (allocators) spvtools::SpirvTools(SPV_ENV_VULKAN_1_2);
+
+    // Set the consumer
+    tools->SetMessageConsumer(OnValidationMessage);
+
     // OK
     return true;
 }
 
 bool ShaderCompilerDebug::Validate(SpvModule *module) {
-    return true;
+    // Ensure validation is sequential for easier debugging
+    std::lock_guard guard(sharedLock);
+
+    // Validate first
+    // Note that the binary size operand is dword count, which is confusing
+    if (tools->Validate(module->GetCode(), module->GetSize() / sizeof(uint32_t))) {
+        return true;
+    }
+
+    // Failed validation, disassemble the SPIRV
+    std::string disassembled;
+    if (!tools->Disassemble(module->GetCode(), module->GetSize() / sizeof(uint32_t), &disassembled)) {
+        return false;
+    }
+
+    fprintf(stderr, "%s\n", disassembled.c_str());
+    return false;
 }
 
 std::filesystem::path ShaderCompilerDebug::AllocatePath(SpvModule *module) {

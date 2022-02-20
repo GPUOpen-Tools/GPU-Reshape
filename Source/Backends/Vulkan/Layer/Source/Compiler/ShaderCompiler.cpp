@@ -116,11 +116,6 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         return;
     }
 
-    // Dump instrumented
-    if (!debugPath.empty()) {
-        debug->Add(debugPath, "instrumented", module, module->GetCode(), module->GetSize());
-    }
-
     // Copy the deep creation info
     //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
     VkShaderModuleCreateInfo createInfo = job.state->createInfoDeepCopy.createInfo;
@@ -129,6 +124,15 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Naive validation
     ASSERT(*createInfo.pCode == SpvMagicNumber, "Invalid SPIR-V magic number");
+
+    // Debug
+    if (!debugPath.empty()) {
+        // Validate the instrumented module
+        ENSURE(debug->Validate(module), "Instrumentation produced incorrect binaries");
+
+        // Dump instrumented
+        debug->Add(debugPath, "instrumented", module, module->GetCode(), module->GetSize());
+    }
 
     // Resulting module
     VkShaderModule instrument;
