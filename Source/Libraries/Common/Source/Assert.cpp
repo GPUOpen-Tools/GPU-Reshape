@@ -15,6 +15,10 @@ void Detail::Break(const char* message) {
     fprintf(stderr, "%s", message);
     fflush(stderr);
 
+#ifdef _MSC_VER
+    OutputDebugString(message);
+#endif
+
     // Invoke signal
 #if defined(_MSC_VER)
     DebugBreak();
