@@ -2,7 +2,8 @@
 #include <Backends/Vulkan/Compiler/SpvInstruction.h>
 #include <Backends/Vulkan/Compiler/SpvStream.h>
 #include <Backends/Vulkan/Compiler/SpvDebugMap.h>
-#include "Backends/Vulkan/Compiler/SpvSourceMap.h"
+#include <Backends/Vulkan/Compiler/SpvSourceMap.h>
+#include <Backends/Vulkan/Compiler/Spv.Gen.h>
 
 bool SpvModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
     program = new(allocators) IL::Program(allocators, shaderGUID);

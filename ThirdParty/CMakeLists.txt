@@ -20,6 +20,7 @@ include(TinyXML2.cmake)
 include(VMA.cmake)
 include(Asio.cmake)
 include(Fmt.cmake)
+include(JSON.cmake)
 
 # Standard project installation
 function(ExternalProject_Link Project Name)

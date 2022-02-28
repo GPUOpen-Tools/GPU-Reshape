@@ -1,0 +1,14 @@
+#pragma once
+
+// Layer
+#include <Backends/Vulkan/Compiler/Spv.h>
+#include <Backends/Vulkan/Compiler/SpvPhysicalBlockType.h>
+
+inline SpvPhysicalBlockType GetSpvBlockType(SpvOp op) {
+    switch (op) {
+        default:
+            return SpvPhysicalBlockType::FunctionDefinition;
+
+$CLASSES
+    }
+}

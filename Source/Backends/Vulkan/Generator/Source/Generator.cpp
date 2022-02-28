@@ -21,6 +21,7 @@ int main(int argc, char *const argv[]) {
     // Setup parameters
     program.add_argument("-vkxml").help("Path of the vulkan specification xml file").required();
     program.add_argument("-template").help("The file to template").required();
+    program.add_argument("-spvjson").help("The file to the spv json specification").default_value(std::string(""));
     program.add_argument("-gentype").help("The generation type, one of [commandbuffer, commandbufferdispatchtable, deepcopyobjects]").required();
     program.add_argument("-whitelist").help("Whitelist a callback").default_value(std::string(""));
     program.add_argument("-hook").help("All feature hooks").default_value(std::string(""));
@@ -40,6 +41,7 @@ int main(int argc, char *const argv[]) {
     auto &&vkxml = program.get<std::string>("-vkxml");
     auto &&gentype = program.get<std::string>("-gentype");
     auto &&ftemplate = program.get<std::string>("-template");
+    auto &&spvjson = program.get<std::string>("-spvjson");
     auto &&output = program.get<std::string>("-o");
     auto &&whitelist = program.get<std::string>("-whitelist");
     auto &&object = program.get<std::string>("-object");
@@ -47,6 +49,23 @@ int main(int argc, char *const argv[]) {
 
     // Generator information
     GeneratorInfo generatorInfo{};
+
+    if (!spvjson.empty()) {
+        // Open json
+        std::ifstream stream(spvjson);
+        if (!stream.good()) {
+            std::cerr << "Failed to open json file: " << spvjson << std::endl;
+            return 1;
+        }
+
+        // Parse json
+        try {
+            stream >> generatorInfo.spvJson;
+        } catch(nlohmann::json::exception& ex) {
+            std::cerr << "Failed to parse json file: " << spvjson << ", " << ex.what() << std::endl;
+            return 1;
+        }
+    }
 
     // Parse whitelist
     std::stringstream whitelistStream(whitelist);
@@ -105,6 +124,8 @@ int main(int argc, char *const argv[]) {
         generatorResult = Generators::DeepCopyObjects(generatorInfo, templateEngine);
     } else if (gentype == "deepcopy") {
         generatorResult = Generators::DeepCopy(generatorInfo, templateEngine);
+    } else if (gentype == "spv") {
+        generatorResult = Generators::Spv(generatorInfo, templateEngine);
     } else {
         std::cerr << "Invalid generator type: " << gentype << ", see help." << std::endl;
         return 1;

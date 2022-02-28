@@ -3,11 +3,12 @@
 # Create generator
 add_executable(
     Backends.Vulkan.Generator
-    Generator/Source/IGenerator.cpp
+    Generator/Source/Generator.cpp
     Generator/Source/CommandBuffer.cpp
     Generator/Source/CommandBufferDispatchTable.cpp
     Generator/Source/DeepCopyObjects.cpp
     Generator/Source/DeepCopy.cpp
+    Generator/Source/Spv.cpp
 )
 
 # IDE source discovery
@@ -26,6 +27,7 @@ ExternalProject_Link(Backends.Vulkan.Generator ArgParse)
 ExternalProject_Link(Backends.Vulkan.Generator SPIRVHeaders)
 ExternalProject_Link(Backends.Vulkan.Generator VulkanHeaders)
 ExternalProject_Link(Backends.Vulkan.Generator TinyXML2 tinyxml2)
+ExternalProject_Link(Backends.Vulkan.Generator JSON)
 
 #----- Layer -----#
 
@@ -34,6 +36,7 @@ set(CommandBufferTemplate              ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(CommandBufferDispatchTableTemplate ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/CommandBufferDispatchTable.ht)
 set(DeepCopyObjectsTemplate            ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DeepCopyObjects.ht)
 set(DeepCopyTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DeepCopy.cppt)
+set(SpvTemplate                        ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Spv.ht)
 
 # Generated hooks
 set(VkHooks vkCmdDrawIndexed)
@@ -102,6 +105,20 @@ add_custom_command(
         -whitelist ${VkWhitelist}
 )
 
+# Generate the spv utilities
+add_custom_command(
+    OUTPUT Layer/Include/Backends/Vulkan/Compiler/Spv.Gen.h
+    DEPENDS Backends.Vulkan.Generator
+    DEPENDS
+        ${SpvTemplate}
+    COMMAND Backends.Vulkan.Generator
+        -vkxml ${VKXML}
+        -spvjson ${CMAKE_SOURCE_DIR}/ThirdParty/SPIRVHeaders/include/spirv/unified1/spirv.core.grammar.json
+        -template ${SpvTemplate}
+        -gentype spv
+        -o Layer/Include/Backends/Vulkan/Compiler/Spv.Gen.h
+)
+
 # Create layer
 add_library(
     Backends.Vulkan.Layer SHARED
@@ -143,6 +160,7 @@ add_library(
     # Generated dependency headers
     Layer/Include/Backends/Vulkan/DeepCopyObjects.Gen.h
     Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
+    Layer/Include/Backends/Vulkan/Compiler/Spv.Gen.h
 )
 
 # IDE source discovery
