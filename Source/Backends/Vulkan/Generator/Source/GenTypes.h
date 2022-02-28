@@ -6,12 +6,18 @@
 // Xml
 #include <tinyxml2.h>
 
+// Json
+#include <nlohmann/json.hpp>
+
 // Common
 #include <Common/TemplateEngine.h>
 
 struct GeneratorInfo {
     /// Specification registry node
     tinyxml2::XMLElement* registry{nullptr};
+
+    /// Optional spirv json
+    nlohmann::json spvJson{};
 
     /// Whitelisted commands, context sensitive
     std::set<std::string> whitelist;
@@ -47,4 +53,10 @@ namespace Generators {
     /// \param templateEngine template destination
     /// \return success
     bool DeepCopy(const GeneratorInfo& info, TemplateEngine& templateEngine);
+
+    /// Generate spv helpers
+    /// \param info generation info
+    /// \param templateEngine template destination
+    /// \return success
+    bool Spv(const GeneratorInfo& info, TemplateEngine& templateEngine);
 }

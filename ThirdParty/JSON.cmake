@@ -1,0 +1,16 @@
+
+# JSON reader
+ExternalProject_Add(
+    JSON
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_TAG v3.10.5
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/JSON
+    USES_TERMINAL_INSTALL 0
+    UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
+    CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/External
+        -DCMAKE_INSTALL_LIBDIR=${CMAKE_BINARY_DIR}/External/lib
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+        -G ${CMAKE_GENERATOR}
+)
