@@ -15,8 +15,10 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_beta.h>
 
+// Common
+#include <Common/Alloca.h>
+
 // Layer
-#include "Common.h"
 #include "Layer.h"
 
 /// Get the internally stored table

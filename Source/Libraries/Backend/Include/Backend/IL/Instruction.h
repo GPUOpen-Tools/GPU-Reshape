@@ -7,6 +7,7 @@
 #include <Backend/ShaderExport.h>
 #include "Source.h"
 #include "OpCode.h"
+#include "InlineArray.h"
 #include "LiteralType.h"
 #include "ID.h"
 
@@ -250,10 +251,40 @@ namespace IL {
     struct BranchConditionalInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::BranchConditional;
 
+        BranchControlFlow controlFlow;
+
         ID cond;
         ID pass;
         ID fail;
+    };
+
+    struct SwitchCase {
+        uint32_t literal{0};
+        ID branch;
+    };
+
+    struct SwitchInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Switch;
+
+        /// Get size of this instruction
+        /// \param caseCount number of cases
+        /// \return byte size
+        static uint64_t GetSize(uint32_t caseCount) {
+            return sizeof(SwitchInstruction) + InlineArray<SwitchCase>::ElementSize(caseCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(SwitchInstruction) + cases.ElementSize();
+        }
+
         BranchControlFlow controlFlow;
+
+        ID value;
+        ID _default;
+
+        InlineArray<SwitchCase> cases;
     };
 
     struct ExportInstruction : public Instruction {
@@ -284,8 +315,8 @@ namespace IL {
     /// Get the size of an instruction
     /// \param op
     /// \return the byte size
-    inline uint64_t GetSize(OpCode op) {
-        switch (op) {
+    inline uint64_t GetSize(const Instruction* instruction) {
+        switch (instruction->opCode) {
             default:
                 ASSERT(false, "Missing instruction size mapping");
                 return 0;
@@ -355,6 +386,8 @@ namespace IL {
                 return sizeof(LoadBufferInstruction);
             case OpCode::ResourceSize:
                 return sizeof(ResourceSizeInstruction);
+            case OpCode::Switch:
+                return static_cast<const SwitchInstruction*>(instruction)->GetSize();
         }
     }
 }

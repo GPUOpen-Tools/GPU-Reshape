@@ -165,7 +165,7 @@ namespace IL {
 
             /// Pre increment
             Iterator &operator++() {
-                ptr = ptr + GetSize(GetOpCode());
+                ptr = ptr + GetSize(Get());
                 relocationIndex++;
                 return *this;
             }
@@ -313,7 +313,7 @@ namespace IL {
 
             /// Pre increment
             ConstIterator &operator++() {
-                ptr = ptr + GetSize(GetOpCode());
+                ptr = ptr + GetSize(Get());
                 relocationIndex++;
                 return *this;
             }
@@ -446,13 +446,13 @@ namespace IL {
         /// \param instruction the instruction to be inserted
         /// \return inserted reference
         Iterator Append(const Instruction* instruction) {
-            return Append(instruction, static_cast<uint32_t>(IL::GetSize(instruction->opCode)));
+            return Append(instruction, static_cast<uint32_t>(IL::GetSize(instruction)));
         }
 
         /// Append an instruction
         /// \param instruction the instruction to be inserted
         /// \return inserted reference
-        template<typename T>
+        template<typename T, typename = std::enable_if_t<!std::is_pointer_v<T>>>
         TypedIterator<T> Append(const T &instruction) {
             return Append(static_cast<const Instruction*>(&instruction), sizeof(T));
         }
@@ -502,7 +502,7 @@ namespace IL {
             }
 
             size_t offset = instruction.relocationOffset->offset;
-            data.erase(data.begin() + offset, data.begin() + offset + GetSize(ptr->opCode));
+            data.erase(data.begin() + offset, data.begin() + offset + GetSize(ptr));
 
             // Remove relocation offset
             RemoveRelocationOffset(instruction.relocationOffset);
@@ -530,7 +530,7 @@ namespace IL {
                 map.RemoveInstruction(ptr->result);
             }
 
-            size_t size = GetSize(ptr->opCode);
+            size_t size = GetSize(ptr);
             size_t offset = instruction.relocationOffset->offset;
 
             // Compare size

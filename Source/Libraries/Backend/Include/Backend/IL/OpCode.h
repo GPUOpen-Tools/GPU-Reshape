@@ -37,6 +37,7 @@ namespace IL {
         /// Branching
         Branch,
         BranchConditional,
+        Switch,
 
         /// Bit manipulation
         BitOr,

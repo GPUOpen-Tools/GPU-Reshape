@@ -48,16 +48,29 @@ bool IL::Function::ReorderByDominantBlocks() {
         auto terminator = block.GetTerminator();
         ASSERT(terminator, "Must have terminator");
 
-        switch (terminator.GetOpCode()) {
+        IL::OpCode code = terminator.GetOpCode();
+        switch (code) {
             default:
                 break;
-            case IL::OpCode::Branch:
+            case IL::OpCode::Branch: {
                 AddSuccessor(userMap, basicBlocks, block, terminator.As<IL::BranchInstruction>()->branch);
                 break;
-            case IL::OpCode::BranchConditional:
+            }
+            case IL::OpCode::BranchConditional: {
                 AddSuccessor(userMap, basicBlocks, block, terminator.As<IL::BranchConditionalInstruction>()->pass);
                 AddSuccessor(userMap, basicBlocks, block, terminator.As<IL::BranchConditionalInstruction>()->fail);
                 break;
+            }
+            case IL::OpCode::Switch: {
+                auto* _switch = terminator.As<IL::SwitchInstruction>();
+                AddSuccessor(userMap, basicBlocks, block, _switch->_default);
+
+                // Add cases
+                for (uint32_t i = 0; i < _switch->cases.count; i++) {
+                    AddSuccessor(userMap, basicBlocks, block, _switch->cases[i].branch);
+                }
+                break;
+            }
         }
     }
 
@@ -84,13 +97,25 @@ bool IL::Function::ReorderByDominantBlocks() {
             switch (terminator.GetOpCode()) {
                 default:
                     break;
-                case IL::OpCode::Branch:
+                case IL::OpCode::Branch: {
                     userMap[terminator.As<IL::BranchInstruction>()->branch]--;
                     break;
-                case IL::OpCode::BranchConditional:
+                }
+                case IL::OpCode::BranchConditional: {
                     userMap[terminator.As<IL::BranchConditionalInstruction>()->pass]--;
                     userMap[terminator.As<IL::BranchConditionalInstruction>()->fail]--;
                     break;
+                }
+                case IL::OpCode::Switch: {
+                    auto* _switch = terminator.As<IL::SwitchInstruction>();
+                    userMap[_switch->_default]--;
+
+                    // Remove cases
+                    for (uint32_t i = 0; i < _switch->cases.count; i++) {
+                        userMap[_switch->cases[i].branch]--;
+                    }
+                    break;
+                }
             }
 
             // Move block back to function
