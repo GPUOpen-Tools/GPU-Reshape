@@ -218,6 +218,17 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             }
             break;
         }
+        case OpCode::Phi: {
+            auto phi = instr->As<IL::PhiInstruction>();
+            line << "Phi ";
+
+            for (uint32_t i = 0; i < phi->values.count; i++) {
+                const IL::PhiValue& _case = phi->values[i];
+                line << "\n";
+                out.Line() << "       value:%" << _case.value << " branch:%" << _case.branch;
+            }
+            break;
+        }
         case OpCode::BitOr: {
             auto bitOr = instr->As<IL::BitOrInstruction>();
             line << "BitOr %" << bitOr->lhs << " %" << bitOr->rhs;
