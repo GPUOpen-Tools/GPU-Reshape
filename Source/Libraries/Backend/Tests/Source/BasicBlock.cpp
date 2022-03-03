@@ -10,9 +10,9 @@ TEST_CASE("Backend.IL.BasicBlock") {
 
     IL::IdentifierMap& map = program.GetIdentifierMap();
 
-    IL::Function* fn = program.AllocFunction(map.AllocID());
+    IL::Function* fn = program.GetFunctionList().AllocFunction(map.AllocID());
 
-    IL::BasicBlock* bb = fn->AllocBlock(map.AllocID());
+    IL::BasicBlock* bb = fn->GetBasicBlocks().AllocBlock(map.AllocID());
 
     IL::LiteralInstruction a;
     a.opCode = IL::OpCode::Literal;

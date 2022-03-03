@@ -127,11 +127,11 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Debug
     if (!debugPath.empty()) {
-        // Validate the instrumented module
-        ENSURE(debug->Validate(module), "Instrumentation produced incorrect binaries");
-
         // Dump instrumented
         debug->Add(debugPath, "instrumented", module, module->GetCode(), module->GetSize());
+
+        // Validate the instrumented module
+        ENSURE(debug->Validate(module), "Instrumentation produced incorrect binaries");
     }
 
     // Resulting module

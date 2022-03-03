@@ -3,6 +3,9 @@
 // Layer
 #include "Spv.h"
 
+// Std
+#include <cstdint>
+
 struct SpvInstruction {
     /// Constructor
     SpvInstruction() : lowWordCountHighOpCode(0) {
@@ -35,6 +38,21 @@ struct SpvInstruction {
 
     /// Get an instruction word
     uint32_t& operator[](uint32_t i) {
+        return Word(i);
+    }
+
+    /// Get the instruction ptr
+    const uint32_t* Ptr() const {
+        return &lowWordCountHighOpCode;
+    }
+
+    /// Get an instruction argument
+    const uint32_t& Word(uint32_t i) const {
+        return *(Ptr() + i);
+    }
+
+    /// Get an instruction word
+    const uint32_t& operator[](uint32_t i) const {
         return Word(i);
     }
 

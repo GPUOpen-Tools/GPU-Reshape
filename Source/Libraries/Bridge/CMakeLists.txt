@@ -44,7 +44,6 @@ add_executable(
     Libraries.Bridge.Tests
     Tests/Source/Main.cpp
     Tests/Source/Emitter.cpp
-    Tests/Source/Network.cpp
     Tests/Source/Asio.cpp
 )
 

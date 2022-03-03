@@ -138,11 +138,25 @@ void ShaderCompilerDebug::Add(const std::filesystem::path& basePath, const std::
     std::ofstream outIL(categoryPath + ".module.txt");
     if (outIL.is_open()) {
         IL::PrettyPrint(*module->GetProgram(), outIL);
+        outIL.close();
     }
 
     // SPIR-V printing
-    std::ofstream outSPIRV(categoryPath + ".spirv");
+    std::ofstream outSPIRV(categoryPath + ".spirv", std::ios_base::binary);
     if (outSPIRV.is_open()) {
         outSPIRV.write(reinterpret_cast<const char *>(spirvCode), spirvSize);
+        outSPIRV.close();
+    }
+
+    // SPIR-V disassembly printing
+    std::ofstream outSPIRVDis(categoryPath + ".spirv.txt");
+    if (outSPIRVDis.is_open()) {
+        std::string disassembled;
+        if (!tools->Disassemble(static_cast<const uint32_t*>(spirvCode), spirvSize / sizeof(uint32_t), &disassembled)) {
+            outSPIRVDis << "Failed to disassemble SPIRV\n";
+        }
+
+        outSPIRVDis.write(disassembled.data(), disassembled.length());
+        outSPIRVDis.close();
     }
 }

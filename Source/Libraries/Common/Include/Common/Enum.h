@@ -22,7 +22,7 @@ struct TBitSet {
 /// Declare a bit set
 #define BIT_SET(X) \
     using X##Set = TBitSet<X>;\
-    inline X##Set operator~(X##Set a) { return TBitSet<X>(a.value); } \
+    inline X##Set operator~(X##Set a) { return TBitSet<X>(~a.value); } \
     inline X##Set operator|(X a, X b) { return TBitSet<X>(static_cast<uint64_t>(a) | static_cast<uint64_t>(b)); } \
     inline X##Set operator|(X##Set a, X b) { return TBitSet<X>(a.value | static_cast<uint64_t>(b)); } \
     inline X##Set& operator|=(X##Set& a, X b) { a.value |= static_cast<uint64_t>(b); return a; } \

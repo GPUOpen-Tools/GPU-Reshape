@@ -7,8 +7,41 @@
 inline SpvPhysicalBlockType GetSpvBlockType(SpvOp op) {
     switch (op) {
         default:
-            return SpvPhysicalBlockType::FunctionDefinition;
-
+            return SpvPhysicalBlockType::Count;
+        case SpvOpFunction:
+            return SpvPhysicalBlockType::Function;
+        case SpvOpCapability:
+            return SpvPhysicalBlockType::Capability;
+        case SpvOpExtension:
+            return SpvPhysicalBlockType::Extension;
+        case SpvOpExtInstImport:
+            return SpvPhysicalBlockType::ExtensionImport;
+        case SpvOpMemoryModel:
+            return SpvPhysicalBlockType::MemoryModel;
+        case SpvOpEntryPoint:
+            return SpvPhysicalBlockType::EntryPoint;
+        case SpvOpExecutionMode:
+            return SpvPhysicalBlockType::ExecutionMode;
+        case SpvOpExecutionModeId:
+            return SpvPhysicalBlockType::ExecutionMode;
+        case SpvOpString:
+            return SpvPhysicalBlockType::DebugStringSource;
+        case SpvOpSourceExtension:
+            return SpvPhysicalBlockType::DebugStringSource;
+        case SpvOpSource:
+            return SpvPhysicalBlockType::DebugStringSource;
+        case SpvOpSourceContinued:
+            return SpvPhysicalBlockType::DebugStringSource;
+        case SpvOpName:
+            return SpvPhysicalBlockType::DebugName;
+        case SpvOpMemberName:
+            return SpvPhysicalBlockType::DebugName;
+        case SpvOpModuleProcessed:
+            return SpvPhysicalBlockType::DebugModuleProcessed;
+        case SpvOpVariable:
+            return SpvPhysicalBlockType::TypeConstantVariable;
+        case SpvOpExtInst:
+            return SpvPhysicalBlockType::TypeConstantVariable;
 $CLASSES
     }
 }

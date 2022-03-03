@@ -242,12 +242,18 @@ namespace IL {
         ID branch;
     };
 
+    struct BranchControlFlow {
+        ID merge{InvalidID};
+        ID _continue{InvalidID};
+    };
+
     struct BranchConditionalInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::BranchConditional;
 
         ID cond;
         ID pass;
         ID fail;
+        BranchControlFlow controlFlow;
     };
 
     struct ExportInstruction : public Instruction {

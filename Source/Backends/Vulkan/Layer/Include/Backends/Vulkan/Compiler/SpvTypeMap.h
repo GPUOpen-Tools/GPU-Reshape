@@ -22,10 +22,8 @@ struct SpvTypeMap {
     /// Create a copy of this type map
     ///   ! Parent lifetime tied to the copy
     /// \return the new type map
-    SpvTypeMap* Copy(Backend::IL::TypeMap* programMap) {
-        auto* copy = new (allocators) SpvTypeMap(allocators, programMap);
-        copy->spvMap = spvMap;
-        return copy;
+    void CopyTo(SpvTypeMap& out) {
+        out.spvMap = spvMap;
     }
 
     /// Set the id counter for allocations
@@ -98,6 +96,8 @@ private:
             case Backend::IL::TypeKind::Texture:
                 return EmitSpvType(static_cast<const Backend::IL::TextureType*>(type));
             case Backend::IL::TypeKind::Buffer:
+                return EmitSpvType(static_cast<const Backend::IL::BufferType*>(type));
+            case Backend::IL::TypeKind::Function:
                 return EmitSpvType(static_cast<const Backend::IL::BufferType*>(type));
         }
     }
@@ -286,6 +286,21 @@ private:
         } else {
             ASSERT(false, "Structured buffers not implemented");
             return InvalidSpvId;
+        }
+
+        AddMapping(id, type);
+        return id;
+    }
+
+    SpvId EmitSpvType(const Backend::IL::FunctionType* type) {
+        SpvId id = map->Allocate();
+
+        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeFunction, 3 + type->parameterTypes.size());
+        spv[1] = id;
+        spv[2] = GetSpvTypeId(type->returnType);
+
+        for (uint64_t i = 0; i < type->parameterTypes.size(); i++) {
+            spv[3 + i] = GetSpvTypeId(type->parameterTypes[i]);
         }
 
         AddMapping(id, type);

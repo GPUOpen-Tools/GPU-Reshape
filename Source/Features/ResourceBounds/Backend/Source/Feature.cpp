@@ -91,14 +91,14 @@ void ResourceBoundsFeature::Inject(IL::Program &program) {
         ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
 
         // Allocate resume
-        IL::BasicBlock* resumeBlock = context.function.AllocBlock();
+        IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock();
 
         // Split this basic block, move all instructions post and including the instrumented instruction to resume
         // ! iterator invalidated
         auto instr = context.basicBlock.Split(resumeBlock, it);
 
         // Out of bounds block
-        IL::Emitter<> oob(program, *context.function.AllocBlock());
+        IL::Emitter<> oob(program, *context.function.GetBasicBlocks().AllocBlock());
         oob.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
 
         // Export the message
@@ -143,7 +143,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program) {
         }
 
         // If so, branch to failure, otherwise resume
-        pre.BranchConditional(cond, oob.GetBasicBlock(), resumeBlock);
+        pre.BranchConditional(cond, oob.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
         return instr;
     });
 }

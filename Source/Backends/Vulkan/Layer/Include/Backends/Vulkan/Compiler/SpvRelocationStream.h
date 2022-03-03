@@ -13,6 +13,13 @@ struct SpvRelocationBlock {
     /// Constructor
     /// \param code the source data
     /// \param span the source byte range
+    SpvRelocationBlock(const uint32_t *code) : stream(code) {
+
+    }
+
+    /// Constructor
+    /// \param code the source data
+    /// \param span the source byte range
     SpvRelocationBlock(const uint32_t *code, const IL::SourceSpan &span) : span(span), stream(code) {
 
     }
@@ -47,8 +54,14 @@ struct SpvRelocationStream {
     /// Allocate a new block
     /// \param span the source byte span
     /// \return the relocation block
+    SpvRelocationBlock &AllocateBlock() {
+        return blocks.emplace_back(code);
+    }
+
+    /// Allocate a new block
+    /// \param span the source byte span
+    /// \return the relocation block
     SpvRelocationBlock &AllocateBlock(const IL::SourceSpan &span) {
-        ASSERT(blocks.empty() || span.begin >= blocks.back().span.end, "Relocation block must be ordered");
         return blocks.emplace_back(code, span);
     }
 
@@ -57,7 +70,6 @@ struct SpvRelocationStream {
     /// \param ptr the constant data to be written during stitching
     /// \return the relocation block
     SpvRelocationBlock &AllocateFixedBlock(const IL::SourceSpan &span, const void* ptr) {
-        ASSERT(blocks.empty() || span.begin >= blocks.back().span.end, "Relocation block must be ordered");
         return blocks.emplace_back(code, span, ptr);
     }
 

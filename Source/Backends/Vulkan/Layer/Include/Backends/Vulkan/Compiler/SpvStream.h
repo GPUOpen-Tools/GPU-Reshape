@@ -6,6 +6,9 @@
 // Backend
 #include <Backend/IL/Source.h>
 
+// Common
+#include <Common/Assert.h>
+
 // Std
 #include <vector>
 
@@ -13,7 +16,7 @@
 struct SpvStream {
     /// Constructor
     /// \param code the source data
-    SpvStream(const uint32_t* code) : code(code) {
+    SpvStream(const uint32_t* code = nullptr) : code(code) {
 
     }
 
@@ -65,6 +68,12 @@ struct SpvStream {
         }
 
         return Template(source);
+    }
+
+    /// Preallocate the stream
+    /// \param wordCount preallocated word count
+    void Reserve(uint64_t wordCount) {
+        stream.reserve(wordCount);
     }
 
     /// Clear this stream

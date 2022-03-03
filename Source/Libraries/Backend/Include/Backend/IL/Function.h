@@ -7,6 +7,9 @@
 #include "BasicBlock.h"
 #include "IdentifierMap.h"
 #include "FunctionFlag.h"
+#include "BasicBlockList.h"
+#include "VariableList.h"
+#include "Type.h"
 
 // Std
 #include <list>
@@ -14,35 +17,42 @@
 
 namespace IL {
     struct Function {
-        Function(const Allocators& allocators, IdentifierMap& map, ID id) : allocators(allocators), map(map), id(id) {
-
+        Function(const Allocators &allocators, IdentifierMap &map, ID id) :
+            allocators(allocators), map(map), id(id),
+            basicBlocks(allocators, map),
+            parameters(allocators, map) {
+            /* */
         }
 
         /// Allow move
-        Function(Function&& other) = default;
+        Function(Function &&other) = default;
 
         /// No copy
-        Function(const Function& other) = delete;
+        Function(const Function &other) = delete;
 
         /// No copy assignment
-        Function& operator=(const Function& other) = delete;
-        Function& operator=(Function&& other) = delete;
+        Function &operator=(const Function &other) = delete;
+        Function &operator=(Function &&other) = delete;
 
         /// Copy this function
         /// \param copyMap the new identifier map
-        Function Copy(IdentifierMap& copyMap) const {
+        Function Copy(IdentifierMap &copyMap) const {
             Function function(allocators, copyMap, id);
             function.sourceSpan = sourceSpan;
-            function.basicBlockRevision = basicBlockRevision;
             function.flags = flags;
+            function.functionType = functionType;
 
-            // Copy all basic blocks
-            for (const BasicBlock& bb : basicBlocks) {
-                function.basicBlocks.emplace_back(bb.Copy(copyMap));
-            }
+            // Copy all lists
+            basicBlocks.CopyTo(function.basicBlocks);
+            parameters.CopyTo(function.parameters);
 
+            // OK
             return function;
         }
+
+        /// Attempt to reorder all blocks by their dominant usage
+        /// \return success state
+        bool ReorderByDominantBlocks();
 
         /// Add a new flag to this function
         /// \param value flag to be added
@@ -63,42 +73,29 @@ namespace IL {
             return flags & value;
         }
 
-        /// Allocate a new basic block
-        /// \return allocated basic block
-        BasicBlock* AllocBlock(ID bid) {
-            basicBlockRevision++;
-
-            BasicBlock& bb = basicBlocks.emplace_back(allocators, std::ref(map), bid);
-            blockMap[bid] = &bb;
-            return &bb;
-        }
-
-        /// Allocate a new basic block
-        /// \return allocated basic block
-        BasicBlock* AllocBlock() {
-            return AllocBlock(map.AllocID());
-        }
-
-        /// Get a block from an identifier
-        /// \param bid basic block identifier
-        /// \return nullptr if not found
-        BasicBlock* GetBlock(ID bid) const {
-            auto it = blockMap.find(bid);
-            if (it == blockMap.end()) {
-                return nullptr;
-            }
-
-            return it->second;
-        }
-
         /// Immortalize this function
         void Immortalize(SourceSpan span) {
             sourceSpan = span;
         }
 
         /// Get the number of blocks
-        uint32_t GetBlockCount() const {
-            return static_cast<uint32_t>(basicBlocks.size());
+        BasicBlockList &GetBasicBlocks() {
+            return basicBlocks;
+        }
+
+        /// Get the number of blocks
+        const BasicBlockList &GetBasicBlocks() const {
+            return basicBlocks;
+        }
+
+        /// Get the number of blocks
+        VariableList &GetParameters() {
+            return parameters;
+        }
+
+        /// Get the number of blocks
+        const VariableList &GetParameters() const {
+            return parameters;
         }
 
         /// Get the id of this function
@@ -121,49 +118,14 @@ namespace IL {
             return {sourceSpan.begin, sourceSpan.begin};
         }
 
-        /// Get the current basic block revision
-        uint32_t GetBasicBlockRevision() const {
-            return basicBlockRevision;
+        /// Set the type of the function
+        void SetFunctionType(const Backend::IL::FunctionType* type) {
+            functionType = type;
         }
 
-        /// Iterator
-        std::list<BasicBlock>::iterator begin() {
-            return basicBlocks.begin();
-        }
-
-        /// Iterator
-        std::list<BasicBlock>::reverse_iterator rbegin() {
-            return basicBlocks.rbegin();
-        }
-
-        /// Iterator
-        std::list<BasicBlock>::iterator end() {
-            return basicBlocks.end();
-        }
-
-        /// Iterator
-        std::list<BasicBlock>::reverse_iterator rend() {
-            return basicBlocks.rend();
-        }
-
-        /// Iterator
-        std::list<BasicBlock>::const_iterator begin() const {
-            return basicBlocks.begin();
-        }
-
-        /// Iterator
-        std::list<BasicBlock>::const_reverse_iterator rbegin() const {
-            return basicBlocks.rbegin();
-        }
-
-        /// Iterator
-        std::list<BasicBlock>::const_iterator end() const {
-            return basicBlocks.end();
-        }
-
-        /// Iterator
-        std::list<BasicBlock>::const_reverse_iterator rend() const {
-            return basicBlocks.rend();
+        /// Get the type of the function
+        const Backend::IL::FunctionType* GetFunctionType() const {
+            return functionType;
         }
 
     private:
@@ -176,16 +138,16 @@ namespace IL {
         ID id;
 
         /// The shared identifier map
-        IdentifierMap& map;
+        IdentifierMap &map;
 
         /// Basic blocks
-        std::list<BasicBlock> basicBlocks;
+        BasicBlockList basicBlocks;
 
-        /// Basic block revision
-        uint32_t basicBlockRevision{0};
+        /// All parameters
+        VariableList parameters;
 
-        /// Block map
-        std::map<ID, BasicBlock*> blockMap;
+        /// Function type
+        const Backend::IL::FunctionType* functionType{nullptr};
 
         /// Function flags
         FunctionFlagSet flags{0};
