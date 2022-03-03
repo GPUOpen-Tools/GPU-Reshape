@@ -55,10 +55,10 @@ namespace IL {
                 bool mutated{false};
 
                 // Current revision
-                uint32_t revision = function.GetBasicBlockRevision();
+                uint32_t revision = function.GetBasicBlocks().GetBasicBlockRevision();
 
                 // Visit all blocks
-                for (IL::BasicBlock& basicBlock : function) {
+                for (IL::BasicBlock& basicBlock : function.GetBasicBlocks()) {
                     // If instrumented or visited, skip
                     if (basicBlock.GetFlags() & (BasicBlockFlag::NoInstrumentation | BasicBlockFlag::Visited)) {
                         continue;
@@ -71,7 +71,7 @@ namespace IL {
                     bool migratedBlock = VisitUserInstructions(program, function, &basicBlock, functor);
 
                     // If the fn revision has changed (block removed, moved, added), we need to re-visit
-                    if (migratedBlock || revision != function.GetBasicBlockRevision()) {
+                    if (migratedBlock || revision != function.GetBasicBlocks().GetBasicBlockRevision()) {
                         // Mark as mutated
                         mutated = true;
 
@@ -93,10 +93,10 @@ namespace IL {
                 bool mutated{false};
 
                 // Current revision
-                uint32_t revision = program.GetFunctionRevision();
+                uint32_t revision = program.GetFunctionList().GetRevision();
 
                 // Visit all functions
-                for (IL::Function& function : program) {
+                for (IL::Function& function : program.GetFunctionList()) {
                     // If instrumented or visited, skip
                     if (function.GetFlags() & (FunctionFlag::NoInstrumentation | FunctionFlag::Visited)) {
                         continue;
@@ -109,7 +109,7 @@ namespace IL {
                     function.AddFlag(FunctionFlag::Visited);
 
                     // If the pg revision has changed (block removed, moved, added), we need to re-visit
-                    if (revision != program.GetFunctionRevision()) {
+                    if (revision != program.GetFunctionList().GetRevision()) {
                         // Mark as mutated
                         mutated = true;
 
@@ -136,10 +136,10 @@ namespace IL {
         Detail::VisitUserInstructions(program, functor);
 
         // Clean visitation states
-        for (IL::Function& function : program) {
+        for (IL::Function& function : program.GetFunctionList()) {
             function.RemoveFlag(FunctionFlag::Visited);
 
-            for (IL::BasicBlock &basicBlock: function) {
+            for (IL::BasicBlock &basicBlock: function.GetBasicBlocks()) {
                 basicBlock.RemoveFlag(BasicBlockFlag::Visited);
             }
         }

@@ -160,6 +160,18 @@ namespace Backend::IL {
         Format texelType{Format::None};
     };
 
+    struct FunctionType : public Type {
+        static constexpr TypeKind kKind = TypeKind::Function;
+
+        auto SortKey() const {
+            return std::make_tuple(returnType, parameterTypes);
+        }
+
+        const Type* returnType{nullptr};
+
+        std::vector<const Type*> parameterTypes;
+    };
+
     /// Sort key helper
     template<typename T>
     using SortKey = decltype(std::declval<T>().SortKey());

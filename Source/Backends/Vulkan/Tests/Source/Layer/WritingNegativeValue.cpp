@@ -65,8 +65,8 @@ public:
     }
 
     void Inject(IL::Program &program) override {
-        for (IL::Function& fn : program) {
-            for (IL::BasicBlock& bb : fn) {
+        for (IL::Function& fn : program.GetFunctionList()) {
+            for (IL::BasicBlock& bb : fn.GetBasicBlocks()) {
                 for (auto it = bb.begin(); it != bb.end(); ++it) {
                     if (Instrument(program, fn, bb, it)) {
                         return;
@@ -90,13 +90,13 @@ public:
                 //   ExportMessage
                 // Resume:
                 //   StoreBuffer
-                IL::BasicBlock* resumeBlock = fn.AllocBlock();
+                IL::BasicBlock* resumeBlock = fn.GetBasicBlocks().AllocBlock();
 
                 // Split this basic block
                 auto storeBuffer = bb.Split<IL::StoreBufferInstruction>(resumeBlock, it);
 
                 // Failure condition
-                IL::BasicBlock* failBlock = fn.AllocBlock();
+                IL::BasicBlock* failBlock = fn.GetBasicBlocks().AllocBlock();
                 {
                     IL::Emitter<> emitter(program, *failBlock);
 
@@ -110,7 +110,7 @@ public:
                 }
 
                 IL::Emitter<> pre(program, bb);
-                pre.BranchConditional(pre.LessThan(storeBuffer->value, pre.Int(32, 0)), failBlock, resumeBlock);
+                pre.BranchConditional(pre.LessThan(storeBuffer->value, pre.Int(32, 0)), failBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
                 return true;
             }
         }

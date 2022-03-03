@@ -1,6 +1,9 @@
 #pragma once
 
-enum class SpvPhysicalBlockType {
+// Std
+#include <cstdint>
+
+enum class SpvPhysicalBlockType : uint8_t {
     Capability,
     Extension,
     ExtensionImport,
@@ -12,6 +15,6 @@ enum class SpvPhysicalBlockType {
     DebugModuleProcessed,
     Annotation,
     TypeConstantVariable,
-    FunctionDeclaration,
-    FunctionDefinition
+    Function,
+    Count
 };

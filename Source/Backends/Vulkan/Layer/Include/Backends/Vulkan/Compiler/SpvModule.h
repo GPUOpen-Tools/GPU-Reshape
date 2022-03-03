@@ -19,6 +19,7 @@
 struct SpvRelocationStream;
 struct SpvDebugMap;
 struct SpvSourceMap;
+struct SpvPhysicalBlockTable;
 
 class SpvModule {
 public:
@@ -62,23 +63,16 @@ public:
 
     /// Get the code pointer
     const uint32_t* GetCode() const {
-        return spirvProgram.data();
+        return spirvProgram.GetData();
     }
 
     /// Get the byte size of the code
     uint64_t GetSize() const {
-        return spirvProgram.size() * sizeof(uint32_t);
+        return spirvProgram.GetWordCount() * sizeof(uint32_t);
     }
 
     /// Get the source map for this module
-    const SpvSourceMap* GetSourceMap() const {
-        return sourceMap;
-    }
-
-    /// Get the debug map for this module
-    const SpvDebugMap* GetDebugMap() const {
-        return debugMap;
-    }
+    const SpvSourceMap* GetSourceMap() const;
 
     /// Get the parent module
     const SpvModule* GetParent() const {
@@ -86,182 +80,8 @@ public:
     }
 
 private:
-    /// Parsing context
-    struct ParseContext {
-        template<typename T>
-        const T& Read() {
-            auto* ptr = reinterpret_cast<const T*>(code);
-            code += sizeof(T) / sizeof(uint32_t);
-            return *ptr;
-        }
-
-        uint32_t operator*() const {
-            ASSERT(code < end, "End of stream");
-            return *code;
-        }
-
-        uint32_t operator++() {
-            ASSERT(code < end, "End of stream");
-            return *(++code);
-        }
-
-        uint32_t operator++(int) {
-            ASSERT(code < end, "End of stream");
-            return *(code++);
-        }
-
-        uint32_t WordCount() const {
-            return static_cast<uint32_t>(end - code);
-        }
-
-        uint32_t Good() const {
-            return end > code;
-        }
-
-        uint32_t Source() const {
-            return static_cast<uint32_t>(code - start);
-        }
-
-        /// Code pointers
-        const uint32_t* start;
-        const uint32_t* code;
-        const uint32_t* end;
-
-        /// Current function
-        IL::Function* function{nullptr};
-
-        /// Current basic block
-        IL::BasicBlock* basicBlock{nullptr};
-
-        /// Current source spans
-        IL::SourceSpan functionSourceSpan{};
-        IL::SourceSpan basicBlockSourceSpan{};
-    };
-
-    /// Parse the header
-    /// \param context
-    /// \return
-    bool ParseHeader(ParseContext& context);
-
-    /// Summarize all physical sections
-    /// \param context parsing context, copied
-    /// \return success state
-    bool SummarizePhysicalSections(ParseContext context);
-
-    /// Parse an instruction
-    /// \param context
-    /// \return
-    bool ParseInstruction(ParseContext& context);
-
-private:
-    /// Header specification
-    struct ProgramHeader {
-        uint32_t magic;
-        uint32_t version;
-        uint32_t generator;
-        uint32_t bound;
-        uint32_t reserved;
-    };
-
-    /// Sectiont ype
-    enum class LayoutSectionType {
-        Capability,
-        Extension,
-        InstImport,
-        MemoryModel,
-        Entry,
-        Execution,
-        DebugString,
-        DebugName,
-        DebugModule,
-        Annotation,
-        Declarations,
-        Count
-    };
-
-    /// Single section
-    struct LayoutSection {
-        /// Source span of this section
-        IL::SourceSpan sourceSpan;
-
-        /// Relocation stream
-        SpvStream* stream{nullptr};
-    };
-
-    /// All export metadata
-    struct ExportMetaData {
-        /// Spv identifiers
-        uint32_t counterId{0};
-        uint32_t streamId{0};
-
-        /// Type map
-        const Backend::IL::Type* buffer32UIRWArrayPtr;
-        const Backend::IL::Type* buffer32UIRWPtr;
-        const Backend::IL::Type* buffer32UIRW;
-    };
-
-    /// Program metadata
-    struct MetaData {
-        /// Number of bound descriptor sets
-        uint32_t boundDescriptorSets{0};
-
-        /// All capabilities
-        std::set<SpvCapability> capabilities;
-
-        /// All physical sections
-        LayoutSection sections[static_cast<uint32_t>(LayoutSectionType::Count)]{};
-
-        /// Export metadata
-        ExportMetaData exportMd;
-    };
-
-    /// Header
-    ProgramHeader header;
-
-    /// Copyable meta data
-    MetaData metaData;
-
-    /// Debug map
-    SpvDebugMap* debugMap{nullptr};
-
-    /// Source map
-    SpvSourceMap* sourceMap{nullptr};
-
     /// Parent instance
     const SpvModule* parent{nullptr};
-
-private:
-    /// Get a single section
-    /// \param type type of the section
-    const LayoutSection& GetSection(LayoutSectionType type);
-
-private:
-    /// Allocate all physical section blocks
-    /// \param stream the relocation stream to be allocated against
-    void AllocateSectionBlocks(SpvRelocationStream& stream);
-
-    /// Insert the export records
-    /// \param jitHeader the jitted program header
-    /// \param stream the final relocation stream
-    /// \param job current job
-    void InsertExportRecords(SpvRelocationStream &stream, const SpvJob& job);
-
-    /// Recompile a function
-    /// \param relocationStream the relocation stream
-    /// \param fn function to be recompiled
-    /// \return true if successful
-    bool RecompileFunction(SpvRelocationStream& relocationStream, IL::Function& fn);
-
-    /// Ensure a capability has been added
-    /// \param capability the capability to check
-    void EnsureCapability(SpvCapability capability);
-
-    /// Recompile a basic block
-    /// \param relocationStream the relocation stream
-    /// \param fn function in which the basic block resides
-    /// \param bb the basic block to be recompiled
-    /// \return true if successful
-    bool RecompileBasicBlock(SpvRelocationStream& relocationStream, IL::Function& fn, std::list<IL::BasicBlock>::iterator bb);
 
 private:
     Allocators allocators;
@@ -270,14 +90,11 @@ private:
     uint64_t shaderGUID{~0ull};
 
     /// JIT'ed program
-    std::vector<uint32_t> spirvProgram;
+    SpvStream spirvProgram;
 
-    /// The type map
-    SpvTypeMap* typeMap{nullptr};
+    /// The physical block table, contains all spirv data
+    SpvPhysicalBlockTable* physicalBlockTable{nullptr};
 
     /// Abstracted program
     IL::Program* program{nullptr};
-
-    /// The identifier map
-    SpvIdMap idMap;
 };

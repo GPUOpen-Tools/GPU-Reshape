@@ -8,7 +8,11 @@ function(Project_AddHLSL OUT_GENERATED PROFILE HLSL HEADER VAR)
     endif()
 
     # Hlsl path
-    set(Hlsl ${CMAKE_CURRENT_SOURCE_DIR}/${HLSL})
+    if (NOT IS_ABSOLUTE ${HLSL})
+        set(Hlsl ${CMAKE_CURRENT_SOURCE_DIR}/${HLSL})
+    else()
+        set(Hlsl ${HLSL})
+    endif()
 
     # Generate the schema
     add_custom_command(

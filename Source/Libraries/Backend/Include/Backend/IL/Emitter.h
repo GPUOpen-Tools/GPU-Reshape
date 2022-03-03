@@ -4,6 +4,7 @@
 #include "BasicBlock.h"
 #include "Program.h"
 #include "TypeResult.h"
+#include "ControlFlow.h"
 
 namespace IL {
     namespace Op {
@@ -575,8 +576,9 @@ namespace IL {
         /// \param cond the condition
         /// \param pass the block branched to if cond is true
         /// \param fail the block branched ot if cond is false
+        /// \param merge the structured control flow
         /// \return instruction reference
-        InstructionRef <BranchConditionalInstruction> BranchConditional(ID cond, BasicBlock* pass, BasicBlock* fail) {
+        InstructionRef <BranchConditionalInstruction> BranchConditional(ID cond, BasicBlock* pass, BasicBlock* fail, ControlFlow controlFlow) {
             ASSERT(IsMapped(cond), "Unmapped identifier");
             ASSERT(pass && fail, "Invalid branch");
 
@@ -587,6 +589,7 @@ namespace IL {
             instr.cond = cond;
             instr.pass = pass->GetID();
             instr.fail = fail->GetID();
+            instr.controlFlow = controlFlow;
             return Op(instr);
         }
 

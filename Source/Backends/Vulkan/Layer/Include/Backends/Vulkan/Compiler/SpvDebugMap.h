@@ -3,6 +3,9 @@
 // Layer
 #include <Backends/Vulkan/Compiler/Spv.h>
 
+// Common
+#include <Common/Assert.h>
+
 // Std
 #include <vector>
 #include <string_view>

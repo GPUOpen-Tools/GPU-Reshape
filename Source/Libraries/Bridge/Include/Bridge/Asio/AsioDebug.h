@@ -2,7 +2,7 @@
 
 /// Asio header debugging
 #ifndef ASIO_DEBUG
-#    define ASIO_DEBUG 1
+#    define ASIO_DEBUG 0
 #endif
 
 #if ASIO_DEBUG

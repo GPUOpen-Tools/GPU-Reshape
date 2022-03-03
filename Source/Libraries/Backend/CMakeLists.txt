@@ -13,6 +13,7 @@ add_library(
     Source/Environment.cpp
     Source/ShaderSGUIDHostListener.cpp
     Source/IL/PrettyPrint.cpp
+    Source/IL/Function.cpp
 
     # Generated schemas
     ${GeneratedLib}

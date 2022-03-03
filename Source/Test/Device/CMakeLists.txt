@@ -30,7 +30,11 @@ function(Project_AddBackendTest OUT_GENERATED FEATURE_NAME TEST)
     get_target_property(GeneratorSourceDir Libraries.Message.Generator SOURCE_DIR)
 
     # Schema
-    set(Test ${CMAKE_CURRENT_SOURCE_DIR}/${TEST})
+    if (NOT IS_ABSOLUTE ${TEST})
+        set(Test ${CMAKE_CURRENT_SOURCE_DIR}/${TEST})
+    else()
+        set(Test ${TEST})
+    endif()
 
     # Get the filename
     get_filename_component(TestName ${TEST} NAME_WE)
@@ -38,7 +42,7 @@ function(Project_AddBackendTest OUT_GENERATED FEATURE_NAME TEST)
 
     # Compile the hlsl for all relevant backends
     set(HlslGenerated "")
-    Project_AddHLSL(HlslGenerated cs_6_0 ${TEST} Source/Test/${TestName}.hlsl.h kShaderCode)
+    Project_AddHLSL(HlslGenerated cs_6_0 ${Test} Source/Test/${TestName}.hlsl.h kShaderCode)
 
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir Test.Device.Generator SOURCE_DIR)
@@ -51,7 +55,7 @@ function(Project_AddBackendTest OUT_GENERATED FEATURE_NAME TEST)
         OUTPUT ${TestOutPath}
         DEPENDS
             Test.Device.Generator
-            ${TEST}
+            ${Test}
             ${HlslGenerated}
             ${Templates}/MessageConstraint.cppt
             ${Templates}/Test.cppt

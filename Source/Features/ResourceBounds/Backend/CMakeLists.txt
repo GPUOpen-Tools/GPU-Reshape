@@ -32,6 +32,7 @@ add_custom_command(
 
 # Test files
 set(Generated "")
+Project_AddBackendTest_Common(Generated ResourceBounds)
 Project_AddBackendTest(Generated ResourceBounds Tests/Data/SimpleTest.hlsl)
 
 # Create test app

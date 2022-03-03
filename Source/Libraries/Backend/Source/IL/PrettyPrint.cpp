@@ -6,11 +6,11 @@
 void IL::PrettyPrint(const Program &program, IL::PrettyPrintContext out) {
     out.Line() << "Program\n";
     out.Line() << "Bound     : " << program.GetIdentifierMap().GetMaxID() << "\n";
-    out.Line() << "Functions : " << program.GetFunctionCount() << "\n";
+    out.Line() << "Functions : " << program.GetFunctionList().GetCount() << "\n";
     out.Line() << "\n";
 
     // Print all functions
-    for (const IL::Function &fn: program) {
+    for (const IL::Function &fn: program.GetFunctionList()) {
         PrettyPrint(fn, out);
     }
 }
@@ -19,7 +19,7 @@ void IL::PrettyPrint(const Function &function, IL::PrettyPrintContext out) {
     out.Line() << "%" << function.GetID() << " = Function\n";
 
     // Print all basic blocks
-    for (const IL::BasicBlock &bb: function) {
+    for (const IL::BasicBlock &bb: function.GetBasicBlocks()) {
         PrettyPrint(bb, out.Tab());
     }
 }
@@ -29,6 +29,11 @@ void IL::PrettyPrint(const BasicBlock &basicBlock, IL::PrettyPrintContext out) {
 
     // Print all instructions
     for (const IL::Instruction *instr: basicBlock) {
+        // TODO: Will be removed
+        if (instr->opCode == OpCode::SourceAssociation) {
+            continue;
+        }
+
         PrettyPrint(instr, out.Tab());
     }
 }
@@ -177,6 +182,18 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         case OpCode::BranchConditional: {
             auto branch = instr->As<IL::BranchConditionalInstruction>();
             line << "BranchConditional cond:%" << branch->cond << " pass:%" << branch->pass << " fail:%" << branch->fail;
+
+            // Optional control flow
+            if (branch->controlFlow.merge != InvalidID) {
+                line << " control:{merge:%" << branch->controlFlow.merge;
+
+                if (branch->controlFlow._continue != InvalidID) {
+                    line << ", continue:%" << branch->controlFlow._continue;
+                }
+
+                line << "}";
+            }
+
             break;
         }
         case OpCode::BitOr: {

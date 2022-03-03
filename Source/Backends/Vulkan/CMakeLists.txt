@@ -137,8 +137,6 @@ add_library(
     Layer/Source/RenderPass.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Compiler/SpvModule.cpp
-    Layer/Source/Compiler/SpvModuleParse.cpp
-    Layer/Source/Compiler/SpvModuleRecompile.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp
     Layer/Source/Compiler/ShaderCompilerDebug.cpp
     Layer/Source/Compiler/PipelineCompiler.cpp
@@ -149,6 +147,14 @@ add_library(
     Layer/Source/Export/ShaderExportStreamer.cpp
     Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
     Layer/Source/Compiler/SpvSourceMap.cpp
+    Layer/Source/Compiler/Blocks/SpvPhysicalBlockAnnotation.cpp
+    Layer/Source/Compiler/Blocks/SpvPhysicalBlockCapability.cpp
+    Layer/Source/Compiler/Blocks/SpvPhysicalBlockDebugStringSource.cpp
+    Layer/Source/Compiler/Blocks/SpvPhysicalBlockFunction.cpp
+    Layer/Source/Compiler/Blocks/SpvPhysicalBlockTypeConstantVariable.cpp
+    Layer/Source/Compiler/Utils/SpvUtilShaderExport.cpp
+    Layer/Source/Compiler/SpvPhysicalBlockScan.cpp
+    Layer/Source/Compiler/SpvPhysicalBlockTable.cpp
 
     # VMA implementation
     Layer/Source/VMA.cpp
