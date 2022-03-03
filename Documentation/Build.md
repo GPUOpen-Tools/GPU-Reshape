@@ -4,7 +4,9 @@ Build instructions for Windows. _Linux support pending._
 
 ## Supported environments
 
-A minimum version of CMake 3.17 is required to configure and build the project.
+A minimum version of CMake 3.17 is required to configure and build the project. Additionally, pulled dependencies expect the following tools to be installed on the system:
+
+- Python 3.x 
 
 ### Windows
 
@@ -22,9 +24,10 @@ the below set-ups are supported:
 
 ## Configuration options
 
-| Option | Platform | Default | Description |
-| ------ | -------- |---------| ----------- |
+| Option | Platform | Default | Description                             |
+| ------ | -------- |---------|-----------------------------------------|
 | INSTALL_THIRD_PARTY | All | `OFF` | Fetch and install third party libraries |
+| ENABLE_ASAN | All | `OFF` | Enables ASAN diagnostics (WIP)          |
 
 ## Dependencies
 
@@ -43,8 +46,14 @@ the below set-ups are supported:
 - **SPIRVHeaders** </br>
   SPIRV registry and headers
 
+- **SPIRVTools** </br>
+  SPIRV toolset, **only used for validation & debugging purposes**
+
 - **TinyXML2** </br>
   XML parsing and traversal
+
+- **nlohmann/json** </br>
+  JSON parsing and traversal
 
 - **VMA** </br>
   Vulkan memory allocator
