@@ -2,6 +2,9 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
 
+// Common
+#include <Common/Alloca.h>
+
 void SpvPhysicalBlockFunction::Parse() {
     block = table.scan.GetPhysicalBlock(SpvPhysicalBlockType::Function);
 
@@ -414,6 +417,36 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 // Consume control flow
                 instr.controlFlow = controlFlow;
                 controlFlow = {};
+
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpSwitch: {
+                // Determine number of cases
+                const uint32_t caseCount = (ctx->GetWordCount() - 3) / 2;
+                ASSERT((ctx->GetWordCount() - 3) % 2 == 0, "Unexpected case word count");
+
+                // Create instruction
+                auto* instr = ALLOCA_SIZE(IL::SwitchInstruction, IL::SwitchInstruction::GetSize(caseCount));
+                instr->opCode = IL::OpCode::Switch;
+                instr->result = IL::InvalidID;
+                instr->source = source.Modify();
+                instr->value = ctx++;
+                instr->_default = ctx++;
+                instr->cases.count = caseCount;
+
+                // Consume control flow
+                instr->controlFlow = controlFlow;
+                controlFlow = {};
+
+                // Fill cases
+                for (uint32_t i = 0; i < caseCount; i++) {
+                    IL::SwitchCase _case;
+                    _case.literal = ctx++;
+                    _case.branch = ctx++;
+                    instr->cases[i] = _case;
+                }
 
                 basicBlock->Append(instr);
                 break;
@@ -886,6 +919,28 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
                 spv[1] = idMap.Get(branch->cond);
                 spv[2] = branch->pass;
                 spv[3] = branch->fail;
+                break;
+            }
+            case IL::OpCode::Switch: {
+                auto *_switch = instr.As<IL::SwitchInstruction>();
+
+                // Write cfg
+                if (_switch->controlFlow.merge != IL::InvalidID) {
+                    SpvInstruction& cfg = stream.Allocate(SpvOpSelectionMerge, 3);
+                    cfg[1] = _switch->controlFlow.merge;
+                    cfg[2] = SpvSelectionControlMaskNone;
+                }
+
+                // Perform the branch, must be after cfg instruction
+                SpvInstruction& spv = stream.Allocate(SpvOpSwitch, 3 + 2 * _switch->cases.count);
+                spv[1] = idMap.Get(_switch->value);
+                spv[2] = _switch->_default;
+
+                for (uint32_t i = 0; i < _switch->cases.count; i++) {
+                    const IL::SwitchCase& _case = _switch->cases[i];
+                    spv[3 + i * 2] = _case.literal;
+                    spv[4 + i * 2] = _case.branch;
+                }
                 break;
             }
             case IL::OpCode::BitOr: {

@@ -196,6 +196,28 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
 
             break;
         }
+        case OpCode::Switch: {
+            auto _switch = instr->As<IL::SwitchInstruction>();
+            line << "Switch value:%" << _switch->value << " default:%" << _switch->_default;
+
+            // Optional control flow
+            if (_switch->controlFlow.merge != InvalidID) {
+                line << " control:{merge:%" << _switch->controlFlow.merge;
+
+                if (_switch->controlFlow._continue != InvalidID) {
+                    line << ", continue:%" << _switch->controlFlow._continue;
+                }
+
+                line << "}";
+            }
+
+            for (uint32_t i = 0; i < _switch->cases.count; i++) {
+                const IL::SwitchCase& _case = _switch->cases[i];
+                line << "\n";
+                out.Line() << "       literal:" << _case.literal << " branch:%" << _case.branch;
+            }
+            break;
+        }
         case OpCode::BitOr: {
             auto bitOr = instr->As<IL::BitOrInstruction>();
             line << "BitOr %" << bitOr->lhs << " %" << bitOr->rhs;
