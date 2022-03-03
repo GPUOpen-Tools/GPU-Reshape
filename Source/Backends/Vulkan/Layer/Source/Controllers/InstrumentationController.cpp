@@ -24,6 +24,9 @@
 #include <Schemas/Config.h>
 #include <Schemas/ShaderMetadata.h>
 
+// Std
+#include <sstream>
+
 InstrumentationController::InstrumentationController(DeviceDispatchTable *table) : table(table) {
 
 }
@@ -235,15 +238,21 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *data) {
     auto* batch = static_cast<Batch*>(data);
 
+    // Collection of keys which failed
+    std::vector<std::pair<ShaderModuleState*, ShaderModuleInstrumentationKey>> rejectedKeys;
+
     // Allocate batch
     auto jobs = new (registry->GetAllocators()) PipelineJob[batch->dirtyPipelines.size()];
 
+    // Enqueued jobs
+    uint32_t enqueuedJobs{0};
+
     // Submit compiler jobs
-    for (size_t i = 0; i < batch->dirtyPipelines.size(); i++) {
-        PipelineState* state = batch->dirtyPipelines[i];
+    for (size_t dirtyIndex = 0; dirtyIndex < batch->dirtyPipelines.size(); dirtyIndex++) {
+        PipelineState* state = batch->dirtyPipelines[enqueuedJobs];
 
         // Setup the job
-        PipelineJob& job = jobs[i];
+        PipelineJob& job = jobs[dirtyIndex];
         job.state = state;
         job.featureBitSet = globalInstrumentationInfo.featureBitSet | state->instrumentationInfo.featureBitSet;
 
@@ -262,6 +271,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
             // Number of slots used by the pipeline
             uint32_t pipelineLayoutUserSlots = state->layout->boundUserDescriptorStates;
+            ASSERT(pipelineLayoutUserSlots <= table->physicalDeviceProperties.limits.maxBoundDescriptorSets, "Pipeline layout user slots sanity check failed (corrupt)");
 
             // Create the instrumentation key
             ShaderModuleInstrumentationKey instrumentationKey{};
@@ -270,11 +280,38 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
             // Assign key
             job.shaderModuleInstrumentationKeys[shaderIndex] = instrumentationKey;
+
+            // Shader may have failed to compile for whatever reason, skip if need be
+            if (!job.state->shaderModules[shaderIndex]->HasInstrument(instrumentationKey)) {
+                rejectedKeys.push_back(std::make_pair(job.state->shaderModules[shaderIndex], instrumentationKey));
+
+                // Skip this job
+                continue;
+            }
         }
+
+        // Next job
+        enqueuedJobs++;
     }
 
     // Submit all jobs
-    pipelineCompiler->AddBatch(table, jobs, static_cast<uint32_t>(batch->dirtyPipelines.size()), bucket);
+    pipelineCompiler->AddBatch(table, jobs, enqueuedJobs, bucket);
+
+    // Report all rejected keys
+    if (!rejectedKeys.empty()) {
+#ifdef LOG_REJECTED_KEYS
+        std::stringstream keyMessage;
+        keyMessage << "Instrumentation failed for the following shaders and keys:\n";
+
+        // Compose keys
+        for (auto&& kv : rejectedKeys) {
+            keyMessage << "\tShader " << kv.first->uid << " [" << kv.second.featureBitSet << "] with " << kv.second.pipelineLayoutUserSlots << " user slots\n";
+        }
+
+        // Submit
+        table->parent->logBuffer.Add("Vulkan", keyMessage.str());
+#endif
+    }
 
     // Free up
     destroy(jobs, registry->GetAllocators());

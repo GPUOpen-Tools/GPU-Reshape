@@ -452,6 +452,31 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 break;
             }
 
+            case SpvOpPhi: {
+                // Determine number of cases
+                const uint32_t valueCount = (ctx->GetWordCount() - 3) / 2;
+                ASSERT((ctx->GetWordCount() - 3) % 2 == 0, "Unexpected value word count");
+
+                // Create instruction
+                auto* instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(valueCount));
+                instr->opCode = IL::OpCode::Phi;
+                instr->result = ctx.GetResult();
+                instr->source = source;
+                instr->values.count = valueCount;
+
+                // Fill cases
+                for (uint32_t i = 0; i < valueCount; i++) {
+                    IL::PhiValue _case;
+                    _case.value = ctx++;
+                    _case.branch = ctx++;
+                    instr->values[i] = _case;
+                }
+
+                // Append dynamic
+                basicBlock->Append(instr);
+                break;
+            }
+
             case SpvOpVariable: {
                 const Backend::IL::Type *type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx.GetResultType());
                 program.GetTypeMap().SetType(ctx.GetResult(), type);
@@ -931,7 +956,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
                     cfg[2] = SpvSelectionControlMaskNone;
                 }
 
-                // Perform the branch, must be after cfg instruction
+                // Perform the switch, must be after cfg instruction
                 SpvInstruction& spv = stream.Allocate(SpvOpSwitch, 3 + 2 * _switch->cases.count);
                 spv[1] = idMap.Get(_switch->value);
                 spv[2] = _switch->_default;
@@ -940,6 +965,20 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
                     const IL::SwitchCase& _case = _switch->cases[i];
                     spv[3 + i * 2] = _case.literal;
                     spv[4 + i * 2] = _case.branch;
+                }
+                break;
+            }
+            case IL::OpCode::Phi: {
+                auto *phi = instr.As<IL::PhiInstruction>();
+
+                SpvInstruction& spv = stream.Allocate(SpvOpSwitch, 3 + 2 * phi->values.count);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = phi->result;
+
+                for (uint32_t i = 0; i < phi->values.count; i++) {
+                    const IL::PhiValue& value = phi->values[i];
+                    spv[3 + i * 2] = value.value;
+                    spv[4 + i * 2] = value.branch;
                 }
                 break;
             }

@@ -287,6 +287,33 @@ namespace IL {
         InlineArray<SwitchCase> cases;
     };
 
+    struct PhiValue {
+        /// Value within branch to be chosen
+        ID value;
+
+        /// Owning branch
+        ID branch;
+    };
+
+    struct PhiInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Phi;
+
+        /// Get size of this instruction
+        /// \param caseCount number of values
+        /// \return byte size
+        static uint64_t GetSize(uint32_t valueCount) {
+            return sizeof(PhiInstruction) + InlineArray<PhiValue>::ElementSize(valueCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(PhiInstruction) + values.ElementSize();
+        }
+
+        InlineArray<PhiValue> values;
+    };
+
     struct ExportInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Export;
 
@@ -388,6 +415,8 @@ namespace IL {
                 return sizeof(ResourceSizeInstruction);
             case OpCode::Switch:
                 return static_cast<const SwitchInstruction*>(instruction)->GetSize();
+            case OpCode::Phi:
+                return static_cast<const PhiInstruction*>(instruction)->GetSize();
         }
     }
 }

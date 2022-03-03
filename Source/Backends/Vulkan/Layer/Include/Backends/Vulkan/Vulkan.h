@@ -9,6 +9,7 @@
 /// Diagnostic logging
 #ifndef NDEBUG
 #   define LOG_ALLOCATION
+#   define LOG_REJECTED_KEYS
 #endif
 
 // Vulkan

@@ -46,6 +46,14 @@ struct ShaderModuleState : public ReferenceObject {
         return it->second;
     }
 
+    /// Check if instrument is present
+    /// \param featureBitSet the enabled feature set
+    /// \return false if not found
+    bool HasInstrument(const ShaderModuleInstrumentationKey& key) {
+        std::lock_guard lock(mutex);
+        return instrumentObjects.count(key) > 0;
+    }
+
     bool Reserve(const ShaderModuleInstrumentationKey& key) {
         std::lock_guard lock(mutex);
         auto&& it = instrumentObjects.find(key);
