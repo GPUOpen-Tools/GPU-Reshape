@@ -25,7 +25,7 @@ target_link_libraries(Test.Device.Generator PUBLIC Libraries.Common)
 ExternalProject_Link(Test.Device.Generator ArgParse)
 
 # Test helper
-function(Project_AddBackendTest OUT_GENERATED FEATURE_NAME TEST)
+function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir Libraries.Message.Generator SOURCE_DIR)
 
@@ -42,7 +42,7 @@ function(Project_AddBackendTest OUT_GENERATED FEATURE_NAME TEST)
 
     # Compile the hlsl for all relevant backends
     set(HlslGenerated "")
-    Project_AddHLSL(HlslGenerated cs_6_0 ${Test} Source/Test/${TestName}.hlsl.h kShaderCode)
+    Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${Test} Source/Test/${TestName}.hlsl.h kShaderCode)
 
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir Test.Device.Generator SOURCE_DIR)

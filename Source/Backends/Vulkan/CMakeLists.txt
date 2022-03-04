@@ -267,8 +267,8 @@ ConfigureOutput(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json VK_GPUOpen_Te
 
 # Hlsl files
 set(Generated "")
-Project_AddHLSL(Generated cs_6_0 Tests/Data/WriteUAV.hlsl Tests/Include/Data/WriteUAV.h kSPIRVWriteUAV)
-Project_AddHLSL(Generated cs_6_0 Tests/Data/WriteUAVNegative.hlsl Tests/Include/Data/WriteUAVNegative.h kSPIRVWriteUAVNegative)
+Project_AddHLSL(Generated cs_6_0 "-Zi -Od" Tests/Data/WriteUAV.hlsl Tests/Include/Data/WriteUAV.h kSPIRVWriteUAV)
+Project_AddHLSL(Generated cs_6_0 "-Zi -Od" Tests/Data/WriteUAVNegative.hlsl Tests/Include/Data/WriteUAVNegative.h kSPIRVWriteUAVNegative)
 
 # Generate the schema
 Project_AddShaderSchema(Generated Tests/Schemas/WritingNegativeValue.xml Tests/Include/Schemas)

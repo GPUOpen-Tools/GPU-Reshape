@@ -43,6 +43,9 @@ bool IL::Function::ReorderByDominantBlocks() {
     // Block user counters
     std::map<IL::ID, uint32_t> userMap;
 
+    // Phi instruction producers
+    std::map<IL::ID, std::vector<IL::ID>> phiProducers;
+
     // Accumulate users
     for (IL::BasicBlock& block : basicBlocks) {
         for (auto&& instr : block) {
@@ -70,10 +73,11 @@ bool IL::Function::ReorderByDominantBlocks() {
                 }
                 case IL::OpCode::Phi: {
                     auto* phi = instr->As<IL::PhiInstruction>();
+                    userMap[block.GetID()] += phi->values.count;
 
-                    // Add cases
+                    // Add producers for values
                     for (uint32_t i = 0; i < phi->values.count; i++) {
-                        AddSuccessor(userMap, basicBlocks, block, phi->values[i].branch);
+                        phiProducers[phi->values[i].branch].push_back(block.GetID());
                     }
                     break;
                 }
@@ -96,39 +100,38 @@ bool IL::Function::ReorderByDominantBlocks() {
                 continue;
             }
 
-            for (auto&& instr : *it) {
-                switch (instr->opCode) {
-                    default:
-                        break;
-                    case IL::OpCode::Branch: {
-                        userMap[instr->As<IL::BranchInstruction>()->branch]--;
-                        break;
-                    }
-                    case IL::OpCode::BranchConditional: {
-                        userMap[instr->As<IL::BranchConditionalInstruction>()->pass]--;
-                        userMap[instr->As<IL::BranchConditionalInstruction>()->fail]--;
-                        break;
-                    }
-                    case IL::OpCode::Switch: {
-                        auto *_switch = instr->As<IL::SwitchInstruction>();
-                        userMap[_switch->_default]--;
+            // Get terminator
+            auto&& terminator = it->GetTerminator();
+            ASSERT(terminator, "Must have terminator");
 
-                        // Remove cases
-                        for (uint32_t i = 0; i < _switch->cases.count; i++) {
-                            userMap[_switch->cases[i].branch]--;
-                        }
-                        break;
-                    }
-                    case IL::OpCode::Phi: {
-                        auto *phi = instr->As<IL::PhiInstruction>();
-
-                        // Remove values
-                        for (uint32_t i = 0; i < phi->values.count; i++) {
-                            userMap[phi->values[i].branch]--;
-                        }
-                        break;
-                    }
+            // Handle terminators
+            switch (terminator->opCode) {
+                default:
+                    break;
+                case IL::OpCode::Branch: {
+                    userMap[terminator->As<IL::BranchInstruction>()->branch]--;
+                    break;
                 }
+                case IL::OpCode::BranchConditional: {
+                    userMap[terminator->As<IL::BranchConditionalInstruction>()->pass]--;
+                    userMap[terminator->As<IL::BranchConditionalInstruction>()->fail]--;
+                    break;
+                }
+                case IL::OpCode::Switch: {
+                    auto *_switch = terminator->As<IL::SwitchInstruction>();
+                    userMap[_switch->_default]--;
+
+                    // Remove cases
+                    for (uint32_t i = 0; i < _switch->cases.count; i++) {
+                        userMap[_switch->cases[i].branch]--;
+                    }
+                    break;
+                }
+            }
+
+            // Handle producers
+            for (IL::ID acceptor : phiProducers[it->GetID()]) {
+                userMap[acceptor]--;
             }
 
             // Move block back to function
