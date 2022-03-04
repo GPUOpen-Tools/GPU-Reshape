@@ -1,5 +1,5 @@
 
-function(Project_AddHLSL OUT_GENERATED PROFILE HLSL HEADER VAR)
+function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
     # Compiler path
     if (WIN32)
         set(CompilerPath ${CMAKE_SOURCE_DIR}/Tools/DXC/Win64/dxc.exe)
@@ -14,6 +14,9 @@ function(Project_AddHLSL OUT_GENERATED PROFILE HLSL HEADER VAR)
         set(Hlsl ${HLSL})
     endif()
 
+    # Parse args
+    separate_arguments(Args WINDOWS_COMMAND ${ARGS})
+
     # Generate the schema
     add_custom_command(
         OUTPUT ${HEADER}
@@ -26,7 +29,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE HLSL HEADER VAR)
             ${Hlsl}
             -Fh ${HEADER}
             -Vn ${VAR}
-            -Zi -Od
+            ${Args}
     )
 
     # Set output
