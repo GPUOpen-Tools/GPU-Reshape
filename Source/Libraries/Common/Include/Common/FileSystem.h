@@ -15,6 +15,10 @@ std::string GetCurrentExecutableName();
 /// \return empty if failed
 std::filesystem::path GetCurrentModuleDirectory();
 
+/// Get the base module directory
+/// \return empty if failed
+std::filesystem::path GetBaseModuleDirectory();
+
 /// Ensure a directory tree exists
 /// \param path
 void CreateDirectoryTree(const std::filesystem::path& path);

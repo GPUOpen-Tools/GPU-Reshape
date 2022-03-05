@@ -29,9 +29,6 @@ gvplugin_core.dll core {
 		cmapx_np:map 1
 	}
 	device {
-		mp:mp -1
-	}
-	device {
 		ps:ps 1
 		ps2:ps 1
 		eps:ps 1
@@ -39,12 +36,6 @@ gvplugin_core.dll core {
 	device {
 		svg:svg 1
 		svgz:svg 1
-	}
-	device {
-		json:json 1
-		json0:json 1
-		dot_json:json 1
-		xdot_json:json 1
 	}
 	device {
 		tk:tk 1
@@ -70,19 +61,10 @@ gvplugin_core.dll core {
 		map 1
 	}
 	render {
-		mp -1
-	}
-	render {
 		ps 1
 	}
 	render {
 		svg 1
-	}
-	render {
-		json 1
-		json0 1
-		dot_json 1
-		xdot_json 1
 	}
 	render {
 		tk 1
@@ -285,7 +267,6 @@ gvplugin_pango.dll cairo {
 	device {
 		png:cairo 10
 		ps:cairo -10
-		eps:cairo -10
 		pdf:cairo 10
 		svg:cairo -10
 	}

@@ -294,6 +294,13 @@ namespace IL {
                 return ref;
             }
 
+            /// Reinterpret instruction
+            template<typename T>
+            const T* As() const {
+                ASSERT(Get()->opCode == T::kOpCode, "Invalid cast");
+                return static_cast<const T*>(Get());
+            }
+
             /// To const opaque instruction ref
             operator ConstOpaqueInstructionRef() const {
                 return Ref();
@@ -613,6 +620,13 @@ namespace IL {
             return Offset(relocationTable.back(), static_cast<uint32_t>(relocationTable.size()) - 1);
         }
 
+        /// Get the terminator instruction
+        /// \return the terminator instruction
+        ConstIterator GetTerminator() const {
+            ASSERT(count, "No instructions");
+            return Offset(relocationTable.back(), static_cast<uint32_t>(relocationTable.size()) - 1);
+        }
+
         /// Mark this basic block as dirty
         void MarkAsDirty() {
             dirty = true;
@@ -789,6 +803,21 @@ namespace IL {
         /// \return
         Iterator Offset(const RelocationOffset* offset, uint32_t relocationIndex) {
             Iterator it;
+            it.block = this;
+            it.ptr = data.data() + offset->offset;
+            it.relocationIndex = relocationIndex;
+#ifndef NDEBUG
+            it.debugRevision = debugRevision;
+#endif
+            return it;
+        }
+
+        /// Get an iterator from a relocation offset
+        /// \param offset the relocation offset
+        /// \param relocationIndex the index of the relocation offset
+        /// \return
+        ConstIterator Offset(const RelocationOffset* offset, uint32_t relocationIndex) const {
+            ConstIterator it;
             it.block = this;
             it.ptr = data.data() + offset->offset;
             it.relocationIndex = relocationIndex;

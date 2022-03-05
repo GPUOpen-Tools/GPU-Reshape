@@ -73,13 +73,19 @@ void CreateDirectoryTree(const std::filesystem::path &path) {
     }
 }
 
-std::filesystem::path GetIntermediatePath(const std::string_view &category) {
+std::filesystem::path GetBaseModuleDirectory() {
     std::filesystem::path path = GetCurrentModuleDirectory();
 
     // TODO: Ugly
     if (path.filename() == "Plugins") {
         path = path.parent_path();
     }
+
+    return path;
+}
+
+std::filesystem::path GetIntermediatePath(const std::string_view &category) {
+    std::filesystem::path path = GetBaseModuleDirectory();
 
     // Append
     path /= "Intermediate";

@@ -12,11 +12,6 @@
 #   define LOG_REJECTED_KEYS
 #endif
 
-/// Diagnostic data
-#ifndef NDEBUG
-#   define DUMP_BLOCK_DOTGRAPH
-#endif
-
 // Vulkan
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_beta.h>
