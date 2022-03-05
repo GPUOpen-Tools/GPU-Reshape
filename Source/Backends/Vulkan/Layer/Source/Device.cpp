@@ -158,15 +158,35 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Get the device features
     table->parent->next_vkGetPhysicalDeviceFeatures2(physicalDevice, &table->physicalDeviceFeatures);
 
-    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES};
-    indexingFeatures.pNext = const_cast<void*>(pCreateInfo->pNext);
-    indexingFeatures.descriptorBindingStorageTexelBufferUpdateAfterBind = true;
+    // Create a deep copy
+    table->createInfo.DeepCopy(table->allocators, *pCreateInfo);
 
-    VkDeviceCreateInfo createInfo = *pCreateInfo;
-    createInfo.pNext = &indexingFeatures;
+    // Copy layers and extensions
+    std::vector<const char*> layers(table->createInfo->ppEnabledLayerNames, table->createInfo->ppEnabledLayerNames + table->createInfo->enabledLayerCount);
+    std::vector<const char*> extensions(table->createInfo->ppEnabledExtensionNames, table->createInfo->ppEnabledExtensionNames + table->createInfo->enabledExtensionCount);
+
+    // Add descriptor indexing extension
+    extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+
+    // Find existing indexing features or allocate a new one
+    auto* indexingFeatures = FindStructureTypeMutableUnsafe<VkPhysicalDeviceDescriptorIndexingFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES>(table->createInfo->pNext);
+    if (!indexingFeatures) {
+        indexingFeatures = new (ALLOCA(VkPhysicalDeviceDescriptorIndexingFeatures)) VkPhysicalDeviceDescriptorIndexingFeatures{};
+        indexingFeatures->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+        PrependExtensionUnsafe(&table->createInfo.createInfo, indexingFeatures);
+    }
+
+    // Enable update after bind
+    indexingFeatures->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
+
+    // Set new layers and extensions
+    table->createInfo->ppEnabledLayerNames = layers.data();
+    table->createInfo->enabledLayerCount = static_cast<uint32_t>(layers.size());
+    table->createInfo->ppEnabledExtensionNames = extensions.data();
+    table->createInfo->enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 
     // Pass down the chain
-    VkResult result = reinterpret_cast<PFN_vkCreateDevice>(getInstanceProcAddr(nullptr, "vkCreateDevice"))(physicalDevice, &createInfo, pAllocator, pDevice);
+    VkResult result = reinterpret_cast<PFN_vkCreateDevice>(getInstanceProcAddr(nullptr, "vkCreateDevice"))(physicalDevice, &table->createInfo.createInfo, pAllocator, pDevice);
     if (result != VK_SUCCESS) {
         return result;
     }

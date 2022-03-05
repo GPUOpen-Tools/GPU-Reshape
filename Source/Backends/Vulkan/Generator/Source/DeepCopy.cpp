@@ -9,14 +9,23 @@
 #include <Common/Assert.h>
 #include <Common/String.h>
 
+/// Extension metadata
+struct ExtensionMetadata {
+    std::string name;
+    std::string structureType;
+    tinyxml2::XMLElement *typeNode;
+};
+
 /// Generator metadata
 struct ObjectTreeMetadata {
     std::map<std::string, tinyxml2::XMLElement *> lookup;
+    std::map<std::string, ExtensionMetadata> extensions;
 };
 
 /// State of a given deep copy
 struct DeepCopyState {
     uint32_t counter{0};
+
     std::stringstream byteSize;
     std::stringstream deepCopy;
 };
@@ -30,11 +39,11 @@ static std::string Pad(uint32_t n) {
 /// \param token the current token to be iterated
 /// \param separators the accepted separators
 /// \return length of the token
-static uint32_t StrTokKeepSeparators(const char*& token, const char* separators) {
+static uint32_t StrTokKeepSeparators(const char *&token, const char *separators) {
     const uint32_t separatorLength = static_cast<uint32_t>(std::strlen(separators));
 
     // Start offset
-    const char* start = token;
+    const char *start = token;
 
     // Consume until separator, or zero terminator
     for (; *token; ++token) {
@@ -59,13 +68,13 @@ static uint32_t StrTokKeepSeparators(const char*& token, const char* separators)
 /// \param str length string
 /// \return success state
 [[nodiscard]]
-static bool ParseArrayLength(std::stringstream& out, const std::string& accessorPrefix, const char* str) {
+static bool ParseArrayLength(std::stringstream &out, const std::string &accessorPrefix, const char *str) {
     // Standard separators
     constexpr char separators[] = " ,\t\n()";
 
     // Get the first token
     while (uint32_t len = StrTokKeepSeparators(str, separators)) {
-        const char* segment = str - len;
+        const char *segment = str - len;
 
         // Identifier? Upper case denotes macro.
         if (std::isalpha(*segment) && !std::isupper(*segment)) {
@@ -87,7 +96,7 @@ static bool ParseArrayLength(std::stringstream& out, const std::string& accessor
 /// \param memberName name of the member
 /// \param indent current indentation level
 /// \return the mutable variable name
-std::string AssignPtrAndGetMutable(DeepCopyState &state, const std::string& accessorPrefix, tinyxml2::XMLElement* memberType, tinyxml2::XMLElement* memberName, uint32_t indent) {
+std::string AssignPtrAndGetMutable(DeepCopyState &state, const std::string &accessorPrefix, tinyxml2::XMLElement *memberType, tinyxml2::XMLElement *memberName, uint32_t indent) {
     std::string mutableName = "mutable" + std::to_string(state.counter++);
 
     // Create mutable
@@ -110,7 +119,7 @@ std::string AssignPtrAndGetMutable(DeepCopyState &state, const std::string& acce
 /// \param indent the current indentation level
 /// \return success state
 [[nodiscard]]
-static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tinyxml2::XMLElement *type, const std::string &sourceAccessorPrefix = "source.", const std::string &destAccessorPrefix = "createInfo.", uint32_t indent = 1) {
+static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tinyxml2::XMLElement *type, const std::string &sourceAccessorPrefix = "source.", const std::string &destAccessorPrefix = "createInfo.", uint32_t indent = 1, bool alwaysEmitSize = false) {
     // Go through all members
     for (tinyxml2::XMLElement *memberNode = type->FirstChildElement("member"); memberNode; memberNode = memberNode->NextSiblingElement("member")) {
         // Get the type
@@ -130,10 +139,16 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
         // Ignore next pointers
         if (!std::strcmp(memberName->GetText(), "pNext")) {
             // Add check
-            state.byteSize << Pad(indent) << "ASSERT(!" << sourceAccessorPrefix << memberName->GetText() << ", \"Extension pointers not yet supported for deep copies\");\n";
+            state.byteSize << Pad(indent) << "if (" << sourceAccessorPrefix << memberName->GetText() << ") {\n";
+            state.byteSize << Pad(indent + 1) << "blobSize += DeepCopyExtensionByteSize(" << sourceAccessorPrefix << memberName->GetText() << ");\n";
+            state.byteSize << Pad(indent) << "}\n";
 
             state.deepCopy << "\n" << Pad(indent) << "// " << sourceAccessorPrefix << memberName->GetText() << "\n";
-            state.deepCopy << Pad(indent) << destAccessorPrefix << memberName->GetText() << " = nullptr;\n";
+            state.deepCopy << Pad(indent) << "if (" << sourceAccessorPrefix << memberName->GetText() << ") {\n";
+            state.deepCopy << Pad(indent + 1) << destAccessorPrefix << memberName->GetText() << " = DeepCopyExtension(" << sourceAccessorPrefix << memberName->GetText() << ", blob, blobOffset);\n";
+            state.deepCopy << Pad(indent) << "} else {\n";
+            state.deepCopy << Pad(indent + 1) << destAccessorPrefix << memberName->GetText() << " = nullptr;\n";
+            state.deepCopy << Pad(indent) << "}\n";
             continue;
         }
 
@@ -157,7 +172,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
 
         // Array?
         for (auto array = memberName->NextSibling(); array; array = array->NextSibling()) {
-            if (tinyxml2::XMLText* text = array->ToText()) {
+            if (tinyxml2::XMLText *text = array->ToText()) {
                 std::string trimmed = std::trim_copy(text->Value());
 
                 if (!trimmed.empty() && trimmed[0] == '[') {
@@ -181,8 +196,8 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
         // Indirection?
         if (isIndirection) {
             // Additional attributes
-            const char* optional = memberNode->Attribute("optional");
-            const char* noAutoValidity = memberNode->Attribute("noautovalidity");
+            const char *optional = memberNode->Attribute("optional");
+            const char *noAutoValidity = memberNode->Attribute("noautovalidity");
 
             // Optional?
             const bool isOptional = optional && !std::strcmp(optional, "true");
@@ -193,7 +208,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
 
             // Wrap in check
             if (canBeNull) {
-                const char* reason = isNoAutoValidity ? "no-auto-validity" : "optional";
+                const char *reason = isNoAutoValidity ? "no-auto-validity" : "optional";
 
                 state.byteSize << Pad(indent) << "if (" << sourceAccessorPrefix + memberName->GetText() << ") /* " << reason << " */ {\n";
                 state.deepCopy << Pad(indent) << "if (" << sourceAccessorPrefix + memberName->GetText() << ") /* " << reason << " */ {\n";
@@ -201,7 +216,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
             }
 
             // Get the length, try alt-len first
-            const char* length = memberNode->Attribute("altlen", nullptr);
+            const char *length = memberNode->Attribute("altlen", nullptr);
 
             // Try length if not possible
             if (!length) {
@@ -218,7 +233,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                     state.byteSize << Pad(indent) << "uint64_t " << sizeVar << " = std::strlen(" << sourceAccessorPrefix << memberName->GetText() << ") + 1;\n";
 
                     // Repeat for deep copy if scope requires it
-                    if (indent > 1) {
+                    if (indent > 1 || alwaysEmitSize) {
                         state.deepCopy << Pad(indent) << "uint64_t " << sizeVar << " = std::strlen(" << sourceAccessorPrefix << memberName->GetText() << ") + 1;\n";
                     }
 
@@ -249,7 +264,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                     state.byteSize << Pad(indent) << "uint64_t " << sizeVar << " = " << lengthStream.str() << ";\n";
 
                     // Repeat for deep copy if scope requires it
-                    if (indent > 1) {
+                    if (indent > 1 || alwaysEmitSize) {
                         state.deepCopy << Pad(indent) << "uint64_t " << sizeVar << " = " << lengthStream.str() << ";\n";
                     }
 
@@ -288,7 +303,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                         state.deepCopy << Pad(indent) << "for (size_t " << counterVar << " = 0; " << counterVar << " < " << sizeVar << "; " << counterVar << "++) {\n";
 
                         // Copy the tree
-                        if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + "[" + counterVar + "].", mutableName + "[" + counterVar + "].", indent + 1)) {
+                        if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + "[" + counterVar + "].", mutableName + "[" + counterVar + "].", indent + 1, alwaysEmitSize)) {
                             return false;
                         }
 
@@ -320,11 +335,11 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
 
                 // If end, this is a POD type
                 if (elementType == md.lookup.end()) {
-                    state.deepCopy << Pad(indent) << "std::memcpy(, " << mutableName << ", " << sourceAccessorPrefix << memberName->GetText();
-                    state.deepCopy << ", sizeof(" << sizeType <<  "));\n";
+                    state.deepCopy << Pad(indent) << "std::memcpy(" << mutableName << ", " << sourceAccessorPrefix << memberName->GetText();
+                    state.deepCopy << ", sizeof(" << sizeType << "));\n";
                 } else {
                     // Copy the tree
-                    if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + "->", mutableName + "->", indent)) {
+                    if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + "->", mutableName + "->", indent, alwaysEmitSize)) {
                         return false;
                     }
                 }
@@ -349,7 +364,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
             if (elementType == md.lookup.end()) {
                 // POD array copy
                 state.deepCopy << Pad(indent) << "std::memcpy(" << destAccessorPrefix << memberName->GetText() << ", " << sourceAccessorPrefix << memberName->GetText();
-                state.deepCopy << ", sizeof(" << sourceAccessorPrefix + memberName->GetText() <<  "));\n";
+                state.deepCopy << ", sizeof(" << sourceAccessorPrefix + memberName->GetText() << "));\n";
             } else {
                 // Counter var
                 std::string counterVar = "i" + std::to_string(state.counter++);
@@ -357,10 +372,10 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
 
                 // Copy the tree
                 if (!DeepCopyObjectTree(
-                        md, state, elementType->second,
-                        sourceAccessorPrefix + memberName->GetText() + "[" + counterVar + "]",
-                        destAccessorPrefix + memberName->GetText() + "[" + counterVar + "]",
-                        indent
+                    md, state, elementType->second,
+                    sourceAccessorPrefix + memberName->GetText() + "[" + counterVar + "]",
+                    destAccessorPrefix + memberName->GetText() + "[" + counterVar + "]",
+                    indent, alwaysEmitSize
                 )) {
                     return false;
                 }
@@ -377,12 +392,153 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                 state.deepCopy << Pad(indent) << destAccessorPrefix << memberName->GetText() << " = " << sourceAccessorPrefix << memberName->GetText() << ";\n";
             } else {
                 // Copy the tree
-                if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + ".", destAccessorPrefix + memberName->GetText() + ".", indent)) {
+                if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + ".", destAccessorPrefix + memberName->GetText() + ".", indent, alwaysEmitSize)) {
                     return false;
                 }
             }
         }
     }
+
+    // OK
+    return true;
+}
+
+static bool CollectDeepCopyExtensionStructures(ObjectTreeMetadata& md, tinyxml2::XMLElement *types, const std::string_view& parent) {
+    // Create extension lookup
+    for (tinyxml2::XMLElement *typeNode = types->FirstChildElement("type"); typeNode; typeNode = typeNode->NextSiblingElement("type")) {
+        // Try to get the category, if not, not interested
+        const char *category = typeNode->Attribute("category", nullptr);
+        if (!category) {
+            continue;
+        }
+
+        // Skip non-compound types
+        if (std::strcmp(category, "struct") != 0) {
+            continue;
+        }
+
+        // Attempt to get the name
+        const char *name = typeNode->Attribute("name", nullptr);
+        if (!name) {
+            std::cerr << "Malformed type in line: " << typeNode->GetLineNum() << ", name not found" << std::endl;
+            return false;
+        }
+
+        // Try to get the extensions, if not, not interested
+        const char *extensions = typeNode->Attribute("structextends", nullptr);
+        if (!extensions) {
+            continue;
+        }
+
+        // Does this type extend the parent?
+        bool anyUse{false};
+
+        // Parse all structs
+        std::stringstream ss(extensions);
+        while (ss.good()) {
+            std::string _struct;
+            getline(ss, _struct, ',');
+
+            // Potential extension type?
+            if (_struct == parent) {
+                anyUse = true;
+                break;
+            }
+        }
+
+        // Next?
+        if (!anyUse) {
+            continue;
+        }
+
+        // Add to lookup
+        ExtensionMetadata ext;
+        ext.name = name;
+        ext.typeNode = typeNode;
+
+        // Go through all members
+        for (tinyxml2::XMLElement *memberNode = typeNode->FirstChildElement("member"); memberNode; memberNode = memberNode->NextSiblingElement("member")) {
+            // Get the type
+            tinyxml2::XMLElement *memberType = memberNode->FirstChildElement("type");
+            if (!memberType) {
+                std::cerr << "Malformed type in line: " << memberNode->GetLineNum() << ", type not found" << std::endl;
+                return false;
+            }
+
+            // Found it?
+            if (std::strcmp(memberType->GetText(), "VkStructureType")) {
+                continue;
+            }
+
+            // Set structure type
+            if (const char* attr = memberNode->Attribute("values", nullptr)) {
+                ext.structureType = attr;
+                break;
+            }
+        }
+
+        // Must have type
+        if (ext.structureType.empty()) {
+            std::cerr << "Malformed type in line: " << typeNode->GetLineNum() << ", structure type not found" << std::endl;
+            return false;
+        }
+
+        // Add
+        md.extensions[name] = ext;
+
+        // Collect nested copies
+        CollectDeepCopyExtensionStructures(md, types, name);
+    }
+
+    // OK
+    return true;
+}
+
+static bool CreateExtensions(ObjectTreeMetadata& md, tinyxml2::XMLElement *types, TemplateEngine& templateEngine) {
+    std::stringstream cases;
+    std::stringstream casesByteSize;
+    std::stringstream extensions;
+
+    // Generate cases
+    for (auto&& kv : md.extensions) {
+        casesByteSize << "\t\tcase " << kv.second.structureType << ":\n";
+        casesByteSize << "\t\t\treturn DeepCopyExtensionByteSize" << kv.first << "(extension);\n";
+
+        cases << "\t\tcase " << kv.second.structureType << ":\n";
+        cases << "\t\t\treturn DeepCopyExtension" << kv.first << "(extension, blob, blobOffset);\n";
+    }
+
+    // Generate copies
+    for (auto&& kv : md.extensions) {
+        ExtensionMetadata& ext = kv.second;
+
+        // Attempt to generate a deep copy
+        DeepCopyState state;
+        if (!DeepCopyObjectTree(md, state, ext.typeNode, "source.", "_mutable->", 1, true)) {
+            return false;
+        }
+
+        extensions << "uint64_t DeepCopyExtensionByteSize" << kv.first << "(const void* extension) {\n";
+        extensions << "\tconst " << kv.first << "& source = *static_cast<const " << kv.first << "*>(extension);\n\n";
+        extensions << "\tuint64_t blobSize = sizeof(" << kv.first << ");\n\n";
+        extensions << state.byteSize.str();
+        extensions << "\n\treturn blobSize;\n";
+        extensions << "}\n\n";
+
+        extensions << "void* DeepCopyExtension" << kv.first << "(const void* extension, uint8_t* blob, uint64_t& blobOffset) {\n";
+        extensions << "\tconst " << kv.first << "& source = *static_cast<const " << kv.first << "*>(extension);\n\n";
+        extensions << "\tauto* _mutable = reinterpret_cast<" << kv.first << "*>(&blob[blobOffset]);\n";
+        extensions << "\tstd::memcpy(_mutable, extension, sizeof(" << kv.first << "));\n";
+        extensions << "\tblobOffset += sizeof(" << kv.first << ");\n\n";
+        extensions << state.deepCopy.str();
+        extensions << "\n\treturn _mutable;\n";
+        extensions << "}\n\n";
+    }
+
+    // Replace
+    templateEngine.Substitute("$EXTENSION_CASES_BYTE_SIZE", casesByteSize.str().c_str());
+    templateEngine.Substitute("$EXTENSION_CASES", cases.str().c_str());
+    templateEngine.Substitute("$EXTENSIONS", extensions.str().c_str());
 
     // OK
     return true;
@@ -398,6 +554,18 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
 
     // Metadata
     ObjectTreeMetadata md;
+
+    // Collect all extensions
+    for (const std::string& object : info.objects) {
+        if (!CollectDeepCopyExtensionStructures(md, types, object)) {
+            return false;
+        }
+    }
+
+    // Create extensions
+    if (!CreateExtensions(md, types, templateEngine)) {
+        return false;
+    }
 
     // Populate lookup
     for (tinyxml2::XMLElement *typeNode = types->FirstChildElement("type"); typeNode; typeNode = typeNode->NextSiblingElement("type")) {
