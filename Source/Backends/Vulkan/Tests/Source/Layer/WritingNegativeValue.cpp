@@ -65,9 +65,9 @@ public:
     }
 
     void Inject(IL::Program &program) override {
-        for (IL::Function& fn : program.GetFunctionList()) {
-            for (IL::BasicBlock& bb : fn.GetBasicBlocks()) {
-                for (auto it = bb.begin(); it != bb.end(); ++it) {
+        for (IL::Function* fn : program.GetFunctionList()) {
+            for (IL::BasicBlock* bb : fn->GetBasicBlocks()) {
+                for (auto it = bb->begin(); it != bb->end(); ++it) {
                     if (Instrument(program, fn, bb, it)) {
                         return;
                     }
@@ -76,7 +76,7 @@ public:
         }
     }
 
-    bool Instrument(IL::Program &program, IL::Function& fn, IL::BasicBlock& bb, const IL::BasicBlock::Iterator& it) {
+    bool Instrument(IL::Program &program, IL::Function* fn, IL::BasicBlock* bb, const IL::BasicBlock::Iterator& it) {
         switch (it->opCode) {
             default:
                 return false;
@@ -90,13 +90,13 @@ public:
                 //   ExportMessage
                 // Resume:
                 //   StoreBuffer
-                IL::BasicBlock* resumeBlock = fn.GetBasicBlocks().AllocBlock();
+                IL::BasicBlock* resumeBlock = fn->GetBasicBlocks().AllocBlock();
 
                 // Split this basic block
-                auto storeBuffer = bb.Split<IL::StoreBufferInstruction>(resumeBlock, it);
+                auto storeBuffer = bb->Split<IL::StoreBufferInstruction>(resumeBlock, it);
 
                 // Failure condition
-                IL::BasicBlock* failBlock = fn.GetBasicBlocks().AllocBlock();
+                IL::BasicBlock* failBlock = fn->GetBasicBlocks().AllocBlock();
                 {
                     IL::Emitter<> emitter(program, *failBlock);
 
@@ -109,7 +109,7 @@ public:
                     emitter.Branch(resumeBlock);
                 }
 
-                IL::Emitter<> pre(program, bb);
+                IL::Emitter<> pre(program, *bb);
                 pre.BranchConditional(pre.LessThan(storeBuffer->value, pre.Int(32, 0)), failBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
                 return true;
             }

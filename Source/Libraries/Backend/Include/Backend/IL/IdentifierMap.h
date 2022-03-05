@@ -12,6 +12,8 @@
 
 namespace IL {
     struct IdentifierMap {
+        using BlockUserList = std::vector<OpaqueInstructionRef>;
+
         /// Allocate a new ID
         /// \return
         ID AllocID() {
@@ -56,7 +58,46 @@ namespace IL {
             return map.at(id);
         }
 
+        /// Add a new user to a block
+        /// \param blockId referenced block
+        /// \param user user of said block
+        void AddBlockUser(const ID& blockId, const OpaqueInstructionRef& user) {
+            GetBlock(blockId).users.push_back(user);
+        }
+
+        /// Remove a user from a block
+        /// \param blockId referenced block
+        /// \param user user of said block
+        void RemoveBlockUser(const ID& blockId, const OpaqueInstructionRef& user) {
+            (void)std::remove(GetBlock(blockId).users.begin(), GetBlock(blockId).users.end(), user);
+        }
+
+        /// Get the users for a specific block
+        /// \param id the id of the block
+        /// \return user list, not mutable
+        const BlockUserList& GetBlockUsers(const ID& id) {
+            return GetBlock(id).users;
+        }
+
     private:
+        struct Block {
+            BlockUserList users;
+        };
+
+        /// Get a specific block
+        Block& GetBlock(const ID& id) {
+            if (id >= blocks.size()) {
+                blocks.resize(id + 1);
+            }
+
+            return blocks[id];
+        }
+
+    private:
+        /// All blocks
+        std::vector<Block> blocks;
+
+        /// All instructions
         std::vector<OpaqueInstructionRef> map;
     };
 }

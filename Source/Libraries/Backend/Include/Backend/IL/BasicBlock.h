@@ -7,7 +7,7 @@
 #include "RelocationAllocator.h"
 #include "Instruction.h"
 #include "IdentifierMap.h"
-#include "BasicBlockFlag.h"
+#include "BasicBlockFlags.h"
 
 namespace IL {
     /// Instruction reference
@@ -370,35 +370,10 @@ namespace IL {
         /// Copy this basic block
         /// \param map the new identifier map
         /// \return the new basic block
-        BasicBlock Copy(IdentifierMap& copyMap) const {
-            BasicBlock bb(allocators, copyMap, id);
-            bb.count = count;
-            bb.dirty = dirty;
-            bb.data = data;
-            bb.sourceSpan = sourceSpan;
-            bb.flags = flags;
+        void CopyTo(BasicBlock* out) const;
 
-            // Preallocate
-            bb.relocationTable.resize(relocationTable.size());
-
-            // Copy the relocation offsets
-            for (size_t i = 0; i < relocationTable.size(); i++) {
-                bb.relocationTable[i] = bb.relocationAllocator.Allocate();
-                bb.relocationTable[i]->offset = relocationTable[i]->offset;
-            }
-
-            // Reindex the map
-            for (auto it = bb.begin(); it != bb.end(); it++) {
-                auto result = it->result;
-
-                // Anything to index?
-                if (result != InvalidID) {
-                    copyMap.AddInstruction(it.Ref(), result);
-                }
-            }
-
-            return bb;
-        }
+        /// Reindex all users
+        void IndexUsers();
 
         /// Add a new flag to this block
         /// \param value flag to be added
@@ -567,32 +542,15 @@ namespace IL {
         /// \param destBlock the destination basic block in which all [splitIterator, end) will be inserted
         /// \param splitIterator the iterator from which on the block is splitted, inclusive
         /// \return the first iterator in the new basic block
-        Iterator Split(BasicBlock* destBlock, const Iterator& splitIterator) {
-            ASSERT(destBlock->IsEmpty(), "Cannot split into a filled basic block");
+        Iterator Split(BasicBlock* destBlock, const Iterator& splitIterator, BasicBlockSplitFlagSet splitFlags = BasicBlockSplitFlag::All);
 
-            // Append all instructions after the split point to the new basic block
-            Iterator moveIterator = splitIterator;
-            for (; moveIterator != end(); moveIterator++) {
-                destBlock->Append(moveIterator.Get());
-                count--;
-            }
-
-            auto ptr = reinterpret_cast<IL::Instruction*>(data.data() + relocationTable[splitIterator.relocationIndex]->offset);
-
-            // Erase moved instruction data
-            data.erase(data.begin() + relocationTable[splitIterator.relocationIndex]->offset, data.end());
-
-            // Free relocation indices
-            auto relocationIt = relocationTable.begin() + splitIterator.relocationIndex;
-            for (auto it = relocationIt; it != relocationTable.end(); it++) {
-                relocationAllocator.Free(*it);
-            }
-
-            // Erase relocation indices
-            relocationTable.erase(relocationIt, relocationTable.end());
-
-            // Return first iterator
-            return destBlock->begin();
+        /// Split this basic block from an iterator onwards
+        /// \param destBlock the destination basic block in which all [splitIterator, end) will be inserted
+        /// \param splitIterator the iterator from which on the block is splitted, inclusive
+        /// \return the first iterator in the new basic block
+        template<typename T>
+        TypedIterator<T> Split(BasicBlock* destBlock, const Iterator& splitIterator, BasicBlockSplitFlagSet splitFlags = BasicBlockSplitFlag::All) {
+            return Split(destBlock, splitIterator, splitFlags);
         }
 
         /// Split this basic block from an iterator onwards
@@ -600,17 +558,8 @@ namespace IL {
         /// \param splitIterator the iterator from which on the block is splitted, inclusive
         /// \return the first iterator in the new basic block
         template<typename T>
-        TypedIterator<T> Split(BasicBlock* destBlock, const Iterator& splitIterator) {
-            return Split(destBlock, splitIterator);
-        }
-
-        /// Split this basic block from an iterator onwards
-        /// \param destBlock the destination basic block in which all [splitIterator, end) will be inserted
-        /// \param splitIterator the iterator from which on the block is splitted, inclusive
-        /// \return the first iterator in the new basic block
-        template<typename T>
-        TypedIterator<T> Split(BasicBlock* destBlock, const TypedIterator<T>& splitIterator) {
-            return Split(destBlock, static_cast<Iterator>(splitIterator));
+        TypedIterator<T> Split(BasicBlock* destBlock, const TypedIterator<T>& splitIterator, BasicBlockSplitFlagSet splitFlags = BasicBlockSplitFlag::All) {
+            return Split(destBlock, static_cast<Iterator>(splitIterator), splitFlags);
         }
 
         /// Get the terminator instruction
@@ -722,6 +671,21 @@ namespace IL {
         /// \return the offset
         RelocationOffset *GetRelocationOffset(uint32_t index) const {
             return relocationTable.at(index);
+        }
+
+        /// Get a relocation instruction
+        /// \param relocationOffset the offset, must be from this basic block
+        /// \return the instruction pointer
+        template<typename T = Instruction>
+        T *GetRelocationInstruction(const RelocationOffset *relocationOffset) {
+            auto* instruction = reinterpret_cast<Instruction *>(data.data() + relocationOffset->offset);
+
+            // Validation
+            if constexpr(!std::is_same_v<T, Instruction>) {
+                ASSERT(instruction->opCode == T::kOpCode, "Invalid cast");
+            }
+
+            return static_cast<T*>(instruction);
         }
 
         /// Get a relocation instruction

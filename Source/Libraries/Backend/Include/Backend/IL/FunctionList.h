@@ -7,7 +7,7 @@
 
 namespace IL {
     struct FunctionList {
-        using Container = std::list<Function>;
+        using Container = std::vector<Function*>;
 
         FunctionList(const Allocators& allocators, IdentifierMap& map) : allocators(allocators), map(map) {
 
@@ -18,9 +18,10 @@ namespace IL {
         Function* AllocFunction(ID bid) {
             revision++;
 
-            Function& bb = functions.emplace_back(allocators, std::ref(map), bid);
-            functionMap[bid] = &bb;
-            return &bb;
+            auto* function = new (allocators) Function(allocators, map, bid);
+            functions.push_back(function);
+            functionMap[bid] = function;
+            return function;
         }
 
         /// Allocate a new basic block
@@ -49,15 +50,15 @@ namespace IL {
         /// Remove a function
         /// \param function function iterator
         void Remove(const Container::const_iterator& function) {
-            functionMap[function->GetID()] = nullptr;
+            functionMap[(*function)->GetID()] = nullptr;
             functions.erase(function);
         }
 
-        /// Add (move) a function
-        /// \param function function to be moved
-        void Add(Function&& function) {
-            auto& moved = functions.emplace_back(std::move(function));
-            functionMap[moved.GetID()] = &moved;
+        /// Add a function
+        /// \param function function to be added
+        void Add(Function* function) {
+            functions.push_back(function);
+            functionMap[function->GetID()] = function;
         }
 
         /// Swap functions with a container
@@ -77,9 +78,12 @@ namespace IL {
             out.revision = revision;
 
             // Copy all basic blocks
-            for (const Function& bb : functions) {
-                Function& copy = out.functions.emplace_back(bb.Copy(out.map));
-                out.functionMap[copy.GetID()] = &copy;
+            for (const Function* fn : functions) {
+                auto* copy = new (allocators) Function(allocators, out.map, fn->GetID());
+                fn->CopyTo(copy);
+
+                out.functions.push_back(copy);
+                out.functionMap[copy->GetID()] = copy;
             }
         }
 

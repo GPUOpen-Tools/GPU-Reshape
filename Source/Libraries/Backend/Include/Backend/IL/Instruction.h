@@ -18,9 +18,28 @@ namespace IL {
         /// Reinterpret this instruction, asserts on validity
         /// \return the casted instruction
         template<typename T>
+        T* As() {
+            ASSERT(Is<T>(), "Bad instruction cast");
+            return static_cast<T*>(this);
+        }
+
+        /// Reinterpret this instruction, asserts on validity
+        /// \return the casted instruction
+        template<typename T>
         const T* As() const {
             ASSERT(Is<T>(), "Bad instruction cast");
             return static_cast<const T*>(this);
+        }
+
+        /// Cast this instruction
+        /// \return the casted instruction, nullptr if invalid
+        template<typename T>
+        T* Cast() {
+            if (!Is<T>()) {
+                return nullptr;
+            }
+
+            return static_cast<T*>(this);
         }
 
         /// Cast this instruction

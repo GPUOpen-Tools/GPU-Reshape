@@ -466,14 +466,20 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
                 // Fill cases
                 for (uint32_t i = 0; i < valueCount; i++) {
-                    IL::PhiValue _case;
-                    _case.value = ctx++;
-                    _case.branch = ctx++;
-                    instr->values[i] = _case;
+                    IL::PhiValue value;
+                    value.value = ctx++;
+                    value.branch = ctx++;
+                    instr->values[i] = value;
                 }
 
                 // Append dynamic
-                basicBlock->Append(instr);
+                IL::OpaqueInstructionRef ref = basicBlock->Append(instr);
+
+                // Add use case
+                for (uint32_t i = 0; i < valueCount; i++) {
+                    const IL::PhiValue& value = instr->values[i];
+                    program.GetIdentifierMap().AddBlockUser(value.branch, ref);
+                }
                 break;
             }
 
@@ -590,8 +596,8 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
 bool SpvPhysicalBlockFunction::Compile(SpvIdMap &idMap) {
     // Compile all function declarations
-    for (IL::Function& fn : program.GetFunctionList()) {
-        if (!CompileFunction(idMap, fn, true)) {
+    for (IL::Function* fn : program.GetFunctionList()) {
+        if (!CompileFunction(idMap, *fn, true)) {
             return false;
         }
     }
@@ -629,8 +635,8 @@ bool SpvPhysicalBlockFunction::CompileFunction(SpvIdMap &idMap, IL::Function &fn
 
     // Compile all basic blocks if the definition is being emitted
     if (emitDefinition) {
-        for (IL::BasicBlock& basicBlock : fn.GetBasicBlocks()) {
-            if (!CompileBasicBlock(idMap, &basicBlock)) {
+        for (IL::BasicBlock* basicBlock : fn.GetBasicBlocks()) {
+            if (!CompileBasicBlock(idMap, basicBlock)) {
                 return false;
             }
         }
@@ -971,7 +977,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
             case IL::OpCode::Phi: {
                 auto *phi = instr.As<IL::PhiInstruction>();
 
-                SpvInstruction& spv = stream.Allocate(SpvOpSwitch, 3 + 2 * phi->values.count);
+                SpvInstruction& spv = stream.Allocate(SpvOpPhi, 3 + 2 * phi->values.count);
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                 spv[2] = phi->result;
 
