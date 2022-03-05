@@ -8,4 +8,68 @@
 // Std
 #include <cstring>
 
+static uint64_t DeepCopyExtensionByteSize(const void* extension);
+
+static void* DeepCopyExtension(const void* extension, uint8_t* blob, uint64_t& blobOffset);
+
+uint64_t DeepCopyExtensionByteSizeDeviceLoader(const void* extension) {
+    const auto& source = *static_cast<const StructureType*>(extension);
+    return 0;
+}
+
+void* DeepCopyExtensionDeviceLoader(const void* extension, uint8_t* blob, uint64_t& blobOffset) {
+    const auto& source = *static_cast<const StructureType*>(extension);
+    return const_cast<void*>(extension);
+}
+
+uint64_t DeepCopyExtensionByteSizeGPUOpen(const void* extension) {
+    const auto& source = *static_cast<const VkGPUOpenGPUValidationCreateInfo*>(extension);
+
+    uint64_t blobSize = sizeof(VkGPUOpenGPUValidationCreateInfo);
+
+    if (source.pNext) {
+        blobSize += DeepCopyExtensionByteSize(source.pNext);
+    }
+
+    return blobSize;
+}
+
+void* DeepCopyExtensionGPUOpen(const void* extension, uint8_t* blob, uint64_t& blobOffset) {
+    const auto& source = *static_cast<const VkGPUOpenGPUValidationCreateInfo*>(extension);
+
+    auto* _mutable = reinterpret_cast<VkGPUOpenGPUValidationCreateInfo*>(blob[blobOffset]);
+    std::memcpy(_mutable, extension, sizeof(VkGPUOpenGPUValidationCreateInfo));
+    blobOffset += sizeof(VkGPUOpenGPUValidationCreateInfo);
+
+    return _mutable;
+}
+
+$EXTENSIONS
+
+static uint64_t DeepCopyExtensionByteSize(const void* extension) {
+    switch (*static_cast<const VkStructureType*>(extension)) {
+        default:
+            ASSERT(false, "Unexpected extension type to structure");
+            return 0;
+        case VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO:
+            return DeepCopyExtensionByteSizeGPUOpen(extension);
+        case VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO:
+            return DeepCopyExtensionByteSizeDeviceLoader(extension);
+$EXTENSION_CASES_BYTE_SIZE
+    }
+}
+
+static void* DeepCopyExtension(const void* extension, uint8_t* blob, uint64_t& blobOffset) {
+    switch (*static_cast<const VkStructureType*>(extension)) {
+        default:
+            ASSERT(false, "Unexpected extension type to structure");
+            return nullptr;
+        case VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO:
+            return DeepCopyExtensionGPUOpen(extension, blob, blobOffset);
+        case VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO:
+            return DeepCopyExtensionDeviceLoader(extension, blob, blobOffset);
+$EXTENSION_CASES
+    }
+}
+
 $DEEPCOPY

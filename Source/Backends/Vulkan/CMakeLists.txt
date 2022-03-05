@@ -45,7 +45,7 @@ set(VkHooks vkCmdDrawIndexed)
 set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkEndCommandBuffer,vkCmdBindPipeline,vkCmdBindDescriptorSets)
 
 # Object list
-set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo)
+set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkDeviceCreateInfo)
 
 # Generate the deep copy objects
 add_custom_command(

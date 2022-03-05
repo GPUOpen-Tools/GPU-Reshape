@@ -5,6 +5,7 @@
 #include "Backends/Vulkan/VMA.h"
 #include "Backends/Vulkan/TrackedObject.h"
 #include "Backends/Vulkan/DependentObject.h"
+#include "Backends/Vulkan/DeepCopyObjects.Gen.h"
 
 // Common
 #include "Common/Allocators.h"
@@ -65,6 +66,9 @@ struct DeviceDispatchTable {
     /// \param name the name to hook
     /// \return the hooked address, may be nullptr
     static PFN_vkVoidFunction GetHookAddress(const char *name);
+
+    /// Deep copy of creation info
+    VkDeviceCreateInfoDeepCopy createInfo;
 
     /// States
     VkDevice object;
