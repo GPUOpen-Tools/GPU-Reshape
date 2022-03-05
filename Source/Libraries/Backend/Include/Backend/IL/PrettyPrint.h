@@ -44,4 +44,5 @@ namespace IL {
     void PrettyPrint(const Function& function, PrettyPrintContext out);
     void PrettyPrint(const BasicBlock& basicBlock, PrettyPrintContext out);
     void PrettyPrint(const Instruction* instr, PrettyPrintContext out);
+    void PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext out);
 }

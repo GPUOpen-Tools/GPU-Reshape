@@ -57,12 +57,12 @@ void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, const std::vec
     const uint32_t batchSize = std::max(1u, std::min(maxJobsPerWorker, kMaxBatchSize));
 
     // Create batches
-    for (uint32_t i = 0; i < jobs.size(); i++) {
-        const uint32_t count = std::min(static_cast<uint32_t>(jobs.size()) - i, batchSize);
+    for (uint32_t offset = 0; offset < jobs.size();) {
+        const uint32_t count = std::min(static_cast<uint32_t>(jobs.size()) - offset, batchSize);
 
         // Create a copy of the states
         auto copy = new(allocators) PipelineJob[count];
-        std::memcpy(copy, &jobs[i], sizeof(PipelineJob) * count);
+        std::memcpy(copy, &jobs[offset], sizeof(PipelineJob) * count);
 
         // Create the job data
         auto data = new(registry->GetAllocators()) PipelineJobBatch{
@@ -80,6 +80,9 @@ void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, const std::vec
                 dispatcher->Add(BindDelegate(this, PipelineCompiler::WorkerCompute), data, bucket);
                 break;
         }
+
+        // Next!
+        offset += count;
     }
 }
 

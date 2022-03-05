@@ -98,6 +98,9 @@ void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, IL::ID va
 
     // Note: This is quite ugly, will be changed
 
+    // Identifiable header
+    SpvInstruction& spvNop = stream.Allocate(SpvOpNop, 1);
+
     // UInt32
     Backend::IL::IntType typeInt;
     typeInt.bitWidth = 32;

@@ -297,3 +297,102 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
 
     line << "\n";
 }
+
+static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlocks, const IL::BasicBlock &block, IL::ID successor, IL::PrettyPrintContext& out) {
+    IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
+    ASSERT(successorBlock, "Successor block invalid");
+
+    // Must have terminator
+    auto terminator = successorBlock->GetTerminator();
+    ASSERT(terminator, "Must have terminator");
+
+    // Get control flow, if present
+    IL::BranchControlFlow controlFlow;
+    switch (terminator.GetOpCode()) {
+        default:
+            break;
+        case IL::OpCode::BranchConditional:
+            controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
+            break;
+    }
+
+    // Skip loop back continue block for order resolving
+    if (controlFlow._continue == block.GetID()) {
+        out.stream << " n" << block.GetID() << " -> n" << successor << " [color=\"0 0 0.75\"];\n";
+    } else {
+        out.stream << " n" << block.GetID() << " -> n" << successor << ";\n";
+    }
+}
+
+void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext out) {
+    out.stream << "digraph regexp { \n"
+                  " fontname=\"Helvetica,Arial,sans-serif\"\n";
+
+    const BasicBlockList& blocks = function.GetBasicBlocks();
+
+    for (auto it = blocks.begin(); it != blocks.end(); it++) {
+        out.stream << " n" << it->GetID();
+
+        if (it == blocks.begin())
+            out.stream << " [label=\"Entry\"];\n";
+        else
+            out.stream << " [label=\"Block " << it->GetID() << "\"];\n";
+    }
+
+    for (const IL::BasicBlock& bb : function.GetBasicBlocks()) {
+        // Must have terminator
+        auto terminator = bb.GetTerminator();
+        ASSERT(terminator, "Must have terminator");
+
+        // Get control flow, if present
+        IL::BranchControlFlow controlFlow;
+        switch (terminator.GetOpCode()) {
+            default:
+                break;
+            case IL::OpCode::BranchConditional:
+                controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
+                break;
+        }
+
+        for (auto&& instr : bb) {
+            switch (instr->opCode) {
+                default:
+                    break;
+                case IL::OpCode::Branch: {
+                    PrettyPrintBlockDotGraphSuccessor(function.GetBasicBlocks(), bb, instr->As<IL::BranchInstruction>()->branch, out);
+                    break;
+                }
+                case IL::OpCode::BranchConditional: {
+                    PrettyPrintBlockDotGraphSuccessor(function.GetBasicBlocks(), bb, instr->As<IL::BranchConditionalInstruction>()->pass, out);
+                    PrettyPrintBlockDotGraphSuccessor(function.GetBasicBlocks(), bb, instr->As<IL::BranchConditionalInstruction>()->fail, out);
+                    break;
+                }
+                case IL::OpCode::Switch: {
+                    auto* _switch = instr->As<IL::SwitchInstruction>();
+                    out.stream << " n" << bb.GetID() << " -> n" << _switch->_default << " [color=\"0.85 0.5 0.25\"];\n";
+
+                    // Add cases
+                    for (uint32_t i = 0; i < _switch->cases.count; i++) {
+                        out.stream << " n" << bb.GetID() << " -> n" << _switch->cases[i].branch << " [color=\"0.85 0.5 0.25\"];\n";
+                    }
+                    break;
+                }
+                case IL::OpCode::Phi: {
+                    auto* phi = instr->As<IL::PhiInstruction>();
+
+                    // Add producers for values
+                    for (uint32_t i = 0; i < phi->values.count; i++) {
+                        if (controlFlow._continue == phi->values[i].branch) {
+                            continue;
+                        }
+
+                        out.stream << " n" << phi->values[i].branch << " -> n" << bb.GetID() << " [color=\"0.8 0.25 0.9\"];\n";
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    out.stream << "}\n";
+}

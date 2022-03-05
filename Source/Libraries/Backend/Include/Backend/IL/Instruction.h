@@ -10,6 +10,8 @@
 #include "InlineArray.h"
 #include "LiteralType.h"
 #include "ID.h"
+#include "PrettyPrint.h"
+
 
 namespace IL {
     struct Instruction {
