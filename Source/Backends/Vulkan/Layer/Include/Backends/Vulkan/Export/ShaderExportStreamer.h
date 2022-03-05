@@ -12,6 +12,9 @@
 #include <Common/Containers/ObjectPool.h>
 #include <Common/Containers/TrivialObjectPool.h>
 
+// Std
+#include <mutex>
+
 // Forward declarations
 class ShaderExportDescriptorAllocator;
 class ShaderExportStreamAllocator;
@@ -71,6 +74,11 @@ public:
     /// \param commandBuffer the command buffer
     void BeginCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer);
 
+    /// Invoked during command buffer resetting
+    /// \param state the stream state
+    /// \param commandBuffer the command buffer
+    void ResetCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer);
+
     /// Invoked during pipeline binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
@@ -84,7 +92,7 @@ public:
     /// \param start the first set
     /// \param count the number of sets
     /// \param sets the sets to be bound
-    void BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, uint32_t start, uint32_t count, const VkDescriptorSet* sets);
+    void BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets);
 
     /// Map a stream state pre submission
     /// \param state the stream state
@@ -124,6 +132,10 @@ private:
 
 private:
     DeviceDispatchTable* table;
+
+    std::mutex mutex;
+
+    BucketPoolAllocator<uint32_t> dynamicOffsetAllocator;
 
     ObjectPool<ShaderExportStreamState> streamStatePool;
     ObjectPool<ShaderExportStreamSegment> segmentPool;

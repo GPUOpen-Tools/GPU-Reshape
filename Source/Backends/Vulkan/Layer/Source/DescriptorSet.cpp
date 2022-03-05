@@ -1,9 +1,63 @@
 #include "Backends/Vulkan/States/PipelineLayoutState.h"
 #include "Backends/Vulkan/States/ShaderModuleState.h"
+#include "Backends/Vulkan/States/DescriptorSetLayoutState.h"
 #include "Backends/Vulkan/Objects/CommandBufferObject.h"
 #include "Backends/Vulkan/Tables/DeviceDispatchTable.h"
 #include "Backends/Vulkan/Export/ShaderExportDescriptorAllocator.h"
 #include "Backends/Vulkan/Export/ShaderExportStreamer.h"
+
+#include <Common/Hash.h>
+
+VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDescriptorSetLayout* pSetLayout) {
+    DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Pass down callchain
+    VkResult result = table->next_vkCreateDescriptorSetLayout(device, pCreateInfo, pAllocator, pSetLayout);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    // Create the new state
+    auto state = new(table->allocators) DescriptorSetLayoutState;
+    state->object = *pSetLayout;
+    state->compatabilityHash = 0x0;
+
+    // Hash
+    CombineHash(state->compatabilityHash, pCreateInfo->bindingCount);
+
+    // Check all binding types
+    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+        switch (pCreateInfo->pBindings[i].descriptorType) {
+            default:
+                break;
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+                state->dynamicOffsets++;
+                break;
+        }
+
+        // Hash
+        CombineHash(state->compatabilityHash, pCreateInfo->pBindings[i].descriptorType);
+        CombineHash(state->compatabilityHash, pCreateInfo->pBindings[i].descriptorCount);
+        CombineHash(state->compatabilityHash, pCreateInfo->pBindings[i].binding);
+    }
+
+    // Store lookup
+    table->states_descriptorSetLayout.Add(*pSetLayout, state);
+
+    // OK
+    return VK_SUCCESS;
+}
+
+VKAPI_ATTR void VKAPI_PTR Hook_vkDestroyDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout, const VkAllocationCallbacks* pAllocator) {
+    DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Remove the state
+    table->states_descriptorSetLayout.Remove(descriptorSetLayout);
+
+    // Pass down callchain
+    table->next_vkDestroyDescriptorSetLayout(device, descriptorSetLayout, pAllocator);
+}
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, const VkPipelineLayoutCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkPipelineLayout *pPipelineLayout) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
@@ -41,6 +95,17 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
     state->table = table;
     state->object = *pPipelineLayout;
     state->exhausted = exhausted;
+    state->descriptorDynamicOffsets.resize(pCreateInfo->setLayoutCount);
+    state->compatabilityHashes.resize(pCreateInfo->setLayoutCount);
+
+    // Copy set layout info
+    for (uint32_t i = 0; i < pCreateInfo->setLayoutCount; i++) {
+        DescriptorSetLayoutState* setLayoutState = table->states_descriptorSetLayout.Get(pCreateInfo->pSetLayouts[i]);
+
+        // Inherit
+        state->descriptorDynamicOffsets[i] = setLayoutState->dynamicOffsets;
+        state->compatabilityHashes[i] = setLayoutState->compatabilityHash;
+    }
 
     // External user
     state->AddUser();
@@ -60,7 +125,7 @@ VKAPI_ATTR void VKAPI_PTR Hook_vkCmdBindDescriptorSets(CommandBufferObject* comm
     commandBuffer->dispatchTable.next_vkCmdBindDescriptorSets(commandBuffer->object, pipelineBindPoint, layout, firstSet, descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
 
     // Inform streamer
-    commandBuffer->table->exportStreamer->BindDescriptorSets(commandBuffer->streamState, pipelineBindPoint, firstSet, descriptorSetCount, pDescriptorSets);
+    commandBuffer->table->exportStreamer->BindDescriptorSets(commandBuffer->streamState, pipelineBindPoint, layout, firstSet, descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout, const VkAllocationCallbacks *pAllocator) {
