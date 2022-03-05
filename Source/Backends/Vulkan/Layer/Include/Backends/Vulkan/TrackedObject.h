@@ -84,8 +84,8 @@ struct TrackedObject {
 
     /// Remove an object
     void Remove(T object) {
-        RemoveLogical(object);
         RemoveState(Get(object));
+        RemoveLogical(object);
     }
 
     /// Remove an object
