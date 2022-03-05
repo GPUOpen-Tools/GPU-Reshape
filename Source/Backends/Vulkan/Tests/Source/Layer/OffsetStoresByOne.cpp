@@ -47,9 +47,9 @@ public:
     void Inject(IL::Program &program) override {
         IL::IdentifierMap& map = program.GetIdentifierMap();
 
-        for (IL::Function& fn : program.GetFunctionList()) {
-            for (IL::BasicBlock& bb : fn.GetBasicBlocks()) {
-                for (auto it = bb.begin(); it != bb.end(); ++it) {
+        for (IL::Function* fn : program.GetFunctionList()) {
+            for (IL::BasicBlock* bb : fn->GetBasicBlocks()) {
+                for (auto it = bb->begin(); it != bb->end(); ++it) {
                     if (Instrument(program, bb, it)) {
                         break;
                     }
@@ -58,7 +58,7 @@ public:
         }
     }
 
-    bool Instrument(IL::Program &program, IL::BasicBlock& bb, const IL::BasicBlock::Iterator& it) {
+    bool Instrument(IL::Program &program, IL::BasicBlock* bb, const IL::BasicBlock::Iterator& it) {
         switch (it->opCode) {
             default:
                 return false;
@@ -67,11 +67,11 @@ public:
                 auto storeBuffer = it.Ref<IL::StoreBufferInstruction>();
 
                 // Bias the op
-                IL::Emitter<> append(program, bb, storeBuffer);
+                IL::Emitter<> append(program, *bb, storeBuffer);
                 auto bias = append.Add(storeBuffer->value, append.UInt(32, 1));
 
                 // Replace the store operation
-                IL::Emitter<IL::Op::Instrument> storeEmitter(program, bb, storeBuffer);
+                IL::Emitter<IL::Op::Instrument> storeEmitter(program, *bb, storeBuffer);
                 storeEmitter.StoreBuffer(storeBuffer->buffer, storeBuffer->index, bias);
                 return true;
             }

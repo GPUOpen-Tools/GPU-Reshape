@@ -10,7 +10,7 @@ namespace IL {
     /// Implementation details
     namespace Detail {
         template<typename F>
-        bool VisitUserInstructions(IL::Program& program, IL::Function& function, IL::BasicBlock* basicBlock, F&& functor) {
+        bool VisitUserInstructions(IL::Program &program, IL::Function *function, IL::BasicBlock *basicBlock, F &&functor) {
             bool migratedBlock{false};
 
             // Visit all instructions
@@ -20,10 +20,10 @@ namespace IL {
                 }
 
                 // Set up the context
-                VisitContext context {
-                        .program = program,
-                        .function = function,
-                        .basicBlock = *basicBlock,
+                VisitContext context{
+                    .program = program,
+                    .function = *function,
+                    .basicBlock = *basicBlock,
                 };
 
                 // Pass through visitor
@@ -50,28 +50,28 @@ namespace IL {
         }
 
         template<typename F>
-        void VisitUserInstructions(IL::Program& program, IL::Function& function, F&& functor) {
+        void VisitUserInstructions(IL::Program &program, IL::Function *function, F &&functor) {
             for (;;) {
                 bool mutated{false};
 
                 // Current revision
-                uint32_t revision = function.GetBasicBlocks().GetBasicBlockRevision();
+                uint32_t revision = function->GetBasicBlocks().GetBasicBlockRevision();
 
                 // Visit all blocks
-                for (IL::BasicBlock& basicBlock : function.GetBasicBlocks()) {
+                for (IL::BasicBlock *basicBlock: function->GetBasicBlocks()) {
                     // If instrumented or visited, skip
-                    if (basicBlock.GetFlags() & (BasicBlockFlag::NoInstrumentation | BasicBlockFlag::Visited)) {
+                    if (basicBlock->GetFlags() & (BasicBlockFlag::NoInstrumentation | BasicBlockFlag::Visited)) {
                         continue;
                     }
 
                     // Mark as visited
-                    basicBlock.AddFlag(BasicBlockFlag::Visited);
+                    basicBlock->AddFlag(BasicBlockFlag::Visited);
 
                     // Visit all instructions
-                    bool migratedBlock = VisitUserInstructions(program, function, &basicBlock, functor);
+                    bool migratedBlock = VisitUserInstructions(program, function, basicBlock, functor);
 
                     // If the fn revision has changed (block removed, moved, added), we need to re-visit
-                    if (migratedBlock || revision != function.GetBasicBlocks().GetBasicBlockRevision()) {
+                    if (migratedBlock || revision != function->GetBasicBlocks().GetBasicBlockRevision()) {
                         // Mark as mutated
                         mutated = true;
 
@@ -88,7 +88,7 @@ namespace IL {
         }
 
         template<typename F>
-        void VisitUserInstructions(IL::Program& program, F&& functor) {
+        void VisitUserInstructions(IL::Program &program, F &&functor) {
             for (;;) {
                 bool mutated{false};
 
@@ -96,9 +96,9 @@ namespace IL {
                 uint32_t revision = program.GetFunctionList().GetRevision();
 
                 // Visit all functions
-                for (IL::Function& function : program.GetFunctionList()) {
+                for (IL::Function *function: program.GetFunctionList()) {
                     // If instrumented or visited, skip
-                    if (function.GetFlags() & (FunctionFlag::NoInstrumentation | FunctionFlag::Visited)) {
+                    if (function->GetFlags() & (FunctionFlag::NoInstrumentation | FunctionFlag::Visited)) {
                         continue;
                     }
 
@@ -106,7 +106,7 @@ namespace IL {
                     VisitUserInstructions(program, function, functor);
 
                     // Mark as visited
-                    function.AddFlag(FunctionFlag::Visited);
+                    function->AddFlag(FunctionFlag::Visited);
 
                     // If the pg revision has changed (block removed, moved, added), we need to re-visit
                     if (revision != program.GetFunctionList().GetRevision()) {
@@ -131,16 +131,16 @@ namespace IL {
     /// \param functor the instruction functor, type must be invocable with (VisitContext&, const BasicBlock::Iterator&) -> BasicBlock::Iterator,
     ///                 functor return type dictates the next visitation. Must be a valid iterator for the current basic block.
     template<typename F>
-    void VisitUserInstructions(IL::Program& program, F&& functor) {
+    void VisitUserInstructions(IL::Program &program, F &&functor) {
         // Visit all functions
         Detail::VisitUserInstructions(program, functor);
 
         // Clean visitation states
-        for (IL::Function& function : program.GetFunctionList()) {
-            function.RemoveFlag(FunctionFlag::Visited);
+        for (IL::Function *function: program.GetFunctionList()) {
+            function->RemoveFlag(FunctionFlag::Visited);
 
-            for (IL::BasicBlock &basicBlock: function.GetBasicBlocks()) {
-                basicBlock.RemoveFlag(BasicBlockFlag::Visited);
+            for (IL::BasicBlock *basicBlock: function->GetBasicBlocks()) {
+                basicBlock->RemoveFlag(BasicBlockFlag::Visited);
             }
         }
     }

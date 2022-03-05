@@ -36,18 +36,21 @@ namespace IL {
 
         /// Copy this function
         /// \param copyMap the new identifier map
-        Function Copy(IdentifierMap &copyMap) const {
-            Function function(allocators, copyMap, id);
-            function.sourceSpan = sourceSpan;
-            function.flags = flags;
-            function.functionType = functionType;
+        void CopyTo(Function* out) const {
+            out->sourceSpan = sourceSpan;
+            out->flags = flags;
+            out->functionType = functionType;
 
             // Copy all lists
-            basicBlocks.CopyTo(function.basicBlocks);
-            parameters.CopyTo(function.parameters);
+            basicBlocks.CopyTo(out->basicBlocks);
+            parameters.CopyTo(out->parameters);
+        }
 
-            // OK
-            return function;
+        /// Reindex all users
+        void IndexUsers() const {
+            for (IL::BasicBlock* bb : basicBlocks) {
+                bb->IndexUsers();
+            }
         }
 
         /// Attempt to reorder all blocks by their dominant usage

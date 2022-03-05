@@ -10,8 +10,8 @@ void IL::PrettyPrint(const Program &program, IL::PrettyPrintContext out) {
     out.Line() << "\n";
 
     // Print all functions
-    for (const IL::Function &fn: program.GetFunctionList()) {
-        PrettyPrint(fn, out);
+    for (const IL::Function *fn: program.GetFunctionList()) {
+        PrettyPrint(*fn, out);
     }
 }
 
@@ -19,8 +19,8 @@ void IL::PrettyPrint(const Function &function, IL::PrettyPrintContext out) {
     out.Line() << "%" << function.GetID() << " = Function\n";
 
     // Print all basic blocks
-    for (const IL::BasicBlock &bb: function.GetBasicBlocks()) {
-        PrettyPrint(bb, out.Tab());
+    for (const IL::BasicBlock *bb: function.GetBasicBlocks()) {
+        PrettyPrint(*bb, out.Tab());
     }
 }
 
@@ -298,7 +298,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
     line << "\n";
 }
 
-static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlocks, const IL::BasicBlock &block, IL::ID successor, IL::PrettyPrintContext& out) {
+static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlocks, const IL::BasicBlock *block, IL::ID successor, IL::PrettyPrintContext& out) {
     IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
     ASSERT(successorBlock, "Successor block invalid");
 
@@ -317,10 +317,10 @@ static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlo
     }
 
     // Skip loop back continue block for order resolving
-    if (controlFlow._continue == block.GetID()) {
-        out.stream << " n" << block.GetID() << " -> n" << successor << " [color=\"0 0 0.75\"];\n";
+    if (controlFlow._continue == block->GetID()) {
+        out.stream << " n" << block->GetID() << " -> n" << successor << " [color=\"0 0 0.75\"];\n";
     } else {
-        out.stream << " n" << block.GetID() << " -> n" << successor << ";\n";
+        out.stream << " n" << block->GetID() << " -> n" << successor << ";\n";
     }
 }
 
@@ -331,17 +331,17 @@ void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext o
     const BasicBlockList& blocks = function.GetBasicBlocks();
 
     for (auto it = blocks.begin(); it != blocks.end(); it++) {
-        out.stream << " n" << it->GetID();
+        out.stream << " n" << (*it)->GetID();
 
         if (it == blocks.begin())
             out.stream << " [label=\"Entry\"];\n";
         else
-            out.stream << " [label=\"Block " << it->GetID() << "\"];\n";
+            out.stream << " [label=\"Block " << (*it)->GetID() << "\"];\n";
     }
 
-    for (const IL::BasicBlock& bb : function.GetBasicBlocks()) {
+    for (const IL::BasicBlock* bb : function.GetBasicBlocks()) {
         // Must have terminator
-        auto terminator = bb.GetTerminator();
+        auto terminator = bb->GetTerminator();
         ASSERT(terminator, "Must have terminator");
 
         // Get control flow, if present
@@ -354,7 +354,7 @@ void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext o
                 break;
         }
 
-        for (auto&& instr : bb) {
+        for (auto&& instr : *bb) {
             switch (instr->opCode) {
                 default:
                     break;
@@ -369,11 +369,11 @@ void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext o
                 }
                 case IL::OpCode::Switch: {
                     auto* _switch = instr->As<IL::SwitchInstruction>();
-                    out.stream << " n" << bb.GetID() << " -> n" << _switch->_default << " [color=\"0.85 0.5 0.25\"];\n";
+                    out.stream << " n" << bb->GetID() << " -> n" << _switch->_default << " [color=\"0.85 0.5 0.25\"];\n";
 
                     // Add cases
                     for (uint32_t i = 0; i < _switch->cases.count; i++) {
-                        out.stream << " n" << bb.GetID() << " -> n" << _switch->cases[i].branch << " [color=\"0.85 0.5 0.25\"];\n";
+                        out.stream << " n" << bb->GetID() << " -> n" << _switch->cases[i].branch << " [color=\"0.85 0.5 0.25\"];\n";
                     }
                     break;
                 }
@@ -386,7 +386,7 @@ void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext o
                             continue;
                         }
 
-                        out.stream << " n" << phi->values[i].branch << " -> n" << bb.GetID() << " [color=\"0.8 0.25 0.9\"];\n";
+                        out.stream << " n" << phi->values[i].branch << " -> n" << bb->GetID() << " [color=\"0.8 0.25 0.9\"];\n";
                     }
                     break;
                 }

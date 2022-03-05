@@ -50,8 +50,8 @@ bool SpvModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
 }
 
 bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount, const SpvJob& job) {
-    for (IL::Function& fn : program->GetFunctionList()) {
-        if (!fn.ReorderByDominantBlocks()) {
+    for (IL::Function* fn : program->GetFunctionList()) {
+        if (!fn->ReorderByDominantBlocks()) {
             return false;
         }
     }

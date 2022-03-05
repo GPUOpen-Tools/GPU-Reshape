@@ -13,7 +13,7 @@ void main(uint dtid : SV_DispatchThreadID) {
     float value = dtid;
 
     if (dtid > 30) {
-        value = dtid * 2;
+        value = bufferRW[dtid] * 2;
     }
 
     bufferRW[dtid] = value;

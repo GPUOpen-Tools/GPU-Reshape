@@ -35,9 +35,15 @@ namespace IL {
             program->identifierMap.SetBound(identifierMap.GetMaxID());
             program->typeMap = typeMap.Copy();
 
-            // Copy functions
+            // Copy all functions and their basic blocks
             functions.CopyTo(program->functions);
 
+            // Reindex all users
+            for (IL::Function* fn : program->functions) {
+                fn->IndexUsers();
+            }
+
+            // OK
             return program;
         }
 

@@ -18,7 +18,7 @@
 #   undef max
 #endif
 
-static void AddSuccessor(std::map<IL::ID, uint32_t> &userMap, IL::BasicBlockList &basicBlocks, IL::BasicBlock &block, IL::ID successor) {
+static void AddSuccessor(std::map<IL::ID, uint32_t> &userMap, IL::BasicBlockList &basicBlocks, IL::BasicBlock *block, IL::ID successor) {
     IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
     ASSERT(successorBlock, "Successor block invalid");
 
@@ -37,7 +37,7 @@ static void AddSuccessor(std::map<IL::ID, uint32_t> &userMap, IL::BasicBlockList
     }
 
     // Skip loop back continue block for order resolving
-    if (controlFlow._continue == block.GetID()) {
+    if (controlFlow._continue == block->GetID()) {
         return;
     }
 
@@ -52,9 +52,9 @@ bool IL::Function::ReorderByDominantBlocks() {
     std::map<IL::ID, std::vector<IL::ID>> phiProducers;
 
     // Accumulate users
-    for (IL::BasicBlock &block: basicBlocks) {
+    for (IL::BasicBlock *block: basicBlocks) {
         // Must have terminator
-        auto terminator = block.GetTerminator();
+        auto terminator = block->GetTerminator();
         ASSERT(terminator, "Must have terminator");
 
         // Get control flow, if present
@@ -67,7 +67,7 @@ bool IL::Function::ReorderByDominantBlocks() {
                 break;
         }
 
-        for (auto &&instr: block) {
+        for (auto &&instr: *block) {
             switch (instr->opCode) {
                 default:
                     break;
@@ -99,8 +99,8 @@ bool IL::Function::ReorderByDominantBlocks() {
                             continue;
                         }
 
-                        phiProducers[phi->values[i].branch].push_back(block.GetID());
-                        userMap[block.GetID()]++;
+                        phiProducers[phi->values[i].branch].push_back(block->GetID());
+                        userMap[block->GetID()]++;
                     }
                     break;
                 }
@@ -108,7 +108,7 @@ bool IL::Function::ReorderByDominantBlocks() {
         }
     }
 
-    std::list<IL::BasicBlock> blocks;
+    BasicBlockList::Container blocks;
     basicBlocks.SwapBlocks(blocks);
 
     // Mutation loop
@@ -118,13 +118,13 @@ bool IL::Function::ReorderByDominantBlocks() {
         // Find candidate
         for (auto it = blocks.begin(); it != blocks.end(); it++) {
             // Find first with free users
-            uint32_t users = userMap[it->GetID()];
+            uint32_t users = userMap[(*it)->GetID()];
             if (users) {
                 continue;
             }
 
             // Get terminator
-            auto &&terminator = it->GetTerminator();
+            auto &&terminator = (*it)->GetTerminator();
             ASSERT(terminator, "Must have terminator");
 
             // Handle terminators
@@ -153,7 +153,7 @@ bool IL::Function::ReorderByDominantBlocks() {
             }
 
             // Handle producers
-            for (IL::ID acceptor: phiProducers[it->GetID()]) {
+            for (IL::ID acceptor: phiProducers[(*it)->GetID()]) {
                 userMap[acceptor]--;
             }
 
@@ -183,8 +183,8 @@ bool IL::Function::ReorderByDominantBlocks() {
 #endif
 
         // Move unresolved blocks black
-        for (IL::BasicBlock &block: blocks) {
-            basicBlocks.Add(std::move(block));
+        for (IL::BasicBlock *block: blocks) {
+            basicBlocks.Add(block);
         }
 
 #ifndef NDEBUG
