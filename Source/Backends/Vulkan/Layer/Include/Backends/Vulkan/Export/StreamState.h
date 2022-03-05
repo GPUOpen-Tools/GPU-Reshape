@@ -5,6 +5,9 @@
 #include <Backends/Vulkan/States/PipelineState.h>
 #include <Backends/Vulkan/Export/DescriptorInfo.h>
 
+// Common
+#include <Common/Containers/BucketPoolAllocator.h>
+
 // Std
 #include <vector>
 
@@ -12,10 +15,22 @@
 struct ShaderExportSegmentInfo;
 struct FenceState;
 
+/// Descriptor state for re-binding
+struct ShaderExportDescriptorState {
+    /// All dynamic offsets
+    BucketPoolAllocation<uint32_t> dynamicOffsets{};
+
+    /// Source compatability hash
+    uint64_t compatabilityHash;
+
+    /// Set, lifetime bound to the command buffer
+    VkDescriptorSet set;
+};
+
 /// Single bind state
 struct ShaderExportPipelineBindState {
     /// Current descriptor sets
-    std::vector<VkDescriptorSet> persistentDescriptorState;
+    std::vector<ShaderExportDescriptorState> persistentDescriptorState;
 
     /// The instrumentation overwrite mask
     uint32_t deviceDescriptorOverwriteMask{0x0};

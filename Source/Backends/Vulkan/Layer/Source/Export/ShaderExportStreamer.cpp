@@ -20,7 +20,7 @@
 // Common
 #include <Common/Registry.h>
 
-ShaderExportStreamer::ShaderExportStreamer(DeviceDispatchTable *table) : table(table) {
+ShaderExportStreamer::ShaderExportStreamer(DeviceDispatchTable *table) : table(table), dynamicOffsetAllocator(table->allocators) {
 
 }
 
@@ -121,6 +121,15 @@ void ShaderExportStreamer::Enqueue(ShaderExportQueueState* queue, ShaderExportSt
 void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer) {
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
+        std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
+        bindState.deviceDescriptorOverwriteMask = 0x0;
+    }
+}
+
+void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, VkCommandBuffer commandBuffer) {
+    for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
+        bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
+        std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
         bindState.deviceDescriptorOverwriteMask = 0x0;
     }
 }
@@ -158,27 +167,42 @@ void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState 
             return;
         }
 
-        // Translate the bind point
-        VkPipelineBindPoint vkBindPoint{};
-        switch (pipeline->type) {
-            default:
-                ASSERT(false, "Invalid pipeline type");
-                break;
-            case PipelineType::Graphics:
-                vkBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-                break;
-            case PipelineType::Compute:
-                vkBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
-                break;
+        // Get state
+        ShaderExportDescriptorState& descriptorState = bindState.persistentDescriptorState[overwriteIndex];
+
+        // May not have been used by the user, and the set may not be compatible anymore
+        if (descriptorState.set && descriptorState.compatabilityHash == pipeline->layout->compatabilityHashes.at(overwriteIndex)) {
+            // Translate the bind point
+            VkPipelineBindPoint vkBindPoint{};
+            switch (pipeline->type) {
+                default:
+                    ASSERT(false, "Invalid pipeline type");
+                    break;
+                case PipelineType::Graphics:
+                    vkBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+                    break;
+                case PipelineType::Compute:
+                    vkBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+                    break;
+            }
+
+            // Bind the expected set
+            table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
+                commandBuffer,
+                vkBindPoint, pipeline->layout->object,
+                overwriteIndex, 1u, &descriptorState.set,
+                descriptorState.dynamicOffsets.count, descriptorState.dynamicOffsets.data
+            );
         }
 
-        // Bind the expected set
-        table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
-            commandBuffer,
-            vkBindPoint, pipeline->layout->object,
-            overwriteIndex, 1u, &bindState.persistentDescriptorState[overwriteIndex],
-            0u, nullptr
-        );
+        // Push back to pool
+        if (descriptorState.dynamicOffsets) {
+            std::lock_guard guard(mutex);
+            dynamicOffsetAllocator.Free(descriptorState.dynamicOffsets);
+        }
+
+        // Empty out (not really needed, but no need to micro-optimize confusing stuff)
+        descriptorState = ShaderExportDescriptorState();
 
         // Next!
         bindState.deviceDescriptorOverwriteMask &= ~(1u << overwriteIndex);
@@ -364,18 +388,45 @@ VkCommandBuffer ShaderExportStreamer::RecordPatchCommandBuffer(ShaderExportQueue
     return segment->patchCommandBuffer;
 }
 
-void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, uint32_t start, uint32_t count, const VkDescriptorSet* sets) {
+void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets) {
+    PipelineLayoutState* layoutState = table->states_pipelineLayout.Get(layout);
+
     // Get the bind state
     ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(bindPoint)];
+
+    // Current offset
+    uint32_t dynamicOffset{0};
 
     // Handle each set
     for (uint32_t i = 0; i < count; i++) {
         uint32_t slot = start + i;
 
+        // Number of dynamic counts for this slot
+        uint32_t slotDynamicCount = layoutState->descriptorDynamicOffsets.at(slot);
+
         // Clear the mask
-        bindState.deviceDescriptorOverwriteMask &= ~(1u << i);
+        bindState.deviceDescriptorOverwriteMask &= ~(1u << slot);
+
+        // Prepare state
+        ShaderExportDescriptorState setState;
+        setState.set = sets[i];
+        setState.compatabilityHash = layoutState->compatabilityHashes[slot];
+
+        // Allocate and copy dynamic offsets if needed
+        if (slotDynamicCount) {
+            // Scoped allocate
+            {
+                std::lock_guard guard(mutex);
+                setState.dynamicOffsets = dynamicOffsetAllocator.Allocate(slotDynamicCount);
+            }
+
+            std::memcpy(setState.dynamicOffsets.data, pDynamicOffsets + dynamicOffset, sizeof(uint32_t) * slotDynamicCount);
+        }
 
         // Set the set
-        bindState.persistentDescriptorState[slot] = sets[i];
+        bindState.persistentDescriptorState[slot] = setState;
+
+        // Apply offset
+        dynamicOffset += slotDynamicCount;
     }
 }

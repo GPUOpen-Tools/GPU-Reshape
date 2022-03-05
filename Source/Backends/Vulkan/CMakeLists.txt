@@ -42,7 +42,7 @@ set(SpvTemplate                        ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(VkHooks vkCmdDrawIndexed)
 
 # White list
-set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkEndCommandBuffer,vkCmdBindPipeline,vkCmdBindDescriptorSets)
+set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkResetCommandBuffer,vkEndCommandBuffer,vkCmdBindPipeline,vkCmdBindDescriptorSets)
 
 # Object list
 set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkDeviceCreateInfo)

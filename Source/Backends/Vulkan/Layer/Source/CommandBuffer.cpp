@@ -108,6 +108,22 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     return VK_SUCCESS;
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetCommandBuffer(CommandBufferObject *commandBuffer, VkCommandBufferResetFlags flags) {
+    // Pass down callchain
+    VkResult result = commandBuffer->table->next_vkResetCommandBuffer(commandBuffer->object, flags);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    // Reset export state if present
+    if (commandBuffer->streamState) {
+        commandBuffer->table->exportStreamer->ResetCommandBuffer(commandBuffer->streamState, commandBuffer->object);
+    }
+
+    // OK
+    return VK_SUCCESS;
+}
+
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) {
     // Get state
     PipelineState *state = commandBuffer->table->states_pipeline.Get(pipeline);

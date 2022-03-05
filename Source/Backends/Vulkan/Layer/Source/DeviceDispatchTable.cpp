@@ -26,6 +26,7 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkCreateCommandPool = reinterpret_cast<PFN_vkCreateCommandPool>(getDeviceProcAddr(object, "vkCreateCommandPool"));
     next_vkAllocateCommandBuffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(getDeviceProcAddr(object, "vkAllocateCommandBuffers"));
     next_vkBeginCommandBuffer = reinterpret_cast<PFN_vkBeginCommandBuffer>(getDeviceProcAddr(object, "vkBeginCommandBuffer"));
+    next_vkResetCommandBuffer = reinterpret_cast<PFN_vkResetCommandBuffer>(getDeviceProcAddr(object, "vkResetCommandBuffer"));
     next_vkEndCommandBuffer = reinterpret_cast<PFN_vkEndCommandBuffer>(getDeviceProcAddr(object, "vkEndCommandBuffer"));
     next_vkFreeCommandBuffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(getDeviceProcAddr(object, "vkFreeCommandBuffers"));
     next_vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool>(getDeviceProcAddr(object, "vkDestroyCommandPool"));
@@ -60,7 +61,6 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkBindBufferMemory = reinterpret_cast<PFN_vkBindBufferMemory>(getDeviceProcAddr(object, "vkBindBufferMemory"));
     next_vkUpdateDescriptorSets = reinterpret_cast<PFN_vkUpdateDescriptorSets>(getDeviceProcAddr(object, "vkUpdateDescriptorSets"));
     next_vkGetDeviceQueue = reinterpret_cast<PFN_vkGetDeviceQueue>(getDeviceProcAddr(object, "vkGetDeviceQueue"));
-    next_vkResetCommandBuffer = reinterpret_cast<PFN_vkResetCommandBuffer>(getDeviceProcAddr(object, "vkResetCommandBuffer"));
     next_vkCreateImage = reinterpret_cast<PFN_vkCreateImage>(getDeviceProcAddr(object, "vkCreateImage"));
     next_vkDestroyImage = reinterpret_cast<PFN_vkDestroyImage>(getDeviceProcAddr(object, "vkDestroyImage"));
     next_vkAllocateMemory = reinterpret_cast<PFN_vkAllocateMemory>(getDeviceProcAddr(object, "vkAllocateMemory"));
@@ -111,6 +111,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
     if (!std::strcmp(name, "vkBeginCommandBuffer"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBeginCommandBuffer);
 
+    if (!std::strcmp(name, "vkResetCommandBuffer"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkResetCommandBuffer);
+
     if (!std::strcmp(name, "vkEndCommandBuffer"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkEndCommandBuffer);
 
@@ -134,6 +137,12 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkCreatePipelineLayout"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreatePipelineLayout);
+
+    if (!std::strcmp(name, "vkCreateDescriptorSetLayout"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateDescriptorSetLayout);
+
+    if (!std::strcmp(name, "vkDestroyDescriptorSetLayout"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyDescriptorSetLayout);
 
     if (!std::strcmp(name, "vkDestroyPipelineLayout"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyPipelineLayout);

@@ -24,6 +24,7 @@
 struct InstanceDispatchTable;
 struct CommandPoolState;
 struct ShaderModuleState;
+struct DescriptorSetLayoutState;
 struct PipelineState;
 struct PipelineLayoutState;
 struct RenderPassState;
@@ -87,13 +88,14 @@ struct DeviceDispatchTable {
     ComRef<IBridge> bridge;
 
     /// Tracked objects
-    TrackedObject<VkCommandPool, CommandPoolState>       states_commandPool;
-    TrackedObject<VkShaderModule, ShaderModuleState>     states_shaderModule;
-    TrackedObject<VkPipelineLayout, PipelineLayoutState> states_pipelineLayout;
-    TrackedObject<VkRenderPass, RenderPassState>         states_renderPass;
-    TrackedObject<VkFence, FenceState>                   states_fence;
-    TrackedObject<VkQueue, QueueState>                   states_queue;
-    TrackedObject<VkPipeline, PipelineState>             states_pipeline;
+    TrackedObject<VkCommandPool, CommandPoolState>                 states_commandPool;
+    TrackedObject<VkShaderModule, ShaderModuleState>               states_shaderModule;
+    TrackedObject<VkDescriptorSetLayout, DescriptorSetLayoutState> states_descriptorSetLayout;
+    TrackedObject<VkPipelineLayout, PipelineLayoutState>           states_pipelineLayout;
+    TrackedObject<VkRenderPass, RenderPassState>                   states_renderPass;
+    TrackedObject<VkFence, FenceState>                             states_fence;
+    TrackedObject<VkQueue, QueueState>                             states_queue;
+    TrackedObject<VkPipeline, PipelineState>                       states_pipeline;
 
     /// Dependency objects
     DependentObject<ShaderModuleState, PipelineState> dependencies_shaderModulesPipelines;
@@ -115,6 +117,7 @@ struct DeviceDispatchTable {
     PFN_vkCreateCommandPool               next_vkCreateCommandPool;
     PFN_vkAllocateCommandBuffers          next_vkAllocateCommandBuffers;
     PFN_vkBeginCommandBuffer              next_vkBeginCommandBuffer;
+    PFN_vkResetCommandBuffer              next_vkResetCommandBuffer;
     PFN_vkEndCommandBuffer                next_vkEndCommandBuffer;
     PFN_vkFreeCommandBuffers              next_vkFreeCommandBuffers;
     PFN_vkDestroyCommandPool              next_vkDestroyCommandPool;
@@ -149,7 +152,6 @@ struct DeviceDispatchTable {
     PFN_vkUpdateDescriptorSets            next_vkUpdateDescriptorSets;
     PFN_vkBindBufferMemory                next_vkBindBufferMemory;
     PFN_vkGetDeviceQueue                  next_vkGetDeviceQueue;
-    PFN_vkResetCommandBuffer              next_vkResetCommandBuffer;
     PFN_vkCreateImage                     next_vkCreateImage;
     PFN_vkDestroyImage                    next_vkDestroyImage;
     PFN_vkAllocateMemory                  next_vkAllocateMemory;
