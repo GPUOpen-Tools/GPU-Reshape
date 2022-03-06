@@ -100,12 +100,20 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
     // Current control flow
     IL::BranchControlFlow controlFlow{};
 
+    // Current source association
+    SpvSourceAssociation sourceAssociation{};
+
     // Parse all instructions
     while (ctx && ctx->GetOp() != SpvOpFunctionEnd) {
         IL::Source source = ctx.Source();
 
         // Create type association
         table.typeConstantVariable.AssignTypeAssociation(ctx);
+
+        // Create source association
+        if (sourceAssociation) {
+            table.debugStringSource.sourceMap.AddSourceAssociation(source.codeOffset, sourceAssociation);
+        }
 
         // Handle instruction
         switch (ctx->GetOp()) {
@@ -121,17 +129,14 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpLine: {
-                if (basicBlock) {
-                    // Append
-                    IL::SourceAssociationInstruction instr{};
-                    instr.opCode = IL::OpCode::SourceAssociation;
-                    instr.result = IL::InvalidID;
-                    instr.source = source;
-                    instr.file = table.debugStringSource.sourceMap.GetFileIndex(ctx++);
-                    instr.line = (ctx++) - 1;
-                    instr.column = (ctx++) - 1;
-                    basicBlock->Append(instr);
-                }
+                sourceAssociation.fileUID = table.debugStringSource.sourceMap.GetFileIndex(ctx++);
+                sourceAssociation.line = (ctx++) - 1;
+                sourceAssociation.column = (ctx++) - 1;
+                break;
+            }
+
+            case SpvOpNoLine: {
+                sourceAssociation = {};
                 break;
             }
 

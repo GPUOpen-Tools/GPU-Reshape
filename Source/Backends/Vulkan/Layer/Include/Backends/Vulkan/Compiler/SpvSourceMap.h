@@ -1,12 +1,19 @@
 #pragma once
 
+// Std
 #include <string>
 #include <vector>
+#include <map>
 
-// Spirv
+// Layer
 #include "Spv.h"
+#include "SpvSourceAssociation.h"
 
 struct SpvSourceMap {
+    /// Set the spv bound
+    /// \param bound
+    void SetBound(SpvId bound);
+
     /// Add a new physical source section, may represent a single file
     /// \param id the spv identifier used
     /// \param language the source language
@@ -24,6 +31,16 @@ struct SpvSourceMap {
     /// \param line the line to be fetched
     /// \return the line, empty if OOB
     std::string_view GetLine(uint32_t fileIndex, uint32_t line) const;
+
+    /// Add a source association mapping
+    /// \param id spirv identifier
+    /// \param mapping the mapping
+    void AddSourceAssociation(uint32_t sourceOffset, const SpvSourceAssociation& association);
+
+    /// Get the source association for an id
+    /// \param id spv identifier
+    /// \return empty if not found
+    SpvSourceAssociation GetSourceAssociation(uint32_t sourceOffset) const;
 
     /// Get the root filename
     /// \return
@@ -59,6 +76,9 @@ private:
 private:
     /// All sections
     std::vector<PhysicalSource> physicalSources;
+
+    /// All mappings
+    std::map<uint32_t, SpvSourceAssociation> sourceAssociations;
 
     /// All section mappings, to have monotonically incrementing sections
     std::vector<uint32_t> sourceMappings;

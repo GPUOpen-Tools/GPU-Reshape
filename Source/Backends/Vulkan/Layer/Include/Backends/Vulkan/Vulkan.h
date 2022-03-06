@@ -8,7 +8,8 @@
 
 /// Diagnostic logging
 #ifndef NDEBUG
-#   define LOG_ALLOCATION
+// #   define LOG_ALLOCATION
+#   define LOG_INSTRUMENTATION
 #   define LOG_REJECTED_KEYS
 #endif
 

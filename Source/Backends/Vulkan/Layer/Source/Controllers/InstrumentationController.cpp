@@ -13,7 +13,7 @@
 #include <Bridge/IBridge.h>
 
 // Bridge
-#include <Bridge/Log/LogFormat.h>
+#include <Common/Format.h>
 
 // Common
 #include <Common/Registry.h>
@@ -174,7 +174,7 @@ void InstrumentationController::Commit() {
     compilationEvent.IncrementHead();
 
     // Diagnostic
-#ifdef LOG_ALLOCATION
+#ifdef LOG_INSTRUMENTATION
     table->parent->logBuffer.Add("Vulkan", Format(
         "Committing {} shaders and {} pipelines for instrumentation",
         immediateBatch.dirtyShaderModules.size(),
@@ -328,7 +328,7 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     SetDeviceCommandFeatureSetAndCommit(table, batch->featureBitSet);
 
     // Diagnostic
-#ifdef LOG_ALLOCATION
+#ifdef LOG_INSTRUMENTATION
     table->parent->logBuffer.Add("Vulkan", Format(
         "Instrumented {} shaders and {} pipelines",
         batch->dirtyShaderModules.size(),

@@ -1,5 +1,9 @@
 #include <Backends/Vulkan/Compiler/SpvSourceMap.h>
 
+void SpvSourceMap::SetBound(SpvId bound) {
+    /* */
+}
+
 void SpvSourceMap::AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint32_t version, const std::string_view& filename) {
     PhysicalSource& source = GetOrAllocate(id);
     source.language = language;
@@ -81,4 +85,17 @@ std::string_view SpvSourceMap::GetFilename() const {
     }
 
     return physicalSources[0].filename;
+}
+
+void SpvSourceMap::AddSourceAssociation(uint32_t sourceOffset, const SpvSourceAssociation& association) {
+    sourceAssociations[sourceOffset] = association;
+}
+
+SpvSourceAssociation SpvSourceMap::GetSourceAssociation(uint32_t sourceOffset) const {
+    auto it = sourceAssociations.find(sourceOffset);
+    if (it == sourceAssociations.end()) {
+        return {};
+    }
+
+    return it->second;
 }

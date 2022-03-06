@@ -29,11 +29,6 @@ void IL::PrettyPrint(const BasicBlock &basicBlock, IL::PrettyPrintContext out) {
 
     // Print all instructions
     for (const IL::Instruction *instr: basicBlock) {
-        // TODO: Will be removed
-        if (instr->opCode == OpCode::SourceAssociation) {
-            continue;
-        }
-
         PrettyPrint(instr, out.Tab());
     }
 }
@@ -262,11 +257,6 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         case OpCode::StoreTexture: {
             auto load = instr->As<IL::StoreTextureInstruction>();
             line << "StoreTexture texture:%" << load->texture << " index:%" << load->index << " texel:%" << load->texel;
-            break;
-        }
-        case OpCode::SourceAssociation: {
-            auto load = instr->As<IL::SourceAssociationInstruction>();
-            line << "SourceAssociation file:" << load->file << " line:" << load->line << " column:" << load->column;
             break;
         }
         case OpCode::Any: {

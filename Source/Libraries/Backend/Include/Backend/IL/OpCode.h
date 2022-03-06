@@ -8,9 +8,6 @@ namespace IL {
         /// Unexposed by the abstraction layer
         Unexposed,
 
-        /// Debug
-        SourceAssociation,
-
         /// Literal value
         Literal,
 

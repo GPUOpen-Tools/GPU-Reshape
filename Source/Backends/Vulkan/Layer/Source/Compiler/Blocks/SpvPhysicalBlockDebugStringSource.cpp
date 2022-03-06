@@ -7,6 +7,7 @@ void SpvPhysicalBlockDebugStringSource::Parse() {
 
     // Set entry count
     debugMap.SetBound(table.scan.header.bound);
+    sourceMap.SetBound(table.scan.header.bound);
 
     // Parse instructions
     SpvParseContext ctx(block->source);
