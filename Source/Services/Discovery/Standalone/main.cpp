@@ -14,6 +14,12 @@
 #include <Bridge/RemoteClientBridge.h>
 #include <Bridge/Log/LogConsoleListener.h>
 
+// Backend
+#include <Backend/ShaderSGUIDHostListener.h>
+
+// Message
+#include <Message/IMessageHub.h>
+
 // Services
 #include <Services/HostResolver/HostResolverService.h>
 
@@ -31,6 +37,15 @@ public:
                 std::cout << "pong\n" << std::flush;
             }
         }
+    }
+};
+
+/// Generic message hub
+class MessageHub : public IMessageHub {
+public:
+    /// Overrides
+    void Add(const std::string_view &name, const std::string_view &message) override {
+        std::cout << name << " : " << message << std::flush;
     }
 };
 
@@ -116,6 +131,9 @@ int main(int32_t argc, const char *const *argv) {
     // Get registry
     Registry *registry = service.GetRegistry();
 
+    // General resolver
+    auto resolver = registry->New<PluginResolver>();
+
     // TODO: This is quite ugly... (needs releasing too)
     std::thread commitThread;
 
@@ -150,6 +168,32 @@ int main(int32_t argc, const char *const *argv) {
                 network->Commit();
             }
         });
+
+        // OK
+        std::cout << "OK." << std::endl;
+    }
+
+    // Attempt to start features
+    std::cout << "Loading plugins ... " << std::flush;
+    {
+        // Install hub
+        registry->AddNew<MessageHub>();
+
+        // Install SGUID listener
+        registry->AddNew<ShaderSGUIDHostListener>();
+
+        // Find all frontend plugins
+        PluginList list;
+        if (!resolver->FindPlugins("frontend", &list)) {
+            std::cerr << "Failed to find frontend plugins\n";
+            return 1;
+        }
+
+        // Install plugins
+        if (!resolver->InstallPlugins(list)) {
+            std::cerr << "Failed to install frontend plugins\n";
+            return 1;
+        }
 
         // OK
         std::cout << "OK." << std::endl;

@@ -2,6 +2,9 @@
     <backend>
         <plugin name="Features.ResourceBounds.Backend"/>
     </backend>
+    <frontend>
+        <plugin name="Features.ResourceBounds.Frontend"/>
+    </frontend>
     <!--<uix>
         <plugin name="ResourceBounds.UIX"/>
     </uix>-->

@@ -62,29 +62,7 @@ void ShaderSGUIDHost::Commit(IBridge *bridge) {
 
 ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpaqueInstructionRef& instruction) {
     // Get instruction pointer
-    const IL::Instruction* end = IL::ConstInstructionRef<>(instruction).Get();
-
-    // Current ssa candidate
-    const IL::SourceAssociationInstruction* ssaPtr{nullptr};
-
-    // Find last source assication
-    for (auto it : *instruction.basicBlock) {
-        // Stop when the instruction is found, does not make sense to continue
-        if (it == end) {
-            break;
-        }
-
-        // Match?
-        if (it->Is<IL::SourceAssociationInstruction>()) {
-            ssaPtr = it->As<IL::SourceAssociationInstruction>();
-        }
-    }
-
-    // May not have an association
-    // TODO: Find branching usages, and determine most likely match?
-    if (!ssaPtr) {
-        return InvalidShaderSGUID;
-    }
+    const IL::Instruction* ptr = IL::ConstInstructionRef<>(instruction).Get();
 
     // Find the source map
     const SpvSourceMap* sourceMap = GetSourceMap(program.GetShaderGUID());
@@ -92,11 +70,22 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpa
         return InvalidShaderSGUID;
     }
 
+    // Must have source
+    if (!ptr->source.IsValid()) {
+        return InvalidShaderSGUID;
+    }
+
+    // Try to get the association
+    SpvSourceAssociation sourceAssociation = sourceMap->GetSourceAssociation(ptr->source.codeOffset);
+    if (!sourceAssociation) {
+        return InvalidShaderSGUID;
+    }
+
     // Create mapping
     ShaderSourceMapping mapping{};
-    mapping.fileUID = ssaPtr->file;
-    mapping.line = ssaPtr->line;
-    mapping.column = ssaPtr->column;
+    mapping.fileUID = sourceAssociation.fileUID;
+    mapping.line = sourceAssociation.line;
+    mapping.column = sourceAssociation.column;
     mapping.shaderGUID = program.GetShaderGUID();
 
     // Get entry

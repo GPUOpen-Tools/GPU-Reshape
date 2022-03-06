@@ -11,7 +11,7 @@
 #include <Common/Registry.h>
 
 // Bridge
-#include <Bridge/Log/LogFormat.h>
+#include <Common/Format.h>
 
 // Std
 #include <algorithm>

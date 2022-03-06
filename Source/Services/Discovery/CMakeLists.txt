@@ -30,3 +30,6 @@ target_link_libraries(Services.Discovery.Standalone PUBLIC Services.Discovery)
 
 # Create dependencies on existing listeners, for convenience
 add_dependencies(Services.Discovery.Standalone Backends.Vulkan.Discovery)
+
+# Pull in all features, for convinience
+add_dependencies(Services.Discovery.Standalone Features)

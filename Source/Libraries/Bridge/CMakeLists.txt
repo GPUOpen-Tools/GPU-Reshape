@@ -27,7 +27,6 @@ target_include_directories(Libraries.Bridge PUBLIC Include ${CMAKE_CURRENT_BINAR
 
 # Setup dependencies
 ExternalProject_Link(Libraries.Bridge Asio)
-ExternalProject_Link(Libraries.Bridge Fmt $<$<CONFIG:Debug>:fmtd> $<$<CONFIG:Release>:fmt>)
 
 # Links
 target_link_libraries(Libraries.Bridge PUBLIC Libraries.Message)
