@@ -17,6 +17,18 @@
 // Std
 #include <fstream>
 
+/// Enable serial compilation for debugging purposes
+#ifndef SHADER_COMPILER_SERIAL
+#   define SHADER_COMPILER_SERIAL 1
+#endif
+
+/// Enable instrumentation of a specific file for debugging purposes
+///  ? Instrumentation of large applications can be difficult to debug and even harder to reproduce under the same conditions.
+///    When such a fault occurs, it is very useful to simply be able to iterate on a spv binary file.
+#ifndef SHADER_COMPILER_DEBUG_FILE
+#   define SHADER_COMPILER_DEBUG_FILE 0
+#endif
+
 ShaderCompiler::ShaderCompiler(DeviceDispatchTable *table) : table(table) {
 
 }
@@ -63,6 +75,24 @@ void ShaderCompiler::Worker(void *data) {
 }
 
 void ShaderCompiler::CompileShader(const ShaderJob &job) {
+#if SHADER_COMPILER_SERIAL
+    static std::mutex mutex;
+    std::lock_guard guard(mutex);
+#endif
+
+    // Single file compile debugging
+#if SHADER_COMPILER_DEBUG_FILE
+    constexpr const char* kPath = "C:\\AMD\\GPUOpen-Tools\\gpu-validation\\Bin\\Debug\\Intermediate\\Debug\\UnrealEngine4.26\\GBV\\{F34E1F10-E4EA-4F43-887F-494802267A62}.source.spirv";
+
+    // Stream in the debug binary
+    std::ifstream stream(kPath, std::ios::in | std::ios::binary);
+    std::vector<uint8_t> debugBinary((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+
+    // Hack the code
+    job.state->createInfoDeepCopy.createInfo.pCode = reinterpret_cast<const uint32_t*>(debugBinary.data());
+    job.state->createInfoDeepCopy.createInfo.codeSize = debugBinary.size();
+#endif
+
     // Create the module on demand
     if (!job.state->spirvModule) {
         job.state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators, job.state->uid);

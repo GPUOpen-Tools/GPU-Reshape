@@ -69,7 +69,8 @@ namespace IL {
         /// \param blockId referenced block
         /// \param user user of said block
         void RemoveBlockUser(const ID& blockId, const OpaqueInstructionRef& user) {
-            (void)std::remove(GetBlock(blockId).users.begin(), GetBlock(blockId).users.end(), user);
+            Block& block = GetBlock(blockId);
+            block.users.erase(std::find(block.users.begin(), block.users.end(), user));
         }
 
         /// Get the users for a specific block
