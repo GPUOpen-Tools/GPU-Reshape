@@ -152,10 +152,12 @@ namespace Backend::IL {
         static constexpr TypeKind kKind = TypeKind::Buffer;
 
         auto SortKey() const {
-            return std::make_tuple(elementType, texelType);
+            return std::make_tuple(elementType, requiresSampler, texelType);
         }
 
         const Type* elementType{nullptr};
+
+        bool requiresSampler{false};
 
         Format texelType{Format::None};
     };

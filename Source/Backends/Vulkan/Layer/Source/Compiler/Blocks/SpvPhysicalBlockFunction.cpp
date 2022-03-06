@@ -2,8 +2,12 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
 
+// Backend
+#include <Backend/IL/Emitter.h>
+
 // Common
 #include <Common/Alloca.h>
+#include <Common/Containers/TrivialStackVector.h>
 
 void SpvPhysicalBlockFunction::Parse() {
     block = table.scan.GetPhysicalBlock(SpvPhysicalBlockType::Function);
@@ -42,7 +46,11 @@ void SpvPhysicalBlockFunction::Parse() {
 
         // Any body?
         if (ctx->GetOp() != SpvOpFunctionEnd) {
+            // Parse the body
             ParseFunctionBody(function, ctx);
+
+            // Perform post patching
+            PostPatchLoopContinue(function);
         }
 
         // Must be body
@@ -418,7 +426,16 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 instr.controlFlow = controlFlow;
                 controlFlow = {};
 
-                basicBlock->Append(instr);
+                // Append
+                IL::InstructionRef<IL::BranchConditionalInstruction> ref = basicBlock->Append(instr);
+
+                // Loop?
+                if (instr.controlFlow._continue != IL::InvalidID) {
+                    LoopContinueBlock loopContinueBlock;
+                    loopContinueBlock.branchConditional = ref;
+                    loopContinueBlock.block = instr.controlFlow._continue;
+                    loopContinueBlocks.push_back(loopContinueBlock);
+                }
                 break;
             }
 
@@ -473,13 +490,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 }
 
                 // Append dynamic
-                IL::OpaqueInstructionRef ref = basicBlock->Append(instr);
-
-                // Add use case
-                for (uint32_t i = 0; i < valueCount; i++) {
-                    const IL::PhiValue& value = instr->values[i];
-                    program.GetIdentifierMap().AddBlockUser(value.branch, ref);
-                }
+                basicBlock->Append(instr);
                 break;
             }
 
@@ -1143,6 +1154,106 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
     return true;
 }
 
+bool SpvPhysicalBlockFunction::PostPatchLoopContinueInstruction(IL::Instruction *instruction, IL::ID original, IL::ID redirect) {
+    switch (instruction->opCode) {
+        default:
+            return false;
+        case IL::OpCode::Branch: {
+            auto* branch = instruction->As<IL::BranchInstruction>();
+            branch->branch = redirect;
+            return true;
+        }
+        case IL::OpCode::BranchConditional: {
+            auto* branch = instruction->As<IL::BranchConditionalInstruction>();
+
+            // Pass branch
+            if (branch->pass == original) {
+                branch->pass = redirect;
+                return true;
+            }
+
+            // Fail branch
+            if (branch->fail == original) {
+                branch->fail = redirect;
+                return true;
+            }
+
+            // No need
+            return false;
+        }
+    }
+}
+
+void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
+    for (const LoopContinueBlock& block : loopContinueBlocks) {
+        IL::ID bridgeBlockId = program.GetIdentifierMap().AllocID();
+
+        // All removed users
+        TrivialStackVector<IL::OpaqueInstructionRef, 128> removed;
+
+        // Change all users
+        for (const IL::OpaqueInstructionRef& ref : program.GetIdentifierMap().GetBlockUsers(block.block)) {
+            IL::Instruction* instruction = ref.basicBlock->GetRelocationInstruction(ref.relocationOffset);
+
+            // Attempt to patch the instruction
+            if (!PostPatchLoopContinueInstruction(instruction, block.block, bridgeBlockId)) {
+                continue;
+            }
+
+            // Add new block user
+            program.GetIdentifierMap().AddBlockUser(bridgeBlockId, ref);
+
+            // Mark user instruction as dirty
+            instruction->source = instruction->source.Modify();
+
+            // Mark the branch block as dirty to ensure recompilation
+            ref.basicBlock->MarkAsDirty();
+
+            // Latent removal
+            removed.Add(ref);
+        }
+
+        // Remove references
+        for (const IL::OpaqueInstructionRef& ref : removed) {
+            program.GetIdentifierMap().RemoveBlockUser(block.block, ref);
+        }
+
+        // Get the original continue block, set new id
+        IL::BasicBlock* originalContinueBlock = fn->GetBasicBlocks().GetBlock(block.block);
+        originalContinueBlock->SetID(bridgeBlockId);
+
+        // Allocate continue proxy block, use the same id
+        IL::BasicBlock* postContinueBlock = fn->GetBasicBlocks().AllocBlock(block.block);
+
+        // Modify original block
+        {
+            // Get the terminator
+            auto it = originalContinueBlock->GetTerminator();
+            ASSERT(it->Is<IL::BranchInstruction>(), "Unexpected terminator");
+            ASSERT(it->As<IL::BranchInstruction>()->branch == block.branchConditional.basicBlock->GetID(), "Unexpected loop terminator block");
+
+            // Remove the original branch instruction (back to the header)
+            originalContinueBlock->Remove(it);
+
+            // Branch to the post block
+            IL::Emitter<> emitter(program, *originalContinueBlock);
+            emitter.Branch(postContinueBlock);
+        }
+
+        // Modify post block
+        {
+            // Never instrument this block
+            postContinueBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
+
+            // Branch back to the loop header
+            IL::Emitter<> emitter(program, *postContinueBlock);
+            emitter.Branch(block.branchConditional.basicBlock);
+        }
+    }
+
+    // Empty out
+    loopContinueBlocks.clear();
+}
 void SpvPhysicalBlockFunction::CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockFunction &out) {
     out.block = remote.scan.GetPhysicalBlock(SpvPhysicalBlockType::Function);
 }

@@ -98,7 +98,7 @@ private:
             case Backend::IL::TypeKind::Buffer:
                 return EmitSpvType(static_cast<const Backend::IL::BufferType*>(type));
             case Backend::IL::TypeKind::Function:
-                return EmitSpvType(static_cast<const Backend::IL::BufferType*>(type));
+                return EmitSpvType(static_cast<const Backend::IL::FunctionType*>(type));
         }
     }
 

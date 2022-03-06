@@ -2,6 +2,7 @@
 
 // Common
 #include <Common/Alloca.h>
+#include <Common/Containers/TrivialStackVector.h>
 
 void IL::BasicBlock::CopyTo(BasicBlock *out) const {
     out->count = count;
@@ -23,26 +24,52 @@ void IL::BasicBlock::CopyTo(BasicBlock *out) const {
 void IL::BasicBlock::IndexUsers() {
     // Reindex the map
     for (auto it = begin(); it != end(); it++) {
-        auto result = it->result;
+        AddInstructionReferences(it.Get(), it);
+    }
+}
 
-        // Anything to index?
-        if (result != InvalidID) {
-            map.AddInstruction(it.Ref(), result);
+void IL::BasicBlock::AddInstructionReferences(const IL::Instruction *instruction, const IL::OpaqueInstructionRef &ref) {
+    // Add reference to result
+    if (instruction->result != InvalidID) {
+        map.AddInstruction(ref, instruction->result);
+    }
+
+    // Add reference to blocks
+    switch (instruction->opCode) {
+        default:
+            break;
+
+        case OpCode::Phi: {
+            auto* phi = instruction->As<PhiInstruction>();
+
+            // Add use case
+            for (uint32_t i = 0; i < phi->values.count; i++) {
+                const IL::PhiValue& value = phi->values[i];
+                map.AddBlockUser(value.branch, ref);
+            }
+            break;
         }
 
-        // Handle users in instructions
-        switch (it->opCode) {
-            default:
-                break;
-            case OpCode::Phi: {
-                auto* phi = it->As<PhiInstruction>();
+        case OpCode::Branch: {
+            auto* branch = instruction->As<BranchInstruction>();
+            map.AddBlockUser(branch->branch, ref);
+            break;
+        }
 
-                for (uint32_t i = 0; i < phi->values.count; i++) {
-                    const IL::PhiValue& value = phi->values[i];
-                    map.AddBlockUser(value.branch, it);
+        case OpCode::BranchConditional: {
+            auto* branch = instruction->As<BranchConditionalInstruction>();
+            map.AddBlockUser(branch->pass, ref);
+            map.AddBlockUser(branch->fail, ref);
+
+            if (branch->controlFlow.merge != InvalidID) {
+                map.AddBlockUser(branch->controlFlow.merge, ref);
+
+                if (branch->controlFlow._continue != InvalidID) {
+                    map.AddBlockUser(branch->controlFlow._continue, ref);
                 }
-                break;
             }
+
+            break;
         }
     }
 }
@@ -53,60 +80,76 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
     // Byte offset to the split point
     uint32_t splitPointRelocationOffset = relocationTable[splitIterator.relocationIndex]->offset;
 
-    // Redirect all phi users if requested
-    if (splitFlags & BasicBlockSplitFlag::RedirectPhiUsers) {
-        const IdentifierMap::BlockUserList& users = map.GetBlockUsers(GetID());
+    // Redirect all branch users if requested
+    if (splitFlags & BasicBlockSplitFlag::RedirectBranchUsers) {
+        TrivialStackVector<IL::OpaqueInstructionRef, 128> removed;
 
-        auto* removed = ALLOCA_ARRAY(OpaqueInstructionRef, users.size());
-        uint32_t removedCount{0};
+        for (const OpaqueInstructionRef& ref : map.GetBlockUsers(GetID())) {
+            IL::Instruction* instruction = ref.basicBlock->GetRelocationInstruction(ref.relocationOffset);
 
-        for (const OpaqueInstructionRef& ref : users) {
-            // Check for phi
-            auto* phi = ref.basicBlock->GetRelocationInstruction(ref.relocationOffset)->Cast<PhiInstruction>();
-            if (!phi) {
-                continue;
-            }
-
-            // Patch relevant value
-            for (uint32_t i = 0; i < phi->values.count; i++) {
-                const PhiValue& value = phi->values[i];
-
-                // Only care about the operand referencing this block
-                if (value.branch != GetID()) {
+            // Handle user instruction
+            switch (instruction->opCode) {
+                default: {
+                    // Skip this one, not of interest
                     continue;
                 }
+                case OpCode::BranchConditional: {
+                    auto* branch = instruction->As<BranchConditionalInstruction>();
 
-                // Referenced value, originates from *this* block
-                OpaqueInstructionRef phiValueRef = map.Get(value.value);
+                    // We may be splitting a continue block
+                    if (branch->controlFlow._continue != GetID()) {
+                        continue;
+                    }
+
+                    ASSERT(false, "Cannot split continue control flow blocks");
+                    return {};
+                }
+                case OpCode::Phi: {
+                    auto* phi = instruction->As<PhiInstruction>();
+
+                    // Patch relevant value
+                    for (uint32_t i = 0; i < phi->values.count; i++) {
+                        const PhiValue& value = phi->values[i];
+
+                        // Only care about the operand referencing this block
+                        if (value.branch != GetID()) {
+                            continue;
+                        }
+
+                        // Referenced value, originates from *this* block
+                        OpaqueInstructionRef phiValueRef = map.Get(value.value);
 
 #if 0
-                // Is the referenced value beyond the split point?
-                bool isPostSplitPoint = phiValueRef.relocationOffset->offset >= splitPointRelocationOffset;
-                if (!isPostSplitPoint) {
-                    continue;
-                }
+                        // Is the referenced value beyond the split point?
+                        bool isPostSplitPoint = phiValueRef.relocationOffset->offset >= splitPointRelocationOffset;
+                        if (!isPostSplitPoint) {
+                            continue;
+                        }
 #endif
 
-                // Set new owning block
-                phi->values[i].branch = destBlock->GetID();
+                        // Set new owning block
+                        phi->values[i].branch = destBlock->GetID();
+                    }
+                    break;
+                }
             }
 
-            // Mark phi instruction as dirty
-            phi->source = phi->source.Modify();
-
-            // Mark the phi block as dirty to ensure recompilation
-            ref.basicBlock->MarkAsDirty();
-
-            // Add reference to the new block
+            // Add new block user
             map.AddBlockUser(destBlock->GetID(), ref);
 
+            // Mark user instruction as dirty
+            instruction->source = instruction->source.Modify();
+
+            // Mark the branch block as dirty to ensure recompilation
+            ref.basicBlock->MarkAsDirty();
+
             // Latent removal
-            removed[removedCount++] = ref;
+            removed.Add(ref);
         }
 
         // Remove references
-        for (uint32_t i = 0; i < removedCount; i++) {
-            map.RemoveBlockUser(GetID(), removed[i]);
+        for (const IL::OpaqueInstructionRef& ref : removed) {
+            map.RemoveBlockUser(GetID(), ref);
         }
     }
 
