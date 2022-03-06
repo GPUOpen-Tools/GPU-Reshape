@@ -131,6 +131,13 @@ struct MessageStream {
         buffer.clear();
     }
 
+    /// Clear this stream, does not change the schema
+    void ClearWithSchemaInvalidate() {
+        count = 0;
+        schema = {};
+        buffer.clear();
+    }
+
     /// Swap this stream with another, schema must match
     void Swap(MessageStream& other) {
         // Attempt to inherit the schema

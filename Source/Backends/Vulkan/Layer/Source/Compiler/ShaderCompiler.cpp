@@ -82,7 +82,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Single file compile debugging
 #if SHADER_COMPILER_DEBUG_FILE
-    constexpr const char* kPath = "C:\\AMD\\GPUOpen-Tools\\gpu-validation\\Bin\\Debug\\Intermediate\\Debug\\UnrealEngine4.26\\GBV\\{F34E1F10-E4EA-4F43-887F-494802267A62}.source.spirv";
+    constexpr const char* kPath = "C:\\AMD\\GPUOpen-Tools\\gpu-validation\\Bin\\Debug\\Intermediate\\Debug\\UnrealEngine4.26\\GBV\\{EC9E76CD-F873-473E-A740-10F956D5C889}.source.spirv";
 
     // Stream in the debug binary
     std::ifstream stream(kPath, std::ios::in | std::ios::binary);
@@ -109,6 +109,9 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         }
     }
 
+    // Passed initial check?
+    bool validSource{true};
+
     // Debug
     std::filesystem::path debugPath;
     if (debug) {
@@ -117,6 +120,9 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
         // Dump source
         debug->Add(debugPath, "source", job.state->spirvModule, job.state->createInfoDeepCopy.createInfo.pCode, job.state->createInfoDeepCopy.createInfo.codeSize);
+
+        // Validate the source module
+        validSource = debug->Validate(job.state->createInfoDeepCopy.createInfo.pCode, job.state->createInfoDeepCopy.createInfo.codeSize / sizeof(uint32_t));
     }
 
     // Create a copy of the module, don't modify the source
@@ -160,8 +166,10 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         // Dump instrumented
         debug->Add(debugPath, "instrumented", module, module->GetCode(), module->GetSize());
 
-        // Validate the instrumented module
-        ENSURE(debug->Validate(module), "Instrumentation produced incorrect binaries");
+        // Try to validate the instrumented module
+        if (validSource) {
+            ENSURE(debug->Validate(module->GetCode(), module->GetSize() / sizeof(uint32_t)), "Instrumentation produced incorrect binaries");
+        }
     }
 
     // Resulting module

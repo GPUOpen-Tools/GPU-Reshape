@@ -85,19 +85,19 @@ bool ShaderCompilerDebug::Install() {
     return true;
 }
 
-bool ShaderCompilerDebug::Validate(SpvModule *module) {
+bool ShaderCompilerDebug::Validate(const uint32_t* spirvCode, uint32_t spirvSize) {
     // Ensure validation is sequential for easier debugging
     std::lock_guard guard(sharedLock);
 
     // Validate first
     // Note that the binary size operand is dword count, which is confusing
-    if (tools->Validate(module->GetCode(), module->GetSize() / sizeof(uint32_t))) {
+    if (tools->Validate(spirvCode, spirvSize)) {
         return true;
     }
 
     // Failed validation, disassemble the SPIRV
     std::string disassembled;
-    if (!tools->Disassemble(module->GetCode(), module->GetSize() / sizeof(uint32_t), &disassembled)) {
+    if (!tools->Disassemble(spirvCode, spirvSize, &disassembled)) {
         return false;
     }
 

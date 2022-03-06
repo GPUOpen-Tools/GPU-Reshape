@@ -30,7 +30,7 @@ public:
     /// Validate a module
     /// \param module
     /// \return
-    bool Validate(SpvModule* module);
+    bool Validate(const uint32_t* spirvCode, uint32_t spirvSize);
 
     /// Allocate
     /// \param module module to be allocated for

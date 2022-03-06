@@ -108,6 +108,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                     Backend::IL::BufferType type;
                     type.elementType = sampledType;
                     type.texelType = format;
+                    type.requiresSampler = requiresSampler;
                     typeMap.AddType(ctx.GetResult(), type);
                 } else {
                     Backend::IL::TextureType type;

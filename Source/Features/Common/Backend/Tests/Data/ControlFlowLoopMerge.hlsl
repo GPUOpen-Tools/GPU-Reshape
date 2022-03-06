@@ -19,6 +19,13 @@ void main(uint dtid : SV_DispatchThreadID) {
 
     GroupMemoryBarrierWithGroupSync();
 
+    // Test potential splits in continue block
+    for (uint i = 0; i < 64; i++, bufferRW[dtid] += 1) {
+        data += bufferRW[dtid.x];
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
     // Write back
 	bufferRW[dtid.x] = data;
 }

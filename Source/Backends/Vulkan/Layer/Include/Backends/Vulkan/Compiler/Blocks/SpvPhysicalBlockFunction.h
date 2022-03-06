@@ -57,4 +57,25 @@ struct SpvPhysicalBlockFunction : public SpvPhysicalBlockSection {
     /// \param remote the remote table
     /// \param out destination function
     void CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockFunction& out);
+
+private:
+    /// Patch all loop continues
+    /// \param fn function
+    void PostPatchLoopContinue(IL::Function* fn);
+
+    /// Post patch a loop user instruction
+    /// \param instruction user instruction
+    /// \param original original block
+    /// \param redirect the block to be redirected to
+    /// \return false if not applicable
+    bool PostPatchLoopContinueInstruction(IL::Instruction* instruction, IL::ID original, IL::ID redirect);
+
+private:
+    struct LoopContinueBlock {
+        IL::InstructionRef<IL::BranchConditionalInstruction> branchConditional;
+        IL::ID block;
+    };
+
+    /// All continue blocks
+    std::vector<LoopContinueBlock> loopContinueBlocks;
 };

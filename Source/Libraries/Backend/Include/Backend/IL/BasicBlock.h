@@ -23,6 +23,9 @@ namespace IL {
         }
 
         /// Get the instruction
+        T *GetMutable() const;
+
+        /// Get the instruction
         const T *Get() const;
 
         /// Accessor
@@ -411,9 +414,7 @@ namespace IL {
 
             relocationTable.push_back(ref.relocationOffset);
 
-            if (instruction->result != InvalidID) {
-                map.AddInstruction(ref, instruction->result);
-            }
+            AddInstructionReferences(instruction, ref);
 
             count++;
 
@@ -486,10 +487,12 @@ namespace IL {
             size_t offset = instruction.relocationOffset->offset;
             data.erase(data.begin() + offset, data.begin() + offset + GetSize(ptr));
 
+            uint64_t relocationIndex = std::find(relocationTable.begin(), relocationTable.end(), instruction.relocationOffset) - relocationTable.begin();
+
             // Remove relocation offset
             RemoveRelocationOffset(instruction.relocationOffset);
 
-            ResummarizeRelocationTable(instruction.relocationOffset);
+            ResummarizeRelocationTable(instruction.relocationOffset, relocationIndex);
 
 #ifndef NDEBUG
             debugRevision++;
@@ -594,6 +597,11 @@ namespace IL {
         /// Set the source span
         void SetSourceSpan(SourceSpan span) {
             sourceSpan = span;
+        }
+
+        /// Set the source span
+        void SetID(IL::ID value) {
+            id = value;
         }
 
         /// Immortalize this basic block
@@ -711,6 +719,11 @@ namespace IL {
 #endif
 
     private:
+        /// Add all instruction references
+        /// \param instruction instruction to be referenced
+        /// \param ref appended reference
+        void AddInstructionReferences(const Instruction* instruction, const OpaqueInstructionRef& ref);
+
         /// Insert a new relocation offset
         /// \param insertion the insertion relocation offset
         /// \param offset the new offset to be inserted
@@ -838,6 +851,12 @@ namespace IL {
     /// Getter implementation
     template<typename T, typename OPAQUE>
     inline const T *TInstructionRef<T, OPAQUE>::Get() const {
+        return this->basicBlock->template GetRelocationInstruction<T>(this->relocationOffset);
+    }
+
+    /// Getter implementation
+    template<typename T, typename OPAQUE>
+    T *TInstructionRef<T, OPAQUE>::GetMutable() const {
         return this->basicBlock->template GetRelocationInstruction<T>(this->relocationOffset);
     }
 }
