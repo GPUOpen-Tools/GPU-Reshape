@@ -1,5 +1,8 @@
 #include <Backend/IL/BasicBlock.h>
 
+// Common
+#include <Common/Alloca.h>
+
 void IL::BasicBlock::CopyTo(BasicBlock *out) const {
     out->count = count;
     out->dirty = dirty;
@@ -47,28 +50,17 @@ void IL::BasicBlock::IndexUsers() {
 IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const IL::BasicBlock::Iterator &splitIterator, BasicBlockSplitFlagSet splitFlags) {
     ASSERT(destBlock->IsEmpty(), "Cannot split into a filled basic block");
 
-    // Append all instructions after the split point to the new basic block
-    Iterator moveIterator = splitIterator;
-    for (; moveIterator != end(); moveIterator++) {
-        destBlock->Append(moveIterator.Get());
-        count--;
-    }
-
-    // Erase moved instruction data
-    data.erase(data.begin() + relocationTable[splitIterator.relocationIndex]->offset, data.end());
-
-    // Free relocation indices
-    auto relocationIt = relocationTable.begin() + splitIterator.relocationIndex;
-    for (auto it = relocationIt; it != relocationTable.end(); it++) {
-        relocationAllocator.Free(*it);
-    }
-
-    // Erase relocation indices
-    relocationTable.erase(relocationIt, relocationTable.end());
+    // Byte offset to the split point
+    uint32_t splitPointRelocationOffset = relocationTable[splitIterator.relocationIndex]->offset;
 
     // Redirect all phi users if requested
     if (splitFlags & BasicBlockSplitFlag::RedirectPhiUsers) {
-        for (const OpaqueInstructionRef& ref : map.GetBlockUsers(GetID())) {
+        const IdentifierMap::BlockUserList& users = map.GetBlockUsers(GetID());
+
+        auto* removed = ALLOCA_ARRAY(OpaqueInstructionRef, users.size());
+        uint32_t removedCount{0};
+
+        for (const OpaqueInstructionRef& ref : users) {
             // Check for phi
             auto* phi = ref.basicBlock->GetRelocationInstruction(ref.relocationOffset)->Cast<PhiInstruction>();
             if (!phi) {
@@ -77,19 +69,23 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
 
             // Patch relevant value
             for (uint32_t i = 0; i < phi->values.count; i++) {
+                const PhiValue& value = phi->values[i];
+
                 // Only care about the operand referencing this block
-                if (phi->values[i].branch != GetID()) {
+                if (value.branch != GetID()) {
                     continue;
                 }
 
                 // Referenced value, originates from *this* block
-                OpaqueInstructionRef phiValueRef = map.Get(phi->values[i].value);
+                OpaqueInstructionRef phiValueRef = map.Get(value.value);
 
+#if 0
                 // Is the referenced value beyond the split point?
-                bool isPostSplitPoint = phiValueRef.relocationOffset->offset >= data.size();
+                bool isPostSplitPoint = phiValueRef.relocationOffset->offset >= splitPointRelocationOffset;
                 if (!isPostSplitPoint) {
                     continue;
                 }
+#endif
 
                 // Set new owning block
                 phi->values[i].branch = destBlock->GetID();
@@ -100,8 +96,38 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
 
             // Mark the phi block as dirty to ensure recompilation
             ref.basicBlock->MarkAsDirty();
+
+            // Add reference to the new block
+            map.AddBlockUser(destBlock->GetID(), ref);
+
+            // Latent removal
+            removed[removedCount++] = ref;
+        }
+
+        // Remove references
+        for (uint32_t i = 0; i < removedCount; i++) {
+            map.RemoveBlockUser(GetID(), removed[i]);
         }
     }
+
+    // Append all instructions after the split point to the new basic block
+    Iterator moveIterator = splitIterator;
+    for (; moveIterator != end(); moveIterator++) {
+        destBlock->Append(moveIterator.Get());
+        count--;
+    }
+
+    // Erase moved instruction data
+    data.erase(data.begin() + splitPointRelocationOffset, data.end());
+
+    // Free relocation indices
+    auto relocationIt = relocationTable.begin() + splitIterator.relocationIndex;
+    for (auto it = relocationIt; it != relocationTable.end(); it++) {
+        relocationAllocator.Free(*it);
+    }
+
+    // Erase relocation indices
+    relocationTable.erase(relocationIt, relocationTable.end());
 
     // Return first iterator
     return destBlock->begin();
