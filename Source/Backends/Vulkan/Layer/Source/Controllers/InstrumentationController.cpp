@@ -174,7 +174,7 @@ void InstrumentationController::Commit() {
     compilationEvent.IncrementHead();
 
     // Diagnostic
-#ifdef LOG_INSTRUMENTATION
+#if LOG_INSTRUMENTATION
     table->parent->logBuffer.Add("Vulkan", Format(
         "Committing {} shaders and {} pipelines for instrumentation",
         immediateBatch.dirtyShaderModules.size(),
@@ -184,6 +184,7 @@ void InstrumentationController::Commit() {
 
     // Copy batch
     auto* batch = new (registry->GetAllocators()) Batch(immediateBatch);
+    batch->stamp = std::chrono::high_resolution_clock::now();
 
     // Summarize the needed feature set
     batch->featureBitSet = SummarizeFeatureBitSet();
@@ -299,7 +300,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
     // Report all rejected keys
     if (!rejectedKeys.empty()) {
-#ifdef LOG_REJECTED_KEYS
+#if LOG_REJECTED_KEYS
         std::stringstream keyMessage;
         keyMessage << "Instrumentation failed for the following shaders and keys:\n";
 
@@ -320,6 +321,9 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data) {
     auto* batch = static_cast<Batch*>(data);
 
+    // Determine time difference
+    uint32_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() -  batch->stamp).count();
+
     // Commit all sguid changes
     auto bridge = registry->Get<IBridge>();
     table->sguidHost->Commit(bridge.GetUnsafe());
@@ -328,11 +332,12 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     SetDeviceCommandFeatureSetAndCommit(table, batch->featureBitSet);
 
     // Diagnostic
-#ifdef LOG_INSTRUMENTATION
+#if LOG_INSTRUMENTATION
     table->parent->logBuffer.Add("Vulkan", Format(
-        "Instrumented {} shaders and {} pipelines",
+        "Instrumented {} shaders and {} pipelines ({} ms)",
         batch->dirtyShaderModules.size(),
-        batch->dirtyPipelines.size()
+        batch->dirtyPipelines.size(),
+        ms
     ));
 #endif
 

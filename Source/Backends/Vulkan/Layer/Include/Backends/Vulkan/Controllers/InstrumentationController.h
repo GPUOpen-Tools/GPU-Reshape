@@ -13,6 +13,7 @@
 
 // Std
 #include <vector>
+#include <chrono>
 #include <set>
 
 // Forward declarations
@@ -77,6 +78,8 @@ private:
 private:
     struct Batch {
         uint64_t featureBitSet;
+
+        std::chrono::high_resolution_clock::time_point stamp;
 
         std::set<ReferenceObject*> dirtyObjects;
         std::vector<ShaderModuleState*> dirtyShaderModules;

@@ -6,12 +6,8 @@
 /// No prototypes
 #define VK_NO_PROTOTYPES 1
 
-/// Diagnostic logging
-#ifndef NDEBUG
-// #   define LOG_ALLOCATION
-#   define LOG_INSTRUMENTATION
-#   define LOG_REJECTED_KEYS
-#endif
+// General compile time toggles
+#include "Config.h"
 
 // Vulkan
 #include <vulkan/vulkan_core.h>

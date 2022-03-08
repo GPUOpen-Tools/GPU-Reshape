@@ -27,20 +27,34 @@ bool ResourceBoundsListener::Install() {
 }
 
 void ResourceBoundsListener::Handle(const MessageStream *streams, uint32_t count) {
+    lookupTable.clear();
+
+    // Create table
     for (uint32_t i = 0; i < count; i++) {
         ConstMessageStreamView<ResourceIndexOutOfBoundsMessage> view(streams[i]);
-
-        // Foreach message
         for (auto it = view.GetIterator(); it; ++it) {
-            std::string_view source = "";
-
-            // Get source code
-            if (sguidHost && it->sguid != InvalidShaderSGUID) {
-                source = sguidHost->GetSource(it->sguid);
-            }
-
-            // Compose message to hug
-            hub->Add("ResourceIndexOutOfBounds", Format("{} {} out of bounds\n\t{}", it->isTexture ? "texture" : "buffer", it->isWrite ? "write" : "read", source));
+            lookupTable[it->GetKey()]++;
         }
+    }
+
+    // Print result
+    for (auto&& kv : lookupTable) {
+        auto message = ResourceIndexOutOfBoundsMessage::FromKey(kv.first);
+
+        std::string_view source = "";
+
+        // Get source code
+        if (sguidHost && message.sguid != InvalidShaderSGUID) {
+            source = sguidHost->GetSource(message.sguid);
+        }
+
+        // Compose message to hug
+        hub->Add("ResourceIndexOutOfBounds", Format(
+            "{} {} out of bounds [{}]\n\t{}\n",
+            message.isTexture ? "texture" : "buffer",
+            message.isWrite ? "write" : "read",
+            kv.second,
+            source
+        ));
     }
 }

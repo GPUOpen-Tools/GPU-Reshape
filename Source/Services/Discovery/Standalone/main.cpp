@@ -6,6 +6,7 @@
 #include <Schemas/PingPong.h>
 #include <Schemas/HostResolve.h>
 #include <Schemas/Pipeline.h>
+#include <Schemas/SGUID.h>
 
 // Common
 #include <Common/Console/ConsoleDevice.h>
@@ -180,7 +181,7 @@ int main(int32_t argc, const char *const *argv) {
         registry->AddNew<MessageHub>();
 
         // Install SGUID listener
-        registry->AddNew<ShaderSGUIDHostListener>();
+        network->Register(ShaderSourceMappingMessage::kID, registry->AddNew<ShaderSGUIDHostListener>());
 
         // Find all frontend plugins
         PluginList list;

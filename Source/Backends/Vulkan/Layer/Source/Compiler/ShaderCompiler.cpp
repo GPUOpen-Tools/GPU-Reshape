@@ -17,18 +17,6 @@
 // Std
 #include <fstream>
 
-/// Enable serial compilation for debugging purposes
-#ifndef SHADER_COMPILER_SERIAL
-#   define SHADER_COMPILER_SERIAL 1
-#endif
-
-/// Enable instrumentation of a specific file for debugging purposes
-///  ? Instrumentation of large applications can be difficult to debug and even harder to reproduce under the same conditions.
-///    When such a fault occurs, it is very useful to simply be able to iterate on a spv binary file.
-#ifndef SHADER_COMPILER_DEBUG_FILE
-#   define SHADER_COMPILER_DEBUG_FILE 0
-#endif
-
 ShaderCompiler::ShaderCompiler(DeviceDispatchTable *table) : table(table) {
 
 }

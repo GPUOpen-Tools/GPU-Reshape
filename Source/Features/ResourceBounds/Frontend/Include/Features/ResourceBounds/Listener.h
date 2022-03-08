@@ -7,6 +7,9 @@
 #include <Common/IComponent.h>
 #include <Common/ComRef.h>
 
+// Std
+#include <map>
+
 // Forward declarations
 class IBridge;
 class IMessageHub;
@@ -26,4 +29,7 @@ public:
 private:
     ComRef<IMessageHub> hub;
     ComRef<ShaderSGUIDHostListener> sguidHost;
+
+private:
+    std::map<uint32_t, uint32_t> lookupTable;
 };

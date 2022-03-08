@@ -4,6 +4,7 @@
 #include "AddressSpace.h"
 #include "TextureDimension.h"
 #include "Format.h"
+#include "ResourceSamplerMode.h"
 
 #include <Common/Assert.h>
 
@@ -134,7 +135,7 @@ namespace Backend::IL {
         static constexpr TypeKind kKind = TypeKind::Texture;
 
         auto SortKey() const {
-            return std::make_tuple(sampledType, dimension, multisampled, requiresSampler, format);
+            return std::make_tuple(sampledType, dimension, multisampled, samplerMode, format);
         }
 
         const Type* sampledType{nullptr};
@@ -143,7 +144,7 @@ namespace Backend::IL {
 
         bool multisampled{false};
 
-        bool requiresSampler{false};
+        ResourceSamplerMode samplerMode{ResourceSamplerMode::RuntimeOnly};
 
         Format format{Format::R32UInt};
     };
@@ -152,12 +153,12 @@ namespace Backend::IL {
         static constexpr TypeKind kKind = TypeKind::Buffer;
 
         auto SortKey() const {
-            return std::make_tuple(elementType, requiresSampler, texelType);
+            return std::make_tuple(elementType, samplerMode, texelType);
         }
 
         const Type* elementType{nullptr};
 
-        bool requiresSampler{false};
+        ResourceSamplerMode samplerMode{ResourceSamplerMode::RuntimeOnly};
 
         Format texelType{Format::None};
     };

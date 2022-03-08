@@ -6,6 +6,7 @@
 // Std
 #include <vector>
 #include <unordered_map>
+#include <mutex>
 
 // Forward declarations
 struct DeviceDispatchTable;
@@ -40,6 +41,8 @@ private:
 
 private:
     DeviceDispatchTable* table;
+
+    std::mutex mutex;
 
     /// All guid to shader entries
     std::unordered_map<uint64_t, ShaderEntry> shaderEntries;

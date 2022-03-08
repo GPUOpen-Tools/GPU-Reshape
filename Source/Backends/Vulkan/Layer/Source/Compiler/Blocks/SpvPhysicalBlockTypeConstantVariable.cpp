@@ -98,7 +98,24 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 bool isDepth = ctx++;
                 bool isArrayed = ctx++;
                 bool multisampled = ctx++;
-                bool requiresSampler = ctx++;
+
+                // Translate the sampler mode
+                Backend::IL::ResourceSamplerMode samplerMode;
+                switch (ctx++) {
+                    default:
+                        ASSERT(false, "Unknown sampler mode");
+                        samplerMode = Backend::IL::ResourceSamplerMode::RuntimeOnly;
+                        break;
+                    case 0:
+                        samplerMode = Backend::IL::ResourceSamplerMode::RuntimeOnly;
+                        break;
+                    case 1:
+                        samplerMode = Backend::IL::ResourceSamplerMode::Compatible;
+                        break;
+                    case 2:
+                        samplerMode = Backend::IL::ResourceSamplerMode::Writable;
+                        break;
+                }
 
                 // Format, if present
                 Backend::IL::Format format = Translate(static_cast<SpvImageFormat>(ctx++));
@@ -108,7 +125,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                     Backend::IL::BufferType type;
                     type.elementType = sampledType;
                     type.texelType = format;
-                    type.requiresSampler = requiresSampler;
+                    type.samplerMode = samplerMode;
                     typeMap.AddType(ctx.GetResult(), type);
                 } else {
                     Backend::IL::TextureType type;
@@ -130,7 +147,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                     }
 
                     type.multisampled = multisampled;
-                    type.requiresSampler = requiresSampler;
+                    type.samplerMode = samplerMode;
                     type.format = format;
 
                     typeMap.AddType(ctx.GetResult(), type);
