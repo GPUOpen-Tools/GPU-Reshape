@@ -8,6 +8,8 @@ inline SpvPhysicalBlockType GetSpvBlockType(SpvOp op) {
     switch (op) {
         default:
             return SpvPhysicalBlockType::Count;
+        case SpvOpLine:
+            return SpvPhysicalBlockType::TypeConstantVariable;
         case SpvOpFunction:
             return SpvPhysicalBlockType::Function;
         case SpvOpCapability:

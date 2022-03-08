@@ -84,7 +84,7 @@ ShaderExportSegmentInfo *ShaderExportStreamAllocator::AllocateSegment() {
         segment->streams[exportInfo.id] = AllocateStreamInfo(exportInfo.id);
     }
 
-#ifdef LOG_ALLOCATION
+#if LOG_ALLOCATION
     table->parent->logBuffer.Add("Vulkan", Format("Allocated segment with {} streams", segment->streams.size()));
 #endif
 

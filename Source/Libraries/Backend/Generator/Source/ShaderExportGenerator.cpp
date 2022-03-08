@@ -104,6 +104,27 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, const MessageStr
 
     // End shader type
     out.types << "\t};\n\n";
+
+    // Add caster and creatorfor non structured types
+    if (!structured) {
+        out.types << "\tuint32_t GetKey() const {\n";
+        out.types << "\t\tunion {\n";
+        out.types << "\t\t\tuint32_t key;\n";
+        out.types << "\t\t\t" << message.name << "Message message;\n";
+        out.types << "\t\t} u = {.message = *this};\n";
+        out.types << "\t\treturn u.key;\n";
+        out.types << "\t}\n";
+
+        out.types << "\tstatic " << message.name << "Message FromKey(uint32_t key) {\n";
+        out.types << "\t\tunion {\n";
+        out.types << "\t\t\tuint32_t key;\n";
+        out.types << "\t\t\t" << message.name << "Message message;\n";
+        out.types << "\t\t} u = {.key = key};\n";
+        out.types << "\t\treturn u.message;\n";
+        out.types << "\t}\n";
+    }
+
+    // OK
     return true;
 }
 

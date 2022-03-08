@@ -166,7 +166,7 @@ ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate() {
     // Update the descriptor set
     table->next_vkUpdateDescriptorSets(table->object, 2u, writes, 0, nullptr);
 
-#ifdef LOG_ALLOCATION
+#if LOG_ALLOCATION
     table->parent->logBuffer.Add("Vulkan", "Allocated segment descriptors");
 #endif
 

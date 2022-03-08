@@ -56,6 +56,7 @@ void OrderedMessageStorage::ConsumeStreams(uint32_t *count, MessageStream *strea
 
     if (streams) {
         for (uint32_t i = 0; i < *count; i++) {
+            streams[i].ClearWithSchemaInvalidate();
             streams[i].Swap(storage[i]);
         }
 

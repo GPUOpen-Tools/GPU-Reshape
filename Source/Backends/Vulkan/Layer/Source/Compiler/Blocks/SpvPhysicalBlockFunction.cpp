@@ -531,7 +531,8 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
                 // Image store operation, fx. texture & buffer writes
-            case SpvOpImageRead: {
+            case SpvOpImageRead:
+            case SpvOpImageFetch: {
                 uint32_t image = ctx++;
                 uint32_t coordinate = ctx++;
 
@@ -1128,11 +1129,36 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
                         return false;
                     }
                     case Backend::IL::TypeKind::Texture: {
-                        // Query image
-                        SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageQuerySize, 4, instr->source);
-                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
-                        spv[2] = size->result;
-                        spv[3] = idMap.Get(size->resource);
+                        auto* texture = resourceType->As<Backend::IL::TextureType>();
+
+                        if (texture->samplerMode == Backend::IL::ResourceSamplerMode::Compatible) {
+                            uint32_t constantZeroId = table.scan.header.bound++;
+
+                            // UInt32
+                            const Backend::IL::Type *intType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
+                                .bitWidth = 32,
+                                .signedness = false
+                            });
+
+                            SpvInstruction& spvLod = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+                            spvLod[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(intType);
+                            spvLod[2] = constantZeroId;
+                            spvLod[3] = 0;
+
+                            // Query lod image size
+                            SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageQuerySizeLod, 5, instr->source);
+                            spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                            spv[2] = size->result;
+                            spv[3] = idMap.Get(size->resource);
+                            spv[4] = constantZeroId;
+                        } else {
+                            // Query non-lod image size
+                            SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageQuerySize, 4, instr->source);
+                            spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                            spv[2] = size->result;
+                            spv[3] = idMap.Get(size->resource);
+                        }
+
                         break;
                     }
                     case Backend::IL::TypeKind::Buffer: {

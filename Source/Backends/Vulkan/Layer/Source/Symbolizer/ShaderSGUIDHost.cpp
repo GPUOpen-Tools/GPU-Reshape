@@ -88,6 +88,8 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpa
     mapping.column = sourceAssociation.column;
     mapping.shaderGUID = program.GetShaderGUID();
 
+    std::lock_guard guard(mutex);
+
     // Get entry
     ShaderEntry& shaderEntry = shaderEntries[mapping.shaderGUID];
 
@@ -151,8 +153,9 @@ std::string_view ShaderSGUIDHost::GetSource(const ShaderSourceMapping &mapping) 
     const SpvSourceMap* map = GetSourceMap(mapping.shaderGUID);
 
     std::string_view view = map->GetLine(mapping.fileUID, mapping.line);
-    ASSERT(mapping.column < view.length(), "Column exceeds line length");
+
+    uint32_t column = std::min<uint32_t>(mapping.column, std::max<uint32_t>(view.length(), 1) - 1);
 
     // Offset by column
-    return view.substr(mapping.column, view.length() - mapping.column);
+    return view.substr(column, view.length() - column);
 }

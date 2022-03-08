@@ -41,9 +41,17 @@ void ShaderSGUIDHostListener::Handle(const MessageStream *streams, uint32_t coun
 }
 
 ShaderSourceMapping ShaderSGUIDHostListener::GetMapping(ShaderSGUID sguid) {
-    return sguidLookup.at(sguid).mapping;
+    if (sguidLookup.size() <= sguid) {
+        return {};
+    }
+
+    return sguidLookup[sguid].mapping;
 }
 
 std::string_view ShaderSGUIDHostListener::GetSource(ShaderSGUID sguid) {
-    return sguidLookup.at(sguid).contents;
+    if (sguidLookup.size() <= sguid) {
+        return {};
+    }
+
+    return sguidLookup[sguid].contents;
 }

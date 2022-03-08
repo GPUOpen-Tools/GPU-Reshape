@@ -121,7 +121,7 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     }
 
     // Install shader compiler
-#ifndef NDEBUG
+#if SHADER_COMPILER_DEBUG
     auto shaderDebug = table->registry.AddNew<ShaderCompilerDebug>(table);
     ENSURE(shaderDebug->Install(), "Failed to install shader debug");
 #endif
