@@ -2,6 +2,7 @@
 
 // Layer
 #include "Vulkan.h"
+#include "States/PipelineType.h"
 
 // Common
 #include <Common/Assert.h>
@@ -216,5 +217,29 @@ inline VkImageViewType TranslateViewType(Backend::IL::TextureDimension dim) {
             return VK_IMAGE_VIEW_TYPE_3D;
         case Backend::IL::TextureDimension::Texture2DCube:
             return VK_IMAGE_VIEW_TYPE_CUBE;
+    }
+}
+
+inline VkPipelineBindPoint Translate(PipelineType type) {
+    switch (type) {
+        default:
+            ASSERT(false, "Invalid pipeline type");
+            return {};
+        case PipelineType::Graphics:
+            return VK_PIPELINE_BIND_POINT_GRAPHICS;
+        case PipelineType::Compute:
+            return VK_PIPELINE_BIND_POINT_COMPUTE;
+    }
+}
+
+inline PipelineType Translate(VkPipelineBindPoint type) {
+    switch (type) {
+        default:
+            ASSERT(false, "Unsupported pipeline type");
+            return {};
+        case VK_PIPELINE_BIND_POINT_GRAPHICS:
+            return PipelineType::Graphics;
+        case VK_PIPELINE_BIND_POINT_COMPUTE:
+            return PipelineType::Compute;
     }
 }

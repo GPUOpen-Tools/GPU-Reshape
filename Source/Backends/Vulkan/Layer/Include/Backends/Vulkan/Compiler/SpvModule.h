@@ -2,6 +2,7 @@
 
 // Common
 #include <Common/Assert.h>
+#include <Common/GlobalUID.h>
 
 // Std
 #include <set>
@@ -14,16 +15,16 @@
 #include <Backends/Vulkan/Compiler/SpvTypeMap.h>
 #include <Backends/Vulkan/Compiler/SpvJob.h>
 #include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
+#include <Backends/Vulkan/Config.h>
 
 // Forward declarations
-struct SpvRelocationStream;
 struct SpvDebugMap;
 struct SpvSourceMap;
 struct SpvPhysicalBlockTable;
 
 class SpvModule {
 public:
-    SpvModule(const Allocators& allocators, uint64_t shaderGUID);
+    SpvModule(const Allocators& allocators, uint64_t shaderGUID, const GlobalUID& instrumentationGUID = GlobalUID::New());
     ~SpvModule();
 
     /// No copy
@@ -79,6 +80,10 @@ public:
         return parent;
     }
 
+    const GlobalUID& GetInstrumentationGUID() const {
+        return instrumentationGUID;
+    }
+
 private:
     /// Parent instance
     const SpvModule* parent{nullptr};
@@ -88,6 +93,14 @@ private:
 
     /// Global GUID
     uint64_t shaderGUID{~0ull};
+
+    /// Instrumentation GUID
+    GlobalUID instrumentationGUID;
+
+    /// Debugging GUID name
+#if SHADER_COMPILER_DEBUG
+    std::string instrumentationGUIDName;
+#endif
 
     /// JIT'ed program
     SpvStream spirvProgram;

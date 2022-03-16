@@ -6,6 +6,7 @@
 #include <Backends/Vulkan/States/PipelineLayoutState.h>
 #include <Backends/Vulkan/States/FenceState.h>
 #include <Backends/Vulkan/States/QueueState.h>
+#include <Backends/Vulkan/Objects/CommandBufferObject.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
@@ -19,6 +20,7 @@
 
 // Common
 #include <Common/Registry.h>
+#include <Backends/Vulkan/Translation.h>
 
 ShaderExportStreamer::ShaderExportStreamer(DeviceDispatchTable *table) : table(table), dynamicOffsetAllocator(table->allocators) {
 
@@ -118,7 +120,7 @@ void ShaderExportStreamer::Enqueue(ShaderExportQueueState* queue, ShaderExportSt
     queue->liveSegments.push_back(segment);
 }
 
-void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer) {
+void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer) {
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
@@ -126,7 +128,7 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Vk
     }
 }
 
-void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, VkCommandBuffer commandBuffer) {
+void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, CommandBufferObject* commandBuffer) {
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
@@ -134,7 +136,7 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, Vk
     }
 }
 
-void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, bool instrumented, VkCommandBuffer commandBuffer) {
+void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, bool instrumented, CommandBufferObject* commandBuffer) {
     // Restore the expected environment
     MigrateDescriptorEnvironment(state, pipeline, commandBuffer);
 
@@ -156,8 +158,11 @@ void ShaderExportStreamer::Process(ShaderExportQueueState* queueState) {
     ProcessSegmentsNoQueueLock(queueState);
 }
 
-void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState *state, const PipelineState *pipeline, VkCommandBuffer commandBuffer) {
+void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState *state, const PipelineState *pipeline, CommandBufferObject* commandBuffer) {
     ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipeline->type)];
+
+    // Translate the bind point
+    VkPipelineBindPoint vkBindPoint = Translate(pipeline->type);
 
     // Scan all overwritten descriptor sets
     unsigned long overwriteIndex;
@@ -172,27 +177,23 @@ void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState 
 
         // May not have been used by the user, and the set may not be compatible anymore
         if (descriptorState.set && descriptorState.compatabilityHash == pipeline->layout->compatabilityHashes.at(overwriteIndex)) {
-            // Translate the bind point
-            VkPipelineBindPoint vkBindPoint{};
-            switch (pipeline->type) {
-                default:
-                    ASSERT(false, "Invalid pipeline type");
-                    break;
-                case PipelineType::Graphics:
-                    vkBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-                    break;
-                case PipelineType::Compute:
-                    vkBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
-                    break;
-            }
+            // Debugging
+#if TRACK_DESCRIPTOR_SETS
+            commandBuffer->context.descriptorSets[static_cast<uint32_t>(pipeline->type)][overwriteIndex] = descriptorState.set;
+#endif
 
             // Bind the expected set
             table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
-                commandBuffer,
+                commandBuffer->object,
                 vkBindPoint, pipeline->layout->object,
                 overwriteIndex, 1u, &descriptorState.set,
                 descriptorState.dynamicOffsets.count, descriptorState.dynamicOffsets.data
             );
+        } else {
+            // Debugging
+#if TRACK_DESCRIPTOR_SETS
+            commandBuffer->context.descriptorSets[static_cast<uint32_t>(pipeline->type)][overwriteIndex] = nullptr;
+#endif
         }
 
         // Push back to pool
@@ -209,7 +210,7 @@ void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState 
     }
 }
 
-void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, const PipelineState *pipeline, VkCommandBuffer commandBuffer) {
+void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, const PipelineState *pipeline, CommandBufferObject* commandBuffer) {
     // Get the bind state
     ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipeline->type)];
 
@@ -217,9 +218,11 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
     const uint32_t bindMask = 1u << pipeline->layout->boundUserDescriptorStates;
 
     // Already overwritten?
+#if 0
     if (bindState.deviceDescriptorOverwriteMask & bindMask) {
         return;
     }
+#endif
 
     // Translate the bind point
     VkPipelineBindPoint vkBindPoint{};
@@ -235,9 +238,14 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
             break;
     }
 
+    // Debugging
+#if TRACK_DESCRIPTOR_SETS
+    commandBuffer->context.descriptorSets[static_cast<uint32_t>(pipeline->type)][pipeline->layout->boundUserDescriptorStates] = state->segmentDescriptorInfo.set;
+#endif
+
     // Bind the export
     table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
-        commandBuffer,
+        commandBuffer->object,
         vkBindPoint, pipeline->layout->object,
         pipeline->layout->boundUserDescriptorStates, 1u, &state->segmentDescriptorInfo.set,
         0u, nullptr
@@ -392,7 +400,7 @@ void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, Vk
     PipelineLayoutState* layoutState = table->states_pipelineLayout.Get(layout);
 
     // Get the bind state
-    ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(bindPoint)];
+    ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(Translate(bindPoint))];
 
     // Current offset
     uint32_t dynamicOffset{0};

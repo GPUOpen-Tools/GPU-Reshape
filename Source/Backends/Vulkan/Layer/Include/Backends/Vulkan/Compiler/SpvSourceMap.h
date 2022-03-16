@@ -46,9 +46,6 @@ struct SpvSourceMap {
     /// \return
     std::string_view GetFilename() const;
 
-    /// Get the last pending source spv identifier
-    SpvId GetPendingSource() const;
-
     /// Get the file index for a given spv identifier (physical source)
     uint32_t GetFileIndex(SpvId id) const {
         return sourceMappings.at(id);
@@ -59,6 +56,7 @@ private:
     struct Fragment {
         std::string_view source;
 
+        uint32_t lineStart{0};
         std::vector<uint32_t> lineOffsets;
     };
 
@@ -71,7 +69,10 @@ private:
     };
 
     /// Get a source section
-    PhysicalSource& GetOrAllocate(SpvId id);
+    PhysicalSource& GetOrAllocate(const std::string_view& view, SpvId id);
+
+    /// Get a source section
+    PhysicalSource& GetOrAllocate(const std::string_view& view);
 
 private:
     /// All sections

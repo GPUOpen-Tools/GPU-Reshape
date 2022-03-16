@@ -23,6 +23,7 @@ struct DeviceDispatchTable;
 struct PipelineState;
 struct FenceState;
 struct QueueState;
+struct CommandBufferObject;
 class IBridge;
 
 class ShaderExportStreamer : public TComponent<ShaderExportStreamer> {
@@ -72,19 +73,19 @@ public:
     /// Invoked during command buffer recording
     /// \param state the stream state
     /// \param commandBuffer the command buffer
-    void BeginCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer);
+    void BeginCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer);
 
     /// Invoked during command buffer resetting
     /// \param state the stream state
     /// \param commandBuffer the command buffer
-    void ResetCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer);
+    void ResetCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer);
 
     /// Invoked during pipeline binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandBuffer the command buffer
-    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, bool instrumented, VkCommandBuffer commandBuffer);
+    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, bool instrumented, CommandBufferObject* commandBuffer);
 
     /// Invoked during descriptor binding
     /// \param state the stream state
@@ -112,13 +113,13 @@ private:
     /// \param state the stream state
     /// \param pipeline the new pipeline
     /// \param commandBuffer the command buffer
-    void MigrateDescriptorEnvironment(ShaderExportStreamState* state, const PipelineState* pipeline, VkCommandBuffer commandBuffer);
+    void MigrateDescriptorEnvironment(ShaderExportStreamState* state, const PipelineState* pipeline, CommandBufferObject* commandBuffer);
 
     /// Bind the shader export for a pipeline
     /// \param state the stream state
     /// \param pipeline the pipeline to bind for
     /// \param commandBuffer the command buffer
-    void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, VkCommandBuffer commandBuffer);
+    void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, CommandBufferObject* commandBuffer);
 
     /// Process all segments within a queue
     /// \param queue the queue state

@@ -26,6 +26,9 @@ struct PipelineLayoutState : public ReferenceObject {
     /// Has this layout exhausted all its user slots?
     bool exhausted{false};
 
+    /// Combined pipeline hash
+    uint64_t compatabilityHash{0};
+
     /// Compatability hashes for all descriptor set layouts, ordered by bind order
     std::vector<uint64_t> compatabilityHashes;
 

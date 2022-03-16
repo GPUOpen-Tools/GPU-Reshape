@@ -3,6 +3,7 @@
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/InstrumentationInfo.h>
+#include <Backends/Vulkan/States/PipelineType.h>
 
 // Common
 #include <Common/Containers/ReferenceObject.h>
@@ -20,12 +21,6 @@ struct DeviceDispatchTable;
 struct ShaderModuleState;
 struct PipelineLayoutState;
 struct RenderPassState;
-
-enum class PipelineType {
-    Graphics,
-    Compute,
-    Count
-};
 
 struct PipelineState : public ReferenceObject {
     /// Reference counted destructor

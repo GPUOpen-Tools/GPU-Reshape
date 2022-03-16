@@ -6,8 +6,10 @@
 #include <Backends/Vulkan/Compiler/SpvSourceMap.h>
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 
-
-SpvModule::SpvModule(const Allocators &allocators, uint64_t shaderGUID) : allocators(allocators), shaderGUID(shaderGUID) {
+SpvModule::SpvModule(const Allocators &allocators, uint64_t shaderGUID, const GlobalUID& instrumentationGUID) : allocators(allocators), shaderGUID(shaderGUID), instrumentationGUID(instrumentationGUID) {
+#if SHADER_COMPILER_DEBUG
+    instrumentationGUIDName = instrumentationGUID.ToString();
+#endif
 }
 
 SpvModule::~SpvModule() {
@@ -16,7 +18,7 @@ SpvModule::~SpvModule() {
 }
 
 SpvModule *SpvModule::Copy() const {
-    auto *module = new(allocators) SpvModule(allocators, shaderGUID);
+    auto *module = new(allocators) SpvModule(allocators, shaderGUID, instrumentationGUID);
     module->spirvProgram = spirvProgram;
     module->parent = this;
 

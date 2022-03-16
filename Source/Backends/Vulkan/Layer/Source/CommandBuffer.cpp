@@ -102,7 +102,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     }
 
     // Begin the streaming state
-    commandBuffer->table->exportStreamer->BeginCommandBuffer(commandBuffer->streamState, commandBuffer->object);
+    commandBuffer->table->exportStreamer->BeginCommandBuffer(commandBuffer->streamState, commandBuffer);
+
+    // Sanity (redundant), reset the context
+    commandBuffer->context = {};
 
     // OK
     return VK_SUCCESS;
@@ -117,8 +120,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetCommandBuffer(CommandBufferObject *co
 
     // Reset export state if present
     if (commandBuffer->streamState) {
-        commandBuffer->table->exportStreamer->ResetCommandBuffer(commandBuffer->streamState, commandBuffer->object);
+        commandBuffer->table->exportStreamer->ResetCommandBuffer(commandBuffer->streamState, commandBuffer);
     }
+
+    // Reset the context
+    commandBuffer->context = {};
 
     // OK
     return VK_SUCCESS;
@@ -139,10 +145,16 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
     commandBuffer->dispatchTable.next_vkCmdBindPipeline(commandBuffer->object, pipelineBindPoint, pipeline);
 
     // Migrate environments
-    commandBuffer->table->exportStreamer->BindPipeline(commandBuffer->streamState, state, hotSwapObject != nullptr, commandBuffer->object);
+    commandBuffer->table->exportStreamer->BindPipeline(commandBuffer->streamState, state, hotSwapObject != nullptr, commandBuffer);
+
+    // Update context
+    commandBuffer->context.pipeline = state;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {
+    // Reset the context
+    commandBuffer->context = {};
+
     // Pass down callchain
     return commandBuffer->table->next_vkEndCommandBuffer(commandBuffer->object);
 }
