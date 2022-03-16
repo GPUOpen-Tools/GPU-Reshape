@@ -6,6 +6,7 @@ _( just example crediting, I'm sure there's a far more professional / official w
 ---
 
 [Build](Documentation/Build.md) -
+[API](Documentation/API.md) -
 [Motivation](Documentation/Motivation.md) -
 [Design](Documentation/Design.md) -
 [Features](Documentation/Features.md) -
