@@ -5,45 +5,117 @@ void SpvSourceMap::SetBound(SpvId bound) {
 }
 
 void SpvSourceMap::AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint32_t version, const std::string_view& filename) {
-    PhysicalSource& source = GetOrAllocate(id);
+    PhysicalSource& source = GetOrAllocate(filename, id);
     source.language = language;
     source.version = version;
     source.filename = filename;
 }
 
 void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
-    PhysicalSource& source = GetOrAllocate(id);
+    PhysicalSource& source = physicalSources.at(sourceMappings.at(id));
 
-    // Append new fragment
-    Fragment& fragment = source.fragments.emplace_back();
-    fragment.source = code;
+    // Original source info
+    SpvSourceLanguage language = source.language;
+    uint32_t version = source.version;
 
-    // First line
-    fragment.lineOffsets.push_back(0);
+    // Append initial fragment
+    Fragment* fragment = &source.fragments.emplace_back();
+    fragment->source = code;
+    fragment->lineOffsets.push_back(0);
+    fragment->lineStart = 0;
 
     // Summarize the line offsets
     for (uint32_t i = 0; i < code.length(); i++) {
+        if (code[i] == '#') {
+            constexpr const char* kLineDirective = "#line";
+
+            // Is line directive?
+            if (std::strncmp(&code[i], kLineDirective, std::strlen(kLineDirective))) {
+                continue;
+            }
+
+            // Eat until number
+            while (!isdigit(code[i]) && code[i]) {
+                i++;
+            }
+
+            // Parse line offset
+            const uint32_t offset = atoi(&code[i]);
+
+            // Eat until start of string
+            while (code[i] != '"' && code[i]) {
+                i++;
+            }
+
+            // Eat "
+            i++;
+
+            // Eat until end of string
+            const uint32_t start = i;
+            while (code[i] != '"' && code[i]) {
+                i++;
+            }
+
+            // Get filename
+            std::string_view file = code.substr(start, i - start);
+
+            // Eat until next line
+            while (code[i] != '\n' && code[i]) {
+                i++;
+            }
+
+            // Next line
+            i++;
+
+            PhysicalSource& extendedSource = GetOrAllocate(file);
+            source.filename = file;
+            source.version = version;
+            source.language = language;
+
+            fragment = &extendedSource.fragments.emplace_back();
+            fragment->source = code;
+            fragment->lineOffsets.push_back(i);
+            fragment->lineStart = offset - 1;
+        }
+
         if (code[i] == '\n') {
-            fragment.lineOffsets.push_back(i);
+            fragment->lineOffsets.push_back(i + 1);
         }
     }
 }
 
-SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(SpvId id) {
+SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(const std::string_view& view, SpvId id) {
     if (sourceMappings.size() <= id) {
         sourceMappings.resize(id + 1, InvalidSpvId);
     }
 
-    if (sourceMappings[id] == InvalidSpvId) {
-        sourceMappings[id] = static_cast<uint32_t>(physicalSources.size());
-        return physicalSources.emplace_back();
+    for (PhysicalSource& source : physicalSources) {
+        if (source.filename == view) {
+            return source;
+        }
     }
 
-    return physicalSources.at(sourceMappings.at(id));
+    for (uint32_t i = 0; i < physicalSources.size(); i++) {
+        PhysicalSource& source = physicalSources[i];
+
+        if (source.filename == view) {
+            sourceMappings[id] = i;
+            return source;
+        }
+    }
+
+    sourceMappings[id] = static_cast<uint32_t>(physicalSources.size());
+    return physicalSources.emplace_back();
 }
 
-SpvId SpvSourceMap::GetPendingSource() const {
-    return static_cast<SpvId>(physicalSources.size() - 1);
+SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(const std::string_view &view) {
+    for (PhysicalSource& source : physicalSources) {
+        if (source.filename == view) {
+            return source;
+        }
+    }
+
+    return physicalSources.emplace_back();
 }
 
 std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const {
@@ -51,19 +123,14 @@ std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const 
 
     // TODO: Maybe this could be optimized
 
-    // Current offset
-    uint32_t fragmentLineOffset = 0;
-
     // Find appropriate fragment
     for (const Fragment& fragment : source.fragments) {
-        uint32_t next = fragmentLineOffset + static_cast<uint32_t>(fragment.lineOffsets.size());
-
         // Within bounds?
-        if (line < next) {
-            uint32_t offset = fragment.lineOffsets.at(line - fragmentLineOffset);
+        if (line >= fragment.lineStart && line < fragment.lineStart + fragment.lineOffsets.size()) {
+            uint32_t offset = fragment.lineOffsets.at(line - fragment.lineStart);
 
             // Segment offsets
-            const char* begin = &fragment.source[offset] + 1;
+            const char* begin = &fragment.source[offset];
             const char* end = std::strchr(begin, '\n');
 
             // Determine length
@@ -71,8 +138,6 @@ std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const 
 
             return std::string_view(begin, length);
         }
-
-        fragmentLineOffset = next;
     }
 
     // Not found

@@ -26,3 +26,6 @@
 
 /// Enable debugging mode for shader compiler
 #define SHADER_COMPILER_DEBUG (VK_DIAGNOSTIC && 0)
+
+/// Enable tracking of bound descriptor sets for debugging
+#define TRACK_DESCRIPTOR_SETS 0

@@ -113,7 +113,7 @@ std::filesystem::path ShaderCompilerDebug::AllocatePath(SpvModule *module) {
     std::filesystem::path shaderPath = path;
 
     // New guid for shader
-    std::string guid = GlobalUID::New().ToString();
+    std::string guid = module->GetInstrumentationGUID().ToString();
 
     // Optional shader filename
     std::filesystem::path filename = module->GetSourceMap()->GetFilename();

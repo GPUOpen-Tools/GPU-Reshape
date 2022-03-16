@@ -9,6 +9,9 @@ void SpvPhysicalBlockDebugStringSource::Parse() {
     debugMap.SetBound(table.scan.header.bound);
     sourceMap.SetBound(table.scan.header.bound);
 
+    // Current source being processed
+    uint32_t pendingSource{};
+
     // Parse instructions
     SpvParseContext ctx(block->source);
     while (ctx) {
@@ -24,20 +27,41 @@ void SpvPhysicalBlockDebugStringSource::Parse() {
                 if (ctx.HasPendingWords()) {
                     fileId = ctx++;
                     sourceMap.AddPhysicalSource(fileId, language, version, debugMap.Get(fileId, SpvOpString));
+
+                    // Set pending
+                    pendingSource = fileId;
                 }
 
                 // Optional fragment?
                 if (ctx.HasPendingWords()) {
-                    sourceMap.AddSource(fileId, std::string_view(reinterpret_cast<const char*>(ctx.GetInstructionCode()), (ctx->GetWordCount() - 4) * sizeof(uint32_t)));
+                    auto* ptr = reinterpret_cast<const char*>(ctx.GetInstructionCode());
+                    uint32_t length = (ctx->GetWordCount() - 4) * sizeof(uint32_t);
+                    while (!ptr[length - 1]) {
+                        length--;
+                    }
+
+                    sourceMap.AddSource(fileId, std::string_view(ptr, length));
                 }
                 break;
             }
             case SpvOpSourceContinued: {
-                sourceMap.AddSource(sourceMap.GetPendingSource(), std::string_view(reinterpret_cast<const char*>(ctx.GetInstructionCode()), (ctx->GetWordCount() - 1) * sizeof(uint32_t)));
+                auto* ptr = reinterpret_cast<const char*>(ctx.GetInstructionCode());
+                uint32_t length = (ctx->GetWordCount() - 1) * sizeof(uint32_t);
+                while (!ptr[length - 1]) {
+                    length--;
+                }
+
+                sourceMap.AddSource(pendingSource, std::string_view(ptr, length));
                 break;
             }
             case SpvOpString: {
-                debugMap.Add(ctx.GetResult(), SpvOpString, std::string_view(reinterpret_cast<const char*>(ctx.GetInstructionCode()), (ctx->GetWordCount() - 2) * sizeof(uint32_t)));
+                auto* ptr = reinterpret_cast<const char*>(ctx.GetInstructionCode());
+                uint32_t length = (ctx->GetWordCount() - 2) * sizeof(uint32_t);
+                while (!ptr[length - 1]) {
+                    length--;
+                }
+
+                debugMap.Add(ctx.GetResult(), SpvOpString, std::string_view(ptr, length));
                 break;
             }
         }

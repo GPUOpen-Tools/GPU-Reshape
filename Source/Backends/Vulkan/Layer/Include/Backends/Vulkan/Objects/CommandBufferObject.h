@@ -8,6 +8,7 @@
 
 // Vulkan
 #include "Backends/Vulkan/Vulkan.h"
+#include "Backends/Vulkan/States/PipelineType.h"
 
 // Std
 #include <vector>
@@ -16,6 +17,7 @@
 struct DeviceDispatchTable;
 struct ShaderExportStreamState;
 struct CommandPoolState;
+struct PipelineState;
 
 /// Wrapped command buffer object
 struct CommandBufferObject {
@@ -32,6 +34,17 @@ struct CommandBufferObject {
     VkCommandBuffer      object;
     DeviceDispatchTable* table;
     CommandPoolState*    pool;
+
+    /// Immediate context
+    struct
+    {
+        /// Currently bound pipeline, not subject to lifetime extensions due to spec requirements
+        PipelineState* pipeline{nullptr};
+
+#if TRACK_DESCRIPTOR_SETS
+        VkDescriptorSet descriptorSets[static_cast<uint32_t>(PipelineType::Count)][512]{};
+#endif
+    } context;
 
     /// Acquired dispatch table
     CommandBufferDispatchTable dispatchTable;

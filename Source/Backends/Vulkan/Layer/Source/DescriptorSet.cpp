@@ -5,7 +5,9 @@
 #include "Backends/Vulkan/Tables/DeviceDispatchTable.h"
 #include "Backends/Vulkan/Export/ShaderExportDescriptorAllocator.h"
 #include "Backends/Vulkan/Export/ShaderExportStreamer.h"
+#include <Backends/Vulkan/Translation.h>
 
+// Common
 #include <Common/Hash.h>
 
 VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDescriptorSetLayout* pSetLayout) {
@@ -105,6 +107,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
         // Inherit
         state->descriptorDynamicOffsets[i] = setLayoutState->dynamicOffsets;
         state->compatabilityHashes[i] = setLayoutState->compatabilityHash;
+
+        // Combine layout hash
+        CombineHash(state->compatabilityHash, setLayoutState->compatabilityHash);
     }
 
     // External user
@@ -123,6 +128,13 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
 VKAPI_ATTR void VKAPI_PTR Hook_vkCmdBindDescriptorSets(CommandBufferObject* commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets) {
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdBindDescriptorSets(commandBuffer->object, pipelineBindPoint, layout, firstSet, descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
+
+    // Debugging
+#if TRACK_DESCRIPTOR_SETS
+    for (uint32_t i = 0; i < descriptorSetCount; i++) {
+        commandBuffer->context.descriptorSets[static_cast<uint32_t>(Translate(pipelineBindPoint))][firstSet + i] = pDescriptorSets[i];
+    }
+#endif
 
     // Inform streamer
     commandBuffer->table->exportStreamer->BindDescriptorSets(commandBuffer->streamState, pipelineBindPoint, layout, firstSet, descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
