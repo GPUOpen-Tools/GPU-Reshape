@@ -50,11 +50,10 @@ void ResourceBoundsListener::Handle(const MessageStream *streams, uint32_t count
 
         // Compose message to hug
         hub->Add("ResourceIndexOutOfBounds", Format(
-            "{} {} out of bounds [{}]\n\t{}\n",
+            "{} {} out of bounds\n\t{}\n",
             message.isTexture ? "texture" : "buffer",
             message.isWrite ? "write" : "read",
-            kv.second,
             source
-        ));
+        ), kv.second);
     }
 }

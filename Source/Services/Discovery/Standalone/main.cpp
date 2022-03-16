@@ -45,9 +45,74 @@ public:
 class MessageHub : public IMessageHub {
 public:
     /// Overrides
-    void Add(const std::string_view &name, const std::string_view &message) override {
-        std::cout << name << " : " << message << std::flush;
+    void Add(const std::string_view &name, const std::string_view &message, uint32_t count) override {
+        // Open console on demand
+        if (!console) {
+            console = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+            SetConsoleActiveScreenBuffer(console);
+        }
+
+        // Attempt to find existing key
+        auto &position = lookup[std::make_pair(std::string(name), std::string(message))];
+
+        // If not found, allocate position
+        if (position.cursor.X == 0xFFF) {
+            // Get the current offset
+            CONSOLE_SCREEN_BUFFER_INFO screenInfo;
+            GetConsoleScreenBufferInfo(console, &screenInfo);
+
+            // Compose the message
+            std::stringstream ss;
+            ss << name << " : " << message;
+
+            // Write the message
+            DWORD dwBytesWritten{0};
+            WriteConsole(console, ss.str().c_str(), ss.str().length(), &dwBytesWritten, 0);
+
+            // Store final position
+            position.cursor = screenInfo.dwCursorPosition;
+        }
+
+        // Increment number of messages
+        position.count += count;
+
+        // Compose number, split thousands by '
+        std::string num = std::to_string(position.count);
+        for (int32_t i = num.length() - 3; i >= 1; i -= 3) {
+            num.insert(num.begin() + i, '\'');
+        }
+
+        // Arbitrary printing location
+        COORD pos = position.cursor;
+        pos.X = 64;
+
+        // Compose count
+        std::stringstream ss;
+        ss << "#" << num;
+
+        // Write the count
+        DWORD dwBytesWritten = 0;
+        WriteConsoleOutputCharacter(console, ss.str().c_str(), ss.str().length(), pos, &dwBytesWritten);
     }
+
+    ~MessageHub() {
+        CloseHandle(console);
+    }
+
+private:
+    struct Position {
+        /// Cursor position
+        COORD cursor{0xFFF, 0xFFF};
+
+        /// Number of messages
+        uint32_t count{0};
+    };
+
+    /// Terribly naive position cache
+    std::map<std::pair<std::string, std::string>, Position> lookup;
+
+    /// Win32 console handle
+    HANDLE console{nullptr};
 };
 
 /// Generic ordered listener
