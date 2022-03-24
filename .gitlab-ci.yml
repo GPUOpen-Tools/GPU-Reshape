@@ -1,0 +1,31 @@
+variables:
+  FF_USE_FASTZIP: "true"
+  ARTIFACT_COMPRESSION_LEVEL: "fast"
+
+stages:
+  - build
+
+build_release:
+  tags:
+  - windows
+  - amd64
+  stage: build
+  artifacts:
+    paths:
+    - Bin/Release/
+  script:
+  - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Release" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019"'
+  - 'cmake --build cmake-build-vs2019 --config Release --parallel 4 -- /p:CL_MPcount=16'
+
+build_debug:
+  tags:
+  - windows
+  - amd64
+  stage: build
+  artifacts:
+    paths:
+    - Bin/Debug/
+  script:
+  - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Debug" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019"'
+  - 'cmake --build cmake-build-vs2019 --config Debug --parallel 4 -- /p:CL_MPcount=16'
+
