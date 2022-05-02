@@ -114,7 +114,7 @@ $RESOURCES_SET
         ResourceSetID resourceSet = device->CreateResourceSet(layout, resources, sizeof(resources) / sizeof(ResourceID));
 
         // Create pipeline
-        PipelineID pipeline = device->CreateComputePipeline(&layout, 1u, kShaderCode, sizeof(kShaderCode));
+        PipelineID pipeline = device->CreateComputePipeline(&layout, 1u, kShaderCodeVulkan, sizeof(kShaderCodeVulkan));
 
         // Set the bridge up for the expected communication
         ConfigureBridge();

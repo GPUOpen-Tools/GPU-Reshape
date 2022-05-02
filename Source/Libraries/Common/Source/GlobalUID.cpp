@@ -100,3 +100,10 @@ std::string GlobalUID::ToString() const {
 #    error Not implemented
 #endif
 }
+
+GUID GlobalUID::AsPlatformGUID() const {
+    GUID guid;
+    std::memcpy(&guid, uuid, sizeof(guid));
+
+    return guid;
+}

@@ -3,6 +3,11 @@
 // Std
 #include <filesystem>
 
+/// Read all text data to a string
+/// \param path path of the file
+/// \return text contents
+std::string ReadAllText(const std::filesystem::path& path);
+
 /// Get the executable directory
 /// \return empty if failed
 std::filesystem::path GetCurrentExecutableDirectory();

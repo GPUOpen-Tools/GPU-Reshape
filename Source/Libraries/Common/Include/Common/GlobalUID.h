@@ -1,11 +1,18 @@
 #pragma once
 
+// Common
 #include "Assert.h"
 
+// Std
 #include <string_view>
 #include <string>
 #include <cstdint>
 #include <memory>
+
+// System
+#ifdef _WIN64
+#include <guiddef.h>
+#endif
 
 struct GlobalUID {
     static constexpr uint32_t kSize = 16;
@@ -27,6 +34,12 @@ struct GlobalUID {
     /// Convert to string
     /// \return
     std::string ToString() const;
+
+#ifdef _WIN64
+    /// Convert to the platform GUID
+    /// \return
+    GUID AsPlatformGUID() const;
+#endif
 
     /// Check if this guid is valid
     /// \return

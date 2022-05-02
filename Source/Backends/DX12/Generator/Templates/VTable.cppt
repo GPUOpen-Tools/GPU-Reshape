@@ -1,0 +1,72 @@
+// Std
+#include <utility>
+
+// Common
+#include <Common/Allocators.h>
+
+// Layer
+#include <Backends/DX12/Wrappers.Gen.h>
+#include <Backends/DX12/Table.Gen.h>
+$INCLUDES
+
+/// Virtual table helper
+template<typename TYPE, typename OBJECT>
+struct DetourVTable {
+    using TopVTable = decltype(PopulateTopDetourVTable(std::declval<TYPE*>()));
+
+    /// Create a new vtable
+    /// \param allocators top allocator
+    /// \param com template component
+    /// \return wrapped vtable
+    static DetourVTable* New(const Allocators& allocators, TYPE* com) {
+        auto top = PopulateTopDetourVTable(com);
+
+        auto vtable = new (allocators) DetourVTable;
+        vtable->top = top;
+        vtable->bottom = top;
+        return vtable;
+    }
+
+    /// Create a new vtable and patch the given component
+    /// \param allocators top allocator
+    /// \param com template component to be patched
+    /// \return wrapped vtable
+    static DetourVTable* NewAndPatch(const Allocators& allocators, TYPE* com) {
+        auto top = PopulateTopDetourVTable(com);
+
+        auto vtable = new (allocators) DetourVTable;
+        vtable->top = top;
+        vtable->bottom = top;
+
+        GetVTableRawRef(com) = vtable;
+
+        return vtable;
+    }
+
+    /// Get the wrapped table from a component
+    static DetourVTable* Get(TYPE* com) {
+        return GetVTableRaw<DetourVTable>(com);
+    }
+
+    /// Get the object from a component
+    static DetourVTable* GetObject(TYPE* com) {
+        return Get(com)->object;
+    }
+
+    /// Preserve memory layout of original vtable
+    TopVTable top;
+
+    /// Next layer (os, driver, ...)
+    TopVTable bottom;
+
+    /// Interally stored object
+    OBJECT* object{nullptr};
+};
+
+/* Detouring */
+
+$DETOURS
+
+/* Getters */
+
+$GETTERS

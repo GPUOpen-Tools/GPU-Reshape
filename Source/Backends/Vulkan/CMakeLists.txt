@@ -199,9 +199,6 @@ ExternalProject_Link(Backends.Vulkan.Layer SPIRVTools SPIRV-Tools)
 # Copy layer definition (configuration time)
 ConfigureOutput(Layer/Resources/VK_LAYER_GPUOPEN_GBV.json VK_LAYER_GPUOPEN_GBV.json)
 
-# Extra dependencies
-add_dependencies(Backends.Vulkan.Layer GraphViz)
-
 #----- Discovery -----#
 
 # Create feature
@@ -270,8 +267,8 @@ ConfigureOutput(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json VK_GPUOpen_Te
 
 # Hlsl files
 set(Generated "")
-Project_AddHLSL(Generated cs_6_0 "-Zi -Od" Tests/Data/WriteUAV.hlsl Tests/Include/Data/WriteUAV.h kSPIRVWriteUAV)
-Project_AddHLSL(Generated cs_6_0 "-Zi -Od" Tests/Data/WriteUAVNegative.hlsl Tests/Include/Data/WriteUAVNegative.h kSPIRVWriteUAVNegative)
+Project_AddHLSL(Generated cs_6_0 "-Od" Tests/Data/WriteUAV.hlsl Tests/Include/Data/WriteUAV kSPIRVWriteUAV)
+Project_AddHLSL(Generated cs_6_0 "-Od" Tests/Data/WriteUAVNegative.hlsl Tests/Include/Data/WriteUAVNegative kSPIRVWriteUAVNegative)
 
 # Generate the schema
 Project_AddShaderSchema(Generated Tests/Schemas/WritingNegativeValue.xml Tests/Include/Schemas)

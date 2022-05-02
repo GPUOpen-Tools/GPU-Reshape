@@ -42,7 +42,7 @@ function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
 
     # Compile the hlsl for all relevant backends
     set(HlslGenerated "")
-    Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${Test} Source/Test/${TestName}.hlsl.h kShaderCode)
+    Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${Test} Source/Test/${TestName} kShaderCode)
 
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir Test.Device.Generator SOURCE_DIR)
@@ -63,7 +63,7 @@ function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
             -test ${Test}
             -feature ${FEATURE_NAME}
             -templates ${Templates}
-            -shader ${TestName}.hlsl.h
+            -shader ${TestName}Vulkan.h
             -o ${TestOutPath}
     )
 

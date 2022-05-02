@@ -103,3 +103,17 @@ std::filesystem::path GetIntermediateDebugPath() {
 std::filesystem::path GetIntermediateCachePath() {
     return GetIntermediatePath("Cache");
 }
+
+std::string ReadAllText(const std::filesystem::path &path) {
+    std::ifstream stream(path);
+
+    // Determine size
+    stream.seekg(0, std::ios::end);
+    size_t size = stream.tellg();
+
+    // Read contents
+    std::string str(size, ' ');
+    stream.seekg(0);
+    stream.read(&str[0], size);
+    return str;
+}

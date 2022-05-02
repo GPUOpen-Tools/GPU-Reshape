@@ -1,0 +1,32 @@
+#pragma once
+
+// Std
+#include <cstdint>
+#include <cstring>
+
+// System
+$INCLUDES
+
+/* Function types */
+
+using PFN_CREATE_DXGI_FACTORY = HRESULT(*)(REFIID riid, _COM_Outptr_ void **ppFactory);
+using PFN_CREATE_DXGI_FACTORY1 = HRESULT(*)(REFIID riid, _COM_Outptr_ void **ppFactory);
+using PFN_CREATE_DXGI_FACTORY2 = HRESULT(*)(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory);
+
+$PFN
+
+/* Tables */
+
+$TABLES
+
+/* Offsets */
+
+$OFFSETS
+
+/* Forward declarations */
+
+$TYPEDEFS
+
+/* Populators */
+
+$POPULATORS

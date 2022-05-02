@@ -35,7 +35,7 @@
 #include <VMA/vk_mem_alloc.h>
 
 // HLSL
-#include <Data/WriteUAVNegative.h>
+#include <Data/WriteUAVNegativeVulkan.h>
 
 /// Dummy value for validation
 static constexpr uint32_t kProxy = 'p' + 'r' + 'o' + 'x' + 'y';
@@ -259,8 +259,8 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
 
     VkShaderModuleCreateInfo moduleCreateInfo{};
     moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleCreateInfo.codeSize = sizeof(kSPIRVWriteUAVNegative);
-    moduleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(kSPIRVWriteUAVNegative);
+    moduleCreateInfo.codeSize = sizeof(kSPIRVWriteUAVNegativeVulkan);
+    moduleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(kSPIRVWriteUAVNegativeVulkan);
 
     VkShaderModule shaderModule;
     REQUIRE(vkCreateShaderModule(GetDevice(), &moduleCreateInfo, nullptr, &shaderModule) == VK_SUCCESS);

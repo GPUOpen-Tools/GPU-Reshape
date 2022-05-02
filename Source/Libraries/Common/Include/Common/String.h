@@ -39,6 +39,11 @@ namespace std {
         return s;
     }
 
+    static inline std::string uppercase(std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+        return s;
+    }
+
     static inline bool iequals(const string &a, const string &b) {
         return std::equal(
             a.begin(), a.end(),
@@ -47,5 +52,11 @@ namespace std {
                 return tolower(a) == tolower(b);
             }
         );
+    }
+
+    // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
+    inline bool ends_with(std::string const &value, std::string const &ending) {
+        if (ending.size() > value.size()) return false;
+        return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
     }
 }

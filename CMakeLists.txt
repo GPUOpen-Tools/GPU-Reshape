@@ -6,8 +6,10 @@ cmake_minimum_required(VERSION 3.17)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # All options
-option(INSTALL_THIRD_PARTY "Fetch and install third party libraries" ON)
-option(ENABLE_ASAN         "Enables ASAN" OFF)
+option(INSTALL_THIRD_PARTY   "Fetch and install third party libraries" ON)
+option(ENABLE_ASAN           "Enables ASAN" OFF)
+option(ENABLE_BACKEND_VULKAN "Enables Vulkan backend" ON)
+option(ENABLE_BACKEND_DX12   "Enables DX12 backend" ON)
 
 # Ensure 64 bit
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -56,5 +58,4 @@ endfunction()
 # Add all projects
 add_subdirectory(Build)
 add_subdirectory(ThirdParty)
-add_subdirectory(Tools)
 add_subdirectory(Source)

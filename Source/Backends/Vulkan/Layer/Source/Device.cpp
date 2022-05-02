@@ -35,7 +35,6 @@
 // Std
 #include <cstring>
 
-
 VkResult VKAPI_PTR Hook_vkEnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount, VkLayerProperties *pProperties) {
     auto table = InstanceDispatchTable::Get(GetInternalTable(physicalDevice));
 

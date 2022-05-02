@@ -26,7 +26,7 @@
 #include <VMA/vk_mem_alloc.h>
 
 // HLSL
-#include <Data/WriteUAV.h>
+#include <Data/WriteUAVVulkan.h>
 
 class OffsetStoresByOneFeature : public IFeature, public IShaderFeature {
 public:
@@ -179,8 +179,8 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.OffsetStoresByOne", "[Vulkan]") {
 
     VkShaderModuleCreateInfo moduleCreateInfo{};
     moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleCreateInfo.codeSize = sizeof(kSPIRVWriteUAV);
-    moduleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(kSPIRVWriteUAV);
+    moduleCreateInfo.codeSize = sizeof(kSPIRVWriteUAVVulkan);
+    moduleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(kSPIRVWriteUAVVulkan);
 
     VkShaderModule shaderModule;
     REQUIRE(vkCreateShaderModule(GetDevice(), &moduleCreateInfo, nullptr, &shaderModule) == VK_SUCCESS);
