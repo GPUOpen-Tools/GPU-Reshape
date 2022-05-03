@@ -1,0 +1,6 @@
+{
+  "objects":[
+    "D3D12_GRAPHICS_PIPELINE_STATE_DESC",
+    "D3D12_COMPUTE_PIPELINE_STATE_DESC"
+  ]
+}

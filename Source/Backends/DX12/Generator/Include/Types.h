@@ -12,7 +12,7 @@
 /// \param type the json type
 /// \param isFPtr outer function pointer?
 /// \return success state
-static bool PrettyPrintType(std::stringstream &ss, const nlohmann::json &type, bool isFPtr = false) {
+static bool PrettyPrintType(std::stringstream &ss, const nlohmann::json &type, bool isFPtr = false, bool emitConst = true) {
     auto typeKind = type["type"].get<std::string>();
 
     // Common
@@ -20,7 +20,7 @@ static bool PrettyPrintType(std::stringstream &ss, const nlohmann::json &type, b
     bool isConst   = type["const"].get<int>();
 
     // Handle qualifiers
-    if (!isPointer && isConst) {
+    if (!isPointer && isConst && emitConst) {
         ss << "const ";
     }
 

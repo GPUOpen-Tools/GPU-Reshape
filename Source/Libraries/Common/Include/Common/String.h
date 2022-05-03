@@ -59,4 +59,12 @@ namespace std {
         if (ending.size() > value.size()) return false;
         return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
     }
+
+    static bool iswhitespace(char c) {
+        return isspace(c) && c != '\n';
+    }
+
+    static bool iscxxalnum(char c) {
+        return isalnum(c) || c == '_';
+    }
 }

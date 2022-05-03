@@ -1,12 +1,20 @@
 #include "GenTypes.h"
 
+// libClang
 #include <clang-c/Index.h>
 
+// Common
 #include <Common/FileSystem.h>
+#include <Common/String.h>
 
+// Std
 #include <vector>
 #include <iostream>
-#include <sstream>
+
+/// Specification state
+struct SpecificationState {
+    std::map<std::string, std::string> cachedContents;
+};
 
 /// Visitation helper
 /// \param cursor top level cursor to visit
@@ -39,6 +47,7 @@ static nlohmann::json TranslateType(CXType type) {
         }
         case CXType_Void: {
             obj["type"] = "void";
+            obj["name"] = "void";
             break;
         }
         case CXType_Pointer: {
@@ -77,12 +86,160 @@ static nlohmann::json TranslateType(CXType type) {
     return obj;
 }
 
+/// Reverse search to the start of an attribute
+/// \param ptr starting ptr
+/// \param offset current offset
+/// \return the position within the ptr
+const char* ReverseSearchAttribute(const char* ptr, uint32_t offset) {
+    // Eat whitespaces
+    while (offset && std::iswhitespace(ptr[offset])) {
+        offset--;
+    }
+
+    // Valid attribute must end with ')'
+    if (!offset || ptr[offset] != ')') {
+        return nullptr;
+    }
+
+    // Eat ')'
+    offset--;
+
+    // Current bracket pop counter
+    uint32_t popCounter = 1;
+
+    // Eat *all* characters until pop counter has been satisfied
+    while (offset && popCounter) {
+        popCounter += ptr[offset] == ')';
+        popCounter -= ptr[offset] == '(';
+        offset--;
+    }
+
+    // Eat whitespaces
+    while (offset && std::iswhitespace(ptr[offset])) {
+        offset--;
+    }
+
+    // Eat the type of attribute
+    while (offset && std::iscxxalnum(ptr[offset])) {
+        offset--;
+    }
+
+    // Start of attribute
+    return ptr + offset + 1;
+}
+
+/// Try to parse an attribute into a field
+/// \param unit the translation unit
+/// \param cursor declaration cursor
+/// \param field destination field
+void TryParseAttributes(CXTranslationUnit unit, CXCursor cursor, nlohmann::json &field) {
+    // Get the cursor range
+    CXSourceRange range = clang_getCursorExtent(cursor);
+
+    // Source wise offset
+    uint32_t offset;
+
+    // Get the file location
+    CXFile file;
+    clang_getFileLocation(clang_getRangeStart(range), &file, nullptr, nullptr, &offset);
+
+    // Get (cached) file contents
+    size_t len;
+    const char *contents = clang_getFileContents(unit, file, &len);
+    if (!contents) {
+        return;
+    }
+
+    // Find start of attribute
+    const char* ptr = ReverseSearchAttribute(contents, offset - 1);
+    if (!ptr) {
+        return;
+    }
+
+    /*
+     * Note
+     *  ! This is not a good parser, it's just *enough* for the use case. If need be something more intelligent can be written.
+     * */
+
+    // Eat the type of attribute
+    const char* startName = ptr;
+    while (std::iscxxalnum(*ptr)) {
+        ptr++;
+    }
+
+    // Translate type
+    std::string type(startName, ptr);
+    if (type == "_Field_size_bytes_full_" || type == "_Field_size_bytes_full_opt_") {
+        type = "byteSize";
+    } else if (type == "_Field_size_full_" || type == "_In_reads_") {
+        type = "size";
+    }
+
+    // Eat whitespaces
+    while (std::iswhitespace(*ptr)) {
+        ptr++;
+    }
+
+    // Must be '('
+    if (*(ptr++) != '(') {
+        return;
+    }
+
+    // Parse arguments (assumes single attribute)
+    nlohmann::json args;
+    for (;;) {
+        // Eat whitespaces
+        while (std::iswhitespace(*ptr)) {
+            ptr++;
+        }
+
+        // Eat the argument
+        const char* argName = ptr;
+        while (std::iscxxalnum(*ptr)) {
+            ptr++;
+        }
+
+        // Append argument
+        args.push_back(std::string(argName, ptr));
+
+        // Eat whitespaces
+        while (std::iswhitespace(*ptr)) {
+            ptr++;
+        }
+
+        // Next argument?
+        if (*ptr != ',') {
+            break;
+        }
+
+        // Eat ','
+        ptr++;
+    }
+
+    // Eat whitespaces
+    while (std::iswhitespace(*ptr)) {
+        ptr++;
+    }
+
+    // Must be '('
+    if (*(ptr++) != ')') {
+        return;
+    }
+
+    // Attribute object
+    nlohmann::json attributes;
+    attributes[type] = args;
+
+    // Assign to field
+    field["attributes"] = attributes;
+}
+
 /// Specification generator
 bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templateEngine) {
     std::vector<const char *> args;
 
     // Create index
-    CXIndex index = clang_createIndex(false, false);
+    CXIndex index = clang_createIndex(false, true);
     if (!index) {
         return false;
     }
@@ -107,6 +264,13 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
         return false;
     }
 
+    // Display diagnostics
+    for (uint32_t i = 0; i < clang_getNumDiagnostics(unit); i++) {
+        std::cerr << clang_getCString(clang_formatDiagnostic(clang_getDiagnostic(unit, i), CXDiagnostic_DisplaySourceLocation)) << "\n";
+    }
+
+    SpecificationState state;
+
     // Buckets
     nlohmann::json structs;
     nlohmann::json interfaces;
@@ -125,10 +289,15 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
         bool relevant = false;
 
         // Ignore all files not form sources
-        for (auto&& specFile : info.hooks["files"]) {
+        for (auto &&specFile: info.hooks["files"]) {
             if (specFile.get<std::string>() == filename.filename()) {
                 relevant = true;
             }
+        }
+
+        // Not relevant?
+        if (!relevant) {
+            return CXChildVisit_Continue;
         }
 
         // Handle cursor
@@ -170,6 +339,7 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
                             CXType type = clang_getCursorType(declChild);
                             std::string fieldName = clang_getCString(clang_getCursorDisplayName(declChild));
 
+                            // Special virtual table case
                             if (fieldName == "lpVtbl") {
                                 CXCursor declaration = clang_getTypeDeclaration(clang_getPointeeType(type));
                                 decl["vtable"] = clang_getCString(clang_getCursorSpelling(declaration));
@@ -177,6 +347,11 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
                                 nlohmann::json field;
                                 field["name"] = fieldName;
                                 field["type"] = TranslateType(type);
+
+                                // Check attributes
+                                TryParseAttributes(unit, declChild, field);
+
+                                // Emplace
                                 fields.emplace_back(field);
                             }
                             break;

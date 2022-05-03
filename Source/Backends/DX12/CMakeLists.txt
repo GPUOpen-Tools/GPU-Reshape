@@ -14,6 +14,8 @@ add_executable(
     Generator/Source/WrappersImpl.cpp
     Generator/Source/VTable.cpp
     Generator/Source/Table.cpp
+    Generator/Source/DeepCopy.cpp
+    Generator/Source/DeepCopyImpl.cpp
 )
 
 # IDE source discovery
@@ -21,6 +23,12 @@ SetSourceDiscovery(Backends.DX12.Generator Generator)
 
 # Local links
 target_link_libraries(Backends.DX12.Generator PUBLIC Libraries.Common)
+
+# Private includes
+target_include_directories(
+    Backends.DX12.Generator PRIVATE
+    Generator/Include
+)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
@@ -41,11 +49,14 @@ set(SpecificationTemplate              ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(DetourTemplate                     ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Detour.ht)
 set(WrappersTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Wrappers.ht)
 set(WrappersImplTemplate               ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Wrappers.cppt)
+set(DeepCopyTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DeepCopy.ht)
+set(DeepCopyImplTemplate               ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DeepCopy.cppt)
 set(TableTemplate                      ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Table.ht)
 set(VTableTemplate                     ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/VTable.cppt)
 
 # Resource Paths
 set(HooksSpec ${CMAKE_CURRENT_SOURCE_DIR}/Layer/Resources/Hooks.json)
+set(DeepCopySpec ${CMAKE_CURRENT_SOURCE_DIR}/Layer/Resources/DeepCopy.json)
 
 # Generate the specification
 add_custom_command(
@@ -76,6 +87,40 @@ add_custom_command(
         -hooksjson ${HooksSpec}
         -gentype detour
         -o Layer/Include/Backends/DX12/Detour.Gen.h
+)
+
+# Generate the deep copy header
+add_custom_command(
+    OUTPUT
+        Layer/Include/Backends/DX12/DeepCopy.Gen.h
+    DEPENDS Backends.DX12.Generator
+    DEPENDS
+        ${DeepCopyTemplate}
+        ${Specification}
+        ${DeepCopySpec}
+    COMMAND Backends.DX12.Generator
+        -template ${DeepCopyTemplate}
+        -specjson ${Specification}
+        -deepcopyjson ${DeepCopySpec}
+        -gentype deepcopy
+        -o Layer/Include/Backends/DX12/DeepCopy.Gen.h
+)
+
+# Generate the deep copy source
+add_custom_command(
+    OUTPUT
+        Layer/Source/DeepCopy.Gen.cpp
+    DEPENDS Backends.DX12.Generator
+    DEPENDS
+        ${DeepCopyImplTemplate}
+        ${Specification}
+        ${DeepCopySpec}
+    COMMAND Backends.DX12.Generator
+        -template ${DeepCopyImplTemplate}
+        -specjson ${Specification}
+        -deepcopyjson ${DeepCopySpec}
+        -gentype deepcopyimpl
+        -o Layer/Source/DeepCopy.Gen.cpp
 )
 
 # Handle table type
@@ -167,11 +212,13 @@ add_library(
     Layer/Source/DLL.cpp
 
     # Generated source dependencies
+    Layer/Source/DeepCopy.Gen.cpp
     ${GeneratedSources}
 
     # Generated header dependencies
     Layer/Include/Backends/DX12/Detour.Gen.h
     Layer/Include/Backends/DX12/Table.Gen.h
+    Layer/Include/Backends/DX12/DeepCopy.Gen.h
 )
 
 # IDE source discovery

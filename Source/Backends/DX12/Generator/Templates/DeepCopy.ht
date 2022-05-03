@@ -1,0 +1,17 @@
+#pragma once
+
+/**
+ * Deep copy generation template
+ */
+
+// Layer
+#include <Backends/DX12/DX12.h>
+
+// Common
+#include <Common/Assert.h>
+#include <Common/Allocators.h>
+
+// Std
+#include <cstdint>
+
+$OBJECTS

@@ -3,14 +3,6 @@
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/DeviceState.h>
 
-static ID3D12PipelineState* CreatePipelineState(const DeviceTable& table, ID3D12PipelineState* pipeline) {
-    auto* state = new PipelineState();
-    state->parent = table.state;
-
-    // Create detours
-    return CreateDetour(Allocators{}, pipeline, state);
-}
-
 HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_PIPELINE_STATE_STREAM_DESC * desc, const IID *const riid, void ** pPipeline) {
     auto table = GetTable(device);
 
@@ -24,7 +16,11 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
     }
 
     // Create state
-    pipeline = CreatePipelineState(table, pipeline);
+    auto* state = new PipelineState();
+    state->parent = table.state;
+
+    // Create detours
+    pipeline = CreateDetour(Allocators{}, pipeline, state);
 
     // Query to external object if requested
     if (pPipeline) {
@@ -54,7 +50,15 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     }
 
     // Create state
-    pipeline = CreatePipelineState(table, pipeline);
+    auto* state = new GraphicsPipelineState();
+    state->parent = table.state;
+    state->type = PipelineType::Graphics;
+
+    // Perform deep copy
+    state->deepCopy.DeepCopy(Allocators{}, *desc);
+
+    // Create detours
+    pipeline = CreateDetour(Allocators{}, pipeline, state);
 
     // Query to external object if requested
     if (pPipeline) {
@@ -84,7 +88,15 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     }
 
     // Create state
-    pipeline = CreatePipelineState(table, pipeline);
+    auto* state = new ComputePipelineState();
+    state->parent = table.state;
+    state->type = PipelineType::Compute;
+
+    // Perform deep copy
+    state->deepCopy.DeepCopy(Allocators{}, *desc);
+
+    // Create detours
+    pipeline = CreateDetour(Allocators{}, pipeline, state);
 
     // Query to external object if requested
     if (pPipeline) {
