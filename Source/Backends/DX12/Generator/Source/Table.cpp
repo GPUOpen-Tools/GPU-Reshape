@@ -25,7 +25,6 @@ static bool WrapClass(const GeneratorInfo &info, TableState &state, const std::s
 
     // Get vtable
     auto &&objInterface = interfaces[outerRevision];
-    auto &&objVtbl      = interfaces[std::string(objInterface["vtable"])];
 
     // Object common
     auto objName = obj["name"].get<std::string>();
@@ -41,11 +40,14 @@ static bool WrapClass(const GeneratorInfo &info, TableState &state, const std::s
     state.tables << "\t" << outerRevision << "* next;\n";
     state.tables << "};\n\n";
 
+    // Requested key may differ
+    std::string consumerKey = obj.contains("type") ? obj["type"].get<std::string>() : key;
+
     // Getter prototype
-    state.getters << objName << "Table GetTable(" << key << "* object);\n";
+    state.getters << objName << "Table GetTable(" << consumerKey << "* object);\n";
 
     // Detour prototype
-    state.detours << key << "* CreateDetour(const Allocators& allocators, " << key << "* object, " << obj["state"].get<std::string>() << "* state);\n";
+    state.detours << consumerKey << "* CreateDetour(const Allocators& allocators, " << consumerKey << "* object, " << obj["state"].get<std::string>() << "* state);\n";
 
     // OK
     return true;

@@ -10,13 +10,3 @@ struct CommandListState {
     /// Parent state
     DeviceState* parent{};
 };
-
-struct GraphicsCommandListState : public CommandListState {
-    /// Parent state
-    DeviceState* parent{};
-};
-
-struct ComputeCommandListState : public CommandListState {
-    /// Parent state
-    DeviceState* parent{};
-};

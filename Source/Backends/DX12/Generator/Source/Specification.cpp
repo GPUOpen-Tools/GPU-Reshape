@@ -13,7 +13,9 @@
 
 /// Specification state
 struct SpecificationState {
-    std::map<std::string, std::string> cachedContents;
+    // Buckets
+    nlohmann::json structs;
+    nlohmann::json interfaces;
 };
 
 /// Visitation helper
@@ -234,9 +236,135 @@ void TryParseAttributes(CXTranslationUnit unit, CXCursor cursor, nlohmann::json 
     field["attributes"] = attributes;
 }
 
+/// Reflect a given class cursor
+static bool ReflectClass(SpecificationState& state, CXTranslationUnit unit, CXCursor child) {
+    // Ignore forward declarations
+    //   Check invalid definitions and out-of-place definitions
+    CXCursor definition = clang_getCursorDefinition(child);
+    if (clang_equalCursors(definition, clang_getNullCursor()) || !clang_equalCursors(child, definition)) {
+        return CXChildVisit_Continue;
+    }
+
+    // Get name
+    std::string name = clang_getCString(clang_getCursorDisplayName(child));
+    if (name.empty()) {
+        return CXChildVisit_Continue;
+    }
+
+    nlohmann::json decl;
+
+    // Buckets
+    nlohmann::json fields;
+    nlohmann::json bases;
+    nlohmann::json vtable;
+    nlohmann::json methods;
+
+    // Visit all declaration cursors
+    VisitCursor(child, [&](CXCursor declChild) {
+        switch (clang_getCursorKind(declChild)) {
+            default: {
+                break;
+            }
+            case CXCursor_CXXBaseSpecifier: {
+                std::string baseName = clang_getCString(clang_getCursorDisplayName(declChild));
+
+                // Reflect the base classes even if originating outside the file whitelist
+                if (!state.interfaces.contains(baseName)) {
+                    // Get the resulting base class type, transform to the canonical cursor
+                    CXCursor canonCursor = clang_getTypeDeclaration(clang_getCanonicalType(clang_getCursorType(declChild)));
+
+                    // Reflect base class
+                    ReflectClass(state, unit, canonCursor);
+                }
+
+                bases.emplace_back(baseName);
+                break;
+            }
+            case CXCursor_FieldDecl: {
+                CXType type = clang_getCursorType(declChild);
+                std::string fieldName = clang_getCString(clang_getCursorDisplayName(declChild));
+
+                nlohmann::json field;
+                field["name"] = fieldName;
+                field["type"] = TranslateType(type);
+
+                // Check attributes
+                TryParseAttributes(unit, declChild, field);
+
+                // Emplace
+                fields.emplace_back(field);
+                break;
+            }
+            case CXCursor_CXXMethod: {
+                std::string name = clang_getCString(clang_getCursorDisplayName(declChild));
+
+                // Clean up name
+                if (size_t end = name.find('('); end != std::string::npos) {
+                    name = name.substr(0, end);
+                }
+
+                nlohmann::json method;
+                method["name"] = name;
+                method["returnType"] = TranslateType(clang_getCursorResultType(declChild));
+
+                // Buckets
+                nlohmann::json params;
+
+                // Translate parameters
+                VisitCursor(declChild, [&](CXCursor paramCursor) {
+                    switch (paramCursor.kind) {
+                        default: {
+                            break;
+                        }
+                        case CXCursor_ParmDecl: {
+                            nlohmann::json param;
+                            param["name"] = std::string(clang_getCString(clang_getCursorDisplayName(paramCursor)));
+                            param["type"] = TranslateType(clang_getCursorType(paramCursor));
+                            params.push_back(param);
+                            break;
+                        }
+                    }
+                    return CXChildVisit_Continue;
+                });
+
+                // Append buckets
+                method["params"] = params;
+
+                // Emplace to virtual table if need be
+                if (clang_CXXMethod_isVirtual(declChild) || clang_CXXMethod_isPureVirtual(declChild)) {
+                    vtable.emplace_back(method);
+                } else {
+                    methods.emplace_back(method);
+                }
+                break;
+            }
+        }
+        return CXChildVisit_Continue;
+    });
+
+    // Create object
+    decl["fields"] = fields;
+    decl["methods"] = methods;
+    decl["bases"] = bases;
+    decl["vtable"] = vtable;
+
+    // Append to appropriate bucket
+    if (name[0] == 'I') {
+        state.interfaces[name] = decl;
+    } else {
+        state.structs[name] = decl;
+    }
+
+    // OK
+    return true;
+}
+
 /// Specification generator
 bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templateEngine) {
-    std::vector<const char *> args;
+    std::vector<const char *> args {
+        // C++ language specifier
+        "-x", "c++",
+    };
 
     // Create index
     CXIndex index = clang_createIndex(false, true);
@@ -271,10 +399,6 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
 
     SpecificationState state;
 
-    // Buckets
-    nlohmann::json structs;
-    nlohmann::json interfaces;
-    nlohmann::json vtables;
 
     // Visit all top cursors
     VisitCursor(clang_getTranslationUnitCursor(unit), [&](CXCursor child) {
@@ -303,73 +427,12 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
         // Handle cursor
         switch (clang_getCursorKind(child)) {
             default: {
-                break;
+                // Recurse nested types
+                return CXChildVisit_Recurse;
             }
-            case CXCursor_StructDecl: {
-                // Ignore forward declarations
-                CXCursor definition = clang_getCursorDefinition(child);
-                if (clang_equalCursors(definition, clang_getNullCursor()) || !clang_equalCursors(child, definition)) {
-                    return CXChildVisit_Continue;
-                }
-
-                // Get name
-                std::string name = clang_getCString(clang_getCursorDisplayName(child));
-                if (name.empty()) {
-                    return CXChildVisit_Continue;
-                }
-
-                nlohmann::json decl;
-
-                // Buckets
-                nlohmann::json fields;
-                nlohmann::json bases;
-
-                // Visit all declaration cursors
-                VisitCursor(child, [&](CXCursor declChild) {
-                    switch (clang_getCursorKind(declChild)) {
-                        default: {
-                            break;
-                        }
-                        case CXCursor_CXXBaseSpecifier: {
-                            std::string baseName = clang_getCString(clang_getCursorDisplayName(declChild));
-                            bases.emplace_back(baseName);
-                            break;
-                        }
-                        case CXCursor_FieldDecl: {
-                            CXType type = clang_getCursorType(declChild);
-                            std::string fieldName = clang_getCString(clang_getCursorDisplayName(declChild));
-
-                            // Special virtual table case
-                            if (fieldName == "lpVtbl") {
-                                CXCursor declaration = clang_getTypeDeclaration(clang_getPointeeType(type));
-                                decl["vtable"] = clang_getCString(clang_getCursorSpelling(declaration));
-                            } else {
-                                nlohmann::json field;
-                                field["name"] = fieldName;
-                                field["type"] = TranslateType(type);
-
-                                // Check attributes
-                                TryParseAttributes(unit, declChild, field);
-
-                                // Emplace
-                                fields.emplace_back(field);
-                            }
-                            break;
-                        }
-                    }
-                    return CXChildVisit_Continue;
-                });
-
-                // Create object
-                decl["fields"] = fields;
-                decl["bases"] = bases;
-
-                // Append to appropriate bucket
-                if (name[0] == 'I') {
-                    interfaces[name] = decl;
-                } else {
-                    structs[name] = decl;
-                }
+            case CXCursor_StructDecl:
+            case CXCursor_ClassDecl: {
+                ReflectClass(state, unit, child);
                 break;
             }
         }
@@ -378,8 +441,8 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
 
     // Create root json
     nlohmann::json json;
-    json["structs"] = structs;
-    json["interfaces"] = interfaces;
+    json["structs"] = state.structs;
+    json["interfaces"] = state.interfaces;
 
     // Replace keys
     templateEngine.Substitute("$JSON", json.dump(2).c_str());

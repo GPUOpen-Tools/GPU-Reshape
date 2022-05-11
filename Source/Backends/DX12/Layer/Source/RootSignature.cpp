@@ -3,14 +3,14 @@
 #include <Backends/DX12/States/RootSignature.h>
 #include <Backends/DX12/States/DeviceState.h>
 
-HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask, const void *blob, SIZE_T length, const IID *const riid, void ** pRootSignature) {
+HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask, const void *blob, SIZE_T length, const IID& riid, void ** pRootSignature) {
     auto table = GetTable(device);
 
     // Object
     ID3D12RootSignature* rootSignature{nullptr};
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateRootSignature(table.next, nodeMask, blob, length, &__uuidof(ID3D12RootSignature), reinterpret_cast<void**>(&rootSignature));
+    HRESULT hr = table.bottom->next_CreateRootSignature(table.next, nodeMask, blob, length, __uuidof(ID3D12RootSignature), reinterpret_cast<void**>(&rootSignature));
     if (FAILED(hr)) {
         return hr;
     }
@@ -24,7 +24,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
 
     // Query to external object if requested
     if (pRootSignature) {
-        hr = rootSignature->QueryInterface(*riid, pRootSignature);
+        hr = rootSignature->QueryInterface(riid, pRootSignature);
         if (FAILED(hr)) {
             return hr;
         }

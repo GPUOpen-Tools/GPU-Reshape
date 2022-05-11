@@ -58,18 +58,15 @@
         "Release"
       ]
     },
-    "ID3D12CommandList": {
-      "name": "ComputeCommandList",
-      "state": "ComputeCommandListState",
-      "hooks": [
-        "Release"
-      ]
-    },
     "ID3D12GraphicsCommandList": {
-      "name": "GraphicsCommandList",
-      "state": "GraphicsCommandListState",
+      "name": "CommandList",
+      "state": "CommandListState",
+      "type": "ID3D12CommandList",
       "hooks": [
-        "Release"
+        "Release",
+        "Reset",
+        "Close",
+        "SetPipelineState"
       ]
     },
     "ID3D12Fence": {

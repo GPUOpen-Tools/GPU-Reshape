@@ -11,8 +11,8 @@ struct DetourState {
     /// Current set of mapped functions
     std::set<std::string> functions;
 
-    /// Basename to interface revisions
-    std::map<std::string, uint32_t> interfaceRevisions;
+    /// Current set of mapped interfaces
+    std::set<std::string> interfaces;
 
     /// All streams
     std::stringstream includes;
@@ -24,35 +24,48 @@ struct DetourState {
 };
 
 /// Detour a given interface
-static bool DetourInterface(const GeneratorInfo &info, DetourState& state, const std::string& key, const std::string& name) {
-    auto&& vtable = info.specification["interfaces"][name];
+static bool DetourInterface(const GeneratorInfo &info, DetourState& state, const std::string& key, const nlohmann::json& interface) {
+    // For all bases
+    for (auto&& base : interface["bases"]) {
+        auto baseKey = base.get<std::string>();
+
+        auto&& baseInterface = info.specification["interfaces"][baseKey];
+
+        // Detour base
+        if (!DetourInterface(info, state, baseKey, baseInterface)) {
+            return false;
+        }
+    }
 
     // For all vtable fields
-    for (auto&& field : vtable["fields"]) {
-        auto&& type = field["type"];
-
-        // Skip non function pointers
-        if (type["type"] != "pointer" && type["contained"]["type"] != "function") {
-            continue;
-        }
-
+    for (auto&& method : interface["vtable"]) {
         // Get name of function
-        auto fieldName = field["name"].get<std::string>();
+        auto fieldName = method["name"].get<std::string>();
 
         // To function type
-        std::string pfnName = "PFN_" + GetInterfaceBaseName(key) + fieldName;
+        std::string pfnName = "PFN_" + key + fieldName;
 
-        // Skip generation of PFN if basename is already present
+        // Emit PFN once
         if (!state.functions.contains(pfnName)) {
-            auto&& function = type["contained"];
             state.pfn << "using " << pfnName << " = ";
 
-            // Print fptr type
-            if (!PrettyPrintType(state.pfn, type)) {
+            // Print return
+            if (!PrettyPrintType(state.pfn, method["returnType"])) {
                 return false;
             }
 
-            state.pfn << ";\n";
+            state.pfn << "(*)(";
+            state.pfn << key << "* _this";
+
+            for (auto&& param : method["params"]) {
+                state.pfn << ", ";
+
+                if (!PrettyPrintParameter(state.pfn, param["type"], param["name"].get<std::string>())) {
+                    return false;
+                }
+            }
+
+            state.pfn << ");\n";
             state.functions.insert(pfnName);
         }
 
@@ -63,6 +76,61 @@ static bool DetourInterface(const GeneratorInfo &info, DetourState& state, const
 
     // OK
     return true;
+}
+
+/// Detour a given interface
+static bool DetourObject(const GeneratorInfo &info, DetourState& state, const std::string& key) {
+    // Already detoured?
+    if (state.interfaces.contains(key)) {
+        return true;
+    }
+
+    // Append
+    state.interfaces.insert(key);
+
+    // Get interface
+    auto&& interface = info.specification["interfaces"][key];
+
+    // Detour all bases
+    for (auto&& base : interface["bases"]) {
+        DetourObject(info, state, base.get<std::string>());
+    }
+
+    // Emit types
+    state.tables << "struct " << key << "DetourVTable {\n";
+    state.offsets << "enum class " << key << "DetourOffsets : uint32_t {\n";
+
+    // Generate contents
+    if (!DetourInterface(info, state, key, interface)) {
+        return false;
+    }
+
+    state.tables << "};\n\n";
+    state.offsets << "};\n\n";
+
+    return true;
+}
+
+static void DetourBaseQuery(const GeneratorInfo &info, DetourState& state, const std::string& key, bool top = true) {
+    auto&& obj = info.specification["interfaces"][key];
+
+    // Revision table name
+    std::string vtblName = key + "DetourVTable";
+
+    // Keep it clean
+    if (!top) {
+        state.populators << " else ";
+    }
+    // Copy vtable contents
+    state.populators << "if (SUCCEEDED(object->QueryInterface(__uuidof(" << key << "), &_interface))) {\n";
+    state.populators << "\t\tstd::memcpy(&out, *(" << vtblName << "**)_interface, sizeof(" << vtblName << "));\n";
+    state.populators << "\t\tobject->Release();\n";
+    state.populators << "\t}";
+
+    // Detour all bases
+    for (auto&& base : obj["bases"]) {
+        DetourBaseQuery(info, state, base.get<std::string>(), false);
+    }
 }
 
 bool Generators::Detour(const GeneratorInfo &info, TemplateEngine &templateEngine) {
@@ -79,86 +147,28 @@ bool Generators::Detour(const GeneratorInfo &info, TemplateEngine &templateEngin
 
     // Generate detours for all hooked objects
     for (auto it = objects.begin(); it != objects.end(); ++it) {
-        // Keep going while there's another interface
-        for (uint32_t revision = 0; interfaces.contains(GetInterfaceRevision(it.key(), revision)); revision++) {
-            // Get revision name
-            std::string key = GetInterfaceRevision(it.key(), revision);
+        std::string key = it.key();
 
-            // Get interface
-            auto interface = interfaces[key];
-            if (!interface.contains("vtable")) {
-                std::cerr << "Interface " << key << " has no virtual table\n";
-                continue;
-            }
+        // Get outer revision
+        std::string outerRevision = GetOuterRevision(info, key);
 
-            // Emit types
-            state.tables << "struct " << key << "DetourVTable {\n";
-            state.offsets << "enum class " << key << "DetourOffsets : uint32_t {\n";
-
-            // Increment interface version
-            state.interfaceRevisions[it.key()]++;
-
-            // Generate contents
-            if (!DetourInterface(info, state, key, std::string(interface["vtable"]))) {
-                return false;
-            }
-
-            state.tables << "};\n\n";
-            state.offsets << "};\n\n";
+        // Detour outer
+        if (!DetourObject(info, state, outerRevision)) {
+            return false;
         }
-    }
 
-    // Typedefs
-    for (auto&& kv : state.interfaceRevisions) {
-        if (kv.second > 1) {
-            state.typedefs << "using " << kv.first << "TopDetourVTable = " << kv.first << (kv.second - 1) << "DetourVTable;\n";
-        } else {
-            state.typedefs << "using " << kv.first << "TopDetourVTable = " << kv.first << "DetourVTable;\n";
-        }
-    }
+        // Typedef
+        state.typedefs << "using " << key << "TopDetourVTable = " << outerRevision << "DetourVTable;\n";
 
-    // Populators
-    for (auto&& kv : state.interfaceRevisions) {
-        state.populators << "static " << kv.first << "TopDetourVTable PopulateTopDetourVTable(" << kv.first << "* object) {\n";
-        state.populators << "\t" << kv.first << "TopDetourVTable out{};\n";
+        // Populators
+        state.populators << "static " << key << "TopDetourVTable PopulateTopDetourVTable(" << key << "* object) {\n";
+        state.populators << "\t" << key << "TopDetourVTable out{};\n";
+        state.populators << "\n";
+        state.populators << "\tvoid* _interface;\n";
 
-        // Any revisions at all?
-        if (kv.second > 1) {
-            state.populators << "\n";
-            state.populators << "\tvoid* _interface;\n";
-
-            // Generate fetchers
-            state.populators << "\t";
-            for (int32_t i = static_cast<int32_t>(kv.second) - 1; i >= 1; i--) {
-                std::string objName;
-                if (i > 0) {
-                    objName = kv.first + std::to_string(i);
-                } else {
-                    objName = kv.first;
-                }
-
-                // Revision table name
-                std::string vtblName = objName + "DetourVTable";
-
-                if (i != kv.second - 1) {
-                    state.populators << "else ";
-                }
-
-                // Copy vtable contents
-                state.populators << "if (SUCCEEDED(object->QueryInterface(__uuidof(" << objName << "), &_interface))) {\n";
-                state.populators << "\t\tstd::memcpy(&out, *(" << vtblName << "**)_interface, sizeof(" << vtblName << "));\n";
-                state.populators << "\t\tobject->Release();\n";
-                state.populators << "\t} ";
-            }
-
-            // Base revision
-            state.populators << "else {\n";
-            state.populators << "\t\tstd::memcpy(&out, *(" << kv.first << "DetourVTable**)object, sizeof(" << kv.first << "DetourVTable));\n";
-            state.populators << "\t}\n";
-        } else {
-            // Just copy the base revision
-            state.populators << "\tstd::memcpy(&out, *(" << kv.first << "DetourVTable**)object, sizeof(" << kv.first << "DetourVTable));\n";
-        }
+        // Detour all bases
+        state.populators << "\t";
+        DetourBaseQuery(info, state, outerRevision);
 
         // DOne
         state.populators << "\n";

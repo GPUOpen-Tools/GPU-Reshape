@@ -25,14 +25,14 @@ static ID3D12Resource* CreateResourceState(const DeviceTable& table, ID3D12Resou
     return CreateDetour(Allocators{}, resource, state);
 }
 
-HRESULT HookID3D12DeviceCreateCommittedResource(ID3D12Device* device, const D3D12_HEAP_PROPERTIES* heap, D3D12_HEAP_FLAGS heapFlags, const D3D12_RESOURCE_DESC* desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE* clearValue, const IID* const riid, void** pResource) {
+HRESULT HookID3D12DeviceCreateCommittedResource(ID3D12Device* device, const D3D12_HEAP_PROPERTIES* heap, D3D12_HEAP_FLAGS heapFlags, const D3D12_RESOURCE_DESC* desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE* clearValue, const IID& riid, void** pResource) {
     auto table = GetTable(device);
 
     // Object
     ID3D12Resource* resource{nullptr};
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateCommittedResource(table.next, heap, heapFlags, desc, resourceState, clearValue, &__uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+    HRESULT hr = table.bottom->next_CreateCommittedResource(table.next, heap, heapFlags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
     if (FAILED(hr)) {
         return hr;
     }
@@ -42,7 +42,7 @@ HRESULT HookID3D12DeviceCreateCommittedResource(ID3D12Device* device, const D3D1
 
     // Query to external object if requested
     if (pResource) {
-        hr = resource->QueryInterface(*riid, pResource);
+        hr = resource->QueryInterface(riid, pResource);
         if (FAILED(hr)) {
             return hr;
         }
@@ -55,14 +55,14 @@ HRESULT HookID3D12DeviceCreateCommittedResource(ID3D12Device* device, const D3D1
     return S_OK;
 }
 
-HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * heap, UINT64 heapFlags, const D3D12_RESOURCE_DESC *desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE * clearValue, const IID *const riid, void ** pResource) {
+HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * heap, UINT64 heapFlags, const D3D12_RESOURCE_DESC *desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE * clearValue, const IID& riid, void ** pResource) {
     auto table = GetTable(device);
 
     // Object
     ID3D12Resource* resource{nullptr};
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePlacedResource(table.next, heap, heapFlags, desc, resourceState, clearValue, &__uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+    HRESULT hr = table.bottom->next_CreatePlacedResource(table.next, heap, heapFlags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
     if (FAILED(hr)) {
         return hr;
     }
@@ -72,7 +72,7 @@ HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * 
 
     // Query to external object if requested
     if (pResource) {
-        hr = resource->QueryInterface(*riid, pResource);
+        hr = resource->QueryInterface(riid, pResource);
         if (FAILED(hr)) {
             return hr;
         }
@@ -85,14 +85,14 @@ HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * 
     return S_OK;
 }
 
-HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12_RESOURCE_DESC *desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE *clearValue, const IID *const riid, void **pResource) {
+HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12_RESOURCE_DESC *desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE *clearValue, const IID& riid, void **pResource) {
     auto table = GetTable(device);
 
     // Object
     ID3D12Resource* resource{nullptr};
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateReservedResource(table.next, desc, resourceState, clearValue, &__uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+    HRESULT hr = table.bottom->next_CreateReservedResource(table.next, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
     if (FAILED(hr)) {
         return hr;
     }
@@ -102,7 +102,7 @@ HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12
 
     // Query to external object if requested
     if (pResource) {
-        hr = resource->QueryInterface(*riid, pResource);
+        hr = resource->QueryInterface(riid, pResource);
         if (FAILED(hr)) {
             return hr;
         }

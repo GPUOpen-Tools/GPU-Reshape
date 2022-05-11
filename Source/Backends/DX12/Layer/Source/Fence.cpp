@@ -3,14 +3,14 @@
 #include <Backends/DX12/States/FenceState.h>
 #include <Backends/DX12/States/DeviceState.h>
 
-HRESULT HookID3D12DeviceCreateFence(ID3D12Device* device, UINT64 nodeMask, D3D12_FENCE_FLAGS flags, const IID* const riid, void** pFence) {
+HRESULT HookID3D12DeviceCreateFence(ID3D12Device* device, UINT64 nodeMask, D3D12_FENCE_FLAGS flags, const IID& riid, void** pFence) {
     auto table = GetTable(device);
 
     // Object
     ID3D12Fence* fence{nullptr};
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateFence(table.next, nodeMask, flags, &__uuidof(ID3D12Fence), reinterpret_cast<void**>(&fence));
+    HRESULT hr = table.bottom->next_CreateFence(table.next, nodeMask, flags, __uuidof(ID3D12Fence), reinterpret_cast<void**>(&fence));
     if (FAILED(hr)) {
         return hr;
     }
@@ -24,7 +24,7 @@ HRESULT HookID3D12DeviceCreateFence(ID3D12Device* device, UINT64 nodeMask, D3D12
 
     // Query to external object if requested
     if (pFence) {
-        hr = fence->QueryInterface(*riid, pFence);
+        hr = fence->QueryInterface(riid, pFence);
         if (FAILED(hr)) {
             return hr;
         }

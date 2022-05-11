@@ -13,6 +13,57 @@ struct WrapperState {
     std::stringstream fwd;
 };
 
+/// Wrap a given class interface
+static bool WrapClassInterface(const GeneratorInfo &info, WrapperState& state, const std::string& key, const std::string& consumerKey, const nlohmann::json& obj) {
+    // For all bases
+    for (auto&& base : obj["bases"]) {
+        auto&& baseInterface = info.specification["interfaces"][base.get<std::string>()];
+
+        // Detour base
+        if (!WrapClassInterface(info, state, key, consumerKey, baseInterface)) {
+            return false;
+        }
+    }
+
+    // Generate hooks prototypes
+    for (auto&& method : obj["vtable"]) {
+        // Common
+        auto methodName = method["name"].get<std::string>();
+
+        // Get contained (fptr) type
+        auto &&parameters = method["params"];
+
+        // Print return type
+        if (!PrettyPrintType(state.hooks, method["returnType"])) {
+            return false;
+        }
+
+        // Print name of wrapper
+        state.hooks << " Wrapper_Hook" << consumerKey << methodName << "(";
+
+        // Detour initial argument to wrapper
+        state.hooks << key << "Wrapper* _this";
+
+        // Print standard arguments
+        for (size_t i = 0; i < parameters.size(); i++) {
+            auto&& param = parameters[i];
+
+            state.hooks << ", ";
+
+            // Dedicated printer
+            if (!PrettyPrintParameter(state.hooks, param["type"], param["name"].get<std::string>())) {
+                return false;
+            }
+        }
+
+        // End wrapper
+        state.hooks << ");\n";
+    }
+
+    // OK
+    return true;
+}
+
 /// Wrap a hooked object
 static bool WrapClass(const GeneratorInfo &info, WrapperState& state, const std::string& key, const nlohmann::json& obj) {
     // Get the outer revision
@@ -23,7 +74,6 @@ static bool WrapClass(const GeneratorInfo &info, WrapperState& state, const std:
 
     // Get the vtable
     auto&& objInterface = interfaces[outerRevision];
-    auto&& objVtbl = interfaces[std::string(objInterface["vtable"])];
 
     // Forward declarations
     state.fwd << "struct " << obj["state"].get<std::string>() << ";\n";
@@ -37,49 +87,11 @@ static bool WrapClass(const GeneratorInfo &info, WrapperState& state, const std:
     state.wrap << "\t" << obj["state"].get<std::string>() << "* state;\n";
     state.wrap << "};\n\n";
 
-    // Generate hooks prototypes
-    for (auto&& field : objVtbl["fields"]) {
-        auto &&type = field["type"];
+    // Requested key may differ
+    std::string consumerKey = obj.contains("type") ? obj["type"].get<std::string>() : key;
 
-        // Common
-        auto fieldName = field["name"].get<std::string>();
-
-        // Skip non function pointers
-        if (type["type"] != "pointer" && type["contained"]["type"] != "function") {
-            continue;
-        }
-
-        // Get contained (fptr) type
-        auto &&funcType   = type["contained"];
-        auto &&parameters = funcType["parameters"];
-
-        // Print return type
-        if (!PrettyPrintType(state.hooks, funcType["returnType"])) {
-            return false;
-        }
-
-        // Print name of wrapper
-        state.hooks << " Wrapper_Hook" << key << fieldName << "(";
-
-        // Detour initial argument to wrapper
-        state.hooks << key << "Wrapper* _this";
-
-        // Print standard arguments
-        for (size_t i = 1; i < parameters.size(); i++) {
-            state.hooks << ", ";
-
-            // Dedicated printer
-            if (!PrettyPrintParameter(state.hooks, parameters[i], "_" + std::to_string(i))) {
-                return false;
-            }
-        }
-
-        // End wrapper
-        state.hooks << ");\n";
-    }
-
-    // OK
-    return true;
+    // Wrap interface
+    return WrapClassInterface(info, state, key, consumerKey, objInterface);
 }
 
 bool Generators::Wrappers(const GeneratorInfo &info, TemplateEngine &templateEngine) {

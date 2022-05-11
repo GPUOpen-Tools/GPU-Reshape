@@ -29,3 +29,8 @@ template<typename T>
 static T* Next(T* object) {
     return object ? GetTable(object).next : nullptr;
 }
+
+template<typename T>
+static auto GetState(T* object) -> decltype(GetTable(object).state) {
+    return object ? GetTable(object).state : nullptr;
+}

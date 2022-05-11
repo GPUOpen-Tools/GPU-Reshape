@@ -1,5 +1,3 @@
-#pragma once
-
 // System wise include
 #include <d3d12.h>
 #include <dxgi.h>

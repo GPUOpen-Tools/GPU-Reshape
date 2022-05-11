@@ -61,7 +61,7 @@ struct PipelineState : public ReferenceObject {
     std::atomic<VkPipeline> hotSwapObject{VK_NULL_HANDLE};
 
     /// Layout for this pipeline
-    PipelineLayoutState* layout;
+    PipelineLayoutState* layout{nullptr};
 
     ///Referenced shader modules
     std::vector<ShaderModuleState*> shaderModules;
