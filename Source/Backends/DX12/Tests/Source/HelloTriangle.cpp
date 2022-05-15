@@ -54,18 +54,44 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-void OnMessage(
-    D3D12_MESSAGE_CATEGORY Category,
-    D3D12_MESSAGE_SEVERITY Severity,
-    D3D12_MESSAGE_ID ID,
-    LPCSTR pDescription,
-    void *pContext) {
-    std::cout << pDescription << std::endl;
-}
-
 struct Vertex {
     float p[3];
     float c[4];
+};
+
+struct AccumulatedValue {
+    AccumulatedValue(float weight) : weight(weight) {
+
+    }
+
+    /// Append value
+    void Add(float append) {
+        float w = weight + max(0.0f, 1.0f - accumulatedWeight);
+        value = value * (1.0f - w) + append * w;
+        accumulated += append;
+        count++;
+        accumulatedWeight += weight;
+    }
+
+    /// Get total value
+    float Total() const {
+        return accumulated / count;
+    }
+
+    /// Total accumulated weight
+    float accumulatedWeight = 0.0f;
+
+    /// Local weight
+    float weight;
+
+    /// Weighted value
+    float value = 0.0f;
+
+    /// Accumulated value
+    float accumulated = 0.0f;
+
+    /// Number of accumulated values
+    uint32_t count = 0;
 };
 
 TEST_CASE("HelloTriangle") {
@@ -83,7 +109,9 @@ TEST_CASE("HelloTriangle") {
     windowClass.lpszClassName = "HelloTriangle";
     RegisterClassEx(&windowClass);
 
-    RECT windowRect = {0, 0, 512, 512};
+    constexpr uint32_t windowWidth = 1024;
+
+    RECT windowRect = {0, 0, windowWidth, windowWidth};
     AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
     // Create the window and store a handle to it.
@@ -102,15 +130,13 @@ TEST_CASE("HelloTriangle") {
     );
 
     // Viewport dimensions.
-    UINT m_width = 512;
-    UINT m_height = 512;
     float m_aspectRatio = 1;
 
     constexpr uint32_t FrameCount = 3;
 
     // Pipeline objects.
-    D3D12_VIEWPORT m_viewport{0, 0, (FLOAT)m_width, (FLOAT)m_height, 0, 1};
-    D3D12_RECT m_scissorRect{0, 0, (LONG)m_width, (LONG)m_height};
+    D3D12_VIEWPORT m_viewport{0, 0, (FLOAT)windowWidth, (FLOAT)windowWidth, 0, 1};
+    D3D12_RECT m_scissorRect{0, 0, (LONG)windowWidth, (LONG)windowWidth};
     ComPtr<IDXGISwapChain3> m_swapChain;
     ComPtr<ID3D12Device> m_device;
     ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
@@ -134,6 +160,7 @@ TEST_CASE("HelloTriangle") {
 
     // Enable the debug layer (requires the Graphics Tools "optional feature").
     // NOTE: Enabling the debug layer after device creation will invalidate the active device.
+#ifndef NDEBUG
     {
         ComPtr<ID3D12Debug> debugController;
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
@@ -143,6 +170,7 @@ TEST_CASE("HelloTriangle") {
             dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
         }
     }
+#endif // NDEBUG
 
     ComPtr<IDXGIFactory4> factory;
     ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)));
@@ -214,8 +242,8 @@ TEST_CASE("HelloTriangle") {
     // Describe and create the swap chain.
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.BufferCount = FrameCount;
-    swapChainDesc.Width = m_width;
-    swapChainDesc.Height = m_height;
+    swapChainDesc.Width = windowWidth;
+    swapChainDesc.Height = windowWidth;
     swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
@@ -265,8 +293,17 @@ TEST_CASE("HelloTriangle") {
 
     // Create an empty root signature.
     {
+        D3D12_ROOT_PARAMETER parameters[1];
+        parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+        parameters[0].Constants.Num32BitValues = 4;
+        parameters[0].Constants.RegisterSpace = 0;
+        parameters[0].Constants.ShaderRegister = 0;
+
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
         rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+        rootSignatureDesc.NumParameters = 1;
+        rootSignatureDesc.pParameters = parameters;
 
         ComPtr<ID3DBlob> signature;
         ComPtr<ID3DBlob> error;
@@ -387,13 +424,42 @@ TEST_CASE("HelloTriangle") {
 
     ShowWindow(hwnd, 1);
 
+    // General timer
+    std::chrono::high_resolution_clock timer;
+
+    // Base point
+    auto t0 = timer.now();
+
+    // Accumulators
+    AccumulatedValue fpsAccum(1.0f / 33.0f);
+    AccumulatedValue recordAccum(1.0f / 256.0f);
+
+    uint32_t frameCounter = 0;
+
     // Main sample loop.
     MSG msg = {};
     while (msg.message != WM_QUIT) {
+        auto t1 = timer.now();
+
+        // Delta from last point
+        float delta = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() / 1e6;
+        t0 = t1;
+
+        // Accumulate
+        fpsAccum.Add(1000.0f / delta);
+
         // Process any messages in the queue.
         if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
+        }
+
+        // Title printing
+        if (frameCounter++ % 32 == 31) {
+            char buffer[1024];
+            sprintf_s(buffer, "Hello Triangle - %f (%f) fps, record %f (%f) ms", fpsAccum.value, fpsAccum.Total(), recordAccum.value, recordAccum.Total());
+
+            SetWindowText(hwnd, buffer);
         }
 
         // Command list allocators can only be reset when the associated
@@ -428,7 +494,31 @@ TEST_CASE("HelloTriangle") {
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-        m_commandList->DrawInstanced(3, 1, 0, 0);
+
+        auto t0Record = timer.now();
+
+        // Number of cells along an axis
+        constexpr uint32_t gridWidth = 256;
+
+        for (uint32_t x = 0; x < gridWidth; x++) {
+            for (uint32_t y = 0; y < gridWidth; y++) {
+                float offsetAndScale[] = {
+                    ((x + 0.5f) / gridWidth - 0.5f) * 2.0f,
+                    ((y + 0.5f) / gridWidth - 0.5f) * 2.0f,
+                    0,
+                    (4.0f / gridWidth)
+                };
+
+                m_commandList->SetGraphicsRoot32BitConstants(0, sizeof(offsetAndScale) / sizeof(float), &offsetAndScale, 0);
+                m_commandList->DrawInstanced(3, 1, 0, 0);
+            }
+        }
+
+        // Record delta
+        float recordDelta = std::chrono::duration_cast<std::chrono::nanoseconds>(timer.now() - t0Record).count() / 1e6;
+
+        // Accumulate
+        recordAccum.Add(recordDelta);
 
         // Indicate that the back buffer will now be used to present
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;

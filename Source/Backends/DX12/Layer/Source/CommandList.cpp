@@ -188,6 +188,7 @@ ULONG HookID3D12CommandListRelease(ID3D12CommandList *list) {
     // OK
     return 0;
 }
+
 ULONG HookID3D12GraphicsCommandListRelease(ID3D12GraphicsCommandList *list) {
     auto table = GetTable(list);
 

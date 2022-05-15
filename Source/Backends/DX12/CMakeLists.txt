@@ -301,6 +301,7 @@ add_executable(
     Backends.DX12.Tests
     Tests/Source/Main.cpp
     Tests/Source/HelloTriangle.cpp
+    Tests/Source/WrappingBenchmark.cpp
 
     # Pull generated
     ${Generated}
