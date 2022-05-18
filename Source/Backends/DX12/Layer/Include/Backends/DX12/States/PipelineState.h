@@ -40,8 +40,6 @@ struct PipelineState {
     RootSignatureState* signature{nullptr};
 
     /// Referenced shaders
-    ///   ! May not be indexed yet, indexing occurs during instrumentation.
-    ///     Avoided during regular use to not tamper with performance.
     std::vector<ShaderState*> shaders;
 
     /// Instrumentation info

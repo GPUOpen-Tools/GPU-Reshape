@@ -1,5 +1,9 @@
 #pragma once
 
+// Common
+#include <Common/Allocators.h>
+#include <Common/Assert.h>
+
 // Std
 #include <vector>
 
@@ -30,6 +34,7 @@ struct TrivialStackVector {
     TrivialStackVector& operator=(const TrivialStackVector& other) {
         Resize(other.Size());
         std::memcpy(data, other.Data(), sizeof(T) * size);
+        return *this;
     }
 
     /// Assign move from other
@@ -43,6 +48,17 @@ struct TrivialStackVector {
             std::memcpy(stack, other.stack, sizeof(T) * other.size);
             data = stack;
         }
+
+        return *this;
+    }
+
+    /// Create a detached allocation
+    /// \param allocators the allocators
+    /// \return new allocation, lifetime up to caller
+    T* DetachAllocation(const Allocators& allocators) {
+        T* items = new (allocators) T[size];
+        std::memcpy(items, data, sizeof(T) * size);
+        return items;
     }
 
     /// Resize this container
@@ -58,8 +74,12 @@ struct TrivialStackVector {
 
     /// Add a value to this container
     /// \param value the value to be added
-    void Add(const T& value) {
+    T& Add(const T& value = {}) {
         if (data != stack || size >= STACK_LENGTH) {
+            if (data == stack) {
+                fallback.insert(fallback.end(), data, data + size);
+            }
+
             fallback.push_back(value);
             data = fallback.data();
         } else {
@@ -67,6 +87,8 @@ struct TrivialStackVector {
         }
 
         size++;
+
+        return data[size - 1];
     }
 
     /// Size of this container
@@ -76,11 +98,13 @@ struct TrivialStackVector {
 
     /// Get the element at a given index
     T& operator[](uint32_t i) {
+        ASSERT(i < size, "Index out of bounds");
         return data[i];
     }
 
     /// Get the element at a given index
     const T& operator[](uint32_t i) const {
+        ASSERT(i < size, "Index out of bounds");
         return data[i];
     }
 

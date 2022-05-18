@@ -210,6 +210,15 @@ add_library(
     Layer/Source/Pipeline.cpp
     Layer/Source/SwapChain.cpp
     Layer/Source/DLL.cpp
+    Layer/Source/Compiler/DXModule.cpp
+    Layer/Source/Compiler/DXBC/DXBCModule.cpp
+    Layer/Source/Compiler/DXBC/DXBCPhysicalBlockScan.cpp
+    Layer/Source/Compiler/DXBC/DXBCPhysicalBlockTable.cpp
+    Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockShader.cpp
+    Layer/Source/Compiler/DXIL/DXILModule.cpp
+    Layer/Source/Compiler/DXIL/DXILPhysicalBlockScan.cpp
+    Layer/Source/Compiler/DXIL/DXILPhysicalBlockTable.cpp
+    Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockFunction.cpp
 
     # Generated source dependencies
     Layer/Source/DeepCopy.Gen.cpp
