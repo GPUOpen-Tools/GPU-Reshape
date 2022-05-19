@@ -9,7 +9,29 @@
 // Common
 #include <Common/Allocators.h>
 
-// The LLVM bit-stream specification is easy to understand, that is once you've already implemented it
+/// Dump bit stream to file?
+///   Useful with llvm-bcanalyzer
+#define DXIL_DUMP_BITSTREAM 1
+
+// Special includes
+#if DXIL_DUMP_BITSTREAM
+// Common
+#   include <Common/FileSystem.h>
+
+// Std
+#   include <fstream>
+#endif
+
+/*
+ * The LLVM bit-stream specification is easy to understand, that is once you've already implemented it.
+ *
+ * LLVM Specification
+ *   https://llvm.org/docs/BitCodeFormat.html#module-code-version-record
+ * */
+
+DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : allocators(allocators) {
+
+}
 
 bool DXILPhysicalBlockScan::Scan(const void *byteCode, uint64_t byteLength) {
     auto bcHeader = static_cast<const DXILHeader *>(byteCode);
@@ -26,6 +48,14 @@ bool DXILPhysicalBlockScan::Scan(const void *byteCode, uint64_t byteLength) {
     //   ? Bit streams begin from the identifier
     LLVMBitStream stream(reinterpret_cast<const uint8_t *>(&bcHeader->identifier) + header.codeOffset, header.codeSize);
 
+    // Dump?
+#if DXIL_DUMP_BITSTREAM
+    // Write stream to immediate path
+    std::ofstream out(GetIntermediateDebugPath() / "LLVM.bstream", std::ios_base::binary);
+    out.write(reinterpret_cast<const char*>(&bcHeader->identifier) + header.codeOffset, header.codeSize);
+    out.close();
+#endif
+
     // Validate bit stream
     if (!stream.ValidateAndConsume()) {
         return false;
@@ -41,8 +71,8 @@ bool DXILPhysicalBlockScan::Scan(const void *byteCode, uint64_t byteLength) {
         return false;
     }
 
-    // OK
-    return true;
+    // Read the module records
+    return ReadAndValidateModuleRecords();
 }
 
 DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMBitStream &stream, LLVMBlock *block) {
@@ -120,6 +150,37 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMB
     return ScanResult::OK;
 }
 
+bool DXILPhysicalBlockScan::ReadAndValidateModuleRecords() {
+    for (auto&& record : root.records) {
+        switch (record.As<LLVMModuleRecord>()) {
+            default: {
+                /* Ignore */
+                break;
+            }
+            case LLVMModuleRecord::Version: {
+                if (record.opCount != 1 || record.ops[0] != 1) {
+                    ASSERT(false, "Unsupported LLVM version");
+                    return false;
+                }
+                break;
+            }
+            case LLVMModuleRecord::Triple: {
+                triple.resize(record.opCount);
+                record.FillOperands(triple.data());
+                break;
+            }
+            case LLVMModuleRecord::DataLayout: {
+                dataLayout.resize(record.opCount);
+                record.FillOperands(dataLayout.data());
+                break;
+            }
+        }
+    }
+
+    // OK
+    return true;
+}
+
 DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanAbbreviation(LLVMBitStream &stream, LLVMBlock* block) {
     /*
      * LLVM Specification
@@ -137,11 +198,10 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanAbbreviation(LLVMBi
 
     // Scan all ops
     for (uint32_t i = 0; i < opCount; i++) {
+        LLVMAbbreviationParameter &parameter = abbreviation.parameters[i];
+
         // Literal abbr?
         auto isLiteral = stream.Fixed<uint32_t>(1);
-
-        // Create new parameter
-        LLVMAbbreviationParameter &parameter = abbreviation.parameters.Add();
 
         // Scan abbr
         if (isLiteral) {
@@ -423,6 +483,9 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
             }
         }
     }
+
+    // Set op count
+    record.opCount = recordOperandCache.size();
 
     // Allocate final records
     record.ops = new(Allocators{}) uint64_t[recordOperandCache.size()];

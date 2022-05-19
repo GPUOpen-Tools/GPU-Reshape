@@ -1,6 +1,10 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockScan.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
 
+DXBCPhysicalBlockScan::DXBCPhysicalBlockScan(const Allocators &allocators) : allocators(allocators) {
+
+}
+
 /// Filter (whitelist) the chunk type
 static DXBCPhysicalBlockType FilterChunkType(uint32_t type) {
     switch (type) {

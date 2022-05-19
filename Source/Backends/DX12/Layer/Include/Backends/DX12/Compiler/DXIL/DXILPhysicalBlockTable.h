@@ -3,11 +3,11 @@
 // Layer
 #include "DXILPhysicalBlockScan.h"
 #include "Blocks/DXILPhysicalBlockFunction.h"
+#include "Blocks/DXILPhysicalBlockType.h"
+#include "Blocks/DXILPhysicalBlockGlobal.h"
 
 struct DXILPhysicalBlockTable {
-    DXILPhysicalBlockTable() : function(*this) {
-        /* */
-    }
+    DXILPhysicalBlockTable(const Allocators &allocators, Backend::IL::Program &program);
 
     /// Scan the DXIL bytecode
     /// \param byteCode code start
@@ -20,4 +20,6 @@ struct DXILPhysicalBlockTable {
 
     /// Blocks
     DXILPhysicalBlockFunction function;
+    DXILPhysicalBlockType type;
+    DXILPhysicalBlockGlobal global;
 };

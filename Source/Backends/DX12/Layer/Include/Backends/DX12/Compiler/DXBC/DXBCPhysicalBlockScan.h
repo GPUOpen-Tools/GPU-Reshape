@@ -1,12 +1,13 @@
 #pragma once
 
 // Layer
+#include <Backends/DX12/DX12.h>
 #include "DXBCPhysicalBlock.h"
 #include "DXBCPhysicalBlockType.h"
 #include "DXBCHeader.h"
 
-// System
-#include <d3d12.h>
+// Common
+#include <Common/Allocators.h>
 
 // Std
 #include <vector>
@@ -14,6 +15,8 @@
 /// DXBC Scanner
 struct DXBCPhysicalBlockScan {
 public:
+    DXBCPhysicalBlockScan(const Allocators& allocators);
+
     /// Scan the DXBC bytecode
     /// \param byteCode code start
     /// \param byteLength byte size of code
@@ -44,4 +47,7 @@ private:
 
     /// All sections
     std::vector<Section> sections;
+
+private:
+    Allocators allocators;
 };

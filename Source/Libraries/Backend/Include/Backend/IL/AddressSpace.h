@@ -2,10 +2,12 @@
 
 namespace Backend::IL {
     enum class AddressSpace {
+        Constant,
         Texture,
         Buffer,
         Function,
         Resource,
+        GroupShared,
         Unexposed
     };
 }

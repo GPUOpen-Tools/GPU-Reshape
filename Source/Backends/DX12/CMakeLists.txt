@@ -219,6 +219,8 @@ add_library(
     Layer/Source/Compiler/DXIL/DXILPhysicalBlockScan.cpp
     Layer/Source/Compiler/DXIL/DXILPhysicalBlockTable.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockFunction.cpp
+    Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockType.cpp
+    Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockGlobal.cpp
 
     # Generated source dependencies
     Layer/Source/DeepCopy.Gen.cpp

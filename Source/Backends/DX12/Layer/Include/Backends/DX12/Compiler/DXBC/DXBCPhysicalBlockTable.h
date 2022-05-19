@@ -9,9 +9,7 @@ struct DXILModule;
 
 /// Complete physical block table
 struct DXBCPhysicalBlockTable {
-    DXBCPhysicalBlockTable() : shader(*this) {
-        /* */
-    }
+    DXBCPhysicalBlockTable(const Allocators &allocators, IL::Program &program);
 
     /// Scan the DXBC bytecode
     /// \param byteCode code start
@@ -27,4 +25,10 @@ struct DXBCPhysicalBlockTable {
 
     /// DXBC containers can host DXIL data
     DXILModule* dxilModule{nullptr};
+
+private:
+    Allocators allocators;
+
+    /// IL program
+    IL::Program &program;
 };

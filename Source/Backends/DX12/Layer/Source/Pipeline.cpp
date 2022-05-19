@@ -16,7 +16,7 @@ static DXModule *CreateImmediateDXModule(const Allocators &allocators, const D3D
             return nullptr;
         }
         case 'CBXD': {
-            return new DXBCModule();
+            return new DXBCModule(allocators);
         }
     }
 }

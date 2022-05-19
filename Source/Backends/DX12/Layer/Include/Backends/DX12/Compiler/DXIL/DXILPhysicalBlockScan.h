@@ -1,6 +1,7 @@
 #pragma once
 
 // Layer
+#include <Backends/DX12/DX12.h>
 #include "DXILPhysicalBlock.h"
 #include "DXILHeader.h"
 #include "LLVM/LLVMHeader.h"
@@ -9,11 +10,9 @@
 // Common
 #include <Common/Containers/TrivialStackVector.h>
 
-// System
-#include <d3d12.h>
-
 // Std
 #include <vector>
+#include <string>
 #include <map>
 
 // Forward declarations
@@ -23,11 +22,24 @@ struct LLVMBlockMetadata;
 /// DXIL LLVM decoder
 struct DXILPhysicalBlockScan {
 public:
+    DXILPhysicalBlockScan(const Allocators& allocators);
+
     /// Scan the DXIL bytecode
     /// \param byteCode code start
     /// \param byteLength byte size of code
     /// \return success state
     bool Scan(const void* byteCode, uint64_t byteLength);
+
+    /// Get the root block
+    /// \return
+    LLVMBlock& GetRoot() {
+        return root;
+    }
+
+private:
+    /// Read all module records
+    /// \return
+    bool ReadAndValidateModuleRecords();
 
 private:
     /// Result of a scanning operation
@@ -82,15 +94,25 @@ private:
     uint64_t ScanTrivialAbbreviationParameter(LLVMBitStream& stream, const LLVMAbbreviationParameter& parameter);
 
 private:
+    /// Top header
+    DXILHeader header;
+
     /// Hierarchical root block
     LLVMBlock root;
 
+    /// LLVM triple
+    std::string triple;
+
+    /// LLVM data layout
+    std::string dataLayout;
+
+private:
     /// Cache for flat operand scanning
     std::vector<uint64_t> recordOperandCache;
 
     /// Lookup for out-of-place BLOCKINFO association
     std::map<uint32_t, LLVMBlockMetadata*> metadataLookup;
 
-    /// Top header
-    DXILHeader header;
+private:
+    Allocators allocators;
 };

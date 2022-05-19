@@ -14,6 +14,18 @@
 struct LLVMBlockMetadata;
 
 struct LLVMBlock {
+    /// Check if this block is of reserved id
+    template<typename T>
+    bool Is(T value) const {
+        return value == static_cast<T>(id);
+    }
+
+    /// Interpret the id as a reserved type
+    template<typename T>
+    T As() const {
+        return static_cast<T>(id);
+    }
+
     /// Identifier of this block, may be reserved
     uint32_t id{~0u};
 

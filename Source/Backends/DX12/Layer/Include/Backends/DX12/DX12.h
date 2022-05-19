@@ -11,6 +11,9 @@
 #include <d3d12.h>
 #include <dxgi.h>
 
+// Cleanup
+#undef OPAQUE
+
 /// Get the vtable
 template<typename T = void>
 inline T* GetVTableRaw(void* object) {
