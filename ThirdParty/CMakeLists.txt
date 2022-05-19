@@ -25,6 +25,7 @@ include(LibClang.cmake)
 include(GraphViz.cmake)
 include(DXC.cmake)
 include(Detour.cmake)
+include(DXIL.cmake)
 
 # Standard project installation
 function(ExternalProject_Link Project Name)
