@@ -5,6 +5,18 @@
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 
+/// Pretty print pipeline?
+#define DXIL_PRETTY_PRINT 1
+
+// Special includes
+#if DXIL_PRETTY_PRINT
+// Backend
+#   include <Backend/IL/PrettyPrint.h>
+
+// Std
+#   include <iostream>
+#endif
+
 static DXModule *CreateImmediateDXModule(const Allocators &allocators, const D3D12_SHADER_BYTECODE &byteCode) {
     // Get type
     uint32_t type = *static_cast<const uint64_t *>(byteCode.pShaderBytecode);
@@ -29,6 +41,11 @@ static ShaderState *CreateShaderState(DeviceState *device, const D3D12_SHADER_BY
     // Create immediate module
     shaderState->module = CreateImmediateDXModule(device->allocators, byteCode);
     shaderState->module->Parse(byteCode.pShaderBytecode, byteCode.BytecodeLength);
+
+#if DXIL_PRETTY_PRINT
+    // Pretty print module
+    IL::PrettyPrint(*shaderState->module->GetProgram(), std::cout);
+#endif // DXIL_PRETTY_PRINT
 
     // OK
     return shaderState;

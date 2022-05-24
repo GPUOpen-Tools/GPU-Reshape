@@ -19,6 +19,12 @@ struct LLVMRecord {
         return static_cast<T>(id);
     }
 
+    /// Get an operand
+    uint64_t Op(uint32_t i) const {
+        ASSERT(i < opCount, "Operand out of bounds");
+        return ops[i];
+    }
+
     /// Convert an operand to a type
     template<typename T>
     T OpAs(uint32_t i) const {

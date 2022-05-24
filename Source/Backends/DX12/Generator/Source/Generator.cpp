@@ -17,10 +17,11 @@ int main(int argc, char *const argv[]) {
 
     // Setup parameters
     program.add_argument("-specjson").help("Path of the specification json file").default_value(std::string(""));
+    program.add_argument("-dxilrst").help("Path of the dxil rst file").default_value(std::string(""));
     program.add_argument("-hooksjson").help("Path of the hooks json file").default_value(std::string(""));
     program.add_argument("-deepcopyjson").help("Path of the deep copy json file").default_value(std::string(""));
     program.add_argument("-template").help("The file to template").required();
-    program.add_argument("-gentype").help("The generation type, one of [specification, detour, wrappers, wrappersimpl, vtable, table, deepcopy, deepcopyimpl]").required();
+    program.add_argument("-gentype").help("The generation type, one of [specification, detour, wrappers, wrappersimpl, vtable, table, deepcopy, deepcopyimpl, dxil]").required();
     program.add_argument("-d3d12h").help("The d3d12 header file").default_value(std::string(""));
     program.add_argument("-o").help("Output of the generated file").required();
 
@@ -35,6 +36,7 @@ int main(int argc, char *const argv[]) {
 
     // Arguments
     auto &&specjson = program.get<std::string>("-specjson");
+    auto &&dxilrst = program.get<std::string>("-dxilrst");
     auto &&hooksjson = program.get<std::string>("-hooksjson");
     auto &&deepcopyjson = program.get<std::string>("-deepcopyjson");
     auto &&ftemplate = program.get<std::string>("-template");
@@ -62,6 +64,16 @@ int main(int argc, char *const argv[]) {
             std::cerr << "Failed to parse json file: " << specjson << ", " << ex.what() << std::endl;
             return 1;
         }
+    }
+
+    // Parse optional dxil rst
+    if (!dxilrst.empty()) {
+        std::ifstream file(dxilrst);
+
+        // Store
+        std::stringstream ss;
+        ss << file.rdbuf();
+        generatorInfo.dxilRST = ss.str();
     }
 
     // Parse optional hooks json
@@ -127,6 +139,8 @@ int main(int argc, char *const argv[]) {
         generatorResult = Generators::DeepCopy(generatorInfo, templateEngine);
     } else if (gentype == "deepcopyimpl") {
         generatorResult = Generators::DeepCopyImpl(generatorInfo, templateEngine);
+    } else if (gentype == "dxil") {
+        generatorResult = Generators::DXIL(generatorInfo, templateEngine);
     } else {
         std::cerr << "Invalid generator type: " << gentype << ", see help." << std::endl;
         return 1;

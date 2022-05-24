@@ -22,6 +22,9 @@ struct GeneratorInfo {
     /// Optional hooks json
     nlohmann::json deepCopy{};
 
+    /// Optional DXIL rst
+    std::string dxilRST;
+
     /// D3D12 header path
     std::string d3d12HeaderPath;
 };
@@ -74,4 +77,10 @@ namespace Generators {
     /// \param templateEngine template destination
     /// \return success
     bool DeepCopyImpl(const GeneratorInfo& info, TemplateEngine& templateEngine);
+
+    /// Generate the DXIL header
+    /// \param info generation info
+    /// \param templateEngine template destination
+    /// \return success
+    bool DXIL(const GeneratorInfo& info, TemplateEngine& templateEngine);
 }

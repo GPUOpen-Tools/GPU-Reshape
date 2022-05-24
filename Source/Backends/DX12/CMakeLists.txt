@@ -16,6 +16,7 @@ add_executable(
     Generator/Source/Table.cpp
     Generator/Source/DeepCopy.cpp
     Generator/Source/DeepCopyImpl.cpp
+    Generator/Source/DXIL.cpp
 )
 
 # IDE source discovery
@@ -53,10 +54,27 @@ set(DeepCopyTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(DeepCopyImplTemplate               ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DeepCopy.cppt)
 set(TableTemplate                      ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Table.ht)
 set(VTableTemplate                     ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/VTable.cppt)
+set(DXILTemplate                       ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DXIL.ht)
 
 # Resource Paths
-set(HooksSpec ${CMAKE_CURRENT_SOURCE_DIR}/Layer/Resources/Hooks.json)
+set(HooksSpec    ${CMAKE_CURRENT_SOURCE_DIR}/Layer/Resources/Hooks.json)
 set(DeepCopySpec ${CMAKE_CURRENT_SOURCE_DIR}/Layer/Resources/DeepCopy.json)
+set(DXILRST      ${CMAKE_SOURCE_DIR}/ThirdParty/DXIL/DXIL.rst)
+
+# Generate the DXIL header
+add_custom_command(
+    OUTPUT Layer/Include/Backends/DX12/Compiler/DXIL/DXIL.Gen.h
+    DEPENDS Backends.DX12.Generator
+    DEPENDS
+        ${DXILTemplate}
+        ${DXILRST}
+    COMMAND Backends.DX12.Generator
+        -template ${DXILTemplate}
+        -dxilrst ${DXILRST}
+        -hooksjson ${HooksSpec}
+        -gentype dxil
+        -o Layer/Include/Backends/DX12/Compiler/DXIL/DXIL.Gen.h
+)
 
 # Generate the specification
 add_custom_command(
@@ -227,6 +245,7 @@ add_library(
     ${GeneratedSources}
 
     # Generated header dependencies
+    Layer/Include/Backends/DX12/Compiler/DXIL/DXIL.Gen.h
     Layer/Include/Backends/DX12/Detour.Gen.h
     Layer/Include/Backends/DX12/Table.Gen.h
     Layer/Include/Backends/DX12/DeepCopy.Gen.h

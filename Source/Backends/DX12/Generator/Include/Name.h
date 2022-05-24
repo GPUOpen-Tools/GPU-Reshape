@@ -6,7 +6,7 @@
 /// Get the friendly deep copy name
 /// \param name top typename
 /// \return deep copy name
-static std::string GetDeepCopyName(const std::string& name) {
+static std::string GetPrettyName(const std::string& name) {
     std::string contents;
     contents.reserve(name.length());
 
@@ -27,6 +27,6 @@ static std::string GetDeepCopyName(const std::string& name) {
         capitalize = isdigit(ch);
     }
 
-    // Postfix
-    return contents + "DeepCopy";
+    // OK
+    return contents;
 }

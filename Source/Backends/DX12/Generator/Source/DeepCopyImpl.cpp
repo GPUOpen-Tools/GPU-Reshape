@@ -1,6 +1,6 @@
 #include "GenTypes.h"
 #include "Types.h"
-#include "DeepCopy.h"
+#include "Name.h"
 
 // Std
 #include <iostream>
@@ -301,7 +301,7 @@ bool Generators::DeepCopyImpl(const GeneratorInfo &info, TemplateEngine &templat
         std::string name = object.get<std::string>();
 
         // Get the friendly deep copy name
-        std::string copyName = GetDeepCopyName(name);
+        std::string copyName = GetPrettyName(name) + "DeepCopy";
 
         // Attempt to generate a deep copy
         DeepCopyState state;

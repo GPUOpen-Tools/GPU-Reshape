@@ -1,5 +1,5 @@
 #include "GenTypes.h"
-#include "DeepCopy.h"
+#include "Name.h"
 
 // Std
 #include <iostream>
@@ -13,7 +13,7 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
     for (auto&& object : info.deepCopy["objects"]) {
         std::string name = object.get<std::string>();
 
-        std::string copyName = GetDeepCopyName(name);
+        std::string copyName = GetPrettyName(name) + "DeepCopy";
 
         // Begin object
         ss << "struct " << copyName << " {\n";
