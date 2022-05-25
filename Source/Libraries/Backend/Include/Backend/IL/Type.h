@@ -1,14 +1,18 @@
 #pragma once
 
+// Backend
 #include "TypeKind.h"
 #include "AddressSpace.h"
 #include "TextureDimension.h"
 #include "Format.h"
 #include "ResourceSamplerMode.h"
 
+// Common
 #include <Common/Assert.h>
 
+// Std
 #include <tuple>
+#include <vector>
 
 namespace Backend::IL {
     struct Type {

@@ -1,64 +1,293 @@
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockFunction.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordReader.h>
+#include <Backends/DX12/Compiler/DXIL/DXILIDMap.h>
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 
 /*
  * LLVM DXIL Specification
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/DXIL.rst
+ *
+ * Loosely derived from LLVM BitcodeWriter
+ *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/lib/Bitcode/Writer/BitcodeWriter.cpp
  */
 
-void DXILPhysicalBlockFunction::Parse() {
-    LLVMBlock &block = table.scan.GetRoot();
+void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
+    // Definition order is linear to the internally linked functions
+    uint32_t linkedIndex = internalLinkedFunctions[program.GetFunctionList().GetCount()];
 
-    // Visit all function blocks
-    for (const LLVMBlock *childBlock: block.blocks) {
-        if (!childBlock->Is(LLVMReservedBlock::Function)) {
-            continue;
-        }
+    // Get function definition
+    const DXILFunctionDeclaration& declaration = functions[linkedIndex];
 
-        // Create function
-        IL::Function* fn = program.GetFunctionList().AllocFunction();
+    // Create function
+    IL::Function *fn = program.GetFunctionList().AllocFunction();
 
-        // Visit child blocks
-        for (const LLVMBlock* fnBlock : childBlock->blocks) {
-            switch (static_cast<LLVMReservedBlock>(fnBlock->id)) {
-                default: {
-                    break;
-                }
-                case LLVMReservedBlock::Constants: {
-                    ParseConstants(fnBlock);
-                    break;
-                }
+    // Visit child blocks
+    for (const LLVMBlock *fnBlock: block->blocks) {
+        switch (static_cast<LLVMReservedBlock>(fnBlock->id)) {
+            default: {
+                break;
+            }
+            case LLVMReservedBlock::Constants: {
+                table.global.ParseConstants(fnBlock);
+                break;
             }
         }
-
-        // Visit function records
-        ParseBlock(fn, childBlock);
     }
-}
 
-void DXILPhysicalBlockFunction::ParseBlock(IL::Function* fn, const struct LLVMBlock *block) {
+    // Create parameter mappings
+    for (uint32_t i = 0; i < declaration.type->parameterTypes.size(); i++) {
+        table.idMap.AllocMappedID(DXILIDType::Parameter);
+    }
+
     // Allocate basic block
-    IL::BasicBlock* basicBlock = fn->GetBasicBlocks().AllocBlock();
+    IL::BasicBlock *basicBlock = fn->GetBasicBlocks().AllocBlock();
 
     // Visit function records
     for (const LLVMRecord &record: block->records) {
         LLVMRecordReader reader(record);
 
-        // Get value of this call
-        /*uint64_t value = reader.ConsumeOp();
+        // Get the current id anchor
+        //   LLVM id references are encoded relative to the current record
+        uint32_t anchor = table.idMap.GetAnchor();
 
-        // Optional type
-        uint64_t type = UINT64_MAX;
+        // Optional record result
+        IL::ID result = IL::InvalidID;
 
-        // Stores type?
-        if (value >= record.id) {
-            type = reader.ConsumeOp();
-        }*/
+        // Create mapping if present
+        if (HasResult(record)) {
+            result = table.idMap.AllocMappedID(DXILIDType::Instruction);
+        }
 
+        // Handle instruction
         switch (static_cast<LLVMFunctionRecord>(record.id)) {
             default: {
+                ASSERT(false, "Unexpected function record");
+                return;
+            }
+
+            case LLVMFunctionRecord::InstInvoke:
+            case LLVMFunctionRecord::InstUnwind:
+            case LLVMFunctionRecord::InstFree:
+            case LLVMFunctionRecord::InstVaArg:
+            case LLVMFunctionRecord::InstIndirectBR:
+            case LLVMFunctionRecord::InstGetResult:
+            case LLVMFunctionRecord::InstMalloc: {
+                ASSERT(false, "Unsupported instruction");
+                return;
+            }
+
+            case LLVMFunctionRecord::DeclareBlocks: {
+                break;
+            }
+            case LLVMFunctionRecord::InstBinOp: {
+                uint64_t lhs = reader.ConsumeOp();
+                uint64_t rhs = reader.ConsumeOp();
+
+                auto binOp = static_cast<LLVMBinOp>(reader.ConsumeOp());
+                switch (binOp) {
+                    default: {
+                        ASSERT(false, "Unexpected binary operation");
+                        return;
+                    }
+
+                    case LLVMBinOp::Add: {
+                        IL::AddInstruction instr{};
+                        instr.opCode = IL::OpCode::Add;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                    case LLVMBinOp::Sub: {
+                        IL::SubInstruction instr{};
+                        instr.opCode = IL::OpCode::Sub;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                    case LLVMBinOp::Mul: {
+                        IL::MulInstruction instr{};
+                        instr.opCode = IL::OpCode::Mul;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                    case LLVMBinOp::UDiv:
+                    case LLVMBinOp::SDiv: {
+                        IL::DivInstruction instr{};
+                        instr.opCode = IL::OpCode::Div;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                    case LLVMBinOp::URem:
+                    case LLVMBinOp::SRem: {
+                        IL::RemInstruction instr{};
+                        instr.opCode = IL::OpCode::Rem;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                    case LLVMBinOp::SHL: {
+                        IL::BitShiftLeftInstruction instr{};
+                        instr.opCode = IL::OpCode::BitShiftLeft;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.value = lhs;
+                        instr.shift = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                    case LLVMBinOp::LShR:
+                    case LLVMBinOp::AShR: {
+                        IL::BitShiftRightInstruction instr{};
+                        instr.opCode = IL::OpCode::BitShiftRight;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.value = lhs;
+                        instr.shift = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                    case LLVMBinOp::And: {
+                        IL::AndInstruction instr{};
+                        instr.opCode = IL::OpCode::And;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                    case LLVMBinOp::Or: {
+                        IL::OrInstruction instr{};
+                        instr.opCode = IL::OpCode::Or;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                    case LLVMBinOp::XOr: {
+                        IL::BitXOrInstruction instr{};
+                        instr.opCode = IL::OpCode::BitXOr;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                }
+                break;
+            }
+            case LLVMFunctionRecord::InstCast: {
+                uint64_t value = reader.ConsumeOp();
+
+                reader.ConsumeOp();
+
+                auto castOp = static_cast<LLVMCastOp>(reader.ConsumeOp());
+                switch (castOp) {
+                    default: {
+                        ASSERT(false, "Unexpected cast operation");
+                        return;
+                    }
+
+                    case LLVMCastOp::Trunc:
+                    case LLVMCastOp::FPTrunc: {
+                        IL::TruncInstruction instr{};
+                        instr.opCode = IL::OpCode::Trunc;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.value = value;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCastOp::PtrToInt:
+                    case LLVMCastOp::IntToPtr:
+                    case LLVMCastOp::ZExt:
+                    case LLVMCastOp::FPExt:
+                    case LLVMCastOp::SExt: {
+                        // Emit as unexposed
+                        IL::UnexposedInstruction instr{};
+                        instr.opCode = IL::OpCode::Unexposed;
+                        instr.result = 0x0;
+                        instr.source = IL::Source::Invalid();
+                        instr.backendOpCode = record.id;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCastOp::FPToUI:
+                    case LLVMCastOp::FPToSI: {
+                        IL::FloatToIntInstruction instr{};
+                        instr.opCode = IL::OpCode::FloatToInt;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.value = value;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCastOp::UIToFP:
+                    case LLVMCastOp::SIToFP: {
+                        IL::IntToFloatInstruction instr{};
+                        instr.opCode = IL::OpCode::IntToFloat;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.value = value;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCastOp::BitCast: {
+                        IL::BitCastInstruction instr{};
+                        instr.opCode = IL::OpCode::BitCast;
+                        instr.result = result;
+                        instr.source = IL::Source::Invalid();
+                        instr.value = value;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                }
+
+                // Append
+                IL::LoadInstruction instr{};
+                instr.opCode = IL::OpCode::Load;
+                instr.result = result;
+                instr.source = IL::Source::Invalid();
+                instr.address = reader.ConsumeOp();
+                basicBlock->Append(instr);
+                break;
+            }
+
+
+                /* Structural */
+            case LLVMFunctionRecord::InstGEP:
+            case LLVMFunctionRecord::InstSelect:
+            case LLVMFunctionRecord::InstExtractELT:
+            case LLVMFunctionRecord::InstInsertELT:
+            case LLVMFunctionRecord::InstExtractVal:
+            case LLVMFunctionRecord::InstInsertVal:
+            case LLVMFunctionRecord::InstVSelect:
+            case LLVMFunctionRecord::InstInBoundsGEP: {
                 // Emit as unexposed
                 IL::UnexposedInstruction instr{};
                 instr.opCode = IL::OpCode::Unexposed;
@@ -68,92 +297,477 @@ void DXILPhysicalBlockFunction::ParseBlock(IL::Function* fn, const struct LLVMBl
                 basicBlock->Append(instr);
                 break;
             }
-            /*case LLVMFunctionRecord::DeclareBlocks:
+
+                /* Inbuilt vector */
+            case LLVMFunctionRecord::InstShuffleVec: {
+                // Emit as unexposed
+                IL::UnexposedInstruction instr{};
+                instr.opCode = IL::OpCode::Unexposed;
+                instr.result = 0x0;
+                instr.source = IL::Source::Invalid();
+                instr.backendOpCode = record.id;
+                basicBlock->Append(instr);
                 break;
-            case LLVMFunctionRecord::InstBinOp:
-                break;
-            case LLVMFunctionRecord::InstCast:
-                break;
-            case LLVMFunctionRecord::InstGEP:
-                break;
-            case LLVMFunctionRecord::InstSelect:
-                break;
-            case LLVMFunctionRecord::InstExtractELT:
-                break;
-            case LLVMFunctionRecord::InstInsertELT:
-                break;
-            case LLVMFunctionRecord::InstShuffleVec:
-                break;
+            }
+
             case LLVMFunctionRecord::InstCmp:
+            case LLVMFunctionRecord::InstCmp2: {
+                reader.ConsumeOp();
+
+                uint64_t lhs = reader.ConsumeOp();
+                uint64_t rhs = reader.ConsumeOp();
+
+                auto cmpOp = static_cast<LLVMCmpOp>(reader.ConsumeOp());
+                switch (cmpOp) {
+                    default: {
+                        ASSERT(false, "Unexpected comparison operation");
+                        return;
+                    }
+
+                    case LLVMCmpOp::FloatFalse:
+                    case LLVMCmpOp::FloatTrue:
+                    case LLVMCmpOp::BadFloatPredecate:
+                    case LLVMCmpOp::IntBadPredecate:
+                    case LLVMCmpOp::FloatOrdered:
+                    case LLVMCmpOp::FloatNotOrdered: {
+                        // Emit as unexposed
+                        IL::UnexposedInstruction instr{};
+                        instr.opCode = IL::OpCode::Unexposed;
+                        instr.result = 0x0;
+                        instr.source = IL::Source::Invalid();
+                        instr.backendOpCode = record.id;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCmpOp::FloatUnorderedNotEqual:
+                    case LLVMCmpOp::FloatOrderedNotEqual:
+                    case LLVMCmpOp::IntNotEqual: {
+                        // Emit as unexposed
+                        IL::NotEqualInstruction instr{};
+                        instr.opCode = IL::OpCode::NotEqual;
+                        instr.result = 0x0;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCmpOp::FloatOrderedEqual:
+                    case LLVMCmpOp::FloatUnorderedEqual:
+                    case LLVMCmpOp::IntEqual: {
+                        // Emit as unexposed
+                        IL::EqualInstruction instr{};
+                        instr.opCode = IL::OpCode::Equal;
+                        instr.result = 0x0;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCmpOp::FloatOrderedGreaterThan:
+                    case LLVMCmpOp::IntUnsignedGreaterThan:
+                    case LLVMCmpOp::IntSignedGreaterThan:
+                    case LLVMCmpOp::FloatUnorderedGreaterThan: {
+                        // Emit as unexposed
+                        IL::GreaterThanInstruction instr{};
+                        instr.opCode = IL::OpCode::GreaterThan;
+                        instr.result = 0x0;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCmpOp::FloatOrderedLessThan:
+                    case LLVMCmpOp::IntUnsignedLessThan:
+                    case LLVMCmpOp::IntSignedLessThan:
+                    case LLVMCmpOp::FloatUnorderedLessThan: {
+                        // Emit as unexposed
+                        IL::LessThanInstruction instr{};
+                        instr.opCode = IL::OpCode::LessThan;
+                        instr.result = 0x0;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCmpOp::FloatOrderedGreaterEqual:
+                    case LLVMCmpOp::IntUnsignedGreaterEqual:
+                    case LLVMCmpOp::IntSignedGreaterEqual:
+                    case LLVMCmpOp::FloatUnorderedGreaterEqual: {
+                        // Emit as unexposed
+                        IL::GreaterThanEqualInstruction instr{};
+                        instr.opCode = IL::OpCode::GreaterThanEqual;
+                        instr.result = 0x0;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+
+                    case LLVMCmpOp::FloatOrderedLessEqual:
+                    case LLVMCmpOp::IntUnsignedLessEqual:
+                    case LLVMCmpOp::IntSignedLessEqual:
+                    case LLVMCmpOp::FloatUnorderedLessEqual: {
+                        // Emit as unexposed
+                        IL::LessThanEqualInstruction instr{};
+                        instr.opCode = IL::OpCode::LessThanEqual;
+                        instr.result = 0x0;
+                        instr.source = IL::Source::Invalid();
+                        instr.lhs = lhs;
+                        instr.rhs = rhs;
+                        basicBlock->Append(instr);
+                        break;
+                    }
+                }
                 break;
-            case LLVMFunctionRecord::InstRet:
+            }
+            case LLVMFunctionRecord::InstRet: {
+                // Emit as unexposed
+                IL::ReturnInstruction instr{};
+                instr.opCode = IL::OpCode::Return;
+                instr.result = 0x0;
+                instr.source = IL::Source::Invalid();
+                instr.value = reader.ConsumeOpDefault(IL::InvalidID);
+                basicBlock->Append(instr);
                 break;
-            case LLVMFunctionRecord::InstBr:
+            }
+            case LLVMFunctionRecord::InstBr: {
+                uint64_t pass = reader.ConsumeOp();
+
+                // Conditional?
+                if (reader.Any()) {
+                    IL::BranchConditionalInstruction instr{};
+                    instr.opCode = IL::OpCode::BranchConditional;
+                    instr.result = 0x0;
+                    instr.source = IL::Source::Invalid();
+                    instr.pass = pass;
+                    instr.fail = reader.ConsumeOp();
+                    instr.cond = reader.ConsumeOp();
+                    basicBlock->Append(instr);
+                } else {
+                    IL::BranchInstruction instr{};
+                    instr.opCode = IL::OpCode::Branch;
+                    instr.result = 0x0;
+                    instr.source = IL::Source::Invalid();
+                    instr.branch = pass;
+                    basicBlock->Append(instr);
+                }
                 break;
-            case LLVMFunctionRecord::InstSwitch:
+            }
+            case LLVMFunctionRecord::InstSwitch: {
+                reader.ConsumeOp();
+
+                uint64_t value = reader.ConsumeOp();
+                uint64_t _default = reader.ConsumeOp();
+
+                // Get remaining count
+                uint64_t remaining = reader.Remaining();
+                ASSERT(remaining % 2 == 0, "Unexpected record switch operation count");
+
+                // Determine number of cases
+                const uint32_t caseCount = remaining / 2;
+
+                // Create instruction
+                auto *instr = ALLOCA_SIZE(IL::SwitchInstruction, IL::SwitchInstruction::GetSize(caseCount));
+                instr->opCode = IL::OpCode::Switch;
+                instr->result = IL::InvalidID;
+                instr->source = IL::Source::Invalid();
+                instr->value = value;
+                instr->_default = _default;
+                instr->controlFlow = {};
+                instr->cases.count = caseCount;
+
+                // Fill cases
+                for (uint32_t i = 0; i < caseCount; i++) {
+                    IL::SwitchCase _case;
+                    _case.literal = reader.ConsumeOp();
+                    _case.branch = reader.ConsumeOp();
+                    instr->cases[i] = _case;
+                }
+
+                basicBlock->Append(instr);
                 break;
-            case LLVMFunctionRecord::InstInvoke:
+            }
+
+            case LLVMFunctionRecord::InstUnreachable: {
+                // Emit as unexposed
+                IL::UnexposedInstruction instr{};
+                instr.opCode = IL::OpCode::Unexposed;
+                instr.result = 0x0;
+                instr.source = IL::Source::Invalid();
+                instr.backendOpCode = record.id;
+                basicBlock->Append(instr);
                 break;
-            case LLVMFunctionRecord::InstUnwind:
+            }
+
+            case LLVMFunctionRecord::InstPhi: {
+                reader.ConsumeOp();
+
+                // Get remaining count
+                uint64_t remaining = reader.Remaining();
+                ASSERT(remaining % 2 == 0, "Unexpected record phi operation count");
+
+                // Determine number of values
+                const uint32_t valueCount = remaining / 2;
+
+                // Create instruction
+                auto *instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(valueCount));
+                instr->opCode = IL::OpCode::Phi;
+                instr->result = result;
+                instr->source = IL::Source::Invalid();
+                instr->values.count = valueCount;
+
+                // Fill cases
+                for (uint32_t i = 0; i < valueCount; i++) {
+                    IL::PhiValue value;
+                    value.value = reader.ConsumeOp();
+                    value.branch = reader.ConsumeOp();
+                    instr->values[i] = value;
+                }
+
+                // Append dynamic
+                basicBlock->Append(instr);
                 break;
-            case LLVMFunctionRecord::InstUnreachable:
+            }
+
+            case LLVMFunctionRecord::InstAlloca: {
+                uint64_t type = reader.ConsumeOp();
+                uint64_t sizeType = reader.ConsumeOp();
+                uint64_t size = reader.ConsumeOp();
+
+                // Append
+                IL::AllocaInstruction instr{};
+                instr.opCode = IL::OpCode::Alloca;
+                instr.result = result;
+                instr.source = IL::Source::Invalid();
+                instr.type = type;
+                basicBlock->Append(instr);
                 break;
-            case LLVMFunctionRecord::InstPhi:
-                break;
-            case LLVMFunctionRecord::InstMalloc:
-                break;
-            case LLVMFunctionRecord::InstFree:
-                break;
-            case LLVMFunctionRecord::InstAlloca:
-                break;*/
+            }
+
             case LLVMFunctionRecord::InstLoad: {
                 // Append
                 IL::LoadInstruction instr{};
                 instr.opCode = IL::OpCode::Load;
-                instr.result = IL::InvalidID;
+                instr.result = result;
                 instr.source = IL::Source::Invalid();
-                instr.address = 0x0;
+                instr.address = reader.ConsumeOp();
                 basicBlock->Append(instr);
                 break;
             }
-            /*case LLVMFunctionRecord::InstStore:
+
+            case LLVMFunctionRecord::InstStore: {
+                // Append
+                IL::StoreInstruction instr{};
+                instr.opCode = IL::OpCode::Store;
+                instr.result = result;
+                instr.source = IL::Source::Invalid();
+                instr.address = reader.ConsumeOp();
+
+                // Type
+                reader.ConsumeOp();
+
+                instr.value = reader.ConsumeOp();
+                basicBlock->Append(instr);
                 break;
+            }
+            case LLVMFunctionRecord::InstStore2: {
+                // Append
+                IL::StoreInstruction instr{};
+                instr.opCode = IL::OpCode::Store;
+                instr.result = result;
+                instr.source = IL::Source::Invalid();
+                instr.address = reader.ConsumeOp();
+
+                // Type
+                reader.ConsumeOp();
+
+                instr.value = reader.ConsumeOp();
+                basicBlock->Append(instr);
+                break;
+            }
+
             case LLVMFunctionRecord::InstCall:
+            case LLVMFunctionRecord::InstCall2: {
+                // Get attributes
+                uint64_t attributes = reader.ConsumeOp();
+
+                // Get packed convention
+                uint64_t callingConvAndTailCall = reader.ConsumeOp();
+
+                // Parse calling conventions
+                auto callConv = static_cast<LLVMCallingConvention>((callingConvAndTailCall >> 1) & 1023);
+                bool isTailCall = callingConvAndTailCall & 0x1;
+                bool isMustTailCall = (callingConvAndTailCall >> 14) & 0x1;
+
+                // Get type of function
+                uint64_t type = reader.ConsumeOp();
+
+                // Get callee
+                uint64_t rel = reader.ConsumeOp();
+                uint64_t called = table.idMap.GetRelative(anchor, rel);
+                uint64_t calledType = reader.ConsumeOp();
+
+                // Number of arguments
+                uint32_t argCount = reader.Remaining();
+
+                // Consume arguments
+                auto values = ALLOCA_ARRAY(IL::ID, argCount);
+                for (uint32_t i = 0; i < argCount; i++) {
+                    values[i] = reader.ConsumeOp();
+                }
+
+                // const DXILFunctionDeclaration* callDecl = GetFunctionDeclaration(called);
+
+                // Emit as unexposed
+                IL::UnexposedInstruction instr{};
+                instr.opCode = IL::OpCode::Unexposed;
+                instr.result = 0x0;
+                instr.source = IL::Source::Invalid();
+                instr.backendOpCode = record.id;
+                basicBlock->Append(instr);
                 break;
-            case LLVMFunctionRecord::InstVaArg:
-                break;
-            case LLVMFunctionRecord::InstStore2:
-                break;
-            case LLVMFunctionRecord::InstGetResult:
-                break;
-            case LLVMFunctionRecord::InstExtractVal:
-                break;
-            case LLVMFunctionRecord::InstInsertVal:
-                break;
-            case LLVMFunctionRecord::InstCmp2:
-                break;
-            case LLVMFunctionRecord::InstVSelect:
-                break;
-            case LLVMFunctionRecord::InstInBoundsGEP:
-                break;
-            case LLVMFunctionRecord::InstIndirectBR:
-                break;
+            }
+
+                /* Debug */
             case LLVMFunctionRecord::DebugLOC:
-                break;
             case LLVMFunctionRecord::DebugLOCAgain:
+            case LLVMFunctionRecord::DebugLOC2: {
+                // Nothing yet
                 break;
-            case LLVMFunctionRecord::InstCall2:
-                break;
-            case LLVMFunctionRecord::DebugLOC2:
-                break;*/
+            }
         }
     }
 }
 
-void DXILPhysicalBlockFunction::ParseConstants(const LLVMBlock* block) {
-    for (const LLVMRecord &record: block->records) {
-        switch (record.id) {
-
+bool DXILPhysicalBlockFunction::HasResult(const struct LLVMRecord &record) {
+    switch (static_cast<LLVMFunctionRecord>(record.id)) {
+        default: {
+            ASSERT(false, "Unexpected LLVM function record");
+            return false;
         }
+
+            /* Unsupported functions */
+        case LLVMFunctionRecord::InstInvoke:
+        case LLVMFunctionRecord::InstUnwind:
+        case LLVMFunctionRecord::InstFree:
+        case LLVMFunctionRecord::InstVaArg:
+        case LLVMFunctionRecord::InstIndirectBR:
+        case LLVMFunctionRecord::InstMalloc: {
+            ASSERT(false, "Unsupported instruction");
+            return false;
+        }
+
+        case LLVMFunctionRecord::DeclareBlocks:
+            return false;
+        case LLVMFunctionRecord::InstBinOp:
+            return true;
+        case LLVMFunctionRecord::InstCast:
+            return true;
+        case LLVMFunctionRecord::InstGEP:
+            return true;
+        case LLVMFunctionRecord::InstSelect:
+            return true;
+        case LLVMFunctionRecord::InstExtractELT:
+            return true;
+        case LLVMFunctionRecord::InstInsertELT:
+            return true;
+        case LLVMFunctionRecord::InstShuffleVec:
+            return true;
+        case LLVMFunctionRecord::InstCmp:
+            return true;
+        case LLVMFunctionRecord::InstRet:
+            return record.opCount > 0;
+        case LLVMFunctionRecord::InstBr:
+            return false;
+        case LLVMFunctionRecord::InstSwitch:
+            return false;
+        case LLVMFunctionRecord::InstUnreachable:
+            return false;
+        case LLVMFunctionRecord::InstPhi:
+            return true;
+        case LLVMFunctionRecord::InstAlloca:
+            return true;
+        case LLVMFunctionRecord::InstLoad:
+            return true;
+        case LLVMFunctionRecord::InstStore:
+            return false;
+        case LLVMFunctionRecord::InstCall:
+        case LLVMFunctionRecord::InstCall2:
+            // TODO: Has void return?
+            return true;
+        case LLVMFunctionRecord::InstStore2:
+            return false;
+        case LLVMFunctionRecord::InstGetResult:
+            return true;
+        case LLVMFunctionRecord::InstExtractVal:
+            return true;
+        case LLVMFunctionRecord::InstInsertVal:
+            return true;
+        case LLVMFunctionRecord::InstCmp2:
+            return true;
+        case LLVMFunctionRecord::InstVSelect:
+            return true;
+        case LLVMFunctionRecord::InstInBoundsGEP:
+            return true;
+        case LLVMFunctionRecord::DebugLOC:
+            return false;
+        case LLVMFunctionRecord::DebugLOCAgain:
+            return false;
+        case LLVMFunctionRecord::DebugLOC2:
+            return false;
     }
+}
+
+void DXILPhysicalBlockFunction::ParseModuleFunction(const struct LLVMRecord &record) {
+    LLVMRecordReader reader(record);
+
+    /*
+     * LLVM Specification
+     *   [FUNCTION, type, callingconv, isproto,
+     *    linkage, paramattr, alignment, section, visibility, gc, prologuedata,
+     *     dllstorageclass, comdat, prefixdata, personalityfn, preemptionspecifier]
+     */
+
+    // Allocate id to current function offset
+    table.idMap.AllocMappedID(DXILIDType::Function, functions.Size());
+
+    // Create function
+    DXILFunctionDeclaration &function = functions.Add();
+
+    // Hash name
+    function.hash = std::hash<std::string_view>{}(function.name);
+
+    // Get function type
+    uint64_t type = reader.ConsumeOp();
+    function.type = table.type.typeMap.GetType(type)->As<Backend::IL::FunctionType>();
+
+    // Ignored
+    uint64_t callingConv = reader.ConsumeOp();
+    uint64_t proto = reader.ConsumeOp();
+
+    // Get function linkage
+    function.linkage = static_cast<LLVMLinkage>(reader.ConsumeOp());
+
+    // Ignored
+    uint64_t paramAttr = reader.ConsumeOp();
+
+    // Add to internal linked functions if not external
+    if (proto == 0) {
+        internalLinkedFunctions.Add(functions.Size() - 1);
+    }
+}
+
+const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration(uint32_t id) {
+    ASSERT(table.idMap.GetType(id) == DXILIDType::Function, "Invalid function id");
+    return &functions[table.idMap.GetDataIndex(id)];
 }

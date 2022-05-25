@@ -35,7 +35,7 @@ struct LLVMRecord {
     /// Fill all operands sequentially to a given array
     /// \param out length must be the number of operands
     template<typename T>
-    void FillOperands(T* out) {
+    void FillOperands(T* out) const {
         for (uint32_t i = 0; i < opCount; i++) {
             out[i] = static_cast<T>(ops[i]);
         }

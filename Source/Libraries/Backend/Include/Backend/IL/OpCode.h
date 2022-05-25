@@ -20,6 +20,8 @@ namespace IL {
         Sub,
         Div,
         Mul,
+        Rem,
+        Trunc,
 
         /// Comparison
         Or,
@@ -31,20 +33,27 @@ namespace IL {
         GreaterThan,
         GreaterThanEqual,
 
-        /// Branching
+        /// Flow control
         Branch,
         BranchConditional,
         Switch,
         Phi,
+        Return,
 
         /// Bit manipulation
         BitOr,
+        BitXOr,
         BitAnd,
         BitShiftLeft,
         BitShiftRight,
 
         /// Structural
         // ExtractElement,
+
+        /// Casting
+        FloatToInt,
+        IntToFloat,
+        BitCast,
 
         /// Messages
         Export,

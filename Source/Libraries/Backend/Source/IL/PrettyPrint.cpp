@@ -279,6 +279,46 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "ResourceSize %" << load->resource;
             break;
         }
+        case OpCode::Rem: {
+            auto rem = instr->As<IL::RemInstruction>();
+            line << "Rem %" << rem->lhs << " %" << rem->rhs;
+            break;
+        }
+        case OpCode::Trunc: {
+            auto trunc = instr->As<IL::TruncInstruction>();
+            line << "Trunc %" << trunc->value;
+            break;
+        }
+        case OpCode::Return: {
+            auto ret = instr->As<IL::ReturnInstruction>();
+
+            if (ret->value == IL::InvalidID) {
+                line << "Return";
+            } else {
+                line << "Return %" << ret->value;
+            }
+            break;
+        }
+        case OpCode::BitXOr: {
+            auto _xor = instr->As<IL::BitXOrInstruction>();
+            line << "XOr %" << _xor->lhs << " %" << _xor->rhs;
+            break;
+        }
+        case OpCode::FloatToInt: {
+            auto ftoi = instr->As<IL::FloatToIntInstruction>();
+            line << "FloatToInt %" << ftoi->value;
+            break;
+        }
+        case OpCode::IntToFloat: {
+            auto itof = instr->As<IL::IntToFloatInstruction>();
+            line << "IntToFloat %" << itof->value;
+            break;
+        }
+        case OpCode::BitCast:{
+            auto cast = instr->As<IL::BitCastInstruction>();
+            line << "BitCast %" << cast->value;
+            break;
+        }
     }
 
     if (instr->source.IsValid()) {

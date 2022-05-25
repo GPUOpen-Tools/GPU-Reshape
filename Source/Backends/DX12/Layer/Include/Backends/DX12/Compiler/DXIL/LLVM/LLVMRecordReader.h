@@ -13,8 +13,23 @@ struct LLVMRecordReader {
         return record.Op(offset++);
     }
 
+    /// Consume an operand or return a default value if not present
+    uint64_t ConsumeOpDefault(uint64_t _default) {
+        return !Any() ? _default : ConsumeOp();
+    }
+
+    /// Any operands to consume?
+    bool Any() const {
+        return offset < record.opCount;
+    }
+
+    /// Get remaining operands
+    uint32_t Remaining() const {
+        return record.opCount - offset;
+    }
+
 private:
-    const LLVMRecord record;
+    const LLVMRecord& record;
 
     /// Current offset
     uint32_t offset{0};

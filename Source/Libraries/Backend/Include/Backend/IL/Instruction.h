@@ -12,7 +12,6 @@
 #include "ID.h"
 #include "PrettyPrint.h"
 
-
 namespace IL {
     struct Instruction {
         /// Reinterpret this instruction, asserts on validity
@@ -130,6 +129,19 @@ namespace IL {
         ID rhs;
     };
 
+    struct RemInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Rem;
+
+        ID lhs;
+        ID rhs;
+    };
+
+    struct TruncInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Trunc;
+
+        ID value;
+    };
+
     struct StoreBufferInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::StoreBuffer;
 
@@ -229,6 +241,13 @@ namespace IL {
         ID rhs;
     };
 
+    struct BitXOrInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::BitXOr;
+
+        ID lhs;
+        ID rhs;
+    };
+
     struct BitAndInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::BitAnd;
 
@@ -248,6 +267,24 @@ namespace IL {
 
         ID value;
         ID shift;
+    };
+
+    struct FloatToIntInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::FloatToInt;
+
+        ID value;
+    };
+
+    struct IntToFloatInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::IntToFloat;
+
+        ID value;
+    };
+
+    struct BitCastInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::BitCast;
+
+        ID value;
     };
 
     struct BranchInstruction : public Instruction {
@@ -327,6 +364,12 @@ namespace IL {
         InlineArray<PhiValue> values;
     };
 
+    struct ReturnInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Return;
+
+        ID value;
+    };
+
     struct ExportInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Export;
 
@@ -358,7 +401,7 @@ namespace IL {
     inline uint64_t GetSize(const Instruction* instruction) {
         switch (instruction->opCode) {
             default:
-                ASSERT(false, "Missing instruction size mapping");
+            ASSERT(false, "Missing instruction size mapping");
                 return 0;
             case OpCode::None:
                 return 0;
@@ -382,6 +425,8 @@ namespace IL {
                 return sizeof(DivInstruction);
             case OpCode::Mul:
                 return sizeof(MulInstruction);
+            case OpCode::Rem:
+                return sizeof(RemInstruction);
             case OpCode::Equal:
                 return sizeof(EqualInstruction);
             case OpCode::NotEqual:
@@ -400,6 +445,8 @@ namespace IL {
                 return sizeof(BranchConditionalInstruction);
             case OpCode::BitOr:
                 return sizeof(BitOrInstruction);
+            case OpCode::BitXOr:
+                return sizeof(BitXOrInstruction);
             case OpCode::BitAnd:
                 return sizeof(BitAndInstruction);
             case OpCode::BitShiftLeft:
@@ -428,6 +475,16 @@ namespace IL {
                 return static_cast<const SwitchInstruction*>(instruction)->GetSize();
             case OpCode::Phi:
                 return static_cast<const PhiInstruction*>(instruction)->GetSize();
+            case OpCode::Trunc:
+                return sizeof(TruncInstruction);
+            case OpCode::Return:
+                return sizeof(ReturnInstruction);
+            case OpCode::FloatToInt:
+                return sizeof(FloatToIntInstruction);
+            case OpCode::IntToFloat:
+                return sizeof(IntToFloatInstruction);
+            case OpCode::BitCast:
+                return sizeof(BitCastInstruction);
         }
     }
 }

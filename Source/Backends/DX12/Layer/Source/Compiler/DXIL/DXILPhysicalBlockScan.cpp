@@ -71,8 +71,8 @@ bool DXILPhysicalBlockScan::Scan(const void *byteCode, uint64_t byteLength) {
         return false;
     }
 
-    // Read the module records
-    return ReadAndValidateModuleRecords();
+    // OK
+    return true;
 }
 
 DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMBitStream &stream, LLVMBlock *block) {
@@ -148,37 +148,6 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMB
 
     // OK
     return ScanResult::OK;
-}
-
-bool DXILPhysicalBlockScan::ReadAndValidateModuleRecords() {
-    for (auto&& record : root.records) {
-        switch (record.As<LLVMModuleRecord>()) {
-            default: {
-                /* Ignore */
-                break;
-            }
-            case LLVMModuleRecord::Version: {
-                if (record.opCount != 1 || record.ops[0] != 1) {
-                    ASSERT(false, "Unsupported LLVM version");
-                    return false;
-                }
-                break;
-            }
-            case LLVMModuleRecord::Triple: {
-                triple.resize(record.opCount);
-                record.FillOperands(triple.data());
-                break;
-            }
-            case LLVMModuleRecord::DataLayout: {
-                dataLayout.resize(record.opCount);
-                record.FillOperands(dataLayout.data());
-                break;
-            }
-        }
-    }
-
-    // OK
-    return true;
 }
 
 DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanAbbreviation(LLVMBitStream &stream, LLVMBlock* block) {

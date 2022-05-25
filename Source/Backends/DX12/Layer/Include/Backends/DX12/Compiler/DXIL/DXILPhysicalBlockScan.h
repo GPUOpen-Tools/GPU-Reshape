@@ -32,7 +32,7 @@ public:
 
     /// Get the root block
     /// \return
-    LLVMBlock& GetRoot() {
+    const LLVMBlock& GetRoot() {
         return root;
     }
 
@@ -99,12 +99,6 @@ private:
 
     /// Hierarchical root block
     LLVMBlock root;
-
-    /// LLVM triple
-    std::string triple;
-
-    /// LLVM data layout
-    std::string dataLayout;
 
 private:
     /// Cache for flat operand scanning

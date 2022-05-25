@@ -9,8 +9,8 @@ struct DXILPhysicalBlockType : public DXILPhysicalBlockSection {
     DXILPhysicalBlockType(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
 
     /// Parse all instructions
-    void Parse();
+    void ParseType(const struct LLVMBlock *block);
 
-private:
+    /// Type mapper
     DXILTypeMap typeMap;
 };
