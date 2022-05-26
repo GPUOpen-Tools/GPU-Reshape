@@ -626,7 +626,13 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                     values[i] = reader.ConsumeOp();
                 }
 
-                // const DXILFunctionDeclaration* callDecl = GetFunctionDeclaration(called);
+                // Get call declaration
+                const DXILFunctionDeclaration* callDecl = GetFunctionDeclaration(called);
+
+                // Create mapping if present
+                if (!callDecl->type->returnType->Is<Backend::IL::VoidType>()) {
+                    result = table.idMap.AllocMappedID(DXILIDType::Instruction);
+                }
 
                 // Emit as unexposed
                 IL::UnexposedInstruction instr{};
@@ -703,8 +709,8 @@ bool DXILPhysicalBlockFunction::HasResult(const struct LLVMRecord &record) {
             return false;
         case LLVMFunctionRecord::InstCall:
         case LLVMFunctionRecord::InstCall2:
-            // TODO: Has void return?
-            return true;
+            // Handle in call
+            return false;
         case LLVMFunctionRecord::InstStore2:
             return false;
         case LLVMFunctionRecord::InstGetResult:

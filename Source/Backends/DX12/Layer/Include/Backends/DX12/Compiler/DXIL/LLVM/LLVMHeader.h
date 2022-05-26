@@ -21,6 +21,7 @@ enum class LLVMBlockInfoRecord : uint8_t {
 };
 
 enum class LLVMReservedBlock : uint8_t {
+    Info = 0,
     Module = 8,
     Parameter = 9,
     ParameterGroup = 10,

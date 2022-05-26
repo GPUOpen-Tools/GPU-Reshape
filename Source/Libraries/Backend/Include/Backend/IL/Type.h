@@ -36,6 +36,13 @@ namespace Backend::IL {
             return static_cast<const T*>(this);
         }
 
+        /// Check if this type is of type
+        /// \tparam T the target type
+        template<typename T>
+        bool Is() const {
+            return kind == T::kKind;
+        }
+
         TypeKind kind{TypeKind::None};
     };
 

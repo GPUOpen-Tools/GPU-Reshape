@@ -87,6 +87,9 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     for (const LLVMBlock *block: root.blocks) {
         switch (static_cast<LLVMReservedBlock>(block->id)) {
             default:
+                ASSERT(false, "Unexpected block id");
+                break;
+            case LLVMReservedBlock::Info:
                 break;
             case LLVMReservedBlock::Module:
                 break;
