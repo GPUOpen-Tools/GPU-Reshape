@@ -618,8 +618,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 uint64_t type = reader.ConsumeOp();
 
                 // Get callee
-                uint64_t rel = reader.ConsumeOp();
-                uint64_t called = table.idMap.GetRelative(anchor, rel);
+                uint64_t called = table.idMap.GetRelative(anchor, reader.ConsumeOp());
                 uint64_t calledType = reader.ConsumeOp();
 
                 // Number of arguments

@@ -47,6 +47,13 @@ enum class LLVMModuleRecord : uint8_t {
     GCName = 11
 };
 
+enum class LLVMSymTabRecord : uint8_t {
+    Entry = 1,
+    BasicBlockEntry = 2,
+    FunctionEntry = 3,
+    CombinedEntry = 5
+};
+
 enum class LLVMTypeRecord : uint8_t {
     NumEntry = 1,
     Void = 2,

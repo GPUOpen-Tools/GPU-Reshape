@@ -7,6 +7,7 @@
 #include "Blocks/DXILPhysicalBlockGlobal.h"
 #include "Blocks/DXILPhysicalBlockString.h"
 #include "Blocks/DXILPhysicalBlockMetadata.h"
+#include "Blocks/DXILPhysicalBlockSymbol.h"
 #include "DXILIDMap.h"
 
 // Std
@@ -29,6 +30,7 @@ struct DXILPhysicalBlockTable {
     DXILPhysicalBlockType type;
     DXILPhysicalBlockGlobal global;
     DXILPhysicalBlockString string;
+    DXILPhysicalBlockSymbol symbol;
     DXILPhysicalBlockMetadata metadata;
 
     /// Shared identifier map

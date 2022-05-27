@@ -239,6 +239,7 @@ add_library(
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockFunction.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockString.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockMetadata.cpp
+    Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockSymbol.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockType.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockGlobal.cpp
 

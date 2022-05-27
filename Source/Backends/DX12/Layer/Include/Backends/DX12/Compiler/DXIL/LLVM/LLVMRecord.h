@@ -33,11 +33,12 @@ struct LLVMRecord {
     }
 
     /// Fill all operands sequentially to a given array
-    /// \param out length must be the number of operands
+    /// \param out start starting operand offset
+    /// \param out length must be the number of operands from the offset
     template<typename T>
-    void FillOperands(T* out) const {
-        for (uint32_t i = 0; i < opCount; i++) {
-            out[i] = static_cast<T>(ops[i]);
+    void FillOperands(T* out, uint32_t start = 0) const {
+        for (uint32_t i = start; i < opCount; i++) {
+            out[i - start] = static_cast<T>(ops[i]);
         }
     }
 

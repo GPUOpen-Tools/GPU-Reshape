@@ -35,6 +35,11 @@ struct DXILIDMap {
         return map.Size();
     }
 
+    /// Is an ID mapped?
+    bool IsMapped(uint32_t id) const {
+        return map.Size() > id;
+    }
+
     /// Get the relative id
     /// \param anchor record anchor
     /// \param id relative id

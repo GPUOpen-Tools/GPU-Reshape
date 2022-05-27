@@ -8,6 +8,7 @@ DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL:
     type(allocators, program, *this),
     global(allocators, program, *this),
     string(allocators, program, *this),
+    symbol(allocators, program, *this),
     metadata(allocators, program, *this) {
 
 }
@@ -104,6 +105,7 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
                 function.ParseFunction(block);
                 break;
             case LLVMReservedBlock::ValueSymTab:
+                symbol.ParseSymTab(block);
                 break;
             case LLVMReservedBlock::Metadata:
                 metadata.ParseMetadata(block);
