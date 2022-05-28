@@ -42,7 +42,7 @@ struct SpvTypeMap {
     /// \return the new type
     template<typename T>
     const Backend::IL::Type* AddType(SpvId id, const T& decl) {
-        const Backend::IL::Type* type = programMap->AddType<T>(decl);
+        const Backend::IL::Type* type = programMap->AddType<T>(id, decl);
         AddMapping(id, type);
         return type;
     }

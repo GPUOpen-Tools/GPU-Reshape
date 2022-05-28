@@ -7,6 +7,9 @@
 // Common
 #include <Common/Containers/LinearBlockAllocator.h>
 
+// Backend
+#include "IdentifierMap.h"
+
 // Std
 #include <map>
 
