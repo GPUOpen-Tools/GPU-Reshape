@@ -1,7 +1,9 @@
 #include <Assembler.h>
 
+// Common
 #include <Common/Assert.h>
 
+// Std
 #include <filesystem>
 #include <sstream>
 #include <map>
@@ -27,17 +29,28 @@ bool Assembler::Assemble(std::ostream &out) {
 
     // Keys
     std::stringstream includes;
-
-    // Shader include
-    includes << "#include \"" << assembleInfo.shaderPath << "\"\n";
+    std::stringstream defines;
 
     // Schema includes
-    for (const std::string_view& schema : program.schemas) {
+    for (const std::string_view &schema: program.schemas) {
         includes << "#include <" << schema << ">\n";
     }
 
+    // Vulkan?
+#ifdef ENABLE_BACKEND_VULKAN
+    includes << "#include \"" << assembleInfo.shaderPath << "Vulkan.h\"\n";
+    defines << "#define ENABLE_BACKEND_VULKAN 1\n";
+#endif // ENABLE_BACKEND_VULKAN
+
+    // DX12?
+#ifdef ENABLE_BACKEND_DX12
+    includes << "#include \"" << assembleInfo.shaderPath << "D3D12.h\"\n";
+    defines << "#define ENABLE_BACKEND_DX12 1\n";
+#endif // ENABLE_BACKEND_DX12
+
     // Replace
     testTemplate.Substitute("$INCLUDES", includes.str().c_str());
+    testTemplate.Substitute("$DEFINES", defines.str().c_str());
 
     // Assemble sections
     AssembleConstraints();

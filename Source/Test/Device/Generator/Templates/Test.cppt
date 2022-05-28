@@ -20,6 +20,7 @@
 
 // Devices
 #include <Test/Device/Vulkan/Device.h>
+#include <Test/Device/DX12/Device.h>
 
 // Common
 #include <Common/Registry.h>
@@ -29,16 +30,25 @@
 #include <Schemas/Pipeline.h>
 #include <Schemas/SGUID.h>
 
+// Test includes
 $INCLUDES
+
+// Test defines
+$DEFINES
 
 using namespace Test;
 
 $CONSTRAINTS;
 
+struct ShaderCode {
+    const void* code{nullptr};
+    uint32_t size{0};
+};
+
 template<typename DEVICE>
 class $TEST_NAMERunner {
 public:
-    void Run() {
+    void Run(const ShaderCode& code) {
         Backend::EnvironmentInfo info;
         info.memoryBridge = true;
         environment.Install(info);
@@ -54,7 +64,7 @@ public:
 
 $CONSTRAINT_INSTALL
 
-        Execute();
+        Execute(code);
         Validate();
     }
 
@@ -83,7 +93,7 @@ private:
         bridge->Commit();
     }
 
-    void Execute() {
+    void Execute(const ShaderCode& code) {
         Registry* registry = environment.GetRegistry();
 
         // Create a device
@@ -114,7 +124,7 @@ $RESOURCES_SET
         ResourceSetID resourceSet = device->CreateResourceSet(layout, resources, sizeof(resources) / sizeof(ResourceID));
 
         // Create pipeline
-        PipelineID pipeline = device->CreateComputePipeline(&layout, 1u, kShaderCodeVulkan, sizeof(kShaderCodeVulkan));
+        PipelineID pipeline = device->CreateComputePipeline(&layout, 1u, code.code, code.size);
 
         // Set the bridge up for the expected communication
         ConfigureBridge();
@@ -153,7 +163,22 @@ $CONSTRAINT_FIELDS
 };
 
 TEST_CASE("Features.$FEATURE_NAME.$TEST_NAME") {
+#ifdef ENABLE_BACKEND_VULKAN
     SECTION("Vulkan") {
-        $TEST_NAMERunner<Vulkan::Device>{}.Run();
+        $TEST_NAMERunner<Vulkan::Device>{}.Run(ShaderCode {
+            .code = kShaderCodeVulkan,
+            .size = sizeof(kShaderCodeVulkan)
+        });
     }
+#endif // ENABLE_VULKAN
+
+#ifdef ENABLE_BACKEND_DX12
+    SECTION("DX12") {
+        $TEST_NAMERunner<DX12::Device>{}.Run(ShaderCode {
+            .code = kShaderCodeD3D12,
+            .size = sizeof(kShaderCodeD3D12)
+        });
+    }
+#endif // ENABLE_DX12
 }
+

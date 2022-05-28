@@ -7,6 +7,16 @@ add_executable(
     Generator/Source/main.cpp
 )
 
+# Enable vulkan?
+if (${ENABLE_BACKEND_VULKAN})
+    target_compile_definitions(Test.Device.Generator PRIVATE -DENABLE_BACKEND_VULKAN)
+endif()
+
+# Enable dx12?
+if (${ENABLE_BACKEND_DX12})
+    target_compile_definitions(Test.Device.Generator PRIVATE -DENABLE_BACKEND_DX12)
+endif()
+
 # IDE source discovery
 SetSourceDiscovery(Test.Device.Generator Generator)
 
@@ -63,7 +73,7 @@ function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
             -test ${Test}
             -feature ${FEATURE_NAME}
             -templates ${Templates}
-            -shader ${TestName}Vulkan.h
+            -shader ${TestName}
             -o ${TestOutPath}
     )
 
@@ -90,6 +100,9 @@ target_link_libraries(
 
     # Vulkan
     Backends.Vulkan.Layer Backends.Vulkan.TestDevice
+
+    # DX12
+    Backends.DX12.Layer Backends.DX12.TestDevice
 
     # Libraries
     Libraries.Common
