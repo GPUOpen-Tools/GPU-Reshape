@@ -1,6 +1,16 @@
 #pragma once
 
+// Std
 #include <ostream>
+
+// Backend
+#include "Format.h"
+#include "ResourceSamplerMode.h"
+
+namespace Backend::IL {
+    struct ConstantMap;
+    struct TypeMap;
+}
 
 namespace IL {
     struct Program;
@@ -12,6 +22,11 @@ namespace IL {
     struct PrettyPrintContext {
         PrettyPrintContext(std::ostream& stream) : stream(stream) {
 
+        }
+
+        /// Tab this context
+        void TabInline() {
+            pad++;
         }
 
         /// Insert a tab into the current padding
@@ -44,5 +59,9 @@ namespace IL {
     void PrettyPrint(const Function& function, PrettyPrintContext out);
     void PrettyPrint(const BasicBlock& basicBlock, PrettyPrintContext out);
     void PrettyPrint(const Instruction* instr, PrettyPrintContext out);
+    void PrettyPrint(Backend::IL::Format format, PrettyPrintContext out);
+    void PrettyPrint(Backend::IL::ResourceSamplerMode mode, PrettyPrintContext out);
+    void PrettyPrint(const Backend::IL::TypeMap& map, PrettyPrintContext out);
+    void PrettyPrint(const Backend::IL::ConstantMap& map, PrettyPrintContext out);
     void PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext out);
 }

@@ -2,6 +2,7 @@
 
 // Backend
 #include "TypeKind.h"
+#include "ID.h"
 #include "AddressSpace.h"
 #include "TextureDimension.h"
 #include "Format.h"
@@ -44,6 +45,7 @@ namespace Backend::IL {
         }
 
         TypeKind kind{TypeKind::None};
+        ::IL::ID id{::IL::InvalidID};
     };
 
     struct UnexposedType : public Type {

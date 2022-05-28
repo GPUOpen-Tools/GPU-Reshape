@@ -2,13 +2,14 @@
 
 // Backend
 #include <Backend/IL/TypeMap.h>
+#include <Backend/IL/IdentifierMap.h>
 
 // Std
 #include <vector>
 
 class DXILTypeMap {
 public:
-    DXILTypeMap(Backend::IL::TypeMap* programMap) : programMap(programMap) {
+    DXILTypeMap(Backend::IL::TypeMap& programMap, Backend::IL::IdentifierMap& identifierMap) : programMap(programMap), identifierMap(identifierMap) {
 
     }
 
@@ -23,7 +24,8 @@ public:
     /// \return the new type
     template<typename T>
     const Backend::IL::Type* AddType(uint32_t index, const T& decl) {
-        const Backend::IL::Type* type = programMap->AddType<T>(decl);
+        // LLVM types are indexed separately from global identifiers, so always allocate
+        const Backend::IL::Type* type = programMap.AddType<T>(identifierMap.AllocID(), decl);
         indexLookup.at(index) = type;
         return type;
     }
@@ -37,7 +39,10 @@ public:
 
 private:
     /// IL map
-    Backend::IL::TypeMap* programMap;
+    Backend::IL::TypeMap& programMap;
+
+    /// Identifier map
+    Backend::IL::IdentifierMap& identifierMap;
 
     /// Local lookup table
     std::vector<const Backend::IL::Type*> indexLookup;

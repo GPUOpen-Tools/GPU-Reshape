@@ -10,7 +10,7 @@
 
 DXILPhysicalBlockType::DXILPhysicalBlockType(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table) :
     DXILPhysicalBlockSection(allocators, program, table),
-    typeMap(&program.GetTypeMap()) {
+    typeMap(program.GetTypeMap(), program.GetIdentifierMap()) {
 }
 
 void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {

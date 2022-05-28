@@ -90,6 +90,18 @@ struct LLVMBitStream {
         return value;
     }
 
+    /// Decode a signed LLVM value
+    static int64_t DecodeSigned(uint64_t value) {
+        uint64_t shr = value >> 1;
+        return (value & 0x1) ? -shr : shr;
+    }
+
+    /// Encode a signed LLVM value
+    static uint64_t EncodeSigned(int64_t value) {
+        uint64_t shl = value << 1;
+        return (value < 0) ? (shl | 0x1) : shl;
+    }
+
     /// Align the stream to 32 bits
     void AlignDWord() {
         if (bitOffset % 32 == 0) {

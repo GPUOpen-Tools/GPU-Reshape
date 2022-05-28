@@ -4,6 +4,7 @@
 #include "Function.h"
 #include "IdentifierMap.h"
 #include "TypeMap.h"
+#include "ConstantMap.h"
 #include "FunctionList.h"
 
 // Std
@@ -14,8 +15,10 @@ namespace IL {
     struct Program {
         Program(const Allocators &allocators, uint64_t shaderGUID) :
             allocators(allocators),
-            typeMap(allocators),
+            typeMap(allocators, identifierMap),
+            constants(allocators, identifierMap),
             functions(allocators, identifierMap),
+            variables(allocators, identifierMap),
             shaderGUID(shaderGUID) {
             /* */
         }
@@ -33,7 +36,7 @@ namespace IL {
         Program *Copy() const {
             auto program = new(allocators) Program(allocators, shaderGUID);
             program->identifierMap.SetBound(identifierMap.GetMaxID());
-            program->typeMap = typeMap.Copy();
+            typeMap.CopyTo(program->typeMap);
 
             // Copy all functions and their basic blocks
             functions.CopyTo(program->functions);
@@ -67,9 +70,24 @@ namespace IL {
             return functions;
         }
 
+        /// Get the global variables map
+        VariableList &GetVariableList() {
+            return variables;
+        }
+
+        /// Get the global constants
+        Backend::IL::ConstantMap &GetConstants() {
+            return constants;
+        }
+
         /// Get the identifier map
         const FunctionList &GetFunctionList() const {
             return functions;
+        }
+
+        /// Get the global variables map
+        const VariableList &GetVariableList() const {
+            return variables;
         }
 
         /// Get the identifier map
@@ -82,11 +100,22 @@ namespace IL {
             return identifierMap;
         }
 
+        /// Get the global constants
+        const Backend::IL::ConstantMap &GetConstants() const {
+            return constants;
+        }
+
     private:
         Allocators allocators;
 
         /// Functions within this program
         FunctionList functions;
+
+        /// Global variables
+        VariableList variables;
+
+        /// Global constants
+        Backend::IL::ConstantMap constants;
 
         /// The identifier map
         IdentifierMap identifierMap;

@@ -803,10 +803,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock* basicBlock, LL
                 return false;
             }
 
-            // uint64_t opCode = reader.ConsumeOp();
-            uint64_t outputID = reader.ConsumeOp();
-            uint64_t row = reader.ConsumeOp();
-            uint64_t column = reader.ConsumeOp();
+            uint64_t outputID = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t row = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t column = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
             uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
             // Unknown, emit as unexposed

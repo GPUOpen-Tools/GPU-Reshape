@@ -15,21 +15,19 @@ namespace Backend::IL {
     
     /// Type map, provides unique type identifiers 
     struct TypeMap {
-        TypeMap(const Allocators &allocators) : allocators(allocators), blockAllocator(allocators) {
+        using Container = std::vector<Type*>;
+
+        TypeMap(const Allocators &allocators, IdentifierMap& identifierMap) : allocators(allocators), blockAllocator(allocators), identifierMap(identifierMap) {
 
         }
 
         /// Create a copy of this type map
         ///   ! Parent lifetime tied to the copy
         /// \return the new type map
-        TypeMap Copy() const {
-            TypeMap copy(allocators);
-
+        void CopyTo(TypeMap& out) const {
             // Copy the maps
-            copy.idMap = idMap;
-            copy.maps = maps;
-
-            return copy;
+            out.idMap = idMap;
+            out.maps = maps;
         }
 
         /// Find a type from his map
@@ -55,7 +53,7 @@ namespace Backend::IL {
 
             auto &typePtr = sortMap[type.SortKey()];
             if (!typePtr) {
-                typePtr = AllocateType<T>(type);
+                typePtr = AllocateType<T>(identifierMap.AllocID(), type);
             }
 
             return typePtr;
@@ -64,8 +62,15 @@ namespace Backend::IL {
         /// Add a type to this map, must be unique
         /// \param type the type to be added
         template<typename T>
-        const Type* AddType(const T &type) {
-            return FindTypeOrAdd(type);
+        const Type* AddType(ID id, const T &type) {
+            auto&& sortMap = GetSortMap<T>();
+
+            auto &typePtr = sortMap[type.SortKey()];
+            if (!typePtr) {
+                typePtr = AllocateType<T>(id, type);
+            }
+
+            return typePtr;
         }
 
         /// Set a type relation in this map
@@ -84,15 +89,27 @@ namespace Backend::IL {
             return type;
         }
 
+        /// Iterator accessors
+        Container::iterator begin() { return types.begin(); }
+        Container::reverse_iterator rbegin() { return types.rbegin(); }
+        Container::iterator end() { return types.end(); }
+        Container::reverse_iterator rend() { return types.rend(); }
+        Container::const_iterator begin() const { return types.begin(); }
+        Container::const_reverse_iterator rbegin() const { return types.rbegin(); }
+        Container::const_iterator end() const { return types.end(); }
+        Container::const_reverse_iterator rend() const { return types.rend(); }
+
     private:
         /// Allocate a new type
         /// \tparam T the type cxx type
         /// \param decl the declaration specifier
         /// \return the allocated type
         template<typename T>
-        T *AllocateType(const T &decl) {
+        T *AllocateType(ID id, const T &decl) {
             auto *type = blockAllocator.Allocate<T>(decl);
             type->kind = T::kKind;
+            type->id = id;
+            types.push_back(type);
             return type;
         }
 
@@ -138,6 +155,12 @@ namespace Backend::IL {
             SortMap<BufferType> bufferMap;
             SortMap<FunctionType> functionMap;
         };
+
+        /// Declaration order
+        Container types;
+
+        /// Identifiers
+        IdentifierMap& identifierMap;
 
         TypeMaps maps;
 

@@ -9,6 +9,14 @@ void IL::PrettyPrint(const Program &program, IL::PrettyPrintContext out) {
     out.Line() << "Functions : " << program.GetFunctionList().GetCount() << "\n";
     out.Line() << "\n";
 
+    // Print all types
+    PrettyPrint(program.GetTypeMap(), out);
+    out.Line() << "\n";
+
+    // Print all constants
+    PrettyPrint(program.GetConstants(), out);
+    out.Line() << "\n";
+
     // Print all functions
     for (const IL::Function *fn: program.GetFunctionList()) {
         PrettyPrint(*fn, out);
@@ -42,7 +50,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
 
     switch (instr->opCode) {
         default:
-            ASSERT(false, "Unknown instruction");
+        ASSERT(false, "Unknown instruction");
             break;
         case OpCode::None: {
             line << "None";
@@ -120,7 +128,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         }
         case OpCode::StoreOutput: {
             auto store = instr->As<IL::StoreOutputInstruction>();
-            line << "StoreOutput index:" << store->index << " [" << store->row << ", " << store->column << "] value:%" << store->value;
+            line << "StoreOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value;
             break;
         }
         case OpCode::Sub: {
@@ -216,7 +224,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             }
 
             for (uint32_t i = 0; i < _switch->cases.count; i++) {
-                const IL::SwitchCase& _case = _switch->cases[i];
+                const IL::SwitchCase &_case = _switch->cases[i];
                 line << "\n";
                 out.Line() << "       literal:" << _case.literal << " branch:%" << _case.branch;
             }
@@ -227,7 +235,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "Phi ";
 
             for (uint32_t i = 0; i < phi->values.count; i++) {
-                const IL::PhiValue& _case = phi->values[i];
+                const IL::PhiValue &_case = phi->values[i];
                 line << "\n";
                 out.Line() << "       value:%" << _case.value << " branch:%" << _case.branch;
             }
@@ -323,7 +331,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "IntToFloat %" << itof->value;
             break;
         }
-        case OpCode::BitCast:{
+        case OpCode::BitCast: {
             auto cast = instr->As<IL::BitCastInstruction>();
             line << "BitCast %" << cast->value;
             break;
@@ -337,7 +345,373 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
     line << "\n";
 }
 
-static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlocks, const IL::BasicBlock *block, IL::ID successor, IL::PrettyPrintContext& out) {
+void IL::PrettyPrint(Backend::IL::Format format, PrettyPrintContext out) {
+    std::ostream &line = out.stream;
+
+    switch (format) {
+        default:
+        ASSERT(false, "Unexpected format");
+            break;
+        case Backend::IL::Format::None:
+            line << "None";
+            break;
+        case Backend::IL::Format::RGBA32Float:
+            line << "RGBA32Float";
+            break;
+        case Backend::IL::Format::RGBA16Float:
+            line << "RGBA16Float";
+            break;
+        case Backend::IL::Format::R32Float:
+            line << "R32Float";
+            break;
+        case Backend::IL::Format::RGBA8:
+            line << "RGBA8";
+            break;
+        case Backend::IL::Format::RGBA8Snorm:
+            line << "RGBA8Snorm";
+            break;
+        case Backend::IL::Format::RG32Float:
+            line << "RG32Float";
+            break;
+        case Backend::IL::Format::RG16Float:
+            line << "RG16Float";
+            break;
+        case Backend::IL::Format::R11G11B10Float:
+            line << "R11G11B10Float";
+            break;
+        case Backend::IL::Format::R16Float:
+            line << "R16Float";
+            break;
+        case Backend::IL::Format::RGBA16:
+            line << "RGBA16";
+            break;
+        case Backend::IL::Format::RGB10A2:
+            line << "RGB10A2";
+            break;
+        case Backend::IL::Format::RG16:
+            line << "RG16";
+            break;
+        case Backend::IL::Format::RG8:
+            line << "RG8";
+            break;
+        case Backend::IL::Format::R16:
+            line << "R16";
+            break;
+        case Backend::IL::Format::R8:
+            line << "R8";
+            break;
+        case Backend::IL::Format::RGBA16Snorm:
+            line << "RGBA16Snorm";
+            break;
+        case Backend::IL::Format::RG16Snorm:
+            line << "RG16Snorm";
+            break;
+        case Backend::IL::Format::RG8Snorm:
+            line << "RG8Snorm";
+            break;
+        case Backend::IL::Format::R16Snorm:
+            line << "R16Snorm";
+            break;
+        case Backend::IL::Format::R8Snorm:
+            line << "R8Snorm";
+            break;
+        case Backend::IL::Format::RGBA32Int:
+            line << "RGBA32Int";
+            break;
+        case Backend::IL::Format::RGBA16Int:
+            line << "RGBA16Int";
+            break;
+        case Backend::IL::Format::RGBA8Int:
+            line << "RGBA8Int";
+            break;
+        case Backend::IL::Format::R32Int:
+            line << "R32Int";
+            break;
+        case Backend::IL::Format::RG32Int:
+            line << "RG32Int";
+            break;
+        case Backend::IL::Format::RG16Int:
+            line << "RG16Int";
+            break;
+        case Backend::IL::Format::RG8Int:
+            line << "RG8Int";
+            break;
+        case Backend::IL::Format::R16Int:
+            line << "R16Int";
+            break;
+        case Backend::IL::Format::R8Int:
+            line << "R8Int";
+            break;
+        case Backend::IL::Format::RGBA32UInt:
+            line << "RGBA32UInt";
+            break;
+        case Backend::IL::Format::RGBA16UInt:
+            line << "RGBA16UInt";
+            break;
+        case Backend::IL::Format::RGBA8UInt:
+            line << "RGBA8UInt";
+            break;
+        case Backend::IL::Format::R32UInt:
+            line << "R32UInt";
+            break;
+        case Backend::IL::Format::RGB10a2UInt:
+            line << "RGB10a2UInt";
+            break;
+        case Backend::IL::Format::RG32UInt:
+            line << "RG32UInt";
+            break;
+        case Backend::IL::Format::RG16UInt:
+            line << "RG16UInt";
+            break;
+        case Backend::IL::Format::RG8UInt:
+            line << "RG8UInt";
+            break;
+        case Backend::IL::Format::R16UInt:
+            line << "R16UInt";
+            break;
+        case Backend::IL::Format::R8UInt:
+            line << "R8UInt";
+            break;
+        case Backend::IL::Format::Unexposed:
+            line << "Unexposed";
+            break;
+    }
+}
+
+void IL::PrettyPrint(Backend::IL::ResourceSamplerMode mode, PrettyPrintContext out) {
+    std::ostream &line = out.stream;
+
+    switch (mode) {
+        case Backend::IL::ResourceSamplerMode::RuntimeOnly:
+            line << "RuntimeOnly";
+            break;
+        case Backend::IL::ResourceSamplerMode::Compatible:
+            line << "Compatible";
+            break;
+        case Backend::IL::ResourceSamplerMode::Writable:
+            line << "Writable";
+            break;
+    }
+}
+
+void IL::PrettyPrint(const Backend::IL::TypeMap &map, PrettyPrintContext out) {
+    out.stream << "Type\n";
+    out.TabInline();
+
+    for (Backend::IL::Type *type: map) {
+        std::ostream &line = out.Line();
+        line << "%" << type->id << " = ";
+
+        switch (type->kind) {
+            default: {
+                ASSERT(false, "Unexpected type");
+                break;
+            }
+            case Backend::IL::TypeKind::Bool: {
+                line << "Bool";
+                break;
+            }
+            case Backend::IL::TypeKind::Void: {
+                line << "Void";
+                break;
+            }
+            case Backend::IL::TypeKind::Int: {
+                auto _int = type->As<Backend::IL::IntType>();
+
+                if (_int->signedness) {
+                    line << "Int";
+                } else {
+                    line << "UInt";
+                }
+
+                line << " width:" << static_cast<uint32_t>(_int->bitWidth);
+                break;
+            }
+            case Backend::IL::TypeKind::FP: {
+                auto fp = type->As<Backend::IL::FPType>();
+                line << "FP width:" << static_cast<uint32_t>(fp->bitWidth);
+                break;
+            }
+            case Backend::IL::TypeKind::Vector: {
+                auto vec = type->As<Backend::IL::VectorType>();
+                line << "Vector" << " contained:%" << vec->containedType->id << " dim:" << static_cast<uint32_t>(vec->dimension);
+                break;
+            }
+            case Backend::IL::TypeKind::Matrix: {
+                auto mat = type->As<Backend::IL::MatrixType>();
+                line << "Matrix" << " contained:%" << mat->containedType->id << " rows:" << static_cast<uint32_t>(mat->rows) << " columns:" << static_cast<uint32_t>(mat->columns);
+                break;
+            }
+            case Backend::IL::TypeKind::Pointer: {
+                auto ptr = type->As<Backend::IL::PointerType>();
+                line << "Pointer pointee:%" << ptr->pointee->id << " space:";
+                switch (ptr->addressSpace) {
+                    case Backend::IL::AddressSpace::Constant:
+                        line << "Constant";
+                        break;
+                    case Backend::IL::AddressSpace::Texture:
+                        line << "Texture";
+                        break;
+                    case Backend::IL::AddressSpace::Buffer:
+                        line << "Buffer";
+                        break;
+                    case Backend::IL::AddressSpace::Function:
+                        line << "Function";
+                        break;
+                    case Backend::IL::AddressSpace::Resource:
+                        line << "Resource";
+                        break;
+                    case Backend::IL::AddressSpace::GroupShared:
+                        line << "GroupShared";
+                        break;
+                    case Backend::IL::AddressSpace::Unexposed:
+                        line << "Unexposed";
+                        break;
+                }
+                break;
+            }
+            case Backend::IL::TypeKind::Array: {
+                auto arr = type->As<Backend::IL::ArrayType>();
+                line << "Array" << " element:%" << arr->elementType->id << " count:" << arr->count;
+                break;
+            }
+            case Backend::IL::TypeKind::Texture: {
+                auto tex = type->As<Backend::IL::TextureType>();
+                line << "Texture dim:";
+
+                switch (tex->dimension) {
+                    case Backend::IL::TextureDimension::Texture1D:
+                        line << "Texture1D";
+                        break;
+                    case Backend::IL::TextureDimension::Texture2D:
+                        line << "Texture2D";
+                        break;
+                    case Backend::IL::TextureDimension::Texture3D:
+                        line << "Texture3D";
+                        break;
+                    case Backend::IL::TextureDimension::Texture1DArray:
+                        line << "Texture1DArray";
+                        break;
+                    case Backend::IL::TextureDimension::Texture2DArray:
+                        line << "Texture2DArray";
+                        break;
+                    case Backend::IL::TextureDimension::Texture2DCube:
+                        line << "Texture2DCube";
+                        break;
+                    case Backend::IL::TextureDimension::Unexposed:
+                        line << "Unexposed";
+                        break;
+                }
+
+                if (tex->sampledType) {
+                    line << " sampledType:%" << tex->sampledType->id;
+                }
+
+                line << " format:";
+                PrettyPrint(tex->format, out);
+
+                line << " samplerMode:";
+                PrettyPrint(tex->samplerMode, out);
+
+                if (tex->multisampled) {
+                    line << " multisampled";
+                }
+                break;
+            }
+            case Backend::IL::TypeKind::Buffer: {
+                auto buf = type->As<Backend::IL::BufferType>();
+                line << "Buffer format:";
+
+                if (buf->elementType) {
+                    line << " elementType:%" << buf->elementType->id;
+                }
+
+                if (buf->texelType != Backend::IL::Format::None) {
+                    line << " texelType:";
+                    PrettyPrint(buf->texelType, out);
+                }
+
+                line << " samplerMode:";
+                PrettyPrint(buf->samplerMode, out);
+            }
+            case Backend::IL::TypeKind::Function: {
+                auto fn = type->As<Backend::IL::FunctionType>();
+                line << "Function return:%" << fn->returnType->id << " parameters:[";
+
+                for (size_t i = 0; i < fn->parameterTypes.size(); i++) {
+                    if (i != 0) {
+                        line << ", ";
+                    }
+
+                    line << "%" << fn->parameterTypes[i]->id;
+                }
+
+                line << "]";
+                break;
+            }
+            case Backend::IL::TypeKind::Unexposed: {
+                line << "Unexposed";
+                break;
+            }
+        }
+
+        line << "\n";
+    }
+}
+
+void IL::PrettyPrint(const Backend::IL::ConstantMap &map, PrettyPrintContext out) {
+    out.stream << "Constant\n";
+    out.TabInline();
+
+    for (Backend::IL::Constant *constant: map) {
+        std::ostream &line = out.Line();
+
+        line << "%" << constant->id << " type:%" << constant->type->id << " = ";
+
+        switch (constant->type->kind) {
+            default: {
+                ASSERT(false, "Unexpected constant type");
+                break;
+            }
+            case Backend::IL::TypeKind::Bool: {
+                auto _bool = constant->As<Backend::IL::BoolConstant>();
+                line << "Bool ";
+                if (_bool->value) {
+                    line << "true";
+                } else {
+                    line << "false";
+                }
+                break;
+            }
+            case Backend::IL::TypeKind::Int: {
+                auto _int = constant->As<Backend::IL::IntConstant>();
+
+                if (_int->type->As<Backend::IL::IntType>()->signedness) {
+                    line << "Int";
+                } else {
+                    line << "UInt";
+                }
+
+                line << " " << _int->value;
+                break;
+            }
+            case Backend::IL::TypeKind::FP: {
+                auto fp = constant->As<Backend::IL::FPConstant>();
+                line << "FP";
+                line << " " << fp->value;
+                break;
+            }
+            case Backend::IL::TypeKind::Unexposed: {
+                line << "Unexposed";
+                break;
+            }
+        }
+
+        line << "\n";
+    }
+}
+
+static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlocks, const IL::BasicBlock *block, IL::ID successor, IL::PrettyPrintContext &out) {
     IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
     ASSERT(successorBlock, "Successor block invalid");
 
@@ -363,11 +737,11 @@ static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlo
     }
 }
 
-void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext out) {
+void IL::PrettyPrintBlockDotGraph(const Function &function, PrettyPrintContext out) {
     out.stream << "digraph regexp { \n"
                   " fontname=\"Helvetica,Arial,sans-serif\"\n";
 
-    const BasicBlockList& blocks = function.GetBasicBlocks();
+    const BasicBlockList &blocks = function.GetBasicBlocks();
 
     for (auto it = blocks.begin(); it != blocks.end(); it++) {
         out.stream << " n" << (*it)->GetID();
@@ -378,7 +752,7 @@ void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext o
             out.stream << " [label=\"Block " << (*it)->GetID() << "\"];\n";
     }
 
-    for (const IL::BasicBlock* bb : function.GetBasicBlocks()) {
+    for (const IL::BasicBlock *bb: function.GetBasicBlocks()) {
         // Must have terminator
         auto terminator = bb->GetTerminator();
         ASSERT(terminator, "Must have terminator");
@@ -393,7 +767,7 @@ void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext o
                 break;
         }
 
-        for (auto&& instr : *bb) {
+        for (auto &&instr: *bb) {
             switch (instr->opCode) {
                 default:
                     break;
@@ -407,7 +781,7 @@ void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext o
                     break;
                 }
                 case IL::OpCode::Switch: {
-                    auto* _switch = instr->As<IL::SwitchInstruction>();
+                    auto *_switch = instr->As<IL::SwitchInstruction>();
                     out.stream << " n" << bb->GetID() << " -> n" << _switch->_default << " [color=\"0.85 0.5 0.25\"];\n";
 
                     // Add cases
@@ -417,7 +791,7 @@ void IL::PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext o
                     break;
                 }
                 case IL::OpCode::Phi: {
-                    auto* phi = instr->As<IL::PhiInstruction>();
+                    auto *phi = instr->As<IL::PhiInstruction>();
 
                     // Add producers for values
                     for (uint32_t i = 0; i < phi->values.count; i++) {

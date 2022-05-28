@@ -32,6 +32,13 @@ struct LLVMRecord {
         return static_cast<T>(ops[i]);
     }
 
+    /// Convert an operand to a type
+    template<typename T>
+    T OpBitCast(uint32_t i) const {
+        ASSERT(i < opCount, "Operand out of bounds");
+        return *reinterpret_cast<const T*>(&ops[i]);
+    }
+
     /// Fill all operands sequentially to a given array
     /// \param out start starting operand offset
     /// \param out length must be the number of operands from the offset
