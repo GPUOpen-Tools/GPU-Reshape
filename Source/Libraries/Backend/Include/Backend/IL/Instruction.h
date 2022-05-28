@@ -73,6 +73,8 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::Unexposed;
 
         uint32_t backendOpCode;
+
+        const char* symbol;
     };
 
     struct LiteralInstruction : public Instruction {

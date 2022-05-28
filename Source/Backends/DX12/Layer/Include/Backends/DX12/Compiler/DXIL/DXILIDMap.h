@@ -48,8 +48,16 @@ struct DXILIDMap {
         return anchor - id;
     }
 
+    /// Get the mapped relative id
+    /// \param anchor record anchor
+    /// \param id relative id
+    /// \return absolute id
+    uint32_t GetMappedRelative(uint32_t anchor, uint32_t id) const {
+        return GetMapped(anchor - id);
+    }
+
     /// Get a mapped value
-    IL::ID GetMapped(uint64_t id) {
+    IL::ID GetMapped(uint64_t id) const {
         return map[id].mapped;
     }
 

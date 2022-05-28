@@ -7,6 +7,12 @@
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/DXIL.rst
  */
 
+DXILPhysicalBlockSymbol::DXILPhysicalBlockSymbol(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table) :
+    DXILPhysicalBlockSection(allocators, program, table),
+    blockAllocator(allocators) {
+    /* */
+}
+
 void DXILPhysicalBlockSymbol::ParseSymTab(const LLVMBlock *block) {
     for (const LLVMRecord &record: block->records) {
         switch (static_cast<LLVMSymTabRecord>(record.id)) {
@@ -25,6 +31,7 @@ void DXILPhysicalBlockSymbol::ParseSymTab(const LLVMBlock *block) {
                     // Grow to capacity
                     if (valueStrings.size() <= value) {
                         valueStrings.resize(value + 1);
+                        valueAllocations.resize(value + 1);
                     }
 
                     // Debugging experience
@@ -36,7 +43,7 @@ void DXILPhysicalBlockSymbol::ParseSymTab(const LLVMBlock *block) {
 #endif // NDEBUG
 
                     // Insert from operand 1
-                    valueStrings.push_back(LLVMRecordStringView(record, 1));
+                    valueStrings[value] = LLVMRecordStringView(record, 1);
                 }
                 break;
             }
@@ -71,4 +78,21 @@ LLVMRecordStringView DXILPhysicalBlockSymbol::GetValueString(uint32_t id) {
     }
 
     return valueStrings[id];
+}
+
+const char* DXILPhysicalBlockSymbol::GetValueAllocation(uint32_t id) {
+    if (id >= valueStrings.size() || !valueStrings[id]) {
+        return nullptr;
+    }
+
+    // Current view
+    const LLVMRecordStringView& view = valueStrings[id];
+
+    // Not allocated?
+    if (!valueAllocations[id]) {
+        valueAllocations[id] = blockAllocator.AllocateArray<char>(view.Length() + 1);
+        view.CopyTerminated(valueAllocations[id]);
+    }
+
+    return valueAllocations[id];
 }

@@ -50,7 +50,11 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         }
         case OpCode::Unexposed: {
             auto unexposed = instr->As<IL::UnexposedInstruction>();
-            line << "Unexposed op:" << unexposed->backendOpCode;
+            if (unexposed->symbol) {
+                line << "Unexposed '" << unexposed->symbol << "'";
+            } else {
+                line << "Unexposed op:" << unexposed->backendOpCode;
+            }
             break;
         }
         case OpCode::Literal: {
