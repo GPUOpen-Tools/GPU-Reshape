@@ -5,6 +5,7 @@
 
 // Common
 #include <Common/Assert.h>
+#include <Common/CRC.h>
 
 struct LLVMRecordStringView {
     LLVMRecordStringView() = default;
@@ -14,6 +15,9 @@ struct LLVMRecordStringView {
         operands(record.ops + offset),
         operandCount(record.opCount - offset) {
         ASSERT(offset <= record.opCount, "Out of bounds record string view");
+
+        // Hash contents
+        ComputeHash();
     }
 
     /// Length of this string
@@ -36,9 +40,34 @@ struct LLVMRecordStringView {
         out[operandCount] = '\0';
     }
 
+    /// Check for equality with rhs cstring
+    bool operator==(const char* rhs) const {
+        for (uint32_t i = 0; i < operandCount; i++) {
+            if (!rhs[i] || rhs[i] != operands[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     /// Valid?
     operator bool() const {
         return operands != nullptr;
+    }
+
+    /// Get the precomputed hash
+    uint64_t GetHash() const {
+        return hash;
+    }
+
+private:
+    void ComputeHash() {
+        hash = hash ^ 0xFFFFFFFFU;
+        for (uint32_t i = 0; i < operandCount; i++) {
+            hash = crcdetail::table[static_cast<char>(operands[i]) ^ (hash & 0xFF)] ^ (hash >> 8);
+        }
+        hash = hash ^ 0xFFFFFFFFU;
     }
 
 private:
@@ -47,4 +76,7 @@ private:
 
     /// Number of operands
     uint32_t operandCount{0};
+
+    /// Precomputed hash
+    uint64_t hash{0};
 };

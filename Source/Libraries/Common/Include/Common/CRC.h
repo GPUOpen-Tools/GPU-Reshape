@@ -102,4 +102,13 @@ namespace crcdetail
     }
 }  // namespace crcdetail
 
+namespace crcliteral {
+    constexpr uint64_t operator "" _crc64(const char* data, size_t len) {
+        return crcdetail::compute(data, len);
+    }
+}
+
+#define CRC64(STR) \
+    (std::integral_constant<uint64_t, crcdetail::compute(STR, sizeof(STR)-1)>::value)\
+
 #endif  // COMPILE_TIME_CRC_H

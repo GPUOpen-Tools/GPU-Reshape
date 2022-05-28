@@ -27,6 +27,15 @@ private:
     /// Does the record have a result?
     bool HasResult(const struct LLVMRecord& record);
 
+    /// Try to parse an intrinsic
+    /// \param basicBlock output bb
+    /// \param reader record reader
+    /// \param anchor instruction anchor
+    /// \param called called function index
+    /// \param declaration pulled declaration
+    /// \return true if recognized intrinsic
+    bool TryParseIntrinsic(IL::BasicBlock* basicBlock, struct LLVMRecordReader& reader, uint32_t anchor, uint32_t called, const DXILFunctionDeclaration* declaration);
+
 private:
     /// All function declarations
     TrivialStackVector<DXILFunctionDeclaration, 32> functions;

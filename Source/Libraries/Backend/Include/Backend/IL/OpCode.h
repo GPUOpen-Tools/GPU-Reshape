@@ -62,6 +62,7 @@ namespace IL {
         Alloca,
         Load,
         Store,
+        StoreOutput,
 
         /// Resource
         StoreTexture,

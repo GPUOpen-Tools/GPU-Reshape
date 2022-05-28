@@ -118,6 +118,11 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "StoreBuffer buffer:%" << store->buffer << " index:%" << store->index << " value:%" << store->value;
             break;
         }
+        case OpCode::StoreOutput: {
+            auto store = instr->As<IL::StoreOutputInstruction>();
+            line << "StoreOutput index:" << store->index << " [" << store->row << ", " << store->column << "] value:%" << store->value;
+            break;
+        }
         case OpCode::Sub: {
             auto sub = instr->As<IL::SubInstruction>();
             line << "Sub %" << sub->lhs << " %" << sub->rhs;

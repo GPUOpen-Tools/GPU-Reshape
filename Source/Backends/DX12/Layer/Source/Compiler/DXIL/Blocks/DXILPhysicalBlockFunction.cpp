@@ -621,15 +621,6 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 uint64_t called = table.idMap.GetRelative(anchor, reader.ConsumeOp());
                 uint64_t calledType = reader.ConsumeOp();
 
-                // Number of arguments
-                uint32_t argCount = reader.Remaining();
-
-                // Consume arguments
-                auto values = ALLOCA_ARRAY(IL::ID, argCount);
-                for (uint32_t i = 0; i < argCount; i++) {
-                    values[i] = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                }
-
                 // Get call declaration
                 const DXILFunctionDeclaration* callDecl = GetFunctionDeclaration(called);
 
@@ -638,14 +629,17 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                     result = table.idMap.AllocMappedID(DXILIDType::Instruction);
                 }
 
-                // Emit as unexposed
-                IL::UnexposedInstruction instr{};
-                instr.opCode = IL::OpCode::Unexposed;
-                instr.result = result;
-                instr.source = IL::Source::Invalid();
-                instr.backendOpCode = record.id;
-                instr.symbol = table.symbol.GetValueAllocation(called);
-                basicBlock->Append(instr);
+                // Try intrinsic
+                if (!TryParseIntrinsic(basicBlock, reader, anchor, called, callDecl)) {
+                    // Unknown, emit as unexposed
+                    IL::UnexposedInstruction instr{};
+                    instr.opCode = IL::OpCode::Unexposed;
+                    instr.result = result;
+                    instr.source = IL::Source::Invalid();
+                    instr.backendOpCode = record.id;
+                    instr.symbol = table.symbol.GetValueAllocation(called);
+                    basicBlock->Append(instr);
+                }
                 break;
             }
 
@@ -781,4 +775,51 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(const struct LLVMRecord &rec
 const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration(uint32_t id) {
     ASSERT(table.idMap.GetType(id) == DXILIDType::Function, "Invalid function id");
     return &functions[table.idMap.GetDataIndex(id)];
+}
+
+bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock* basicBlock, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, const DXILFunctionDeclaration* declaration) {
+    LLVMRecordStringView view = table.symbol.GetValueString(called);
+
+    // Check hash
+    switch (view.GetHash()) {
+        default: {
+            // Not an intrinsic
+            return false;
+        }
+
+        /*
+         * LLVM Specification
+         *   overloads: SM5.1: f16|f32|i16|i32,  SM6.0: f16|f32|f64|i8|i16|i32|i64
+         *   declare void @dx.op.storeOutput.f32(
+         *       i32,                            ; opcode
+         *       i32,                            ; output ID
+         *       i32,                            ; row (relative to start row of output ID)
+         *       i8,                             ; column (relative to start column of output ID), constant in [0,3]
+         *       float)                          ; value to store
+         */
+
+        case CRC64("dx.op.storeOutput.f32"): {
+            if (view != "dx.op.storeOutput.f32") {
+                return false;
+            }
+
+            // uint64_t opCode = reader.ConsumeOp();
+            uint64_t outputID = reader.ConsumeOp();
+            uint64_t row = reader.ConsumeOp();
+            uint64_t column = reader.ConsumeOp();
+            uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+            // Unknown, emit as unexposed
+            IL::StoreOutputInstruction instr{};
+            instr.opCode = IL::OpCode::StoreOutput;
+            instr.result = IL::InvalidID;
+            instr.source = IL::Source::Invalid();
+            instr.index = outputID;
+            instr.row = row;
+            instr.column = column;
+            instr.value = value;
+            basicBlock->Append(instr);
+            return true;
+        }
+    }
 }

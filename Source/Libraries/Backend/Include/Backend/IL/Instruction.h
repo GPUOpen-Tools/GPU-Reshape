@@ -103,6 +103,15 @@ namespace IL {
         ID value;
     };
 
+    struct StoreOutputInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::StoreOutput;
+
+        uint32_t index;
+        uint32_t row;
+        uint32_t column;
+        ID value;
+    };
+
     struct AddInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Add;
 
@@ -487,6 +496,8 @@ namespace IL {
                 return sizeof(IntToFloatInstruction);
             case OpCode::BitCast:
                 return sizeof(BitCastInstruction);
+            case OpCode::StoreOutput:
+                return sizeof(StoreOutputInstruction);
         }
     }
 }
