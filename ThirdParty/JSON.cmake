@@ -12,5 +12,6 @@ ExternalProject_Add(
         -DCMAKE_INSTALL_LIBDIR=${CMAKE_BINARY_DIR}/External/lib
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+        -DJSON_BuildTests=OFF
         -G ${CMAKE_GENERATOR}
 )

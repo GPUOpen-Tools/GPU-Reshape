@@ -39,6 +39,6 @@ endforeach ()
 #   ! Must match git version
 target_compile_definitions(Detour PUBLIC -DDETOURS_VERSION=0x4c0c1)
 
-if (MSVC)
+if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     target_compile_options(Detour PRIVATE -Wmicrosoft-goto)
 endif()
