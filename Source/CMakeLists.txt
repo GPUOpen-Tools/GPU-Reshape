@@ -13,5 +13,8 @@ add_subdirectory(Features)
 
 # Standalone applications
 add_subdirectory(Services)
-add_subdirectory(UIX)
 
+# UIX
+if (${ENABLE_UIX})
+    add_subdirectory(UIX)
+endif ()

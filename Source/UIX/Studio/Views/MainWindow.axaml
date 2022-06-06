@@ -1,0 +1,33 @@
+<Window x:Class="Studio.Views.MainWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:id="using:Dock.Avalonia"
+        xmlns:vm="using:Studio.ViewModels"
+        xmlns:views="using:Studio.Views"
+        mc:Ignorable="d"
+        d:DesignWidth="1200" d:DesignHeight="680"
+        Width="1500" Height="825"
+        UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
+        WindowState="Normal" WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="None"
+        Foreground="{DynamicResource DockThemeForegroundBrush}"
+        BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
+        FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
+        Title="Dock Avalonia Demo" 
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome"
+        id:DockProperties.IsDragEnabled="True" id:DockProperties.IsDropEnabled="True">
+  <Design.DataContext>
+    <vm:MainWindowViewModel />
+  </Design.DataContext>
+  
+  <Panel Margin="0 0 0 0">
+    <Panel>
+      <Panel>
+        <views:MainView />
+      </Panel>
+    </Panel>
+  </Panel>
+</Window>

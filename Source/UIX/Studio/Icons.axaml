@@ -1,0 +1,26 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Border Padding="20">
+            <!-- Add Controls for Previewer Here -->
+        </Border>
+    </Design.PreviewWith>
+
+    <Style>
+        <Style.Resources>
+            <!-- See https://materialdesignicons.com/ -->
+            
+            <StreamGeometry x:Key="Alert">M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z</StreamGeometry>
+            <StreamGeometry x:Key="AlertPentagon">M13 13H11V7H13M11 15H13V17H11M15.73 3H8.27L3 8.27V15.73L8.27 21H15.73L21 15.73V8.27L15.73 3Z</StreamGeometry>
+            <StreamGeometry x:Key="Warning">M13 14H11V9H13M13 18H11V16H13M1 21H23L12 2L1 21Z</StreamGeometry>
+            <StreamGeometry x:Key="Expand">M13,9V15H16L12,19L8,15H11V9H8L12,5L16,9H13M4,2H20V4H4V2M4,20H20V22H4V20Z</StreamGeometry>
+            <StreamGeometry x:Key="Collapse">M8,19H11V23H13V19H16L12,15L8,19M16,5H13V1H11V5H8L12,9L16,5M4,11V13H20V11H4Z</StreamGeometry>
+            <StreamGeometry x:Key="Refresh">M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z</StreamGeometry>
+            <StreamGeometry x:Key="App">M16,20H20V16H16M16,14H20V10H16M10,8H14V4H10M16,8H20V4H16M10,14H14V10H10M4,14H8V10H4M4,20H8V16H4M10,20H14V16H10M4,8H8V4H4V8Z</StreamGeometry>
+            <StreamGeometry x:Key="StreamOff">M4 6V18H21V6H4M19 16H6V13H19V16M6 11V8H19V11H6Z</StreamGeometry>
+            <StreamGeometry x:Key="StreamOn">M4,5V11H21V5M4,18H21V12H4V18Z</StreamGeometry>
+            <StreamGeometry x:Key="Filter">M14,12V19.88C14.04,20.18 13.94,20.5 13.71,20.71C13.32,21.1 12.69,21.1 12.3,20.71L10.29,18.7C10.06,18.47 9.96,18.16 10,17.87V12H9.97L4.21,4.62C3.87,4.19 3.95,3.56 4.38,3.22C4.57,3.08 4.78,3 5,3V3H19V3C19.22,3 19.43,3.08 19.62,3.22C20.05,3.56 20.13,4.19 19.79,4.62L14.03,12H14Z</StreamGeometry>
+            <StreamGeometry x:Key="FilterMultiple">M3.46 5C3.25 5 3.04 5.08 2.87 5.21C2.43 5.55 2.35 6.18 2.69 6.61L2.69 6.62L8 13.42V19.41L10.29 21.71C10.68 22.1 11.32 22.1 11.71 21.71C12.1 21.32 12.1 20.68 11.71 20.29L10 18.59V12.73L4.27 5.39C4.08 5.14 3.78 5 3.46 5M16 12V19.88C16.04 20.18 15.94 20.5 15.71 20.71C15.32 21.1 14.69 21.1 14.3 20.71L12.29 18.7C12.06 18.47 11.96 18.16 12 17.87V12H11.97L6.21 4.62C5.87 4.19 5.95 3.56 6.38 3.22C6.57 3.08 6.78 3 7 3H21C21.22 3 21.43 3.08 21.62 3.22C22.05 3.56 22.13 4.19 21.79 4.62L16.03 12H16Z</StreamGeometry>
+        </Style.Resources>
+    </Style>
+</Styles>

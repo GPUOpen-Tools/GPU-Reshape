@@ -10,6 +10,7 @@ option(INSTALL_THIRD_PARTY   "Fetch and install third party libraries" ON)
 option(ENABLE_ASAN           "Enables ASAN" OFF)
 option(ENABLE_BACKEND_VULKAN "Enables Vulkan backend" ON)
 option(ENABLE_BACKEND_DX12   "Enables DX12 backend" ON)
+option(ENABLE_UIX            "Enables UIX building (Experimental)" OFF)
 
 # Ensure 64 bit
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)

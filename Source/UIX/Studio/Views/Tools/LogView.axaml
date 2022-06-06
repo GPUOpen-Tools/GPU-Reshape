@@ -1,0 +1,44 @@
+<UserControl x:Class="Studio.Views.Tools.LogView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="using:Studio.ViewModels.Tools"
+             mc:Ignorable="d"
+             xmlns:i="clr-namespace:Projektanker.Icons.Avalonia;assembly=Projektanker.Icons.Avalonia"
+             d:DesignWidth="300" d:DesignHeight="400"
+             x:DataType="vm:LogViewModel" x:CompileBindings="True">
+  <Grid Focusable="True">
+    <StackPanel Orientation="Vertical" HorizontalAlignment="Left">
+      <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" >
+        <PathIcon Data="{StaticResource Filter}"  Width="15"/>
+      </Button>
+      <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" >
+        <PathIcon Data="{StaticResource FilterMultiple}"  Width="15"/>
+      </Button>
+    </StackPanel>
+    
+    <ListBox x:Name="LogListbox" Margin="20 0 0 0">
+      <ListBoxItem Padding="0" Height="20">
+        <Grid ColumnDefinitions="25,*">
+          <PathIcon Data="{StaticResource Warning}" Width="15" />
+          <TextBlock Grid.Column="1" Text="This is a warning" VerticalAlignment="Center" Height="25" Padding="0 4"></TextBlock>
+        </Grid>
+      </ListBoxItem>
+      
+      <ListBoxItem Padding="0" Height="20">
+        <Grid ColumnDefinitions="25,*">
+          <PathIcon Data="{StaticResource Alert}" Width="15" />
+          <TextBlock Grid.Column="1" Text="This is general information" VerticalAlignment="Center" Height="25" Padding="0 4"></TextBlock>
+        </Grid>
+      </ListBoxItem>
+      
+      <ListBoxItem Padding="0" Height="20">
+        <Grid ColumnDefinitions="25,*">
+          <PathIcon Data="{StaticResource AlertPentagon}" Foreground="{StaticResource ErrorColor}" Width="15" />
+          <TextBlock Grid.Column="1" Text="This is an error" VerticalAlignment="Center" Height="25" Padding="0 4"></TextBlock>
+        </Grid>
+      </ListBoxItem>
+    </ListBox>
+  </Grid>
+</UserControl>

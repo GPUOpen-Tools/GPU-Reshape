@@ -1,0 +1,80 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:idc="using:Dock.Avalonia.Controls">
+  <Styles.Resources>
+    <!-- Custom dark style for GBV Studio -->
+
+    <!-- System colors -->
+    <Color x:Key="SystemAccentColor">#3E424D</Color>
+    <Color x:Key="SystemControlBackgroundAltMediumLowBrush">#323232</Color>
+    <Color x:Key="RegionColor">#323232</Color>
+    <Color x:Key="SystemBaseMediumLowColor">#3B3B3B</Color>
+    <Color x:Key="SystemAltHighColor">#323232</Color>
+    <Color x:Key="SystemBaseHighColor">#D8D8D8</Color>
+    
+    <!-- Info colors -->
+    <Color x:Key="ErrorColor">#B10100</Color>
+    
+    <!-- System brushes -->
+    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="{DynamicResource SystemBaseMediumLowColor}"/>
+    
+    <!-- Dock brushes -->
+    <SolidColorBrush x:Key="DockApplicationAccentBrushLow">#323232</SolidColorBrush>
+    <SolidColorBrush x:Key="DockApplicationAccentBrushMed" Color="{DynamicResource RegionColor}"/>
+    <SolidColorBrush x:Key="DockApplicationAccentBrushHigh">#8F51E2</SolidColorBrush>
+    <SolidColorBrush x:Key="DockApplicationAccentForegroundBrush" Color="{DynamicResource SystemBaseHighColor}" />
+    <SolidColorBrush x:Key="DockApplicationAccentBrushIndicator">#7A44C0</SolidColorBrush>
+    <SolidColorBrush x:Key="DockThemeBorderLowBrush" Color="#2C2C2C" />
+    <SolidColorBrush x:Key="DockThemeBackgroundBrush" Color="{DynamicResource RegionColor}" />
+    <SolidColorBrush x:Key="DockThemeAccentBrush" Color="{DynamicResource SystemAccentColor}" />
+    <SolidColorBrush x:Key="DockThemeForegroundBrush" Color="{DynamicResource SystemBaseHighColor}" />
+    <SolidColorBrush x:Key="DockThemeControlBackgroundBrush" Color="{DynamicResource SystemAltHighColor}" />
+    
+    <!-- Special brushes -->
+    <SolidColorBrush x:Key="TabSelectedBrush">#4A4D51</SolidColorBrush>
+    <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#3B3B3B"/>
+  </Styles.Resources>
+  
+  <!-- Base style -->
+  <StyleInclude Source="avares://Avalonia.Themes.Default/DefaultTheme.xaml" />
+  <StyleInclude Source="avares://Avalonia.Themes.Default/Accents/BaseDark.xaml" />
+  <StyleInclude Source="avares://Dock.Avalonia/Themes/DockDefaultTheme.axaml" />
+  
+  <!-- 
+      Custom control style extension
+  -->
+  
+  <Style Selector="idc|ToolChromeControl">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  
+  <Style Selector="ToolControl /template/ TabStrip#PART_TabStrip TabStripItem:selected">
+    <Setter Property="Background" Value="{DynamicResource TabSelectedBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource SystemBaseHighColor}" />
+  </Style>
+  
+  <Style Selector="ToolChromeControl /template/ Path#PART_ClosePath">
+    <Setter Property="Fill" Value="{DynamicResource SystemBaseHighColor}" />
+  </Style>
+  
+  <Style Selector="ToolChromeControl /template/ Path#PART_PinPath">
+    <Setter Property="Fill" Value="{DynamicResource SystemBaseHighColor}" />
+  </Style>
+  
+  <Style Selector="ToolControl /template/ Border#PART_Border">
+    <Setter Property="BorderBrush" Value="{DynamicResource DockThemeBorderLowBrush}" />
+  </Style>
+  
+  <Style Selector="TreeView">
+    <Setter Property="Background" Value="{DynamicResource RegionColor}" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  
+  <Style Selector="MenuItem">
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+    
+  <Style Selector="MenuItem /template/ ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+</Styles>

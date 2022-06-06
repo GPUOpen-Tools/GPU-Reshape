@@ -27,6 +27,11 @@ include(DXC.cmake)
 include(Detour.cmake)
 include(DXIL.cmake)
 
+# UI?
+if (${ENABLE_UIX})
+    include(Avalonia.cmake)
+endif ()
+
 # Standard project installation
 function(ExternalProject_Link Project Name)
     if (TARGET ${Name})

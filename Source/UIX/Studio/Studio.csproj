@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net5.0</TargetFramework>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    <ItemGroup>
+        <None Remove=".gitignore" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="0.10.14" />
+        <PackageReference Include="Avalonia.AvaloniaEdit" Version="0.10.12.2" />
+        <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="0.10.10" />
+        <PackageReference Include="Avalonia.Desktop" Version="0.10.14" />
+        <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="0.10.14" />
+        <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.14" />
+        <PackageReference Include="Dock.Avalonia" Version="0.10.14" />
+        <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.10" />
+        <PackageReference Include="MessageBox.Avalonia" Version="1.5.5" />
+        <PackageReference Include="Microsoft.CodeAnalysis" Version="3.9.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="3.9.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Compilers" Version="3.9.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.9.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.9.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Scripting.Common" Version="3.9.0" />
+        <PackageReference Include="Microsoft.Net.Compilers" Version="3.9.0">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Projektanker.Icons.Avalonia" Version="3.7.0" />
+        <PackageReference Include="Projektanker.Icons.Avalonia.FontAwesome" Version="3.7.0" />
+        <PackageReference Include="XamlNameReferenceGenerator" Version="1.2.1" />
+    </ItemGroup>
+    <ItemGroup>
+      <Compile Update="Views\MainView.axaml.cs">
+        <DependentUpon>MainView.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Views\MainWindow.axaml.cs">
+        <DependentUpon>MainWindow.axaml</DependentUpon>
+      </Compile>
+      <Compile Update="Resources\Resources.Designer.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>Resources.resx</DependentUpon>
+      </Compile>
+    </ItemGroup>
+    <ItemGroup>
+      <EmbeddedResource Update="Resources\Resources.resx">
+        <Generator>PublicResXFileCodeGenerator</Generator>
+        <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      </EmbeddedResource>
+      <None Remove="Resources\Icons\App.png" />
+      <AvaloniaResource Include="Resources\Icons\App.png" />
+    </ItemGroup>
+</Project>

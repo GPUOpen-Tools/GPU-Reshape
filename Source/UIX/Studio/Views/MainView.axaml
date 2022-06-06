@@ -1,0 +1,62 @@
+<UserControl x:Class="Studio.Views.MainView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:id="clr-namespace:Dock.Avalonia;assembly=Dock.Avalonia"
+             xmlns:dm="using:Dock.Model.Core"
+             xmlns:dmc="using:Dock.Model.Controls"
+             xmlns:vm="using:Studio.ViewModels"
+             xmlns:r="using:Studio.Resources"
+             xmlns:collections="clr-namespace:System.Collections;assembly=System.Runtime"
+             mc:Ignorable="d"
+             d:DesignWidth="1000" d:DesignHeight="550"
+             x:DataType="vm:MainWindowViewModel" x:CompileBindings="True">
+  <Design.DataContext>
+    <vm:MainWindowViewModel />
+  </Design.DataContext>
+  <Grid RowDefinitions="30,*,25" ColumnDefinitions="Auto,*" Name="MainGrid">
+    <Menu Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"  Height="30">
+      <Image Source="/Resources/Icons/App.png" Width="20"/>
+      
+      <MenuItem Header="_File" Height="30">
+        <MenuItem Header="_New Layout" Command="{Binding NewLayout}" />
+      </MenuItem>
+      <MenuItem Header="_Window" DataContext="{Binding Layout}">
+        <MenuItem Header="_Exit Windows" Command="{Binding ExitWindows}" />
+        <Separator />
+        <MenuItem Header="_Show Windows" Command="{Binding ShowWindows}" />
+      </MenuItem>
+      <MenuItem Header="_Options">
+        <MenuItem x:Name="OptionsIsDragEnabled" Header="Enable Drag">
+          <MenuItem.Icon>
+            <CheckBox IsChecked="{Binding $parent[Window].(id:DockProperties.IsDragEnabled)}"
+                      BorderThickness="0"
+                      IsHitTestVisible="False"
+                      x:CompileBindings="False" />
+          </MenuItem.Icon>
+        </MenuItem>
+        <Separator />
+        <MenuItem x:Name="OptionsIsDropEnabled" Header="Enable Drop">
+          <MenuItem.Icon>
+            <CheckBox IsChecked="{Binding $parent[Window].(id:DockProperties.IsDropEnabled)}"
+                      BorderThickness="0"
+                      IsHitTestVisible="False"
+                      x:CompileBindings="False" />
+          </MenuItem.Icon>
+        </MenuItem>
+      </MenuItem>
+    </Menu>
+   
+    <DockControl x:Name="DockControl" Layout="{Binding Layout}" Margin="0"
+                     Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" />
+    
+    <Panel DataContext="{Binding Layout.ActiveDockable}"
+           Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2">
+      <TextBlock Text="{Binding FocusedDockable, FallbackValue={}}"
+                 Margin="4"
+                 x:DataType="dm:IDock"
+                 x:CompileBindings="True" />
+    </Panel>
+  </Grid>
+</UserControl>
