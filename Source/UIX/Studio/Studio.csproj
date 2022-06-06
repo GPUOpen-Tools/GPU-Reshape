@@ -3,6 +3,15 @@
         <OutputType>WinExe</OutputType>
         <TargetFramework>net5.0</TargetFramework>
         <Nullable>enable</Nullable>
+        <ApplicationIcon>Resources\Icons\App.ico</ApplicationIcon>
+        <TargetCulture>en</TargetCulture>
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+        <Configurations>Debug;Release</Configurations>
+        <Platforms>AnyCPU</Platforms>
+        <PublishTrimmed>true</PublishTrimmed>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <DebugType>none</DebugType>
     </PropertyGroup>
     <ItemGroup>
         <None Remove=".gitignore" />
