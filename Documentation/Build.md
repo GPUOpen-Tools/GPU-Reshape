@@ -24,10 +24,11 @@ the below set-ups are supported:
 
 ## Configuration options
 
-| Option | Platform | Default | Description                             |
-| ------ | -------- |---------|-----------------------------------------|
-| INSTALL_THIRD_PARTY | All | `OFF` | Fetch and install third party libraries |
-| ENABLE_ASAN | All | `OFF` | Enables ASAN diagnostics (WIP)          |
+| Option              | Platform | Default | Description                             |
+|---------------------|----------|---------|-----------------------------------------|
+| INSTALL_THIRD_PARTY | All      | `OFF`   | Fetch and install third party libraries |
+| ENABLE_ASAN         | All      | `OFF`   | Enables ASAN diagnostics (WIP)          |
+| ENABLE_UIX          | All      | `OFF`   | Enables UIX building (Experimental)     |
 
 ## Dependencies
 
