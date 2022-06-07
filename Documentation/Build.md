@@ -31,6 +31,9 @@ the below set-ups are supported:
 
 ## Dependencies
 
+- **Detour** </br>
+  Instrumentation of API calls (Windows)
+
 - **ArgParse** </br>
   Console argument parser
 
@@ -46,9 +49,6 @@ the below set-ups are supported:
 - **SPIRVHeaders** </br>
   SPIRV registry and headers
 
-- **SPIRVTools** </br>
-  SPIRV toolset, **only used for validation & debugging purposes**
-
 - **TinyXML2** </br>
   XML parsing and traversal
 
@@ -63,3 +63,47 @@ the below set-ups are supported:
 
 - **VulkanLoader** </br>
   Vulkan ICD desktop loader
+
+- **libClang** </br>
+  Clang compiler C-interface
+
+## UIX dependencies
+
+- **Avalonia** </br>
+  Write once run everywhere UI framework
+
+#### [NUGET]
+- **Avalonia.AvaloniaEdit/0.10.12.2**
+- **Avalonia.Controls.TreeDataGrid/0.10.10**
+- **Avalonia.Desktop/0.10.14**
+- **Avalonia.Diagnostics/0.10.14**
+- **Avalonia.ReactiveUI/0.10.14**
+- **Avalonia/0.10.14**
+- **Dock.Avalonia/0.10.14**
+- **Dock.Model.ReactiveUI/0.10.10**
+- **MessageBox.Avalonia/1.5.5**
+- **Microsoft.CodeAnalysis.Common/3.9.0**
+- **Microsoft.CodeAnalysis.Compilers/3.9.0**
+- **Microsoft.CodeAnalysis.CSharp.Scripting/3.9.0**
+- **Microsoft.CodeAnalysis.CSharp/3.9.0**
+- **Microsoft.CodeAnalysis.Scripting.Common/3.9.0**
+- **Microsoft.CodeAnalysis/3.9.0**
+- **Microsoft.Net.Compilers/3.9.0**
+- **Projektanker.Icons.Avalonia.FontAwesome/3.7.0**
+- **Projektanker.Icons.Avalonia/3.7.0**
+- **XamlNameReferenceGenerator/1.2.1**
+
+## Test dependencies
+
+Dependencies only used for testing and development.
+
+- **SPIRVTools** </br>
+  SPIRV toolset
+
+- **DirectXShaderCompiler** </br>
+  Shader compiler for tests
+
+- **GraphViz** </br>
+  DotGraph visualization for dependency debugging
+
+
