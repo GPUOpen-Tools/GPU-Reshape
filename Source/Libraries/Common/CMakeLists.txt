@@ -7,6 +7,11 @@ add_library(
     Source/CrashHandler.cpp
     Source/GlobalUID.cpp
     Source/Plugin/PluginResolver.cpp
+    Source/Dispatcher/ConditionVariable.cpp
+    Source/Dispatcher/Mutex.cpp
+    Source/Dispatcher/EventCounter.cpp
+    Source/Dispatcher/Event.cpp
+    Source/Dispatcher/DispatcherJobPool.cpp
 
     # For IDE's
     Include/Common/TemplateEngine.h
@@ -20,7 +25,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Common Include Source)
+SetSourceDiscovery(Libraries.Common CXX Include Source)
 
 # Include directories
 target_include_directories(Libraries.Common PUBLIC Include)

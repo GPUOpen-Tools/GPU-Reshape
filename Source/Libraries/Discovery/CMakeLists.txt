@@ -7,7 +7,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Discovery Include Source)
+SetSourceDiscovery(Libraries.Discovery CXX Include Source)
 
 # Include directories
 target_include_directories(Libraries.Discovery PUBLIC Include)

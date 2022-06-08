@@ -20,7 +20,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Bridge Include Source)
+SetSourceDiscovery(Libraries.Bridge CXX Include Source)
 
 # Includes
 target_include_directories(Libraries.Bridge PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
@@ -52,7 +52,7 @@ if (MSVC)
 endif()
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Bridge.Tests Tests)
+SetSourceDiscovery(Libraries.Bridge.Tests CXX Tests)
 
 # Includes
 target_include_directories(Libraries.Bridge.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
@@ -62,3 +62,9 @@ ExternalProject_Link(Libraries.Bridge.Tests Catch2)
 
 # Links
 target_link_libraries(Libraries.Bridge.Tests PUBLIC Libraries.Bridge)
+
+#----- .Net bindings -----#
+
+if (${ENABLE_UIX})
+    include(DotNet.cmake)
+endif()

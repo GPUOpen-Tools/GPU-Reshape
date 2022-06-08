@@ -8,7 +8,6 @@
 // Std
 #include <thread>
 #include <atomic>
-#include <condition_variable>
 
 // Forward declarations
 class AsioRemoteClient;

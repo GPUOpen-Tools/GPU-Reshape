@@ -12,7 +12,7 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Generator Generator)
+SetSourceDiscovery(Backends.Vulkan.Generator CXX Generator)
 
 # Local links
 target_link_libraries(Backends.Vulkan.Generator PUBLIC Libraries.Common)
@@ -170,7 +170,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Layer Layer)
+SetSourceDiscovery(Backends.Vulkan.Layer CXX Layer)
 
 # Link against backend
 target_link_libraries(
@@ -210,7 +210,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Discovery Discovery)
+SetSourceDiscovery(Backends.Vulkan.Discovery CXX Discovery)
 
 # Includes
 target_include_directories(Backends.Vulkan.Discovery PUBLIC Discovery/Include)
@@ -234,7 +234,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.TestDevice TestDevice)
+SetSourceDiscovery(Backends.Vulkan.TestDevice CXX TestDevice)
 
 # Include
 target_include_directories(Backends.Vulkan.TestDevice PUBLIC TestDevice/Include)
@@ -255,7 +255,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Tests.UserDataLayer Tests/Layer)
+SetSourceDiscovery(Backends.Vulkan.Tests.UserDataLayer CXX Tests/Layer)
 
 # Setup dependencies
 ExternalProject_Link(Backends.Vulkan.Tests.UserDataLayer VulkanHeaders)
@@ -289,7 +289,7 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Tests Tests)
+SetSourceDiscovery(Backends.Vulkan.Tests CXX Tests)
 
 # Includes
 target_include_directories(Backends.Vulkan.Tests PUBLIC Layer/Include Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)

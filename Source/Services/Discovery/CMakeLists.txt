@@ -6,7 +6,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Services.Discovery Include Source)
+SetSourceDiscovery(Services.Discovery CXX Include Source)
 
 # Include directories
 target_include_directories(Services.Discovery PUBLIC Include)
@@ -23,7 +23,7 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Services.Discovery.Standalone Standalone)
+SetSourceDiscovery(Services.Discovery.Standalone CXX Standalone)
 
 # Dependencies
 target_link_libraries(Services.Discovery.Standalone PUBLIC Services.Discovery)

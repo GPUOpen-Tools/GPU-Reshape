@@ -37,6 +37,23 @@ namespace Studio.ViewModels
             }
 
             NewLayout = ReactiveCommand.Create(ResetLayout);
+
+            // Dummy testing
+
+            var resolverService = new HostResolver.CLR.HostResolverService();
+
+            bool state = resolverService.Install();
+
+            var bridge = new Bridge.CLR.RemoteClientBridge();
+            
+            bridge.Install(new Bridge.CLR.EndpointResolve()
+            {
+                config = new Bridge.CLR.EndpointConfig()
+                {
+                    applicationName = "Studio"
+                },
+                ipvxAddress = "127.0.0.1"
+            });
         }
 
         private void DebugFactoryEvents(IFactory factory)

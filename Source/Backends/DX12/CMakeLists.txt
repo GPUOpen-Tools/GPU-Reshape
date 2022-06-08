@@ -20,7 +20,7 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Generator Generator)
+SetSourceDiscovery(Backends.DX12.Generator CXX Generator)
 
 # Local links
 target_link_libraries(Backends.DX12.Generator PUBLIC Libraries.Common)
@@ -255,7 +255,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Layer Layer)
+SetSourceDiscovery(Backends.DX12.Layer CXX Layer)
 
 # Link against backend
 target_link_libraries(
@@ -291,7 +291,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Discovery Discovery)
+SetSourceDiscovery(Backends.DX12.Discovery CXX Discovery)
 
 # Includes
 target_include_directories(Backends.DX12.Discovery PUBLIC Discovery/Include)
@@ -314,7 +314,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.TestDevice TestDevice)
+SetSourceDiscovery(Backends.DX12.TestDevice CXX TestDevice)
 
 # Include
 target_include_directories(Backends.DX12.TestDevice PUBLIC TestDevice/Include)
@@ -341,7 +341,7 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Tests Tests)
+SetSourceDiscovery(Backends.DX12.Tests CXX Tests)
 
 # Includes
 target_include_directories(Backends.DX12.Tests PUBLIC Layer/Include Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)

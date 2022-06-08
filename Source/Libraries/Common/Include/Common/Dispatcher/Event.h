@@ -1,21 +1,18 @@
 #pragma once
 
-// Std
-#include <condition_variable>
-#include <mutex>
+// Common
+#include <Common/Dispatcher/Mutex.h>
+#include <Common/Dispatcher/ConditionVariable.h>
 
 struct Event {
     /// Wait for the event
-    void Wait() {
-        std::unique_lock lock(mutex);
-        var.wait(lock, [this] { return state; });
-    }
+    void Wait();
 
     /// Signal all listeners
     void Signal() {
-        std::lock_guard lock(mutex);
+        MutexGuard guard(mutex);
         state = true;
-        var.notify_all();
+        var.NotifyAll();
     }
 
     /// Reset this event, not thread safe
@@ -24,7 +21,7 @@ struct Event {
     }
 
 private:
-    bool                    state{false};
-    std::mutex              mutex;
-    std::condition_variable var;
+    bool              state{false};
+    Mutex             mutex;
+    ConditionVariable var;
 };

@@ -5,11 +5,11 @@
 #include "Allocators.h"
 #include "IComponent.h"
 #include "ComRef.h"
+#include "Dispatcher/Mutex.h"
 
 // Std
 #include <map>
 #include <vector>
-#include <mutex>
 
 /// Component registry
 class Registry {
@@ -40,7 +40,7 @@ public:
     /// \param component the component to be added
     template<typename T>
     ComRef<T> Add(T* component) {
-        std::lock_guard<std::mutex> guard(mutex);
+        MutexGuard guard(mutex);
         ASSERT(!component->registry, "Component belongs to another registry");
 
         // Set the registry
@@ -56,6 +56,7 @@ public:
         ASSERT(!components.count(T::kName), "Component already registered");
         components[T::kName] = component;
         linear.push_back(component);
+
         return component;
     }
 
@@ -92,7 +93,7 @@ public:
     /// Remove a component from this registry
     /// \param component component to be removed
     void Remove(IComponent* component) {
-        std::lock_guard<std::mutex> guard(mutex);
+        MutexGuard guard(mutex);
 
         // Remove
         ASSERT(components.count(component->componentName), "Component not registered");
@@ -107,7 +108,7 @@ public:
     /// \return the component, nullptr if not found
     template<typename T>
     ComRef<T> Get() {
-        std::lock_guard<std::mutex> guard(mutex);
+        MutexGuard guard(mutex);
         auto it = components.find(T::kName);
         if (it == components.end()) {
             if (parent) {
@@ -124,7 +125,7 @@ public:
     /// \param id the id of the component
     /// \return the component, nullptr if not found
     ComRef<> Get(uint32_t id) {
-        std::lock_guard<std::mutex> guard(mutex);
+        MutexGuard guard(mutex);
         auto it = components.find({id});
         if (it == components.end()) {
             if (parent) {
@@ -176,9 +177,16 @@ public:
 
 private:
     Allocators allocators;
+
+    /// Parent registry
     Registry* parent{nullptr};
 
+    /// Component lookup
     std::map<ComponentName, IComponent*> components;
+
+    /// All components, linear layout
     std::vector<IComponent*> linear;
-    std::mutex mutex;
+
+    /// CLR compliant mutex
+    Mutex mutex;
 };

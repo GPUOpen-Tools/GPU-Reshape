@@ -8,7 +8,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Features.ResourceBounds.Frontend Include Source)
+SetSourceDiscovery(Features.ResourceBounds.Frontend CXX Include Source)
 
 # Includes
 target_include_directories(Features.ResourceBounds.Frontend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)

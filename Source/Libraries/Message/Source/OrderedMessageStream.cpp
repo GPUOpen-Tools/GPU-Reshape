@@ -8,7 +8,7 @@ void OrderedMessageStorage::AddStream(const MessageStream &stream) {
     }
 
     // Add to storage, no recycling
-    std::lock_guard guard(mutex);
+    MutexGuard guard(mutex);
     storage.push_back(stream);
 }
 
@@ -20,7 +20,7 @@ void OrderedMessageStorage::AddStreamAndSwap(MessageStream &stream) {
         return;
     }
 
-    std::lock_guard guard(mutex);
+    MutexGuard guard(mutex);
 
     // Target stream
     MessageStream target;
@@ -52,7 +52,7 @@ void OrderedMessageStorage::AddStreamAndSwap(MessageStream &stream) {
 }
 
 void OrderedMessageStorage::ConsumeStreams(uint32_t *count, MessageStream *streams) {
-    std::lock_guard guard(mutex);
+    MutexGuard guard(mutex);
 
     if (streams) {
         for (uint32_t i = 0; i < *count; i++) {
@@ -74,7 +74,7 @@ void OrderedMessageStorage::Free(const MessageStream &stream) {
         return;
     }
 
-    std::lock_guard guard(mutex);
+    MutexGuard guard(mutex);
 
     // Ordered?
     if (schema == OrderedMessageSchema::GetSchema()) {
@@ -88,6 +88,6 @@ void OrderedMessageStorage::Free(const MessageStream &stream) {
 }
 
 uint32_t OrderedMessageStorage::StreamCount() {
-    std::lock_guard guard(mutex);
+    MutexGuard guard(mutex);
     return static_cast<uint32_t>(storage.size());
 }

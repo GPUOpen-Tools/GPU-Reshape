@@ -49,7 +49,7 @@ function(VisualStudioProjectPostfix NAME)
     endif()
 endfunction()
 
-function(SetVisualStudioSourceDiscovery NAME)
+function(SetVisualStudioSourceDiscovery NAME LANG)
     # Get properties
     get_target_property(SourceDir ${NAME} SOURCE_DIR)
     get_target_property(BinaryDir ${NAME} BINARY_DIR)
@@ -59,7 +59,14 @@ function(SetVisualStudioSourceDiscovery NAME)
         file(GLOB_RECURSE BaseDirSourceTree ${Directory}/*.*)
 
         # Exclude sources files, added from user given sources
-        list(FILTER BaseDirSourceTree EXCLUDE REGEX ".cpp")
+        if (LANG STREQUAL "CXX")
+            list(FILTER BaseDirSourceTree EXCLUDE REGEX ".cpp|.cs")
+        elseif(LANG STREQUAL "CSharp")
+            list(FILTER BaseDirSourceTree EXCLUDE REGEX ".cpp|.h")
+        else()
+            message(FATAL_ERROR "Invalid language: ${LANG}")
+        endif()
+
         if (NOT "${BaseDirSourceTree}" STREQUAL "")
             # Add as private sources
             target_sources(${NAME} PRIVATE ${BaseDirSourceTree})

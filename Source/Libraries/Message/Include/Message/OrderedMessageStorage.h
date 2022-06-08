@@ -4,6 +4,9 @@
 #include "IMessageStorage.h"
 #include "MessageStream.h"
 
+// Common
+#include <Common/Dispatcher/Mutex.h>
+
 // Std
 #include <vector>
 #include <mutex>
@@ -20,7 +23,7 @@ public:
     uint32_t StreamCount() override;
 
 private:
-    std::mutex mutex;
+    Mutex mutex;
 
     /// Cache for message types
     struct MessageBucket {

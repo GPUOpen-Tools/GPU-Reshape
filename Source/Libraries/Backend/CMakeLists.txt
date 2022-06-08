@@ -21,7 +21,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Backend Include Source Schemas)
+SetSourceDiscovery(Libraries.Backend CXX Include Source Schemas)
 
 # Includes
 target_include_directories(Libraries.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
@@ -38,7 +38,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Backend.Generator Generator)
+SetSourceDiscovery(Libraries.Backend.Generator CXX Generator)
 
 # Includes
 target_include_directories(Libraries.Backend.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
@@ -69,7 +69,7 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Backend.Tests Tests)
+SetSourceDiscovery(Libraries.Backend.Tests CXX Tests)
 
 # Includes
 target_include_directories(Libraries.Backend.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)

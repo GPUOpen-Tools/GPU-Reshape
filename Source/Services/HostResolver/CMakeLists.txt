@@ -16,7 +16,7 @@ if (WIN32)
 endif()
 
 # IDE source discovery
-SetSourceDiscovery(Services.HostResolver.Standalone Standalone)
+SetSourceDiscovery(Services.HostResolver.Standalone CXX Standalone)
 
 # Include directories
 target_include_directories(Services.HostResolver.Standalone PUBLIC Include)
@@ -38,7 +38,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Services.HostResolver Include Source)
+SetSourceDiscovery(Services.HostResolver CXX Include Source)
 
 # Include directories
 target_include_directories(Services.HostResolver PUBLIC Include)
@@ -48,3 +48,9 @@ target_link_libraries(Services.HostResolver PUBLIC Libraries.Bridge)
 
 # Ensure the standalone is compiled
 add_dependencies(Services.HostResolver Services.HostResolver.Standalone)
+
+#----- .Net bindings -----#
+
+if (${ENABLE_UIX})
+    include(DotNet.cmake)
+endif()

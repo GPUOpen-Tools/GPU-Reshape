@@ -18,7 +18,7 @@ if (${ENABLE_BACKEND_DX12})
 endif()
 
 # IDE source discovery
-SetSourceDiscovery(Test.Device.Generator Generator)
+SetSourceDiscovery(Test.Device.Generator CXX Generator)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
@@ -89,7 +89,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Test.Device Include Source)
+SetSourceDiscovery(Test.Device CXX Include Source)
 
 # Includes
 target_include_directories(Test.Device PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)

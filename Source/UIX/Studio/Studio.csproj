@@ -9,9 +9,14 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>AnyCPU</Platforms>
         <PublishTrimmed>true</PublishTrimmed>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <DebugType>none</DebugType>
+      <OutputPath>..\..\..\Bin\Release\</OutputPath>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <OutputPath>..\..\..\Bin\Debug\</OutputPath>
     </PropertyGroup>
     <ItemGroup>
         <None Remove=".gitignore" />
@@ -61,5 +66,16 @@
       </EmbeddedResource>
       <None Remove="Resources\Icons\App.png" />
       <AvaloniaResource Include="Resources\Icons\App.png" />
+    </ItemGroup>
+    <ItemGroup>
+      <Reference Include="Libraries.Bridge.DotNet">
+        <HintPath>..\..\..\Bin\Debug\Libraries.Bridge.DotNet.dll</HintPath>
+      </Reference>
+      <Reference Include="Libraries.Message.DotNet">
+        <HintPath>..\..\..\Bin\Debug\Libraries.Message.DotNet.dll</HintPath>
+      </Reference>
+      <Reference Include="Services.HostResolver.DotNet">
+        <HintPath>..\..\..\Bin\Debug\Services.HostResolver.DotNet.dll</HintPath>
+      </Reference>
     </ItemGroup>
 </Project>

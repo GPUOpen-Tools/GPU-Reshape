@@ -32,6 +32,17 @@ else()
     message(FATAL_ERROR "Unsupported compiler ${CMAKE_CXX_COMPILER_ID}")
 endif()
 
+# UIX bindings
+if (${ENABLE_UIX})
+    if (NOT CMAKE_GENERATOR MATCHES "Visual Studio")
+        # CMake limitation
+        message(FATAL_ERROR "UIX building currently only supported on Visual Studio generators")
+    endif()
+
+    # Enable additional languages
+    enable_language(CSharp)
+endif()
+
 # Set all outputs to Bin/Config
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${CMAKE_BUILD_TYPE})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${CMAKE_BUILD_TYPE})

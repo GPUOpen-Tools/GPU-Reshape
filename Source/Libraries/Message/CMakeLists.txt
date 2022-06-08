@@ -8,7 +8,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Message.Generator.Lib Generator)
+SetSourceDiscovery(Libraries.Message.Generator.Lib CXX Generator)
 
 # Includes
 target_include_directories(Libraries.Message.Generator.Lib PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
@@ -25,7 +25,7 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Message.Generator Generator)
+SetSourceDiscovery(Libraries.Message.Generator CXX Generator)
 
 # Includes
 target_include_directories(Libraries.Message.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
@@ -99,7 +99,7 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Message Include Source)
+SetSourceDiscovery(Libraries.Message CXX Include Source)
 
 # Links
 target_link_libraries(Libraries.Message PUBLIC Libraries.Common)
@@ -127,7 +127,7 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Message.Tests Tests)
+SetSourceDiscovery(Libraries.Message.Tests CXX Tests)
 
 # Include
 target_include_directories(Libraries.Message.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
@@ -137,3 +137,9 @@ ExternalProject_Link(Libraries.Message.Tests Catch2)
 
 # Links
 target_link_libraries(Libraries.Message.Tests PUBLIC Libraries.Message)
+
+#----- .Net bindings -----#
+
+if (${ENABLE_UIX})
+    include(DotNet.cmake)
+endif()
