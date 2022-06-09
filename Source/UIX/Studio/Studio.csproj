@@ -74,8 +74,14 @@
       <Reference Include="Libraries.Message.DotNet">
         <HintPath>..\..\..\Bin\Debug\Libraries.Message.DotNet.dll</HintPath>
       </Reference>
-      <Reference Include="Services.HostResolver.DotNet">
-        <HintPath>..\..\..\Bin\Debug\Services.HostResolver.DotNet.dll</HintPath>
-      </Reference>
+        <Reference Include="Services.HostResolver.DotNet">
+            <HintPath>..\..\..\Bin\Debug\Services.HostResolver.DotNet.dll</HintPath>
+        </Reference>
+        <Reference Include="Libraries.Bridge.Schema.DotNet">
+            <HintPath>..\..\..\Bin\Debug\Libraries.Bridge.Schema.DotNet.dll</HintPath>
+        </Reference>
+        <Reference Include="Libraries.Backend.Schema.DotNet">
+            <HintPath>..\..\..\Bin\Debug\Libraries.Backend.Schema.DotNet.dll</HintPath>
+        </Reference>
     </ItemGroup>
 </Project>

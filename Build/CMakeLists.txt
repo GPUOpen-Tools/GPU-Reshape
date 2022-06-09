@@ -1,6 +1,10 @@
 
 include(Files.cmake)
 
+if (${ENABLE_UIX})
+    include(CSharp.cmake)
+endif()
+
 if (CMAKE_GENERATOR MATCHES "Visual Studio")
     include(VisualStudio.cmake)
 endif()

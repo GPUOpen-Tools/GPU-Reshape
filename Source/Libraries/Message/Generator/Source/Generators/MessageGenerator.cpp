@@ -3,11 +3,11 @@
 #include <sstream>
 #include <iostream>
 
-bool MessageGenerator::Generate(Schema &schema, Language language, const SchemaStream &out) {
+bool MessageGenerator::Generate(Schema &schema, Language language, SchemaStream &out) {
     return true;
 }
 
-bool MessageGenerator::Generate(const Message &message, Language language, const MessageStream &out) {
+bool MessageGenerator::Generate(const Message &message, Language language, MessageStream &out) {
     switch (language) {
         case Language::CPP:
             return GenerateCPP(message, out);
@@ -18,7 +18,7 @@ bool MessageGenerator::Generate(const Message &message, Language language, const
     return false;
 }
 
-bool MessageGenerator::GenerateCPP(const Message &message, const MessageStream &out) {
+bool MessageGenerator::GenerateCPP(const Message &message, MessageStream &out) {
     // Members of the message
     std::stringstream patch;
     std::stringstream byteSize;
@@ -207,15 +207,15 @@ bool MessageGenerator::GenerateCPP(const Message &message, const MessageStream &
     }
 
     // Append to type map
-    CxxTypeMeta meta;
+    TypeMeta meta;
     meta.size = cxxSizeType;
     declaredTypes[message.name] = meta;
 
     // Set schema
     if (anyDynamic) {
-        out.types << "\tusing Schema = DynamicMessageSchema;\n";
+        out.schemaType << "DynamicMessageSchema";
     } else {
-        out.types << "\tusing Schema = StaticMessageSchema;\n";
+        out.schemaType << "StaticMessageSchema";
     }
 
     // Begin allocation info
@@ -251,6 +251,244 @@ bool MessageGenerator::GenerateCPP(const Message &message, const MessageStream &
     return true;
 }
 
-bool MessageGenerator::GenerateCS(const Message &message, const MessageStream &out) {
+bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
+    // Members of the message
+    std::stringstream patch;
+    std::stringstream byteSize;
+    std::stringstream allocationParameters;
+
+    // Any dynamic parameters?
+    bool anyDynamic = false;
+
+    // Total size
+    uint64_t cxxSizeType = 0;
+
+    // Current bit field type
+    TypeInfo bitFieldType;
+
+    // Current bit field offset
+    uint32_t bitFieldOffset{0};
+
+    // Generate all out.members
+    for (auto fieldIt = message.fields.begin(); fieldIt != message.fields.end(); fieldIt++) {
+        const Field &field = *fieldIt;
+
+        // Get the default value
+        const Attribute* defaultValue = field.attributes.Get("value");
+
+        // Bit specifier?
+        const Attribute* bits = field.attributes.Get("bits");
+        if (bits) {
+            auto typeIt = primitiveTypeMap.types.find(field.type);
+            if (typeIt == primitiveTypeMap.types.end()) {
+                std::cerr << "Malformed command in line: " << message.line << ", type '" << field.type << "' does not support bit attribute" << std::endl;
+                return false;
+            }
+
+            // New bit field?
+            if (!bitFieldType.size) {
+                bitFieldType = typeIt->second;
+                bitFieldOffset = 0;
+
+                for (auto siblingIt = std::next(fieldIt); siblingIt != message.fields.end(); siblingIt++) {
+                    const Attribute* siblingBits = siblingIt->attributes.Get("bits");
+                    if (!siblingBits) {
+                        break;
+                    }
+
+                    auto siblingTypeIt = primitiveTypeMap.types.find(siblingIt->type);
+                    if (siblingTypeIt == primitiveTypeMap.types.end()) {
+                        std::cerr << "Malformed command in line: " << message.line << ", type '" << siblingIt->type << "' does not support bit attribute" << std::endl;
+                        return false;
+                    }
+
+                    if (siblingTypeIt->second.size > bitFieldType.size) {
+                        bitFieldType = siblingTypeIt->second;
+                    }
+                }
+            }
+        } else {
+            bitFieldType = {};
+            bitFieldOffset = 0;
+        }
+
+        // Primitive?
+        if (auto it = primitiveTypeMap.types.find(field.type); it != primitiveTypeMap.types.end()) {
+            if (bits) {
+                int32_t bitCount = std::atoi(bits->value.c_str());
+
+                const uint32_t bitSize = static_cast<uint32_t>(bitFieldType.size) * 8;
+
+                out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
+                out.members << "\t\t" << bitFieldType.csType << " " << field.name << " : " << bitCount << ";\n";
+
+                if (!bitFieldOffset || bitFieldOffset % bitSize == 0) {
+                    cxxSizeType += bitFieldType.size;
+                    byteSize << "\t\t\t\tsize += " << bitFieldType.size << ";\n";
+                }
+
+                const uint32_t bitElementBefore = static_cast<uint32_t>(bitFieldOffset / bitFieldType.size);
+                const uint32_t bitElementAfter = static_cast<uint32_t>(bitFieldOffset / bitFieldType.size);
+
+                if (bitElementAfter > bitElementBefore && (bitFieldOffset && bitFieldOffset % bitSize != 0)) {
+                    std::cerr << "Malformed command in line: " << field.line << ", bit field size exceeded type size of " << bitFieldType.size << std::endl;
+                    return false;
+                }
+
+                bitFieldOffset += bitCount;
+            } else {
+                byteSize << "\t\t\t\tsize += " << it->second.size << ";\n";
+
+                out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
+                out.members << "\t\t" << it->second.csType << " " << field.name;
+
+                if (defaultValue) {
+                    out.members << " = " << defaultValue->value;
+                }
+
+                out.members << ";\n";
+                cxxSizeType += it->second.size;
+            }
+        } else if (field.type ==  "array") {
+            // Get the type
+            const Attribute* elementTypeName = field.attributes.Get("element");
+            if (!elementTypeName) {
+                std::cerr << "Malformed command in line: " << field.line << ", element type not found" << std::endl;
+                return false;
+            }
+
+            // Get the inbuilt type
+            if (it = primitiveTypeMap.types.find(elementTypeName->value); it == primitiveTypeMap.types.end()) {
+                std::cerr << "Malformed command in line: " << field.line << ", unknown type '" << elementTypeName->value << "'" << std::endl;
+                return false;
+            }
+
+            // Add allocation parameter
+            allocationParameters << "\t\t\tulong " << field.name << "Count;\n";
+
+            // Add byte size
+            byteSize << "\t\t\t\tulong += 16 + " << it->second.size << " * " << field.name << "Count" << ";\n";
+
+            // Add patch
+            patch << "\t\t\t\tmessage." << field.name << ".count = " << field.name << "Count;\n";
+            patch << "\t\t\t\tmessage." << field.name << ".thisOffset = offset + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message)) - " << cxxSizeType << ";\n";
+            patch << "\t\t\t\toffset += " << field.name << "Count * " << it->second.size << "; \n\n";
+
+            // Requires the dynamic schema
+            anyDynamic = true;
+
+            // Append field
+            out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
+            out.members << "\t\tMessageArray<" << it->second.csType << "> " << field.name << ";\n";
+
+            // Size type, not allocation type
+            cxxSizeType += 16;
+        } else if (field.type ==  "string") {
+            // Add allocation parameter
+            allocationParameters << "\t\t\tulong " << field.name << "Length;\n";
+
+            // Add byte size
+            byteSize << "\t\t\t\tsize += 16 + (ulong)Marshal.SizeOf(typeof(char)) * " << field.name << "Length" << ";\n";
+
+            // Add patch
+            patch << "\t\t\t\tmessage." << field.name << ".data.count = " << field.name << "Length;\n";
+            patch << "\t\t\t\tmessage." << field.name << ".data.thisOffset = offset + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message)) - " << cxxSizeType << ";\n";
+            patch << "\t\t\t\toffset += " << field.name << "Length * (ulong)Marshal.SizeOf(typeof(char)); \n\n";
+
+            // Requires the dynamic schema
+            anyDynamic = true;
+
+            // Append field
+            out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
+            out.members << "\t\tMessageString " << field.name << ";\n";
+
+            // Size type, not allocation type
+            cxxSizeType += 16;
+        } else if (field.type ==  "stream") {
+            // Add allocation parameter
+            allocationParameters << "\t\t\tulong " << field.name << "ByteSize;\n";
+
+            // Add byte size
+            byteSize << "\t\t\t\tsize += 32 + (ulong)Marshal.SizeOf(typeof(char)) * " << field.name << "ByteSize" << ";\n";
+
+            // Add patch
+            patch << "\t\t\t\tmessage." << field.name << ".data.count = " << field.name << "ByteSize;\n";
+            patch << "\t\t\t\tmessage."
+                  << field.name << ".data.thisOffset = offset"
+                  << " + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message))"
+                  << " - " << cxxSizeType
+                  << " - 16;\n";
+            patch << "\t\t\t\toffset += " << field.name << "ByteSize * (ulong)Marshal.SizeOf(typeof(char)); \n\n";
+
+            // Requires the dynamic schema
+            anyDynamic = true;
+
+            // Append field
+            out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
+            out.members << "\t\tMessageSubStream " << field.name << ";\n";
+
+            // Size type, not allocation type
+            cxxSizeType += 32;
+        } else if (auto it = declaredTypes.find(field.type); it != declaredTypes.end()) {
+            // Increase size
+            byteSize << "\t\t\t\tsize += " << it->second.size << ";\n";
+
+            // Add field
+            out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
+            out.members << "\t\t" << it->first << " " << field.name << ";\n";
+
+            cxxSizeType += it->second.size;
+        } else {
+            std::cerr << "Malformed command in line: " << message.line << ", unknown type '" << field.type << "'" << std::endl;
+            return false;
+        }
+    }
+
+    // Append to type map
+    TypeMeta meta;
+    meta.size = cxxSizeType;
+    declaredTypes[message.name] = meta;
+
+    // Set schema
+    if (anyDynamic) {
+        out.schemaType << "IDynamicMessageSchema";
+    } else {
+        out.schemaType << "IStaticMessageSchema";
+    }
+
+    // Set size
+    out.size = cxxSizeType;
+
+    // Size check
+    out.types << "\t\tstatic " << message.name << "Message() {\n";
+    out.types << "\t\t\tDebug.Assert(Marshal.SizeOf(typeof(" << message.name << "Message)) == " << cxxSizeType << ", \"Unexpected compiler packing\");\n";
+    out.types << "\t\t}\n";
+
+    // Begin allocation info
+    out.types << "\n";
+    out.types << "\t\tstruct AllocationInfo {\n";
+
+    // Byte size information
+    out.types << "\t\t\tulong ByteSize() {\n";
+    out.types << "\t\t\t\tulong size = 0;\n";
+    out.types << byteSize.str();
+    out.types << "\t\t\t\treturn size;\n";
+    out.types << "\t\t\t}\n";
+
+    // Allocation patching
+    out.types << "\n";
+    out.types << "\t\t\tvoid Patch(ref " << message.name << "Message message) {\n";
+    out.types << "\t\t\t\tulong offset = 0;\n";
+    out.types << patch.str();
+    out.types << "\t\t\t}";
+
+    // Allocation parameters
+    out.types << "\n\n";
+    out.types << allocationParameters.str();
+
+    // End allocation info
+    out.types << "\t\t};\n";
+
+    // OK
     return true;
 }

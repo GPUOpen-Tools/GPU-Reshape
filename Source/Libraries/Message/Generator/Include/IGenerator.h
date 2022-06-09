@@ -20,9 +20,12 @@ struct SchemaStream {
 struct MessageStream {
     SchemaStream schema;
 
+    std::stringstream& schemaType;
     std::stringstream& types;
     std::stringstream& functions;
     std::stringstream& members;
+
+    uint32_t size{0};
 };
 
 /// Schema and message generator
@@ -35,12 +38,12 @@ public:
     /// \param language the target language
     /// \param out the output schema stream
     /// \return success state
-    virtual bool Generate(Schema &schema, Language language, const SchemaStream& out) = 0;
+    virtual bool Generate(Schema &schema, Language language, SchemaStream& out) = 0;
 
     /// Generate a message
     /// \param message the message being generated
     /// \param language the target language
     /// \param out the output message stream
     /// \return success state
-    virtual bool Generate(const Message& message, Language language, const MessageStream& out) = 0;
+    virtual bool Generate(const Message& message, Language language, MessageStream& out) = 0;
 };

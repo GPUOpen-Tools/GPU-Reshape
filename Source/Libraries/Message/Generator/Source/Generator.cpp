@@ -256,6 +256,7 @@ int main(int argc, char *const argv[]) {
         // Generate all messages
         for (const Message& message : schema.messages) {
             // Streams
+            std::stringstream schemaType;
             std::stringstream typeStream;
             std::stringstream functionStream;
             std::stringstream memberStream;
@@ -263,6 +264,7 @@ int main(int argc, char *const argv[]) {
             // Schema output
             MessageStream messageStreamOut{
                 schemaStreamOut,
+                schemaType,
                 typeStream,
                 functionStream,
                 memberStream
@@ -282,8 +284,12 @@ int main(int argc, char *const argv[]) {
             // Get the hash
             std::string hash = std::to_string(IDHash(message.name.c_str())) + "u";
 
+            // Instantiate optionals
+            messageTemplate.Substitute("$SIZE", std::to_string(messageStreamOut.size).c_str());
+
             // Instantiate message
             if (!messageTemplate.Substitute("$NAME", name.c_str()) ||
+                !messageTemplate.Substitute("$SCHEMA", schemaType.str().c_str()) ||
                 !messageTemplate.Substitute("$ID", hash.c_str()) ||
                 !messageTemplate.Substitute("$TYPES", typeStream.str().c_str()) ||
                 !messageTemplate.Substitute("$FUNCTIONS", functionStream.str().c_str()) ||

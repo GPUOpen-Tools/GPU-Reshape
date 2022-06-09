@@ -1,0 +1,50 @@
+﻿<Window x:Class="Studio.Views.ConnectWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:id="using:Dock.Avalonia"
+        xmlns:vm="using:Studio.ViewModels"
+        xmlns:views="using:Studio.Views"
+        xmlns:r="using:Studio.Resources"
+        mc:Ignorable="d"
+        d:DesignWidth="500" d:DesignHeight="300"
+        Width="500" Height="300"
+        UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
+        WindowState="Normal" WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="None"
+        Foreground="{DynamicResource DockThemeForegroundBrush}"
+        BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
+        FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome">
+    <Window.DataContext>
+        <vm:ConnectViewModel />
+    </Window.DataContext>
+
+    <Grid Margin="5">
+        <!-- Tool Header -->
+        <StackPanel VerticalAlignment="Top" Orientation="Horizontal">
+            <Image Source="/Resources/Icons/App.png" Width="17" />
+
+            <TextBlock Margin="7,0,0,0">Create workspace connection</TextBlock>
+        </StackPanel>
+
+        <!-- Content -->
+        <Grid Margin="5,30,5,5" VerticalAlignment="Stretch">
+            <Panel VerticalAlignment="Top">
+                <AutoCompleteBox HorizontalAlignment="Stretch" Margin="0,0,30,0" Text="127.0.0.1" />
+
+                <Button Background="Transparent" HorizontalAlignment="Right" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Workspace_Connect}">
+                    <PathIcon Data="{StaticResource Add}" Width="20" />
+                </Button>
+            </Panel>
+
+            <Grid Margin="0,35,0,0">
+                <ListBox x:Name="ConnectionListbox" Items="{Binding ResolvedApplications}"/>
+            </Grid>
+                
+            <ProgressBar VerticalAlignment="Bottom" MinHeight="5" IsIndeterminate="True" x:Name="ProgressIndicator"></ProgressBar>
+        </Grid>
+    </Grid>
+</Window>

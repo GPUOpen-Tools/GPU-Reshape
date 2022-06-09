@@ -9,9 +9,6 @@ namespace Studio.ViewModels
 {
     public class MainWindowViewModel : ReactiveObject
     {
-        private readonly IFactory? _factory;
-        private IRootDock? _layout;
-
         public IRootDock? Layout
         {
             get => _layout;
@@ -22,6 +19,13 @@ namespace Studio.ViewModels
 
         public MainWindowViewModel()
         {
+            // Create shared host resolver
+            _hostResolver = new HostResolverService();
+            
+            // Start resolver
+            // TODO: Handle errors
+            _hostResolver.Start();
+            
             _factory = new DockFactory(new DemoData());
 
             DebugFactoryEvents(_factory);
@@ -37,23 +41,6 @@ namespace Studio.ViewModels
             }
 
             NewLayout = ReactiveCommand.Create(ResetLayout);
-
-            // Dummy testing
-
-            var resolverService = new HostResolver.CLR.HostResolverService();
-
-            bool state = resolverService.Install();
-
-            var bridge = new Bridge.CLR.RemoteClientBridge();
-            
-            bridge.Install(new Bridge.CLR.EndpointResolve()
-            {
-                config = new Bridge.CLR.EndpointConfig()
-                {
-                    applicationName = "Studio"
-                },
-                ipvxAddress = "127.0.0.1"
-            });
         }
 
         private void DebugFactoryEvents(IFactory factory)
@@ -180,5 +167,10 @@ namespace Studio.ViewModels
                 _factory?.InitLayout(layout);
             }
         }
+
+        private readonly IFactory? _factory;
+        private IRootDock? _layout;
+        
+        private readonly HostResolverService _hostResolver;
     }
 }

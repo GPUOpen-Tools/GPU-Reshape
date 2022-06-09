@@ -10,7 +10,7 @@ add_library(
     Source/Plugin.cpp
 
     # Generated
-    ${Generated}
+    ${GeneratedCPP}
 )
 
 # IDE source discovery
@@ -31,16 +31,15 @@ add_custom_command(
 #----- Test Application -----#
 
 # Test files
-set(Generated "")
-Project_AddBackendTest_Common(Generated ResourceBounds)
-Project_AddBackendTest(Generated "-Od" ResourceBounds Tests/Data/SimpleTest.hlsl)
+Project_AddBackendTest_Common(GeneratedTest ResourceBounds)
+Project_AddBackendTest(GeneratedTest "-Od" ResourceBounds Tests/Data/SimpleTest.hlsl)
 
 # Create test app
 add_executable(
     Features.ResourceBounds.Tests
 
     # Generated
-    ${Generated}
+    ${GeneratedTest}
 )
 
 # IDE source discovery

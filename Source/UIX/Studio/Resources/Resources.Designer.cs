@@ -79,6 +79,15 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Create a new workspace connection.
+        /// </summary>
+        public static string Workspace_Connect {
+            get {
+                return ResourceManager.GetString("Workspace_Connect", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Refresh the workspace.
         /// </summary>
         public static string Workspace_Refresh_Tooltip {

@@ -115,6 +115,11 @@ uint64_t RemoteClientBridge::OnReadAsync(const void *data, uint64_t size) {
     stream.SetData(static_cast<const uint8_t *>(data) + sizeof(MessageStreamHeaderProtocol), protocol->size, 0);
     memoryBridge.GetOutput()->AddStream(stream);
 
+    // Commit all inbound streams if requested
+    if (commitOnAppend) {
+        memoryBridge.Commit();
+    }
+
     // Consume entire stream
     return sizeof(MessageStreamHeaderProtocol) + protocol->size;
 }

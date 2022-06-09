@@ -1,0 +1,11 @@
+[StructLayout(LayoutKind.Explicit, Size = $SIZE, CharSet = CharSet.Ansi)]
+    public struct $NAME : $SCHEMA {
+        public const uint ID = $ID;
+
+$TYPES
+
+$FUNCTIONS
+
+$MEMBERS
+    }
+

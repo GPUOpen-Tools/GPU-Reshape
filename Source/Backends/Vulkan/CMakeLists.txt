@@ -266,12 +266,11 @@ ConfigureOutput(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json VK_GPUOpen_Te
 #----- Test Application -----#
 
 # Hlsl files
-set(Generated "")
-Project_AddHLSL(Generated cs_6_0 "-Od" Tests/Data/WriteUAV.hlsl Tests/Include/Data/WriteUAV kSPIRVWriteUAV)
-Project_AddHLSL(Generated cs_6_0 "-Od" Tests/Data/WriteUAVNegative.hlsl Tests/Include/Data/WriteUAVNegative kSPIRVWriteUAVNegative)
+Project_AddHLSL(GeneratedTest cs_6_0 "-Od" Tests/Data/WriteUAV.hlsl Tests/Include/Data/WriteUAV kSPIRVWriteUAV)
+Project_AddHLSL(GeneratedTest cs_6_0 "-Od" Tests/Data/WriteUAVNegative.hlsl Tests/Include/Data/WriteUAVNegative kSPIRVWriteUAVNegative)
 
 # Generate the schema
-Project_AddShaderSchema(Generated Tests/Schemas/WritingNegativeValue.xml Tests/Include/Schemas)
+Project_AddShaderSchema(GeneratedTestSchema Tests/Schemas/WritingNegativeValue.xml Tests/Include/Schemas)
 
 # Create test app
 add_executable(
@@ -285,7 +284,8 @@ add_executable(
     Tests/Source/VMA.cpp
 
     # Generated
-    ${Generated}
+    ${GeneratedTest}
+    ${GeneratedTestSchemaCPP}
 )
 
 # IDE source discovery

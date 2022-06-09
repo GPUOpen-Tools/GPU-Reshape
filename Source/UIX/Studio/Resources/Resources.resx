@@ -27,4 +27,7 @@
     <data name="Tree_Collapse_Tooltip" xml:space="preserve">
         <value>Collapse all items</value>
     </data>
+    <data name="Workspace_Connect" xml:space="preserve">
+        <value>Create a new workspace connection</value>
+    </data>
 </root>

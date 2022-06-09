@@ -14,6 +14,7 @@ struct TypeInfo {
     }
 
     std::string cxxType;
+    std::string csType;
     uint64_t size{0};
 };
 

@@ -47,36 +47,64 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir Libraries.Message.Generator SOURCE_DIR)
 
+    if (NOT ${LIBS} STREQUAL "")
+        set(LibPaths -libs ${LIBS})
+    endif()
+
     # Schema
     set(Schema ${CMAKE_CURRENT_SOURCE_DIR}/${SCHEMA})
     set(Templates ${GeneratorSourceDir}/Generator/Templates)
 
     # Set output path
     get_filename_component(SchemaName ${SCHEMA} NAME_WE)
-    set(OutputPath ${SCHEMA_OUT_PATH}/${SchemaName}.h)
 
-    if (NOT ${LIBS} STREQUAL "")
-        set(LibPaths -libs ${LIBS})
-    endif()
+    # C++
+    if (ON)
+        set(OutputPath ${SCHEMA_OUT_PATH}/${SchemaName}.h)
 
-    # Generate the schema
-    add_custom_command(
-        OUTPUT ${OutputPath}
-        DEPENDS
+        # Generate the schema
+        add_custom_command(
+            OUTPUT ${OutputPath}
+            DEPENDS
             Libraries.Message.Generator
             ${LIBS}
             ${Schema}
-        COMMAND Libraries.Message.Generator
-            -schemaxml ${Schema}
-            -templates ${Templates}
-            ${LibPaths}
-            -lang cpp
-            -opath ${SCHEMA_OUT_PATH}
-    )
+            COMMAND Libraries.Message.Generator
+                -schemaxml ${Schema}
+                -templates ${Templates}
+                ${LibPaths}
+                -lang cpp
+                -opath ${SCHEMA_OUT_PATH}
+        )
 
-    # Set output
-    list(APPEND ${OUT_GENERATED} ${OutputPath})
-    set(${OUT_GENERATED} "${${OUT_GENERATED}}" PARENT_SCOPE)
+        # Set output
+        list(APPEND ${OUT_GENERATED}CPP ${OutputPath})
+        set(${OUT_GENERATED}CPP "${${OUT_GENERATED}CPP}" PARENT_SCOPE)
+    endif()
+
+    # C#
+    if (${ENABLE_UIX})
+        set(OutputPath ${SCHEMA_OUT_PATH}/${SchemaName}.cs)
+
+        # Generate the schema
+        add_custom_command(
+            OUTPUT ${OutputPath}
+            DEPENDS
+            Libraries.Message.Generator
+            ${LIBS}
+            ${Schema}
+            COMMAND Libraries.Message.Generator
+                -schemaxml ${Schema}
+                -templates ${Templates}
+                ${LibPaths}
+                -lang cs
+                -opath ${SCHEMA_OUT_PATH}
+        )
+
+        # Set output
+        list(APPEND ${OUT_GENERATED}CS ${OutputPath})
+        set(${OUT_GENERATED}CS "${${OUT_GENERATED}CS}" PARENT_SCOPE)
+    endif()
 endfunction()
 
 # Default schema helper
@@ -95,7 +123,7 @@ add_library(
     Source/OrderedMessageStream.cpp
 
     # Generated
-    ${GeneratedSchema}
+    ${GeneratedSchemaCPP}
 )
 
 # IDE source discovery
@@ -123,7 +151,7 @@ add_executable(
     Tests/Source/Message.cpp
 
     # Generated
-    ${Generated}
+    ${GeneratedCPP}
 )
 
 # IDE source discovery

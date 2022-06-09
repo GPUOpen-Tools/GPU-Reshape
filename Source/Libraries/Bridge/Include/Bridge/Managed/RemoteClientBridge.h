@@ -29,6 +29,9 @@ namespace Bridge::CLR {
         virtual IMessageStorage^ GetOutput() sealed;
         virtual void Commit() sealed;
 
+        /// Enables auto commits on remote appends
+        void SetCommitOnAppend(bool enabled);
+        
     private:
         /// Native data
         struct RemoteClientBridgePrivate* _private;

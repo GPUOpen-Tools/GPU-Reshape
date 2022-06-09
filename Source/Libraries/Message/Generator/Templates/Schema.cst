@@ -1,0 +1,14 @@
+/* Generated */
+
+using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+
+namespace Message.CLR
+{
+    $HEADER
+
+    $MESSAGES
+
+    $FOOTER
+}

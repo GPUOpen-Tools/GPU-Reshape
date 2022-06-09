@@ -2,8 +2,8 @@
 #----- Bridge -----#
 
 # Generate the schemas
-Project_AddSchema(GeneratedLib Schemas/PingPong.xml Include/Schemas)
-Project_AddSchema(GeneratedLib Schemas/HostResolve.xml Include/Schemas)
+Project_AddSchema(GeneratedLibSchema Schemas/PingPong.xml Include/Schemas)
+Project_AddSchema(GeneratedLibSchema Schemas/HostResolve.xml Include/Schemas)
 
 add_library(
     Libraries.Bridge STATIC
@@ -16,7 +16,7 @@ add_library(
     Source/Asio/AsioDebug.cpp
 
     # Generated
-    ${GeneratedLib}
+    ${GeneratedLibSchemaCPP}
 )
 
 # IDE source discovery

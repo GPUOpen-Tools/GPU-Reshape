@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iostream>
 
-bool ShaderExportGenerator::Generate(Schema &schema, Language language, const SchemaStream &out) {
+bool ShaderExportGenerator::Generate(Schema &schema, Language language, SchemaStream &out) {
     for (Message& message : schema.messages) {
         // Append shader guid if not disabled
         if (!message.attributes.GetBool("no-sguid")) {
@@ -24,7 +24,7 @@ bool ShaderExportGenerator::Generate(Schema &schema, Language language, const Sc
     return true;
 }
 
-bool ShaderExportGenerator::Generate(const Message &message, Language language, const MessageStream &out) {
+bool ShaderExportGenerator::Generate(const Message &message, Language language, MessageStream &out) {
     switch (language) {
         case Language::CPP:
             return GenerateCPP(message, out);
@@ -35,7 +35,7 @@ bool ShaderExportGenerator::Generate(const Message &message, Language language, 
     return false;
 }
 
-bool ShaderExportGenerator::GenerateCPP(const Message &message, const MessageStream &out) {
+bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &out) {
     // Begin shader type
     out.types << "\tstruct ShaderExport {\n";
 
@@ -128,6 +128,6 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, const MessageStr
     return true;
 }
 
-bool ShaderExportGenerator::GenerateCS(const Message &message, const MessageStream &out) {
+bool ShaderExportGenerator::GenerateCS(const Message &message, MessageStream &out) {
     return true;
 }

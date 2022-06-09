@@ -9,12 +9,12 @@ class ShaderExportGenerator : public IGenerator {
 public:
     COMPONENT(ShaderExportGenerator);
 
-    bool Generate(Schema &schema, Language language, const SchemaStream& out) override;
-    bool Generate(const Message &message, Language language, const MessageStream& out) override;
+    bool Generate(Schema &schema, Language language, SchemaStream& out) override;
+    bool Generate(const Message &message, Language language, MessageStream& out) override;
 
 private:
-    bool GenerateCPP(const Message &message, const MessageStream& out);
-    bool GenerateCS(const Message &message, const MessageStream& out);
+    bool GenerateCPP(const Message &message, MessageStream& out);
+    bool GenerateCS(const Message &message, MessageStream& out);
 
 private:
     PrimitiveTypeMap primitiveTypeMap;

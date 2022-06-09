@@ -61,3 +61,6 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     // OK
     return TRUE;
 }
+
+// TODO: Temporary hack to ensure libs are produced
+__declspec(dllexport) int __LibHack;

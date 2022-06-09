@@ -1,10 +1,10 @@
 #----- Backend -----#
 
 # Generate the schemas
-Project_AddSchema(GeneratedLib Schemas/Pipeline.xml Include/Schemas)
-Project_AddSchema(GeneratedLib Schemas/ShaderMetadata.xml Include/Schemas)
-Project_AddSchema(GeneratedLib Schemas/Config.xml Include/Schemas)
-Project_AddSchema(GeneratedLib Schemas/SGUID.xml Include/Schemas)
+Project_AddSchema(GeneratedLibSchema Schemas/Pipeline.xml Include/Schemas)
+Project_AddSchema(GeneratedLibSchema Schemas/ShaderMetadata.xml Include/Schemas)
+Project_AddSchema(GeneratedLibSchema Schemas/Config.xml Include/Schemas)
+Project_AddSchema(GeneratedLibSchema Schemas/SGUID.xml Include/Schemas)
 
 add_library(
     Libraries.Backend STATIC
@@ -17,7 +17,7 @@ add_library(
     Source/IL/BasicBlock.cpp
 
     # Generated schemas
-    ${GeneratedLib}
+    ${GeneratedLibSchemaCPP}
 )
 
 # IDE source discovery
@@ -54,7 +54,7 @@ endmacro()
 #----- Tests -----#
 
 # Generate the schema
-Project_AddSchema(Generated Tests/Schemas/Feature.xml Tests/Include/Schemas)
+Project_AddSchema(GeneratedTestSchema Tests/Schemas/Feature.xml Tests/Include/Schemas)
 
 # Create test layer
 add_executable(
@@ -65,7 +65,7 @@ add_executable(
     Tests/Source/BasicBlock.cpp
 
     # Generated
-    ${Generated}
+    ${GeneratedTestSchemaCPP}
 )
 
 # IDE source discovery
@@ -79,3 +79,9 @@ ExternalProject_Link(Libraries.Backend.Tests Catch2)
 
 # Links
 target_link_libraries(Libraries.Backend.Tests PUBLIC Libraries.Backend)
+
+#---- .Net Bindings ----#
+
+if (${ENABLE_UIX})
+    Project_AddSchemaDotNet(Libraries.Backend.Schema.DotNet ${GeneratedLibSchemaCS})
+endif()

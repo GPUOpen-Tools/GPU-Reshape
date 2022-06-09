@@ -61,7 +61,7 @@ function(SetVisualStudioSourceDiscovery NAME LANG)
         # Exclude sources files, added from user given sources
         if (LANG STREQUAL "CXX")
             list(FILTER BaseDirSourceTree EXCLUDE REGEX ".cpp|.cs")
-        elseif(LANG STREQUAL "CSharp")
+        elseif(LANG STREQUAL "CS")
             list(FILTER BaseDirSourceTree EXCLUDE REGEX ".cpp|.h")
         else()
             message(FATAL_ERROR "Invalid language: ${LANG}")

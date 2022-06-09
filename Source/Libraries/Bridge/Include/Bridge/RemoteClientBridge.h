@@ -37,6 +37,12 @@ public:
     IMessageStorage *GetOutput() override;
     void Commit() override;
 
+    /// Enables auto commits on remote appends
+    void SetCommitOnAppend(bool enabled)
+    {
+        commitOnAppend = enabled;
+    }
+
 private:
     /// Invoked on client connections
     void OnConnected();
@@ -60,6 +66,9 @@ private:
 
     /// Piggybacked memory bridge
     MemoryBridge memoryBridge;
+
+    /// Commit when streams are added
+    bool commitOnAppend = false;
 
     /// Cache for commits
     std::vector<MessageStream> streamCache;

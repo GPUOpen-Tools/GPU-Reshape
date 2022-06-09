@@ -1,6 +1,8 @@
 struct ALIGN_PACK $NAME {
 	static constexpr MessageID kID = $ID;
 
+	using Schema = $SCHEMA;
+
 $TYPES
 
 $FUNCTIONS
