@@ -91,6 +91,11 @@ void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequ
     }
 
     memoryBridge.GetOutput()->AddStream(stream);
+
+    // Commit all inbound streams if requested
+    if (commitOnAppend) {
+        memoryBridge.Commit();
+    }
 }
 
 RemoteClientBridge::~RemoteClientBridge() {
