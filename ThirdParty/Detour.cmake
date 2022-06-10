@@ -39,6 +39,13 @@ endforeach ()
 #   ! Must match git version
 target_compile_definitions(Detour PUBLIC -DDETOURS_VERSION=0x4c0c1)
 
-if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+# Compiler fixes
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    # Disable implicit pedantic mode set by standard
+    get_target_property(DetourOptions Detour COMPILE_OPTIONS)
+    list(REMOVE_ITEM DetourOptions "/std:c++20")
+    set_property(TARGET Detour PROPERTY COMPILE_OPTIONS ${DetourOptions})
+else()
+    # Enable extensions
     target_compile_options(Detour PRIVATE -Wmicrosoft-goto)
 endif()

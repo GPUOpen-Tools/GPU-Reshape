@@ -320,7 +320,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
                 const uint32_t bitSize = static_cast<uint32_t>(bitFieldType.size) * 8;
 
                 out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-                out.members << "\t\t" << bitFieldType.csType << " " << field.name << " : " << bitCount << ";\n";
+                out.members << "\t\tpublic " << bitFieldType.csType << " " << field.name << " : " << bitCount << ";\n";
 
                 if (!bitFieldOffset || bitFieldOffset % bitSize == 0) {
                     cxxSizeType += bitFieldType.size;
@@ -340,7 +340,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
                 byteSize << "\t\t\t\tsize += " << it->second.size << ";\n";
 
                 out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-                out.members << "\t\t" << it->second.csType << " " << field.name;
+                out.members << "\t\tpublic " << it->second.csType << " " << field.name;
 
                 if (defaultValue) {
                     out.members << " = " << defaultValue->value;
@@ -379,7 +379,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
             // Append field
             out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-            out.members << "\t\tMessageArray<" << it->second.csType << "> " << field.name << ";\n";
+            out.members << "\t\tpublic MessageArray<" << it->second.csType << "> " << field.name << ";\n";
 
             // Size type, not allocation type
             cxxSizeType += 16;
@@ -400,7 +400,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
             // Append field
             out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-            out.members << "\t\tMessageString " << field.name << ";\n";
+            out.members << "\t\tpublic MessageString " << field.name << ";\n";
 
             // Size type, not allocation type
             cxxSizeType += 16;
@@ -425,7 +425,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
             // Append field
             out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-            out.members << "\t\tMessageSubStream " << field.name << ";\n";
+            out.members << "\t\tpublic MessageSubStream " << field.name << ";\n";
 
             // Size type, not allocation type
             cxxSizeType += 32;
@@ -435,7 +435,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
             // Add field
             out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-            out.members << "\t\t" << it->first << " " << field.name << ";\n";
+            out.members << "\t\tpublic " << it->first << " " << field.name << ";\n";
 
             cxxSizeType += it->second.size;
         } else {

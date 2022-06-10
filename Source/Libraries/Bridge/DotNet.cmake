@@ -13,6 +13,9 @@ target_include_directories(Libraries.Bridge.DotNet PUBLIC Include)
 # Links
 target_link_libraries(Libraries.Bridge.DotNet PUBLIC Libraries.Bridge Libraries.Message.DotNet)
 
+# Resolver workaround
+target_compile_options(Libraries.Bridge.DotNet PRIVATE /Zc:twoPhase-)
+
 # DotNet
 set_target_properties(Libraries.Bridge.DotNet PROPERTIES DOTNET_SDK "Microsoft.NET.Sdk")
 set_target_properties(Libraries.Bridge.DotNet PROPERTIES VS_DOTNET_REFERENCES "System;System.Core;WindowsBase;Libraries.Message.DotNet")

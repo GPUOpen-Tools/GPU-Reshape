@@ -22,7 +22,7 @@ endif()
 # Toolchain support
 if (MSVC)
     # Supported
-    add_compile_options(/std:c++latest)
+    add_compile_options(/std:c++20)
 elseif(MINGW)
     message(WARNING "MinGW support not complete")
 
