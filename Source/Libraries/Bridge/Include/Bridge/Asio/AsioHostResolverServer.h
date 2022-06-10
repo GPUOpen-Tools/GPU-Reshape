@@ -163,6 +163,10 @@ protected:
             message->entries[i].token = clients[i].token;
         }
 
+#if ASIO_DEBUG
+        fprintf(stdout, "Discovery response with %i entries, %ib", message->entryCount, static_cast<uint32_t>(size));
+#endif
+
         // Write response
         handler.WriteAsync(message, size);
 

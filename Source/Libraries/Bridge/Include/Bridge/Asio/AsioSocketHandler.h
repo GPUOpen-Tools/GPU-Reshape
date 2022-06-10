@@ -2,6 +2,7 @@
 
 // Bridge
 #include "Asio.h"
+#include "AsioConfig.h"
 
 // Common
 #include <Common/Assert.h>
@@ -30,13 +31,6 @@ public:
 
         // Create buffer
         buffer = std::make_unique<char[]>(kBufferSize);
-
-        // Default error handler
-#if ASIO_DEBUG
-        onError = [](AsioSocketHandler& handler, const char* message) {
-            fprintf(stderr, "AsioSocketHandler : %s", message);
-        };
-#endif
     }
 
     /// No copy or move
@@ -75,7 +69,12 @@ public:
             );
 
             return true;
-        } catch (asio::system_error) {
+        } catch (asio::system_error e) {
+#if ASIO_DEBUG
+            fprintf(stderr, "AsioSocketHandler : %s\n", e.what());
+            fflush(stderr);
+#endif
+
             return false;
         }
     }
@@ -144,6 +143,11 @@ private:
             errorRepeatCount = 0;
             return true;
         }
+
+#if ASIO_DEBUG
+        fprintf(stderr, "AsioSocketHandler : %s\n", code.message().c_str());
+        fflush(stderr);
+#endif
 
         if (onError) {
             return onError(*this, code, errorRepeatCount++);
