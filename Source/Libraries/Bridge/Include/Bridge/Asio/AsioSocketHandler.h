@@ -61,6 +61,16 @@ public:
     /// \param size byte count of data
     bool WriteAsync(const void *data, uint64_t size) {
         try {
+#if ASIO_CONTENT_DEBUG
+            fprintf(stdout, "AsioSocketHandler : Writing [");
+            for (uint64_t i = 0; i < size; i++) {
+                uint8_t byte = static_cast<const uint8_t*>(data)[i];
+                fprintf(stdout, i == 0 ? "%i" : ", %i", static_cast<uint32_t>(byte));
+            }
+            fprintf(stdout, "]\n");
+            fflush(stdout);
+#endif 
+
             socket.async_write_some(
                 asio::buffer(data, size),
                 [this](const std::error_code &error, size_t bytes) {

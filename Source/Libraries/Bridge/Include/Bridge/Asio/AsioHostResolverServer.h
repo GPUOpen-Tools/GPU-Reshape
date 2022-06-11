@@ -164,7 +164,7 @@ protected:
         }
 
 #if ASIO_DEBUG
-        fprintf(stdout, "Discovery response with %i entries, %ib", message->entryCount, static_cast<uint32_t>(size));
+        fprintf(stdout, "Discovery response with %i entries, %ib\n", message->entryCount, static_cast<uint32_t>(size));
 #endif
 
         // Write response
