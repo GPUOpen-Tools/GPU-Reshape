@@ -24,11 +24,11 @@ namespace Bridge::CLR {
 
                 // Create clr object
                 auto clrStream = gcnew Message::CLR::ReadOnlyMessageStream;
-                clrStream->ptr = const_cast<uint8_t*>(stream.GetDataBegin());
-                clrStream->size = stream.GetByteSize();
-                clrStream->count = stream.GetCount();
-                clrStream->schema.type = static_cast<Message::CLR::MessageSchemaType>(stream.GetSchema().type);
-                clrStream->schema.id = stream.GetSchema().id;
+                clrStream->Ptr = const_cast<uint8_t*>(stream.GetDataBegin());
+                clrStream->Size = stream.GetByteSize();
+                clrStream->Count = stream.GetCount();
+                clrStream->Schema.type = static_cast<Message::CLR::MessageSchemaType>(stream.GetSchema().type);
+                clrStream->Schema.id = stream.GetSchema().id;
                 handle->Handle(clrStream, 1);
             }
         }

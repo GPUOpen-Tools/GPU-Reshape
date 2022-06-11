@@ -1,22 +1,70 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Message.CLR
 {
-    [StructLayout(LayoutKind.Explicit, Size = 32, CharSet = CharSet.Ansi)]
+    // Dynamic stream within inline stream
     public struct MessageSubStream
     {
-        /// Current schema
-        [FieldOffset(0)]
-        public MessageSchema schema;
+        public ByteSpan Memory { set => _memory = value; }
 
-        /// Number of messages in this stream
-        [FieldOffset(8)]
-        public ulong count;
+        // Get the schema of this sub stream
+        public MessageSchema Schema
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                return new MessageSchema
+                {
+                    type = MemoryMarshal.Read<MessageSchemaType>(_memory.Slice(0, 4).AsRefSpan()),
+                    id = MemoryMarshal.Read<int>(_memory.Slice(4, 8).AsRefSpan())
+                };
+            }
+        }
 
-        /// The underlying memory
-        [FieldOffset(16)]
-        public MessageArray<char> data;
+        // Get the number of messages in this sub stream
+        public ulong Count
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                return MemoryMarshal.Read<ulong>(_memory.Slice(8, 16).AsRefSpan());
+            }
+        }
+
+        // Get the underlying data view
+        public MessageArray<byte> Data
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                return new MessageArray<byte> { Memory = _memory.Slice(16) };
+            }
+        }
+
+        // Get the stream type
+        public ReadOnlyMessageStream Stream
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                MessageArray<byte> array = Data;
+
+                unsafe
+                {
+                    return new ReadOnlyMessageStream
+                    {
+                        Ptr = array.GetDataStart(),
+                        Size = (ulong)array.Count,
+                        Count = (int)Count,
+                        Schema = Schema
+                    };
+                }
+            }
+        }
+
+        private ByteSpan _memory;
     };
 }

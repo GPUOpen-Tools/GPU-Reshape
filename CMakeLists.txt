@@ -22,7 +22,7 @@ endif()
 # Toolchain support
 if (MSVC)
     # Supported
-    add_compile_options(/std:c++20)
+    add_compile_options(/std:c++latest)
 elseif(MINGW)
     message(WARNING "MinGW support not complete")
 
@@ -41,6 +41,9 @@ if (${ENABLE_UIX})
 
     # Enable additional languages
     enable_language(CSharp)
+
+    # .NET 5.0 unfortunately has several issues with cmake
+    set(CMAKE_DOTNET_TARGET_FRAMEWORK_VERSION  "v4.7.2")
 endif()
 
 # Set all outputs to Bin/Config

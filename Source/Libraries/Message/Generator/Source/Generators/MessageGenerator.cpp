@@ -319,8 +319,10 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
                 const uint32_t bitSize = static_cast<uint32_t>(bitFieldType.size) * 8;
 
-                out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-                out.members << "\t\tpublic " << bitFieldType.csType << " " << field.name << " : " << bitCount << ";\n";
+                out.members << "\t\tpublic " << bitFieldType.csType << " " << field.name << " : " << bitCount << "\n";
+                out.members << "\t\t{\n";
+                out.members << "\t\t\tget => MemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + bitFieldType.size) << ").AsRefSpan());\n";
+                out.members << "\t\t}\n\n";
 
                 if (!bitFieldOffset || bitFieldOffset % bitSize == 0) {
                     cxxSizeType += bitFieldType.size;
@@ -339,14 +341,11 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             } else {
                 byteSize << "\t\t\t\tsize += " << it->second.size << ";\n";
 
-                out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-                out.members << "\t\tpublic " << it->second.csType << " " << field.name;
+                out.members << "\t\tpublic " << it->second.csType << " " << field.name << "\n";
+                out.members << "\t\t{\n";
+                out.members << "\t\t\tget => MemoryMarshal.Read<" << it->second.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan());\n";
+                out.members << "\t\t}\n\n";
 
-                if (defaultValue) {
-                    out.members << " = " << defaultValue->value;
-                }
-
-                out.members << ";\n";
                 cxxSizeType += it->second.size;
             }
         } else if (field.type ==  "array") {
@@ -378,8 +377,10 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             anyDynamic = true;
 
             // Append field
-            out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-            out.members << "\t\tpublic MessageArray<" << it->second.csType << "> " << field.name << ";\n";
+            out.members << "\t\tpublic MessageArray<" << it->second.csType << "> " << field.name << "\n";
+            out.members << "\t\t{\n";
+            out.members << "\t\t\tget => new MessageArray<" << it->second.csType << ">{ Memory = _memory.Slice(" << cxxSizeType << ") };\n";
+            out.members << "\t\t}\n\n";
 
             // Size type, not allocation type
             cxxSizeType += 16;
@@ -399,8 +400,10 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             anyDynamic = true;
 
             // Append field
-            out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-            out.members << "\t\tpublic MessageString " << field.name << ";\n";
+            out.members << "\t\tpublic MessageString " << field.name << "\n";
+            out.members << "\t\t{\n";
+            out.members << "\t\t\tget => new MessageString { Memory = _memory.Slice(" << cxxSizeType << ") };\n";
+            out.members << "\t\t}\n\n";
 
             // Size type, not allocation type
             cxxSizeType += 16;
@@ -424,8 +427,10 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             anyDynamic = true;
 
             // Append field
-            out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-            out.members << "\t\tpublic MessageSubStream " << field.name << ";\n";
+            out.members << "\t\tpublic MessageSubStream " << field.name << "\n";
+            out.members << "\t\t{\n";
+            out.members << "\t\t\tget => new MessageSubStream { Memory = _memory.Slice(" << cxxSizeType << ") };\n";
+            out.members << "\t\t}\n\n";
 
             // Size type, not allocation type
             cxxSizeType += 32;
@@ -434,8 +439,10 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             byteSize << "\t\t\t\tsize += " << it->second.size << ";\n";
 
             // Add field
-            out.members << "\t\t[FieldOffset(" << cxxSizeType << ")]\n";
-            out.members << "\t\tpublic " << it->first << " " << field.name << ";\n";
+            out.members << "\t\tpublic " << it->first << " " << field.name << "\n";
+            out.members << "\t\t{\n";
+            out.members << "\t\t\tget => MemoryMarshal.Read<" << it->first << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan()); }\n";
+            out.members << "\t\t}\n\n";
 
             cxxSizeType += it->second.size;
         } else {
@@ -459,11 +466,6 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     // Set size
     out.size = cxxSizeType;
 
-    // Size check
-    out.types << "\t\tstatic " << message.name << "Message() {\n";
-    out.types << "\t\t\tDebug.Assert(Marshal.SizeOf(typeof(" << message.name << "Message)) == " << cxxSizeType << ", \"Unexpected compiler packing\");\n";
-    out.types << "\t\t}\n";
-
     // Begin allocation info
     out.types << "\n";
     out.types << "\t\tstruct AllocationInfo {\n";
@@ -477,10 +479,12 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
     // Allocation patching
     out.types << "\n";
+    out.types << "#if false // Read only for now\n";
     out.types << "\t\t\tvoid Patch(ref " << message.name << "Message message) {\n";
     out.types << "\t\t\t\tulong offset = 0;\n";
     out.types << patch.str();
-    out.types << "\t\t\t}";
+    out.types << "\t\t\t}\n";
+    out.types << "#endif";
 
     // Allocation parameters
     out.types << "\n\n";

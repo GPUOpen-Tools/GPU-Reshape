@@ -4,7 +4,12 @@
 #include "MessageStream.h"
 #include "MessageContainers.h"
 
-struct MessageSubStream {
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif
+
+struct ALIGN_PACK MessageSubStream {
     using View = MessageStreamView<void, MessageSubStream>;
 
     /// Set the stream data
@@ -89,3 +94,8 @@ struct MessageSubStream {
 };
 
 static_assert(sizeof(MessageSubStream) == 32, "Malformed sub-stream size");
+
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif

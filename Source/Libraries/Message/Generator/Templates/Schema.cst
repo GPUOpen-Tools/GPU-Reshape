@@ -6,9 +6,9 @@ using System.Runtime.InteropServices;
 
 namespace Message.CLR
 {
-    $HEADER
+$HEADER
 
-    $MESSAGES
+$MESSAGES
 
-    $FOOTER
+$FOOTER
 }

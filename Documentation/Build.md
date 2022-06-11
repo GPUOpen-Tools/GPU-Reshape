@@ -20,7 +20,7 @@ the below set-ups are supported:
   - Ninja
 - Compilers
   - MSVC
-  - Clang-cl
+  - Clang-cl (11+)
 
 ## Configuration options
 

@@ -1,65 +1,101 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Message.CLR
 {
-    /// Represents an inline message indirection
-    [StructLayout(LayoutKind.Explicit, Size = 8, CharSet = CharSet.Ansi)]
-    public struct MessagePtr<T>
+    // Single indirection in inline stream
+    public struct MessagePtr<T> where T : struct
     {
-        [FieldOffset(0)]
-        public ulong thisOffset;
+        public ByteSpan Memory { set => _memory = value; }
 
-        public ref T Get()
+        // Offset to current structure
+        public ulong ThisOffset
         {
-            throw new NotImplementedException();
-            // return reinterpret_cast<T*>(reinterpret_cast<uint8_t>(this) + thisOffset);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => MemoryMarshal.Read<ulong>(_memory.Slice(0, 8).AsRefSpan());
         }
+
+        // Get value of this indirection
+        public T Value
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                int ByteWidth = Marshal.SizeOf<T>();
+                return MemoryMarshal.Read<T>(_memory.Slice((int)ThisOffset, ByteWidth).AsRefSpan());
+            }
+        }
+
+        private ByteSpan _memory;
     };
 
-    /// Represents an inline message array
-    [StructLayout(LayoutKind.Explicit, Size = 16, CharSet = CharSet.Ansi)]
-    public struct MessageArray<T>
+    // Dynamic array in inline stream
+    public struct MessageArray<T> where T : struct
     {
-        [FieldOffset(0)]
-        public ulong thisOffset;
+        public ByteSpan Memory { set => _memory = value; }
 
-        [FieldOffset(8)]
-        public ulong count;
-
-        public ref T[] Get()
+        // Offset to current structure
+        public int ThisOffset
         {
-            throw new NotImplementedException();
-            //return reinterpret_cast<T*>(reinterpret_cast<uint8_t*>(this) + thisOffset);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => MemoryMarshal.Read<int>(_memory.Slice(0, 8).AsRefSpan());
         }
 
-        public ref T this[ulong i]
+        // Number of elements in this array
+        public int Count
         {
-            get { return ref Get()[i]; }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => MemoryMarshal.Read<int>(_memory.Slice(8, 16).AsRefSpan());
         }
-    };
 
-    [StructLayout(LayoutKind.Explicit, Size = 16, CharSet = CharSet.Ansi)]
+        // Get an element of this array
+        public T this[int index]
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                int ByteWidth = Marshal.SizeOf<T>();
+                return MemoryMarshal.Read<T>(_memory.Slice(ThisOffset + index * ByteWidth, ByteWidth).AsRefSpan());
+            }
+        }
+
+        // Get the unsafe start to this array
+        public unsafe byte* GetDataStart()
+        {
+            return _memory.Data + ThisOffset;
+        }
+
+        private ByteSpan _memory;
+    }
+
+    // String in inline stream
     public struct MessageString
     {
-        bool Empty()
+        public ByteSpan Memory { set => _array.Memory = value; }
+
+        // Get the length of this string
+        public int Length
         {
-            return data.count == 0;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _array.Count;
         }
 
-        void Set(string view)
+        // Create a string object, allocates
+        public string String
         {
-            Debug.Assert((ulong)view.Length <= data.count, "View length exceeds buffer size");
-            throw new NotImplementedException();
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                unsafe
+                {
+                    return Encoding.ASCII.GetString(_array.GetDataStart(), _array.Count);
+                }
+            }
         }
 
-        string GetCopy()
-        {
-            return new string(data.Get());
-        }
-
-        [FieldOffset(0)]
-        public MessageArray<char> data;
-    };
+        private MessageArray<byte> _array;
+    }
 }

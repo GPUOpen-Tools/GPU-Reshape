@@ -286,10 +286,10 @@ int main(int argc, char *const argv[]) {
 
             // Instantiate optionals
             messageTemplate.Substitute("$SIZE", std::to_string(messageStreamOut.size).c_str());
+            messageTemplate.Substitute("$SCHEMA", schemaType.str().c_str());
 
             // Instantiate message
             if (!messageTemplate.Substitute("$NAME", name.c_str()) ||
-                !messageTemplate.Substitute("$SCHEMA", schemaType.str().c_str()) ||
                 !messageTemplate.Substitute("$ID", hash.c_str()) ||
                 !messageTemplate.Substitute("$TYPES", typeStream.str().c_str()) ||
                 !messageTemplate.Substitute("$FUNCTIONS", functionStream.str().c_str()) ||

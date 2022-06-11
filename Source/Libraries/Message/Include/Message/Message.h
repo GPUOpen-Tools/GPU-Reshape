@@ -3,6 +3,9 @@
 // Std
 #include <cstdint>
 
+// Common
+#include <Common/Align.h>
+
 /// Global unique message id
 using MessageID = uint32_t;
 
@@ -23,8 +26,13 @@ enum class MessageSchemaType : uint32_t {
     Ordered
 };
 
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif
+
 /// Schema information
-struct MessageSchema {
+struct ALIGN_PACK MessageSchema {
     MessageSchemaType type = MessageSchemaType::None;
     MessageID         id   = InvalidMessageID;
 
@@ -47,7 +55,7 @@ struct StaticMessageSchema {
 
 /// Dynamic schema, see MessageSchemaType::Dynamic
 struct DynamicMessageSchema {
-    struct Header {
+    struct ALIGN_PACK Header {
         uint64_t byteSize;
     };
 
@@ -61,10 +69,12 @@ struct DynamicMessageSchema {
 
 /// Ordered schema, see MessageSchemaType::Ordered
 struct OrderedMessageSchema {
-    struct Header {
+    struct ALIGN_PACK Header {
         MessageID id;
         uint64_t  byteSize;
     };
+
+    static_assert(sizeof(Header) == 12, "Unexpected ordered schema size");
 
     static MessageSchema GetSchema() {
         MessageSchema schema{};
@@ -73,3 +83,8 @@ struct OrderedMessageSchema {
         return schema;
     }
 };
+
+// MSVC tight packing
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif

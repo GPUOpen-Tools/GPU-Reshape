@@ -10,6 +10,8 @@
 // Schemas
 #include <Schemas/HostResolve.h>
 
+#include <fstream>
+
 bool RemoteClientBridge::Install(const EndpointResolve &resolve) {
     // Port config
     AsioRemoteConfig asioConfig;
@@ -76,6 +78,9 @@ void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequ
         }
     }
 
+    std::ofstream out("out.txt");
+    out << entries.GetByteSize() << "\n";
+
     // Base stream
     MessageStream stream;
     {
@@ -86,9 +91,18 @@ void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequ
             .infosByteSize = entries.GetByteSize()
         });
 
+        out << HostDiscoveryMessage::AllocationInfo{
+            .infosByteSize = entries.GetByteSize()
+        }.ByteSize() << "\n";
+
         // Set entries
         discovery->infos.Set(entries);
     }
+
+    for (size_t i = 0; i < stream.GetByteSize(); i++) {
+        out << static_cast<uint32_t>(stream.GetDataBegin()[i]) << ", ";
+    }
+    out.close();
 
     memoryBridge.GetOutput()->AddStream(stream);
 

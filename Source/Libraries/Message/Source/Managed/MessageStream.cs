@@ -2,50 +2,62 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Message.CLR
 {
+    // Base message traits, usage is devirtualized
+    public interface IMessage
+    {
+        // Memory view of reader
+        ByteSpan Memory { set; }
+    }
+
+    // Base stream traits, usage is devirtualized
     public interface IMessageStream
     {
+        // Get the schema of this stream
         MessageSchema GetSchema();
 
-        unsafe byte* GetData();
+        // Get the data span of this stream
+        ByteSpan GetSpan();
 
+        // Get the number of messages
         int GetCount();
-
-        ulong GetSize();
     }
 
     public sealed class ReadOnlyMessageStream : IMessageStream
     {
-        public unsafe byte* GetData()
-        {
-            return ptr;
-        }
-
         public MessageSchema GetSchema()
         {
-            return schema;
+            return Schema;
         }
 
         public int GetCount()
         {
-            return count;
+            return Count;
         }
 
-        public ulong GetSize()
+        public ByteSpan GetSpan()
         {
-            return size;
+            unsafe
+            {
+                return new ByteSpan(Ptr, (int)Size);
+            }
         }
 
-        public MessageSchema schema;
+        // Top schema type
+        public MessageSchema Schema;
 
-        public unsafe byte* ptr;
+        // Data address
+        public unsafe byte* Ptr;
 
-        public ulong size;
+        // Byte size
+        public ulong Size;
 
-        public int count;
+        // Number of messages
+        public int Count;
     }
 
     public class StaticMessageView<T, S> where T : IStaticMessageSchema where S : IMessageStream
@@ -68,74 +80,66 @@ namespace Message.CLR
         public S storage;
     }
 
-    public struct OrderedMessageIterator
+    // Ordered message enumerator type
+    public struct OrderedMessage
     {
-        public unsafe byte* Data;
-        public unsafe byte* End;
+        public ByteSpan Memory { set => _memory = value; }
 
-        public uint GetMessageID()
+        // Assigned ID of message
+        public uint ID;
+
+        // Get a mesage of type
+        public T Get<T>() where T : struct, IMessage
         {
-            unsafe
-            {
-                return ((OrderedMessageSchema.Header*)Data)->id;
-            }
+            return new T() { Memory = _memory };
         }
 
-        public bool IsEOS()
-        {
-            unsafe
-            {
-                return Data >= End;
-            }
-        }
-
-        public bool Good()
-        {
-            unsafe
-            {
-                return Data < End;
-            }
-        }
-
-        public void Next()
-        {
-            unsafe
-            {
-                Data += ((OrderedMessageSchema.Header*)Data)->byteSize;
-            }
-        }
-
-        public T Get<T>()
-        {
-            unsafe
-            {
-                return (T)Marshal.PtrToStructure((IntPtr)Data + Marshal.SizeOf(typeof(OrderedMessageSchema.Header)), typeof(T));
-            }
-        }
+        private ByteSpan _memory;
     }
 
-    public class OrderedMessageView<S> where S : IMessageStream
+    public class OrderedMessageView<S> : IEnumerable<OrderedMessage> where S : IMessageStream
     {
-        public OrderedMessageView(S _storage)
+        public OrderedMessageView(S storage)
         {
             Debug.Assert(storage.GetSchema().type == MessageSchemaType.Ordered, "Ordered view on unordered stream");
-        
-            storage = _storage;
+
+            _storage = storage;
         }
 
-        public OrderedMessageIterator GetIterator()
+        // Enumerate this view
+        public IEnumerator<OrderedMessage> GetEnumerator()
         {
-            unsafe
+            ByteSpan memory = _storage.GetSpan();
+
+            // While messages to process
+            while (!memory.IsEmpty)
             {
-                return new OrderedMessageIterator
+                // Get header
+                var header = MemoryMarshal.Read<OrderedMessageSchema.Header>(memory.AsRefSpan());
+
+                // Skip header to message contents
+                memory = memory.Slice(Marshal.SizeOf<OrderedMessageSchema.Header>());
+
+                // Create message
+                yield return new OrderedMessage()
                 {
-                    Data = storage.GetData(),
-                    End = storage.GetData() + storage.GetSize(),
+                    Memory = memory,
+                    ID = header.id
                 };
+
+                // Skip contents
+                memory = memory.Slice((int)header.byteSize);
             }
         }
 
-        public S storage;
+        // Generic enumeration not supported
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotSupportedException();
+        }
+
+        //
+        private S _storage;
     }
 
     public class StaticMessageView<T> : StaticMessageView<T, ReadOnlyMessageStream> where T : IStaticMessageSchema

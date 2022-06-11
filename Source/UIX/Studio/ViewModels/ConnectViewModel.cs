@@ -40,13 +40,32 @@ namespace Studio.ViewModels
         {
             var schema = new OrderedMessageView(streams);
 
-            for (OrderedMessageIterator it = schema.GetIterator(); it.Good(); it.Next())
+            foreach (OrderedMessage message in schema)
             {
-                switch (it.GetMessageID())
+                switch (message.ID)
                 {
                     case HostDiscoveryMessage.ID:
                     {
-                        var message = it.Get<HostDiscoveryMessage>();
+                        HandleDiscovery(message.Get<HostDiscoveryMessage>());
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void HandleDiscovery(HostDiscoveryMessage discovery)
+        {
+            var schema = new OrderedMessageView(discovery.infos.Stream);
+
+            foreach (OrderedMessage message in schema)
+            {
+                switch (message.ID)
+                {
+                    case HostServerInfoMessage.ID:
+                    {
+                        var info = message.Get<HostServerInfoMessage>();
+                        
+                        _resolvedApplications.Add(info.application.String);
                         break;
                     }
                 }

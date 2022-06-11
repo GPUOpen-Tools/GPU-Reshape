@@ -1,11 +1,17 @@
-[StructLayout(LayoutKind.Explicit, Size = $SIZE, CharSet = CharSet.Ansi)]
-    public struct $NAME : $SCHEMA {
+    public struct $NAME : IMessage {
         public const uint ID = $ID;
+
+        public ByteSpan Memory
+        {
+            set => _memory = value;
+        }
 
 $TYPES
 
 $FUNCTIONS
 
 $MEMBERS
+
+        private ByteSpan _memory;
     }
 
