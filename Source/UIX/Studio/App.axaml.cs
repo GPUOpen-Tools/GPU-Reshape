@@ -13,6 +13,9 @@ namespace Studio
 {
     public class App : Application
     {
+        // Default locator
+        public static IAvaloniaDependencyResolver Locator = AvaloniaLocator.Current;
+        
         /// <summary>
         /// Default dark style
         /// </summary>
@@ -35,23 +38,39 @@ namespace Studio
             AvaloniaXamlLoader.Load(this);
         }
 
+        private void InstallServices()
+        {
+            AvaloniaLocator locator = AvaloniaLocator.CurrentMutable;
+
+            // Initiates the host resolver if not already up and running
+            locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
+
+            // Hosts all live workspaces
+            locator.BindToSelf<Services.IWorkspaceService>(new Services.WorkspaceService());
+        }
+        
         public override void OnFrameworkInitializationCompleted()
         {
-            var mainWindowViewModel = new MainWindowViewModel();
+            // Install global services
+            InstallServices();
 
+            // Create view model
+            var vm = new MainWindowViewModel();
+
+            // Bind lifetime
             switch (ApplicationLifetime)
             {
                 case IClassicDesktopStyleApplicationLifetime desktopLifetime:
                 {
                     var mainWindow = new MainWindow
                     {
-                        DataContext = mainWindowViewModel
+                        DataContext = vm
                     };
 
                     // Bind close
                     mainWindow.Closing += (_, _) =>
                     {
-                        mainWindowViewModel.CloseLayout();
+                        vm.CloseLayout();
                     };
 
                     // Set lifetime
@@ -60,7 +79,7 @@ namespace Studio
                     // Bind exit
                     desktopLifetime.Exit += (_, _) =>
                     {
-                        mainWindowViewModel.CloseLayout();
+                        vm.CloseLayout();
                     };
                     break;
                 }
@@ -68,7 +87,7 @@ namespace Studio
                 {
                     var mainView = new MainView()
                     {
-                        DataContext = mainWindowViewModel
+                        DataContext = vm
                     };
 
                     // Set lifetime

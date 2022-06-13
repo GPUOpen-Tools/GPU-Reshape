@@ -57,7 +57,7 @@ TEST_CASE("Bridge.Asio") {
         discoveryFlag = true;
     });
 
-    remoteClient.onConnected.Add(0, [&]() {
+    remoteClient.onConnected.Add(0, [&](const AsioHostResolverClientRequest::ServerResponse& response) {
         connectedFlag = true;
     });
 

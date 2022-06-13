@@ -17,7 +17,8 @@
 
 /// Delegates
 using AsioRemoteServerDiscoveryDelegate = std::function<void(const AsioRemoteServerResolverDiscoveryRequest::Response& response)>;
-using AsioRemoteServerConnectedDelegate = std::function<void()>;
+using AsioRemoteServerResolveDelegate = std::function<void(const AsioHostResolverClientRequest::ResolveResponse& response)>;
+using AsioRemoteServerConnectedDelegate = std::function<void(const AsioHostResolverClientRequest::ServerResponse& response)>;
 
 /// Remote endpoint client for local server interfacing, managed by the resolver
 struct AsioRemoteClient {
@@ -95,6 +96,7 @@ struct AsioRemoteClient {
 public:
     /// All events
     EventHandler<AsioRemoteServerDiscoveryDelegate> onDiscovery;
+    EventHandler<AsioRemoteServerResolveDelegate> onResolve;
     EventHandler<AsioRemoteServerConnectedDelegate> onConnected;
 
 protected:
@@ -138,13 +140,17 @@ protected:
     /// \param handler responsible handler
     /// \param response the inbound response
     void OnResolverClientRequestResolveResponse(const AsioHostResolverClientRequest::ResolveResponse* response) {
+        // Invoke subs
+        onResolve.Invoke(*response);
     }
 
     /// Invoked on server responses
     /// \param handler responsible handler
     /// \param response the inbound response
     void OnResolverClientRequestServerResponse(const AsioHostResolverClientRequest::ServerResponse* response) {
+        // Invoke subs on failure
         if (!response->accepted) {
+            onConnected.Invoke(*response);
             return;
         }
 
@@ -166,7 +172,7 @@ protected:
         endpointClientRunner.RunAsync(*endpointClient);
 
         // Invoke subs
-        onConnected.Invoke();
+        onConnected.Invoke(*response);
     }
 
     /// Invoked on discovery responses

@@ -29,7 +29,7 @@
                 </StackPanel>
                 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Workspace_Connect}" Click="OnClickConnect">
+                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Workspace_Connect}" Command="{Binding Connect}">
                         <PathIcon Data="{StaticResource Connect}" Width="13" />
                     </Button>
                 </StackPanel>

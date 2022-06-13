@@ -45,7 +45,12 @@ public:
 
 private:
     /// Invoked on client connections
-    void OnConnected();
+    /// \param response
+    void OnConnected(const AsioHostResolverClientRequest::ServerResponse& response);
+
+    /// Invoked on client resolves
+    /// \param response
+    void OnResolve(const AsioHostResolverClientRequest::ResolveResponse& response);
 
     /// Invoked on discovery responses
     /// \param response

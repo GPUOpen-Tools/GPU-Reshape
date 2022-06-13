@@ -93,6 +93,7 @@ the below set-ups are supported:
 - **Projektanker.Icons.Avalonia.FontAwesome/3.7.0**
 - **Projektanker.Icons.Avalonia/3.7.0**
 - **XamlNameReferenceGenerator/1.2.1**
+- **Avalonia.ReactiveUI.Events/0.10.14**
 
 ## Test dependencies
 

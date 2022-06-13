@@ -6,6 +6,7 @@
         xmlns:id="using:Dock.Avalonia"
         xmlns:vm="using:Studio.ViewModels"
         xmlns:views="using:Studio.Views"
+        xmlns:vc="using:Studio.ValueConverters"
         xmlns:r="using:Studio.Resources"
         mc:Ignorable="d"
         d:DesignWidth="500" d:DesignHeight="300"
@@ -22,6 +23,12 @@
         <vm:ConnectViewModel />
     </Window.DataContext>
 
+    <Window.Resources>
+        <ResourceDictionary>
+            <vc:ConnectionStatusToProgressConverter x:Key="ConnectionStatusToProgressConverter" />
+        </ResourceDictionary>
+    </Window.Resources>
+
     <Grid Margin="5">
         <!-- Tool Header -->
         <StackPanel VerticalAlignment="Top" Orientation="Horizontal">
@@ -31,7 +38,7 @@
         </StackPanel>
 
         <!-- Content -->
-        <Grid Margin="5,30,5,5" VerticalAlignment="Stretch">
+        <Grid Margin="5,30,5,30" VerticalAlignment="Stretch">
             <Panel VerticalAlignment="Top">
                 <AutoCompleteBox HorizontalAlignment="Stretch" Margin="0,0,30,0" Text="127.0.0.1" />
 
@@ -41,10 +48,46 @@
             </Panel>
 
             <Grid Margin="0,35,0,0">
-                <ListBox x:Name="ConnectionListbox" Items="{Binding ResolvedApplications}"/>
+                <DataGrid
+                    x:Name="ConnectionGrid"
+                    IsReadOnly="True"
+                    HeadersVisibility="None"
+                    AutoGenerateColumns="False"
+                    SelectedItem="{Binding SelectedApplication}"
+                    Items="{Binding ResolvedApplications}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Width="*" Binding="{Binding Name }" />
+                        <DataGridTextColumn Width="35" Binding="{Binding Pid}" />
+                    </DataGrid.Columns>
+                </DataGrid>
             </Grid>
-                
-            <ProgressBar VerticalAlignment="Bottom" MinHeight="5" IsIndeterminate="True" x:Name="ProgressIndicator"></ProgressBar>
+
+            <ProgressBar
+                VerticalAlignment="Bottom"
+                MinHeight="5"
+                x:Name="ProgressIndicator"
+                Value="100"
+                IsIndeterminate="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}"
+                Foreground="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}" />
+        </Grid>
+
+        <!-- Tool Result -->
+        <Grid VerticalAlignment="Bottom">
+            <TextBlock
+                x:Name="StatusBlock"
+                Margin="5,0,0,0"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                Text="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}" />
+
+            <StackPanel Margin="0,0,5,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button
+                    HorizontalAlignment="Right"
+                    Command="{Binding Connect}"
+                    ToolTip.Tip="{x:Static r:Resources.Workspace_Connect}">
+                    Connect
+                </Button>
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>

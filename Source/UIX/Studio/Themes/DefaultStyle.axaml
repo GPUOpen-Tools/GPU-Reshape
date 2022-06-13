@@ -13,7 +13,10 @@
     <Color x:Key="SystemBaseHighColor">#D8D8D8</Color>
     
     <!-- Info colors -->
-    <Color x:Key="ErrorColor">#B10100</Color>
+    <Color x:Key="ErrorColor">#8f2424</Color>
+ 
+    <!-- Info brushes -->
+    <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ErrorColor}"/>
     
     <!-- System brushes -->
     <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="{DynamicResource SystemBaseMediumLowColor}"/>
@@ -38,6 +41,7 @@
   <!-- Base style -->
   <StyleInclude Source="avares://Avalonia.Themes.Default/DefaultTheme.xaml" />
   <StyleInclude Source="avares://Avalonia.Themes.Default/Accents/BaseDark.xaml" />
+  <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Default.xaml"/>
   <StyleInclude Source="avares://Dock.Avalonia/Themes/DockDefaultTheme.axaml" />
   
   <!-- 

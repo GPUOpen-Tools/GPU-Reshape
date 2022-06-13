@@ -20,7 +20,8 @@ bool RemoteClientBridge::Install(const EndpointResolve &resolve) {
     client = new(allocators) AsioRemoteClient(asioConfig);
 
     // Subscribe
-    client->onConnected.Add(0, [this] { OnConnected(); });
+    client->onConnected.Add(0, [this](const AsioHostResolverClientRequest::ServerResponse& response) { OnConnected(response); });
+    client->onResolve.Add(0, [this](const AsioHostResolverClientRequest::ResolveResponse& response) { OnResolve(response); });
     client->onDiscovery.Add(0, [this](const AsioRemoteServerResolverDiscoveryRequest::Response &response) { OnDiscovery(response); });
 
     // Set read callback
@@ -40,13 +41,38 @@ void RemoteClientBridge::RequestClientAsync(const AsioHostClientToken &guid) {
     client->RequestClientAsync(AsioHostClientToken(guid));
 }
 
-void RemoteClientBridge::OnConnected() {
+void RemoteClientBridge::OnConnected(const AsioHostResolverClientRequest::ServerResponse& response) {
     MessageStream stream;
 
     MessageStreamView view(stream);
-    view.Add<HostConnectedMessage>();
+
+    // Push message
+    auto* message = view.Add<HostConnectedMessage>();
+    message->accepted = response.accepted;
 
     memoryBridge.GetOutput()->AddStream(stream);
+
+    // Commit all inbound streams if requested
+    if (commitOnAppend) {
+        memoryBridge.Commit();
+    }
+}
+
+void RemoteClientBridge::OnResolve(const AsioHostResolverClientRequest::ResolveResponse &response) {
+    MessageStream stream;
+
+    MessageStreamView view(stream);
+
+    // Push message
+    auto* message = view.Add<HostResolvedMessage>();
+    message->accepted = response.found;
+
+    memoryBridge.GetOutput()->AddStream(stream);
+
+    // Commit all inbound streams if requested
+    if (commitOnAppend) {
+        memoryBridge.Commit();
+    }
 }
 
 void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequest::Response &response) {

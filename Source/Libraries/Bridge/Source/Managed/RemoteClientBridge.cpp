@@ -44,6 +44,14 @@ void Bridge::CLR::RemoteClientBridge::DiscoverAsync() {
     _private->bridge->DiscoverAsync();
 }
 
+void Bridge::CLR::RemoteClientBridge::RequestClientAsync(System::Guid^ guid) {
+    // Translate to string
+    auto ansi = static_cast<const char*>(System::Runtime::InteropServices::Marshal::StringToHGlobalAnsi(guid->ToString("B")).ToPointer());
+    
+    // Create token guid
+    _private->bridge->RequestClientAsync(AsioHostClientToken::FromString(ansi));
+}
+
 void Bridge::CLR::RemoteClientBridge::Register(MessageID mid, IBridgeListener^listener) {
     _private->bridge->Register(mid, _private->registry.New<BridgeListenerInterop>(listener));
 }

@@ -153,7 +153,7 @@ namespace Studio.ViewModels
             ContextLocator = new Dictionary<string, Func<object>>
             {
                 ["Welcome"] = () => new WelcomeDocument(),
-                ["Workspace"] = () => new Workspace(),
+                ["Workspace"] = () => new Models.Tools.Workspace(),
                 ["Connection"] = () => new Connection(),
                 ["Property"] = () => new Property(),
                 ["Log"] = () => new Log(),

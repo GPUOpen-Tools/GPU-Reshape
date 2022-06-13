@@ -1,9 +1,11 @@
-﻿using System.Collections.ObjectModel;
-using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Reactive.Linq;
 using System.Windows.Input;
+using Avalonia;
+using Avalonia.Threading;
 using Bridge.CLR;
-using Dock.Model.Controls;
-using Dock.Model.Core;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
@@ -12,51 +14,184 @@ namespace Studio.ViewModels
 {
     public class ConnectViewModel : ReactiveObject, IBridgeListener
     {
-        public Models.WorkspaceConnection Connection = new();
+        /// <summary>
+        /// Connect to selected application
+        /// </summary>
+        public ICommand Connect { get; }
 
-        public ObservableCollection<string> ResolvedApplications => _resolvedApplications;
+        /// <summary>
+        /// All resolved applications
+        /// </summary>
+        public ObservableCollection<Models.Workspace.ApplicationInfo> ResolvedApplications => _resolvedApplications;
 
-        public ConnectViewModel()
+        /// <summary>
+        /// User interaction during connection acceptance
+        /// </summary>
+        public Interaction<ConnectViewModel, bool> AcceptClient { get; }
+        
+        /// <summary>
+        /// Selected application for connection
+        /// </summary>
+        public Models.Workspace.ApplicationInfo? SelectedApplication
         {
-            // Subscribe
-            Connection.Connected += OnConnected;
-            
-            // Start connection at localhost
-            Connection.ConnectAsync("127.0.0.1");
+            get => _selectedApplication;
+            set => this.RaiseAndSetIfChanged(ref _selectedApplication, value);
         }
 
-        private void OnConnected(Models.WorkspaceConnection _)
+        /// <summary>
+        /// Connection status
+        /// </summary>
+        public Models.Workspace.ConnectionStatus ConnectionStatus
         {
-            IBridge bridge = Connection.GetBridge();
+            get => _connectionStatus;
+            set => this.RaiseAndSetIfChanged(ref _connectionStatus, value);
+        }
+        
+        public ConnectViewModel()
+        {
+            // Initialize connection status
+            ConnectionStatus = Models.Workspace.ConnectionStatus.None;
+
+            // Create commands
+            Connect = ReactiveCommand.Create(OnConnect);
+            
+            // Create interactions
+            AcceptClient = new();
+            
+            // Subscribe
+            _workspaceConnection.Connected.Subscribe(_ => OnRemoteConnected());
+            
+            // Start connection at localhost
+            _workspaceConnection.ConnectAsync("127.0.0.1");
+        }
+
+        /// <summary>
+        /// Connect implementation
+        /// </summary>
+        private void OnConnect()
+        {
+            if (SelectedApplication == null)
+            {
+                return;
+            }
+            
+            // Set status
+            ConnectionStatus = Models.Workspace.ConnectionStatus.Connecting;
+            
+            // Submit request
+            _workspaceConnection.RequestClientAsync(SelectedApplication.Guid);
+        }
+
+        /// <summary>
+        /// Invoked when the remote endpoint has connected
+        /// </summary>
+        private void OnRemoteConnected()
+        {
+            IBridge? bridge = _workspaceConnection.GetBridge();
 
             // Register handler
             bridge?.Register(this);
             
             // Request discovery
-            Connection.DiscoverAsync();
+            _workspaceConnection.DiscoverAsync();
         }
         
+        /// <summary>
+        /// Message handler
+        /// </summary>
+        /// <param name="streams">all inbound streams</param>
+        /// <param name="count">number of streams</param>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            var schema = new OrderedMessageView(streams);
-
-            foreach (OrderedMessage message in schema)
+            // On main thread
+            // TODO: This is ugly, ugly! Add some policy for threading or something
+            Dispatcher.UIThread.InvokeAsync(() =>
             {
-                switch (message.ID)
+                var schema = new OrderedMessageView(streams);
+
+                // Visit typed
+                foreach (OrderedMessage message in schema)
                 {
-                    case HostDiscoveryMessage.ID:
+                    switch (message.ID)
                     {
-                        HandleDiscovery(message.Get<HostDiscoveryMessage>());
-                        break;
+                        case HostDiscoveryMessage.ID:
+                        {
+                            Handle(message.Get<HostDiscoveryMessage>());
+                            break;
+                        }
+                        case HostConnectedMessage.ID:
+                        {
+                            Handle(message.Get<HostConnectedMessage>());
+                            break;
+                        }
+                        case HostResolvedMessage.ID:
+                        {
+                            Handle(message.Get<HostResolvedMessage>());
+                            break;
+                        }
                     }
                 }
+            });
+        }
+
+        /// <summary>
+        /// Invoked on connection messages
+        /// </summary>
+        /// <param name="connected">message</param>
+        private async void Handle(HostConnectedMessage connected)
+        {
+            // Set status
+            if (connected.accepted == 0)
+            {
+                ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationRejected;
+            }
+            else
+            {
+                ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationAccepted;
+            }
+            
+            // Confirm with view
+            if (!await AcceptClient.Handle(this))
+            {
+                return;
+            }
+            
+            // Get provider
+            var provider = App.Locator.GetService<Services.IWorkspaceService>();
+
+            // Add connection
+            provider?.Add(_workspaceConnection);
+        }
+
+        /// <summary>
+        /// Invoked on resolved messages
+        /// </summary>
+        /// <param name="resolved">message</param>
+        private async void Handle(HostResolvedMessage resolved)
+        {
+            // Set status
+            if (resolved.accepted == 0)
+            {
+                ConnectionStatus = Models.Workspace.ConnectionStatus.ResolveRejected;
+            }
+            else
+            {
+                ConnectionStatus = Models.Workspace.ConnectionStatus.ResolveAccepted;
             }
         }
 
-        private void HandleDiscovery(HostDiscoveryMessage discovery)
+        /// <summary>
+        /// Invoked on discovery messages
+        /// </summary>
+        /// <param name="discovery">message</param>
+        private void Handle(HostDiscoveryMessage discovery)
         {
             var schema = new OrderedMessageView(discovery.infos.Stream);
 
+            // Create new app list
+            var apps = new List<Models.Workspace.ApplicationInfo>();
+
+            // Visit typed
             foreach (OrderedMessage message in schema)
             {
                 switch (message.ID)
@@ -65,14 +200,48 @@ namespace Studio.ViewModels
                     {
                         var info = message.Get<HostServerInfoMessage>();
                         
-                        _resolvedApplications.Add(info.application.String);
+                        // Add application
+                        apps.Add(new Models.Workspace.ApplicationInfo
+                        {
+                            Name = info.application.String,
+                            Pid = info.processId,
+                            Guid = new Guid(info.guid.String)
+                        });
                         break;
                     }
                 }
             }
+            
+            // Add on UI thread
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // Set new app list
+                _resolvedApplications.Clear();
+                _resolvedApplications.Add(apps);
+                
+                // Set status
+                ConnectionStatus = Models.Workspace.ConnectionStatus.None;
+            });
         }
+
+        /// <summary>
+        /// Internal connection
+        /// </summary>
+        private Workspace.WorkspaceConnection _workspaceConnection = new();
         
-        // All remote resolved applications
-        public ObservableCollection<string> _resolvedApplications = new();
+        /// <summary>
+        /// Internal connection status
+        /// </summary>
+        private Models.Workspace.ConnectionStatus _connectionStatus;
+
+        /// <summary>
+        /// Internal selected application
+        /// </summary>
+        private Models.Workspace.ApplicationInfo? _selectedApplication;
+        
+        /// <summary>
+        /// Internal application list
+        /// </summary>
+        private ObservableCollection<Models.Workspace.ApplicationInfo> _resolvedApplications = new();
     }
 }

@@ -20,6 +20,10 @@ namespace Bridge::CLR {
         /// Submit a discovery request
         void DiscoverAsync();
 
+        /// Send an async client request
+        /// \param guid client guid, must originate from the discovery request
+        void RequestClientAsync(System::Guid^ guid);
+
         /// Overrides
         virtual void Register(MessageID mid, IBridgeListener^ listener) sealed;
         virtual void Deregister(MessageID mid, IBridgeListener^ listener) sealed;

@@ -16,22 +16,5 @@ namespace Studio.Views.Tools
         {
             AvaloniaXamlLoader.Load(this);
         }
-
-        private void OnClickConnect(object? sender, RoutedEventArgs e)
-        {
-            if (Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
-            {
-                return;
-            }
-
-            // Create dialog
-            var dialog = new ConnectWindow()
-            {
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-
-            // Blocking
-            dialog.ShowDialog(desktop.MainWindow);
-        }
     }
 }

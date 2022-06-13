@@ -8,7 +8,10 @@
     <message name="HostDiscovery">
         <field name="infos" type="stream"/>
     </message>
+    <message name="HostResolved">
+        <field name="accepted" type="bool"/>
+    </message>
     <message name="HostConnected">
-        <field name="unused" type="uint32"/>
+        <field name="accepted" type="bool"/>
     </message>
 </schema>
