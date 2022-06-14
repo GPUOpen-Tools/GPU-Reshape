@@ -11,10 +11,5 @@ namespace Studio.Views.Tools
         {
             InitializeComponent();
         }
-
-        private void InitializeComponent()
-        {
-            AvaloniaXamlLoader.Load(this);
-        }
     }
 }

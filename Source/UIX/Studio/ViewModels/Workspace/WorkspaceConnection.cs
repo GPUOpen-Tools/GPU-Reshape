@@ -7,6 +7,7 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using ReactiveUI;
+using Studio.Models.Workspace;
 
 namespace Studio.ViewModels.Workspace
 {
@@ -30,6 +31,11 @@ namespace Studio.ViewModels.Workspace
         /// Is the connection alive?
         /// </summary>
         public bool IsConnected => _remote != null;
+
+        /// <summary>
+        /// Endpoint application info
+        /// </summary>
+        public Models.Workspace.ApplicationInfo? Application { get; private set; }
 
         public WorkspaceConnection()
         {
@@ -101,11 +107,15 @@ namespace Studio.ViewModels.Workspace
         /// Submit client request asynchronously
         /// </summary>
         /// <param name="guid">endpoint application GUID</param>
-        public void RequestClientAsync(Guid guid)
+        public void RequestClientAsync(ApplicationInfo applicationInfo)
         {
             lock (this)
             {
-                _remote?.RequestClientAsync(guid);
+                // Set info
+                Application = applicationInfo;
+                
+                // Pass down CLR
+                _remote?.RequestClientAsync(applicationInfo.Guid);
             }
         }
 

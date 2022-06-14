@@ -4,7 +4,12 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="using:Studio.ViewModels.Tools"
+             xmlns:cvm="using:Studio.ViewModels.Controls"
+             xmlns:controls="using:Studio.Views.Controls"
+             xmlns:tools="using:Studio.Views.Tools"
+             xmlns:views="using:Studio.Views"
              xmlns:r="using:Studio.Resources"
+             xmlns:reactui="http://reactiveui.net"
              mc:Ignorable="d"
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:WorkspaceViewModel" x:CompileBindings="True">
@@ -38,24 +43,12 @@
             <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
         </StackPanel>
 
-        <TreeView Grid.Row="1">
-            <!-- Dummy items -->
-            <TreeViewItem IsExpanded="True">
-                <TreeViewItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <PathIcon Data="{StaticResource StreamOn}" Width="10" Margin="0,1,0,0" />
-                        <Label>UE4Editor.exe (localhost)</Label>
-                    </StackPanel>
-                </TreeViewItem.Header>
-
-                <TreeViewItem Header="Default" IsExpanded="True">
-                    <TreeViewItem Header="Global" />
-                    <TreeViewItem Header="Shader Something.usf" IsExpanded="True">
-                        <TreeViewItem Header="Hot branch profiling" />
-                        <TreeViewItem Header="Debugger" />
-                    </TreeViewItem>
-                </TreeViewItem>
-            </TreeViewItem>
+        <TreeView Grid.Row="1" x:Name="WorkspaceTree" Items="{Binding Workspaces}">
+            <TreeView.ItemTemplate>
+                <TreeDataTemplate ItemsSource="{Binding Items}">
+                    <controls:UniformViewHost DataContext="{Binding $self.DataContext}"/>
+                </TreeDataTemplate>
+            </TreeView.ItemTemplate>
         </TreeView>
     </Grid>
 </UserControl>

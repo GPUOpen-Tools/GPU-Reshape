@@ -1,0 +1,15 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Studio.ViewModels.Controls"
+             mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="25"
+             x:Class="Studio.Views.Controls.WorkspaceTreeItemView"
+             x:DataType="vm:WorkspaceTreeItemViewModel">
+    <Grid>
+        <StackPanel Orientation="Horizontal">
+            <PathIcon Data="{StaticResource StreamOn}" Width="10" Margin="0,0,0,0" />
+            <Label Content="{Binding Text, FallbackValue=ApplicationName}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

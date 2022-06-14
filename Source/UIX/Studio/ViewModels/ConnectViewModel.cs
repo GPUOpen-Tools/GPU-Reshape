@@ -79,7 +79,7 @@ namespace Studio.ViewModels
             ConnectionStatus = Models.Workspace.ConnectionStatus.Connecting;
             
             // Submit request
-            _workspaceConnection.RequestClientAsync(SelectedApplication.Guid);
+            _workspaceConnection.RequestClientAsync(SelectedApplication);
         }
 
         /// <summary>
