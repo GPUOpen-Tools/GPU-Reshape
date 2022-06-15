@@ -1,4 +1,5 @@
 ﻿using Avalonia;
+using Avalonia.Media;
 
 namespace Studio
 {
@@ -32,6 +33,22 @@ namespace Studio
         public static T GetResource<T>(string name) where T : class, new()
         {
             return GetResource(name, new T());
+        }
+
+        /// <summary>
+        /// Get an icon from key
+        /// </summary>
+        /// <param name="name">icon key</param>
+        /// <returns>null if not found</returns>
+        public static StreamGeometry? GetIcon(string name)
+        {
+            // May not exist
+            if (!Application.Current!.Styles.TryGetResource(name, out object? resource))
+            {
+                return null;
+            }
+
+            return resource as StreamGeometry;
         }
     }
 }

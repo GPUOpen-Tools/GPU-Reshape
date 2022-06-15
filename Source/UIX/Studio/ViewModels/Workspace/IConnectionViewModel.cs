@@ -7,11 +7,17 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using ReactiveUI;
+using Studio.Models.Workspace;
 
 namespace Studio.ViewModels.Workspace
 {
-    public interface IWorkspaceConnection
+    public interface IConnectionViewModel
     {
+        /// <summary>
+        /// Associated application information
+        /// </summary>
+        public ApplicationInfo? Application { get; }
+        
         /// <summary>
         /// Invoked during connection
         /// </summary>

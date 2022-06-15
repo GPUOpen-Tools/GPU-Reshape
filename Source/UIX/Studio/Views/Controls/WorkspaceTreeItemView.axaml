@@ -3,13 +3,18 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:Studio.ViewModels.Controls"
-             mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="25"
+             xmlns:vc="using:Studio.ValueConverters"
+             mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="20"
              x:Class="Studio.Views.Controls.WorkspaceTreeItemView"
              x:DataType="vm:WorkspaceTreeItemViewModel">
-    <Grid>
-        <StackPanel Orientation="Horizontal">
-            <PathIcon Data="{StaticResource StreamOn}" Width="10" Margin="0,0,0,0" />
-            <Label Content="{Binding Text, FallbackValue=ApplicationName}"/>
-        </StackPanel>
-    </Grid>
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <vc:PropertyToIconConverter x:Key="PropertyToIconConverter" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <StackPanel Orientation="Horizontal">
+        <PathIcon Data="{Binding ViewModel, FallbackValue={StaticResource DotsGrid}, Converter={StaticResource PropertyToIconConverter}}" Width="9" Margin="0,-2,0,0" />
+        <Label Content="{Binding Text, FallbackValue=ApplicationName}" Margin="4,-2,0,0" />
+    </StackPanel>
 </UserControl>

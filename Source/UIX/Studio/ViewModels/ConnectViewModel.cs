@@ -9,6 +9,7 @@ using Bridge.CLR;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
+using Studio.ViewModels.Tools;
 
 namespace Studio.ViewModels
 {
@@ -59,10 +60,10 @@ namespace Studio.ViewModels
             AcceptClient = new();
             
             // Subscribe
-            _workspaceConnection.Connected.Subscribe(_ => OnRemoteConnected());
+            _connectionViewModel.Connected.Subscribe(_ => OnRemoteConnected());
             
             // Start connection at localhost
-            _workspaceConnection.ConnectAsync("127.0.0.1");
+            _connectionViewModel.ConnectAsync("127.0.0.1");
         }
 
         /// <summary>
@@ -79,7 +80,7 @@ namespace Studio.ViewModels
             ConnectionStatus = Models.Workspace.ConnectionStatus.Connecting;
             
             // Submit request
-            _workspaceConnection.RequestClientAsync(SelectedApplication);
+            _connectionViewModel.RequestClientAsync(SelectedApplication);
         }
 
         /// <summary>
@@ -87,13 +88,13 @@ namespace Studio.ViewModels
         /// </summary>
         private void OnRemoteConnected()
         {
-            IBridge? bridge = _workspaceConnection.GetBridge();
+            IBridge? bridge = _connectionViewModel.GetBridge();
 
             // Register handler
             bridge?.Register(this);
             
             // Request discovery
-            _workspaceConnection.DiscoverAsync();
+            _connectionViewModel.DiscoverAsync();
         }
         
         /// <summary>
@@ -159,8 +160,11 @@ namespace Studio.ViewModels
             // Get provider
             var provider = App.Locator.GetService<Services.IWorkspaceService>();
 
-            // Add connection
-            provider?.Add(_workspaceConnection);
+            // Create workspace
+            provider?.Add(new ViewModels.Workspace.WorkspaceViewModel()
+            {
+                Connection = _connectionViewModel
+            });
         }
 
         /// <summary>
@@ -227,7 +231,7 @@ namespace Studio.ViewModels
         /// <summary>
         /// Internal connection
         /// </summary>
-        private Workspace.WorkspaceConnection _workspaceConnection = new();
+        private Workspace.ConnectionViewModel _connectionViewModel = new();
         
         /// <summary>
         /// Internal connection status

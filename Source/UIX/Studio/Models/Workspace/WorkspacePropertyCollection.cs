@@ -1,6 +1,6 @@
 ﻿namespace Studio.Models.Workspace
 {
-    public class Workspace
+    public class WorkspacePropertyCollection
     {
         
     }

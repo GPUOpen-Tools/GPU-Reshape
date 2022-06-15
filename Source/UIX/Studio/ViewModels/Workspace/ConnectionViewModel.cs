@@ -11,11 +11,7 @@ using Studio.Models.Workspace;
 
 namespace Studio.ViewModels.Workspace
 {
-    public delegate void OnWorkspaceConnected(WorkspaceConnection sender);
-
-    public delegate void OnWorkspaceRefused(WorkspaceConnection sender);
-
-    public class WorkspaceConnection : ReactiveObject, IWorkspaceConnection
+    public class ConnectionViewModel : ReactiveObject, IConnectionViewModel
     {
         /// <summary>
         /// Invoked during connection
@@ -37,7 +33,7 @@ namespace Studio.ViewModels.Workspace
         /// </summary>
         public Models.Workspace.ApplicationInfo? Application { get; private set; }
 
-        public WorkspaceConnection()
+        public ConnectionViewModel()
         {
             // Create subjects
             Connected = new Subject<Unit>();

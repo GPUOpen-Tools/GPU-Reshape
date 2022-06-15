@@ -13,7 +13,7 @@ namespace Studio.Services
         /// <summary>
         /// Active workspaces
         /// </summary>
-        public IObservableList<ViewModels.Workspace.WorkspaceConnection> Workspaces => _connections;
+        public IObservableList<ViewModels.Workspace.IWorkspaceViewModel> Workspaces => _workspaces;
 
         public WorkspaceService()
         {
@@ -23,26 +23,26 @@ namespace Studio.Services
         /// <summary>
         /// Add a new workspace
         /// </summary>
-        /// <param name="connection">active connection</param>
-        public void Add(ViewModels.Workspace.WorkspaceConnection connection)
+        /// <param name="workspaceViewModel">active connection</param>
+        public void Add(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel)
         {
-            _connections.Add(connection);
+            _workspaces.Add(workspaceViewModel);
         }
 
         /// <summary>
         /// Remove an existing workspace
         /// </summary>
-        /// <param name="connection">active connection</param>
+        /// <param name="workspaceViewModel">active connection</param>
         /// <returns>true if successfully removed</returns>
-        public bool Remove(ViewModels.Workspace.WorkspaceConnection connection)
+        public bool Remove(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel)
         {
-            return _connections.Remove(connection);
+            return _workspaces.Remove(workspaceViewModel);
         }
 
         /// <summary>
         /// Internal active workspaces
         /// </summary>
-        private SourceList<ViewModels.Workspace.WorkspaceConnection> _connections = new();
+        private SourceList<ViewModels.Workspace.IWorkspaceViewModel> _workspaces = new();
         
     }
 }

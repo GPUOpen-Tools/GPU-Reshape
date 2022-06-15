@@ -23,7 +23,7 @@ namespace Studio.ViewModels.Tools
         /// <summary>
         /// All workspaces
         /// </summary>
-        public ObservableCollection<Controls.ObservableTreeItem> Workspaces { get; } = new();
+        public ObservableCollection<Controls.IObservableTreeItem> Workspaces { get; } = new();
 
         public WorkspaceViewModel()
         {
@@ -42,23 +42,23 @@ namespace Studio.ViewModels.Tools
         /// <summary>
         /// Invoked when a workspace has been added to the service
         /// </summary>
-        /// <param name="connection">added workspace</param>
-        public void OnWorkspaceAdded(WorkspaceConnection connection)
+        /// <param name="connectionViewModel">added workspace</param>
+        public void OnWorkspaceAdded(Workspace.IWorkspaceViewModel workspaceViewModel)
         {
             Workspaces.Add(new Controls.WorkspaceTreeItemViewModel()
             {
-                Connection = connection
+                ViewModel = workspaceViewModel.PropertyCollection
             });
         }
 
         /// <summary>
         /// Invoked when a workspace has been removed from the service
         /// </summary>
-        /// <param name="connection">removed workspace</param>
-        public void OnWorkspaceRemoved(WorkspaceConnection connection)
+        /// <param name="connectionViewModel">removed workspace</param>
+        public void OnWorkspaceRemoved(Workspace.IWorkspaceViewModel workspaceViewModel)
         {
             // Find root item
-            Controls.ObservableTreeItem? item = Workspaces.FirstOrDefault(x => (x as Controls.WorkspaceTreeItemViewModel)?.Connection == connection);
+            Controls.IObservableTreeItem? item = Workspaces.FirstOrDefault(x => x.ViewModel == workspaceViewModel.PropertyCollection);
 
             // Found?
             if (item != null)
