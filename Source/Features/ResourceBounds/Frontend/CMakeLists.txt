@@ -21,3 +21,10 @@ add_custom_command(
     TARGET Features.ResourceBounds.Frontend POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:Features.ResourceBounds.Frontend> $<TARGET_FILE_DIR:Features.ResourceBounds.Frontend>/Plugins/$<TARGET_FILE_NAME:Features.ResourceBounds.Frontend>
 )
+
+#----- .Net bindings -----#
+
+if (${ENABLE_UIX})
+    # Project_AddDotNet(Features.ResourceBounds.Frontend.DotNet )
+    # set_property(TARGET Features.ResourceBounds.Frontend.DotNet PROPERTY VS_DOTNET_REFERENCES "System;System.Memory")
+endif()

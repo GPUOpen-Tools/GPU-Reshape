@@ -20,12 +20,12 @@ set_property(TARGET Libraries.Message.DotNet PROPERTY VS_DOTNET_REFERENCES "Syst
 set_target_properties(Libraries.Message.DotNet PROPERTIES DOTNET_SDK "Microsoft.NET.Sdk")
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Message.DotNet CXX Include Source)
+SetSourceDiscovery(Libraries.Message.DotNet CS Include Source)
 
 # Quick message project
 function(Project_AddSchemaDotNet NAME)
     Project_AddDotNet(${NAME} ${ARGN})
 
     # Link to message
-    set_property(TARGET ${NAME} PROPERTY VS_DOTNET_REFERENCES "System;;System.Memory;Libraries.Message.DotNet")
+    set_property(TARGET ${NAME} PROPERTY VS_DOTNET_REFERENCES "System;System.Memory;Libraries.Message.DotNet")
 endfunction()

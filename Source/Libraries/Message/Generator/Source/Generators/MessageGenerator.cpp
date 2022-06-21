@@ -1,5 +1,6 @@
 #include <Generators/MessageGenerator.h>
 
+// Std
 #include <sstream>
 #include <iostream>
 
@@ -319,18 +320,27 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
                 const uint32_t bitSize = static_cast<uint32_t>(bitFieldType.size) * 8;
 
+                // Mutable setter
                 out.functions << "\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
                 out.functions << "\t\tpublic void Set" << field.name << "(" << it->second.csType << " value)\n";
                 out.functions << "\t\t{\n";
-                out.functions << "\t\t\tMemoryMarshal.Write<" << it->second.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref value);\n";
+                out.functions << "\t\t\t" << bitFieldType.csType << " fieldValue = 0;\n";
+                out.functions << "\t\t\tfieldValue |= ((value & ((1u << " << bitCount << ") - 1)) << " << bitFieldOffset << ");\n";
+                out.functions << "\t\t\tfieldValue |= " << field.name << " & " << "~((~0u >> " << (32 - bitCount) << ") << " << bitFieldOffset << ");\n\n";
+                out.functions << "\t\t\tMemoryMarshal.Write<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref fieldValue);\n";
                 out.functions << "\t\t}\n\n";
 
-                out.members << "\t\tpublic " << bitFieldType.csType << " " << field.name << " : " << bitCount << "\n";
+                // Getter and setter
+                out.members << "\t\tpublic " << it->second.csType << " " << field.name << "\n";
                 out.members << "\t\t{\n";
                 out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
-                out.members << "\t\t\tget => MemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + bitFieldType.size) << ").AsRefSpan());\n\n";
+                out.members << "\t\t\tget\n";
+                out.members << "\t\t\t{\n";
+                out.members << "\t\t\t\tvar field = MemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + bitFieldType.size) << ").AsRefSpan());\n";
+                out.members << "\t\t\t\treturn (" << it->second.csType << ")((field >> " << bitFieldOffset << ") & ((1u << " << bitCount << ") - 1));\n";
+                out.members << "\t\t\t}\n\n";
                 out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
-                out.members << "\t\t\tset => MemoryMarshal.Write<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + bitFieldType.size) << ").AsRefSpan(), ref value);\n";
+                out.members << "\t\t\tset => Set" << field.name << "(value);\n";
                 out.members << "\t\t}\n\n";
 
                 if (!bitFieldOffset || bitFieldOffset % bitSize == 0) {

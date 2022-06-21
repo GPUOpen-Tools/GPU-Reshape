@@ -47,3 +47,9 @@ SetSourceDiscovery(Features.ResourceBounds.Tests CXX Tests)
 
 # Links
 target_link_libraries(Features.ResourceBounds.Tests PUBLIC Test.Device Features.ResourceBounds.Backend)
+
+#----- .Net bindings -----#
+
+if (${ENABLE_UIX})
+    Project_AddSchemaDotNet(Features.ResourceBounds.Backend.DotNet ${GeneratedCS})
+endif()
