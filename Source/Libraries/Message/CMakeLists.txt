@@ -58,6 +58,9 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
     # Set output path
     get_filename_component(SchemaName ${SCHEMA} NAME_WE)
 
+    # Template dependencies
+    set(TemplateDependencies "${Templates}/Message.cst" "${Templates}/Message.ht" "${Templates}/Schema.cst" "${Templates}/Schema.ht")
+
     # C++
     if (ON)
         set(OutputPath ${SCHEMA_OUT_PATH}/${SchemaName}.h)
@@ -66,9 +69,10 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
         add_custom_command(
             OUTPUT ${OutputPath}
             DEPENDS
-            Libraries.Message.Generator
-            ${LIBS}
-            ${Schema}
+                Libraries.Message.Generator
+                ${LIBS}
+                ${Schema}
+                ${TemplateDependencies}
             COMMAND Libraries.Message.Generator
                 -schemaxml ${Schema}
                 -templates ${Templates}
@@ -90,9 +94,10 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
         add_custom_command(
             OUTPUT ${OutputPath}
             DEPENDS
-            Libraries.Message.Generator
-            ${LIBS}
-            ${Schema}
+                Libraries.Message.Generator
+                ${LIBS}
+                ${Schema}
+                ${TemplateDependencies}
             COMMAND Libraries.Message.Generator
                 -schemaxml ${Schema}
                 -templates ${Templates}

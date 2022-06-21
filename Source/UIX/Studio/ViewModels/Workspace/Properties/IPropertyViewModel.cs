@@ -14,5 +14,10 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Property collection within
         /// </summary>
         public ISourceList<IPropertyViewModel> Properties { get; }
+        
+        /// <summary>
+        /// Workspace connection view model
+        /// </summary>
+        public IConnectionViewModel? ConnectionViewModel { get; set; }
     }
 }

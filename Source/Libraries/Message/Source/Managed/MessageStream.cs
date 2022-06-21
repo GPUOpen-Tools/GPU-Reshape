@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -12,6 +13,19 @@ namespace Message.CLR
     {
         // Memory view of reader
         ByteSpan Memory { set; }
+
+        // Create a default allocation request
+        IMessageAllocationRequest DefaultRequest();
+    }
+
+    // Message allocation, usage is devirtualized
+    public interface IMessageAllocationRequest
+    {
+        // Patch a given message with the expected local structure from allocation parameters
+        void Patch(IMessage message);
+
+        // Get the expected byte size of the message
+        ulong ByteSize { get; }
     }
 
     // Base stream traits, usage is devirtualized
@@ -20,8 +34,14 @@ namespace Message.CLR
         // Get the schema of this stream
         MessageSchema GetSchema();
 
+        // Get the schema of this stream
+        MessageSchema GetOrSetSchema(MessageSchema schema);
+
         // Get the data span of this stream
         ByteSpan GetSpan();
+
+        // Allocate a new segment within this stream
+        ByteSpan Allocate(int size);
 
         // Get the number of messages
         int GetCount();
@@ -31,6 +51,16 @@ namespace Message.CLR
     {
         public MessageSchema GetSchema()
         {
+            return Schema;
+        }
+
+        public MessageSchema GetOrSetSchema(MessageSchema schema)
+        {
+            if (Schema.type == MessageSchemaType.None)
+            {
+                Schema = schema;
+            }
+        
             return Schema;
         }
 
@@ -47,6 +77,11 @@ namespace Message.CLR
             }
         }
 
+        public ByteSpan Allocate(int size)
+        {
+            throw new NotSupportedException("Allocation not supported on read only message streams");
+        }
+
         // Top schema type
         public MessageSchema Schema;
 
@@ -60,24 +95,85 @@ namespace Message.CLR
         public int Count;
     }
 
-    public class StaticMessageView<T, S> where T : IStaticMessageSchema where S : IMessageStream
+    public sealed class ReadWriteMessageStream : IMessageStream
     {
-        public StaticMessageView(S _storage)
+        public MessageSchema GetSchema()
         {
-            storage = _storage;
+            return Schema;
         }
 
-        public S storage;
+        public MessageSchema GetOrSetSchema(MessageSchema schema)
+        {
+            if (Schema.type == MessageSchemaType.None)
+            {
+                Schema = schema;
+            }
+
+            return Schema;
+        }
+
+        public int GetCount()
+        {
+            return Count;
+        }
+
+        public ByteSpan GetSpan()
+        {
+            return GetSpan(0);
+        }
+
+        public ByteSpan Allocate(int size)
+        {
+            Data.SetLength(Data.Length + size);
+            return GetSpan((int)Data.Length - size);
+        }
+
+        private ByteSpan GetSpan(int offset)
+        {
+            unsafe
+            {
+                byte[] byteData = Data.GetBuffer();
+
+                // Pin the current data
+                GCHandle pin = GCHandle.Alloc(byteData, GCHandleType.Pinned);
+
+                // Construct span
+                return new ByteSpan(pin, (byte*)pin.AddrOfPinnedObject() + offset, (int)Data.Length - offset);
+            }
+        }
+
+        // Top schema type
+        public MessageSchema Schema;
+
+        // Number of messages
+        public int Count;
+
+        // Read write stream
+        public MemoryStream Data = new MemoryStream();
+    }
+
+    public class StaticMessageView<T, S> where T : IStaticMessageSchema where S : IMessageStream
+    {
+        public S Storage => _storage;
+
+        public StaticMessageView(S storage)
+        {
+            _storage = storage;
+        }
+
+        public S _storage;
     }
 
     public class DynamicMessageView<T, S> where T : IDynamicMessageSchema where S : IMessageStream
     {
-        public DynamicMessageView(S _storage)
+        public S Storage => _storage;
+
+        public DynamicMessageView(S storage)
         {
-            storage = _storage;
+            _storage = storage;
         }
 
-        public S storage;
+        public S _storage;
     }
 
     // Ordered message enumerator type
@@ -99,11 +195,51 @@ namespace Message.CLR
 
     public class OrderedMessageView<S> : IEnumerable<OrderedMessage> where S : IMessageStream
     {
+        public S Storage => _storage;
+
         public OrderedMessageView(S storage)
         {
-            Debug.Assert(storage.GetSchema().type == MessageSchemaType.Ordered, "Ordered view on unordered stream");
+            Debug.Assert(
+                storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Ordered }).type == MessageSchemaType.Ordered,
+                "Ordered view on unordered stream"
+            );
 
             _storage = storage;
+        }
+
+        // Add a new message with given allocation request
+        public T Add<T>(IMessageAllocationRequest request) where T : IMessage, new()
+        {
+            // Allocate message
+            T message = new T()
+            {
+                Memory = _storage.Allocate((int)request.ByteSize)
+            };
+
+            // Patch span
+            request.Patch(message);
+
+            // OK
+            return message;
+        }
+
+        // Add a new message with default allocation requests
+        public T Add<T>() where T : IMessage, new()
+        {
+            // Allocate message
+            T message = new T();
+
+            // Create default request
+            IMessageAllocationRequest request = message.DefaultRequest();
+
+            // Allocate message from default request
+            message.Memory = _storage.Allocate((int)request.ByteSize);
+
+            // Patch span
+            request.Patch(message);
+
+            // OK
+            return message;
         }
 
         // Enumerate this view

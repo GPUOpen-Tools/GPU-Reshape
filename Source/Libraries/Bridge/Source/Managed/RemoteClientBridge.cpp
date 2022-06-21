@@ -1,5 +1,6 @@
 #include <Bridge/Managed/RemoteClientBridge.h>
 #include <Bridge/Managed/BridgeListenerInterop.h>
+#include <Bridge/Managed/BridgeMessageStorage.h>
 #include <Bridge/RemoteClientBridge.h>
 
 // Common
@@ -69,15 +70,15 @@ void Bridge::CLR::RemoteClientBridge::Deregister(IBridgeListener^listener) {
 }
 
 Bridge::CLR::IMessageStorage ^ Bridge::CLR::RemoteClientBridge::GetInput() {
-    throw gcnew System::NotImplementedException();
+    return gcnew BridgeMessageStorage(_private->bridge->GetInput());
 }
 
 Bridge::CLR::IMessageStorage ^ Bridge::CLR::RemoteClientBridge::GetOutput() {
-    throw gcnew System::NotImplementedException();
+    return gcnew BridgeMessageStorage(_private->bridge->GetOutput());
 }
 
 void Bridge::CLR::RemoteClientBridge::Commit() {
-    throw gcnew System::NotImplementedException();
+    _private->bridge->Commit();
 }
 
 void Bridge::CLR::RemoteClientBridge::SetCommitOnAppend(bool enabled) {

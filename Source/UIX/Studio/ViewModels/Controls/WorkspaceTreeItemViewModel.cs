@@ -7,7 +7,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Controls
 {
-    public class WorkspaceTreeItemViewModel : ReactiveObject, IObservableTreeItem
+    public class WorkspaceTreeItemViewModel : ReactiveObject, IObservableTreeItem, IContainedViewModel
     {
         /// <summary>
         /// Display text of this item

@@ -1,0 +1,17 @@
+﻿<ContextMenu
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:context="using:Studio.ViewModels.Contexts"
+    x:Class="Studio.Views.Controls.ContextMenuView"
+    x:DataType="context:ContextViewModel"
+    Items="{Binding Items}">
+    <ContextMenu.Styles>
+        <Style Selector="MenuItem" x:DataType="context:IContextMenuItem">
+            <Setter Property="Header" Value="{Binding Header}"/>
+            <Setter Property="Items" Value="{Binding Items}"/>
+            <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
+            <Setter Property="Command" Value="{Binding Command}"/>
+            <Setter Property="CommandParameter" Value="{Binding CommandParameter}"/>
+        </Style>
+    </ContextMenu.Styles>
+</ContextMenu>

@@ -4,6 +4,7 @@ Project_AddSchemaDotNet(Libraries.Bridge.Schema.DotNet ${GeneratedLibSchemaCS})
 add_library(
     Libraries.Bridge.DotNet SHARED
     Source/Managed/IBridge.cpp
+    Source/Managed/BridgeMessageStorage.cpp
     Source/Managed/RemoteClientBridge.cpp
 )
 

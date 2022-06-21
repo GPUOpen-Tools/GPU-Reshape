@@ -319,14 +319,23 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
                 const uint32_t bitSize = static_cast<uint32_t>(bitFieldType.size) * 8;
 
+                out.functions << "\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+                out.functions << "\t\tpublic void Set" << field.name << "(" << it->second.csType << " value)\n";
+                out.functions << "\t\t{\n";
+                out.functions << "\t\t\tMemoryMarshal.Write<" << it->second.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref value);\n";
+                out.functions << "\t\t}\n\n";
+
                 out.members << "\t\tpublic " << bitFieldType.csType << " " << field.name << " : " << bitCount << "\n";
                 out.members << "\t\t{\n";
-                out.members << "\t\t\tget => MemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + bitFieldType.size) << ").AsRefSpan());\n";
+                out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+                out.members << "\t\t\tget => MemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + bitFieldType.size) << ").AsRefSpan());\n\n";
+                out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+                out.members << "\t\t\tset => MemoryMarshal.Write<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + bitFieldType.size) << ").AsRefSpan(), ref value);\n";
                 out.members << "\t\t}\n\n";
 
                 if (!bitFieldOffset || bitFieldOffset % bitSize == 0) {
                     cxxSizeType += bitFieldType.size;
-                    byteSize << "\t\t\t\tsize += " << bitFieldType.size << ";\n";
+                    byteSize << "\t\t\t\t\tsize += " << bitFieldType.size << ";\n";
                 }
 
                 const uint32_t bitElementBefore = static_cast<uint32_t>(bitFieldOffset / bitFieldType.size);
@@ -339,11 +348,20 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
                 bitFieldOffset += bitCount;
             } else {
-                byteSize << "\t\t\t\tsize += " << it->second.size << ";\n";
+                byteSize << "\t\t\t\t\tsize += " << it->second.size << ";\n";
+
+                out.functions << "\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+                out.functions << "\t\tpublic void Set" << field.name << "(" << it->second.csType << " value)\n";
+                out.functions << "\t\t{\n";
+                out.functions << "\t\t\tMemoryMarshal.Write<" << it->second.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref value);\n";
+                out.functions << "\t\t}\n\n";
 
                 out.members << "\t\tpublic " << it->second.csType << " " << field.name << "\n";
                 out.members << "\t\t{\n";
-                out.members << "\t\t\tget => MemoryMarshal.Read<" << it->second.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan());\n";
+                out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+                out.members << "\t\t\tget => MemoryMarshal.Read<" << it->second.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan());\n\n";
+                out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+                out.members << "\t\t\tset => MemoryMarshal.Write<" << it->second.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref value);\n";
                 out.members << "\t\t}\n\n";
 
                 cxxSizeType += it->second.size;
@@ -366,11 +384,11 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             allocationParameters << "\t\t\tulong " << field.name << "Count;\n";
 
             // Add byte size
-            byteSize << "\t\t\t\tulong += 16 + " << it->second.size << " * " << field.name << "Count" << ";\n";
+            byteSize << "\t\t\t\t\tulong += 16 + " << it->second.size << " * " << field.name << "Count" << ";\n";
 
             // Add patch
-            patch << "\t\t\t\tmessage." << field.name << ".count = " << field.name << "Count;\n";
-            patch << "\t\t\t\tmessage." << field.name << ".thisOffset = offset + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message)) - " << cxxSizeType << ";\n";
+            patch << "\t\t\t\tself." << field.name << ".SetCount((int)" << field.name << "Count);\n";
+            patch << "\t\t\t\tself." << field.name << ".SetThisOffset(offset + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message)) - " << cxxSizeType << ");\n";
             patch << "\t\t\t\toffset += " << field.name << "Count * " << it->second.size << "; \n\n";
 
             // Requires the dynamic schema
@@ -389,11 +407,11 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             allocationParameters << "\t\t\tulong " << field.name << "Length;\n";
 
             // Add byte size
-            byteSize << "\t\t\t\tsize += 16 + (ulong)Marshal.SizeOf(typeof(char)) * " << field.name << "Length" << ";\n";
+            byteSize << "\t\t\t\t\tsize += 16 + (ulong)Marshal.SizeOf(typeof(char)) * " << field.name << "Length" << ";\n";
 
             // Add patch
-            patch << "\t\t\t\tmessage." << field.name << ".data.count = " << field.name << "Length;\n";
-            patch << "\t\t\t\tmessage." << field.name << ".data.thisOffset = offset + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message)) - " << cxxSizeType << ";\n";
+            patch << "\t\t\t\tself." << field.name << ".Array.SetCount((int)" << field.name << "Length);\n";
+            patch << "\t\t\t\tself." << field.name << ".Array.SetThisOffset(offset + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message)) - " << cxxSizeType << ");\n";
             patch << "\t\t\t\toffset += " << field.name << "Length * (ulong)Marshal.SizeOf(typeof(char)); \n\n";
 
             // Requires the dynamic schema
@@ -412,15 +430,15 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             allocationParameters << "\t\t\tulong " << field.name << "ByteSize;\n";
 
             // Add byte size
-            byteSize << "\t\t\t\tsize += 32 + (ulong)Marshal.SizeOf(typeof(char)) * " << field.name << "ByteSize" << ";\n";
+            byteSize << "\t\t\t\t\tsize += 32 + (ulong)Marshal.SizeOf(typeof(char)) * " << field.name << "ByteSize" << ";\n";
 
             // Add patch
-            patch << "\t\t\t\tmessage." << field.name << ".data.count = " << field.name << "ByteSize;\n";
-            patch << "\t\t\t\tmessage."
-                  << field.name << ".data.thisOffset = offset"
+            patch << "\t\t\t\tself." << field.name << ".Data.SetCount((int)" << field.name << "ByteSize);\n";
+            patch << "\t\t\t\tself."
+                  << field.name << ".Data.SetThisOffset(offset"
                   << " + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message))"
                   << " - " << cxxSizeType
-                  << " - 16;\n";
+                  << " - 16);\n";
             patch << "\t\t\t\toffset += " << field.name << "ByteSize * (ulong)Marshal.SizeOf(typeof(char)); \n\n";
 
             // Requires the dynamic schema
@@ -436,12 +454,22 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             cxxSizeType += 32;
         } else if (auto it = declaredTypes.find(field.type); it != declaredTypes.end()) {
             // Increase size
-            byteSize << "\t\t\t\tsize += " << it->second.size << ";\n";
+            byteSize << "\t\t\t\t\tsize += " << it->second.size << ";\n";
+
+            // Add non-mutable setter
+            out.functions << "\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+            out.functions << "\t\tpublic void Set" << field.name << "(" << it->first << " value)\n";
+            out.functions << "\t\t{\n";
+            out.functions << "\t\t\tMemoryMarshal.Write<" << it->first << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref value);\n";
+            out.functions << "\t\t}\n\n";
 
             // Add field
             out.members << "\t\tpublic " << it->first << " " << field.name << "\n";
             out.members << "\t\t{\n";
-            out.members << "\t\t\tget => MemoryMarshal.Read<" << it->first << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan()); }\n";
+            out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+            out.members << "\t\t\tget => MemoryMarshal.Read<" << it->first << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan()); }\n\n";
+            out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+            out.members << "\t\t\tget => MemoryMarshal.Write<" << it->first << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref value); }\n";
             out.members << "\t\t}\n\n";
 
             cxxSizeType += it->second.size;
@@ -468,23 +496,32 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
     // Begin allocation info
     out.types << "\n";
-    out.types << "\t\tstruct AllocationInfo {\n";
+    out.types << "\t\tpublic struct AllocationInfo : IMessageAllocationRequest {\n";
 
     // Byte size information
-    out.types << "\t\t\tulong ByteSize() {\n";
-    out.types << "\t\t\t\tulong size = 0;\n";
+    out.types << "\t\t\tpublic ulong ByteSize\n";
+    out.types << "\t\t\t{\n";
+    out.types << "\t\t\t\tget\n";
+    out.types << "\t\t\t\t{\n";
+    out.types << "\t\t\t\t\tulong size = 0;\n";
     out.types << byteSize.str();
-    out.types << "\t\t\t\treturn size;\n";
+    out.types << "\t\t\t\t\treturn size;\n";
+    out.types << "\t\t\t\t}\n";
     out.types << "\t\t\t}\n";
 
     // Allocation patching
     out.types << "\n";
-    out.types << "#if false // Read only for now\n";
-    out.types << "\t\t\tvoid Patch(ref " << message.name << "Message message) {\n";
+    out.types << "\t\t\tpublic void Patch(IMessage message) {\n";
+    out.types << "\t\t\t\tvar self = (" << message.name << "Message)message;\n";
     out.types << "\t\t\t\tulong offset = 0;\n";
     out.types << patch.str();
     out.types << "\t\t\t}\n";
-    out.types << "#endif";
+
+    // Default allocation request
+    out.functions << "\t\tpublic IMessageAllocationRequest DefaultRequest()\n";
+    out.functions << "\t\t{\n";
+    out.functions << "\t\t\treturn new AllocationInfo();\n";
+    out.functions << "\t\t}\n\n";
 
     // Allocation parameters
     out.types << "\n\n";

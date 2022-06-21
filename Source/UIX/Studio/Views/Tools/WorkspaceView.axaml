@@ -43,10 +43,15 @@
             <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
         </StackPanel>
 
-        <TreeView Grid.Row="1" x:Name="WorkspaceTree" Items="{Binding Workspaces}">
+        <TreeView 
+            Grid.Row="1" 
+            x:Name="WorkspaceTree" 
+            ContextMenu="{StaticResource ReactiveContextMenu}" 
+            Tag="{Binding}"
+            Items="{Binding Workspaces}" >
             <TreeView.ItemTemplate>
                 <TreeDataTemplate ItemsSource="{Binding Items}">
-                    <controls:UniformViewHost DataContext="{Binding $self.DataContext}"/>
+                    <controls:UniformViewHost ContextMenu="{StaticResource ReactiveContextMenu}" DataContext="{Binding $self.DataContext}"/>
                 </TreeDataTemplate>
             </TreeView.ItemTemplate>
         </TreeView>

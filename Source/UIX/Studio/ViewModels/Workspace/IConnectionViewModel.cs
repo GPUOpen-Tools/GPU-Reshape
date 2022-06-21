@@ -27,5 +27,10 @@ namespace Studio.ViewModels.Workspace
         /// Invoked during connection rejection
         /// </summary>
         ISubject<Unit> Refused { get; }
+        
+        /// <summary>
+        /// Bridge within this connection
+        /// </summary>
+        Bridge.CLR.IBridge? Bridge { get; }
     }
 }

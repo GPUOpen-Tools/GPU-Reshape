@@ -13,6 +13,15 @@ namespace Message.CLR
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe ByteSpan(byte* data, int length)
         {
+            Pin = null;
+            Data = data;
+            Length = length;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe ByteSpan(GCHandle? pin, byte* data, int length)
+        {
+            Pin = pin;
             Data = data;
             Length = length;
         }
@@ -23,7 +32,7 @@ namespace Message.CLR
         {
             unsafe
             {
-                return new ByteSpan(Data + offset, Length - offset);
+                return new ByteSpan(Pin, Data + offset, Length - offset);
             }
         }
 
@@ -33,7 +42,7 @@ namespace Message.CLR
         {
             unsafe
             {
-                return new ByteSpan(Data + offset, length);
+                return new ByteSpan(Pin, Data + offset, length);
             }
         }
 
@@ -49,6 +58,9 @@ namespace Message.CLR
 
         // Is this span empty?
         public bool IsEmpty { get => Length == 0; }
+
+        // Optional pin
+        public GCHandle? Pin;
 
         // Underlying data
         public unsafe byte* Data;

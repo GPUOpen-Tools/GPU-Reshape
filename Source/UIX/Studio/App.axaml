@@ -2,14 +2,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:Studio"
              xmlns:idc="using:Dock.Avalonia.Controls"
+             xmlns:controls="using:Studio.Views.Controls"
              xmlns:core="using:Dock.Model.Core"
              x:Class="Studio.App">
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>
+
     <Application.Styles>
         <StyleInclude Source="avares://Studio/Icons.axaml" />
-        
+
         <Style Selector="idc|DocumentControl">
             <Setter Property="HeaderTemplate">
                 <DataTemplate DataType="core:IDockable">
@@ -34,4 +36,8 @@
             </Setter>
         </Style>
     </Application.Styles>
+
+    <Application.Resources>
+        <controls:ContextMenuView x:Key="ReactiveContextMenu"/>
+    </Application.Resources>
 </Application>

@@ -1,6 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:idc="using:Dock.Avalonia.Controls">
+        xmlns:idc="using:Dock.Avalonia.Controls"
+        xmlns:controls="clr-namespace:Studio.Views.Controls">
   <Styles.Resources>
     <!-- Custom dark style for GBV Studio -->
 
@@ -80,5 +81,31 @@
     
   <Style Selector="MenuItem /template/ ContentPresenter#PART_HeaderPresenter">
     <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  
+  <Style Selector="controls|ContextMenuView">
+    <Setter Property="Background" Value="{DynamicResource ThemeBackgroundBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderMidBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="4,2"/>
+    <Setter Property="TextBlock.FontSize" Value="{DynamicResource FontSizeNormal}" />
+    <Setter Property="TextBlock.FontWeight" Value="Normal" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <ScrollViewer Classes="menuscroller">
+            <ItemsPresenter Name="PART_ItemsPresenter"
+                            Items="{TemplateBinding Items}"
+                            ItemsPanel="{TemplateBinding ItemsPanel}"
+                            ItemTemplate="{TemplateBinding ItemTemplate}"
+                            KeyboardNavigation.TabNavigation="Continue"/>
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
   </Style>
 </Styles>

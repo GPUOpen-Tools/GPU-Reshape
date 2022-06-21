@@ -88,10 +88,8 @@ namespace Studio.ViewModels
         /// </summary>
         private void OnRemoteConnected()
         {
-            IBridge? bridge = _connectionViewModel.GetBridge();
-
             // Register handler
-            bridge?.Register(this);
+            _connectionViewModel.Bridge?.Register(this);
             
             // Request discovery
             _connectionViewModel.DiscoverAsync();

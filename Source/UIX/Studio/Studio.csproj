@@ -59,6 +59,8 @@
         <AutoGen>True</AutoGen>
         <DependentUpon>Resources.resx</DependentUpon>
       </Compile>
+      <Compile Remove="ViewModels\Controls\ContextMenuViewModel.cs" />
+      <Compile Remove="ViewModels\Controls\MenuItemViewModel.cs" />
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
@@ -84,5 +86,8 @@
         <Reference Include="Libraries.Backend.Schema.DotNet">
             <HintPath>..\..\..\Bin\Debug\Libraries.Backend.Schema.DotNet.dll</HintPath>
         </Reference>
+    </ItemGroup>
+    <ItemGroup>
+      <UpToDateCheckInput Remove="Views\Resources\ContextMenuView.axaml" />
     </ItemGroup>
 </Project>

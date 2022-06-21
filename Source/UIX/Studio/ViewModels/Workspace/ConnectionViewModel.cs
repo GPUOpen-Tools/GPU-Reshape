@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls.Notifications;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using Bridge.CLR;
 using ReactiveUI;
 using Studio.Models.Workspace;
 
@@ -22,6 +23,20 @@ namespace Studio.ViewModels.Workspace
         /// Invoked during connection rejection
         /// </summary>
         public ISubject<Unit> Refused { get; }
+
+        /// <summary>
+        /// Underlying bridge of this connection
+        /// </summary>
+        public IBridge? Bridge
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _remote;
+                }
+            }
+        }
 
         /// <summary>
         /// Is the connection alive?
@@ -112,18 +127,6 @@ namespace Studio.ViewModels.Workspace
                 
                 // Pass down CLR
                 _remote?.RequestClientAsync(applicationInfo.Guid);
-            }
-        }
-
-        /// <summary>
-        /// Get the active bridge
-        /// </summary>
-        /// <returns>base bridge interface</returns>
-        public Bridge.CLR.IBridge? GetBridge()
-        {
-            lock (this)
-            {
-                return _remote;
             }
         }
 
