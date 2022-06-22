@@ -1,4 +1,7 @@
-﻿namespace Studio.Services
+﻿using Avalonia;
+using Studio.Models.Logging;
+
+namespace Studio.Services
 {
     public class HostResolverService : IHostResolverService
     {
@@ -13,6 +16,16 @@
             
             // Install immediately
             Success = _service.Install();
+            
+            // Log it
+            if (Success)
+            {
+                Logging.Info("Started host resolver service");
+            }
+            else
+            {
+                Logging.Error("Failed to start host resolver service");
+            }
         }
 
         /// <summary>

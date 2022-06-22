@@ -41,6 +41,9 @@ namespace Studio
         private void InstallServices()
         {
             AvaloniaLocator locator = AvaloniaLocator.CurrentMutable;
+            
+            // Logging host
+            locator.BindToSelf<Services.ILoggingService>(new Services.LoggingService());
 
             // Initiates the host resolver if not already up and running
             locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
