@@ -11,6 +11,11 @@ namespace Studio.ViewModels.Workspace.Properties
         public string Name { get; }
         
         /// <summary>
+        /// Visibility of this property
+        /// </summary>
+        public PropertyVisibility Visibility { get; }
+        
+        /// <summary>
         /// Property collection within
         /// </summary>
         public ISourceList<IPropertyViewModel> Properties { get; }

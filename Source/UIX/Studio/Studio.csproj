@@ -71,6 +71,9 @@
       <AvaloniaResource Include="Resources\Icons\App.png" />
     </ItemGroup>
     <ItemGroup>
+      <Reference Include="Features.ResourceBounds.Backend.DotNet">
+        <HintPath>..\..\..\Bin\Debug\Features.ResourceBounds.Backend.DotNet.dll</HintPath>
+      </Reference>
       <Reference Include="Libraries.Bridge.DotNet">
         <HintPath>..\..\..\Bin\Debug\Libraries.Bridge.DotNet.dll</HintPath>
       </Reference>

@@ -14,6 +14,11 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Visibility of this property
+        /// </summary>
+        public PropertyVisibility Visibility => PropertyVisibility.WorkspaceTool;
+
+        /// <summary>
         /// Child properties
         /// </summary>
         public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
