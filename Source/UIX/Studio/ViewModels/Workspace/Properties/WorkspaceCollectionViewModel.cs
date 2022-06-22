@@ -59,6 +59,16 @@ namespace Studio.ViewModels.Workspace.Properties
             
             Properties.AddRange(new IPropertyViewModel[]
             {
+                new LogViewModel()
+                {
+                    ConnectionViewModel = _connectionViewModel
+                },
+                
+                new MessageCollectionViewModel()
+                {
+                    ConnectionViewModel = _connectionViewModel
+                },
+                
                 new ShaderCollectionViewModel()
                 {
                     ConnectionViewModel = _connectionViewModel

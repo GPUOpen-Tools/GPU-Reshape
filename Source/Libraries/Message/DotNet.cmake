@@ -8,7 +8,7 @@ add_library(
     Source/Managed/ByteSpan.cs
 
     # Generated
-    ${GeneratedLibSchemaCS}
+    ${GeneratedSchemaCS}
 )
 
 # Includes

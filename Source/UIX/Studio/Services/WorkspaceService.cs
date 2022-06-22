@@ -27,6 +27,9 @@ namespace Studio.Services
         public void Add(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel)
         {
             _workspaces.Add(workspaceViewModel);
+            
+            // Diagnostic
+            Logging.Info($"Workspace created for {workspaceViewModel.Connection?.Application?.Name} {{{workspaceViewModel.Connection?.Application?.Guid}}}");
         }
 
         /// <summary>
@@ -36,6 +39,10 @@ namespace Studio.Services
         /// <returns>true if successfully removed</returns>
         public bool Remove(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel)
         {
+            // Diagnostic
+            Logging.Info($"Closed workspace for {workspaceViewModel.Connection?.Application?.Name}");
+            
+            // Try to remove
             return _workspaces.Remove(workspaceViewModel);
         }
 
