@@ -62,7 +62,7 @@ namespace Studio.ViewModels.Controls
         /// <param name="propertyViewModel">added property</param>
         private void OnPropertyAdded(IPropertyViewModel propertyViewModel)
         {
-            if (_propertyViewModel.Visibility.HasFlag(PropertyVisibility.WorkspaceTool))
+            if (propertyViewModel.Visibility.HasFlag(PropertyVisibility.WorkspaceTool))
             {
                 Items.Add(new WorkspaceTreeItemViewModel()
                 {
