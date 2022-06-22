@@ -1,5 +1,8 @@
 #include <Generators/MessageGenerator.h>
 
+// Common
+#include <Common/IDHash.h>
+
 // Std
 #include <sstream>
 #include <iostream>
@@ -261,6 +264,9 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     // Any dynamic parameters?
     bool anyDynamic = false;
 
+    // Any non-pod parameters?
+    bool anyNonTrivial = false;
+
     // Total size
     uint64_t cxxSizeType = 0;
 
@@ -404,6 +410,9 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             // Requires the dynamic schema
             anyDynamic = true;
 
+            // Not trivial
+            anyNonTrivial = true;
+
             // Append field
             out.members << "\t\tpublic MessageArray<" << it->second.csType << "> " << field.name << "\n";
             out.members << "\t\t{\n";
@@ -426,6 +435,9 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
             // Requires the dynamic schema
             anyDynamic = true;
+
+            // Not trivial
+            anyNonTrivial = true;
 
             // Append field
             out.members << "\t\tpublic MessageString " << field.name << "\n";
@@ -454,6 +466,9 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             // Requires the dynamic schema
             anyDynamic = true;
 
+            // Not trivial
+            anyNonTrivial = true;
+
             // Append field
             out.members << "\t\tpublic MessageSubStream " << field.name << "\n";
             out.members << "\t\t{\n";
@@ -472,6 +487,9 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             out.functions << "\t\t{\n";
             out.functions << "\t\t\tMemoryMarshal.Write<" << it->first << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref value);\n";
             out.functions << "\t\t}\n\n";
+
+            // Not trivial
+            anyNonTrivial = true;
 
             // Add field
             out.members << "\t\tpublic " << it->first << " " << field.name << "\n";
@@ -508,7 +526,11 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     out.types << "\n";
     out.types << "\t\tpublic struct AllocationInfo : IMessageAllocationRequest {\n";
 
+    // Message id
+    out.types << "\t\t\tpublic uint ID => " << IDHash(message.name.c_str()) << "u;\n";
+
     // Byte size information
+    out.types << "\n";
     out.types << "\t\t\tpublic ulong ByteSize\n";
     out.types << "\t\t\t{\n";
     out.types << "\t\t\t\tget\n";
@@ -527,18 +549,58 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     out.types << patch.str();
     out.types << "\t\t\t}\n";
 
-    // Default allocation request
-    out.functions << "\t\tpublic IMessageAllocationRequest DefaultRequest()\n";
-    out.functions << "\t\t{\n";
-    out.functions << "\t\t\treturn new AllocationInfo();\n";
-    out.functions << "\t\t}\n\n";
-
     // Allocation parameters
     out.types << "\n\n";
     out.types << allocationParameters.str();
 
     // End allocation info
     out.types << "\t\t};\n";
+
+    // Default allocation request
+    out.functions << "\t\tpublic IMessageAllocationRequest DefaultRequest()\n";
+    out.functions << "\t\t{\n";
+    out.functions << "\t\t\treturn new AllocationInfo();\n";
+    out.functions << "\t\t}\n\n";
+
+    if (!anyNonTrivial) {
+        // Begin flat type
+        out.types << "\n";
+        out.types << "\t\tpublic struct FlatInfo {\n";
+
+        // Flat type
+        for (auto fieldIt = message.fields.begin(); fieldIt != message.fields.end(); fieldIt++) {
+            const Field &field = *fieldIt;
+
+            // Primitive?
+            if (auto it = primitiveTypeMap.types.find(field.type); it != primitiveTypeMap.types.end()) {
+                out.types << "\t\t\tpublic " << it->second.csType << " " << field.name << ";\n\n";
+            } else {
+                std::cerr << "Unexpected non trivial state" << std::endl;
+                return false;
+            }
+        }
+
+        // End flat type
+        out.types << "\t\t};\n";
+
+        // Begin flat getter
+        out.functions << "\t\tpublic FlatInfo Flat\n";
+        out.functions << "\t\t{\n";
+        out.functions << "\t\t\tget\n";
+        out.functions << "\t\t\t{\n";
+        out.functions << "\t\t\t\tvar flat = new FlatInfo();\n";
+
+        // Copy all members
+        for (auto fieldIt = message.fields.begin(); fieldIt != message.fields.end(); fieldIt++) {
+            const Field &field = *fieldIt;
+            out.functions << "\t\t\t\tflat." << field.name << " = " << field.name << ";\n";
+        }
+
+        // End flat getter
+        out.functions << "\t\t\t\treturn flat;\n";
+        out.functions << "\t\t\t}\n";
+        out.functions << "\t\t}\n\n";
+    }
 
     // OK
     return true;

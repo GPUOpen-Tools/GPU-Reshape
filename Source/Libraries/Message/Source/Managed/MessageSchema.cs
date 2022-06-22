@@ -22,9 +22,29 @@ namespace Message.CLR
     // Message schema
     public struct MessageSchema
     {
+        // Check if this schema is static and of id
+        public bool IsStatic(uint id)
+        {
+            return type == MessageSchemaType.Static && this.id == id;
+        }
+
+        // Check if this schema is dynamic and of id
+        public bool IsDynamic(uint id)
+        {
+            return type == MessageSchemaType.Dynamic && this.id == id;
+        }
+
+        // Check if this schema is ordered
+        public bool IsOrdered()
+        {
+            return type == MessageSchemaType.Ordered;
+        }
+
+        // Underlying type of schema
         public MessageSchemaType type;
 
-        public int id;
+        // Optional message id of schema
+        public uint id;
     }
 
     // Static type constraint

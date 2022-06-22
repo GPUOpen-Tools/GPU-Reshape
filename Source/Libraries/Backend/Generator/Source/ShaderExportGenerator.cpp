@@ -107,7 +107,7 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
     // End shader type
     out.types << "\t};\n\n";
 
-    // Add caster and creatorfor non structured types
+    // Add caster and creator for non structured types
     if (!structured) {
         out.types << "\tuint32_t GetKey() const {\n";
         out.types << "\t\tunion {\n";
@@ -131,5 +131,20 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
 }
 
 bool ShaderExportGenerator::GenerateCS(const Message &message, MessageStream &out) {
+    // Structured?
+    bool structured = message.attributes.GetBool("structured");
+    out.types << "\t\tpublic const bool IsStructured = " << (structured ? "true" : "false") << ";\n\n";
+
+    // Add getter and setter for non-structured types (i.e. single uint)
+    if (!structured) {
+        out.types << "\t\tpublic uint Key\n";
+        out.types << "\t\t{\n";
+        out.types << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+        out.types << "\t\t\tget => MemoryMarshal.Read<uint>(_memory.Slice(0, 4).AsRefSpan());\n\n";
+        out.types << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+        out.types << "\t\t\tset => MemoryMarshal.Write<uint>(_memory.Slice(0, 4).AsRefSpan(), ref value);\n";
+        out.types << "\t\t}\n";
+    }
+
     return true;
 }

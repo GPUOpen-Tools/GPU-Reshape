@@ -26,6 +26,9 @@ namespace Message.CLR
 
         // Get the expected byte size of the message
         ulong ByteSize { get; }
+
+        // Get the message id
+        uint ID { get; }
     }
 
     // Base stream traits, usage is devirtualized
@@ -152,56 +155,18 @@ namespace Message.CLR
         public MemoryStream Data = new MemoryStream();
     }
 
-    public class StaticMessageView<T, S> where T : IStaticMessageSchema where S : IMessageStream
+    public class StaticMessageView<T, S> : IEnumerable<T> where T : IMessage, new() where S : IMessageStream
     {
         public S Storage => _storage;
 
         public StaticMessageView(S storage)
         {
-            _storage = storage;
-        }
+            // Create default request
+            IMessageAllocationRequest request = new T().DefaultRequest();
 
-        public S _storage;
-    }
-
-    public class DynamicMessageView<T, S> where T : IDynamicMessageSchema where S : IMessageStream
-    {
-        public S Storage => _storage;
-
-        public DynamicMessageView(S storage)
-        {
-            _storage = storage;
-        }
-
-        public S _storage;
-    }
-
-    // Ordered message enumerator type
-    public struct OrderedMessage
-    {
-        public ByteSpan Memory { set => _memory = value; }
-
-        // Assigned ID of message
-        public uint ID;
-
-        // Get a mesage of type
-        public T Get<T>() where T : struct, IMessage
-        {
-            return new T() { Memory = _memory };
-        }
-
-        private ByteSpan _memory;
-    }
-
-    public class OrderedMessageView<S> : IEnumerable<OrderedMessage> where S : IMessageStream
-    {
-        public S Storage => _storage;
-
-        public OrderedMessageView(S storage)
-        {
             Debug.Assert(
-                storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Ordered }).type == MessageSchemaType.Ordered,
-                "Ordered view on unordered stream"
+                storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Static, id = request.ID }).type == MessageSchemaType.Static,
+                "Static view on non-static stream"
             );
 
             _storage = storage;
@@ -232,8 +197,254 @@ namespace Message.CLR
             // Create default request
             IMessageAllocationRequest request = message.DefaultRequest();
 
-            // Allocate message from default request
+            // Allocate message
             message.Memory = _storage.Allocate((int)request.ByteSize);
+
+            // Patch span
+            request.Patch(message);
+
+            // OK
+            return message;
+        }
+
+        // Enumerate this view
+        public IEnumerator<T> GetEnumerator()
+        {
+            ByteSpan memory = _storage.GetSpan();
+
+            // Create default request for iteration
+            //   ? Acceptable for static message types
+            IMessageAllocationRequest request = new T().DefaultRequest();
+
+            // While messages to process
+            while (!memory.IsEmpty)
+            {
+                // Create message
+                yield return new T()
+                {
+                    Memory = memory
+                };
+
+                // Skip contents
+                memory = memory.Slice((int)request.ByteSize);
+            }
+        }
+
+        // Generic enumeration not supported
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotSupportedException();
+        }
+
+        private S _storage;
+    }
+
+    public class DynamicMessageView<T, S> : IEnumerable<T> where T : IMessage, new() where S : IMessageStream
+    {
+        public S Storage => _storage;
+
+        public DynamicMessageView(S storage)
+        {
+            // Create default request
+            IMessageAllocationRequest request = new T().DefaultRequest();
+
+            Debug.Assert(
+                storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Dynamic, id = request.ID }).type == MessageSchemaType.Dynamic,
+                "Dynamic view on non-dynamic stream"
+            );
+
+            _storage = storage;
+        }
+
+        // Add a new message with given allocation request
+        public T Add<T>(IMessageAllocationRequest request) where T : IMessage, new()
+        {
+            // Size of the schema header
+            int headerSize = Marshal.SizeOf<DynamicMessageSchema.Header>();
+
+            // Allocate header + message
+            ByteSpan span = _storage.Allocate((int)request.ByteSize + headerSize);
+
+            // Create schema
+            var schema = new DynamicMessageSchema.Header
+            {
+                byteSize = request.ByteSize
+            };
+
+            // Write into message blob
+            MemoryMarshal.Write(span.AsRefSpan(), ref schema);
+
+            // Allocate message
+            T message = new T()
+            {
+                Memory = span.Slice(headerSize)
+            };
+
+            // Patch span
+            request.Patch(message);
+
+            // OK
+            return message;
+        }
+
+        // Add a new message with default allocation requests
+        public T Add<T>() where T : IMessage, new()
+        {
+            // Allocate message
+            T message = new T();
+
+            // Create default request
+            IMessageAllocationRequest request = message.DefaultRequest();
+
+            // Size of the schema header
+            int headerSize = Marshal.SizeOf<DynamicMessageSchema.Header>();
+
+            // Allocate header + message
+            ByteSpan span = _storage.Allocate((int)request.ByteSize + headerSize);
+
+            // Create schema
+            var schema = new DynamicMessageSchema.Header
+            {
+                byteSize = request.ByteSize
+            };
+
+            // Write into message blob
+            MemoryMarshal.Write(span.AsRefSpan(), ref schema);
+
+            // Allocate message
+            message.Memory = span.Slice(headerSize);
+
+            // Patch span
+            request.Patch(message);
+
+            // OK
+            return message;
+        }
+
+        // Enumerate this view
+        public IEnumerator<T> GetEnumerator()
+        {
+            ByteSpan memory = _storage.GetSpan();
+
+            // While messages to process
+            while (!memory.IsEmpty)
+            {
+                // Get header
+                var header = MemoryMarshal.Read<DynamicMessageSchema.Header>(memory.AsRefSpan());
+
+                // Skip header to message contents
+                memory = memory.Slice(Marshal.SizeOf<DynamicMessageSchema.Header>());
+
+                // Create message
+                yield return new T()
+                {
+                    Memory = memory
+                };
+
+                // Skip contents
+                memory = memory.Slice((int)header.byteSize);
+            }
+        }
+
+        // Generic enumeration not supported
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotSupportedException();
+        }
+
+        private S _storage;
+    }
+
+    // Ordered message enumerator type
+    public struct OrderedMessage
+    {
+        public ByteSpan Memory { set => _memory = value; }
+
+        // Assigned ID of message
+        public uint ID;
+
+        // Get a mesage of type
+        public T Get<T>() where T : struct, IMessage
+        {
+            return new T() { Memory = _memory };
+        }
+
+        private ByteSpan _memory;
+    }
+
+    public class OrderedMessageView<S> : IEnumerable<OrderedMessage> where S : IMessageStream
+    {
+        public S Storage => _storage;
+
+        public OrderedMessageView(S storage)
+        {
+            Debug.Assert(
+                storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Ordered, id = ~0u }).type == MessageSchemaType.Ordered,
+                "Ordered view on unordered stream"
+            );
+
+            _storage = storage;
+        }
+
+        // Add a new message with given allocation request
+        public T Add<T>(IMessageAllocationRequest request) where T : IMessage, new()
+        {
+            // Size of the schema header
+            int headerSize = Marshal.SizeOf<OrderedMessageSchema.Header>();
+
+            // Allocate header + message
+            ByteSpan span = _storage.Allocate((int)request.ByteSize + headerSize);
+
+            // Create schema
+            var schema = new OrderedMessageSchema.Header
+            {
+                byteSize = request.ByteSize,
+                id = request.ID
+            };
+
+            // Write into message blob
+            MemoryMarshal.Write(span.AsRefSpan(), ref schema);
+
+            // Allocate message
+            T message = new T()
+            {
+                Memory = span.Slice(headerSize)
+            };
+
+            // Patch span
+            request.Patch(message);
+
+            // OK
+            return message;
+        }
+
+        // Add a new message with default allocation requests
+        public T Add<T>() where T : IMessage, new()
+        {
+            // Allocate message
+            T message = new T();
+
+            // Create default request
+            IMessageAllocationRequest request = message.DefaultRequest();
+
+            // Size of the schema header
+            int headerSize = Marshal.SizeOf<OrderedMessageSchema.Header>();
+
+            // Allocate header + message
+            ByteSpan span = _storage.Allocate((int)request.ByteSize + headerSize);
+
+            // Create schema
+            var schema = new OrderedMessageSchema.Header
+            {
+                byteSize = request.ByteSize,
+                id = request.ID
+            };
+
+            // Write into message blob
+            MemoryMarshal.Write(span.AsRefSpan(), ref schema);
+
+            // Allocate message
+            message.Memory = span.Slice(headerSize);
 
             // Patch span
             request.Patch(message);
@@ -274,11 +485,10 @@ namespace Message.CLR
             throw new NotSupportedException();
         }
 
-        //
         private S _storage;
     }
 
-    public class StaticMessageView<T> : StaticMessageView<T, ReadOnlyMessageStream> where T : IStaticMessageSchema
+    public class StaticMessageView<T> : StaticMessageView<T, ReadOnlyMessageStream> where T : IMessage, new()
     {
         public StaticMessageView(ReadOnlyMessageStream _storage) : base(_storage)
         {
@@ -286,7 +496,7 @@ namespace Message.CLR
         }
     }
 
-    public class DynamicMessageView<T> : DynamicMessageView<T, ReadOnlyMessageStream> where T : IDynamicMessageSchema
+    public class DynamicMessageView<T> : DynamicMessageView<T, ReadOnlyMessageStream> where T : IMessage, new()
     {
         public DynamicMessageView(ReadOnlyMessageStream _storage) : base(_storage)
         {

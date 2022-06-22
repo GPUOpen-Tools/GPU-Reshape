@@ -19,7 +19,7 @@ namespace Message.CLR
                 return new MessageSchema
                 {
                     type = MemoryMarshal.Read<MessageSchemaType>(_memory.Slice(0, 4).AsRefSpan()),
-                    id = MemoryMarshal.Read<int>(_memory.Slice(4, 8).AsRefSpan())
+                    id = MemoryMarshal.Read<uint>(_memory.Slice(4, 8).AsRefSpan())
                 };
             }
         }
