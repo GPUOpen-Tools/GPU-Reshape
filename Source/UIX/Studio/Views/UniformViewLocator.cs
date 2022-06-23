@@ -7,6 +7,8 @@ namespace Studio.Views
 {
     public class UniformViewLocator : IViewLocator
     {
+        public IViewFor? DefaultView;
+        
         public IViewFor? ResolveView<T>(T viewModel, string? contract = null)
         {
             if (viewModel == null)
@@ -21,7 +23,11 @@ namespace Studio.Views
             string viewName = typeName.Replace("ViewModel", "View");
 
             // Resolve view
-            var viewType = Type.GetType(viewName) ?? throw new TypeLoadException("Missing view for associated view model");
+            var viewType = Type.GetType(viewName);
+            if (viewType == null)
+            {
+                return DefaultView;
+            }
             
             // Create instance
             return Activator.CreateInstance(viewType) as IViewFor ?? throw new TypeLoadException("View must implement IViewFor");

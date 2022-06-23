@@ -1,9 +1,13 @@
+using System;
 using System.Diagnostics;
 using System.Windows.Input;
+using Avalonia;
 using Studio.Models;
 using Dock.Model.Controls;
 using Dock.Model.Core;
+using DynamicData;
 using ReactiveUI;
+using Studio.Services;
 
 namespace Studio.ViewModels
 {
@@ -30,7 +34,13 @@ namespace Studio.ViewModels
                     root.Navigate.Execute("Home");
                 }
             }
+            
+            // Attach workspace creation
+            App.Locator.GetService<IWorkspaceService>()?.Workspaces.Connect()
+                .OnItemAdded(_factory.Documents.CreateDocument.Execute)
+                .Subscribe();
 
+            // Create commands
             NewLayout = ReactiveCommand.Create(ResetLayout);
         }
 
@@ -63,7 +73,8 @@ namespace Studio.ViewModels
             }
         }
 
-        private readonly IFactory? _factory;
+        private readonly DockFactory? _factory;
+        
         private IRootDock? _layout;
     }
 }

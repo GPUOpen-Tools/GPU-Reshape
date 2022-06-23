@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using Avalonia.Threading;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
@@ -22,7 +24,12 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Child properties
         /// </summary>
         public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
-        
+
+        /// <summary>
+        /// All condensed messages
+        /// </summary>
+        public ObservableCollection<CondensedMessage> CondensedMessages { get; } = new();
+
         /// <summary>
         /// View model associated with this property
         /// </summary>
@@ -74,43 +81,60 @@ namespace Studio.ViewModels.Workspace.Properties
             if (streams.GetSchema().IsStatic(ResourceIndexOutOfBoundsMessage.ID))
             {
                 var view = new StaticMessageView<ResourceIndexOutOfBoundsMessage>(streams);
+
+                // Latent update set
+                var enqueued = new HashSet<uint>();
                 
                 // Consume all messages
                 foreach (ResourceIndexOutOfBoundsMessage message in view)
                 {
                     uint key = message.Key;
 
+                    // Enqueue for update
+                    enqueued.Add(key);
+
                     // Add to reduced set
                     if (_reducedMessages.ContainsKey(key))
                     {
-                        _reducedMessages[key].Count++;
+                        // Update the model, not view model, for performance reasons
+                        _reducedMessages[key].Model.Count++;
                     }
                     else
                     {
-                        _reducedMessages.Add(key, new BatchedMessage()
+                        // Create message
+                        var condensed = new CondensedMessage()
                         {
-                            Count = 1,
-                            Message = message.Flat
+                            Model = new Models.Workspace.Properties.CondensedMessage()
+                            {
+                                Count = 1,
+                                Content = message.Flat.ToString() ?? ""
+                            }
+                        };
+                        
+                        // Insert lookup
+                        _reducedMessages.Add(key, condensed);
+
+                        // Add to UI visible collection
+                        Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            CondensedMessages.Add(condensed);
                         });
                     }
                 }
+                
+                // Update all view models of enqueued keys
+                // TODO: Throttle!
+                foreach (uint key in enqueued)
+                {
+                    _reducedMessages[key].RaisePropertyChanged("Count");
+                }
             }
-        }
-
-        // Counted message
-        public class BatchedMessage
-        {
-            // Number of messages
-            public uint Count;
-            
-            // Flat message
-            public ResourceIndexOutOfBoundsMessage.FlatInfo Message;
         }
 
         /// <summary>
         /// All reduced resource messages
         /// </summary>
-        private Dictionary<uint, BatchedMessage> _reducedMessages = new();
+        private Dictionary<uint, CondensedMessage> _reducedMessages = new();
 
         /// <summary>
         /// Internal view model

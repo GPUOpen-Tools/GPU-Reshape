@@ -61,6 +61,10 @@
       </Compile>
       <Compile Remove="ViewModels\Controls\ContextMenuViewModel.cs" />
       <Compile Remove="ViewModels\Controls\MenuItemViewModel.cs" />
+      <Compile Update="Views\Documents\WorkspaceOverviewView.axaml.cs">
+        <DependentUpon>WorkspaceView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

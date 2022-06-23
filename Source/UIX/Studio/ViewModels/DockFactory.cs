@@ -16,24 +16,22 @@ namespace Studio.ViewModels
 {
     public class DockFactory : Factory
     {
-        private readonly object _context;
-        private IRootDock? _rootDock;
-        private IDocumentDock? _documentDock;
+        public IDocumentDock? Documents => _documentDock;
 
         public DockFactory(object context)
         {
             _context = context;
         }
 
-        public override IDocumentDock CreateDocumentDock() => new CustomDocumentDock();
+        public override IDocumentDock CreateDocumentDock() => new StandardDocumentDock();
 
         public override IRootDock CreateLayout()
         {
-            var welcome = new WelcomeViewModel {Id = "Welcome", Title = "Welcome"};
-            var workspace = new WorkspaceViewModel {Id = "Workspace", Title = "Workspace"};
-            var connections = new ConnectionViewModel {Id = "Connections", Title = "Connections"};
-            var log = new LogViewModel {Id = "Log", Title = "Log"};
-            var properties = new PropertyViewModel {Id = "Properties", Title = "Properties"};
+            var welcome = new WelcomeViewModel {Id = "WelcomeDocument", Title = "Welcome"};
+            var workspace = new WorkspaceViewModel {Id = "WorkspaceTool", Title = "Workspace"};
+            var connections = new ConnectionViewModel {Id = "ConnectionTool", Title = "Connections"};
+            var log = new LogViewModel {Id = "LogTool", Title = "Log"};
+            var properties = new PropertyViewModel {Id = "PropertiesTool", Title = "Properties"};
 
             var leftDock = new ProportionalDock
             {
@@ -89,7 +87,7 @@ namespace Studio.ViewModels
                 )
             };
 
-            var documentDock = new CustomDocumentDock
+            var documentDock = new StandardDocumentDock
             {
                 IsCollapsable = false,
                 ActiveDockable = welcome,
@@ -152,15 +150,15 @@ namespace Studio.ViewModels
         {
             ContextLocator = new Dictionary<string, Func<object>>
             {
-                ["Welcome"] = () => new WelcomeDocument(),
-                ["Workspace"] = () => new Models.Tools.Workspace(),
-                ["Connection"] = () => new Connection(),
-                ["Property"] = () => new Property(),
-                ["Log"] = () => new Log(),
-                ["Dashboard"] = () => layout,
+                ["WelcomeDocument"] = () => new WelcomeDocument(),
+                ["WorkspaceTool"] = () => new ViewModels.Tools.WorkspaceViewModel(),
+                ["ConnectionTool"] = () => new Connection(),
+                ["PropertyTool"] = () => new Property(),
+                ["LogTool"] = () => new Log(),
+                ["DashboardTool"] = () => layout,
                 ["Home"] = () => _context
             };
-
+            
             DockableLocator = new Dictionary<string, Func<IDockable?>>()
             {
                 ["Root"] = () => _rootDock,
@@ -174,5 +172,11 @@ namespace Studio.ViewModels
 
             base.InitLayout(layout);
         }
+        
+        private readonly object _context;
+        
+        private IRootDock? _rootDock;
+        
+        private IDocumentDock? _documentDock;
     }
 }
