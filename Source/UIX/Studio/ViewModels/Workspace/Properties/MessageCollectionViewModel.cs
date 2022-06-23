@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
+using Studio.ViewModels.Workspace.Listeners;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
@@ -49,6 +50,9 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         private void OnConnectionChanged()
         {
+            // Register internal listeners
+            _connectionViewModel?.Bridge?.Register(ShaderSourceMappingMessage.ID, _shaderMappingListener);
+            
             // HARDCODED LISTENER, WILL BE MOVED TO MODULAR CODE
             _connectionViewModel?.Bridge?.Register(ResourceIndexOutOfBoundsMessage.ID, this);
 
@@ -107,7 +111,8 @@ namespace Studio.ViewModels.Workspace.Properties
                             Model = new Models.Workspace.Properties.CondensedMessage()
                             {
                                 Count = 1,
-                                Content = message.Flat.ToString() ?? ""
+                                Extract = _shaderMappingListener.GetSegment(message.sguid)?.Extract ?? "[Lookup Failed]",
+                                Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds"
                             }
                         };
                         
@@ -135,6 +140,11 @@ namespace Studio.ViewModels.Workspace.Properties
         /// All reduced resource messages
         /// </summary>
         private Dictionary<uint, CondensedMessage> _reducedMessages = new();
+
+        /// <summary>
+        /// Shader mapping bridge listener
+        /// </summary>
+        private ShaderMappingListener _shaderMappingListener = new();
 
         /// <summary>
         /// Internal view model

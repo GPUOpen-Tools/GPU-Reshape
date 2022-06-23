@@ -2,6 +2,8 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using ReactiveUI;
+using Studio.Extensions;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Views.Workspace.Properties
 {
@@ -15,11 +17,13 @@ namespace Studio.Views.Workspace.Properties
         public MessageCollectionView()
         {
             InitializeComponent();
+
+            MessageDataGrid.Events().DoubleTapped.ToSignal();
         }
 
-        private void InitializeComponent()
-        {
-            AvaloniaXamlLoader.Load(this);
-        }
+        /// <summary>
+        /// Internal view model
+        /// </summary>
+        private MessageCollectionViewModel? _viewModel => ViewModel as MessageCollectionViewModel;
     }
 }

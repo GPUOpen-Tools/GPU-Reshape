@@ -7,10 +7,11 @@
              x:Class="Studio.Views.Workspace.Properties.MessageCollectionView"
              x:DataType="properties:MessageCollectionViewModel">
     <Grid>
-        <DataGrid Items="{Binding CondensedMessages}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+        <DataGrid Items="{Binding CondensedMessages}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" x:Name="MessageDataGrid">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Message" Binding="{Binding Content}" Width="85*"/>
-                <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="15*"/>
+                <DataGridTextColumn Header="Message" Binding="{Binding Content}" Width="40*"/>
+                <DataGridTextColumn Header="Shader Extract" Binding="{Binding Extract}" Width="40*"/>
+                <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="20*"/>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>

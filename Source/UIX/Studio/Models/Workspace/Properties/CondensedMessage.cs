@@ -10,6 +10,11 @@ namespace Studio.Models.Workspace.Properties
         public uint Count;
 
         /// <summary>
+        /// Shader extract
+        /// </summary>
+        public string Extract;
+
+        /// <summary>
         /// General contents
         /// </summary>
         public string Content;

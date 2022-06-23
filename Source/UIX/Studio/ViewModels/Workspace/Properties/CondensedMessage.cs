@@ -20,6 +20,15 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Shader extract
+        /// </summary>
+        public string Extract
+        {
+            get => Model.Extract;
+            set => this.RaiseAndSetIfChanged(ref Model.Extract, value);
+        }
+
+        /// <summary>
         /// General contents
         /// </summary>
         public string Content
