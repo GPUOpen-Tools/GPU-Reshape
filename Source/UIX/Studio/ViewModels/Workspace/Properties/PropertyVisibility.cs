@@ -13,6 +13,11 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Minimal view on workspace explorer tool
         /// </summary>
-        WorkspaceTool = 1
+        WorkspaceTool = 1,
+        
+        /// <summary>
+        /// Summary view in the workspace overview
+        /// </summary>
+        WorkspaceOverview = 2
     }
 }

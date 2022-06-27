@@ -11,15 +11,23 @@
              x:DataType="vm:WorkspaceOverviewViewModel" x:CompileBindings="True">
     <Grid Focusable="True">
         <!-- Properties within the collection, TODO: Transform ISourceList to ObservableCollection for reactive binding! -->
-        <ItemsControl
-            VerticalAlignment="Stretch"
-            HorizontalAlignment="Stretch"
-            Items="{Binding Workspace.PropertyCollection.Properties.Items}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="properties:IPropertyViewModel">
-                    <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <StackPanel Orientation="Vertical" Margin="2.5">
+            <controls:WorkspacePropertyView Title="{Binding Workspace.Connection.Application.Name, FallbackValue=[Application]}">
+                <!-- -->
+            </controls:WorkspacePropertyView>
+            
+            <ItemsControl
+                VerticalAlignment="Stretch"
+                HorizontalAlignment="Stretch"
+                Items="{Binding Properties}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="properties:IPropertyViewModel">
+                        <controls:WorkspacePropertyView Title="{Binding Name, FallbackValue=[PropertyName]}">
+                            <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
+                        </controls:WorkspacePropertyView>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
     </Grid>
 </UserControl>

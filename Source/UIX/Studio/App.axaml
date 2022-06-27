@@ -11,6 +11,7 @@
 
     <Application.Styles>
         <StyleInclude Source="avares://Studio/Icons.axaml" />
+        <StyleInclude Source="avares://Studio/Themes/WorkspacePropertyView.axaml" />
 
         <Style Selector="idc|DocumentControl">
             <Setter Property="HeaderTemplate">

@@ -19,7 +19,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Visibility of this property
         /// </summary>
-        public PropertyVisibility Visibility => PropertyVisibility.Default;
+        public PropertyVisibility Visibility => PropertyVisibility.WorkspaceOverview;
 
         /// <summary>
         /// Child properties

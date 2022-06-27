@@ -65,6 +65,10 @@
         <DependentUpon>WorkspaceView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Themes\WorkspacePropertyView.axaml.cs">
+        <DependentUpon>WorkspacePropertyView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
@@ -96,5 +100,8 @@
     </ItemGroup>
     <ItemGroup>
       <UpToDateCheckInput Remove="Views\Resources\ContextMenuView.axaml" />
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Views\Themes" />
     </ItemGroup>
 </Project>
