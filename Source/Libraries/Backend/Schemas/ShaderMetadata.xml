@@ -1,4 +1,12 @@
 <schema>
+    <message name="GetShaderGUIDS">
+        <field name="limit" type="uint32"/>
+    </message>
+
+    <message name="ShaderGUIDS">
+        <field name="shaderUID" type="array" element="uint64"/>
+    </message>
+
     <struct name="ShaderLocation">
         <field name="offset" type="uint32"/>
         <field name="line"   type="uint32"/>
@@ -11,6 +19,14 @@
 
     <message name="ShaderCode">
         <field name="shaderUID" type="uint64"/>
+        <field name="found"     type="bool"/>
+        <field name="native"    type="bool"/>
+        <field name="fileCount" type="uint32"/>
+    </message>
+
+    <message name="ShaderCodeFile">
+        <field name="shaderUID" type="uint64"/>
+        <field name="fileUID"   type="uint32"/>
         <field name="code"      type="string"/>
     </message>
 </schema>

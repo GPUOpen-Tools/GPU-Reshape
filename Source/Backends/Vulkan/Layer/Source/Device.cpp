@@ -1,9 +1,11 @@
 #include <Backends/Vulkan/Device.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
+#include <Backends/Vulkan/Instance.h>
 #include <Backends/Vulkan/CommandBuffer.h>
 #include <Backends/Vulkan/Queue.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
+#include <Backends/Vulkan/Controllers/MetadataController.h>
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Export/ShaderExportDescriptorAllocator.h>
@@ -236,11 +238,15 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Install the pipeline compiler
     auto pipelineCompiler = table->registry.AddNew<PipelineCompiler>(table);
-    ENSURE(pipelineCompiler->Install(), "Failed to install shader compiler");
+    ENSURE(pipelineCompiler->Install(), "Failed to install pipeline compiler");
 
     // Install the instrumentation controller
     table->instrumentationController = table->registry.New<InstrumentationController>(table);
-    ENSURE(table->instrumentationController->Install(), "Failed to install shader compiler");
+    ENSURE(table->instrumentationController->Install(), "Failed to install instrumentation controller");
+
+    // Install the metadata controller
+    table->metadataController = table->registry.New<MetadataController>(table);
+    ENSURE(table->metadataController->Install(), "Failed to install metadata controller");
 
     // Create queue states
     for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
@@ -271,6 +277,7 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
     table->exportStreamer->Process();
 
     // Manual uninstalls
+    table->metadataController->Uninstall();
     table->instrumentationController->Uninstall();
 
     // Release all features
@@ -290,4 +297,12 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
 
     // Pass down callchain
     next_vkDestroyDevice(device, pAllocator);
+}
+
+void BridgeDeviceSyncPoint(DeviceDispatchTable *table) {
+    // Commit controllers
+    table->metadataController->Commit();
+
+    // Commit instance
+    BridgeInstanceSyncPoint(table->parent);
 }

@@ -400,7 +400,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             allocationParameters << "\t\t\tulong " << field.name << "Count;\n";
 
             // Add byte size
-            byteSize << "\t\t\t\t\tulong += 16 + " << it->second.size << " * " << field.name << "Count" << ";\n";
+            byteSize << "\t\t\t\t\tsize += 16 + " << it->second.size << " * " << field.name << "Count" << ";\n";
 
             // Add patch
             patch << "\t\t\t\tself." << field.name << ".SetCount((int)" << field.name << "Count);\n";

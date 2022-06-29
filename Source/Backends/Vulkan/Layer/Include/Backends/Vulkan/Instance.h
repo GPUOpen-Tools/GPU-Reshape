@@ -7,7 +7,7 @@ struct InstanceDispatchTable;
 
 /// Invoke a bridge sync point
 /// \param table instance table
-void BridgeSyncPoint(InstanceDispatchTable* table);
+void BridgeInstanceSyncPoint(InstanceDispatchTable* table);
 
 /// Hooks
 VkResult VKAPI_PTR Hook_vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCount, VkLayerProperties *pProperties);

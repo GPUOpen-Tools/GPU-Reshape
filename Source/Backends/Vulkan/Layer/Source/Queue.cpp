@@ -1,5 +1,5 @@
 #include <Backends/Vulkan/Queue.h>
-#include <Backends/Vulkan/Instance.h>
+#include <Backends/Vulkan/Device.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/States/FenceState.h>
@@ -209,7 +209,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueWaitIdle(VkQueue queue) {
     table->exportStreamer->Process(queueState->exportState);
 
     // Commit bridge data
-    BridgeSyncPoint(table->parent);
+    BridgeDeviceSyncPoint(table);
 
     // OK
     return VK_SUCCESS;
@@ -228,7 +228,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkDeviceWaitIdle(VkDevice device) {
     table->exportStreamer->Process();
 
     // Commit bridge data
-    BridgeSyncPoint(table->parent);
+    BridgeDeviceSyncPoint(table);
 
     // OK
     return VK_SUCCESS;
@@ -244,7 +244,7 @@ VkResult Hook_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentI
     }
 
     // Commit bridge data
-    BridgeSyncPoint(table->parent);
+    BridgeDeviceSyncPoint(table);
 
     // OK
     return VK_SUCCESS;

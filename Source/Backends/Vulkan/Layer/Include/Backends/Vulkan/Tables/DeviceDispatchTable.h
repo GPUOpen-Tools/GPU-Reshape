@@ -33,6 +33,7 @@ struct QueueState;
 class IFeature;
 class IBridge;
 class InstrumentationController;
+class MetadataController;
 class ShaderExportStreamer;
 class ShaderExportDescriptorAllocator;
 class ShaderSGUIDHost;
@@ -102,6 +103,7 @@ struct DeviceDispatchTable {
 
     /// Controllers
     ComRef<InstrumentationController> instrumentationController{nullptr};
+    ComRef<MetadataController> metadataController{nullptr};
 
     /// SGUID
     ComRef<ShaderSGUIDHost> sguidHost{nullptr};

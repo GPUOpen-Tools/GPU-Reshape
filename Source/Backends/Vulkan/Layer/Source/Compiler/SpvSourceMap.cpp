@@ -4,22 +4,22 @@ void SpvSourceMap::SetBound(SpvId bound) {
     /* */
 }
 
-void SpvSourceMap::AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint32_t version, const std::string_view& filename) {
-    PhysicalSource& source = GetOrAllocate(filename, id);
+void SpvSourceMap::AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint32_t version, const std::string_view &filename) {
+    PhysicalSource &source = GetOrAllocate(filename, id);
     source.language = language;
     source.version = version;
     source.filename = filename;
 }
 
 void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
-    PhysicalSource& source = physicalSources.at(sourceMappings.at(id));
+    PhysicalSource &source = physicalSources.at(sourceMappings.at(id));
 
     // Original source info
     SpvSourceLanguage language = source.language;
     uint32_t version = source.version;
 
     // Append initial fragment
-    Fragment* fragment = &source.fragments.emplace_back();
+    Fragment *fragment = &source.fragments.emplace_back();
     fragment->source = code;
     fragment->lineOffsets.push_back(0);
     fragment->lineStart = 0;
@@ -27,7 +27,7 @@ void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
     // Summarize the line offsets
     for (uint32_t i = 0; i < code.length(); i++) {
         if (code[i] == '#') {
-            constexpr const char* kLineDirective = "#line";
+            constexpr const char *kLineDirective = "#line";
 
             // Is line directive?
             if (std::strncmp(&code[i], kLineDirective, std::strlen(kLineDirective))) {
@@ -67,7 +67,7 @@ void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
             // Next line
             i++;
 
-            PhysicalSource& extendedSource = GetOrAllocate(file);
+            PhysicalSource &extendedSource = GetOrAllocate(file);
             source.filename = file;
             source.version = version;
             source.language = language;
@@ -84,19 +84,19 @@ void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
     }
 }
 
-SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(const std::string_view& view, SpvId id) {
+SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(const std::string_view &view, SpvId id) {
     if (sourceMappings.size() <= id) {
         sourceMappings.resize(id + 1, InvalidSpvId);
     }
 
-    for (PhysicalSource& source : physicalSources) {
+    for (PhysicalSource &source: physicalSources) {
         if (source.filename == view) {
             return source;
         }
     }
 
     for (uint32_t i = 0; i < physicalSources.size(); i++) {
-        PhysicalSource& source = physicalSources[i];
+        PhysicalSource &source = physicalSources[i];
 
         if (source.filename == view) {
             sourceMappings[id] = i;
@@ -109,7 +109,7 @@ SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(const std::string_view
 }
 
 SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(const std::string_view &view) {
-    for (PhysicalSource& source : physicalSources) {
+    for (PhysicalSource &source: physicalSources) {
         if (source.filename == view) {
             return source;
         }
@@ -119,19 +119,19 @@ SpvSourceMap::PhysicalSource &SpvSourceMap::GetOrAllocate(const std::string_view
 }
 
 std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const {
-    const PhysicalSource& source = physicalSources.at(fileIndex);
+    const PhysicalSource &source = physicalSources.at(fileIndex);
 
     // TODO: Maybe this could be optimized
 
     // Find appropriate fragment
-    for (const Fragment& fragment : source.fragments) {
+    for (const Fragment &fragment: source.fragments) {
         // Within bounds?
         if (line >= fragment.lineStart && line < fragment.lineStart + fragment.lineOffsets.size()) {
             uint32_t offset = fragment.lineOffsets.at(line - fragment.lineStart);
 
             // Segment offsets
-            const char* begin = &fragment.source[offset];
-            const char* end = std::strchr(begin, '\n');
+            const char *begin = &fragment.source[offset];
+            const char *end = std::strchr(begin, '\n');
 
             // Determine length
             uint32_t length = static_cast<uint32_t>(end ? (end - begin) : (fragment.source.length() - offset));
@@ -152,7 +152,7 @@ std::string_view SpvSourceMap::GetFilename() const {
     return physicalSources[0].filename;
 }
 
-void SpvSourceMap::AddSourceAssociation(uint32_t sourceOffset, const SpvSourceAssociation& association) {
+void SpvSourceMap::AddSourceAssociation(uint32_t sourceOffset, const SpvSourceAssociation &association) {
     sourceAssociations[sourceOffset] = association;
 }
 
@@ -163,4 +163,31 @@ SpvSourceAssociation SpvSourceMap::GetSourceAssociation(uint32_t sourceOffset) c
     }
 
     return it->second;
+}
+
+uint64_t SpvSourceMap::GetCombinedSourceLength(uint32_t fileUID) const {
+    const PhysicalSource &source = physicalSources[fileUID];
+
+    // Null terminated
+    uint64_t length = 1;
+
+    // Sum length
+    for (const Fragment &fragment: source.fragments) {
+        length += fragment.source.length();
+    }
+
+    return length;
+}
+
+void SpvSourceMap::FillCombinedSource(uint32_t fileUID, char *buffer) const {
+    const PhysicalSource &source = physicalSources[fileUID];
+
+    // Copy memory
+    for (const Fragment &fragment: source.fragments) {
+        std::memcpy(buffer, fragment.source.data(), fragment.source.length() * sizeof(char));
+        buffer += fragment.source.length();
+    }
+
+    // Null terminated
+    *buffer = 0;
 }

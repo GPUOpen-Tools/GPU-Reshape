@@ -39,6 +39,10 @@ struct TrackedObject {
             return object.end();
         }
 
+        U* operator[](size_t i) const {
+            return object[i];
+        }
+
         std::mutex &mutex;
         std::vector<U*>& object;
     };

@@ -46,6 +46,19 @@ struct SpvSourceMap {
     /// \return
     std::string_view GetFilename() const;
 
+    /// Get the total size of the combined source code
+    /// \return null terminated length
+    uint64_t GetCombinedSourceLength(uint32_t fileUID) const;
+
+    /// Fill the combined source code into an output buffer
+    /// \param buffer length must be at least GetCombinedSourceLength
+    void FillCombinedSource(uint32_t fileUID, char* buffer) const;
+
+    /// Get the number of files
+    uint32_t GetFileCount() const {
+        return static_cast<uint32_t>(physicalSources.size());
+    }
+
     /// Get the file index for a given spv identifier (physical source)
     uint32_t GetFileIndex(SpvId id) const {
         return sourceMappings.at(id);
