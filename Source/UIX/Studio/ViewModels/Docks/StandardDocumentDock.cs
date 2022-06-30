@@ -1,3 +1,4 @@
+using System;
 using Dock.Model.Core;
 using Studio.ViewModels.Documents;
 using Dock.Model.ReactiveUI.Controls;
@@ -29,7 +30,7 @@ namespace Studio.ViewModels.Docks
             switch (viewModel)
             {
                 default:
-                    return;
+                    throw new NotSupportedException("Unexpected document view model");
                 case WelcomeViewModel vm:
                     document = new WelcomeViewModel
                     {
@@ -44,6 +45,10 @@ namespace Studio.ViewModels.Docks
                         Title = $"{vm.Connection?.Application?.Name}",
                         Workspace = vm
                     };
+                    break;
+                case Documents.ShaderViewModel vm:
+                    // TODO: This is getting REALLY ugly, next revision has to fix this nonsense
+                    document = vm;
                     break;
             }
             

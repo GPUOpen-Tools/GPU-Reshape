@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Message.CLR;
 using ReactiveUI;
 using Studio.Models.Workspace.Listeners;
+using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Listeners
 {
@@ -23,13 +25,19 @@ namespace Studio.ViewModels.Workspace.Listeners
             var view = new DynamicMessageView<ShaderSourceMappingMessage>(streams);
 
             // Consume all messages
-            lock (_segments)
+            lock (this)
             {
                 foreach (ShaderSourceMappingMessage message in view)
                 {
-                    _segments.Add(message.sguid, new ShaderSourceSegment()
+                    _segments.Add(message.sguid, new ShaderSourceSegment
                     {
-                        Extract = message.contents.String
+                        Extract = message.contents.String,
+                        Location = new ShaderLocation
+                        {
+                            SGUID = message.shaderGUID,
+                            Line = (int)message.line,
+                            Column = (int)message.column
+                        }
                     });
                 }
             }
@@ -42,7 +50,7 @@ namespace Studio.ViewModels.Workspace.Listeners
         /// <returns>null if not found</returns>
         public ShaderSourceSegment? GetSegment(uint sguid)
         {
-            lock (_segments)
+            lock (this)
             {
                 _segments.TryGetValue(sguid, out var segment);
                 return segment;

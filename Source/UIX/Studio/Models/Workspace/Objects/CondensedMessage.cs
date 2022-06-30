@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Studio.Models.Workspace.Properties
+namespace Studio.Models.Workspace.Objects
 {
     public class CondensedMessage
     {

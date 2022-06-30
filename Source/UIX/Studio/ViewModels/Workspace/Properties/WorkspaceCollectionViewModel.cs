@@ -19,6 +19,11 @@ namespace Studio.ViewModels.Workspace.Properties
         public PropertyVisibility Visibility => PropertyVisibility.WorkspaceTool;
 
         /// <summary>
+        /// Parent property
+        /// </summary>
+        public IPropertyViewModel? Parent { get; set; }
+
+        /// <summary>
         /// Child properties
         /// </summary>
         public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
@@ -61,21 +66,25 @@ namespace Studio.ViewModels.Workspace.Properties
             {
                 new LogViewModel()
                 {
+                    Parent = this,
                     ConnectionViewModel = _connectionViewModel
                 },
                 
                 new MessageCollectionViewModel()
                 {
+                    Parent = this,
                     ConnectionViewModel = _connectionViewModel
                 },
                 
                 new ShaderCollectionViewModel()
                 {
+                    Parent = this,
                     ConnectionViewModel = _connectionViewModel
                 },
 
                 new PipelineCollectionViewModel()
                 {
+                    Parent = this,
                     ConnectionViewModel = _connectionViewModel
                 }
             });

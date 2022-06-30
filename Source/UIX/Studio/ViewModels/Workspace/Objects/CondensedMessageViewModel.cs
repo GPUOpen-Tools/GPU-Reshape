@@ -1,14 +1,19 @@
 ﻿using System;
 using ReactiveUI;
 
-namespace Studio.ViewModels.Workspace.Properties
+namespace Studio.ViewModels.Workspace.Objects
 {
-    public class CondensedMessage : ReactiveObject
+    public class CondensedMessageViewModel : ReactiveObject
     {
         /// <summary>
         /// Backend model
         /// </summary>
-        public Models.Workspace.Properties.CondensedMessage Model { get; set; }
+        public Models.Workspace.Objects.CondensedMessage Model { get; set; }
+        
+        /// <summary>
+        /// Underlying validation object
+        /// </summary>
+        public ValidationObject? ValidationObject { get; set; }
         
         /// <summary>
         /// Number of messages

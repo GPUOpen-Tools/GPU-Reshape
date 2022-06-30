@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls.Notifications;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using Message.CLR;
 using ReactiveUI;
 using Studio.Models.Workspace;
 
@@ -32,5 +33,16 @@ namespace Studio.ViewModels.Workspace
         /// Bridge within this connection
         /// </summary>
         Bridge.CLR.IBridge? Bridge { get; }
+
+        /// <summary>
+        /// Get the shared bus
+        /// </summary>
+        /// <returns></returns>
+        public OrderedMessageView<ReadWriteMessageStream> GetSharedBus();
+
+        /// <summary>
+        /// Commit all pending messages
+        /// </summary>
+        public void Commit();
     }
 }

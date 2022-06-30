@@ -1,8 +1,11 @@
-﻿using Avalonia;
+﻿using System;
+using System.Reactive.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using ReactiveUI;
 using Studio.Extensions;
+using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Views.Workspace.Properties
@@ -18,7 +21,16 @@ namespace Studio.Views.Workspace.Properties
         {
             InitializeComponent();
 
-            MessageDataGrid.Events().DoubleTapped.ToSignal();
+            this.WhenAnyValue(x => x.DataContext)
+                .WhereNotNull()
+                .Subscribe(x =>
+                {
+                    // Bind signals
+                    MessageDataGrid.Events().DoubleTapped
+                        .Select(_ => (MessageDataGrid.SelectedItem as CondensedMessageViewModel)?.ValidationObject)
+                        .WhereNotNull()
+                        .InvokeCommand(this, x => x._viewModel!.OpenShaderDocument);
+                });
         }
 
         /// <summary>

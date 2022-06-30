@@ -7,6 +7,7 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Bridge.CLR;
+using Message.CLR;
 using ReactiveUI;
 using Studio.Models.Workspace;
 
@@ -131,10 +132,50 @@ namespace Studio.ViewModels.Workspace
         }
 
         /// <summary>
+        /// Get the shared bus within this connection
+        /// </summary>
+        /// <returns></returns>
+        public OrderedMessageView<ReadWriteMessageStream> GetSharedBus()
+        {
+            // Allocate ordered if not ready
+            if (_sharedBus == null)
+            {
+                _sharedBus = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream());
+            }
+
+            // OK
+            return _sharedBus;
+        }
+
+        /// <summary>
+        /// Commit all pending bus messages
+        /// </summary>
+        public void Commit()
+        {
+            // Early out
+            if (_sharedBus == null)
+            {
+                return;
+            }
+            
+            // Submit current bus
+            Bridge?.GetOutput().AddStream(_sharedBus.Storage);
+            Bridge?.Commit();
+
+            // Release
+            _sharedBus = null;
+        }
+
+        /// <summary>
         /// Internal dispatcher
         /// </summary>
         private Dispatcher _dispatcher;
 
+        /// <summary>
+        /// Shared bus for convenient messaging
+        /// </summary>
+        private OrderedMessageView<ReadWriteMessageStream>? _sharedBus;
+        
         /// <summary>
         /// Internal underlying bridge
         /// </summary>

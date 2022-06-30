@@ -30,6 +30,7 @@
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="0.10.14" />
         <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.14" />
         <PackageReference Include="Avalonia.ReactiveUI.Events" Version="0.10.14" />
+        <PackageReference Include="AvaloniaEdit.TextMate" Version="0.10.12.2" />
         <PackageReference Include="Dock.Avalonia" Version="0.10.14" />
         <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.10" />
         <PackageReference Include="MessageBox.Avalonia" Version="1.5.5" />
@@ -45,6 +46,7 @@
         </PackageReference>
         <PackageReference Include="Projektanker.Icons.Avalonia" Version="3.7.0" />
         <PackageReference Include="Projektanker.Icons.Avalonia.FontAwesome" Version="3.7.0" />
+        <PackageReference Include="TextMateSharp.Grammars" Version="1.0.38" />
         <PackageReference Include="XamlNameReferenceGenerator" Version="1.3.4" />
     </ItemGroup>
     <ItemGroup>
@@ -102,6 +104,7 @@
       <UpToDateCheckInput Remove="Views\Resources\ContextMenuView.axaml" />
     </ItemGroup>
     <ItemGroup>
+      <Folder Include="Models\Workspace\Properties" />
       <Folder Include="Views\Themes" />
     </ItemGroup>
 </Project>

@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Windows.Input;
 using Avalonia.Threading;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
+using Studio.Models.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
@@ -22,6 +25,11 @@ namespace Studio.ViewModels.Workspace.Properties
         public PropertyVisibility Visibility => PropertyVisibility.WorkspaceOverview;
 
         /// <summary>
+        /// Parent property
+        /// </summary>
+        public IPropertyViewModel? Parent { get; set; }
+
+        /// <summary>
         /// Child properties
         /// </summary>
         public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
@@ -29,7 +37,12 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// All condensed messages
         /// </summary>
-        public ObservableCollection<CondensedMessage> CondensedMessages { get; } = new();
+        public ObservableCollection<Objects.CondensedMessageViewModel> CondensedMessages { get; } = new();
+
+        /// <summary>
+        /// Opens a given shader document from view model
+        /// </summary>
+        public ICommand OpenShaderDocument;
 
         /// <summary>
         /// View model associated with this property
@@ -43,6 +56,29 @@ namespace Studio.ViewModels.Workspace.Properties
 
                 OnConnectionChanged();
             }
+        }
+
+        public MessageCollectionViewModel()
+        {
+            OpenShaderDocument = ReactiveCommand.Create<object>(OnOpenShaderDocument);
+        }
+
+        /// <summary>
+        /// On shader document open
+        /// </summary>
+        /// <param name="viewModel">must be ValidationObject</param>
+        private void OnOpenShaderDocument(object viewModel)
+        {
+            var validationObject = (ValidationObject)viewModel;
+            
+            // Create document
+            Interactions.DocumentInteractions.OpenDocument.OnNext(new Documents.ShaderViewModel()
+            {
+                Id = $"Shader{validationObject.Location.SGUID}", 
+                Title = $"Shader",
+                PropertyCollection = Parent,
+                GUID = validationObject.Location.SGUID
+            });
         }
 
         /// <summary>
@@ -105,16 +141,41 @@ namespace Studio.ViewModels.Workspace.Properties
                     }
                     else
                     {
+                        // Try to get the SGUID segment
+                        ShaderSourceSegment? segment = _shaderMappingListener.GetSegment(message.sguid);
+
                         // Create message
-                        var condensed = new CondensedMessage()
+                        var condensed = new Objects.CondensedMessageViewModel()
                         {
-                            Model = new Models.Workspace.Properties.CondensedMessage()
+                            Model = new Models.Workspace.Objects.CondensedMessage()
                             {
                                 Count = 1,
-                                Extract = _shaderMappingListener.GetSegment(message.sguid)?.Extract ?? "[Lookup Failed]",
+                                Extract = segment?.Extract ?? "[Lookup Failed]",
                                 Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds"
                             }
                         };
+
+                        // Valid segment?
+                        if (segment != null)
+                        {
+                            // Create validation object
+                            condensed.ValidationObject = new Objects.ValidationObject
+                            {
+                                Location = segment.Location,
+                                Content = condensed.Model.Content
+                            };
+                            
+                            // Try to get shader collection
+                            var shaderCollectionViewModel = Parent?.GetProperty<ShaderCollectionViewModel>();
+                            if (shaderCollectionViewModel != null)
+                            {
+                                // Get the respective shader
+                                Objects.ShaderViewModel shaderViewModel = shaderCollectionViewModel.GetOrAddShader(segment.Location.SGUID);
+                                
+                                // Append validation object to target shader
+                                shaderViewModel.ValidationObjects.Add(condensed.ValidationObject);
+                            }
+                        }
                         
                         // Insert lookup
                         _reducedMessages.Add(key, condensed);
@@ -132,6 +193,7 @@ namespace Studio.ViewModels.Workspace.Properties
                 foreach (uint key in enqueued)
                 {
                     _reducedMessages[key].RaisePropertyChanged("Count");
+                    _reducedMessages[key].ValidationObject?.RaisePropertyChanged("Count");
                 }
             }
         }
@@ -139,7 +201,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// All reduced resource messages
         /// </summary>
-        private Dictionary<uint, CondensedMessage> _reducedMessages = new();
+        private Dictionary<uint, Objects.CondensedMessageViewModel> _reducedMessages = new();
 
         /// <summary>
         /// Shader mapping bridge listener

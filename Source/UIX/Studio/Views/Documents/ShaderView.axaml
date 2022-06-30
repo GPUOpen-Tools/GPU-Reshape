@@ -1,0 +1,25 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:avaloniaEdit="https://github.com/avaloniaui/avaloniaedit"
+             xmlns:documents="clr-namespace:Studio.ViewModels.Documents"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Studio.Views.Documents.ShaderView"
+             x:DataType="documents:ShaderViewModel"
+             x:CompileBindings="True">
+    <Grid>
+        <avaloniaEdit:TextEditor
+            x:Name="Editor"
+            FontFamily="Consolas,Menlo,Monospace"
+            Foreground="#D4D4D4"
+            Background="{StaticResource TextBlockColor}"
+            HorizontalScrollBarVisibility="Auto"
+            VerticalScrollBarVisibility="Visible"
+            FontWeight="Light"
+            FontSize="14"
+            HorizontalAlignment="Stretch" 
+            VerticalAlignment="Stretch"
+            Text="..."/>
+    </Grid>
+</UserControl>

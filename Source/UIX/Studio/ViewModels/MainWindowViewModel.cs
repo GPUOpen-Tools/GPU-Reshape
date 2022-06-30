@@ -35,10 +35,8 @@ namespace Studio.ViewModels
                 }
             }
             
-            // Attach workspace creation
-            App.Locator.GetService<IWorkspaceService>()?.Workspaces.Connect()
-                .OnItemAdded(_factory.Documents.CreateDocument.Execute)
-                .Subscribe();
+            // Attach document interactions
+            Interactions.DocumentInteractions.OpenDocument.InvokeCommand(_factory.Documents.CreateDocument);
 
             // Create commands
             NewLayout = ReactiveCommand.Create(ResetLayout);
