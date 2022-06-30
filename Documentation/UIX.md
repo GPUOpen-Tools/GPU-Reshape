@@ -4,4 +4,4 @@ General documentation for the UIX.
 
 ___
 
-![Studio Preview](Resources/Images/Studio.png)
+![Studio Preview](Resources/Images/StudioA.png)
