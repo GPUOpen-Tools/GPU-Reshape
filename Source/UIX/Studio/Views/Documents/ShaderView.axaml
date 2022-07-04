@@ -20,6 +20,8 @@
             FontSize="14"
             HorizontalAlignment="Stretch" 
             VerticalAlignment="Stretch"
+            ShowLineNumbers="True"
+            IsReadOnly="True"
             Text="..."/>
     </Grid>
 </UserControl>

@@ -18,7 +18,7 @@ _( just example crediting, I'm sure there's a far more professional / official w
 Sample screenshot showcasing early UIX development, demonstrating a functional 
 application stack to mature projects. **The UIX is less than a month old, functionality and visuals will improve drastically over time.**
 
-![Studio Preview](Documentation/Resources/Images/StudioA.png)
+![Studio Preview](Documentation/Resources/Images/StudioB.png)
 
 
 ## The life of a validation message
