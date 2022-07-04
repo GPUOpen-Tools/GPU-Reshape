@@ -146,7 +146,8 @@ namespace Message.CLR
             {
                 unsafe
                 {
-                    return Encoding.ASCII.GetString(Array.GetDataStart(), Array.Count);
+                    var Count = Array.Count;
+                    return Count > 0 ? Encoding.ASCII.GetString(Array.GetDataStart(), Count) : string.Empty;
                 }
             }
         }

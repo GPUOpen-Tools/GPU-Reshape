@@ -27,7 +27,7 @@ namespace Studio.Views.Workspace.Properties
                 {
                     // Bind signals
                     MessageDataGrid.Events().DoubleTapped
-                        .Select(_ => (MessageDataGrid.SelectedItem as CondensedMessageViewModel)?.ValidationObject)
+                        .Select(_ => MessageDataGrid.SelectedItem as ValidationObject)
                         .WhereNotNull()
                         .InvokeCommand(this, x => x._viewModel!.OpenShaderDocument);
                 });

@@ -43,6 +43,7 @@ protected:
     /// Message handlers
     void OnMessage(const struct GetShaderCodeMessage& message);
     void OnMessage(const struct GetShaderGUIDSMessage& message);
+    void OnMessage(const struct GetShaderSourceMappingMessage& message);
 
 private:
     DeviceDispatchTable* table;
@@ -52,6 +53,9 @@ private:
 
     /// Pending response stream
     MessageStream stream;
+
+    /// Pending segment mapping stream
+    MessageStream segmentMappingStream;
 
     /// Shared lock
     std::mutex mutex;

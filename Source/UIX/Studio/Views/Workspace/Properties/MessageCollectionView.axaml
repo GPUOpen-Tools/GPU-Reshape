@@ -9,7 +9,7 @@
     <Grid>
         <DataGrid 
             x:Name="MessageDataGrid"
-            Items="{Binding CondensedMessages}" 
+            Items="{Binding ValidationObjects}" 
             IsReadOnly="True"
             VerticalAlignment="Stretch"
             HorizontalAlignment="Stretch">

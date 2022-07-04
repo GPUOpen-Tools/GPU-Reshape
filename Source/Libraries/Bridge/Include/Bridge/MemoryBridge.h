@@ -6,6 +6,9 @@
 // Message
 #include <Message/OrderedMessageStorage.h>
 
+// Common
+#include <Common/Dispatcher/Mutex.h>
+
 /// In memory bridge
 class MemoryBridge : public IBridge {
 public:
@@ -31,6 +34,9 @@ private:
         /// All listeners for this message type
         std::vector<ComRef<IBridgeListener>> listeners;
     };
+
+    /// Shared lock
+    Mutex mutex;
 
     /// Message listener buckets
     std::map<MessageID, MessageBucket> buckets;

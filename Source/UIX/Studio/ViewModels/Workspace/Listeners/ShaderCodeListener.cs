@@ -98,9 +98,6 @@ namespace Studio.ViewModels.Workspace.Listeners
                 // Add request
                 var request = ConnectionViewModel.GetSharedBus().Add<GetShaderCodeMessage>();
                 request.shaderUID = shaderViewModel.GUID;
-                
-                // TODO: Move to timed commits...
-                ConnectionViewModel.Commit();
             }
         }
 

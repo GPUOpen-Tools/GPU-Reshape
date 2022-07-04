@@ -38,6 +38,8 @@ IMessageStorage *MemoryBridge::GetOutput() {
 }
 
 void MemoryBridge::Commit() {
+    MutexGuard guard(mutex);
+
     // Get the number of streams
     uint32_t streamCount;
     sharedStorage.ConsumeStreams(&streamCount, nullptr);

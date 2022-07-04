@@ -1,14 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using Avalonia.Threading;
 using Message.CLR;
 using ReactiveUI;
 using Studio.Models.Workspace.Listeners;
 using Studio.Models.Workspace.Objects;
+using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Listeners
 {
     public class ShaderMappingListener : Bridge.CLR.IBridgeListener
     {
+        /// <summary>
+        /// Connection for this listener
+        /// </summary>
+        public IConnectionViewModel? ConnectionViewModel { get; set; }
+        
         /// <summary>
         /// Bridge handler
         /// </summary>
@@ -16,31 +23,84 @@ namespace Studio.ViewModels.Workspace.Listeners
         /// <param name="count"></param>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsDynamic(ShaderSourceMappingMessage.ID))
+            if (streams.GetSchema().IsDynamic(ShaderSourceMappingMessage.ID))
             {
-                return;
-            }
-            
-            // Create view
-            var view = new DynamicMessageView<ShaderSourceMappingMessage>(streams);
+                // Create view
+                var view = new DynamicMessageView<ShaderSourceMappingMessage>(streams);
 
-            // Consume all messages
-            lock (this)
-            {
-                foreach (ShaderSourceMappingMessage message in view)
+                // Consume all messages
+                lock (this)
                 {
-                    _segments.Add(message.sguid, new ShaderSourceSegment
+                    foreach (ShaderSourceMappingMessage message in view)
                     {
-                        Extract = message.contents.String,
-                        Location = new ShaderLocation
-                        {
-                            SGUID = message.shaderGUID,
-                            Line = (int)message.line,
-                            Column = (int)message.column
-                        }
-                    });
+                        OnShaderSourceMapping(message);
+                    }
                 }
             }
+        }
+
+        private void OnShaderSourceMapping(ShaderSourceMappingMessage message)
+        {
+            var segment = new ShaderSourceSegment
+            {
+                Extract = message.contents.String,
+                Location = new ShaderLocation
+                {
+                    SGUID = message.shaderGUID,
+                    Line = (int)message.line,
+                    Column = (int)message.column
+                }
+            };
+
+            // Any listeners?
+            if (_enqueuedObjects.TryGetValue(message.sguid, out List<ValidationObject>? objects))
+            {
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    foreach (ValidationObject validationObject in objects)
+                    {
+                        validationObject.Segment = segment;
+                    }
+                });
+
+                // Remove from listeners
+                _enqueuedObjects.Remove(message.sguid);
+            }
+
+            if (!_segments.ContainsKey(message.sguid))
+            {
+                _segments.Add(message.sguid, segment);
+            }
+        }
+
+        public void EnqueueMessage(Objects.ValidationObject validationObject, uint sguid)
+        {
+            lock (this)
+            {
+                if (_segments.TryGetValue(sguid, out ShaderSourceSegment? segment))
+                {
+                    validationObject.Segment = segment;
+                    return;
+                }
+
+                if (_enqueuedObjects.TryGetValue(sguid, out List<ValidationObject>? enqueued))
+                {
+                    enqueued.Add(validationObject);
+                }
+                else
+                {
+                    Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        // Add request
+                        var request = ConnectionViewModel!.GetSharedBus().Add<GetShaderSourceMappingMessage>();
+                        request.sguid = sguid;
+                    });
+                
+                    // Add to listeners
+                    _enqueuedObjects.Add(sguid, new List<ValidationObject> { validationObject });
+                }
+            }
+
         }
 
         /// <summary>
@@ -52,10 +112,15 @@ namespace Studio.ViewModels.Workspace.Listeners
         {
             lock (this)
             {
-                _segments.TryGetValue(sguid, out var segment);
+                _segments.TryGetValue(sguid, out ShaderSourceSegment? segment);
                 return segment;
             }
         }
+
+        /// <summary>
+        /// All enqueued objects
+        /// </summary>
+        private Dictionary<uint, List<Objects.ValidationObject>> _enqueuedObjects = new();
 
         /// <summary>
         /// Internal segments

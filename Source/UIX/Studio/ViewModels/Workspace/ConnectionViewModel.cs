@@ -57,6 +57,23 @@ namespace Studio.ViewModels.Workspace
             
             // Create dispatcher local to the connection
             _dispatcher = new Dispatcher(AvaloniaLocator.Current.GetService<IPlatformThreadingInterface>());
+
+            // Subscribe tick
+            _timer.Tick += OnTick;
+        }
+
+        /// <summary>
+        /// Invoked during timer ticks
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnTick(object? sender, EventArgs e)
+        {
+            // Commit all changes
+            Commit();
+            
+            // Until next time!
+            _timer.IsEnabled = false;
         }
 
         /// <summary>
@@ -141,6 +158,9 @@ namespace Studio.ViewModels.Workspace
             if (_sharedBus == null)
             {
                 _sharedBus = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream());
+                
+                // Ensure tick is enabled
+                _timer.IsEnabled = true;
             }
 
             // OK
@@ -170,6 +190,15 @@ namespace Studio.ViewModels.Workspace
         /// Internal dispatcher
         /// </summary>
         private Dispatcher _dispatcher;
+
+        /// <summary>
+        /// Shared bus timer
+        /// </summary>
+        private DispatcherTimer _timer = new()
+        {
+            Interval = TimeSpan.FromMilliseconds(10),
+            IsEnabled = false
+        };
 
         /// <summary>
         /// Shared bus for convenient messaging

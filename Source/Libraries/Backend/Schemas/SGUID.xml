@@ -1,6 +1,11 @@
 <schema>
+    <struct name="GetShaderSourceMapping">
+        <field name="sguid" type="uint64"/>
+    </struct>
+
     <struct name="ShaderSourceMapping">
         <field name="shaderGUID" type="uint64"/>
+        <field name="found" type="bool"/>
         <field name="fileUID" type="uint32"/>
         <field name="line" type="uint32"/>
         <field name="column" type="uint32"/>

@@ -3,6 +3,7 @@
 #include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/Compiler/SpvSourceMap.h>
+#include <Backends/Vulkan/Symbolizer/ShaderSGUIDHost.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -14,6 +15,7 @@
 #include <Backend/IL/PrettyPrint.h>
 
 // Schemas
+#include <Schemas/SGUID.h>
 #include <Schemas/ShaderMetadata.h>
 
 // Std
@@ -57,6 +59,10 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                 }
                 case GetShaderGUIDSMessage::kID: {
                     OnMessage(*it.Get<GetShaderGUIDSMessage>());
+                    break;
+                }
+                case GetShaderSourceMappingMessage::kID: {
+                    OnMessage(*it.Get<GetShaderSourceMappingMessage>());
                     break;
                 }
             }
@@ -141,14 +147,33 @@ void MetadataController::OnMessage(const struct GetShaderGUIDSMessage& message) 
     }
 }
 
+void MetadataController::OnMessage(const struct GetShaderSourceMappingMessage& message) {
+    MessageStreamView<ShaderSourceMappingMessage> view(segmentMappingStream);
+
+    // Get mapping
+    ShaderSourceMapping mapping = table->sguidHost->GetMapping(message.sguid);
+
+    // Get contents
+    std::string_view sourceContents = table->sguidHost->GetSource(message.sguid);
+
+    // Add response
+    ShaderSourceMappingMessage* response = view.Add(ShaderSourceMappingMessage::AllocationInfo{ 
+        .contentsLength = sourceContents.length()
+    });
+    response->sguid = message.sguid;
+    response->shaderGUID = mapping.shaderGUID;
+    response->fileUID = mapping.fileUID;
+    response->line = mapping.line;
+    response->column = mapping.column;
+
+    // Fill contents
+    response->contents.Set(sourceContents);
+}
+
 void MetadataController::Commit() {
     std::lock_guard guard(mutex);
 
-    // Early out
-    if (stream.IsEmpty()) {
-        return;
-    }
-
-    // Export to bridge
+    // Export general to bridge
     bridge->GetOutput()->AddStreamAndSwap(stream);
+    bridge->GetOutput()->AddStreamAndSwap(segmentMappingStream);
 }

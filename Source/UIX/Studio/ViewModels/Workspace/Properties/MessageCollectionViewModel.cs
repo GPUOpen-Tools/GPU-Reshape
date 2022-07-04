@@ -7,6 +7,7 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Studio.Models.Workspace.Listeners;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -37,7 +38,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// All condensed messages
         /// </summary>
-        public ObservableCollection<Objects.CondensedMessageViewModel> CondensedMessages { get; } = new();
+        public ObservableCollection<Objects.ValidationObject> ValidationObjects { get; } = new();
 
         /// <summary>
         /// Opens a given shader document from view model
@@ -70,14 +71,20 @@ namespace Studio.ViewModels.Workspace.Properties
         private void OnOpenShaderDocument(object viewModel)
         {
             var validationObject = (ValidationObject)viewModel;
-            
+
+            // May not be ready yet
+            if (validationObject.Segment == null)
+            {
+                return;
+            }
+
             // Create document
             Interactions.DocumentInteractions.OpenDocument.OnNext(new Documents.ShaderViewModel()
             {
-                Id = $"Shader{validationObject.Location.SGUID}", 
+                Id = $"Shader{validationObject.Segment.Location.SGUID}",
                 Title = $"Shader",
                 PropertyCollection = Parent,
-                GUID = validationObject.Location.SGUID
+                GUID = validationObject.Segment.Location.SGUID
             });
         }
 
@@ -86,9 +93,12 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         private void OnConnectionChanged()
         {
+            // Set connection
+            _shaderMappingListener.ConnectionViewModel = ConnectionViewModel;
+            
             // Register internal listeners
             _connectionViewModel?.Bridge?.Register(ShaderSourceMappingMessage.ID, _shaderMappingListener);
-            
+
             // HARDCODED LISTENER, WILL BE MOVED TO MODULAR CODE
             _connectionViewModel?.Bridge?.Register(ResourceIndexOutOfBoundsMessage.ID, this);
 
@@ -123,77 +133,65 @@ namespace Studio.ViewModels.Workspace.Properties
                 var view = new StaticMessageView<ResourceIndexOutOfBoundsMessage>(streams);
 
                 // Latent update set
-                var enqueued = new HashSet<uint>();
-                
+                var lookup = new Dictionary<uint, ResourceIndexOutOfBoundsMessage>();
+                var enqueued = new Dictionary<uint, uint>();
+
                 // Consume all messages
                 foreach (ResourceIndexOutOfBoundsMessage message in view)
                 {
-                    uint key = message.Key;
-
-                    // Enqueue for update
-                    enqueued.Add(key);
-
-                    // Add to reduced set
-                    if (_reducedMessages.ContainsKey(key))
+                    if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
                     {
-                        // Update the model, not view model, for performance reasons
-                        _reducedMessages[key].Model.Count++;
+                        enqueued[message.Key] = enqueuedCount + 1;
                     }
                     else
                     {
-                        // Try to get the SGUID segment
-                        ShaderSourceSegment? segment = _shaderMappingListener.GetSegment(message.sguid);
+                        lookup.Add(message.Key, message);
+                        enqueued.Add(message.Key, 1);
+                    }
+                }
 
-                        // Create message
-                        var condensed = new Objects.CondensedMessageViewModel()
+                foreach (var kv in enqueued)
+                {
+                    // Add to reduced set
+                    if (_reducedMessages.ContainsKey(kv.Key))
+                    {
+                        _reducedMessages[kv.Key].Count += kv.Value;
+                    }
+                    else
+                    {
+                        // Get from key
+                        var message = lookup[kv.Key];
+
+                        // Create object
+                        var validationObject = new Objects.ValidationObject()
                         {
-                            Model = new Models.Workspace.Objects.CondensedMessage()
-                            {
-                                Count = 1,
-                                Extract = segment?.Extract ?? "[Lookup Failed]",
-                                Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds"
-                            }
+                            Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds"
                         };
 
-                        // Valid segment?
-                        if (segment != null)
+                        // Shader view model injection
+                        validationObject.WhenAnyValue(x => x.Segment).WhereNotNull().Subscribe(x =>
                         {
-                            // Create validation object
-                            condensed.ValidationObject = new Objects.ValidationObject
-                            {
-                                Location = segment.Location,
-                                Content = condensed.Model.Content
-                            };
-                            
                             // Try to get shader collection
                             var shaderCollectionViewModel = Parent?.GetProperty<ShaderCollectionViewModel>();
                             if (shaderCollectionViewModel != null)
                             {
                                 // Get the respective shader
-                                Objects.ShaderViewModel shaderViewModel = shaderCollectionViewModel.GetOrAddShader(segment.Location.SGUID);
-                                
+                                Objects.ShaderViewModel shaderViewModel = shaderCollectionViewModel.GetOrAddShader(x.Location.SGUID);
+
                                 // Append validation object to target shader
-                                shaderViewModel.ValidationObjects.Add(condensed.ValidationObject);
+                                shaderViewModel.ValidationObjects.Add(validationObject);
                             }
-                        }
-                        
+                        });
+
+                        // Enqueue segment binding
+                        _shaderMappingListener.EnqueueMessage(validationObject, message.sguid);
+
                         // Insert lookup
-                        _reducedMessages.Add(key, condensed);
+                        _reducedMessages.Add(kv.Key, validationObject);
 
                         // Add to UI visible collection
-                        Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            CondensedMessages.Add(condensed);
-                        });
+                        Dispatcher.UIThread.InvokeAsync(() => { ValidationObjects.Add(validationObject); });
                     }
-                }
-                
-                // Update all view models of enqueued keys
-                // TODO: Throttle!
-                foreach (uint key in enqueued)
-                {
-                    _reducedMessages[key].RaisePropertyChanged("Count");
-                    _reducedMessages[key].ValidationObject?.RaisePropertyChanged("Count");
                 }
             }
         }
@@ -201,7 +199,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// All reduced resource messages
         /// </summary>
-        private Dictionary<uint, Objects.CondensedMessageViewModel> _reducedMessages = new();
+        private Dictionary<uint, Objects.ValidationObject> _reducedMessages = new();
 
         /// <summary>
         /// Shader mapping bridge listener
