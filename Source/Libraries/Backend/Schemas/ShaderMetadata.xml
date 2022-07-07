@@ -27,6 +27,7 @@
     <message name="ShaderCodeFile">
         <field name="shaderUID" type="uint64"/>
         <field name="fileUID"   type="uint32"/>
+        <field name="filename"  type="string"/>
         <field name="code"      type="string"/>
     </message>
 </schema>

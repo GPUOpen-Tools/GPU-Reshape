@@ -18,7 +18,7 @@ bool HostServerBridge::Install(const EndpointConfig &config) {
     // Local info
     AsioHostClientInfo asioInfo;
     strcpy_s(asioInfo.applicationName, config.applicationName);
-    strcpy_s(asioInfo.applicationName, GetCurrentExecutableName().c_str());
+    strcpy_s(asioInfo.processName, GetCurrentExecutableName().c_str());
 
     // Platform info
 #ifdef _WIN64

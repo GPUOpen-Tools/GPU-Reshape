@@ -47,7 +47,7 @@ struct SpvSourceMap {
     std::string_view GetFilename() const;
 
     /// Get the total size of the combined source code
-    /// \return null terminated length
+    /// \return length, not null terminated
     uint64_t GetCombinedSourceLength(uint32_t fileUID) const;
 
     /// Fill the combined source code into an output buffer

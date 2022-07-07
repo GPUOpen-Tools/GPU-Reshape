@@ -168,8 +168,8 @@ SpvSourceAssociation SpvSourceMap::GetSourceAssociation(uint32_t sourceOffset) c
 uint64_t SpvSourceMap::GetCombinedSourceLength(uint32_t fileUID) const {
     const PhysicalSource &source = physicalSources[fileUID];
 
-    // Null terminated
-    uint64_t length = 1;
+    // Not null terminated
+    uint64_t length = 0;
 
     // Sum length
     for (const Fragment &fragment: source.fragments) {
@@ -187,7 +187,4 @@ void SpvSourceMap::FillCombinedSource(uint32_t fileUID, char *buffer) const {
         std::memcpy(buffer, fragment.source.data(), fragment.source.length() * sizeof(char));
         buffer += fragment.source.length();
     }
-
-    // Null terminated
-    *buffer = 0;
 }

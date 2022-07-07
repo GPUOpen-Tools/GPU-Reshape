@@ -120,9 +120,15 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
 
     // Add file responses
     for (uint32_t i = 0; i < fileCount; i++) {
-        auto&& file = view.Add<ShaderCodeFileMessage>(ShaderCodeFileMessage::AllocationInfo { .codeLength = sourceMap->GetCombinedSourceLength(i) });
+        auto&& file = view.Add<ShaderCodeFileMessage>(ShaderCodeFileMessage::AllocationInfo { 
+            .filenameLength = sourceMap->GetFilename().length(),
+            .codeLength = sourceMap->GetCombinedSourceLength(i)
+        });
         file->shaderUID = message.shaderUID;
         file->fileUID = i;
+
+        // Fill filename
+        file->filename.Set(sourceMap->GetFilename());
 
         // Fill discontinuous fragments into buffer
         sourceMap->FillCombinedSource(i, file->code.data.Get());
