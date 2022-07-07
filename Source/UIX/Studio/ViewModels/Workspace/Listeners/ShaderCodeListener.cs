@@ -62,6 +62,7 @@ namespace Studio.ViewModels.Workspace.Listeners
 
                             // Copy contents
                             shaderViewModel.Contents = shaderCode.code.String;
+                            shaderViewModel.Filename = shaderCode.filename.String;
                             
                             // Remove from future lookups
                             _pendingShaderViewModels.Remove(shaderCode.shaderUID);

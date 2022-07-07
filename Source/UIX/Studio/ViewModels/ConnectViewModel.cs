@@ -206,6 +206,7 @@ namespace Studio.ViewModels
                         apps.Add(new Models.Workspace.ApplicationInfo
                         {
                             Name = info.application.String,
+                            Process = info.process.String,
                             Pid = info.processId,
                             Guid = new Guid(info.guid.String)
                         });

@@ -83,7 +83,7 @@ namespace Studio.Views.Editor
                     // Create formatted segment
                     FormattedText formatted = new FormattedText()
                     {
-                        Text = marker.Object.Content,
+                        Text = $"{marker.Object.Content} [{marker.Object.Count}]",
                         Typeface = new Typeface(FontFamily.Default),
                         FontSize = 12
                     };

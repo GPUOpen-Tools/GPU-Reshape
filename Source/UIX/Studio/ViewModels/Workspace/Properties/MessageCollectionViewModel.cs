@@ -82,7 +82,7 @@ namespace Studio.ViewModels.Workspace.Properties
             Interactions.DocumentInteractions.OpenDocument.OnNext(new Documents.ShaderViewModel()
             {
                 Id = $"Shader{validationObject.Segment.Location.SGUID}",
-                Title = $"Shader",
+                Title = $"Shader (loading)",
                 PropertyCollection = Parent,
                 GUID = validationObject.Segment.Location.SGUID
             });

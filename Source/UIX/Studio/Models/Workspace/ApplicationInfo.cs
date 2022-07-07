@@ -13,6 +13,11 @@ namespace Studio.Models.Workspace
         /// Decorative name of the application
         /// </summary>
         public string Name { get; set; }
+        
+        /// <summary>
+        /// Process name of the application
+        /// </summary>
+        public string Process { get; set; }
 
         /// <summary>
         /// Host resolve GUID of the application

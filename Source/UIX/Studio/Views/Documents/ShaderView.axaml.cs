@@ -45,11 +45,14 @@ namespace Studio.Views.Documents
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationBackgroundRenderer);
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationTextMarkerService);
             Editor.TextArea.TextView.LineTransformers.Add(_validationTextMarkerService);
-
+            
             // Add services
             IServiceContainer services = Editor.Document.GetService<IServiceContainer>();
             services?.AddService(typeof(ValidationTextMarkerService), _validationTextMarkerService);
 
+            // Common styling
+            Editor.Options.IndentationSize = 4;
+            
             // Bind contents
             this.WhenAnyValue(x => x.DataContext).Subscribe(x =>
             {

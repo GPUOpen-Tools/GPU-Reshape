@@ -12,7 +12,7 @@ namespace Studio
         /// <param name="defaultValue">default value if not found</param>
         /// <typeparam name="T">expected type</typeparam>
         /// <returns>found value or default</returns>
-        public static T GetResource<T>(string name, T defaultValue) where T : class
+        public static T? GetResource<T>(string name, T? defaultValue = default)
         {
             object? value = null;
             
@@ -21,18 +21,7 @@ namespace Studio
                 return defaultValue;
             }
 
-            return (value as T) ?? defaultValue;
-        }
-        
-        /// <summary>
-        /// Get a default style resource
-        /// </summary>
-        /// <param name="name">key of the resource</param>
-        /// <typeparam name="T">expected type</typeparam>
-        /// <returns>null if not found</returns>
-        public static T GetResource<T>(string name) where T : class, new()
-        {
-            return GetResource(name, new T());
+            return value is T ? (T)value : defaultValue;
         }
 
         /// <summary>

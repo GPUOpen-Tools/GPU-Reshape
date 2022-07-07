@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using Avalonia.Media;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using ReactiveUI;
@@ -7,8 +8,26 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Documents
 {
-    public class ShaderViewModel : Document
+    public class ShaderViewModel : Document, IDocumentViewModel
     {
+        /// <summary>
+        /// Document icon
+        /// </summary>
+        public StreamGeometry? Icon
+        {
+            get => _icon;
+            set => this.RaiseAndSetIfChanged(ref _icon, value);
+        }
+
+        /// <summary>
+        /// Icon color
+        /// </summary>
+        public Color? IconForeground
+        {
+            get => _iconForeground;
+            set => this.RaiseAndSetIfChanged(ref _iconForeground, value);
+        }
+
         /// <summary>
         /// Workspace within this overview
         /// </summary>
@@ -37,7 +56,16 @@ namespace Studio.ViewModels.Documents
         public Workspace.Objects.ShaderViewModel? Object
         {
             get => _object;
-            set => this.RaiseAndSetIfChanged(ref _object, value);
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _object, value);
+
+                // Set title
+                if (_object != null)
+                {
+                    Title = _object.Filename;
+                }
+            }
         }
 
         /// <summary>
@@ -66,5 +94,15 @@ namespace Studio.ViewModels.Documents
         /// Underlying view model
         /// </summary>
         private IPropertyViewModel? _propertyCollection;
+        
+        /// <summary>
+        /// Internal icon
+        /// </summary>
+        private StreamGeometry? _icon = ResourceLocator.GetIcon("DotsGrid");
+
+        /// <summary>
+        /// Internal icon color
+        /// </summary>
+        private Color? _iconForeground = ResourceLocator.GetResource<Color>("ThemeForegroundColor");
     }
 }

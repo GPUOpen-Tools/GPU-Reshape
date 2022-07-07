@@ -1,7 +1,9 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:idc="using:Dock.Avalonia.Controls"
-        xmlns:controls="clr-namespace:Studio.Views.Controls">
+        xmlns:controls="clr-namespace:Studio.Views.Controls"
+        xmlns:core="clr-namespace:Dock.Model.Core;assembly=Dock.Model"
+        xmlns:documents="clr-namespace:Studio.ViewModels.Documents">
     <Styles.Resources>
         <!-- Custom dark style for GBV Studio -->
 
@@ -108,6 +110,33 @@
                     </ScrollViewer>
                 </Border>
             </ControlTemplate>
+        </Setter>
+    </Style>
+        
+    <Style Selector="idc|DocumentControl">
+        <Setter Property="HeaderTemplate">
+            <DataTemplate DataType="core:IDockable">
+                <StackPanel Orientation="Horizontal">
+                    <PathIcon 
+                        Data="{Binding Path=(documents:IDocumentViewModel).Icon}"
+                        Foreground="{Binding Path=(documents:IDocumentViewModel).IconForeground}"
+                        Width="12"
+                        Height="12"
+                        Margin="0"/>
+
+                    <TextBlock Text="{Binding Title}"
+                               VerticalAlignment="Center"
+                               Padding="4,0,0,0" />
+                </StackPanel>
+            </DataTemplate>
+        </Setter>
+    </Style>
+        
+    <Style Selector="idc|ToolControl">
+        <Setter Property="HeaderTemplate">
+            <DataTemplate DataType="core:IDockable">
+                <TextBlock Text="{Binding Title}" Padding="2" />
+            </DataTemplate>
         </Setter>
     </Style>
 </Styles>
