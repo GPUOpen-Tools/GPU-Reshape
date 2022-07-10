@@ -9,5 +9,6 @@ enum class DXILIDType : uint8_t {
     Alias,
     Function,
     Constant,
-    Parameter
+    Parameter,
+    Forward
 };

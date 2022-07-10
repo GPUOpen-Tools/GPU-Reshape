@@ -19,25 +19,65 @@ struct DXILIDMap {
     /// \param dataIndex internal data index
     /// \return backend id
     IL::ID AllocMappedID(DXILIDType type, uint32_t dataIndex = ~0u) {
-        IL::ID id = program.GetIdentifierMap().AllocID();
+        // New unmapped?
+        if (allocationOffset == map.Size()) {
+            IL::ID id = program.GetIdentifierMap().AllocID();
 
-        map.Add(NativeState {
-            .mapped = id,
-            .type = type,
-            .dataIndex = dataIndex
+            map.Add(NativeState {
+                .mapped = id,
+                .type = type,
+                .dataIndex = dataIndex
+            });
+
+            // Increment
+            allocationOffset++;
+
+            // OK
+            return id;
+        } else {
+            NativeState& state = map[allocationOffset++];
+
+            // May be forward declared, don't stomp it!
+            if (state.mapped == IL::InvalidID) {
+                IL::ID id = program.GetIdentifierMap().AllocID();
+
+                state = NativeState {
+                    .mapped = id,
+                    .type = type,
+                    .dataIndex = dataIndex
+                };
+            } else {
+                // Replace type and data index with non-opaque ones
+                state.type = type;
+                state.dataIndex = dataIndex;
+            }
+
+            // OK
+            return state.mapped;
+        }
+    }
+
+    /// Reserve forward allocations
+    /// \param count number of allocations
+    void ReserveForward(size_t count) {
+        size_t end = map.Size() + count;
+
+        size_t size = map.Size();
+        map.Resize(end);
+
+        std::fill(map.begin() + size, map.begin() + end, NativeState {
+            .mapped = IL::InvalidID
         });
-
-        return id;
     }
 
     /// Get the current record anchor
     uint32_t GetAnchor() const {
-        return map.Size();
+        return allocationOffset;
     }
 
     /// Is an ID mapped?
     bool IsMapped(uint32_t id) const {
-        return map.Size() > id;
+        return allocationOffset > id;
     }
 
     /// Get the relative id
@@ -59,6 +99,24 @@ struct DXILIDMap {
     /// Get a mapped value
     IL::ID GetMapped(uint64_t id) const {
         return map[id].mapped;
+    }
+
+    /// Get a forward mapped value
+    /// \param anchor record anchor
+    /// \param id forward id
+    /// \return absolute id
+    IL::ID GetMappedForward(uint32_t anchor, uint32_t id) {
+        NativeState& state = map[anchor + id];
+
+        if (state.mapped == IL::InvalidID) {
+            state = NativeState {
+                .mapped = program.GetIdentifierMap().AllocID(),
+                .type = DXILIDType::Forward,
+                .dataIndex = 0
+            };
+        }
+
+        return state.mapped;
     }
 
     /// Get the type of an id
@@ -85,6 +143,9 @@ private:
         /// Internal data index
         uint32_t dataIndex;
     };
+
+    /// Current allocation offset
+    uint32_t allocationOffset{0};
 
     /// All mappings
     TrivialStackVector<NativeState, 256> map;

@@ -3,6 +3,7 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordReader.h>
 #include <Backends/DX12/Compiler/DXIL/DXILIDMap.h>
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStream.h>
 
 /*
  * LLVM DXIL Specification
@@ -42,6 +43,9 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
 
     // Allocate basic block
     IL::BasicBlock *basicBlock = fn->GetBasicBlocks().AllocBlock();
+
+    // Reserve forward allocations
+    table.idMap.ReserveForward(block->records.Size());
 
     // Visit function records
     for (const LLVMRecord &record: block->records) {
@@ -312,8 +316,6 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
 
             case LLVMFunctionRecord::InstCmp:
             case LLVMFunctionRecord::InstCmp2: {
-                reader.ConsumeOp();
-
                 uint64_t lhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
                 uint64_t rhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
@@ -534,7 +536,15 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 // Fill cases
                 for (uint32_t i = 0; i < valueCount; i++) {
                     IL::PhiValue value;
-                    value.value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                    // Decode value
+                    int64_t signedValue = LLVMBitStream::DecodeSigned(reader.ConsumeOp());
+                    if (signedValue >= 0) {
+                        value.value = table.idMap.GetMappedRelative(anchor, static_cast<uint32_t>(signedValue));
+                    } else {
+                        value.value = table.idMap.GetMappedForward(anchor, static_cast<uint32_t>(-signedValue));
+                    }
+
                     value.branch = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
                     instr->values[i] = value;
                 }
