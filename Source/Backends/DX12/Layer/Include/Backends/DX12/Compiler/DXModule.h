@@ -20,6 +20,10 @@ public:
     /// \return success state
     virtual bool Parse(const void* byteCode, uint64_t byteLength) = 0;
 
+    /// Copy this module
+    /// \return
+    virtual DXModule* Copy() = 0;
+
     /// Get the program of this module
     /// \return program
     virtual IL::Program* GetProgram() = 0;

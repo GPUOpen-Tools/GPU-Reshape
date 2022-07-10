@@ -17,6 +17,10 @@ DXILModule::~DXILModule() {
     }
 }
 
+DXModule* DXILModule::Copy() {
+    return nullptr;
+}
+
 bool DXILModule::Parse(const void *byteCode, uint64_t byteLength) {
     return table.Parse(byteCode, byteLength);
 }

@@ -2,6 +2,7 @@
 #include <Test/Device/Catch2.h>
 
 // Layer
+#include <Backends/DX12/Layer.h>
 #include <Backends/DX12/Translation.h>
 
 using namespace Test;
@@ -12,6 +13,8 @@ Device::~Device() {
 }
 
 void Device::Install(const DeviceInfo &info) {
+    REQUIRE(LoadLibraryA("Backends.DX12.Layer.dll") != nullptr);
+
     // Create the underlying device
     CreateDevice();
 
@@ -80,11 +83,16 @@ void Device::CreateDevice() {
         }
     }
 
+    // Pass down the environment
+    D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO gpuOpenInfo{};
+    gpuOpenInfo.registry = registry;
+
     // Create device
-    REQUIRE(SUCCEEDED(D3D12CreateDevice(
+    REQUIRE(SUCCEEDED(D3D12CreateDeviceGPUOpen(
         adapter.Get(),
         D3D_FEATURE_LEVEL_11_0,
-        IID_PPV_ARGS(&device)
+        IID_PPV_ARGS(&device),
+        &gpuOpenInfo
     )));
 }
 

@@ -2,6 +2,7 @@
 
 // Backend
 #include <Backends/DX12/DX12.h>
+#include <Backends/DX12/Layer.h>
 
 struct GlobalDeviceDetour {
 public:

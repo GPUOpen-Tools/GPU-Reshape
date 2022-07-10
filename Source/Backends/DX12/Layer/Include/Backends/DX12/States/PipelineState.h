@@ -5,6 +5,9 @@
 #include <Backends/DX12/DeepCopy.Gen.h>
 #include <Backends/DX12/InstrumentationInfo.h>
 
+// Common
+#include <Common/Containers/ReferenceObject.h>
+
 // Std
 #include <atomic>
 #include <vector>
@@ -22,7 +25,31 @@ enum class PipelineType {
     Compute
 };
 
-struct PipelineState {
+struct PipelineState : public ReferenceObject {
+    /// Reference counted destructor
+    virtual ~PipelineState() = default;
+
+    /// Add an instrument to this module
+    /// \param featureBitSet the enabled feature set
+    /// \param pipeline the pipeline in question
+    void AddInstrument(uint64_t featureBitSet, ID3D12PipelineState* pipeline) {
+        std::lock_guard lock(mutex);
+        instrumentObjects[featureBitSet] = pipeline;
+    }
+
+    /// Get an instrument
+    /// \param featureBitSet the enabled feature set
+    /// \return nullptr if not found
+    ID3D12PipelineState* GetInstrument(uint64_t featureBitSet) {
+        std::lock_guard lock(mutex);
+        auto&& it = instrumentObjects.find(featureBitSet);
+        if (it == instrumentObjects.end()) {
+            return nullptr;
+        }
+
+        return it->second;
+    }
+
     /// Parent state
     DeviceState* parent{};
 
@@ -49,6 +76,9 @@ struct PipelineState {
     /// TODO: How do we manage lifetimes here?
     std::map<uint64_t, ID3D12PipelineState*> instrumentObjects;
 
+    /// Unique ID
+    uint64_t uid{0};
+
     /// Module specific lock
     std::mutex mutex;
 };
@@ -56,9 +86,19 @@ struct PipelineState {
 struct GraphicsPipelineState : public PipelineState {
     /// Creation deep copy
     D3D12GraphicsPipelineStateDescDeepCopy deepCopy;
+
+    /// Stage shaders
+    ShaderState* vs{nullptr};
+    ShaderState* hs{nullptr};
+    ShaderState* ds{nullptr};
+    ShaderState* gs{nullptr};
+    ShaderState* ps{nullptr};
 };
 
 struct ComputePipelineState : public PipelineState {
     /// Creation deep copy
     D3D12ComputePipelineStateDescDeepCopy deepCopy;
+
+    /// Stage shaders
+    ShaderState* cs{nullptr};
 };

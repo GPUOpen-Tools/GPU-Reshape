@@ -94,7 +94,8 @@ namespace crcdetail
         crc = crc ^ 0xFFFFFFFFU;
         for (uint32_t i = 0; i < len; i++)
         {
-            crc = table[*data ^ (crc & 0xFF)] ^ (crc >> 8);
+            // TODO: NOT CORRECT
+            crc = table[uint8_t(*data) ^ (crc & 0xFF)] ^ (crc >> 8);
             data++;
         }
         crc = crc ^ 0xFFFFFFFFU;
@@ -106,6 +107,10 @@ namespace crcliteral {
     constexpr uint64_t operator "" _crc64(const char* data, size_t len) {
         return crcdetail::compute(data, len);
     }
+}
+
+inline uint64_t BufferCRC64(const void* data, uint32_t len, uint32_t crc = 0) {
+    return crcdetail::compute(static_cast<const char*>(data), len, crc);
 }
 
 #define CRC64(STR) \

@@ -14,6 +14,8 @@
 
 // Cleanup
 #undef OPAQUE
+#undef min
+#undef max
 
 /// Get the vtable
 template<typename T = void>

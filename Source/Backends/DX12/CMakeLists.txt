@@ -228,6 +228,9 @@ add_library(
     Layer/Source/Pipeline.cpp
     Layer/Source/SwapChain.cpp
     Layer/Source/DLL.cpp
+    Layer/Source/Layer.cpp
+    Layer/Source/Compiler/ShaderCompiler.cpp
+    Layer/Source/Compiler/PipelineCompiler.cpp
     Layer/Source/Compiler/DXModule.cpp
     Layer/Source/Compiler/DXBC/DXBCModule.cpp
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockScan.cpp
@@ -242,6 +245,8 @@ add_library(
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockSymbol.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockType.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockGlobal.cpp
+    Layer/Source/Controllers/InstrumentationController.cpp
+    Layer/Source/Export/ExportHost.cpp
 
     # Generated source dependencies
     Layer/Source/DeepCopy.Gen.cpp
@@ -253,6 +258,9 @@ add_library(
     Layer/Include/Backends/DX12/Table.Gen.h
     Layer/Include/Backends/DX12/DeepCopy.Gen.h
 )
+
+# Internal definitions
+target_compile_definitions(Backends.DX12.Layer PRIVATE DX12_PRIVATE=1)
 
 # IDE source discovery
 SetSourceDiscovery(Backends.DX12.Layer CXX Layer)

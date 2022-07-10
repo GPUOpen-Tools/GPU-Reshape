@@ -5,6 +5,9 @@
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 
+// Common
+#include <Common/CRC.h>
+
 /// Pretty print pipeline?
 #define DXIL_PRETTY_PRINT 1
 
@@ -17,35 +20,33 @@
 #   include <iostream>
 #endif
 
-static DXModule *CreateImmediateDXModule(const Allocators &allocators, const D3D12_SHADER_BYTECODE &byteCode) {
-    // Get type
-    uint32_t type = *static_cast<const uint64_t *>(byteCode.pShaderBytecode);
+static ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTECODE &byteCode) {
+    // Create key
+    ShaderStateKey key;
+    key.byteCode = byteCode;
+    key.hash = BufferCRC64(byteCode.pShaderBytecode, byteCode.BytecodeLength);
 
-    // Handle type
-    switch (type) {
-        default: {
-            // Unknown type
-            return nullptr;
-        }
-        case 'CBXD': {
-            return new DXBCModule(allocators);
-        }
+    // Sync shader states
+    std::lock_guard guard(device->states_Shaders.GetLock());
+
+    // Attempt existing state
+    ShaderState* shaderState = device->shaderSet.Get(key);
+    if (shaderState) {
+        return shaderState;
     }
-}
 
-static ShaderState *CreateShaderState(DeviceState *device, const D3D12_SHADER_BYTECODE &byteCode) {
-    auto shaderState = new(device->allocators) ShaderState();
-    shaderState->byteCode = byteCode;
+    // Create new shader
+    shaderState = new(device->allocators) ShaderState();
     shaderState->parent = device;
+    shaderState->key = key;
 
-    // Create immediate module
-    shaderState->module = CreateImmediateDXModule(device->allocators, byteCode);
-    shaderState->module->Parse(byteCode.pShaderBytecode, byteCode.BytecodeLength);
+    // Copy key memory
+    auto shader = new (device->allocators) uint8_t[key.byteCode.BytecodeLength];
+    std::memcpy(shader, key.byteCode.pShaderBytecode, key.byteCode.BytecodeLength);
+    shaderState->key.byteCode.pShaderBytecode = shader;
 
-#if DXIL_PRETTY_PRINT
-    // Pretty print module
-    IL::PrettyPrint(*shaderState->module->GetProgram(), std::cout);
-#endif // DXIL_PRETTY_PRINT
+    // Add to state
+    device->states_Shaders.AddNoLock(shaderState);
 
     // OK
     return shaderState;
@@ -112,28 +113,46 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
 
     // Create VS state
     if (desc->VS.BytecodeLength) {
-        state->shaders.push_back(CreateShaderState(table.state, state->deepCopy->VS));
+        state->vs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->VS));
+
+        // Add dependency, shader module -> pipeline
+        table.state->dependencies_shaderPipelines.Add(state->vs, state);
     }
 
-    // Create VS state
+    // Create GS state
     if (desc->GS.BytecodeLength) {
-        state->shaders.push_back(CreateShaderState(table.state, state->deepCopy->GS));
+        state->gs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->GS));
+
+        // Add dependency, shader module -> pipeline
+        table.state->dependencies_shaderPipelines.Add(state->gs, state);
     }
 
-    // Create VS state
+    // Create DS state
     if (desc->DS.BytecodeLength) {
-        state->shaders.push_back(CreateShaderState(table.state, state->deepCopy->DS));
+        state->ds = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->DS));
+
+        // Add dependency, shader module -> pipeline
+        table.state->dependencies_shaderPipelines.Add(state->ds, state);
     }
 
-    // Create VS state
+    // Create HS state
     if (desc->HS.BytecodeLength) {
-        state->shaders.push_back(CreateShaderState(table.state, state->deepCopy->HS));
+        state->hs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->HS));
+
+        // Add dependency, shader module -> pipeline
+        table.state->dependencies_shaderPipelines.Add(state->hs, state);
     }
 
-    // Create VS state
+    // Create PS state
     if (desc->PS.BytecodeLength) {
-        state->shaders.push_back(CreateShaderState(table.state, state->deepCopy->PS));
+        state->ps = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->PS));
+
+        // Add dependency, shader module -> pipeline
+        table.state->dependencies_shaderPipelines.Add(state->ps, state);
     }
+
+    // Add to state
+    table.state->states_Pipelines.Add(state);
 
     // Create detours
     pipeline = CreateDetour(Allocators{}, pipeline, state);
@@ -180,8 +199,14 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
 
     // Create VS state
     if (desc->CS.BytecodeLength) {
-        state->shaders.push_back(CreateShaderState(table.state, state->deepCopy->CS));
+        state->cs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->CS));
+
+        // Add dependency, shader module -> pipeline
+        table.state->dependencies_shaderPipelines.Add(state->cs, state);
     }
+
+    // Add to state
+    table.state->states_Pipelines.Add(state);
 
     // Create detours
     pipeline = CreateDetour(Allocators{}, pipeline, state);

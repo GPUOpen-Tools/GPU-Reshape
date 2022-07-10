@@ -22,6 +22,7 @@ public:
     DXBCModule(const Allocators &allocators, IL::Program* program);
 
     /// Overrides
+    DXModule* Copy() override;
     bool Parse(const void* byteCode, uint64_t byteLength) override;
     IL::Program *GetProgram() override;
 

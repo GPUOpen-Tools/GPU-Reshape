@@ -17,6 +17,17 @@ DXBCModule::~DXBCModule() {
     }
 }
 
+DXModule* DXBCModule::Copy() {
+    // Copy program
+    IL::Program* programCopy = program->Copy();
+
+    // Create module copy
+    auto module = new (allocators) DXBCModule(allocators, programCopy);
+
+    // OK
+    return module;
+}
+
 bool DXBCModule::Parse(const void *byteCode, uint64_t byteLength) {
     return table.Parse(byteCode, byteLength);
 }
