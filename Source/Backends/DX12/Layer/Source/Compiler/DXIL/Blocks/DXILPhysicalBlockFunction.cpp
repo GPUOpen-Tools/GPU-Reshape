@@ -204,7 +204,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
             case LLVMFunctionRecord::InstCast: {
                 uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
-                reader.ConsumeOp();
+                uint64_t type = reader.ConsumeOp();
 
                 auto castOp = static_cast<LLVMCastOp>(reader.ConsumeOp());
                 switch (castOp) {
@@ -271,14 +271,6 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         break;
                     }
                 }
-
-                // Append
-                IL::LoadInstruction instr{};
-                instr.opCode = IL::OpCode::Load;
-                instr.result = result;
-                instr.source = IL::Source::Invalid();
-                instr.address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                basicBlock->Append(instr);
                 break;
             }
 

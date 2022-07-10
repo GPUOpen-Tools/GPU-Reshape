@@ -353,7 +353,7 @@ uint64_t InstrumentationController::SummarizeFeatureBitSet() {
     return featureBitSet;
 }
 
-void InstrumentationController::BeginCommandBuffer() {
+void InstrumentationController::BeginCommandList() {
     // If syncronous, wait for the head compilation counter
     if (synchronousRecording) {
         compilationEvent.Wait(compilationEvent.GetHead());

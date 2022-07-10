@@ -4,6 +4,7 @@
 #include <Backends/DX12/States/CommandQueueState.h>
 #include <Backends/DX12/States/CommandAllocatorState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/Controllers/InstrumentationController.h>
 
 HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COMMAND_QUEUE_DESC *desc, const IID& riid, void **pCommandQueue) {
     auto table = GetTable(device);
@@ -98,6 +99,9 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
         if (FAILED(hr)) {
             return hr;
         }
+
+        // Pass down the controller
+        table.state->instrumentationController->BeginCommandList();
     }
 
     // Cleanup
@@ -110,8 +114,17 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
 HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList* list, ID3D12CommandAllocator* allocator, ID3D12PipelineState* state) {
     auto table = GetTable(list);
 
+    // Pass down the controller
+    table.state->parent->instrumentationController->BeginCommandList();
+
     // Pass down callchain
-    return table.bottom->next_Reset(table.next, Next(allocator), Next(state));
+    HRESULT result = table.bottom->next_Reset(table.next, Next(allocator), Next(state));
+    if (FAILED(result)) {
+        return result;
+    }
+
+    // OK
+    return S_OK;
 }
 
 HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList* list) {

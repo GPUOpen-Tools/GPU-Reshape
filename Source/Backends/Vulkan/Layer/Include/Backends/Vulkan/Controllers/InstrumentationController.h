@@ -43,7 +43,7 @@ public:
     void Handle(const MessageStream *streams, uint32_t count) final;
 
     /// Invoked once a command buffer has begun recording
-    void BeginCommandBuffer();
+    void BeginCommandList();
 
     /// Commit all changes
     void Commit();

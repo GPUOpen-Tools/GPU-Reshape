@@ -93,7 +93,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     }
 
     // Pass down the controller
-    commandBuffer->table->instrumentationController->BeginCommandBuffer();
+    commandBuffer->table->instrumentationController->BeginCommandList();
 
     // Pass down callchain
     VkResult result = commandBuffer->table->next_vkBeginCommandBuffer(commandBuffer->object, pBeginInfo);
