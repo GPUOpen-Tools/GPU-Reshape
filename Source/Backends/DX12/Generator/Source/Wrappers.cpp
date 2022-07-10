@@ -33,6 +33,11 @@ static bool WrapClassInterface(const GeneratorInfo &info, WrapperState& state, c
         // Get contained (fptr) type
         auto &&parameters = method["params"];
 
+        // Code-gen whitelist (register shenanigans)
+        if (consumerKey == "ID3D12Resource" && methodName == "GetDesc") {
+            continue;
+        }
+
         // Print return type
         if (!PrettyPrintType(state.hooks, method["returnType"])) {
             return false;

@@ -81,6 +81,11 @@ static bool WrapClassMethods(const GeneratorInfo &info, WrapperImplState &state,
         // Get parameters
         auto &&parameters = method["params"];
 
+        // Code-gen whitelist (register shenanigans)
+        if (consumerKey == "ID3D12Resource" && methodName == "GetDesc") {
+            continue;
+        }
+
         // Print return type
         if (!PrettyPrintType(state.hooks, method["returnType"])) {
             return false;

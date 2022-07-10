@@ -7,6 +7,11 @@
 // System
 $INCLUDES
 
+// Cleanup
+#undef OPAQUE
+#undef min
+#undef max
+
 /* Function types */
 
 using PFN_CREATE_DXGI_FACTORY = HRESULT(*)(REFIID riid, _COM_Outptr_ void **ppFactory);

@@ -43,6 +43,17 @@ $IMPL
 
 $HOOKS
 
+/* Special Hooks */
+
+void Wrapper_HookID3D12ResourceGetDesc(ID3D12ResourceWrapper* _thisRCX, D3D12_RESOURCE_DESC* rdx) {
+    // MSVC calling convention puts wide returns for virtual functions in the RDX register
+    // Not entirely sure what the appropriate calling convention is, may warrant some rewriting down the line
+    auto fnPtr = reinterpret_cast<void (*)(ID3D12Resource * RCX, D3D12_RESOURCE_DESC * RDX)>(GetVTableRaw<ID3D12Resource1DetourVTable>(_thisRCX->next)->next_GetDesc);
+
+    // Down the rabbit hole we go
+    fnPtr(_thisRCX->next, rdx);
+}
+
 /* Detouring */
 
 $DETOURS
