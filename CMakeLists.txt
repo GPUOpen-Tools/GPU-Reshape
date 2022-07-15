@@ -7,10 +7,13 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # All options
 option(INSTALL_THIRD_PARTY   "Fetch and install third party libraries" ON)
-option(ENABLE_ASAN           "Enables ASAN" OFF)
 option(ENABLE_BACKEND_VULKAN "Enables Vulkan backend" ON)
 option(ENABLE_BACKEND_DX12   "Enables DX12 backend" ON)
 option(ENABLE_UIX            "Enables UIX building (Experimental)" OFF)
+
+# Developmental options
+option(ENABLE_DXIL_DUMP      "Enables DXIL dumping on shader builds" OFF)
+option(ENABLE_ASAN           "Enables ASAN" OFF)
 
 # Ensure 64 bit
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
