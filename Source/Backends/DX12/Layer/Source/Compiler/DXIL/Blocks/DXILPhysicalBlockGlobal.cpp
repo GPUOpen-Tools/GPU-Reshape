@@ -14,9 +14,14 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
 
     // Get maps
     Backend::IL::TypeMap& types = program.GetTypeMap();
-    Backend::IL::ConstantMap& constants = program.GetConstants();
+    Backend::IL::ConstantMap& constantMap = program.GetConstants();
 
     for (const LLVMRecord &record: block->records) {
+        uint32_t anchor = table.idMap.GetAnchor();
+
+        // Final constant
+        const Backend::IL::Constant* constant{nullptr};
+
         switch (static_cast<LLVMConstantRecord>(record.id)) {
             default: {
                 ASSERT(false, "Unsupported constant record");
@@ -36,21 +41,21 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
                 switch (type->kind) {
                     default: {
                         // Emit as unexposed
-                        constants.AddConstant(id, types.FindTypeOrAdd(Backend::IL::UnexposedType{}), Backend::IL::UnexposedConstant {});
+                        constant = constantMap.AddConstant(id, types.FindTypeOrAdd(Backend::IL::UnexposedType{}), Backend::IL::UnexposedConstant {});
                         break;
                     }
                     case Backend::IL::TypeKind::Bool:
-                        constants.AddConstant(id, type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                        constant = constantMap.AddConstant(id, type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
                             .value = false
                         });
                         break;
                     case Backend::IL::TypeKind::Int:
-                        constants.AddConstant(id, type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
+                        constant = constantMap.AddConstant(id, type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
                             .value = 0
                         });
                         break;
                     case Backend::IL::TypeKind::FP:
-                        constants.AddConstant(id, type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
+                        constant = constantMap.AddConstant(id, type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
                             .value = 0.0f
                         });
                         break;
@@ -61,7 +66,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
             case LLVMConstantRecord::Integer: {
                 IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
 
-                constants.AddConstant(id, type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
+                constant = constantMap.AddConstant(id, type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
                     .value = LLVMBitStream::DecodeSigned(record.Op(0))
                 });
                 break;
@@ -70,7 +75,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
             case LLVMConstantRecord::Float: {
                 IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
 
-                constants.AddConstant(id, type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
+                constant = constantMap.AddConstant(id, type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
                     .value = record.OpBitCast<float>(0)
                 });
                 break;
@@ -87,10 +92,18 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
             case LLVMConstantRecord::Data: {
                 IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
 
-                // Emit as unexposed
-                constants.AddConstant(id, types.FindTypeOrAdd(Backend::IL::UnexposedType{}), Backend::IL::UnexposedConstant {});
+                constant = constantMap.AddConstant(id, types.FindTypeOrAdd(Backend::IL::UnexposedType{}), Backend::IL::UnexposedConstant {});
                 break;
             }
+        }
+
+        // Mapping
+        if (constant) {
+            // Set mapped value
+            table.idMap.SetMapped(anchor, constant->id);
+
+            // Append
+            constants.push_back(constant);
         }
     }
 }

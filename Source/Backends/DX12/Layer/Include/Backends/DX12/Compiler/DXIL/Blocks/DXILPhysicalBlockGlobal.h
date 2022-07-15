@@ -18,4 +18,17 @@ struct DXILPhysicalBlockGlobal : public DXILPhysicalBlockSection {
     /// Parse an alias
     /// \param record source record
     void ParseAlias(const struct LLVMRecord& record);
+
+    /// Get constant at offset
+    const IL::Constant* GetConstant(uint32_t id) {
+        if (id >= constants.size()) {
+            return nullptr;
+        }
+
+        return constants[id];
+    }
+
+private:
+    /// All constants
+    std::vector<const IL::Constant*> constants;
 };

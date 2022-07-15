@@ -32,6 +32,11 @@ namespace Backend::IL {
 
     inline const Type* ResultOf(Program& program, const LoadInstruction* instr) {
         const Type* addr = program.GetTypeMap().GetType(instr->address);
+        if (!addr) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
         return addr->As<PointerType>()->pointee;
     }
 
@@ -77,41 +82,81 @@ namespace Backend::IL {
 
     inline const Type* ResultOf(Program& program, const EqualInstruction* instr) {
         const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        if (!type) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
         return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const NotEqualInstruction* instr) {
         const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        if (!type) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
         return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const GreaterThanInstruction* instr) {
         const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        if (!type) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
         return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const GreaterThanEqualInstruction* instr) {
         const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        if (!type) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
         return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const LessThanInstruction* instr) {
         const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        if (!type) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
         return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const LessThanEqualInstruction* instr) {
         const Type* type = program.GetTypeMap().GetType(instr->lhs);
+        if (!type) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
         return ReplaceVectorizedType(program, type, program.GetTypeMap().FindTypeOrAdd(BoolType{}));
     }
 
     inline const Type* ResultOf(Program& program, const LoadTextureInstruction* instr) {
         const Type* texture = program.GetTypeMap().GetType(instr->texture);
+        if (!texture) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
         return texture->As<TextureType>()->sampledType;
     }
 
     inline const Type* ResultOf(Program& program, const LoadBufferInstruction* instr) {
         const Type* buffer = program.GetTypeMap().GetType(instr->buffer);
+        if (!buffer) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
         return buffer->As<BufferType>()->elementType;
     }
 
@@ -144,6 +189,10 @@ namespace Backend::IL {
 
     inline const Type* ResultOf(Program& program, const ResourceSizeInstruction* instr) {
         const Type* resource = program.GetTypeMap().GetType(instr->resource);
+        if (!resource) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
 
         switch (resource->kind) {
             default:

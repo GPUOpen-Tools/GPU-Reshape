@@ -34,16 +34,18 @@ void DXILPhysicalBlockSymbol::ParseSymTab(const LLVMBlock *block) {
                         valueAllocations.resize(value + 1);
                     }
 
+                    // Insert from operand 1
+                    valueStrings[value] = LLVMRecordStringView(record, 1);
+
                     // Debugging experience
 #ifndef NDEBUG
                     char buffer[256];
                     if (record.opCount < 256) {
                         record.FillOperands(buffer, 1);
                     }
-#endif // NDEBUG
 
-                    // Insert from operand 1
-                    valueStrings[value] = LLVMRecordStringView(record, 1);
+                    GetValueAllocation(value);
+#endif // NDEBUG
                 }
                 break;
             }

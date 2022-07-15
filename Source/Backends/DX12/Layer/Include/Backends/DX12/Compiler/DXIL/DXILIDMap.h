@@ -57,6 +57,11 @@ struct DXILIDMap {
         }
     }
 
+    /// Remap an allocated id
+    void SetMapped(uint32_t anchor, IL::ID id) {
+        map[anchor].mapped = id;
+    }
+
     /// Reserve forward allocations
     /// \param count number of allocations
     void ReserveForward(size_t count) {
@@ -98,6 +103,12 @@ struct DXILIDMap {
 
     /// Get a mapped value
     IL::ID GetMapped(uint64_t id) const {
+        return map[id].mapped;
+    }
+
+    /// Get a mapped value
+    IL::ID GetMappedCheckType(uint64_t id, DXILIDType type) const {
+        ASSERT(map[id].type == type, "Unexpected type");
         return map[id].mapped;
     }
 

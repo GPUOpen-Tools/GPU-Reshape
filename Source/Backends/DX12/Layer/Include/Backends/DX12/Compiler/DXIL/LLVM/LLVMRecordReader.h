@@ -13,6 +13,12 @@ struct LLVMRecordReader {
         return record.Op(offset++);
     }
 
+    /// Consume an operand
+    template<typename T>
+    T ConsumeOpAs() {
+        return record.OpAs<T>(offset++);
+    }
+
     /// Consume an operand or return a default value if not present
     uint64_t ConsumeOpDefault(uint64_t _default) {
         return !Any() ? _default : ConsumeOp();

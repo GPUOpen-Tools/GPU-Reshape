@@ -15,12 +15,51 @@
 
 // Backend
 #include <Backend/EnvironmentInfo.h>
+#include <Backend/IFeatureHost.h>
+#include <Backend/IFeature.h>
+
+// Common
+#include <Common/IComponentTemplate.h>
 
 // Detour
 #include <Detour/detours.h>
 
 /// Per-image device creation handle
 PFN_D3D12_CREATE_DEVICE D3D12CreateDeviceOriginal{nullptr};
+
+static bool PoolAndInstallFeatures(DeviceState* state) {
+    // Get the feature host
+    auto host = state->registry.Get<IFeatureHost>();
+    if (!host) {
+        return false;
+    }
+
+    // All templates
+    std::vector<ComRef<IComponentTemplate>> templates;
+
+    // Pool feature count
+    uint32_t featureCount;
+    host->Enumerate(&featureCount, nullptr);
+
+    // Pool features
+    templates.resize(featureCount);
+    host->Enumerate(&featureCount, templates.data());
+
+    // Install features
+    for (const ComRef<IComponentTemplate>& _template : templates) {
+        // Instantiate feature to this registry
+        auto feature = Cast<IFeature>(_template->Instantiate(&state->registry));
+
+        // Try to install feature
+        if (!feature->Install()) {
+            return false;
+        }
+
+        state->features.push_back(feature);
+    }
+
+    return true;
+}
 
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     IUnknown *pAdapter,
@@ -70,6 +109,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
         // Install the shader export host
         state->registry.AddNew<ShaderExportHost>();
+
+        // Install all features
+        ENSURE(PoolAndInstallFeatures(state), "Failed to install features");
 
         // Install the shader compiler
         auto shaderCompiler = state->registry.AddNew<ShaderCompiler>(state);

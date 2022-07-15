@@ -25,6 +25,28 @@ struct LLVMRecord {
         return ops[i];
     }
 
+    /// Get an operand, or return a default value
+    uint64_t OpOrDefault(uint32_t i, uint64_t _default) const {
+        if (i < opCount) {
+            return ops[i];
+        }
+        return _default;
+    }
+
+    /// Get an operand, or return a default value
+    bool TryOp(uint32_t i, uint64_t& out) const {
+        if (i < opCount) {
+            out = ops[i];
+            return true;
+        }
+        return false;
+    }
+
+    /// Check if the given operand index exists
+    bool IsValidOp(uint32_t i) const {
+        return i < opCount;
+    }
+
     /// Convert an operand to a type
     template<typename T>
     T OpAs(uint32_t i) const {

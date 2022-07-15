@@ -18,7 +18,7 @@ namespace Backend::IL {
     struct ConstantMap {
         using Container = std::vector<Constant*>;
         
-        ConstantMap(const Allocators &allocators, IdentifierMap& identifierMap) : allocators(allocators), blockAllocator(allocators), identifierMap(identifierMap) {
+        ConstantMap(const Allocators &allocators, IdentifierMap& identifierMap, TypeMap& typeMap) : allocators(allocators), blockAllocator(allocators), identifierMap(identifierMap), typeMap(typeMap) {
 
         }
 
@@ -26,7 +26,7 @@ namespace Backend::IL {
         ///   ! Parent lifetime tied to the copy
         /// \return the new constant map
         ConstantMap Copy() const {
-            ConstantMap copy(allocators, identifierMap);
+            ConstantMap copy(allocators, identifierMap, typeMap);
 
             // Copy the maps
             copy.idMap = idMap;
@@ -73,6 +73,7 @@ namespace Backend::IL {
             auto &constantPtr = sortMap[constant.SortKey(type)];
             if (!constantPtr) {
                 constantPtr = AllocateConstant<T>(id, type, constant);
+                idMap[id] = constantPtr;
             }
 
             return constantPtr;
@@ -94,6 +95,15 @@ namespace Backend::IL {
             return constant;
         }
 
+        /// Get the constant for a given id
+        /// \param id the id to be looked up
+        /// \return the resulting constant, may be nullptr
+        template<typename T>
+        const T *GetConstant(ID id) {
+            const Constant *constant = idMap[id];
+            return constant ? constant->Cast<T>() : nullptr;
+        }
+
         /// Iterator accessors
         Container::iterator begin() { return constants.begin(); }
         Container::reverse_iterator rbegin() { return constants.rbegin(); }
@@ -111,6 +121,8 @@ namespace Backend::IL {
         /// \return the allocated constant
         template<typename T>
         T *AllocateConstant(ID id, const typename T::Type* type, const T &decl) {
+            typeMap.SetType(id, type);
+
             auto *constant = blockAllocator.Allocate<T>(decl);
             constant->id = id;
             constant->type = type;
@@ -150,6 +162,9 @@ namespace Backend::IL {
 
         /// Identifiers
         IdentifierMap& identifierMap;
+
+        /// Types
+        TypeMap& typeMap;
 
         /// All maps
         ConstantMaps maps;

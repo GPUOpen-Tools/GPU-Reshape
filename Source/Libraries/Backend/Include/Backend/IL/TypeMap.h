@@ -81,15 +81,20 @@ namespace Backend::IL {
         /// \param type the resulting type
         void SetType(ID id, const Type *type) {
             ASSERT(id != InvalidID, "SetType must have a valid id");
+            ASSERT(type, "SetType must have a valid type");
             idMap[id] = type;
         }
 
         /// Get the type for a given id
         /// \param id the id to be looked up
         /// \return the resulting type, may be nullptr
-        const Type *GetType(ID id) {
-            const Type *type = idMap[id];
-            return type;
+        const Type *GetType(ID id) const {
+            auto it = idMap.find(id);
+            if (it == idMap.end()) {
+                return nullptr;
+            }
+
+            return it->second;
         }
 
         /// Iterator accessors

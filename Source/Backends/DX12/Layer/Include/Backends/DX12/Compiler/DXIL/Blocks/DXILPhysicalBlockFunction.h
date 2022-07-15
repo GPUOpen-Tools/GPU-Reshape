@@ -2,8 +2,8 @@
 
 // Layer
 #include <Backends/DX12/Compiler/DXIL/DXILFunctionDeclaration.h>
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordReader.h>
 #include "DXILPhysicalBlockSection.h"
-
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -34,7 +34,7 @@ private:
     /// \param called called function index
     /// \param declaration pulled declaration
     /// \return true if recognized intrinsic
-    bool TryParseIntrinsic(IL::BasicBlock* basicBlock, struct LLVMRecordReader& reader, uint32_t anchor, uint32_t called, const DXILFunctionDeclaration* declaration);
+    bool TryParseIntrinsic(IL::BasicBlock *basicBlock, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
 
 private:
     /// All function declarations

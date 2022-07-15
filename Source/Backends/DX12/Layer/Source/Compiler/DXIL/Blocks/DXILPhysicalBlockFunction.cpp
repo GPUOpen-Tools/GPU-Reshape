@@ -20,6 +20,9 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
     // Get function definition
     const DXILFunctionDeclaration& declaration = functions[linkedIndex];
 
+    // Get type map
+    Backend::IL::TypeMap& ilTypeMap = program.GetTypeMap();
+
     // Create function
     IL::Function *fn = program.GetFunctionList().AllocFunction();
 
@@ -88,6 +91,9 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 uint64_t lhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
                 uint64_t rhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
+                // Create type mapping
+                ilTypeMap.SetType(result, ilTypeMap.GetType(lhs));
+
                 auto binOp = static_cast<LLVMBinOp>(reader.ConsumeOp());
                 switch (binOp) {
                     default: {
@@ -99,7 +105,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::AddInstruction instr{};
                         instr.opCode = IL::OpCode::Add;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -109,7 +115,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::SubInstruction instr{};
                         instr.opCode = IL::OpCode::Sub;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -119,7 +125,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::MulInstruction instr{};
                         instr.opCode = IL::OpCode::Mul;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -130,7 +136,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::DivInstruction instr{};
                         instr.opCode = IL::OpCode::Div;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -141,7 +147,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::RemInstruction instr{};
                         instr.opCode = IL::OpCode::Rem;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -151,7 +157,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::BitShiftLeftInstruction instr{};
                         instr.opCode = IL::OpCode::BitShiftLeft;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.value = lhs;
                         instr.shift = rhs;
                         basicBlock->Append(instr);
@@ -162,7 +168,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::BitShiftRightInstruction instr{};
                         instr.opCode = IL::OpCode::BitShiftRight;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.value = lhs;
                         instr.shift = rhs;
                         basicBlock->Append(instr);
@@ -172,7 +178,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::AndInstruction instr{};
                         instr.opCode = IL::OpCode::And;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -182,7 +188,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::OrInstruction instr{};
                         instr.opCode = IL::OpCode::Or;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -192,7 +198,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::BitXOrInstruction instr{};
                         instr.opCode = IL::OpCode::BitXOr;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -204,7 +210,8 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
             case LLVMFunctionRecord::InstCast: {
                 uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
-                uint64_t type = reader.ConsumeOp();
+                // Create type mapping
+                ilTypeMap.SetType(result, table.type.typeMap.GetType(reader.ConsumeOp()));
 
                 auto castOp = static_cast<LLVMCastOp>(reader.ConsumeOp());
                 switch (castOp) {
@@ -218,7 +225,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::TruncInstruction instr{};
                         instr.opCode = IL::OpCode::Trunc;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.value = value;
                         basicBlock->Append(instr);
                         break;
@@ -233,7 +240,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::UnexposedInstruction instr{};
                         instr.opCode = IL::OpCode::Unexposed;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.backendOpCode = record.id;
                         basicBlock->Append(instr);
                         break;
@@ -244,7 +251,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::FloatToIntInstruction instr{};
                         instr.opCode = IL::OpCode::FloatToInt;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.value = value;
                         basicBlock->Append(instr);
                         break;
@@ -255,7 +262,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::IntToFloatInstruction instr{};
                         instr.opCode = IL::OpCode::IntToFloat;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.value = value;
                         basicBlock->Append(instr);
                         break;
@@ -265,7 +272,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::BitCastInstruction instr{};
                         instr.opCode = IL::OpCode::BitCast;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.value = value;
                         basicBlock->Append(instr);
                         break;
@@ -284,11 +291,14 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
             case LLVMFunctionRecord::InstInsertVal:
             case LLVMFunctionRecord::InstVSelect:
             case LLVMFunctionRecord::InstInBoundsGEP: {
+                // Create type mapping
+                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::UnexposedType{}));
+
                 // Emit as unexposed
                 IL::UnexposedInstruction instr{};
                 instr.opCode = IL::OpCode::Unexposed;
                 instr.result = result;
-                instr.source = IL::Source::Invalid();
+                instr.source = IL::Source::Code(0);
                 instr.backendOpCode = record.id;
                 basicBlock->Append(instr);
                 break;
@@ -296,11 +306,14 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
 
                 /* Inbuilt vector */
             case LLVMFunctionRecord::InstShuffleVec: {
+                // Create type mapping
+                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::UnexposedType{}));
+
                 // Emit as unexposed
                 IL::UnexposedInstruction instr{};
                 instr.opCode = IL::OpCode::Unexposed;
                 instr.result = result;
-                instr.source = IL::Source::Invalid();
+                instr.source = IL::Source::Code(0);
                 instr.backendOpCode = record.id;
                 basicBlock->Append(instr);
                 break;
@@ -310,6 +323,9 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
             case LLVMFunctionRecord::InstCmp2: {
                 uint64_t lhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
                 uint64_t rhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                // Create type mapping
+                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::BoolType{}));
 
                 auto cmpOp = static_cast<LLVMCmpOp>(reader.ConsumeOp());
                 switch (cmpOp) {
@@ -328,7 +344,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::UnexposedInstruction instr{};
                         instr.opCode = IL::OpCode::Unexposed;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.backendOpCode = record.id;
                         basicBlock->Append(instr);
                         break;
@@ -341,7 +357,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::NotEqualInstruction instr{};
                         instr.opCode = IL::OpCode::NotEqual;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -355,7 +371,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::EqualInstruction instr{};
                         instr.opCode = IL::OpCode::Equal;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -370,7 +386,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::GreaterThanInstruction instr{};
                         instr.opCode = IL::OpCode::GreaterThan;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -385,7 +401,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::LessThanInstruction instr{};
                         instr.opCode = IL::OpCode::LessThan;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -400,7 +416,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::GreaterThanEqualInstruction instr{};
                         instr.opCode = IL::OpCode::GreaterThanEqual;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -415,7 +431,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                         IL::LessThanEqualInstruction instr{};
                         instr.opCode = IL::OpCode::LessThanEqual;
                         instr.result = result;
-                        instr.source = IL::Source::Invalid();
+                        instr.source = IL::Source::Code(0);
                         instr.lhs = lhs;
                         instr.rhs = rhs;
                         basicBlock->Append(instr);
@@ -429,7 +445,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 IL::ReturnInstruction instr{};
                 instr.opCode = IL::OpCode::Return;
                 instr.result = result;
-                instr.source = IL::Source::Invalid();
+                instr.source = IL::Source::Code(0);
                 instr.value = reader.ConsumeOpDefault(IL::InvalidID);
 
                 if (instr.value != IL::InvalidID) {
@@ -447,7 +463,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                     IL::BranchConditionalInstruction instr{};
                     instr.opCode = IL::OpCode::BranchConditional;
                     instr.result = result;
-                    instr.source = IL::Source::Invalid();
+                    instr.source = IL::Source::Code(0);
                     instr.pass = pass;
                     instr.fail = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
                     instr.cond = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
@@ -456,7 +472,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                     IL::BranchInstruction instr{};
                     instr.opCode = IL::OpCode::Branch;
                     instr.result = result;
-                    instr.source = IL::Source::Invalid();
+                    instr.source = IL::Source::Code(0);
                     instr.branch = pass;
                     basicBlock->Append(instr);
                 }
@@ -479,7 +495,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 auto *instr = ALLOCA_SIZE(IL::SwitchInstruction, IL::SwitchInstruction::GetSize(caseCount));
                 instr->opCode = IL::OpCode::Switch;
                 instr->result = IL::InvalidID;
-                instr->source = IL::Source::Invalid();
+                instr->source = IL::Source::Code(0);
                 instr->value = value;
                 instr->_default = _default;
                 instr->controlFlow = {};
@@ -502,14 +518,15 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 IL::UnexposedInstruction instr{};
                 instr.opCode = IL::OpCode::Unexposed;
                 instr.result = result;
-                instr.source = IL::Source::Invalid();
+                instr.source = IL::Source::Code(0);
                 instr.backendOpCode = record.id;
                 basicBlock->Append(instr);
                 break;
             }
 
             case LLVMFunctionRecord::InstPhi: {
-                reader.ConsumeOp();
+                // Create type mapping
+                ilTypeMap.SetType(result, table.type.typeMap.GetType(reader.ConsumeOp()));
 
                 // Get remaining count
                 uint64_t remaining = reader.Remaining();
@@ -522,7 +539,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 auto *instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(valueCount));
                 instr->opCode = IL::OpCode::Phi;
                 instr->result = result;
-                instr->source = IL::Source::Invalid();
+                instr->source = IL::Source::Code(0);
                 instr->values.count = valueCount;
 
                 // Fill cases
@@ -547,7 +564,11 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstAlloca: {
-                uint64_t type = reader.ConsumeOp();
+                const Backend::IL::Type* type = table.type.typeMap.GetType(reader.ConsumeOp());
+
+                // Create type mapping
+                ilTypeMap.SetType(result, type);
+
                 uint64_t sizeType = reader.ConsumeOp();
                 uint64_t size = reader.ConsumeOp();
 
@@ -555,19 +576,31 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 IL::AllocaInstruction instr{};
                 instr.opCode = IL::OpCode::Alloca;
                 instr.result = result;
-                instr.source = IL::Source::Invalid();
-                instr.type = type;
+                instr.source = IL::Source::Code(0);
+                instr.type = type->id;
                 basicBlock->Append(instr);
                 break;
             }
 
             case LLVMFunctionRecord::InstLoad: {
+                uint32_t address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                // Get address type
+                const Backend::IL::Type* type = ilTypeMap.GetType(address);
+
+                // Set as pointee type
+                if (auto pointer = type->Cast<Backend::IL::PointerType>()) {
+                    ilTypeMap.SetType(result, pointer->pointee);
+                } else {
+                    ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::UnexposedType {}));
+                }
+
                 // Append
                 IL::LoadInstruction instr{};
                 instr.opCode = IL::OpCode::Load;
                 instr.result = result;
-                instr.source = IL::Source::Invalid();
-                instr.address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                instr.source = IL::Source::Code(0);
+                instr.address = address;
                 basicBlock->Append(instr);
                 break;
             }
@@ -577,7 +610,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 IL::StoreInstruction instr{};
                 instr.opCode = IL::OpCode::Store;
                 instr.result = result;
-                instr.source = IL::Source::Invalid();
+                instr.source = IL::Source::Code(0);
                 instr.address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
                 // Type
@@ -592,7 +625,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 IL::StoreInstruction instr{};
                 instr.opCode = IL::OpCode::Store;
                 instr.result = result;
-                instr.source = IL::Source::Invalid();
+                instr.source = IL::Source::Code(0);
                 instr.address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
                 // Type
@@ -629,15 +662,18 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 // Create mapping if present
                 if (!callDecl->type->returnType->Is<Backend::IL::VoidType>()) {
                     result = table.idMap.AllocMappedID(DXILIDType::Instruction);
+
+                    // Set as return type
+                    ilTypeMap.SetType(result, callDecl->type->returnType);
                 }
 
                 // Try intrinsic
-                if (!TryParseIntrinsic(basicBlock, reader, anchor, called, callDecl)) {
+                if (!TryParseIntrinsic(basicBlock, reader, anchor, called, result, callDecl)) {
                     // Unknown, emit as unexposed
                     IL::UnexposedInstruction instr{};
                     instr.opCode = IL::OpCode::Unexposed;
                     instr.result = result;
-                    instr.source = IL::Source::Invalid();
+                    instr.source = IL::Source::Code(0);
                     instr.backendOpCode = record.id;
                     instr.symbol = table.symbol.GetValueAllocation(called);
                     basicBlock->Append(instr);
@@ -779,7 +815,7 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration
     return &functions[table.idMap.GetDataIndex(id)];
 }
 
-bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock* basicBlock, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, const DXILFunctionDeclaration* declaration) {
+bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration) {
     LLVMRecordStringView view = table.symbol.GetValueString(called);
 
     // Check hash
@@ -790,7 +826,40 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock* basicBlock, LL
         }
 
         /*
-         * LLVM Specification
+         * DXIL Specification
+         *   declare %dx.types.Handle @dx.op.createHandle(
+         *       i32,                  ; opcode
+         *       i8,                   ; resource class: SRV=0, UAV=1, CBV=2, Sampler=3
+         *       i32,                  ; resource range ID (constant)
+         *       i32,                  ; index into the range
+         *       i1)                   ; non-uniform resource index: false or true
+         */
+
+        case CRC64("dx.op.createHandle"): {
+            if (view != "dx.op.createHandle") {
+                return false;
+            }
+
+            // Resource class
+            auto _class = static_cast<DXILShaderResourceClass>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value);
+
+            // Binding
+            uint64_t id = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            uint64_t rangeIndex = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+
+            // Divergent?
+            auto isNonUniform = static_cast<bool>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value);
+
+            // Get the actual handle type
+            auto type = table.metadata.GetHandleType(id);
+
+            // Set as pointee type
+            program.GetTypeMap().SetType(result, type);
+            return true;
+        }
+
+        /*
+         * DXIL Specification
          *   overloads: SM5.1: f16|f32|i16|i32,  SM6.0: f16|f32|f64|i8|i16|i32|i64
          *   declare void @dx.op.storeOutput.f32(
          *       i32,                            ; opcode
@@ -814,11 +883,40 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock* basicBlock, LL
             IL::StoreOutputInstruction instr{};
             instr.opCode = IL::OpCode::StoreOutput;
             instr.result = IL::InvalidID;
-            instr.source = IL::Source::Invalid();
+            instr.source = IL::Source::Code(0);
             instr.index = outputID;
             instr.row = row;
             instr.column = column;
             instr.value = value;
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        /*
+         * DXIL Specification
+         *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
+         *   ; returns: status
+         *   declare %dx.types.ResRet.f32 @dx.op.bufferLoad.f32(
+         *       i32,                  ; opcode
+         *       %dx.types.Handle,     ; resource handle
+         *       i32,                  ; coordinate c0
+         */
+
+        case CRC64("dx.op.bufferLoad.f32"): {
+            if (view != "dx.op.bufferLoad.f32") {
+                return false;
+            }
+
+            uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t coordinate = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+            // Unknown, emit as unexposed
+            IL::LoadBufferInstruction instr{};
+            instr.opCode = IL::OpCode::LoadBuffer;
+            instr.result = result;
+            instr.source = IL::Source::Code(0);
+            instr.buffer = resource;
+            instr.index = coordinate;
             basicBlock->Append(instr);
             return true;
         }

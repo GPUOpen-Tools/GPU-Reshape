@@ -16,7 +16,7 @@ namespace IL {
         Program(const Allocators &allocators, uint64_t shaderGUID) :
             allocators(allocators),
             typeMap(allocators, identifierMap),
-            constants(allocators, identifierMap),
+            constants(allocators, identifierMap, typeMap),
             functions(allocators, identifierMap),
             variables(allocators, identifierMap),
             shaderGUID(shaderGUID) {
