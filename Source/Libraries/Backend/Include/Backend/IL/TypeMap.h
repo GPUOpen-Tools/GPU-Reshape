@@ -31,6 +31,7 @@ namespace Backend::IL {
             // Copy the maps
             out.idMap = idMap;
             out.maps = maps;
+            out.types = types;
         }
 
         /// Find a type from his map

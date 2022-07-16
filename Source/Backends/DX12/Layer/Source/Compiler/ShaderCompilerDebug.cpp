@@ -22,9 +22,12 @@ ShaderCompilerDebug::ShaderCompilerDebug() {
     // Append application
     path /= GetCurrentExecutableName();
 
-    // Clear the sub-tree
-    std::error_code ignored;
-    std::filesystem::remove_all(path, ignored);
+    // Clear the sub-tree once per process
+    if (static bool once = false; !once) {
+        std::error_code ignored;
+        std::filesystem::remove_all(path, ignored);
+        once = true;
+    }
 
     // Ensure the tree exists
     CreateDirectoryTree(path);

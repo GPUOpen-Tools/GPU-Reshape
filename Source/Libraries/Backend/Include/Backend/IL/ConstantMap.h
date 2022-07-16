@@ -31,6 +31,7 @@ namespace Backend::IL {
             // Copy the maps
             copy.idMap = idMap;
             copy.maps = maps;
+            copy.constants = constants;
 
             return copy;
         }

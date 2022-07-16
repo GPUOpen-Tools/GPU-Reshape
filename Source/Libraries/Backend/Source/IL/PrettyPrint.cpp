@@ -633,6 +633,7 @@ void IL::PrettyPrint(const Backend::IL::TypeMap &map, PrettyPrintContext out) {
 
                 line << " samplerMode:";
                 PrettyPrint(buf->samplerMode, out);
+                break;
             }
             case Backend::IL::TypeKind::Function: {
                 auto fn = type->As<Backend::IL::FunctionType>();

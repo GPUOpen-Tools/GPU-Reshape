@@ -47,6 +47,13 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
     // Allocate basic block
     IL::BasicBlock *basicBlock = fn->GetBasicBlocks().AllocBlock();
 
+    // Local block mappings
+    TrivialStackVector<IL::BasicBlock*, 32> blockMapping;
+    blockMapping.Add(basicBlock);
+
+    // Current block index
+    uint32_t blockIndex{0};
+
     // Reserve forward allocations
     table.idMap.ReserveForward(block->records.Size());
 
@@ -85,6 +92,13 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::DeclareBlocks: {
+                const uint32_t blockCount = reader.ConsumeOp();
+
+                // Allocate all blocks (except entry)
+                for (uint32_t i = 0; i < blockCount - 1; i++) {
+                    IL::ID id = program.GetIdentifierMap().AllocID();
+                    blockMapping.Add(fn->GetBasicBlocks().AllocBlock(id));
+                }
                 break;
             }
             case LLVMFunctionRecord::InstBinOp: {
@@ -440,6 +454,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 }
                 break;
             }
+
             case LLVMFunctionRecord::InstRet: {
                 // Emit as unexposed
                 IL::ReturnInstruction instr{};
@@ -448,15 +463,23 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 instr.source = IL::Source::Code(0);
                 instr.value = reader.ConsumeOpDefault(IL::InvalidID);
 
+                // Mapping
                 if (instr.value != IL::InvalidID) {
                     instr.value = table.idMap.GetMappedRelative(anchor, instr.value);
                 }
 
                 basicBlock->Append(instr);
+
+                // Advance block, otherwise assume last record
+                if (++blockIndex < blockMapping.Size()) {
+                    basicBlock = blockMapping[blockIndex];
+                } else {
+                    basicBlock = nullptr;
+                }
                 break;
             }
             case LLVMFunctionRecord::InstBr: {
-                uint64_t pass = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint64_t pass = blockMapping[reader.ConsumeOp()]->GetID();
 
                 // Conditional?
                 if (reader.Any()) {
@@ -465,7 +488,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                     instr.result = result;
                     instr.source = IL::Source::Code(0);
                     instr.pass = pass;
-                    instr.fail = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                    instr.fail = blockMapping[reader.ConsumeOp()]->GetID();
                     instr.cond = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
                     basicBlock->Append(instr);
                 } else {
@@ -476,13 +499,20 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                     instr.branch = pass;
                     basicBlock->Append(instr);
                 }
+
+                // Advance block, otherwise assume last record
+                if (++blockIndex < blockMapping.Size()) {
+                    basicBlock = blockMapping[blockIndex];
+                } else {
+                    basicBlock = nullptr;
+                }
                 break;
             }
             case LLVMFunctionRecord::InstSwitch: {
                 reader.ConsumeOp();
 
                 uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                uint64_t _default = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint64_t _default = blockMapping[reader.ConsumeOp()]->GetID();
 
                 // Get remaining count
                 uint64_t remaining = reader.Remaining();
@@ -505,11 +535,18 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 for (uint32_t i = 0; i < caseCount; i++) {
                     IL::SwitchCase _case;
                     _case.literal = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                    _case.branch = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                    _case.branch = blockMapping[reader.ConsumeOp()]->GetID();
                     instr->cases[i] = _case;
                 }
 
                 basicBlock->Append(instr);
+
+                // Advance block, otherwise assume last record
+                if (++blockIndex < blockMapping.Size()) {
+                    basicBlock = blockMapping[blockIndex];
+                } else {
+                    basicBlock = nullptr;
+                }
                 break;
             }
 
@@ -521,6 +558,13 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                 instr.source = IL::Source::Code(0);
                 instr.backendOpCode = record.id;
                 basicBlock->Append(instr);
+
+                // Advance block, otherwise assume last record
+                if (++blockIndex < blockMapping.Size()) {
+                    basicBlock = blockMapping[blockIndex];
+                } else {
+                    basicBlock = nullptr;
+                }
                 break;
             }
 
@@ -690,6 +734,9 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
             }
         }
     }
+
+    // Validation
+    ASSERT(blockIndex == blockMapping.Size(), "Terminator to block count mismatch");
 }
 
 bool DXILPhysicalBlockFunction::HasResult(const struct LLVMRecord &record) {
