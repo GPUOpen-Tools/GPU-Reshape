@@ -1,5 +1,8 @@
 #pragma once
 
+// Common
+#include <Common/Assert.h>
+
 // Std
 #include <string_view>
 #include <vector>
@@ -36,7 +39,7 @@ private:
 
         /// Equality
         bool operator==(const std::string_view& rhs) const {
-            return str == rhs;
+            return (type == TokenType::ID || type == TokenType::String || type == TokenType::Symbol) && str == rhs;
         }
 
         /// Line of this token
