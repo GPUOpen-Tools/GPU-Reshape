@@ -14,6 +14,7 @@ option(ENABLE_UIX            "Enables UIX building (Experimental)" OFF)
 # Developmental options
 option(ENABLE_DXIL_DUMP      "Enables DXIL dumping on shader builds" OFF)
 option(ENABLE_ASAN           "Enables ASAN" OFF)
+option(ENABLE_RELEASE_DEBUG  "Enables debug information in release" ON)
 
 # Ensure 64 bit
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -47,6 +48,23 @@ if (${ENABLE_UIX})
 
     # .NET 5.0 unfortunately has several issues with cmake
     set(CMAKE_DOTNET_TARGET_FRAMEWORK_VERSION  "v4.7.2")
+endif()
+
+# Release configuration
+if (CMAKE_BUILD_TYPE MATCHES "Release")
+    if (MSVC)
+        # Ensure executables share the same runtimes
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MD")
+
+        # Debug info?
+        if (ENABLE_RELEASE_DEBUG)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Z7 /DEBUG")
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+            set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG")
+        endif()
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+    endif()
 endif()
 
 # Set all outputs to Bin/Config
