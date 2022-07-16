@@ -23,9 +23,21 @@ public:
     /// \param decl the IL type declaration
     /// \return the new type
     template<typename T>
-    const Backend::IL::Type* AddType(uint32_t index, const T& decl) {
+    const T* AddType(uint32_t index, const T& decl) {
         // LLVM types are indexed separately from global identifiers, so always allocate
-        const Backend::IL::Type* type = programMap.AddType<T>(identifierMap.AllocID(), decl);
+        const T* type = programMap.AddType<T>(identifierMap.AllocID(), decl);
+        indexLookup.at(index) = type;
+        return type;
+    }
+
+    /// Add a type
+    /// \param index the linear block index
+    /// \param decl the IL type declaration
+    /// \return the new type
+    template<typename T>
+    const T* AddUnsortedType(uint32_t index, const T& decl) {
+        // LLVM types are indexed separately from global identifiers, so always allocate
+        const T* type = programMap.AddUnsortedType<T>(identifierMap.AllocID(), decl);
         indexLookup.at(index) = type;
         return type;
     }

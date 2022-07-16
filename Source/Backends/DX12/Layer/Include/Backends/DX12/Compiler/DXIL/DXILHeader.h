@@ -53,6 +53,33 @@ enum class DXILShaderResourceShape {
     FeedbackTexture2DArray = 18
 };
 
+enum class DXILUAVTag {
+    ElementType = 0,
+    ByteStride = 1
+};
+
+enum class ComponentType : uint32_t {
+    None = 0,
+    Int1 = 1,
+    Int16 = 2,
+    UInt16 = 3,
+    Int32 = 4,
+    UInt32 = 5,
+    Int64 = 6,
+    UInt64 = 7,
+    FP16 = 8,
+    FP32 = 9,
+    FP64 = 10,
+    SNormFP16 = 11,
+    UNormFP16 = 12,
+    SNormFP32 = 13,
+    UNormFP32 = 14,
+    SNormFP64 = 15,
+    UNormFP64 = 16,
+    PackedS8x32 = 17,
+    PackedU8x32 = 18
+};
+
 inline bool IsBuffer(DXILShaderResourceShape shape) {
     switch (shape) {
         default:

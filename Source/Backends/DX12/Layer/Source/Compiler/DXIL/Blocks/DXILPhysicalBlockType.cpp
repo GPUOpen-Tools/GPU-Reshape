@@ -2,6 +2,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockScan.h>
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
+#include <Backends/DX12/Compiler/DXIL/DXILType.h>
 
 /*
  * LLVM DXIL Specification
@@ -122,19 +123,27 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 break;
             }
             case LLVMTypeRecord::Label: {
-                typeMap.AddType(typeAlloc++, Backend::IL::UnexposedType{});
+                typeMap.AddUnsortedType(typeAlloc++, DXILType {
+                    .type = LLVMTypeRecord::Label
+                });
                 break;
             }
             case LLVMTypeRecord::Opaque: {
-                typeMap.AddType(typeAlloc++, Backend::IL::UnexposedType{});
+                typeMap.AddUnsortedType(typeAlloc++, DXILType {
+                    .type = LLVMTypeRecord::Opaque
+                });
                 break;
             }
             case LLVMTypeRecord::MetaData: {
-                typeMap.AddType(typeAlloc++, Backend::IL::UnexposedType{});
+                typeMap.AddUnsortedType(typeAlloc++, DXILType {
+                    .type = LLVMTypeRecord::MetaData
+                });
                 break;
             }
             case LLVMTypeRecord::StructAnon: {
-                typeMap.AddType(typeAlloc++, Backend::IL::UnexposedType{});
+                typeMap.AddUnsortedType(typeAlloc++, DXILType {
+                    .type = LLVMTypeRecord::StructAnon
+                });
                 break;
             }
             case LLVMTypeRecord::StructName: {
@@ -142,7 +151,9 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 break;
             }
             case LLVMTypeRecord::StructNamed: {
-                typeMap.AddType(typeAlloc++, Backend::IL::UnexposedType{});
+                typeMap.AddUnsortedType(typeAlloc++, DXILType {
+                    .type = LLVMTypeRecord::StructNamed
+                });
                 break;
             }
             case LLVMTypeRecord::Function: {

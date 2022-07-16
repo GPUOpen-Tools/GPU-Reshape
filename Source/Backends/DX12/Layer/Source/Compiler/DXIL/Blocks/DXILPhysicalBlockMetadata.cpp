@@ -118,28 +118,28 @@ void DXILPhysicalBlockMetadata::ParseResourceList(const struct LLVMBlock *block,
         entry.record = &resource;
 
         // Get handle i
-        uint64_t resourceID = GetOperandConstant<IL::IntConstant>(resource.Op(0))->value;
+        uint64_t resourceID = GetOperandU32Constant(resource.Op(0));
 
         // Undef constant
         const IL::Constant *constantPointer = GetOperandConstant(resource.Op(1));
 
         // TODO: How on earth are the names stored?
-        // uint64_t name = GetOperandConstant<IL::IntConstant>(resource.Op(2))->value;
+        // uint64_t name = GetOperandU32Constant(resource.Op(2))->value;
 
         // Resource binding
-        uint64_t bindSpace = GetOperandConstant<IL::IntConstant>(resource.Op(3))->value;
-        uint64_t rsBase = GetOperandConstant<IL::IntConstant>(resource.Op(4))->value;
-        uint64_t rsRange = GetOperandConstant<IL::IntConstant>(resource.Op(5))->value;
+        uint64_t bindSpace = GetOperandU32Constant(resource.Op(3));
+        uint64_t rsBase = GetOperandU32Constant(resource.Op(4));
+        uint64_t rsRange = GetOperandU32Constant(resource.Op(5));
 
         // Handle based on type
         switch (entry._class) {
             default:
-                ASSERT(false, "Invalid resource type");
+            ASSERT(false, "Invalid resource type");
                 break;
             case DXILShaderResourceClass::SRVs: {
                 // Unique ops
                 auto shape = resource.OpAs<DXILShaderResourceShape>(6);
-                uint64_t sampleCount = GetOperandConstant<IL::IntConstant>(resource.Op(7))->value;
+                uint64_t sampleCount = GetOperandU32Constant(resource.Op(7));
 
                 // Get extended metadata
                 Metadata &extendedMetadata = metadata[resource.Op(8) - 1];
@@ -159,37 +159,104 @@ void DXILPhysicalBlockMetadata::ParseResourceList(const struct LLVMBlock *block,
             }
             case DXILShaderResourceClass::UAVs: {
                 // Unique ops
-                auto shape = static_cast<DXILShaderResourceShape>(GetOperandConstant<IL::IntConstant>(resource.Op(6))->value);
-                uint64_t globallyCoherent = GetOperandConstant<IL::IntConstant>(resource.Op(7))->value;
-                uint64_t counter = GetOperandConstant<IL::IntConstant>(resource.Op(8))->value;
-                uint64_t rasterizerOrderedView = GetOperandConstant<IL::IntConstant>(resource.Op(9))->value;
+                auto shape = static_cast<DXILShaderResourceShape>(GetOperandU32Constant(resource.Op(6)));
+                uint64_t globallyCoherent = GetOperandU32Constant(resource.Op(7));
+                uint64_t counter = GetOperandU32Constant(resource.Op(8));
+                uint64_t rasterizerOrderedView = GetOperandU32Constant(resource.Op(9));
 
                 // Get extended metadata
                 Metadata &extendedMetadata = metadata[resource.Op(10) - 1];
                 ASSERT(extendedMetadata.record->opCount == 2, "Expected 2 operands for extended metadata");
 
+                // Optional element type
+                const Backend::IL::Type* elementType{nullptr};
+
+                // Optional texel format
+                Backend::IL::Format format{Backend::IL::Format::None};
+
+                // Parse tags
+                for (uint32_t kv = 0; kv < extendedMetadata.record->opCount; kv += 2) {
+                    switch (static_cast<DXILUAVTag>(GetOperandU32Constant(resource.Op(kv + 0)))) {
+                        case DXILUAVTag::ElementType: {
+                            // Get type
+                            auto componentType = GetOperandU32Constant<ComponentType>(extendedMetadata.record->Op(kv + 1));
+
+                            // Get type and format
+                            elementType = GetComponentType(componentType);
+                            format = GetComponentFormat(componentType);
+                            break;
+                        }
+                        case DXILUAVTag::ByteStride: {
+                            break;
+                        }
+                    }
+                }
+
                 // Buffer shape?
                 if (IsBuffer(shape)) {
                     Backend::IL::BufferType buffer{};
                     buffer.samplerMode = Backend::IL::ResourceSamplerMode::Writable;
+                    buffer.elementType = elementType;
+                    buffer.texelType = format;
                     entry.type = program.GetTypeMap().FindTypeOrAdd(buffer);
                 } else {
                     Backend::IL::TextureType texture{};
                     texture.samplerMode = Backend::IL::ResourceSamplerMode::Writable;
+                    texture.sampledType = elementType;
+                    texture.format = format;
+
+                    // Translate shape
+                    switch (shape) {
+                        default:
+                            texture.dimension = Backend::IL::TextureDimension::Unexposed;
+                            break;
+                        case DXILShaderResourceShape::Invalid:
+                            break;
+                        case DXILShaderResourceShape::Texture1D:
+                            texture.dimension = Backend::IL::TextureDimension::Texture1D;
+                            break;
+                        case DXILShaderResourceShape::Texture2D:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2D;
+                            break;
+                        case DXILShaderResourceShape::Texture2DMS:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2D;
+                            texture.multisampled = true;
+                            break;
+                        case DXILShaderResourceShape::Texture3D:
+                            texture.dimension = Backend::IL::TextureDimension::Texture3D;
+                            break;
+                        case DXILShaderResourceShape::TextureCube:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2DCube;
+                            break;
+                        case DXILShaderResourceShape::Texture1DArray:
+                            texture.dimension = Backend::IL::TextureDimension::Texture1DArray;
+                            break;
+                        case DXILShaderResourceShape::Texture2DArray:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                            break;
+                        case DXILShaderResourceShape::Texture2DMSArray:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                            texture.multisampled = true;
+                            break;
+                        case DXILShaderResourceShape::TextureCubeArray:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2DCubeArray;
+                            break;
+                    }
+
                     entry.type = program.GetTypeMap().FindTypeOrAdd(texture);
                 }
                 break;
             }
             case DXILShaderResourceClass::CBVs: {
                 // Unique ops
-                uint64_t byteSize = GetOperandConstant<IL::IntConstant>(resource.Op(6))->value;
-                uint64_t extendedMetadata = GetOperandConstant<IL::IntConstant>(resource.Op(7))->value;
+                uint64_t byteSize = GetOperandU32Constant(resource.Op(6));
+                uint64_t extendedMetadata = GetOperandU32Constant(resource.Op(7));
                 break;
             }
             case DXILShaderResourceClass::Samplers: {
                 // Unique ops
-                uint64_t samplerType = GetOperandConstant<IL::IntConstant>(resource.Op(6))->value;
-                uint64_t extendedMetadata = GetOperandConstant<IL::IntConstant>(resource.Op(7))->value;
+                uint64_t samplerType = GetOperandU32Constant(resource.Op(6));
+                uint64_t extendedMetadata = GetOperandU32Constant(resource.Op(7));
                 break;
             }
         }
@@ -211,4 +278,104 @@ const Backend::IL::Type *DXILPhysicalBlockMetadata::GetHandleType(uint32_t handl
 
     // Get entry
     return handleEntries[handleID].type;
+}
+
+const Backend::IL::Type *DXILPhysicalBlockMetadata::GetComponentType(ComponentType type) {
+    switch (type) {
+        default:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::UnexposedType{});
+        case ComponentType::Int16:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+                .bitWidth = 16,
+                .signedness = true
+            });
+        case ComponentType::UInt16:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+                .bitWidth = 16,
+                .signedness = false
+            });
+        case ComponentType::Int32:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+                .bitWidth = 32,
+                .signedness = true
+            });
+        case ComponentType::UInt32:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+                .bitWidth = 32,
+                .signedness = false
+            });
+        case ComponentType::Int64:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+                .bitWidth = 64,
+                .signedness = true
+            });
+        case ComponentType::UInt64:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{
+                .bitWidth = 64,
+                .signedness = false
+            });
+        case ComponentType::FP16:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+                .bitWidth = 16,
+            });
+        case ComponentType::FP32:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+                .bitWidth = 32,
+            });
+        case ComponentType::FP64:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+                .bitWidth = 64,
+            });
+        case ComponentType::UNormFP16:
+        case ComponentType::SNormFP32:
+        case ComponentType::UNormFP32:
+        case ComponentType::SNormFP64:
+        case ComponentType::UNormFP64:
+        case ComponentType::SNormFP16:
+            return program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{
+                .bitWidth = 16,
+            });
+            break;
+    }
+}
+
+Backend::IL::Format DXILPhysicalBlockMetadata::GetComponentFormat(ComponentType type) {
+    switch (type) {
+        case ComponentType::None:
+            return Backend::IL::Format::None;
+        case ComponentType::Int16:
+            return Backend::IL::Format::R16Int;
+        case ComponentType::UInt16:
+            return Backend::IL::Format::R16UInt;
+        case ComponentType::Int32:
+            return Backend::IL::Format::R32Int;
+        case ComponentType::UInt32:
+            return Backend::IL::Format::R32UInt;
+        case ComponentType::Int64:
+            return Backend::IL::Format::Unexposed;
+        case ComponentType::UInt64:
+            return Backend::IL::Format::Unexposed;
+        case ComponentType::FP16:
+            return Backend::IL::Format::R16Float;
+        case ComponentType::FP32:
+            return Backend::IL::Format::R32Float;
+        case ComponentType::FP64:
+            return Backend::IL::Format::Unexposed;
+        case ComponentType::SNormFP16:
+            return Backend::IL::Format::R16Snorm;
+        case ComponentType::UNormFP16:
+            return Backend::IL::Format::R16Unorm;
+        case ComponentType::SNormFP32:
+            return Backend::IL::Format::R32Snorm;
+        case ComponentType::UNormFP32:
+            return Backend::IL::Format::R32Unorm;
+        case ComponentType::SNormFP64:
+            return Backend::IL::Format::Unexposed;
+        case ComponentType::UNormFP64:
+            return Backend::IL::Format::Unexposed;
+        case ComponentType::PackedS8x32:
+            return Backend::IL::Format::Unexposed;
+        case ComponentType::PackedU8x32:
+            return Backend::IL::Format::Unexposed;
+    }
 }

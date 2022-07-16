@@ -65,7 +65,7 @@ namespace Backend::IL {
         /// Add a type to this map, must be unique
         /// \param type the type to be added
         template<typename T>
-        const Type* AddType(ID id, const T &type) {
+        const T* AddType(ID id, const T &type) {
             auto&& sortMap = GetSortMap<T>();
 
             auto &typePtr = sortMap[type.SortKey()];
@@ -74,6 +74,17 @@ namespace Backend::IL {
             }
 
             return typePtr;
+        }
+
+        /// Add an undeclared type to this map
+        /// \param decl the type to be added
+        template<typename T>
+        const T* AddUnsortedType(ID id, const T &decl) {
+            auto *type = blockAllocator.Allocate<T>(decl);
+            type->kind = T::kKind;
+            type->id = id;
+            types.push_back(type);
+            return type;
         }
 
         /// Set a type relation in this map

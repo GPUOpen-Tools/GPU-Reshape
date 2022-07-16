@@ -34,6 +34,16 @@ private:
     /// \param id
     void ParseResourceList(const struct LLVMBlock *block, DXILShaderResourceClass type, uint32_t id);
 
+    /// Get the IL component ype
+    /// \param type dxil type
+    /// \return type, optionally unexposed
+    const Backend::IL::Type* GetComponentType(ComponentType type);
+
+    /// Get the IL component format
+    /// \param type dxil type
+    /// \return format, optionally unexposed
+    Backend::IL::Format GetComponentFormat(ComponentType type);
+
     /// Get an operand constant
     const IL::Constant* GetOperandConstant(uint32_t id) {
         ASSERT(id != 0, "Null metadata operand");
@@ -44,6 +54,12 @@ private:
     template<typename T>
     const T* GetOperandConstant(uint32_t id) {
         return GetOperandConstant(id)->Cast<T>();
+    }
+
+    /// Get an operand constant
+    template<typename T = uint32_t>
+    const T GetOperandU32Constant(uint32_t id) {
+        return static_cast<T>(GetOperandConstant(id)->Cast<IL::IntConstant>()->value);
     }
 
 private:

@@ -81,8 +81,14 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
                 break;
             }
 
+            case LLVMConstantRecord::Undef: {
+                IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
+
+                constant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
+                break;
+            }
+
             /* Just create the mapping for now */
-            case LLVMConstantRecord::Undef:
             case LLVMConstantRecord::Aggregate:
             case LLVMConstantRecord::String:
             case LLVMConstantRecord::CString:

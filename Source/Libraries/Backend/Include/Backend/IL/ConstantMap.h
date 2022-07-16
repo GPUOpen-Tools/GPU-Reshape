@@ -79,6 +79,15 @@ namespace Backend::IL {
             return constantPtr;
         }
 
+        /// Add a constant to this map, must be unique
+        /// \param constant the constant to be added
+        template<typename T>
+        const Constant* AddUnsortedConstant(ID id, const Backend::IL::Type* type, const T &constant) {
+            auto constantPtr = AllocateConstant<T>(id, type, constant);
+            idMap[id] = constantPtr;
+            return constantPtr;
+        }
+
         /// Set a constant relation in this map
         /// \param id the id to be associated
         /// \param constant the resulting constant
@@ -120,7 +129,7 @@ namespace Backend::IL {
         /// \param decl the declaration specifier
         /// \return the allocated constant
         template<typename T>
-        T *AllocateConstant(ID id, const typename T::Type* type, const T &decl) {
+        T *AllocateConstant(ID id, const Backend::IL::Type* type, const T &decl) {
             typeMap.SetType(id, type);
 
             auto *constant = blockAllocator.Allocate<T>(decl);
