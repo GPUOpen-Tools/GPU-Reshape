@@ -2,6 +2,7 @@
 #include <Backends/DX12/Compiler/DXModule.h>
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
+#include <Backends/DX12/Compiler/ShaderCompilerDebug.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
@@ -22,6 +23,9 @@ bool ShaderCompiler::Install() {
     if (!dispatcher) {
         return false;
     }
+
+    // Optional debug
+    debug = registry->Get<ShaderCompilerDebug>();
 
     // Get all shader features
     for (const ComRef<IFeature>& feature : device->features) {
@@ -67,7 +71,8 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
                 return;
             }
             case 'CBXD': {
-                job.state->module = new (allocators) DXBCModule(allocators);
+                job.state->module = new (allocators) DXBCModule(allocators, job.state->uid, GlobalUID::New());
+                break;
             }
         }
 
@@ -80,6 +85,16 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Create a copy of the module, don't modify the source
     DXModule *module = job.state->module->Copy();
 
+    // Debugging
+    std::filesystem::path debugPath;
+    if (debug) {
+        // Allocate path
+        debugPath = debug->AllocatePath(module);
+
+        // Add source module
+        debug->Add(debugPath, "source", module);
+    }
+
     // Pass through all features
     for (size_t i = 0; i < shaderFeatures.size(); i++) {
         if (!(job.instrumentationKey.featureBitSet & (1ull << i))) {
@@ -88,6 +103,12 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
         // Inject marked shader feature
         shaderFeatures[i]->Inject(*module->GetProgram());
+    }
+
+    // Debugging
+    if (!debugPath.empty()) {
+        // Add instrumented module
+        debug->Add(debugPath, "instrumented", module);
     }
 
     // Passthrough for now

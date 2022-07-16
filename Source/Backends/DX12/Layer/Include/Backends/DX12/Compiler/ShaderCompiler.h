@@ -16,6 +16,7 @@ struct DeviceState;
 struct DispatcherBucket;
 class IFeature;
 class IShaderFeature;
+class ShaderCompilerDebug;
 
 class ShaderCompiler : public TComponent<ShaderCompiler> {
 public:
@@ -49,6 +50,9 @@ private:
 
     /// Async dispatcher
     ComRef<Dispatcher> dispatcher;
+
+    /// Debug device
+    ComRef<ShaderCompilerDebug> debug;
 
     /// All features
     std::vector<ComRef<IShaderFeature>> shaderFeatures;

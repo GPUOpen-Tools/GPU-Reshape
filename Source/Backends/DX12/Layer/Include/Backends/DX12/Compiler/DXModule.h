@@ -3,6 +3,9 @@
 // Layer
 #include <Backends/DX12/DX12.h>
 
+// Common
+#include <Common/GlobalUID.h>
+
 // Std
 #include <cstdint>
 
@@ -27,4 +30,8 @@ public:
     /// Get the program of this module
     /// \return program
     virtual IL::Program* GetProgram() = 0;
+
+    /// Get the guid
+    /// \return
+    virtual GlobalUID GetInstrumentationGUID() = 0;
 };

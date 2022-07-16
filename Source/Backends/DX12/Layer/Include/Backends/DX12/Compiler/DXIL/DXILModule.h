@@ -25,6 +25,7 @@ public:
     DXModule* Copy() override;
     bool Parse(const void* byteCode, uint64_t byteLength) override;
     IL::Program *GetProgram() override;
+    GlobalUID GetInstrumentationGUID() override;
 
 private:
     /// All physical blocks

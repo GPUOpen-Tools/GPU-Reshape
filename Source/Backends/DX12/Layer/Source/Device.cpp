@@ -9,6 +9,7 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Compiler/ShaderCompiler.h>
 #include <Backends/DX12/Compiler/PipelineCompiler.h>
+#include <Backends/DX12/Compiler/ShaderCompilerDebug.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Layer.h>
@@ -112,6 +113,11 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
         // Install all features
         ENSURE(PoolAndInstallFeatures(state), "Failed to install features");
+
+        // Install shader debug
+#if SHADER_COMPILER_DEBUG
+        auto shaderDebug = state->registry.AddNew<ShaderCompilerDebug>();
+#endif
 
         // Install the shader compiler
         auto shaderCompiler = state->registry.AddNew<ShaderCompiler>(state);

@@ -230,6 +230,7 @@ add_library(
     Layer/Source/DLL.cpp
     Layer/Source/Layer.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp
+    Layer/Source/Compiler/ShaderCompilerDebug.cpp
     Layer/Source/Compiler/PipelineCompiler.cpp
     Layer/Source/Compiler/DXModule.cpp
     Layer/Source/Compiler/DXBC/DXBCModule.cpp

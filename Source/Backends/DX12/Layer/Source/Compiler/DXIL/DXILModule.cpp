@@ -28,3 +28,7 @@ bool DXILModule::Parse(const void *byteCode, uint64_t byteLength) {
 IL::Program *DXILModule::GetProgram() {
     return program;
 }
+
+GlobalUID DXILModule::GetInstrumentationGUID() {
+    return {};
+}
