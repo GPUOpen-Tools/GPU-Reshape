@@ -36,6 +36,9 @@ ShaderCompilerDebug::ShaderCompilerDebug(InstanceDispatchTable *table) : table(t
         path /= table->applicationInfo->pApplicationName;
     }
 
+    // Append API
+    path /= "Vulkan";
+
     // Clear the sub-tree once per process
     if (static bool once = false; !once) {
         std::error_code ignored;

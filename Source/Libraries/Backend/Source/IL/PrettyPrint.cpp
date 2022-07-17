@@ -683,7 +683,7 @@ void IL::PrettyPrint(const Backend::IL::ConstantMap &map, PrettyPrintContext out
 
         switch (constant->type->kind) {
             default: {
-                ASSERT(false, "Unexpected constant type");
+                line << "Unexposed";
                 break;
             }
             case Backend::IL::TypeKind::Bool: {
@@ -712,10 +712,6 @@ void IL::PrettyPrint(const Backend::IL::ConstantMap &map, PrettyPrintContext out
                 auto fp = constant->As<Backend::IL::FPConstant>();
                 line << "FP";
                 line << " " << fp->value;
-                break;
-            }
-            case Backend::IL::TypeKind::Unexposed: {
-                line << "Unexposed";
                 break;
             }
         }

@@ -960,7 +960,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, LL
             uint64_t coordinate = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
             uint64_t offset = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
-            // Unknown, emit as unexposed
+            // Emit as load
             IL::LoadBufferInstruction instr{};
             instr.opCode = IL::OpCode::LoadBuffer;
             instr.result = result;
@@ -1008,7 +1008,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, LL
             static_assert(static_cast<uint32_t>(IL::ComponentMask::Z) == BIT(2), "Unexpected color mask");
             static_assert(static_cast<uint32_t>(IL::ComponentMask::W) == BIT(3), "Unexpected color mask");
 
-            // Unknown, emit as unexposed
+            // Emit as store
             IL::StoreBufferInstruction instr{};
             instr.opCode = IL::OpCode::StoreBuffer;
             instr.result = result;

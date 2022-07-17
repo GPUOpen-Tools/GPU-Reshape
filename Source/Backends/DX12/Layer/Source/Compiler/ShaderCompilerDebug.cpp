@@ -22,6 +22,9 @@ ShaderCompilerDebug::ShaderCompilerDebug() {
     // Append application
     path /= GetCurrentExecutableName();
 
+    // Append API
+    path /= "DX12";
+
     // Clear the sub-tree once per process
     if (static bool once = false; !once) {
         std::error_code ignored;

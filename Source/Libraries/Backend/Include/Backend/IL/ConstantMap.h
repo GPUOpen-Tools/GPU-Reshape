@@ -23,17 +23,12 @@ namespace Backend::IL {
         }
 
         /// Create a copy of this constant map
-        ///   ! Parent lifetime tied to the copy
-        /// \return the new constant map
-        ConstantMap Copy() const {
-            ConstantMap copy(allocators, identifierMap, typeMap);
-
+        /// \param out destination map
+        void CopyTo(ConstantMap& out) const {
             // Copy the maps
-            copy.idMap = idMap;
-            copy.maps = maps;
-            copy.constants = constants;
-
-            return copy;
+            out.idMap = idMap;
+            out.maps = maps;
+            out.constants = constants;
         }
 
         /// Find a constant from his map

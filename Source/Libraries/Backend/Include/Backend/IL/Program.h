@@ -37,6 +37,7 @@ namespace IL {
             auto program = new(allocators) Program(allocators, shaderGUID);
             program->identifierMap.SetBound(identifierMap.GetMaxID());
             typeMap.CopyTo(program->typeMap);
+            constants.CopyTo(program->constants);
 
             // Copy all functions and their basic blocks
             functions.CopyTo(program->functions);
