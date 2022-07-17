@@ -8,6 +8,10 @@
 
 template<typename T>
 struct TBitSet {
+    TBitSet() : value(0) {
+
+    }
+
     explicit TBitSet(uint64_t value) : value(value) {
 
     }

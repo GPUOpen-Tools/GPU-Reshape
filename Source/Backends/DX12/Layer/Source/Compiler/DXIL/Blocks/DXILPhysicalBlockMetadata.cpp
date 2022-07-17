@@ -341,6 +341,8 @@ const Backend::IL::Type *DXILPhysicalBlockMetadata::GetComponentType(ComponentTy
 
 Backend::IL::Format DXILPhysicalBlockMetadata::GetComponentFormat(ComponentType type) {
     switch (type) {
+        default:
+            return Backend::IL::Format::Unexposed;
         case ComponentType::None:
             return Backend::IL::Format::None;
         case ComponentType::Int16:

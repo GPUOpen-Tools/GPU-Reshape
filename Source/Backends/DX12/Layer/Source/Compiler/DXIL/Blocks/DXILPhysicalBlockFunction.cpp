@@ -949,13 +949,16 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, LL
          *       i32,                  ; coordinate c0
          */
 
-        case CRC64("dx.op.bufferLoad.f32"): {
-            if (view != "dx.op.bufferLoad.f32") {
+        case CRC64("dx.op.bufferLoad.f32"):
+        case CRC64("dx.op.bufferLoad.i32"): {
+            if (!view.StartsWith("dx.op.bufferLoad.")) {
                 return false;
             }
 
+            // Get operands, ignore offset for now
             uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
             uint64_t coordinate = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t offset = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
             // Unknown, emit as unexposed
             IL::LoadBufferInstruction instr{};
@@ -964,6 +967,56 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, LL
             instr.source = IL::Source::Code(0);
             instr.buffer = resource;
             instr.index = coordinate;
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        /*
+         * DXIL Specification
+         *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
+         *   declare void @dx.op.bufferStore.f32(
+         *       i32,                  ; opcode
+         *       %dx.types.Handle,     ; resource handle
+         *       i32,                  ; coordinate c0
+         *       i32,                  ; coordinate c1
+         *       float,                ; value v0
+         *       float,                ; value v1
+         *       float,                ; value v2
+         *       float,                ; value v3
+         *       i8)                   ; write mask
+         */
+
+        case CRC64("dx.op.bufferStore.f32"):
+        case CRC64("dx.op.bufferStore.i32"): {
+            if (!view.StartsWith("dx.op.bufferStore.")) {
+                return false;
+            }
+
+            // Get operands, ignore offset for now
+            uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t coordinate = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t offset = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t x = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t y = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t z = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t w = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t mask = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+            // Must match, if it needs to deviate then do translation instead
+            static_assert(static_cast<uint32_t>(IL::ComponentMask::X) == BIT(0), "Unexpected color mask");
+            static_assert(static_cast<uint32_t>(IL::ComponentMask::Y) == BIT(1), "Unexpected color mask");
+            static_assert(static_cast<uint32_t>(IL::ComponentMask::Z) == BIT(2), "Unexpected color mask");
+            static_assert(static_cast<uint32_t>(IL::ComponentMask::W) == BIT(3), "Unexpected color mask");
+
+            // Unknown, emit as unexposed
+            IL::StoreBufferInstruction instr{};
+            instr.opCode = IL::OpCode::StoreBuffer;
+            instr.result = result;
+            instr.source = IL::Source::Code(0);
+            instr.buffer = resource;
+            instr.index = coordinate;
+            instr.value = IL::SOVValue(x, y, z, w);
+            instr.mask = IL::ComponentMaskSet(mask);
             basicBlock->Append(instr);
             return true;
         }

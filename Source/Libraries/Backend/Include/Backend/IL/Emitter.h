@@ -229,7 +229,7 @@ namespace IL {
         /// \param index the index of the element
         /// \param value the element data
         /// \return instruction reference
-        InstructionRef <StoreBufferInstruction> StoreBuffer(ID buffer, ID index, ID value) {
+        InstructionRef <StoreBufferInstruction> StoreBuffer(ID buffer, ID index, const SOVValue& value) {
             ASSERT(IsMapped(buffer) && IsMapped(index) && IsMapped(value), "Unmapped identifier");
 
             StoreBufferInstruction instr{};
@@ -238,6 +238,7 @@ namespace IL {
             instr.buffer = buffer;
             instr.index = index;
             instr.value = value;
+            instr.mask = ComponentMask::All;
             instr.result = InvalidID;
             return Op(instr);
         }

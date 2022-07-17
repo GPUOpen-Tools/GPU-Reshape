@@ -17,6 +17,8 @@ namespace IL {
 /// Base DXModule
 class DXModule {
 public:
+    virtual ~DXModule() = default;
+
     /// Scan the DXIL bytecode
     /// \param byteCode code start
     /// \param byteLength byte size of code

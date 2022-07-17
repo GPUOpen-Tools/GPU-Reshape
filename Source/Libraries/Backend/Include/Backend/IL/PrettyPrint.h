@@ -17,6 +17,7 @@ namespace IL {
     struct Function;
     struct BasicBlock;
     struct Instruction;
+    struct SOVValue;
 
     /// Pretty printing context, holds printing streams and padding requirements
     struct PrettyPrintContext {
@@ -59,6 +60,7 @@ namespace IL {
     void PrettyPrint(const Function& function, PrettyPrintContext out);
     void PrettyPrint(const BasicBlock& basicBlock, PrettyPrintContext out);
     void PrettyPrint(const Instruction* instr, PrettyPrintContext out);
+    void PrettyPrint(const SOVValue& value, PrettyPrintContext out);
     void PrettyPrint(Backend::IL::Format format, PrettyPrintContext out);
     void PrettyPrint(Backend::IL::ResourceSamplerMode mode, PrettyPrintContext out);
     void PrettyPrint(const Backend::IL::TypeMap& map, PrettyPrintContext out);

@@ -41,6 +41,14 @@ void IL::PrettyPrint(const BasicBlock &basicBlock, IL::PrettyPrintContext out) {
     }
 }
 
+void IL::PrettyPrint(const SOVValue &value, PrettyPrintContext out) {
+    if (value.IsVectorized()) {
+        out.stream << "%" << value.GetVector();
+    } else {
+        out.stream << "[%" << value.GetScalar(0) << ", %" << value.GetScalar(1) << ", %" << value.GetScalar(2) << ", %" << value.GetScalar(3) << "]";
+    }
+}
+
 void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
     std::ostream &line = out.Line();
 
@@ -123,7 +131,8 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         }
         case OpCode::StoreBuffer: {
             auto store = instr->As<IL::StoreBufferInstruction>();
-            line << "StoreBuffer buffer:%" << store->buffer << " index:%" << store->index << " value:%" << store->value;
+            line << "StoreBuffer buffer:%" << store->buffer << " index:%" << store->index << " value:";
+            PrettyPrint(store->value, out);
             break;
         }
         case OpCode::StoreOutput: {
@@ -597,6 +606,9 @@ void IL::PrettyPrint(const Backend::IL::TypeMap &map, PrettyPrintContext out) {
                         break;
                     case Backend::IL::TextureDimension::Texture2DCube:
                         line << "Texture2DCube";
+                        break;
+                    case Backend::IL::TextureDimension::Texture2DCubeArray:
+                        line << "Texture2DCubeArray";
                         break;
                     case Backend::IL::TextureDimension::Unexposed:
                         line << "Unexposed";

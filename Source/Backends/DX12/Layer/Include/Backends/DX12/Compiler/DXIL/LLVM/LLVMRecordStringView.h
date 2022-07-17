@@ -7,6 +7,9 @@
 #include <Common/Assert.h>
 #include <Common/CRC.h>
 
+// Std
+#include <string_view>
+
 struct LLVMRecordStringView {
     LLVMRecordStringView() = default;
 
@@ -40,10 +43,29 @@ struct LLVMRecordStringView {
         out[operandCount] = '\0';
     }
 
-    /// Check for equality with rhs cstring
-    bool operator==(const char* rhs) const {
+    /// Check for equality with rhs string
+    bool operator==(const std::string_view& rhs) const {
+        if (rhs.length() != operandCount) {
+            return false;
+        }
+
         for (uint32_t i = 0; i < operandCount; i++) {
-            if (!rhs[i] || rhs[i] != operands[i]) {
+            if (rhs[i] != operands[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// Check if this string starts with a sub string
+    bool StartsWith(const std::string_view& str) const {
+        if (str.length() > operandCount) {
+            return false;
+        }
+
+        for (uint32_t i = 0; i < str.length(); i++) {
+            if (str[i] != operands[i]) {
                 return false;
             }
         }

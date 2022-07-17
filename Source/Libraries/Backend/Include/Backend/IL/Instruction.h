@@ -10,7 +10,8 @@
 #include "InlineArray.h"
 #include "LiteralType.h"
 #include "ID.h"
-#include "PrettyPrint.h"
+#include "ComponentMask.h"
+#include "SOVValue.h"
 
 namespace IL {
     struct Instruction {
@@ -158,7 +159,8 @@ namespace IL {
 
         ID buffer;
         ID index;
-        ID value;
+        SOVValue value;
+        ComponentMaskSet mask;
     };
 
     struct LoadBufferInstruction : public Instruction {

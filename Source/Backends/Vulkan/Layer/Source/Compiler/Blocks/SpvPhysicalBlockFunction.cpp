@@ -576,7 +576,8 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                     instr.source = source;
                     instr.buffer = image;
                     instr.index = coordinate;
-                    instr.value = texel;
+                    instr.value = IL::SOVValue(texel);
+                    instr.mask = IL::ComponentMask::All;
                     basicBlock->Append(instr);
                 } else {
                     // Append
@@ -1103,11 +1104,16 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
 
                 // Texel buffer?
                 if (bufferType->texelType != Backend::IL::Format::None) {
+                    // Could easily be supported, just need to compose the vector
+                    // TODO: Just compose a vector if the input is scalarized
+                    ASSERT(storeBuffer->value.IsVectorized(), "Spv backend does not support scalarized stores (yet)");
+                    ASSERT(storeBuffer->value.GetVector() != IL::InvalidID, "Expected value id");
+
                     // Write image
                     SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
                     spv[1] = idMap.Get(storeBuffer->buffer);
                     spv[2] = idMap.Get(storeBuffer->index);
-                    spv[3] = idMap.Get(storeBuffer->value);
+                    spv[3] = idMap.Get(storeBuffer->value.GetVector());
                 } else {
                     ASSERT(false, "Not implemented");
                     return false;
