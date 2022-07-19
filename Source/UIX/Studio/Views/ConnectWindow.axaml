@@ -56,7 +56,7 @@
                     SelectedItem="{Binding SelectedApplication}"
                     Items="{Binding ResolvedApplications}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Width="*" Binding="{Binding Name }" />
+                        <DataGridTextColumn Width="*" Binding="{Binding DecoratedName }" />
                         <DataGridTextColumn Width="35" Binding="{Binding Pid}" />
                     </DataGrid.Columns>
                 </DataGrid>

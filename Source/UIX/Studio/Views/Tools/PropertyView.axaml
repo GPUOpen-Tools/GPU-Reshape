@@ -9,9 +9,6 @@
              x:DataType="vm:PropertyViewModel" x:CompileBindings="True">
   <Grid Focusable="True">
     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-      <TextBlock Text="{Binding Id}" Padding="2" />
-      <TextBlock Text="{Binding Title}" Padding="2" />
-      <TextBlock Text="{Binding Context}" Padding="2" />
     </StackPanel>
   </Grid>
 </UserControl>

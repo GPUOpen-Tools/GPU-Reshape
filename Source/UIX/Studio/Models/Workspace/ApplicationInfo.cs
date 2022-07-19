@@ -23,5 +23,10 @@ namespace Studio.Models.Workspace
         /// Host resolve GUID of the application
         /// </summary>
         public Guid Guid { get; set; }
+
+        /// <summary>
+        /// Decorated name of the info
+        /// </summary>
+        public string DecoratedName => $"{Process} - {Name}";
     }
 }
