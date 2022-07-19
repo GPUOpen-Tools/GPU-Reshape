@@ -230,7 +230,7 @@ namespace IL {
         /// \param value the element data
         /// \return instruction reference
         InstructionRef <StoreBufferInstruction> StoreBuffer(ID buffer, ID index, const SOVValue& value) {
-            ASSERT(IsMapped(buffer) && IsMapped(index) && IsMapped(value), "Unmapped identifier");
+            ASSERT(IsMapped(buffer) && IsMapped(index) && IsMapped(value.GetVector()), "Unmapped identifier");
 
             StoreBufferInstruction instr{};
             instr.opCode = OpCode::StoreBuffer;

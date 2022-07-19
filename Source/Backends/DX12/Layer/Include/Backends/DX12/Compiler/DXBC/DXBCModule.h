@@ -4,6 +4,7 @@
 #include <Backends/DX12/Config.h>
 #include <Backends/DX12/Compiler/DXModule.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockTable.h>
+#include <Backends/DX12/Compiler/DXStream.h>
 
 // Backend
 #include <Backend/IL/Program.h>
@@ -27,6 +28,7 @@ public:
     bool Parse(const void* byteCode, uint64_t byteLength) override;
     IL::Program *GetProgram() override;
     GlobalUID GetInstrumentationGUID() override;
+    bool Compile(const DXJob& job, DXStream& out) override;
 
 private:
     /// Physical table
@@ -40,6 +42,9 @@ private:
 
     /// Instrumentation GUID
     GlobalUID instrumentationGUID;
+
+    /// Instrumented stream
+    DXStream dxStream;
 
     /// Debugging GUID name
 #if SHADER_COMPILER_DEBUG

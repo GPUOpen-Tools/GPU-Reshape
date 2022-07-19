@@ -32,3 +32,16 @@ IL::Program *DXILModule::GetProgram() {
 GlobalUID DXILModule::GetInstrumentationGUID() {
     return {};
 }
+
+bool DXILModule::Compile(const DXJob& job, DXStream& out) {
+    // Try to recompile for the given job
+    if (!table.Compile(job)) {
+        return false;
+    }
+
+    // Stitch to the program
+    table.Stitch(out);
+
+    // OK!
+    return true;
+}

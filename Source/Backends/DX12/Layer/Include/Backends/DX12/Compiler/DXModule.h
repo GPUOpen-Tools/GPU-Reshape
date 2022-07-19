@@ -10,6 +10,8 @@
 #include <cstdint>
 
 // Forward declarations
+struct DXJob;
+struct DXStream;
 namespace IL {
     struct Program;
 }
@@ -28,6 +30,11 @@ public:
     /// Copy this module
     /// \return
     virtual DXModule* Copy() = 0;
+
+    /// Recompile this module
+    /// \param out lifetime owned by this module
+    /// \return
+    virtual bool Compile(const DXJob& job, DXStream& out) = 0;
 
     /// Get the program of this module
     /// \return program

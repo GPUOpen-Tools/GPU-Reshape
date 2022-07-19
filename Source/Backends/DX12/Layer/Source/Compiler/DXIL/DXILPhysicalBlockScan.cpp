@@ -485,3 +485,7 @@ uint64_t DXILPhysicalBlockScan::ScanTrivialAbbreviationParameter(LLVMBitStream &
         }
     }
 }
+
+void DXILPhysicalBlockScan::Stitch(DXStream &out) {
+
+}

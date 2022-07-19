@@ -30,6 +30,9 @@ DXModule *DXBCModule::Copy() {
     // Create module copy
     auto module = new(allocators) DXBCModule(allocators, programCopy, instrumentationGUID);
 
+    // Copy table
+    table.CopyTo(module->table);
+
     // OK
     return module;
 }
@@ -50,4 +53,17 @@ IL::Program *DXBCModule::GetProgram() {
 
 GlobalUID DXBCModule::GetInstrumentationGUID() {
     return instrumentationGUID;
+}
+
+bool DXBCModule::Compile(const DXJob& job, DXStream& out) {
+    // Try to recompile for the given job
+    if (!table.Compile(job)) {
+        return false;
+    }
+
+    // Stitch to the program
+    table.Stitch(out);
+
+    // OK!
+    return true;
 }

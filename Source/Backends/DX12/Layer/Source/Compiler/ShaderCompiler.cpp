@@ -3,6 +3,8 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 #include <Backends/DX12/Compiler/ShaderCompilerDebug.h>
+#include <Backends/DX12/Compiler/DXJob.h>
+#include <Backends/DX12/Compiler/DXStream.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
@@ -105,17 +107,27 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         shaderFeatures[i]->Inject(*module->GetProgram());
     }
 
+    // Instrumentation job
+    DXJob compileJob;
+    compileJob.instrumentationKey = job.instrumentationKey;
+    compileJob.streamCount = exportCount;
+
+    // Instrumented data
+    DXStream stream;
+
+    // Attempt to recompile
+    if (!module->Compile(compileJob, stream)) {
+        return;
+    }
+
     // Debugging
     if (!debugPath.empty()) {
         // Add instrumented module
         debug->Add(debugPath, "instrumented", module);
     }
 
-    // Passthrough for now
-    D3D12_SHADER_BYTECODE instrumentedByteCode = job.state->key.byteCode;
-
     // Assign the instrument
-    job.state->AddInstrument(job.instrumentationKey, instrumentedByteCode);
+    job.state->AddInstrument(job.instrumentationKey, stream);
 
     // Destroy the module
     destroy(module, allocators);

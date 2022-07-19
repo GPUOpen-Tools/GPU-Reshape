@@ -16,6 +16,7 @@
 #include <map>
 
 // Forward declarations
+struct DXStream;
 struct LLVMBitStream;
 struct LLVMBlockMetadata;
 
@@ -29,6 +30,10 @@ public:
     /// \param byteLength byte size of code
     /// \return success state
     bool Scan(const void* byteCode, uint64_t byteLength);
+
+    /// Stitch the resulting stream
+    /// \param out
+    void Stitch(DXStream& out);
 
     /// Get the root block
     /// \return

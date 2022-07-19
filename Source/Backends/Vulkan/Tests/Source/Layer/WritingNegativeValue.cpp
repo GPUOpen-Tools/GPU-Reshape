@@ -110,7 +110,7 @@ public:
                 }
 
                 IL::Emitter<> pre(program, *bb);
-                pre.BranchConditional(pre.LessThan(storeBuffer->value, pre.Int(32, 0)), failBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+                pre.BranchConditional(pre.LessThan(storeBuffer->value.GetVector(), pre.Int(32, 0)), failBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
                 return true;
             }
         }

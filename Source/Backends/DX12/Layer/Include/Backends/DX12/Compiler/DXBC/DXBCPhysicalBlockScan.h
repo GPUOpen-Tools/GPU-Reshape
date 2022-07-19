@@ -12,6 +12,9 @@
 // Std
 #include <vector>
 
+// Forward declarations
+struct DXStream;
+
 /// DXBC Scanner
 struct DXBCPhysicalBlockScan {
 public:
@@ -22,6 +25,14 @@ public:
     /// \param byteLength byte size of code
     /// \return success state
     bool Scan(const void* byteCode, uint64_t byteLength);
+
+    /// Stitch the resulting stream
+    /// \param out
+    void Stitch(DXStream& out);
+
+    /// Copy to a new table
+    /// \param out the destination table
+    void CopyTo(DXBCPhysicalBlockScan& out);
 
     /// Get a physical block of type
     /// \return nullptr if not found

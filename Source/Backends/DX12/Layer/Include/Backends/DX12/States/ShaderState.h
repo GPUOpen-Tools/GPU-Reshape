@@ -4,6 +4,7 @@
 #include <Backends/DX12/InstrumentationInfo.h>
 #include <Backends/DX12/States/ShaderStateKey.h>
 #include <Backends/DX12/States/ShaderInstrumentationKey.h>
+#include <Backends/DX12/Compiler/DXStream.h>
 
 // Common
 #include <Common/Containers/ReferenceObject.h>
@@ -23,7 +24,7 @@ struct ShaderState : public ReferenceObject {
     /// Add an instrument to this shader
     /// \param featureBitSet the enabled feature set
     /// \param byteCode the byteCode in question
-    void AddInstrument(const ShaderInstrumentationKey& instrumentationKey, D3D12_SHADER_BYTECODE instrument) {
+    void AddInstrument(const ShaderInstrumentationKey& instrumentationKey, const DXStream& instrument) {
         std::lock_guard lock(mutex);
         instrumentObjects[instrumentationKey] = instrument;
     }
@@ -38,7 +39,11 @@ struct ShaderState : public ReferenceObject {
             return {};
         }
 
-        return it->second;
+        // To bytecode
+        D3D12_SHADER_BYTECODE byteCode;
+        byteCode.pShaderBytecode = it->second.GetData();
+        byteCode.BytecodeLength = it->second.GetWordCount();
+        return byteCode;
     }
 
     /// Check if instrument is present
@@ -72,7 +77,7 @@ struct ShaderState : public ReferenceObject {
 
     /// Instrumented objects lookup
     /// TODO: How do we manage lifetimes here?
-    std::map<ShaderInstrumentationKey, D3D12_SHADER_BYTECODE> instrumentObjects;
+    std::map<ShaderInstrumentationKey, DXStream> instrumentObjects;
 
     /// Parsing module
     ///   ! May not be indexed yet, indexing occurs during instrumentation.

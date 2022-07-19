@@ -68,11 +68,11 @@ public:
 
                 // Bias the op
                 IL::Emitter<> append(program, *bb, storeBuffer);
-                auto bias = append.Add(storeBuffer->value, append.UInt(32, 1));
+                auto bias = append.Add(storeBuffer->value.GetVector(), append.UInt(32, 1));
 
                 // Replace the store operation
                 IL::Emitter<IL::Op::Instrument> storeEmitter(program, *bb, storeBuffer);
-                storeEmitter.StoreBuffer(storeBuffer->buffer, storeBuffer->index, bias);
+                storeEmitter.StoreBuffer(storeBuffer->buffer, storeBuffer->index, IL::SOVValue(bias));
                 return true;
             }
         }

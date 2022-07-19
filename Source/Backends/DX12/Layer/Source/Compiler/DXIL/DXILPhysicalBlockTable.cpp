@@ -125,3 +125,15 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     return true;
 }
 
+bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
+    return false;
+}
+
+void DXILPhysicalBlockTable::Stitch(DXStream &out) {
+    scan.Stitch(out);
+}
+
+void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
+
+}
+

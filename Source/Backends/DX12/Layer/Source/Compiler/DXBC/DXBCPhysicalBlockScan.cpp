@@ -1,5 +1,6 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockScan.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
+#include <Backends/DX12/Compiler/DXStream.h>
 
 DXBCPhysicalBlockScan::DXBCPhysicalBlockScan(const Allocators &allocators) : allocators(allocators) {
 
@@ -75,3 +76,16 @@ bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
     return true;
 }
 
+void DXBCPhysicalBlockScan::Stitch(DXStream &out) {
+    for (const Section& section : sections) {
+        if (section.block.stream.GetWordCount()) {
+            out.AppendData(section.block.stream.GetData(), section.block.stream.GetWordCount());
+        } else {
+            out.AppendData(section.block.ptr, section.block.length / sizeof(uint32_t));
+        }
+    }
+}
+
+void DXBCPhysicalBlockScan::CopyTo(DXBCPhysicalBlockScan& out) {
+    out.sections.insert(out.sections.end(), sections.begin(), sections.end());
+}
