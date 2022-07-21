@@ -1,5 +1,8 @@
 #pragma once
 
+// Layer
+#include "LLVMRecordAbbreviation.h"
+
 // Common
 #include <Common/Assert.h>
 
@@ -74,8 +77,8 @@ struct LLVMRecord {
     /// Identifier of this record, may be reserved
     uint32_t id{~0u};
 
-    /// Optional abbreviation of this record
-    uint32_t encodedAbbreviationId{~0u};
+    /// Abbreviation of this record
+    LLVMRecordAbbreviation abbreviation;
 
     /// Number of operands within this record
     uint32_t opCount{0};

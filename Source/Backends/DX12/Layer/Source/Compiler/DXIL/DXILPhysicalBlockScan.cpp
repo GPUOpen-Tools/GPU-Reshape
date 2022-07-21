@@ -16,6 +16,9 @@
 
 // Special includes
 #if DXIL_DUMP_BITSTREAM
+// Layer
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMPrettyPrint.h>
+
 // Common
 #   include <Common/FileSystem.h>
 
@@ -74,6 +77,14 @@ bool DXILPhysicalBlockScan::Scan(const void *byteCode, uint64_t byteLength) {
     if (ScanEnterSubBlock(stream, &root) != ScanResult::OK || stream.IsError()) {
         return false;
     }
+
+    // Dump?
+#if DXIL_DUMP_BITSTREAM
+    // Write stream to immediate path
+    std::ofstream outScan(GetIntermediateDebugPath() / "LLVM.scan.txt");
+    PrettyPrint(outScan, &root);
+    outScan.close();
+#endif
 
     // OK
     return true;
@@ -270,23 +281,19 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanBlockInfo(LLVMBitSt
             }
 
             case static_cast<uint32_t>(LLVMReservedAbbreviation::UnabbreviatedRecord): {
-                if (metadata) {
-                    for (const LLVMRecord& record : metadata->records) {
-                        block->records.Add(record);
-                    }
-                }
+                LLVMBlockMetadata* current = metadata;
 
+                // May change the block
                 if (ScanUnabbreviatedInfoRecord(stream, &metadata) != ScanResult::OK) {
                     return ScanResult::Error;
                 }
+
+                // Add as child if new BID
+                if (current != metadata) {
+                    block->blocks.Add(metadata);
+                }
                 break;
             }
-        }
-    }
-
-    if (metadata) {
-        for (const LLVMRecord& record : metadata->records) {
-            block->records.Add(record);
         }
     }
 
@@ -319,17 +326,25 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedInfoRe
 
     // Handle type
     switch (record.id) {
+        default: {
+            break;
+        }
         case static_cast<uint32_t>(LLVMBlockInfoRecord::SetBID): {
             // Allocate meta
             auto *meta = new(Allocators{}) LLVMBlockMetadata;
 
+            // Set id
+            meta->id = record.ops[0];
+
             // Assign lookup
             ASSERT(record.opCount == 1, "Unexpected record count");
-            metadataLookup[record.ops[0]] = meta;
+            metadataLookup[meta->id] = meta;
 
             // Set new metadata
             *metadata = meta;
-            break;
+
+            // OK
+            return ScanResult::OK;
         }
         case static_cast<uint32_t>(LLVMBlockInfoRecord::BlockName): {
             // TODO: Parse name
@@ -360,6 +375,9 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
         return ScanResult::Error;
     }
 
+    // Add record
+    LLVMRecord &record = block->records.Add();
+
     // To index
     uint32_t abbreviationIndex = encodedAbbreviationId - 4;
 
@@ -377,6 +395,10 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
         // Part of the BLOCKINFO's set?
         if (abbreviationIndex < block->metadata->abbreviations.Size()) {
             abbreviation = &block->metadata->abbreviations[abbreviationIndex];
+
+            // Set as metadata
+            record.abbreviation.type = LLVMRecordAbbreviationType::BlockMetadata;
+            record.abbreviation.abbreviationId = abbreviationIndex;
         } else {
             abbreviationIndex -= block->metadata->abbreviations.Size();
         }
@@ -385,16 +407,14 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
     // No info or beyond the info abbreviations?
     if (!abbreviation) {
         abbreviation = &block->abbreviations[abbreviationIndex];
-    }
 
-    // Add record
-    LLVMRecord &record = block->records.Add();
+        // Set as local
+        record.abbreviation.type = LLVMRecordAbbreviationType::BlockLocal;
+        record.abbreviation.abbreviationId = abbreviationIndex;
+    }
 
     // Scan id
     record.id = ScanTrivialAbbreviationParameter(stream, abbreviation->parameters[0]);
-
-    // Set abbreviation for writes
-    record.encodedAbbreviationId = encodedAbbreviationId;
 
     // Flush
     recordOperandCache.clear();
@@ -548,7 +568,7 @@ static void ValidateBlock(const LLVMBlock *lhs, const LLVMBlock *rhs) {
 
         // Validate properties
         ASSERT(recordLhs.id == recordRhs.id, "Record id mismatch");
-        ASSERT(recordLhs.encodedAbbreviationId == recordRhs.encodedAbbreviationId, "Record encoded abbreviation id mismatch");
+        ASSERT(recordLhs.abbreviation.type == recordRhs.abbreviation.type, "Record encoded abbreviation type mismatch");
         ASSERT(recordLhs.blobSize == recordRhs.blobSize, "Record blob size mismatch");
         ASSERT(recordLhs.opCount == recordRhs.opCount, "Record op count mismatch");
 
@@ -572,6 +592,14 @@ static void ValidateBlock(const LLVMBlock *lhs, const LLVMBlock *rhs) {
 #endif // DXIL_VALIDATE_MIRROR
 
 void DXILPhysicalBlockScan::Stitch(DXStream &out) {
+    // Dump?
+#if DXIL_DUMP_BITSTREAM
+    // Write stream to immediate path
+    std::ofstream outScan(GetIntermediateDebugPath() / "LLVM.stitch.txt");
+    PrettyPrint(outScan, &root);
+    outScan.close();
+#endif
+
     // Write back header
     out.Append(header);
 
@@ -685,9 +713,47 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteSubBlock(LLVMBitS
         WriteResult result;
 
         // Has abbreviation?
-        if (record.encodedAbbreviationId != ~0u) {
+        if (record.abbreviation.type != LLVMRecordAbbreviationType::None) {
+            /*
+             * LLVM Specification
+             *   Any abbreviations defined in a BLOCKINFO record for the particular block type receive IDs first, in order, followed by any abbreviations defined within the block itself.
+             *   Abbreviated data records reference this ID to indicate what abbreviation they are invoking.
+             * */
+
+            uint32_t encodedAbbreviationId = 4;
+
+            // Determine id from scanned type
+            switch (record.abbreviation.type) {
+                default: {
+                    ASSERT(false, "Unexpected abbreviation type");
+                    break;
+                }
+                case LLVMRecordAbbreviationType::BlockMetadata: {
+                    encodedAbbreviationId += record.abbreviation.abbreviationId;
+                    break;
+                }
+                case LLVMRecordAbbreviationType::BlockLocal: {
+                    // Index after metadata abbreviations
+                    if (block->metadata) {
+                        encodedAbbreviationId += block->metadata->abbreviations.Size();
+                    }
+
+                    // Local indexc
+                    encodedAbbreviationId += record.abbreviation.abbreviationId;
+                    break;
+                }
+            }
+
+            // Write id
+            stream.Fixed<uint32_t>(encodedAbbreviationId, block->abbreviationSize);
+
+            // Write contents
             result = WriteRecord(stream, block, record);
         } else {
+            // Write id
+            stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::UnabbreviatedRecord), block->abbreviationSize);
+
+            // Write contents
             result = WriteUnabbreviatedRecord(stream, record);
         }
 
@@ -708,23 +774,34 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteSubBlock(LLVMBitS
 }
 
 DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteBlockInfo(LLVMBitStreamWriter &stream, const LLVMBlock *block) {
-    // Write all abbreviations
-    for (const LLVMAbbreviation &abbreviation: block->abbreviations) {
-        stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::DefineAbbreviation), block->abbreviationSize);
-
-        // Write it!
-        if (WriteResult result = WriteAbbreviation(stream, abbreviation); result != WriteResult::OK) {
-            return result;
-        }
-    }
-
-    // Write all records
-    for (const LLVMRecord &record: block->records) {
+    // Each metadata segment is exposed as a block
+    for (const LLVMBlock* bid : block->blocks) {
+        // Emit SetBID
         stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::UnabbreviatedRecord), block->abbreviationSize);
+        stream.VBR<uint32_t>(static_cast<uint32_t>(LLVMBlockInfoRecord::SetBID), 6);
 
-        // Write it!
-        if (WriteResult result = WriteUnabbreviatedRecord(stream, record); result != WriteResult::OK) {
-            return result;
+        // One operand [opCount, bid]
+        stream.VBR<uint32_t>(1, 6);
+        stream.VBR<uint32_t>(bid->id, 6);
+
+        // Write all abbreviations
+        for (const LLVMAbbreviation &abbreviation: bid->abbreviations) {
+            stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::DefineAbbreviation), block->abbreviationSize);
+
+            // Write it!
+            if (WriteResult result = WriteAbbreviation(stream, abbreviation); result != WriteResult::OK) {
+                return result;
+            }
+        }
+
+        // Write all records
+        for (const LLVMRecord &record: bid->records) {
+            stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::UnabbreviatedRecord), block->abbreviationSize);
+
+            // Write it!
+            if (WriteResult result = WriteUnabbreviatedRecord(stream, record); result != WriteResult::OK) {
+                return result;
+            }
         }
     }
 
@@ -808,51 +885,23 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteUnabbreviatedReco
 }
 
 DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteRecord(LLVMBitStreamWriter &stream, const LLVMBlock *block, const LLVMRecord &record) {
-    /*
-     * LLVM Specification
-     *   Abbreviation IDs 4 and above are defined by the stream itself, and specify an abbreviated record encoding.
-     * */
-
-    // Abbreviation
-    uint32_t encodedAbbreviationId = record.encodedAbbreviationId;
-
-    // Check validity
-    if (encodedAbbreviationId < 4) {
-        ASSERT(false, "Invalid record entered");
-        return WriteResult::Error;
-    }
-
-    // To index
-    uint32_t abbreviationIndex = encodedAbbreviationId - 4;
-
     // Get abbreviation
     const LLVMAbbreviation *abbreviation{nullptr};
 
-    // Does this block have an associated BLOCKINFO?
-    if (block->metadata) {
-        /*
-         * LLVM Specification
-         *   Any abbreviations defined in a BLOCKINFO record for the particular block type receive IDs first, in order, followed by any abbreviations defined within the block itself.
-         *   Abbreviated data records reference this ID to indicate what abbreviation they are invoking.
-         * */
-
-        // Part of the BLOCKINFO's set?
-        if (abbreviationIndex < block->metadata->abbreviations.Size()) {
-            abbreviation = &block->metadata->abbreviations[abbreviationIndex];
-        } else {
-            abbreviationIndex -= block->metadata->abbreviations.Size();
-        }
+    // Determine from scanned type
+    switch (record.abbreviation.type) {
+        case LLVMRecordAbbreviationType::None:
+            break;
+        case LLVMRecordAbbreviationType::BlockMetadata:
+            abbreviation = &block->metadata->abbreviations[record.abbreviation.abbreviationId];
+            break;
+        case LLVMRecordAbbreviationType::BlockLocal:
+            abbreviation = &block->abbreviations[record.abbreviation.abbreviationId];
+            break;
     }
 
-    // No info or beyond the info abbreviations?
-    if (!abbreviation) {
-        abbreviation = &block->abbreviations[abbreviationIndex];
-    }
-
-    // Write id
-    if (WriteResult result = WriteTrivialAbbreviationParameter(stream, abbreviation->parameters[0], record.id); result != WriteResult::OK) {
-        return result;
-    }
+    // Validate
+    ASSERT(abbreviation, "Writing abbreviated record with no abbreviation");
 
     // Current operand offset
     uint32_t operandOffset{0};
@@ -902,6 +951,7 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteRecord(LLVMBitStr
                         return result;
                     }
                 }
+                break;
             }
 
                 /* Blob */
@@ -921,6 +971,7 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteRecord(LLVMBitStr
                 // Write out blob, size already aligned to dword
                 ASSERT(record.blobSize % sizeof(uint32_t) == 0, "Blob size must dword aligned");
                 stream.WriteDWord(record.blob, record.blobSize / sizeof(uint32_t));
+                break;
             }
         }
     }
