@@ -45,3 +45,7 @@ bool DXILModule::Compile(const DXJob& job, DXStream& out) {
     // OK!
     return true;
 }
+
+void DXILModule::CopyTo(DXILModule *out) {
+    table.CopyTo(out->table);
+}

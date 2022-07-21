@@ -3,7 +3,7 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordReader.h>
 #include <Backends/DX12/Compiler/DXIL/DXILIDMap.h>
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
-#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStream.h>
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
 
 /*
  * LLVM DXIL Specification
@@ -591,7 +591,7 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
                     IL::PhiValue value;
 
                     // Decode value
-                    int64_t signedValue = LLVMBitStream::DecodeSigned(reader.ConsumeOp());
+                    int64_t signedValue = LLVMBitStreamReader::DecodeSigned(reader.ConsumeOp());
                     if (signedValue >= 0) {
                         value.value = table.idMap.GetMappedRelative(anchor, static_cast<uint32_t>(signedValue));
                     } else {

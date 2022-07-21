@@ -57,4 +57,12 @@ void DXBCPhysicalBlockTable::Stitch(DXStream &out) {
 
 void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {
     scan.CopyTo(out.scan);
+
+    // Copy submodule if present
+    if (dxilModule) {
+        out.dxilModule = new(Allocators{}) DXILModule(allocators, &out.program);
+
+        // Copy to new module
+        dxilModule->CopyTo(out.dxilModule);
+    }
 }

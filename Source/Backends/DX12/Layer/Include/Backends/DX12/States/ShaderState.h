@@ -42,7 +42,7 @@ struct ShaderState : public ReferenceObject {
         // To bytecode
         D3D12_SHADER_BYTECODE byteCode;
         byteCode.pShaderBytecode = it->second.GetData();
-        byteCode.BytecodeLength = it->second.GetWordCount();
+        byteCode.BytecodeLength = it->second.GetByteSize();
         return byteCode;
     }
 

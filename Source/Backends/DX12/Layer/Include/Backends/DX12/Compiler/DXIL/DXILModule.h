@@ -21,6 +21,10 @@ public:
     /// \param program the top level program
     DXILModule(const Allocators &allocators, IL::Program* program);
 
+    /// Copy this module
+    /// \param module destination module
+    void CopyTo(DXILModule* module);
+
     /// Overrides
     DXModule* Copy() override;
     bool Parse(const void* byteCode, uint64_t byteLength) override;

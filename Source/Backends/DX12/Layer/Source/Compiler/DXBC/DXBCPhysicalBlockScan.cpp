@@ -78,10 +78,10 @@ bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
 
 void DXBCPhysicalBlockScan::Stitch(DXStream &out) {
     for (const Section& section : sections) {
-        if (section.block.stream.GetWordCount()) {
-            out.AppendData(section.block.stream.GetData(), section.block.stream.GetWordCount());
+        if (section.block.stream.GetByteSize()) {
+            out.AppendData(section.block.stream.GetData(), section.block.stream.GetByteSize());
         } else {
-            out.AppendData(section.block.ptr, section.block.length / sizeof(uint32_t));
+            out.AppendData(section.block.ptr, section.block.length);
         }
     }
 }

@@ -8,11 +8,11 @@
 #include <Common/Assert.h>
 
 /// Bit stream reader
-struct LLVMBitStream {
+struct LLVMBitStreamReader {
     template<typename T>
     using ChunkType = std::conditional_t<(sizeof(T) > 4), uint64_t, uint32_t>;
 
-    LLVMBitStream(const void *ptr, uint32_t length) :
+    LLVMBitStreamReader(const void *ptr, uint32_t length) :
         start(reinterpret_cast<const uint64_t *>(ptr)),
         ptr(reinterpret_cast<const uint64_t *>(ptr)),
         end(reinterpret_cast<const uint64_t *>(ptr) + length) {
@@ -94,12 +94,6 @@ struct LLVMBitStream {
     static int64_t DecodeSigned(uint64_t value) {
         uint64_t shr = value >> 1;
         return (value & 0x1) ? -shr : shr;
-    }
-
-    /// Encode a signed LLVM value
-    static uint64_t EncodeSigned(int64_t value) {
-        uint64_t shl = value << 1;
-        return (value < 0) ? (shl | 0x1) : shl;
     }
 
     /// Align the stream to 32 bits

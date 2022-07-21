@@ -29,6 +29,12 @@ struct LLVMBlock {
     /// Identifier of this block, may be reserved
     uint32_t id{~0u};
 
+    /// Abbreviation size
+    uint32_t abbreviationSize{~0u};
+
+    /// First scan block length
+    uint32_t blockLength{~0u};
+
     /// All child blocks
     TrivialStackVector<LLVMBlock*, 32> blocks;
 

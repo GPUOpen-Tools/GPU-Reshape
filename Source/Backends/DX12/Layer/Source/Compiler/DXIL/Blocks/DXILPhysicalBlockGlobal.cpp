@@ -1,7 +1,7 @@
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockGlobal.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockScan.h>
-#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStream.h>
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
 
 /*
  * LLVM DXIL Specification
@@ -67,7 +67,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
                 IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
 
                 constant = constantMap.AddConstant(id, type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
-                    .value = LLVMBitStream::DecodeSigned(record.Op(0))
+                    .value = LLVMBitStreamReader::DecodeSigned(record.Op(0))
                 });
                 break;
             }

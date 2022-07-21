@@ -126,7 +126,8 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 }
 
 bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
-    return false;
+    // TODO: The todo of all todos
+    return true;
 }
 
 void DXILPhysicalBlockTable::Stitch(DXStream &out) {
@@ -134,6 +135,5 @@ void DXILPhysicalBlockTable::Stitch(DXStream &out) {
 }
 
 void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
-
+    scan.CopyTo(out.scan);
 }
-
