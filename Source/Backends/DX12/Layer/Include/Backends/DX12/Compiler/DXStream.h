@@ -51,6 +51,11 @@ struct DXStream {
         stream.reserve(byteCount);
     }
 
+    /// Resize the container to a byte count
+    void Resize(uint32_t byteCount) {
+        stream.resize(byteCount);
+    }
+
     /// Clear this stream
     void Clear() {
         stream.clear();

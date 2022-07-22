@@ -3,6 +3,7 @@
 // Layer
 #include "LLVMRecord.h"
 #include "LLVMAbbreviation.h"
+#include "LLVMBlockElement.h"
 
 // Std
 #include <cstdint>
@@ -43,6 +44,9 @@ struct LLVMBlock {
 
     /// All abbreviations local to this block
     TrivialStackVector<LLVMAbbreviation, 32> abbreviations;
+
+    /// Elements in declaration order
+    TrivialStackVector<LLVMBlockElement, 128> elements;
 
     /// Optional metadata
     LLVMBlockMetadata* metadata{nullptr};

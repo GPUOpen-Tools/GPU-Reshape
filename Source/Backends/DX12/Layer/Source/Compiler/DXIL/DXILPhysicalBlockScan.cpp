@@ -17,14 +17,14 @@
 // Special includes
 #if DXIL_DUMP_BITSTREAM
 // Layer
-#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMPrettyPrint.h>
+#   include <Backends/DX12/Compiler/DXIL/LLVM/LLVMPrettyPrint.h>
 
 // Common
 #   include <Common/FileSystem.h>
 
 // Std
 #   include <fstream>
-#endif
+#endif // DXIL_DUMP_BITSTREAM
 
 // Validation mode for 1:1 read / writes
 #define DXIL_VALIDATE_MIRROR 1
@@ -77,6 +77,14 @@ bool DXILPhysicalBlockScan::Scan(const void *byteCode, uint64_t byteLength) {
     if (ScanEnterSubBlock(stream, &root) != ScanResult::OK || stream.IsError()) {
         return false;
     }
+
+    // Missing records?
+#if 0
+    if (!stream.IsEOS()) {
+        ASSERT(false, "Reached end of scan with pending stream data");
+        return false;
+    }
+#endif // 0
 
     // Dump?
 #if DXIL_DUMP_BITSTREAM
@@ -139,6 +147,10 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMB
             }
 
             case static_cast<uint32_t>(LLVMReservedAbbreviation::EnterSubBlock): {
+                // Add element
+                block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Block, block->blocks.Size()));
+
+                // Scan child tree
                 if (ScanEnterSubBlock(stream, block->blocks.Add(new(Allocators{}) LLVMBlock)) != ScanResult::OK) {
                     return ScanResult::Error;
                 }
@@ -170,6 +182,9 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanAbbreviation(LLVMBi
      * LLVM Specification
      *   [DEFINE_ABBREV, numabbrevopsvbr5, abbrevop0, abbrevop1, …]
      * */
+
+    // Add element
+    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Abbreviation, block->abbreviations.Size()));
 
     // Create new abbreviation
     LLVMAbbreviation &abbreviation = block->abbreviations.Add();
@@ -227,6 +242,9 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedRecord
      * LLVM Specification
      *   [UNABBREV_RECORD, codevbr6, numopsvbr6, op0vbr6, op1vbr6, …]
      * */
+
+    // Add element
+    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, block->records.Size()));
 
     // Add record
     LLVMRecord &record = block->records.Add();
@@ -374,6 +392,9 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
         ASSERT(false, "Invalid record entered");
         return ScanResult::Error;
     }
+
+    // Add element
+    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, block->records.Size()));
 
     // Add record
     LLVMRecord &record = block->records.Add();
@@ -619,6 +640,17 @@ void DXILPhysicalBlockScan::Stitch(DXStream &out) {
     // Write root block
     WriteSubBlock(stream, &root);
 
+    // Close up any loose words
+    stream.Close();
+
+    // Dump?
+#if DXIL_DUMP_BITSTREAM
+    // Write stream to immediate path
+    std::ofstream outStitch(GetIntermediateDebugPath() / "LLVM.stitch.bstream", std::ios_base::binary);
+    outStitch.write(reinterpret_cast<const char*>(out.GetData()) + validationOffset, out.GetByteSize() - validationOffset);
+    outStitch.close();
+#endif
+
     // Validate written stream by re-reading it,
 #if DXIL_VALIDATE_MIRROR
     LLVMBitStreamReader reader(out.GetData() + validationOffset, out.GetByteSize() - validationOffset);
@@ -656,6 +688,7 @@ void DXILPhysicalBlockScan::CopyBlock(const LLVMBlock *block, LLVMBlock &out) {
     out.metadata = block->metadata;
     out.records = block->records;
     out.abbreviations = block->abbreviations;
+    out.elements = block->elements;
 
     // Mutable data
     for (const LLVMBlock *child: block->blocks) {
@@ -688,78 +721,88 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteSubBlock(LLVMBitS
         return WriteBlockInfo(stream, block);
     }
 
-    // Write all sub-blocks
-    for (const LLVMBlock *child: block->blocks) {
-        stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::EnterSubBlock), block->abbreviationSize);
+    // Write according to element order
+    for (const LLVMBlockElement& element : block->elements) {
+        switch (static_cast<LLVMBlockElementType>(element.type)) {
+            case LLVMBlockElementType::Block: {
+                const LLVMBlock* child = block->blocks[element.id];
 
-        // Write it!
-        if (WriteResult result = WriteSubBlock(stream, child); result != WriteResult::OK) {
-            return result;
-        }
-    }
+                // Header
+                stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::EnterSubBlock), block->abbreviationSize);
 
-    // Write all abbreviations
-    for (const LLVMAbbreviation &abbreviation: block->abbreviations) {
-        stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::DefineAbbreviation), block->abbreviationSize);
-
-        // Write it!
-        if (WriteResult result = WriteAbbreviation(stream, abbreviation); result != WriteResult::OK) {
-            return result;
-        }
-    }
-
-    // Write all records
-    for (const LLVMRecord &record: block->records) {
-        WriteResult result;
-
-        // Has abbreviation?
-        if (record.abbreviation.type != LLVMRecordAbbreviationType::None) {
-            /*
-             * LLVM Specification
-             *   Any abbreviations defined in a BLOCKINFO record for the particular block type receive IDs first, in order, followed by any abbreviations defined within the block itself.
-             *   Abbreviated data records reference this ID to indicate what abbreviation they are invoking.
-             * */
-
-            uint32_t encodedAbbreviationId = 4;
-
-            // Determine id from scanned type
-            switch (record.abbreviation.type) {
-                default: {
-                    ASSERT(false, "Unexpected abbreviation type");
-                    break;
+                // Write it!
+                if (WriteResult result = WriteSubBlock(stream, child); result != WriteResult::OK) {
+                    return result;
                 }
-                case LLVMRecordAbbreviationType::BlockMetadata: {
-                    encodedAbbreviationId += record.abbreviation.abbreviationId;
-                    break;
+                break;
+            }
+            case LLVMBlockElementType::Abbreviation: {
+                const LLVMAbbreviation& abbreviation = block->abbreviations[element.id];
+
+                // Header
+                stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::DefineAbbreviation), block->abbreviationSize);
+
+                // Write it!
+                if (WriteResult result = WriteAbbreviation(stream, abbreviation); result != WriteResult::OK) {
+                    return result;
                 }
-                case LLVMRecordAbbreviationType::BlockLocal: {
-                    // Index after metadata abbreviations
-                    if (block->metadata) {
-                        encodedAbbreviationId += block->metadata->abbreviations.Size();
+                break;
+            }
+            case LLVMBlockElementType::Record: {
+                const LLVMRecord& record = block->records[element.id];
+
+                // Has abbreviation?
+                WriteResult result;
+                if (record.abbreviation.type != LLVMRecordAbbreviationType::None) {
+                    /*
+                     * LLVM Specification
+                     *   Any abbreviations defined in a BLOCKINFO record for the particular block type receive IDs first, in order, followed by any abbreviations defined within the block itself.
+                     *   Abbreviated data records reference this ID to indicate what abbreviation they are invoking.
+                     * */
+
+                    uint32_t encodedAbbreviationId = 4;
+
+                    // Determine id from scanned type
+                    switch (record.abbreviation.type) {
+                        default: {
+                            ASSERT(false, "Unexpected abbreviation type");
+                            break;
+                        }
+                        case LLVMRecordAbbreviationType::BlockMetadata: {
+                            encodedAbbreviationId += record.abbreviation.abbreviationId;
+                            break;
+                        }
+                        case LLVMRecordAbbreviationType::BlockLocal: {
+                            // Index after metadata abbreviations
+                            if (block->metadata) {
+                                encodedAbbreviationId += block->metadata->abbreviations.Size();
+                            }
+
+                            // Local indexc
+                            encodedAbbreviationId += record.abbreviation.abbreviationId;
+                            break;
+                        }
                     }
 
-                    // Local indexc
-                    encodedAbbreviationId += record.abbreviation.abbreviationId;
-                    break;
+                    // Write id
+                    stream.Fixed<uint32_t>(encodedAbbreviationId, block->abbreviationSize);
+
+                    // Write contents
+                    result = WriteRecord(stream, block, record);
+                } else {
+                    // Write id
+                    stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::UnabbreviatedRecord), block->abbreviationSize);
+
+                    // Write contents
+                    result = WriteUnabbreviatedRecord(stream, record);
                 }
+
+                // OK?
+                if (result != WriteResult::OK) {
+                    return result;
+                }
+                break;
             }
-
-            // Write id
-            stream.Fixed<uint32_t>(encodedAbbreviationId, block->abbreviationSize);
-
-            // Write contents
-            result = WriteRecord(stream, block, record);
-        } else {
-            // Write id
-            stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::UnabbreviatedRecord), block->abbreviationSize);
-
-            // Write contents
-            result = WriteUnabbreviatedRecord(stream, record);
-        }
-
-        // OK?
-        if (result != WriteResult::OK) {
-            return result;
         }
     }
 

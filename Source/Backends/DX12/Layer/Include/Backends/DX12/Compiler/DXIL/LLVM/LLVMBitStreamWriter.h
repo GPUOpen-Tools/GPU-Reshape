@@ -187,6 +187,13 @@ struct LLVMBitStreamWriter {
         }
     }
 
+    /// Close this writer
+    void Close() {
+        if (bitOffset == 0) {
+            stream.Resize(stream.GetByteSize() - sizeof(uint64_t));
+        }
+    }
+
 private:
     /// Underlying stream
     DXStream& stream;

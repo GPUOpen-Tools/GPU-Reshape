@@ -198,6 +198,11 @@ struct LLVMBitStreamReader {
         }
     }
 
+    /// Is this stream EOS?
+    bool IsEOS() const {
+        return ptr >= end;
+    }
+
 private:
     /// Data pointers
     const uint64_t *start;
