@@ -15,6 +15,24 @@ struct LLVMBitStreamWriter {
     template<typename T>
     using ChunkType = std::conditional_t<(sizeof(T) > 4), uint64_t, uint32_t>;
 
+    /// Position within the stream
+    struct Position {
+        /// Determinet the dword delta
+        /// \param lhs left hand position
+        /// \param rhs right hand position
+        /// \return dword count
+        static uint64_t DWord(const Position& lhs, const Position& rhs) {
+            ASSERT(lhs.bitOffset % 32 == 0, "LHS bit offset not aligned");
+            ASSERT(rhs.bitOffset % 32 == 0, "RHS bit offset not aligned");
+            uint64_t a = lhs.offset * (sizeof(uint64_t) / sizeof(uint32_t)) + lhs.bitOffset / 32;
+            uint64_t b = rhs.offset * (sizeof(uint64_t) / sizeof(uint32_t)) + rhs.bitOffset / 32;
+            return b - a;
+        }
+
+        uint64_t offset;
+        uint8_t bitOffset;
+    };
+
     LLVMBitStreamWriter(DXStream& stream) : stream(stream) {
         ptr = stream.NextWord64();
     }
@@ -39,9 +57,19 @@ struct LLVMBitStreamWriter {
     /// \param value value to be written
     /// \param fixedWidth bit width of this type
     template<typename T>
-    void Fixed(T value, uint8_t fixedWidth = sizeof(T) * 8) {
+    Position Fixed(T value, uint8_t fixedWidth = sizeof(T) * 8) {
         ASSERT(fixedWidth <= 64, "Fixed width must be less or equal to 64 bits");
-        Variable<T>(value, fixedWidth);
+        return Variable<T>(value, fixedWidth);
+    }
+
+    /// Patch a fixed type at given position
+    /// \tparam T type to be used
+    /// \param value value to be written
+    /// \param fixedWidth bit width of this type
+    template<typename T>
+    void FixedPatch(const Position& position, T value, uint8_t fixedWidth = sizeof(T) * 8) {
+        ASSERT(fixedWidth <= 64, "Fixed width must be less or equal to 64 bits");
+        return VariablePatch<T>(position, value, fixedWidth);
     }
 
     /// Consume a fixed enum type
@@ -49,9 +77,9 @@ struct LLVMBitStreamWriter {
     /// \param value value to be written
     /// \param fixedWidth bit width of this type
     template<typename T>
-    void FixedEnum(T value, uint8_t fixedWidth = sizeof(T) * 8) {
+    Position FixedEnum(T value, uint8_t fixedWidth = sizeof(T) * 8) {
         ASSERT(fixedWidth <= 64, "Enum width must be less or equal to 64 bits");
-        Variable(static_cast<std::underlying_type_t<T>>(value), fixedWidth);
+        return Variable(static_cast<std::underlying_type_t<T>>(value), fixedWidth);
     }
 
     /// Write a variable width value
@@ -60,8 +88,10 @@ struct LLVMBitStreamWriter {
     /// \param value the value to be written
     /// \param bitWidth the bit width of each chunk
     template<typename T>
-    void VBR(T value, uint8_t bitWidth) {
+    Position VBR(T value, uint8_t bitWidth) {
         using TChunk = ChunkType<T>;
+
+        Position anchor = Pos();
 
         uint8_t chunkBitOffset = 1 << (bitWidth - 1);
 
@@ -79,6 +109,8 @@ struct LLVMBitStreamWriter {
 
             value >>= bitWidth - 1;
         } while (value);
+
+        return anchor;
     }
 
     /// Encode a signed LLVM value
@@ -106,15 +138,17 @@ struct LLVMBitStreamWriter {
     ///  ! Must be aligned beforehand
     /// \param data dword data
     /// \param wordCount number of words
-    void WriteDWord(const uint8_t* data, uint32_t wordCount) {
+    Position WriteDWord(const uint8_t* data, uint32_t wordCount) {
         const auto* wordData = reinterpret_cast<const uint32_t*>(data);
+
+        Position anchor = Pos();
 
         // Must be aligned
         ASSERT(bitOffset % 32 == 0, "Unaligned dword write");
 
         // Any to write?
         if (!wordCount) {
-            return;
+            return anchor;
         }
 
         // On dword boundary?
@@ -137,14 +171,17 @@ struct LLVMBitStreamWriter {
         // Set new state
         ptr = stream.GetMutableData<uint64_t>();
         bitOffset = isAligned ? 0 : 32;
+
+        return anchor;
     }
 
     /// Write a char6 value
     /// \param ch ansi char
-    void Char6(char ch) {
-        uint8_t encoded;
+    Position Char6(char ch) {
+        Position anchor = Pos();
 
         // Encode it
+        uint8_t encoded;
         if (ch >= 'a' && ch <= 'z') {
             encoded = (ch - 'a') + 0;
         } else if (ch >= 'A' && ch <= 'Z') {
@@ -162,6 +199,8 @@ struct LLVMBitStreamWriter {
 
         // Write out encoded char
         Variable<uint8_t>(encoded, 6);
+
+        return anchor;
     }
 
     /// Write a variable width data type
@@ -169,8 +208,10 @@ struct LLVMBitStreamWriter {
     /// \param value value to be written
     /// \param count bit count
     template<typename T>
-    void Variable(const T& value, uint8_t count) {
+    Position Variable(const T& value, uint8_t count) {
         uint8_t available = 64u - bitOffset;
+
+        Position anchor = Pos();
 
         if (count > available) {
             *ptr |= static_cast<uint64_t>(value) << bitOffset;
@@ -185,12 +226,43 @@ struct LLVMBitStreamWriter {
             *ptr |= static_cast<uint64_t>(value) << bitOffset;
             bitOffset += count;
         }
+
+        return anchor;
+    }
+
+    /// Write a variable width data type at given position
+    /// \tparam T type to be used
+    /// \param value value to be written
+    /// \param count bit count
+    template<typename T>
+    void VariablePatch(const Position& position, const T& value, uint8_t count) {
+        uint8_t available = 64u - position.bitOffset;
+
+        uint64_t* patchPtr = stream.GetMutableData<uint64_t>() + position.offset;
+
+        if (count > available) {
+            *patchPtr |= static_cast<uint64_t>(value) << position.bitOffset;
+            patchPtr++;
+            *patchPtr |= static_cast<uint64_t>(value) >> available;
+        } else if (count == available) {
+            *patchPtr |= static_cast<uint64_t>(value) << position.bitOffset;
+        } else {
+            *patchPtr |= static_cast<uint64_t>(value) << position.bitOffset;
+        }
     }
 
     /// Close this writer
     void Close() {
         const uint8_t wordCount = 2u - (bitOffset + 31) / 32;
         stream.Resize(stream.GetByteSize() - sizeof(uint32_t) * wordCount);
+    }
+
+    /// Get the position of this writer
+    Position Pos() const {
+        return Position{
+            .offset = static_cast<uint64_t>(ptr - stream.GetData<uint64_t>()),
+            .bitOffset = bitOffset
+        };
     }
 
 private:

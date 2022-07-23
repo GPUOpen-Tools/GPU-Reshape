@@ -6,6 +6,7 @@
 #include "DXILHeader.h"
 #include "LLVM/LLVMHeader.h"
 #include "LLVM/LLVMBlock.h"
+#include "LLVM/LLVMBitStreamWriter.h"
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -121,7 +122,7 @@ private:
     /// \param stream destination stream
     /// \param block source block
     /// \return success state
-    WriteResult WriteBlockInfo(LLVMBitStreamWriter& stream, const LLVMBlock* block);
+    WriteResult WriteBlockInfo(LLVMBitStreamWriter &stream, const LLVMBlock *block, const LLVMBitStreamWriter::Position &lengthPos);
 
     /// Write an abbreviation
     /// \param stream destination stream

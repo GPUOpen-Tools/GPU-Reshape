@@ -619,7 +619,7 @@ void DXILPhysicalBlockScan::Stitch(DXStream &out) {
     std::ofstream outScan(GetIntermediateDebugPath() / "LLVM.stitch.txt");
     PrettyPrint(outScan, &root);
     outScan.close();
-#endif
+#endif // DXIL_DUMP_BITSTREAM
 
     // Write back header
     out.Append(header);
@@ -704,21 +704,21 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteSubBlock(LLVMBitS
      *   [ENTER_SUBBLOCK, blockidvbr8, newabbrevlenvbr4, <align32bits>, blocklen_32]
      * */
 
-    // Read identifier
+    // Write identifier
     stream.VBR<uint32_t>(block->id, 8);
 
-    // Read abbreviation size
+    // Write abbreviation size
     stream.VBR<uint32_t>(block->abbreviationSize, 4);
 
     // Align32
     stream.AlignDWord();
 
-    // Read number of dwords
-    stream.Fixed<uint32_t>(block->blockLength);
+    // Write number of dwords
+    LLVMBitStreamWriter::Position lengthPos = stream.Fixed<uint32_t>(0);
 
     // Id zero indicates BLOCKINFO
     if (block->id == 0) {
-        return WriteBlockInfo(stream, block);
+        return WriteBlockInfo(stream, block, lengthPos);
     }
 
     // Write according to element order
@@ -812,11 +812,14 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteSubBlock(LLVMBitS
     // Must be aligned
     stream.AlignDWord();
 
+    // Patch position, -1 to exclude the length itself
+    stream.FixedPatch<uint32_t>(lengthPos, LLVMBitStreamWriter::Position::DWord(lengthPos, stream.Pos()) - 1);
+
     // OK
     return WriteResult::OK;
 }
 
-DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteBlockInfo(LLVMBitStreamWriter &stream, const LLVMBlock *block) {
+DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteBlockInfo(LLVMBitStreamWriter &stream, const LLVMBlock *block, const LLVMBitStreamWriter::Position &lengthPos) {
     // Each metadata segment is exposed as a block
     for (const LLVMBlock* bid : block->blocks) {
         // Emit SetBID
@@ -853,6 +856,9 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteBlockInfo(LLVMBit
 
     // Must be aligned
     stream.AlignDWord();
+
+    // Patch position, -1 to exclude the length itself
+    stream.FixedPatch<uint32_t>(lengthPos, LLVMBitStreamWriter::Position::DWord(lengthPos, stream.Pos()) - 1);
 
     // OK
     return WriteResult::OK;

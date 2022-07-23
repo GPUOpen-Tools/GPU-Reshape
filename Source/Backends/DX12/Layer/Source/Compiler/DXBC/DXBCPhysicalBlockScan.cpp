@@ -113,16 +113,32 @@ void DXBCPhysicalBlockScan::Stitch(DXStream &out) {
         entry.offset = chunkOffset;
         out.Append(entry);
 
+        // Determine size
+        uint32_t chunkSize;
+        if (section.block.stream.GetByteSize()) {
+            chunkSize = section.block.stream.GetByteSize();
+        } else {
+            chunkSize = section.block.length;
+        }
+
         // Next
-        chunkOffset += sizeof(DXBCChunkHeader) + section.block.length;
+        chunkOffset += sizeof(DXBCChunkHeader) + chunkSize;
     }
 
     // Write all sections
     for (const Section& section : sections) {
+        // Determine size
+        uint32_t chunkSize;
+        if (section.block.stream.GetByteSize()) {
+            chunkSize = section.block.stream.GetByteSize();
+        } else {
+            chunkSize = section.block.length;
+        }
+
         // Write chunk header
         DXBCChunkHeader chunkHeader;
         chunkHeader.type = section.unexposedType;
-        chunkHeader.size = section.block.length;
+        chunkHeader.size = chunkSize;
         out.Append(chunkHeader);
 
         // Write chunk contents
