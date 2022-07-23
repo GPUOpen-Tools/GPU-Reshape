@@ -27,7 +27,7 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
         dxilModule = new(Allocators{}) DXILModule(allocators, &program);
 
         // Attempt to parse the module
-        if (!dxilModule->Parse(block->ptr + sizeof(DXBCChunkHeader), block->length)) {
+        if (!dxilModule->Parse(block->ptr, block->length)) {
             return false;
         }
     }

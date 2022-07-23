@@ -2,6 +2,18 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
 #include <Backends/DX12/Compiler/DXStream.h>
 
+/// Dump byte stream to file?
+#define DXBC_DUMP_STREAM 1
+
+// Special includes
+#if DXBC_DUMP_STREAM
+// Common
+#   include <Common/FileSystem.h>
+
+// Std
+#   include <fstream>
+#endif // DXBC_DUMP_STREAM
+
 DXBCPhysicalBlockScan::DXBCPhysicalBlockScan(const Allocators &allocators) : allocators(allocators) {
 
 }
@@ -47,6 +59,14 @@ static DXBCPhysicalBlockType FilterChunkType(uint32_t type) {
 bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
     DXBCParseContext ctx(byteCode, byteLength);
 
+    // Dump?
+#if DXBC_DUMP_STREAM
+    // Write stream to immediate path
+    std::ofstream out(GetIntermediateDebugPath() / "scan.dxbc", std::ios_base::binary);
+    out.write(reinterpret_cast<const char *>(byteCode), byteLength);
+    out.close();
+#endif // DXBC_DUMP_STREAM
+
     // Consume header
     header = ctx.Consume<DXBCHeader>();
 
@@ -65,10 +85,14 @@ bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
         // Header of the chunk
         auto chunkHeader = ctx.ReadAt<DXBCChunkHeader>(chunk.offset);
 
+        // Header offset
+        const uint32_t headerOffset = sizeof(DXBCChunkHeader);
+
         // Configure section
         Section &section = sections[chunkIndex];
+        section.unexposedType = chunkHeader->type;
         section.type = FilterChunkType(chunkHeader->type);
-        section.block.ptr = ctx.ReadAt<uint8_t>(chunk.offset);
+        section.block.ptr = ctx.ReadAt<uint8_t>(chunk.offset + headerOffset);
         section.block.length = chunkHeader->size;
     }
 
@@ -77,15 +101,48 @@ bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
 }
 
 void DXBCPhysicalBlockScan::Stitch(DXStream &out) {
+    // Write header out
+    out.Append(header);
+
+    // Starting chunk offset
+    uint32_t chunkOffset = out.GetByteSize() + sizeof(DXBCChunkEntryHeader) * sections.size();
+
+    // Write section entries
     for (const Section& section : sections) {
+        DXBCChunkEntryHeader entry;
+        entry.offset = chunkOffset;
+        out.Append(entry);
+
+        // Next
+        chunkOffset += sizeof(DXBCChunkHeader) + section.block.length;
+    }
+
+    // Write all sections
+    for (const Section& section : sections) {
+        // Write chunk header
+        DXBCChunkHeader chunkHeader;
+        chunkHeader.type = section.unexposedType;
+        chunkHeader.size = section.block.length;
+        out.Append(chunkHeader);
+
+        // Write chunk contents
         if (section.block.stream.GetByteSize()) {
             out.AppendData(section.block.stream.GetData(), section.block.stream.GetByteSize());
         } else {
             out.AppendData(section.block.ptr, section.block.length);
         }
     }
+
+    // Dump?
+#if DXBC_DUMP_STREAM
+    // Write stream to immediate path
+    std::ofstream outStream(GetIntermediateDebugPath() / "stitch.dxbc", std::ios_base::binary);
+    outStream.write(reinterpret_cast<const char *>(out.GetMutableData()), out.GetByteSize());
+    outStream.close();
+#endif // DXBC_DUMP_STREAM
 }
 
 void DXBCPhysicalBlockScan::CopyTo(DXBCPhysicalBlockScan& out) {
+    out.header = header;
     out.sections.insert(out.sections.end(), sections.begin(), sections.end());
 }

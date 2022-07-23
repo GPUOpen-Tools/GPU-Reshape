@@ -52,6 +52,7 @@ public:
 
 private:
     struct Section {
+        uint32_t unexposedType;
         DXBCPhysicalBlockType type;
         DXBCPhysicalBlock block;
     };
