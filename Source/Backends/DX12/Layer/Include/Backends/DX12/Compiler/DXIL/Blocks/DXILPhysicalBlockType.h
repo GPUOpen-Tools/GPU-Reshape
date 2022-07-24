@@ -8,9 +8,20 @@
 struct DXILPhysicalBlockType : public DXILPhysicalBlockSection {
     DXILPhysicalBlockType(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
 
+    void CopyTo(DXILPhysicalBlockType& out);
+
+public:
     /// Parse all instructions
     void ParseType(const struct LLVMBlock *block);
 
+public:
+    /// Compile all instructions
+    void CompileType(LLVMBlock *block);
+
     /// Type mapper
     DXILTypeMap typeMap;
+
+private:
+    // Incremented type
+    uint32_t typeAlloc{0};
 };

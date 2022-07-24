@@ -15,9 +15,6 @@ DXILPhysicalBlockType::DXILPhysicalBlockType(const Allocators &allocators, IL::P
 }
 
 void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
-    // Incremented type typeAlloc++
-    uint32_t typeAlloc = 0;
-
     // Visit type records
     for (const LLVMRecord &record: block->records) {
         switch (record.As<LLVMTypeRecord>()) {
@@ -51,9 +48,15 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 break;
             }
             case LLVMTypeRecord::Integer: {
-                typeMap.AddType(typeAlloc++, Backend::IL::IntType{
-                    .bitWidth = static_cast<uint8_t>(record.ops[0])
-                });
+                const auto bitWidth = static_cast<uint8_t>(record.ops[0]);
+
+                if (bitWidth == 1) {
+                    typeMap.AddType(typeAlloc++, Backend::IL::BoolType{ });
+                } else {
+                    typeMap.AddType(typeAlloc++, Backend::IL::IntType{
+                        .bitWidth = bitWidth
+                    });
+                }
                 break;
             }
             case LLVMTypeRecord::Pointer: {
@@ -72,6 +75,9 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                     // Translate address space
                     switch (record.OpAs<DXILAddressSpace>(1)) {
                         default:
+                            break;
+                        case DXILAddressSpace::Local:
+                            space = Backend::IL::AddressSpace::Function;
                             break;
                         case DXILAddressSpace::Device:
                             space = Backend::IL::AddressSpace::Resource;
@@ -175,4 +181,134 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
             }
         }
     }
+}
+
+void DXILPhysicalBlockType::CompileType(LLVMBlock *block) {
+    // Compile all missing types
+    for (Backend::IL::Type* type : program.GetTypeMap()) {
+        if (table.type.typeMap.HasType(type)) {
+            continue;
+        }
+
+        LLVMRecord record{};
+
+        bool isMetaType = false;
+
+        // Attempt to compile the type, not all types are supported for compilation
+        switch (type->kind) {
+            default:
+                ASSERT(false, "Invalid type for DXIL compilation");
+                break;
+            case Backend::IL::TypeKind::Unexposed:
+            case Backend::IL::TypeKind::Buffer:
+            case Backend::IL::TypeKind::Texture: {
+                isMetaType = true;
+                break;
+            }
+            case Backend::IL::TypeKind::Void: {
+                record.id = static_cast<uint32_t>(LLVMTypeRecord::Void);
+                break;
+            }
+            case Backend::IL::TypeKind::Bool:
+            case Backend::IL::TypeKind::Int: {
+                record.id = static_cast<uint32_t>(LLVMTypeRecord::Integer);
+                record.opCount = 1;
+                record.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
+
+                if (type->kind == Backend::IL::TypeKind::Bool) {
+                    record.ops[0] = 1u;
+                } else {
+                    record.ops[0] = type->As<Backend::IL::IntType>()->bitWidth;
+                }
+                break;
+            }
+            case Backend::IL::TypeKind::FP: {
+                switch (type->As<Backend::IL::FPType>()->bitWidth) {
+                    default:
+                        ASSERT(false, "Invalid floating point bit-width");
+                        break;
+                    case 16:
+                        record.id = static_cast<uint32_t>(LLVMTypeRecord::Half);
+                        break;
+                    case 32:
+                        record.id = static_cast<uint32_t>(LLVMTypeRecord::Float);
+                        break;
+                    case 64:
+                        record.id = static_cast<uint32_t>(LLVMTypeRecord::Double);
+                        break;
+                }
+                break;
+            }
+            case Backend::IL::TypeKind::Vector: {
+                auto _type = type->As<Backend::IL::VectorType>();
+
+                record.id = static_cast<uint32_t>(LLVMTypeRecord::Vector);
+                record.opCount = 2;
+
+                record.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+                record.ops[0] = _type->dimension;
+                record.ops[1] = typeMap.GetType(_type->containedType);
+                break;
+            }
+            case Backend::IL::TypeKind::Pointer: {
+                auto _type = type->As<Backend::IL::PointerType>();
+
+                record.id = static_cast<uint32_t>(LLVMTypeRecord::Pointer);
+                record.opCount = 2;
+
+                record.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+                record.ops[0] = typeMap.GetType(_type->pointee);
+
+                // Translate address space
+                switch (_type->addressSpace) {
+                    default:
+                        ASSERT(false, "Invalid address space");
+                        break;
+                    case Backend::IL::AddressSpace::Constant:
+                        record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::Constant);
+                        break;
+                    case Backend::IL::AddressSpace::Function:
+                        record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::Local);
+                        break;
+                    case Backend::IL::AddressSpace::Texture:
+                    case Backend::IL::AddressSpace::Buffer:
+                    case Backend::IL::AddressSpace::Resource:
+                        record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::Device);
+                        break;
+                    case Backend::IL::AddressSpace::GroupShared:
+                        record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::GroupShared);
+                        break;
+                }
+                break;
+            }
+            case Backend::IL::TypeKind::Array: {
+                auto _type = type->As<Backend::IL::ArrayType>();
+
+                record.id = static_cast<uint32_t>(LLVMTypeRecord::Array);
+                record.opCount = 2;
+
+                record.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+                record.ops[0] = _type->count;
+                record.ops[1] = typeMap.GetType(_type->elementType);
+                break;
+            }
+        }
+
+        if (isMetaType) {
+            continue;
+        }
+
+        // Add final record
+        block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, block->records.Size()));
+        block->records.Add(record);
+
+        // Next
+        typeAlloc++;
+    }
+}
+
+void DXILPhysicalBlockType::CopyTo(DXILPhysicalBlockType &out) {
+    out.typeAlloc = typeAlloc;
+
+    typeMap.CopyTo(out.typeMap);
 }

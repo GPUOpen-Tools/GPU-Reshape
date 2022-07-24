@@ -9,6 +9,10 @@
 #include "Blocks/DXILPhysicalBlockMetadata.h"
 #include "Blocks/DXILPhysicalBlockSymbol.h"
 #include "DXILIDMap.h"
+#include "DXILIDRemapper.h"
+
+// Common
+#include <Common/Containers/LinearBlockAllocator.h>
 
 // Std
 #include <string>
@@ -53,9 +57,16 @@ struct DXILPhysicalBlockTable {
     /// Shared identifier map
     DXILIDMap idMap;
 
+    /// Shared identifier remapper
+    DXILIDRemapper idRemapper;
+
     /// LLVM triple
     std::string triple;
 
     /// LLVM data layout
     std::string dataLayout;
+
+public:
+    /// Shared allocator for records
+    LinearBlockAllocator<sizeof(uint64_t) * 1024u> recordAllocator;
 };

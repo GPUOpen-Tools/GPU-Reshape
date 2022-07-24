@@ -27,3 +27,7 @@ std::string_view DXILPhysicalBlockString::GetString(uint64_t offset, uint64_t le
     ASSERT(offset + length <= blobRecord->blobSize, "StrTab substr out of bounds");
     return std::string_view(reinterpret_cast<const char*>(blobRecord->blob) + offset, length);
 }
+
+void DXILPhysicalBlockString::CompileStrTab(struct LLVMBlock *block) {
+
+}

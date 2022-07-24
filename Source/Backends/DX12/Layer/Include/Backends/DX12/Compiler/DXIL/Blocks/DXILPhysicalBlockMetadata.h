@@ -13,6 +13,7 @@
 struct DXILPhysicalBlockMetadata : public DXILPhysicalBlockSection {
     using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
 
+public:
     /// Parse all instructions
     void ParseMetadata(const struct LLVMBlock *block);
 
@@ -20,6 +21,10 @@ struct DXILPhysicalBlockMetadata : public DXILPhysicalBlockSection {
     /// \param handleID the unique handle id
     /// \return nullptr if not found
     const Backend::IL::Type* GetHandleType(uint32_t handleID);
+
+public:
+    /// Compile all instructions
+    void CompileMetadata(struct LLVMBlock *block);
 
 private:
     /// Parse a named node successor
@@ -60,6 +65,11 @@ private:
     template<typename T = uint32_t>
     const T GetOperandU32Constant(uint32_t id) {
         return static_cast<T>(GetOperandConstant(id)->Cast<IL::IntConstant>()->value);
+    }
+
+    /// Get an operand constant
+    bool GetOperandBoolConstant(uint32_t id) {
+        return GetOperandConstant(id)->Cast<IL::BoolConstant>()->value;
     }
 
 private:

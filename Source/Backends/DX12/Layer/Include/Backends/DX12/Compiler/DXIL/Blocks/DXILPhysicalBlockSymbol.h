@@ -12,6 +12,7 @@
 struct DXILPhysicalBlockSymbol : public DXILPhysicalBlockSection {
     DXILPhysicalBlockSymbol(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
 
+public:
     /// Parse all records
     void ParseSymTab(const struct LLVMBlock *block);
 
@@ -24,6 +25,10 @@ struct DXILPhysicalBlockSymbol : public DXILPhysicalBlockSection {
     /// \param id value id
     /// \return nullptr if not found
     const char* GetValueAllocation(uint32_t id);
+
+public:
+    /// Compile all records
+    void CompileSymTab(struct LLVMBlock *block);
 
 private:
     /// Raw values

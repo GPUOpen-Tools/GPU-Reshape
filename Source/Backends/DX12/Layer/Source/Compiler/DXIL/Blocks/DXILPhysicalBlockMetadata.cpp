@@ -160,9 +160,9 @@ void DXILPhysicalBlockMetadata::ParseResourceList(const struct LLVMBlock *block,
             case DXILShaderResourceClass::UAVs: {
                 // Unique ops
                 auto shape = static_cast<DXILShaderResourceShape>(GetOperandU32Constant(resource.Op(6)));
-                uint64_t globallyCoherent = GetOperandU32Constant(resource.Op(7));
-                uint64_t counter = GetOperandU32Constant(resource.Op(8));
-                uint64_t rasterizerOrderedView = GetOperandU32Constant(resource.Op(9));
+                uint64_t globallyCoherent = GetOperandBoolConstant(resource.Op(7));
+                uint64_t counter = GetOperandBoolConstant(resource.Op(8));
+                uint64_t rasterizerOrderedView = GetOperandBoolConstant(resource.Op(9));
 
                 // Get extended metadata
                 Metadata &extendedMetadata = metadata[resource.Op(10) - 1];
@@ -380,4 +380,8 @@ Backend::IL::Format DXILPhysicalBlockMetadata::GetComponentFormat(ComponentType 
         case ComponentType::PackedU8x32:
             return Backend::IL::Format::Unexposed;
     }
+}
+
+void DXILPhysicalBlockMetadata::CompileMetadata(struct LLVMBlock *block) {
+
 }

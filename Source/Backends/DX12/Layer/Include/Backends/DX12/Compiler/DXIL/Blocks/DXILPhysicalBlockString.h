@@ -11,6 +11,7 @@
 struct DXILPhysicalBlockString : public DXILPhysicalBlockSection {
     using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
 
+public:
     /// Parse all instructions
     void ParseStrTab(const struct LLVMBlock *block);
 
@@ -19,6 +20,10 @@ struct DXILPhysicalBlockString : public DXILPhysicalBlockSection {
     /// \param length length of segment
     /// \return view
     std::string_view GetString(uint64_t offset, uint64_t length);
+
+public:
+    /// Compile all instructions
+    void CompileStrTab(struct LLVMBlock *block);
 
 private:
     const struct LLVMRecord* blobRecord{nullptr};

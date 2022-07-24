@@ -121,3 +121,15 @@ void DXILPhysicalBlockGlobal::ParseGlobalVar(const struct LLVMRecord& record) {
 void DXILPhysicalBlockGlobal::ParseAlias(const LLVMRecord &record) {
     table.idMap.AllocMappedID(DXILIDType::Alias);
 }
+
+void DXILPhysicalBlockGlobal::CompileConstants(struct LLVMBlock *block) {
+
+}
+
+void DXILPhysicalBlockGlobal::CompileGlobalVar(LLVMRecord &record) {
+
+}
+
+void DXILPhysicalBlockGlobal::CompileAlias(LLVMRecord &record) {
+
+}

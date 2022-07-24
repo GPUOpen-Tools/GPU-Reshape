@@ -43,7 +43,13 @@ public:
 
     /// Get the root block
     /// \return
-    const LLVMBlock& GetRoot() {
+    const LLVMBlock& GetRoot() const {
+        return root;
+    }
+
+    /// Get the root block
+    /// \return
+    LLVMBlock& GetRoot() {
         return root;
     }
 

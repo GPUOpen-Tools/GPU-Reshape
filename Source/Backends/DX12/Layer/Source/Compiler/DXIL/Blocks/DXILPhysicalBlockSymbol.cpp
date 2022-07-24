@@ -98,3 +98,7 @@ const char* DXILPhysicalBlockSymbol::GetValueAllocation(uint32_t id) {
 
     return valueAllocations[id];
 }
+
+void DXILPhysicalBlockSymbol::CompileSymTab(struct LLVMBlock *block) {
+
+}

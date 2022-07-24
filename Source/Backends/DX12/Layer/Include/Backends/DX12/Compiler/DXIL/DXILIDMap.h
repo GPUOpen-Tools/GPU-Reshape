@@ -148,6 +148,9 @@ private:
         /// Program ID
         IL::ID mapped;
 
+        /// Stitched allocation index
+        uint32_t stitchIndex;
+
         /// Identifier type
         DXILIDType type;
 

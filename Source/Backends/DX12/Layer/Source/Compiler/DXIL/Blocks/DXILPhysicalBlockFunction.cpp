@@ -895,7 +895,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, LL
             uint64_t rangeIndex = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
 
             // Divergent?
-            auto isNonUniform = static_cast<bool>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value);
+            auto isNonUniform = program.GetConstants().GetConstant<IL::BoolConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
 
             // Get the actual handle type
             auto type = table.metadata.GetHandleType(id);
@@ -1021,4 +1021,12 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, LL
             return true;
         }
     }
+}
+
+void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
+
+}
+
+void DXILPhysicalBlockFunction::CompileModuleFunction(LLVMRecord &record) {
+
 }

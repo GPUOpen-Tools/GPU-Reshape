@@ -9,7 +9,8 @@ DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL:
     global(allocators, program, *this),
     string(allocators, program, *this),
     symbol(allocators, program, *this),
-    metadata(allocators, program, *this) {
+    metadata(allocators, program, *this),
+    recordAllocator(allocators) {
 
 }
 
@@ -126,7 +127,90 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 }
 
 bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
-    // TODO: The todo of all todos
+    LLVMBlock &root = scan.GetRoot();
+
+    // Pre-parse all types for local fetching
+    for (LLVMBlock *block: root.blocks) {
+        switch (static_cast<LLVMReservedBlock>(block->id)) {
+            default:
+                // Handled later
+                break;
+            case LLVMReservedBlock::Type:
+                type.CompileType(block);
+                break;
+        }
+    }
+
+    // Visit all records
+    for (LLVMRecord &record: root.records) {
+        switch (static_cast<LLVMModuleRecord>(record.id)) {
+            default: {
+                ASSERT(false, "Unexpected block id");
+                break;
+            }
+            case LLVMModuleRecord::Version:
+                break;
+            case LLVMModuleRecord::Triple:
+                break;
+            case LLVMModuleRecord::DataLayout:
+                break;
+            case LLVMModuleRecord::ASM:
+                break;
+            case LLVMModuleRecord::SectionName:
+                break;
+            case LLVMModuleRecord::DepLib:
+                break;
+            case LLVMModuleRecord::GlobalVar:
+                global.CompileGlobalVar(record);
+                break;
+            case LLVMModuleRecord::Function:
+                function.CompileModuleFunction(record);
+                break;
+            case LLVMModuleRecord::Alias:
+                global.CompileAlias(record);
+                break;
+            case LLVMModuleRecord::GCName:
+                break;
+        }
+    }
+
+    // Visit all blocks
+    for (LLVMBlock *block: root.blocks) {
+        switch (static_cast<LLVMReservedBlock>(block->id)) {
+            default:
+            ASSERT(false, "Unexpected block id");
+                break;
+            case LLVMReservedBlock::Info:
+                break;
+            case LLVMReservedBlock::Module:
+                break;
+            case LLVMReservedBlock::Parameter:
+                break;
+            case LLVMReservedBlock::ParameterGroup:
+                break;
+            case LLVMReservedBlock::Constants:
+                global.CompileConstants(block);
+                break;
+            case LLVMReservedBlock::Function:
+                function.CompileFunction(block);
+                break;
+            case LLVMReservedBlock::ValueSymTab:
+                symbol.CompileSymTab(block);
+                break;
+            case LLVMReservedBlock::Metadata:
+                metadata.CompileMetadata(block);
+                break;
+            case LLVMReservedBlock::MetadataAttachment:
+                break;
+            case LLVMReservedBlock::Type:
+                break;
+            case LLVMReservedBlock::StrTab:
+                string.CompileStrTab(block);
+                break;
+        }
+    }
+
+    // OK
     return true;
 }
 
@@ -136,4 +220,5 @@ void DXILPhysicalBlockTable::Stitch(DXStream &out) {
 
 void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
     scan.CopyTo(out.scan);
+    type.CopyTo(out.type);
 }

@@ -23,6 +23,15 @@ struct DXILPhysicalBlockFunction : public DXILPhysicalBlockSection {
     /// Get the declaration associated with an id
     const DXILFunctionDeclaration* GetFunctionDeclaration(uint32_t id);
 
+public:
+    /// Compile a function
+    /// \param block block
+    void CompileFunction(struct LLVMBlock *block);
+
+    /// Compile a module function
+    /// \param record record
+    void CompileModuleFunction(struct LLVMRecord& record);
+
 private:
     /// Does the record have a result?
     bool HasResult(const struct LLVMRecord& record);
