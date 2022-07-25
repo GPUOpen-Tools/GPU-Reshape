@@ -551,7 +551,6 @@ static void ValidateBlock(const LLVMBlock *lhs, const LLVMBlock *rhs) {
     // Validate properties
     ASSERT(lhs->id == rhs->id, "Id mismatch");
     ASSERT(lhs->abbreviationSize == rhs->abbreviationSize, "Abbreviation size mismatch");
-    ASSERT(lhs->blockLength == rhs->blockLength, "Length mismatch");
     ASSERT(lhs->blocks.Size() == rhs->blocks.Size(), "Block count mismatch");
     ASSERT(lhs->abbreviations.Size() == rhs->abbreviations.Size(), "Abbreviation count mismatch");
     ASSERT(lhs->records.Size() == rhs->records.Size(), "Record count mismatch");

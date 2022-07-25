@@ -28,6 +28,10 @@ public:
     /// \param block block
     void CompileFunction(struct LLVMBlock *block);
 
+    /// Compile all inline constants, such as literals, within the program to a given block
+    /// \param block
+    void CompileInlineConstants(struct LLVMBlock* block);
+
     /// Compile a module function
     /// \param record record
     void CompileModuleFunction(struct LLVMRecord& record);
@@ -43,7 +47,7 @@ private:
     /// \param called called function index
     /// \param declaration pulled declaration
     /// \return true if recognized intrinsic
-    bool TryParseIntrinsic(IL::BasicBlock *basicBlock, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
+    bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
 
 private:
     /// All function declarations

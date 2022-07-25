@@ -54,6 +54,9 @@ struct DXILPhysicalBlockTable {
     DXILPhysicalBlockSymbol symbol;
     DXILPhysicalBlockMetadata metadata;
 
+    /// IL program
+    IL::Program& program;
+
     /// Shared identifier map
     DXILIDMap idMap;
 

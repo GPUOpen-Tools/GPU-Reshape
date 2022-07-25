@@ -3,6 +3,7 @@
 
 DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL::Program &program) :
     scan(allocators),
+    program(program),
     idMap(program),
     function(allocators, program, *this),
     type(allocators, program, *this),
@@ -129,6 +130,9 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
     LLVMBlock &root = scan.GetRoot();
 
+    // Set the remap bound
+    idRemapper.SetBound(idMap.GetBound(), program.GetIdentifierMap().GetMaxID());
+
     // Pre-parse all types for local fetching
     for (LLVMBlock *block: root.blocks) {
         switch (static_cast<LLVMReservedBlock>(block->id)) {
@@ -220,5 +224,11 @@ void DXILPhysicalBlockTable::Stitch(DXStream &out) {
 
 void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
     scan.CopyTo(out.scan);
+
+    // Table maps
+    idMap.CopyTo(out.idMap);
+
+    // Blocks
     type.CopyTo(out.type);
+    global.CopyTo(out.global);
 }

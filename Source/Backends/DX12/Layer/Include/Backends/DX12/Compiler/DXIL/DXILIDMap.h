@@ -14,6 +14,13 @@ struct DXILIDMap {
 
     }
 
+    /// Copy this map
+    /// \param out destination map
+    void CopyTo(DXILIDMap& out) {
+        out.allocationOffset = allocationOffset;
+        out.map = map;
+    }
+
     /// Allocate a new mapped identifier for program <-> dxil mapping
     /// \param type type of this mapping
     /// \param dataIndex internal data index
@@ -138,6 +145,11 @@ struct DXILIDMap {
     /// Get the internal data index of an id
     IL::ID GetDataIndex(uint64_t id) {
         return map[id].dataIndex;
+    }
+
+    /// Get the allocation bound
+    uint32_t GetBound() const {
+        return static_cast<uint32_t>(map.Size());
     }
 
 private:

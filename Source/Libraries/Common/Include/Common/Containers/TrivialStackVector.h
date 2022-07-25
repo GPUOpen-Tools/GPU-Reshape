@@ -30,6 +30,22 @@ struct TrivialStackVector {
         }
     }
 
+    /// Swap this container
+    /// \param other swap destination
+    void Swap(TrivialStackVector& other) {
+        // TODO: Do a pass on how safe this is... The handling of "data" smells incredibly unsafe.
+
+        std::swap(size, other.size);
+        std::swap(stack, other.stack);
+        fallback.swap(other.fallback);
+
+        const bool isLhsFallback = data == stack;
+        const bool isRhsFallback = other.data == other.stack;
+
+        data = isLhsFallback ? fallback.data() : stack;
+        other.data = isRhsFallback ? other.fallback.data() : other.stack;
+    }
+
     /// Assign copy from other
     TrivialStackVector& operator=(const TrivialStackVector& other) {
         Resize(other.Size());

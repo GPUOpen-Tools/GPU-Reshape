@@ -2,10 +2,15 @@
 
 // Layer
 #include "DXILPhysicalBlockSection.h"
+#include <Backends/DX12/Compiler/DXIL/DXILConstantMap.h>
 
 /// Type block
 struct DXILPhysicalBlockGlobal : public DXILPhysicalBlockSection {
-    using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
+    DXILPhysicalBlockGlobal(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
+
+    /// Copy this block
+    /// \param out destination block
+    void CopyTo(DXILPhysicalBlockGlobal& out);
 
 public:
     /// Parse a constant block
@@ -33,17 +38,7 @@ public:
     /// \param record record
     void CompileAlias(struct LLVMRecord& record);
 
-public:
-    /// Get constant at offset
-    const IL::Constant* GetConstant(uint32_t id) {
-        if (id >= constants.size()) {
-            return nullptr;
-        }
-
-        return constants[id];
-    }
-
 private:
-    /// All constants
-    std::vector<const IL::Constant*> constants;
+    /// Underlying constants
+    DXILConstantMap constantMap;
 };

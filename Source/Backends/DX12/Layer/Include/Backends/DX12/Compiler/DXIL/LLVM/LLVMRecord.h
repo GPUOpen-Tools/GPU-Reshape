@@ -10,6 +10,13 @@
 #include <cstdint>
 
 struct LLVMRecord {
+    LLVMRecord() = default;
+
+    template<typename T>
+    LLVMRecord(T id) : id(static_cast<uint32_t>(id)) {
+
+    }
+
     /// Check if this record is of reserved id
     template<typename T>
     bool Is(T value) const {
@@ -62,6 +69,17 @@ struct LLVMRecord {
     T OpBitCast(uint32_t i) const {
         ASSERT(i < opCount, "Operand out of bounds");
         return *reinterpret_cast<const T*>(&ops[i]);
+    }
+
+    /// Convert an operand to a type
+    template<typename T>
+    void OpBitWrite(uint32_t i, const T& value) const {
+        static_assert(sizeof(value) <= sizeof(uint64_t));
+
+        ASSERT(i < opCount, "Operand out of bounds");
+
+        ops[i] = 0;
+        std::memcpy(&ops[i], &value, sizeof(value));
     }
 
     /// Fill all operands sequentially to a given array
