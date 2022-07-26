@@ -185,7 +185,19 @@ namespace Backend::IL {
 
         const Type* returnType{nullptr};
 
+        // TODO: Stack fallback
         std::vector<const Type*> parameterTypes;
+    };
+
+    struct StructType : public Type {
+        static constexpr TypeKind kKind = TypeKind::Struct;
+
+        auto SortKey() const {
+            return std::make_tuple(memberTypes);
+        }
+
+        // TODO: Stack fallback
+        std::vector<const Type*> memberTypes;
     };
 
     /// Sort key helper

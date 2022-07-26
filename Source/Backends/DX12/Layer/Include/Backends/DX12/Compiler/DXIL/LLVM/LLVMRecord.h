@@ -10,10 +10,12 @@
 #include <cstdint>
 
 struct LLVMRecord {
-    LLVMRecord() = default;
+    LLVMRecord() : opCount(0), userRecord(0) {
+
+    }
 
     template<typename T>
-    LLVMRecord(T id) : id(static_cast<uint32_t>(id)) {
+    LLVMRecord(T id) : id(static_cast<uint32_t>(id)), opCount(0), userRecord(0) {
 
     }
 
@@ -99,7 +101,13 @@ struct LLVMRecord {
     LLVMRecordAbbreviation abbreviation;
 
     /// Number of operands within this record
-    uint32_t opCount{0};
+    uint32_t opCount : 31;
+
+    /// Is this a user generated record?
+    uint32_t userRecord : 1;
+
+    /// User allocated result for stitching
+    uint32_t userResult = ~0u;
 
     /// All operands
     uint64_t* ops{nullptr};

@@ -38,7 +38,20 @@ public:
     /// \param record record
     void CompileAlias(struct LLVMRecord& record);
 
-private:
+public:
+    /// Stitch a constant block
+    /// \param block block
+    void StitchConstants(struct LLVMBlock* block);
+
+    /// Stitch a global variable
+    /// \param record record
+    void StitchGlobalVar(struct LLVMRecord& record);
+
+    /// Stitch an alias
+    /// \param record record
+    void StitchAlias(struct LLVMRecord& record);
+
+public:
     /// Underlying constants
     DXILConstantMap constantMap;
 };

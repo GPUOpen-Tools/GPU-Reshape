@@ -25,6 +25,9 @@ public:
     /// Compile all instructions
     void CompileStrTab(struct LLVMBlock *block);
 
+    /// Stitch all instructions
+    void StitchStrTab(struct LLVMBlock *block);
+
 private:
     const struct LLVMRecord* blobRecord{nullptr};
 };

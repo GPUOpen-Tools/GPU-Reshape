@@ -26,6 +26,9 @@ public:
     /// Compile all instructions
     void CompileMetadata(struct LLVMBlock *block);
 
+    /// Stitch all instructions
+    void StitchMetadata(struct LLVMBlock *block);
+
 private:
     /// Parse a named node successor
     /// \param block

@@ -28,13 +28,39 @@ public:
     /// \param block block
     void CompileFunction(struct LLVMBlock *block);
 
-    /// Compile all inline constants, such as literals, within the program to a given block
-    /// \param block
-    void CompileInlineConstants(struct LLVMBlock* block);
-
     /// Compile a module function
     /// \param record record
     void CompileModuleFunction(struct LLVMRecord& record);
+
+    /// Compile a standard intrinsic call
+    /// \param decl given declaration
+    /// \param opCount argument op count
+    /// \param ops operands
+    /// \return call record
+    LLVMRecord CompileIntrinsicCall(const DXILFunctionDeclaration* decl, uint32_t opCount, const uint64_t* ops);
+
+public:
+    /// Compile a module function
+    /// \param record record
+    void StitchModuleFunction(struct LLVMRecord& record);
+
+    /// Compile a function
+    /// \param block block
+    void StitchFunction(struct LLVMBlock *block);
+
+    /// Remap a given record
+    /// \param record
+    void RemapRecord(struct LLVMRecord& record);
+
+private:
+    /// Get the resource size intrinsic
+    /// \return shared declaration
+    const DXILFunctionDeclaration* GetResourceSizeIntrinsic();
+
+    /// Cached intrinsics
+    struct Intrinsics {
+        uint32_t resourceSize = ~0u;
+    } intrinsics;
 
 private:
     /// Does the record have a result?

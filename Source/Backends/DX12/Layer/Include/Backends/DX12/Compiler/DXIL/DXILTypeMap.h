@@ -1,15 +1,22 @@
 #pragma once
 
+// Layer
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBlock.h>
+#include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
+
 // Backend
 #include <Backend/IL/TypeMap.h>
 #include <Backend/IL/IdentifierMap.h>
+
+// Common
+#include <Common/Containers/LinearBlockAllocator.h>
 
 // Std
 #include <vector>
 
 class DXILTypeMap {
 public:
-    DXILTypeMap(Backend::IL::TypeMap& programMap, Backend::IL::IdentifierMap& identifierMap) : programMap(programMap), identifierMap(identifierMap) {
+    DXILTypeMap(const Allocators& allocators, Backend::IL::TypeMap& programMap, Backend::IL::IdentifierMap& identifierMap) : programMap(programMap), identifierMap(identifierMap), recordAllocator(allocators) {
 
     }
 
@@ -62,7 +69,14 @@ public:
     /// \param index the linear record type index
     /// \return may be nullptr
     uint32_t GetType(const Backend::IL::Type* type) {
-        return typeLookup.at(type->id);
+        // Allocate if need be
+        if (!HasType(type)) {
+            return CompileType(type);
+        }
+
+        uint32_t id = typeLookup.at(type->id);
+        ASSERT(id != ~0u, "Unallocated type");
+        return id;
     }
 
     /// Add a type mapping from IL to DXIL
@@ -83,6 +97,189 @@ public:
         return type->id < typeLookup.size() && typeLookup[type->id] != ~0u;
     }
 
+    /// Set the declaration block for undeclared DXIL types
+    /// \param block destination block
+    void SetDeclarationBlock(LLVMBlock* block) {
+        declarationBlock = block;
+    }
+
+private:
+    /// Compile a given type
+    /// \param type
+    /// \return DXIL id
+    uint32_t CompileType(const Backend::IL::Type* type) {
+        switch (type->kind) {
+            default:
+                ASSERT(false, "Unsupported type for recompilation");
+                return ~0;
+            case Backend::IL::TypeKind::Bool:
+                return CompileType(static_cast<const Backend::IL::BoolType*>(type));
+            case Backend::IL::TypeKind::Void:
+                return CompileType(static_cast<const Backend::IL::VoidType*>(type));
+            case Backend::IL::TypeKind::Int:
+                return CompileType(static_cast<const Backend::IL::IntType*>(type));
+            case Backend::IL::TypeKind::FP:
+                return CompileType(static_cast<const Backend::IL::FPType*>(type));
+            case Backend::IL::TypeKind::Vector:
+                return CompileType(static_cast<const Backend::IL::VectorType*>(type));
+            case Backend::IL::TypeKind::Pointer:
+                return CompileType(static_cast<const Backend::IL::PointerType*>(type));
+            case Backend::IL::TypeKind::Array:
+                return CompileType(static_cast<const Backend::IL::ArrayType*>(type));
+            case Backend::IL::TypeKind::Function:
+                return CompileType(static_cast<const Backend::IL::FunctionType*>(type));
+            case Backend::IL::TypeKind::Struct:
+                return CompileType(static_cast<const Backend::IL::StructType*>(type));
+        }
+    }
+
+    /// Compile a given type
+    uint32_t CompileType(const Backend::IL::BoolType* type) {
+        LLVMRecord record(LLVMTypeRecord::Integer);
+        record.opCount = 1;
+        record.ops = recordAllocator.AllocateArray<uint64_t>(1);
+        record.ops[0] = 1u;
+        return Emit(type, record);
+    }
+
+    /// Compile a given type
+    uint32_t CompileType(const Backend::IL::VoidType* type) {
+        LLVMRecord record(LLVMTypeRecord::Void);
+        return Emit(type, record);
+    }
+
+    /// Compile a given type
+    uint32_t CompileType(const Backend::IL::IntType* type) {
+        LLVMRecord record(LLVMTypeRecord::Integer);
+        record.opCount = 1;
+        record.ops = recordAllocator.AllocateArray<uint64_t>(1);
+        record.ops[0] = type->bitWidth;
+        return Emit(type, record);
+    }
+
+    /// Compile a given type
+    uint32_t CompileType(const Backend::IL::FPType* type) {
+        LLVMRecord record;
+        switch (type->As<Backend::IL::FPType>()->bitWidth) {
+            default:
+            ASSERT(false, "Invalid floating point bit-width");
+                break;
+            case 16:
+                record.id = static_cast<uint32_t>(LLVMTypeRecord::Half);
+                break;
+            case 32:
+                record.id = static_cast<uint32_t>(LLVMTypeRecord::Float);
+                break;
+            case 64:
+                record.id = static_cast<uint32_t>(LLVMTypeRecord::Double);
+                break;
+        }
+        return Emit(type, record);
+    }
+
+    /// Compile a given type
+    uint32_t CompileType(const Backend::IL::VectorType* type) {
+        LLVMRecord record(LLVMTypeRecord::Vector);
+        record.ops = recordAllocator.AllocateArray<uint64_t>(2);
+        record.ops[0] = type->dimension;
+        record.ops[1] = GetType(type->containedType);
+        return Emit(type, record);
+    }
+
+    /// Compile a given type
+    uint32_t CompileType(const Backend::IL::PointerType* type) {
+        LLVMRecord record(LLVMTypeRecord::Pointer);
+        record.opCount = 2;
+
+        record.ops = recordAllocator.AllocateArray<uint64_t>(2);
+        record.ops[0] = GetType(type->pointee);
+
+        // Translate address space
+        switch (type->addressSpace) {
+            default:
+            ASSERT(false, "Invalid address space");
+                break;
+            case Backend::IL::AddressSpace::Constant:
+                record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::Constant);
+                break;
+            case Backend::IL::AddressSpace::Function:
+                record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::Local);
+                break;
+            case Backend::IL::AddressSpace::Texture:
+            case Backend::IL::AddressSpace::Buffer:
+            case Backend::IL::AddressSpace::Resource:
+                record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::Device);
+                break;
+            case Backend::IL::AddressSpace::GroupShared:
+                record.ops[1] = static_cast<uint64_t>(DXILAddressSpace::GroupShared);
+                break;
+        }
+
+        return Emit(type, record);
+    }
+
+    /// Compile a given type
+    uint32_t CompileType(const Backend::IL::ArrayType* type) {
+        LLVMRecord record(LLVMTypeRecord::Array);
+        record.opCount = 2;
+
+        record.ops = recordAllocator.AllocateArray<uint64_t>(2);
+        record.ops[0] = type->count;
+        record.ops[1] = GetType(type->elementType);
+
+        return Emit(type, record);
+    }
+
+    /// Compile a given type
+    uint32_t CompileType(const Backend::IL::FunctionType* type) {
+        LLVMRecord record(LLVMTypeRecord::Function);
+        record.opCount = 2 + type->parameterTypes.size();
+
+        record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
+        record.ops[0] = 0;
+        record.ops[1] = GetType(type->returnType);
+
+        for (size_t i = 0; i < type->parameterTypes.size(); i++) {
+            record.ops[2 + i] = GetType(type->parameterTypes[i]);
+        }
+
+        return Emit(type, record);
+    }
+
+    /// Compile a given type
+    uint32_t CompileType(const Backend::IL::StructType* type) {
+        LLVMRecord record(LLVMTypeRecord::Function);
+        record.opCount = 1 + type->memberTypes.size();
+
+        record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
+        record.ops[0] = 0;
+
+        for (size_t i = 0; i < type->memberTypes.size(); i++) {
+            record.ops[1 + i] = GetType(type->memberTypes[i]);
+        }
+
+        return Emit(type, record);
+    }
+
+    /// Emit a type and its respective records
+    /// \param type type to be emitted
+    /// \param record type record
+    /// \return DXIL id
+    uint32_t Emit(const Backend::IL::Type* type, LLVMRecord& record) {
+        // Add mapping
+        uint32_t id = typeLookup.size();
+        AddTypeMapping(type, id);
+
+        // Always user
+        record.userRecord = true;
+
+        // Emit into block
+        declarationBlock->AddRecord(record);
+
+        // OK
+        return id;
+    }
+    
 private:
     /// IL map
     Backend::IL::TypeMap& programMap;
@@ -95,4 +292,10 @@ private:
 
     /// IL type to DXIL type table
     std::vector<uint32_t> typeLookup;
+
+    /// Shared allocator for records
+    LinearBlockAllocator<sizeof(uint64_t) * 1024u> recordAllocator;
+
+    /// Declaration block
+    LLVMBlock* declarationBlock{nullptr};
 };

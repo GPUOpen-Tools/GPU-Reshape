@@ -109,6 +109,16 @@ namespace Backend::IL {
             return constant ? constant->Cast<T>() : nullptr;
         }
 
+        /// Get the type map
+        TypeMap& GetTypeMap() {
+            return typeMap;
+        }
+
+        /// Get the type map
+        const TypeMap& GetTypeMap() const {
+            return typeMap;
+        }
+
         /// Iterator accessors
         Container::iterator begin() { return constants.begin(); }
         Container::reverse_iterator rbegin() { return constants.rbegin(); }

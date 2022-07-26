@@ -662,6 +662,21 @@ void IL::PrettyPrint(const Backend::IL::TypeMap &map, PrettyPrintContext out) {
                 line << "]";
                 break;
             }
+            case Backend::IL::TypeKind::Struct: {
+                auto str = type->As<Backend::IL::StructType>();
+                line << "Struct members:[";
+
+                for (size_t i = 0; i < str->memberTypes.size(); i++) {
+                    if (i != 0) {
+                        line << ", ";
+                    }
+
+                    line << "%" << str->memberTypes[i]->id;
+                }
+
+                line << "]";
+                break;
+            }
             case Backend::IL::TypeKind::Unexposed: {
                 line << "Unexposed";
                 break;

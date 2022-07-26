@@ -385,3 +385,7 @@ Backend::IL::Format DXILPhysicalBlockMetadata::GetComponentFormat(ComponentType 
 void DXILPhysicalBlockMetadata::CompileMetadata(struct LLVMBlock *block) {
 
 }
+
+void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
+
+}

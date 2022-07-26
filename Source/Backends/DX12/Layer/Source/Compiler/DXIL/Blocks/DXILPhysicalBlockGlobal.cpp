@@ -10,7 +10,7 @@
 
 DXILPhysicalBlockGlobal::DXILPhysicalBlockGlobal(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table) :
     DXILPhysicalBlockSection(allocators, program, table),
-    constantMap(program.GetConstants(), program.GetIdentifierMap()) {
+    constantMap(allocators, program.GetConstants(), program.GetIdentifierMap(), table.type.typeMap) {
 
 }
 
@@ -172,10 +172,34 @@ void DXILPhysicalBlockGlobal::CompileConstants(struct LLVMBlock *block) {
 }
 
 void DXILPhysicalBlockGlobal::CompileGlobalVar(LLVMRecord &record) {
-    table.idRemapper.AllocSourceMapping();
+
 }
 
 void DXILPhysicalBlockGlobal::CompileAlias(LLVMRecord &record) {
+
+}
+
+void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
+    // Source mappings
+    for (const LLVMRecord &record: block->records) {
+        switch (static_cast<LLVMConstantRecord>(record.id)) {
+            default: {
+                table.idRemapper.AllocSourceMapping();
+            }
+
+                /* Ignored */
+            case LLVMConstantRecord::SetType: {
+                break;
+            }
+        }
+    }
+}
+
+void DXILPhysicalBlockGlobal::StitchGlobalVar(LLVMRecord &record) {
+    table.idRemapper.AllocSourceMapping();
+}
+
+void DXILPhysicalBlockGlobal::StitchAlias(LLVMRecord &record) {
     table.idRemapper.AllocSourceMapping();
 }
 

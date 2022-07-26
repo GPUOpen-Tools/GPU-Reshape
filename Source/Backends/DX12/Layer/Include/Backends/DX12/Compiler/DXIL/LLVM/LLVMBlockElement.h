@@ -15,8 +15,14 @@ struct LLVMBlockElement {
 
     }
 
+    /// Construct from type and id
     LLVMBlockElement(LLVMBlockElementType type, uint32_t id) : type(static_cast<uint32_t>(type)), id(id) {
 
+    }
+
+    /// Is this element of a type?
+    bool Is(LLVMBlockElementType elementType) const {
+        return type == static_cast<uint32_t>(elementType);
     }
 
     uint32_t type : 2;

@@ -27,6 +27,26 @@ struct LLVMBlock {
         return static_cast<T>(id);
     }
 
+    /// Get a sub-block
+    /// \param id reserved identifier
+    /// \return nullptr if not found
+    LLVMBlock* GetBlock(LLVMReservedBlock id) {
+        for (LLVMBlock* block : blocks) {
+            if (block->Is(id)) {
+                return block;
+            }
+        }
+
+        return nullptr;
+    }
+
+    /// Add a record to the end of this block
+    /// \param record record to be added
+    void AddRecord(const LLVMRecord& record) {
+        elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, records.Size()));
+        records.Add(record);
+    }
+
     /// Identifier of this block, may be reserved
     uint32_t id{~0u};
 

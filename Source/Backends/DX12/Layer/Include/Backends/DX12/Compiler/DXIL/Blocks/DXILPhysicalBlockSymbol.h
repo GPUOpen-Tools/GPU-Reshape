@@ -30,6 +30,9 @@ public:
     /// Compile all records
     void CompileSymTab(struct LLVMBlock *block);
 
+    /// Stitch all records
+    void StitchSymTab(struct LLVMBlock *block);
+
 private:
     /// Raw values
     std::vector<LLVMRecordStringView> valueStrings;

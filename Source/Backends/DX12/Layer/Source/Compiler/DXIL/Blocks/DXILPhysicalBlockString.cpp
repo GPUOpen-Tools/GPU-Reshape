@@ -31,3 +31,7 @@ std::string_view DXILPhysicalBlockString::GetString(uint64_t offset, uint64_t le
 void DXILPhysicalBlockString::CompileStrTab(struct LLVMBlock *block) {
 
 }
+
+void DXILPhysicalBlockString::StitchStrTab(struct LLVMBlock *block) {
+
+}

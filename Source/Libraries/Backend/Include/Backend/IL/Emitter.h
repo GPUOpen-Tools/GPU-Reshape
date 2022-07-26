@@ -79,6 +79,7 @@ namespace IL {
         /// Set the current program
         void SetProgram(Program *value) {
             program = value;
+            capabilityTable = &program->GetCapabilityTable();
             map = &value->GetIdentifierMap();
             typeMap = &value->GetTypeMap();
         }
@@ -678,6 +679,9 @@ namespace IL {
 
         /// Current program
         Program *program{nullptr};
+
+        /// Current capability table
+        CapabilityTable* capabilityTable{nullptr};
 
         /// Current identifier map
         IdentifierMap *map{nullptr};

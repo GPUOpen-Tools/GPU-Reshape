@@ -26,6 +26,9 @@ void DXILPhysicalBlockFunction::ParseFunction(const struct LLVMBlock *block) {
     // Create function
     IL::Function *fn = program.GetFunctionList().AllocFunction();
 
+    // Set the type
+    fn->SetFunctionType(declaration.type);
+
     // Visit child blocks
     for (const LLVMBlock *fnBlock: block->blocks) {
         switch (static_cast<LLVMReservedBlock>(fnBlock->id)) {
@@ -831,10 +834,13 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(const struct LLVMRecord &rec
      */
 
     // Allocate id to current function offset
-    table.idMap.AllocMappedID(DXILIDType::Function, functions.Size());
+    uint32_t id = table.idMap.AllocMappedID(DXILIDType::Function, functions.Size());
 
     // Create function
     DXILFunctionDeclaration &function = functions.Add();
+
+    // Set id
+    function.id = id;
 
     // Hash name
     function.hash = std::hash<std::string_view>{}(function.name);
@@ -1048,8 +1054,8 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
         constantBlock->id = static_cast<uint32_t>(LLVMReservedBlock::Constants);
     }
 
-    // Compile all inline constants
-    CompileInlineConstants(constantBlock);
+    // Get the program map
+    Backend::IL::TypeMap& typeMap = program.GetTypeMap();
 
     // Get functions
     IL::FunctionList& ilFunctions = program.GetFunctionList();
@@ -1061,6 +1067,20 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
     // Swap source data
     TrivialStackVector<LLVMRecord, 32> source;
     block->records.Swap(source);
+
+    // Swap element data
+    TrivialStackVector<LLVMBlockElement, 128> elements;
+    block->elements.Swap(elements);
+
+    // Reserve
+    block->elements.Reserve(elements.Size());
+
+    // Filter all records
+    for (const LLVMBlockElement& element : elements) {
+        if (!element.Is(LLVMBlockElementType::Record)) {
+            block->elements.Add(element);
+        }
+    }
 
     // Linear block to il mapper
     std::map<IL::ID, uint32_t> mapping;
@@ -1075,7 +1095,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
     declareBlocks.opCount = 1;
     declareBlocks.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
     declareBlocks.ops[0] = fn->GetBasicBlocks().GetBlockCount();
-    block->records.Add(declareBlocks);
+    block->AddRecord(declareBlocks);
 
     // Compile all blocks
     for (const IL::BasicBlock* bb : fn->GetBasicBlocks()) {
@@ -1083,37 +1103,19 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
         for (const IL::Instruction* instr : *bb) {
             LLVMRecord record;
 
-            // If it's valid just remap the operands
-            if (instr->source.IsValid()) {
+            // If it's valid, copy record
+            if (instr->source.TriviallyCopyable()) {
                 // Copy the source
                 record = source[instr->source.codeOffset];
 
-                // Remap all ops
-                auto* ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
-
                 // If trivial, just send it off
                 if (instr->source.TriviallyCopyable()) {
-                    // Force remap everything
-                    for (uint32_t i = 0; i < record.opCount; i++) {
-                        ops[i] = table.idRemapper.Remap(record.ops[i]);
-                    }
-
-                    // Set ops
-                    record.ops = ops;
-
-                    // Emit
-                    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, block->records.Size()));
-                    block->records.Add(record);
+                    block->AddRecord(record);
                     continue;
-                } else {
-                    // Try to remap ops
-                    for (uint32_t i = 0; i < record.opCount; i++) {
-                        ops[i] = table.idRemapper.TryRemap(record.ops[i]);
-                    }
-
-                    // Set ops
-                    record.ops = ops;
                 }
+            } else {
+                // Entirely new record, user generated
+                record.userRecord = true;
             }
 
             switch (instr->opCode) {
@@ -1123,13 +1125,6 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                 case IL::OpCode::Literal:
                     // Handled in CompileInlineConstants
                     break;
-
-#if 0
-                case IL::OpCode::Any:
-                    break;
-                case IL::OpCode::All:
-                    break;
-#endif
 
                 /* Binary ops */
                 case IL::OpCode::Add:
@@ -1144,13 +1139,10 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                 case IL::OpCode::Rem:
                 case IL::OpCode::Or:
                 case IL::OpCode::And: {
-                    auto _instr = instr->As<IL::AddInstruction>();
-
                     // Prepare record
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+                    record.opCount = 3;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
-                    record.ops[0] = table.idRemapper.Remap(_instr->lhs);
-                    record.ops[1] = table.idRemapper.Remap(_instr->lhs);
 
                     // Translate op code
                     LLVMBinOp opCode{};
@@ -1158,38 +1150,106 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         default:
                             ASSERT(false, "Unexpected opcode in instruction");
                             break;
-                        case IL::OpCode::Add:
+                        case IL::OpCode::Add: {
+                            auto _instr = instr->As<IL::AddInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
                             opCode = LLVMBinOp::Add;
                             break;
-                        case IL::OpCode::Sub:
+                        }
+                        case IL::OpCode::Sub: {
+                            auto _instr = instr->As<IL::SubInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
                             opCode = LLVMBinOp::Sub;
                             break;
-                        case IL::OpCode::Div:
-                            opCode = LLVMBinOp::SDiv;
+                        }
+                        case IL::OpCode::Div: {
+                            auto _instr = instr->As<IL::DivInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+
+                            const Backend::IL::Type* type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<Backend::IL::FPType>()) {
+                                opCode = LLVMBinOp::SDiv;
+                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                opCode = intType->signedness ? LLVMBinOp::SDiv : LLVMBinOp::UDiv;
+                            } else {
+                                ASSERT(false, "Invalid type in Div");
+                            }
                             break;
-                        case IL::OpCode::Mul:
+                        }
+                        case IL::OpCode::Mul: {
+                            auto _instr = instr->As<IL::MulInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
                             opCode = LLVMBinOp::Mul;
                             break;
-                        case IL::OpCode::Or:
-                        case IL::OpCode::BitOr:
+                        }
+                        case IL::OpCode::Or:  {
+                            auto _instr = instr->As<IL::OrInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
                             opCode = LLVMBinOp::Or;
                             break;
-                        case IL::OpCode::BitXOr:
+                        }
+                        case IL::OpCode::BitOr: {
+                            auto _instr = instr->As<IL::BitOrInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+                            opCode = LLVMBinOp::Or;
+                            break;
+                        }
+                        case IL::OpCode::BitXOr: {
+                            auto _instr = instr->As<IL::BitXOrInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
                             opCode = LLVMBinOp::XOr;
                             break;
-                        case IL::OpCode::And:
-                        case IL::OpCode::BitAnd:
+                        }
+                        case IL::OpCode::And: {
+                            auto _instr = instr->As<IL::AndInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
                             opCode = LLVMBinOp::And;
                             break;
-                        case IL::OpCode::BitShiftLeft:
+                        }
+                        case IL::OpCode::BitAnd: {
+                            auto _instr = instr->As<IL::BitAndInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+                            opCode = LLVMBinOp::And;
+                            break;
+                        }
+                        case IL::OpCode::BitShiftLeft: {
+                            auto _instr = instr->As<IL::BitShiftLeftInstruction>();
+                            record.ops[0] = _instr->value;
+                            record.ops[1] = _instr->shift;
                             opCode = LLVMBinOp::SHL;
                             break;
-                        case IL::OpCode::BitShiftRight:
+                        }
+                        case IL::OpCode::BitShiftRight: {
+                            auto _instr = instr->As<IL::BitShiftRightInstruction>();
+                            record.ops[0] = _instr->value;
+                            record.ops[1] = _instr->shift;
                             opCode = LLVMBinOp::AShR;
                             break;
-                        case IL::OpCode::Rem:
-                            opCode = LLVMBinOp::SRem;
+                        }
+                        case IL::OpCode::Rem: {
+                            auto _instr = instr->As<IL::RemInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+
+                            const Backend::IL::Type* type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<Backend::IL::FPType>()) {
+                                opCode = LLVMBinOp::SRem;
+                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                opCode = intType->signedness ? LLVMBinOp::SRem : LLVMBinOp::URem;
+                            } else {
+                                ASSERT(false, "Invalid type in Rem");
+                            }
                             break;
+                        }
                     }
 
                     // Set bin op
@@ -1197,59 +1257,290 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     break;
                 }
 
-#if 0
+                case IL::OpCode::ResourceSize: {
+                    auto _instr = instr->As<IL::ResourceSizeInstruction>();
+
+                    // Get intrinsic
+                    const DXILFunctionDeclaration* intrinsic = GetResourceSizeIntrinsic();
+
+                    /*
+                     * declare %dx.types.Dimensions @dx.op.getDimensions(
+                     *   i32,                  ; opcode
+                     *   %dx.types.Handle,     ; resource handle
+                     *   i32)                  ; MIP level
+                     */
+
+                    uint64_t ops[2];
+                    ops[0] = _instr->resource;
+                    ops[1] = table.global.constantMap.GetConstant(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true}),
+                        Backend::IL::IntConstant {.value = 0}
+                    ));
+
+                    // Invoke
+                    record = CompileIntrinsicCall(intrinsic, 2, ops);
+                    break;
+                }
+
                 case IL::OpCode::Equal:
                 case IL::OpCode::NotEqual:
                 case IL::OpCode::LessThan:
                 case IL::OpCode::LessThanEqual:
                 case IL::OpCode::GreaterThan:
-                case IL::OpCode::GreaterThanEqual:
+                case IL::OpCode::GreaterThanEqual: {
+                    // Prepare record
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCmp);
+                    record.opCount = 3;
+                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+
+                    // Translate op code
+                    LLVMCmpOp opCode{};
+                    switch (instr->opCode) {
+                        default:
+                            ASSERT(false, "Unexpected opcode in instruction");
+                            break;
+                        case IL::OpCode::Equal: {
+                            auto _instr = instr->As<IL::EqualInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+
+                            const Backend::IL::Type* type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<Backend::IL::FPType>()) {
+                                opCode = LLVMCmpOp::FloatUnorderedEqual;
+                            } else {
+                                opCode = LLVMCmpOp::IntEqual;
+                            }
+                            break;
+                        }
+                        case IL::OpCode::NotEqual: {
+                            auto _instr = instr->As<IL::NotEqualInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+
+                            const Backend::IL::Type* type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<Backend::IL::FPType>()) {
+                                opCode = LLVMCmpOp::FloatUnorderedNotEqual;
+                            } else {
+                                opCode = LLVMCmpOp::IntNotEqual;
+                            }
+                            break;
+                        }
+                        case IL::OpCode::LessThan: {
+                            auto _instr = instr->As<IL::LessThanInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+
+                            const Backend::IL::Type* type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<Backend::IL::FPType>()) {
+                                opCode = LLVMCmpOp::FloatUnorderedLessThan;
+                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                opCode = intType->signedness ? LLVMCmpOp::IntSignedLessThan : LLVMCmpOp::IntUnsignedLessThan;
+                            } else {
+                                ASSERT(false, "Invalid type in LessThan");
+                            }
+                            break;
+                        }
+                        case IL::OpCode::LessThanEqual: {
+                            auto _instr = instr->As<IL::LessThanEqualInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+
+                            const Backend::IL::Type* type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<Backend::IL::FPType>()) {
+                                opCode = LLVMCmpOp::FloatUnorderedLessEqual;
+                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                opCode = intType->signedness ? LLVMCmpOp::IntSignedLessEqual : LLVMCmpOp::IntUnsignedLessEqual;
+                            } else {
+                                ASSERT(false, "Invalid type in LessThanEqual");
+                            }
+                            break;
+                        }
+                        case IL::OpCode::GreaterThan:  {
+                            auto _instr = instr->As<IL::GreaterThanInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+
+                            const Backend::IL::Type* type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<Backend::IL::FPType>()) {
+                                opCode = LLVMCmpOp::FloatUnorderedGreaterThan;
+                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                opCode = intType->signedness ? LLVMCmpOp::IntSignedGreaterThan : LLVMCmpOp::IntUnsignedGreaterThan;
+                            } else {
+                                ASSERT(false, "Invalid type in GreaterThan");
+                            }
+                            break;
+                        }
+                        case IL::OpCode::GreaterThanEqual: {
+                            auto _instr = instr->As<IL::GreaterThanEqualInstruction>();
+                            record.ops[0] = _instr->lhs;
+                            record.ops[1] = _instr->rhs;
+
+                            const Backend::IL::Type* type = typeMap.GetType(_instr->lhs);
+                            if (type->Is<Backend::IL::FPType>()) {
+                                opCode = LLVMCmpOp::FloatUnorderedGreaterEqual;
+                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                opCode = intType->signedness ? LLVMCmpOp::IntSignedGreaterEqual : LLVMCmpOp::IntUnsignedGreaterEqual;
+                            } else {
+                                ASSERT(false, "Invalid type in GreaterThanEqual");
+                            }
+                            break;
+                        }
+                    }
+
+                    // Set cmp op
+                    record.ops[2] = static_cast<uint64_t>(opCode);
                     break;
-                case IL::OpCode::Branch:
+                }
+
+                case IL::OpCode::Branch: {
+                    auto _instr = instr->As<IL::BranchInstruction>();
+
+                    // Prepare record
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBr);
+                    record.opCount = 1;
+                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
+                    record.ops[0] =_instr->branch;
                     break;
-                case IL::OpCode::BranchConditional:
+                }
+                case IL::OpCode::BranchConditional: {
+                    auto _instr = instr->As<IL::BranchConditionalInstruction>();
+
+                    // Prepare record
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBr);
+                    record.opCount = 3;
+                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                    record.ops[0] =_instr->pass;
+                    record.ops[1] =_instr->fail;
+                    record.ops[2] =_instr->cond;
                     break;
-                case IL::OpCode::Switch:
+                }
+                case IL::OpCode::Switch: {
+                    auto _instr = instr->As<IL::SwitchInstruction>();
+
+                    // Prepare record
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstSwitch);
+                    record.opCount = 2 + _instr->cases.count;
+                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+                    record.ops[0] =_instr->value;
+                    record.ops[1] =_instr->_default;
+
+                    for (uint32_t i = 0; i < _instr->cases.count; i++) {
+                        record.ops[2 + i * 2] =_instr->cases[i].literal;
+                        record.ops[3 + i * 2] =_instr->cases[i].literal;
+                    }
                     break;
-                case IL::OpCode::Phi:
+                }
+                case IL::OpCode::Phi: {
+                    auto _instr = instr->As<IL::PhiInstruction>();
+
+                    // Prepare record
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstPhi);
+                    record.opCount = 1 + _instr->values.count;
+                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+                    record.ops[0] =_instr->result;
+
+                    for (uint32_t i = 0; i < _instr->values.count; i++) {
+                        record.ops[1 + i * 2] =_instr->values[i].value;
+                        record.ops[2 + i * 2] =_instr->values[i].branch;
+                    }
                     break;
-                case IL::OpCode::Return:
+                }
+                case IL::OpCode::Return: {
+                    auto _instr = instr->As<IL::ReturnInstruction>();
+
+                    // Prepare record
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstRet);
+
+                    if (_instr->value != IL::InvalidID) {
+                        record.opCount = 1;
+                        record.ops[0] = _instr->value;
+                    }
                     break;
+                }
                 case IL::OpCode::Trunc:
-                    break;
                 case IL::OpCode::FloatToInt:
-                    break;
                 case IL::OpCode::IntToFloat:
+                case IL::OpCode::BitCast: {
+                    // Prepare record
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCast);
+                    record.opCount = 3;
+                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+
+                    // Translate op code
+                    LLVMCastOp opCode{};
+                    switch (instr->opCode) {
+                        default:
+                        ASSERT(false, "Unexpected opcode in instruction");
+                            break;
+                        case IL::OpCode::Trunc: {
+                            auto _instr = instr->As<IL::TruncInstruction>();
+                            record.ops[0] = _instr->value;
+                            opCode = LLVMCastOp::Trunc;
+                            break;
+                        }
+                        case IL::OpCode::FloatToInt: {
+                            auto _instr = instr->As<IL::FloatToIntInstruction>();
+                            record.ops[0] = _instr->value;
+                            opCode = LLVMCastOp::FPToUI;
+                            break;
+                        }
+                        case IL::OpCode::IntToFloat: {
+                            auto _instr = instr->As<IL::IntToFloatInstruction>();
+                            record.ops[0] = _instr->value;
+                            opCode = LLVMCastOp::SIToFP;
+                            break;
+                        }
+                        case IL::OpCode::BitCast: {
+                            auto _instr = instr->As<IL::BitCastInstruction>();
+                            record.ops[0] = _instr->value;
+                            opCode = LLVMCastOp::BitCast;
+                            break;
+                        }
+                    }
+
+                    // Assign type
+                    record.ops[1] = table.type.typeMap.GetType(program.GetTypeMap().GetType(record.ops[0]));
+
+                    // Set cmp op
+                    record.ops[2] = static_cast<uint64_t>(opCode);
                     break;
-                case IL::OpCode::BitCast:
+                }
+
+                case IL::OpCode::Any: {
                     break;
-                case IL::OpCode::Export:
+                }
+                case IL::OpCode::All:
                     break;
+
+                case IL::OpCode::Export: {
+                    // NOOP
+                    break;
+                }
+
+                // To be implemented
+#if 0
                 case IL::OpCode::Alloca:
                     break;
                 case IL::OpCode::Load:
                     break;
                 case IL::OpCode::Store:
                     break;
-                case IL::OpCode::StoreOutput:
-                    break;
                 case IL::OpCode::StoreTexture:
                     break;
                 case IL::OpCode::LoadTexture:
                     break;
+                case IL::OpCode::StoreOutput:
+                    break;
                 case IL::OpCode::StoreBuffer:
                     break;
                 case IL::OpCode::LoadBuffer:
-                    break;
-                case IL::OpCode::ResourceSize:
                     break;
 #endif
             }
 
             // Emit if needed
             if (record.id != ~0u) {
-                block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, block->records.Size()));
-                block->records.Add(record);
+                block->AddRecord(record);
             }
         }
     }
@@ -1259,48 +1550,223 @@ void DXILPhysicalBlockFunction::CompileModuleFunction(LLVMRecord &record) {
 
 }
 
-void DXILPhysicalBlockFunction::CompileInlineConstants(struct LLVMBlock *block) {
-    for (const IL::Function* fn : program.GetFunctionList()) {
-        for (const IL::BasicBlock* bb : fn->GetBasicBlocks()) {
-            for (const IL::Instruction *instr: *bb) {
-                switch (instr->opCode) {
-                    default:
-                        break;
-                    case IL::OpCode::Literal: {
-                        auto* _instr = instr->As<IL::LiteralInstruction>();
+void DXILPhysicalBlockFunction::RemapRecord(LLVMRecord &record) {
+    // Remap all ops
+    auto* ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
 
-                        // Prepare record
-                        LLVMRecord record;
-                        record.opCount = 1;
-                        record.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
+    // Allocate result
+    if (HasResult(record)) {
+        table.idRemapper.AllocSourceMapping();
+    }
 
-                        // Set value
-                        switch (_instr->type) {
-                            default:
-                                ASSERT(false, "Invalid type");
-                                break;
-                            case IL::LiteralType::Int: {
-                                record.id = static_cast<uint32_t>(LLVMConstantRecord::Integer);
-                                record.OpBitWrite(0, _instr->value.integral);
-                                break;
-                            }
-                            case IL::LiteralType::FP: {
-                                record.id = static_cast<uint32_t>(LLVMConstantRecord::Float);
-                                record.OpBitWrite(0, _instr->value.fp);
-                                break;
-                            }
-                        }
-
-                        // Allocate mapping
-                        table.idRemapper.AllocUserMapping(_instr->result);
-
-                        // Add records
-                        block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, block->records.Size()));
-                        block->records.Add(record);
-                        break;
-                    }
-                }
+    // Handle instruction
+    switch (static_cast<LLVMFunctionRecord>(record.id)) {
+        default: {
+            // Force remap all operands as references
+            for (uint32_t i = 0; i < record.opCount; i++) {
+                ops[i] = table.idRemapper.Remap(record.ops[i]);
             }
+
+            // OK
+            break;
+        }
+
+        case LLVMFunctionRecord::InstBinOp: {
+            ops[0] = table.idRemapper.Remap(record.Op(0));
+            ops[1] = table.idRemapper.Remap(record.Op(1));
+            break;
+        }
+
+        case LLVMFunctionRecord::InstCast: {
+            ops[0] = table.idRemapper.Remap(record.Op(0));
+            break;
+        }
+
+        case LLVMFunctionRecord::InstCmp:
+        case LLVMFunctionRecord::InstCmp2: {
+            ops[0] = table.idRemapper.Remap(record.Op(0));
+            ops[1] = table.idRemapper.Remap(record.Op(1));
+            break;
+        }
+
+        case LLVMFunctionRecord::InstRet: {
+            if (record.opCount) {
+                ops[0] = table.idRemapper.Remap(record.Op(0));
+            }
+            break;
+        }
+        case LLVMFunctionRecord::InstBr: {
+            if (record.opCount > 1) {
+                ops[2] = table.idRemapper.Remap(record.Op(2));
+            }
+            break;
+        }
+        case LLVMFunctionRecord::InstSwitch: {
+            ops[0] = table.idRemapper.Remap(record.Op(0));
+
+            for (uint32_t i = 0; i < record.opCount - 2; i += 2) {
+                ops[i] = table.idRemapper.Remap(record.ops[i]);
+            }
+            break;
+        }
+
+        case LLVMFunctionRecord::InstPhi: {
+            for (uint32_t i = 0; i < record.opCount - 1; i += 2) {
+                ops[i + 1] = table.idRemapper.TryRemap(record.ops[i + 1]);
+            }
+            break;
+        }
+
+        case LLVMFunctionRecord::InstAlloca: {
+            break;
+        }
+
+        case LLVMFunctionRecord::InstStore:
+        case LLVMFunctionRecord::InstStore2: {
+            ops[0] = table.idRemapper.Remap(record.Op(0));
+            ops[2] = table.idRemapper.Remap(record.Op(2));
+            break;
+        }
+
+        case LLVMFunctionRecord::InstCall:
+        case LLVMFunctionRecord::InstCall2: {
+            ops[0] = table.idRemapper.Remap(record.Op(3));
+
+            for (uint32_t i = 5; i < record.opCount; i++) {
+                ops[i] = table.idRemapper.Remap(record.ops[i]);
+            }
+            break;
         }
     }
+
+    // Set ops
+    record.ops = ops;
+}
+
+void DXILPhysicalBlockFunction::StitchModuleFunction(LLVMRecord &record) {
+
+}
+
+void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
+
+}
+
+const DXILFunctionDeclaration* DXILPhysicalBlockFunction::GetResourceSizeIntrinsic() {
+    if (intrinsics.resourceSize != IL::InvalidID) {
+        return &functions[intrinsics.resourceSize];
+    }
+
+    /*
+     * declare %dx.types.Dimensions @dx.op.getDimensions(
+     *   i32,                  ; opcode
+     *   %dx.types.Handle,     ; resource handle
+     *   i32)                  ; MIP level
+     */
+
+    // RST symbol name
+    const char* symbolName = "dx.op.getDimensions";
+
+    // Search existing declarations
+    for (const DXILFunctionDeclaration& decl : functions) {
+        if (table.symbol.GetValueString(decl.id) == symbolName) {
+            return &decl;
+        }
+    }
+
+    // Root block
+    LLVMBlock* global = &table.scan.GetRoot();
+
+    // Get type map
+    Backend::IL::TypeMap& typeMap = program.GetTypeMap();
+
+    // Integral types
+    const Backend::IL::Type* i8 = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 8, .signedness = true});
+    const Backend::IL::Type* i32 = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true});
+
+    // Opaque handle type
+    Backend::IL::StructType handle;
+    handle.memberTypes.push_back(typeMap.FindTypeOrAdd(Backend::IL::PointerType{
+        .pointee = i8,
+        .addressSpace = Backend::IL::AddressSpace::Resource
+    }));
+
+    // Standard return
+    Backend::IL::StructType ret4;
+    ret4.memberTypes.push_back(i32);
+    ret4.memberTypes.push_back(i32);
+    ret4.memberTypes.push_back(i32);
+    ret4.memberTypes.push_back(i32);
+
+    // Function signature
+    Backend::IL::FunctionType funcTy;
+    funcTy.returnType = typeMap.FindTypeOrAdd(ret4);
+    funcTy.parameterTypes.push_back(typeMap.FindTypeOrAdd(handle));
+    funcTy.parameterTypes.push_back(i32);
+    const Backend::IL::FunctionType* fnType = typeMap.FindTypeOrAdd(funcTy);
+
+    /*
+     * LLVM Specification
+     *   [FUNCTION, type, callingconv, isproto,
+     *    linkage, paramattr, alignment, section, visibility, gc, prologuedata,
+     *     dllstorageclass, comdat, prefixdata, personalityfn, preemptionspecifier]
+     */
+
+    // Allocate top-level id
+    IL::ID id = program.GetIdentifierMap().AllocID();
+
+    // Module scope function declaration
+    LLVMRecord record(LLVMModuleRecord::Function);
+    record.opCount = 5;
+    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+    record.ops[0] = table.type.typeMap.GetType(fnType);
+    record.ops[1] = 0;
+    record.ops[2] = 1;
+    record.ops[3] = static_cast<uint64_t>(LLVMLinkage::CommonLinkage);
+    record.ops[4] = 0;
+    global->AddRecord(record);
+
+    // Symbol tab for linking
+    LLVMBlock* symTab = global->GetBlock(LLVMReservedBlock::ValueSymTab);
+
+    // Symbol entry
+    LLVMRecord syRecord(LLVMSymTabRecord::Entry);
+    syRecord.opCount = 1 + std::strlen(symbolName);
+    syRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(syRecord.opCount);
+
+    // Copy name
+    for (uint32_t i = 0; i < syRecord.opCount - 1; i++) {
+        syRecord.ops[1 + i] = symbolName[i];
+    }
+
+    // Emit symbol
+    symTab->AddRecord(syRecord);
+
+    // Cache intrinsic
+    intrinsics.resourceSize = functions.Size();
+
+    // Create function
+    DXILFunctionDeclaration &function = functions.Add();
+    function.id = id;
+    function.type = fnType;
+    function.linkage = LLVMLinkage::CommonLinkage;
+    return &function;
+}
+
+LLVMRecord DXILPhysicalBlockFunction::CompileIntrinsicCall(const DXILFunctionDeclaration* decl, uint32_t opCount, const uint64_t* ops) {
+    LLVMRecord record(LLVMFunctionRecord::InstCall2);
+    record.opCount = 5 + opCount;
+    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+    record.ops[0] = 0;
+    record.ops[1] = 0;
+    record.ops[2] = table.type.typeMap.GetType(decl->type);
+    record.ops[3] = decl->id;
+    record.ops[4] = decl->id;
+
+    // Emit call operands
+    for (uint32_t i = 0; i < opCount; i++) {
+        record.ops[4 + i] = ops[i];
+    }
+
+    // OK
+    return record;
 }

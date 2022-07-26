@@ -24,7 +24,9 @@ struct DXILIDRemapper {
     /// \param source source DXIL value
     /// \return remapped value
     uint32_t Remap(uint32_t source) {
-        return sourceMappings.at(source);
+        uint32_t mapping = sourceMappings.at(source);
+        ASSERT(mapping != ~0u, "Remapped not found on source operand");
+        return mapping;
     }
 
     /// Try to remap a DXIL value

@@ -153,6 +153,7 @@ namespace Backend::IL {
         template<> SortMap<TextureType>& GetSortMap<TextureType>() { return maps.textureMap; }
         template<> SortMap<BufferType>& GetSortMap<BufferType>() { return maps.bufferMap; }
         template<> SortMap<FunctionType>& GetSortMap<FunctionType>() { return maps.functionMap; }
+        template<> SortMap<StructType>& GetSortMap<StructType>() { return maps.structMap; }
 
     private:
         Allocators allocators;
@@ -174,6 +175,7 @@ namespace Backend::IL {
             SortMap<TextureType> textureMap;
             SortMap<BufferType> bufferMap;
             SortMap<FunctionType> functionMap;
+            SortMap<StructType> structMap;
         };
 
         /// Declaration order

@@ -35,15 +35,15 @@ struct TrivialStackVector {
     void Swap(TrivialStackVector& other) {
         // TODO: Do a pass on how safe this is... The handling of "data" smells incredibly unsafe.
 
+        const bool isLhsFallback = data == fallback.data();
+        const bool isRhsFallback = other.data == other.fallback.data();
+
         std::swap(size, other.size);
         std::swap(stack, other.stack);
         fallback.swap(other.fallback);
 
-        const bool isLhsFallback = data == stack;
-        const bool isRhsFallback = other.data == other.stack;
-
-        data = isLhsFallback ? fallback.data() : stack;
-        other.data = isRhsFallback ? other.fallback.data() : other.stack;
+        data = isRhsFallback ? fallback.data() : stack;
+        other.data = isLhsFallback ? other.fallback.data() : other.stack;
     }
 
     /// Assign copy from other
@@ -86,6 +86,15 @@ struct TrivialStackVector {
         }
 
         size = length;
+    }
+
+    /// Reserve this container
+    /// \param length the desired allocated length
+    void Reserve(size_t length) {
+        if (size > STACK_LENGTH) {
+            fallback.reserve(length);
+            data = fallback.data();
+        }
     }
 
     /// Add a value to this container

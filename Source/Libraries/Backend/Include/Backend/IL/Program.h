@@ -6,6 +6,7 @@
 #include "TypeMap.h"
 #include "ConstantMap.h"
 #include "FunctionList.h"
+#include "CapabilityTable.h"
 
 // Std
 #include <list>
@@ -38,6 +39,9 @@ namespace IL {
             program->identifierMap.SetBound(identifierMap.GetMaxID());
             typeMap.CopyTo(program->typeMap);
             constants.CopyTo(program->constants);
+
+            // Copy capabilities
+            program->capabilityTable = capabilityTable;
 
             // Copy all functions and their basic blocks
             functions.CopyTo(program->functions);
@@ -76,6 +80,11 @@ namespace IL {
             return variables;
         }
 
+        /// Get the capability table
+        CapabilityTable& GetCapabilityTable() {
+            return capabilityTable;
+        }
+
         /// Get the global constants
         Backend::IL::ConstantMap &GetConstants() {
             return constants;
@@ -106,6 +115,11 @@ namespace IL {
             return constants;
         }
 
+        /// Get the capability table
+        const CapabilityTable& GetCapabilityTable() const {
+            return capabilityTable;
+        }
+
     private:
         Allocators allocators;
 
@@ -123,6 +137,9 @@ namespace IL {
 
         /// The type map
         Backend::IL::TypeMap typeMap;
+
+        /// The capability table
+        CapabilityTable capabilityTable;
 
         /// Shader guid of this program
         uint64_t shaderGUID{~0ull};

@@ -10,6 +10,9 @@
 #include <string_View>
 
 struct DXILFunctionDeclaration {
+    /// DXIL identifier of this declaration
+    uint32_t id;
+
     /// Name of this declaration
     std::string_view name;
 
