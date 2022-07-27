@@ -1691,16 +1691,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
 
             case LLVMFunctionRecord::InstPhi: {
                 for (uint32_t i = 1; i < record.opCount; i += 2) {
-                    // Decode value
-                    int64_t signedValue = LLVMBitStreamReader::DecodeSigned(record.ops[i]);
-                    if (signedValue >= 0) {
-                        auto op = static_cast<uint64_t>(signedValue);
-                        table.idRemapper.RemapRelative(anchor, record, op);
-                        record.ops[i] = LLVMBitStreamWriter::EncodeSigned(op);
-                    } else {
-                        record.ops[i] = static_cast<uint32_t>(-signedValue);
-                        table.idRemapper.RemapForwardRelative(anchor, record, record.ops[i]);
-                    }
+                    table.idRemapper.RemapUnresolvedReference(anchor, record, record.ops[i]);
                 }
                 break;
             }

@@ -2,6 +2,7 @@
 
 // Layer
 #include "LLVM/LLVMRecord.h"
+#include "LLVM/LLVMBitStreamReader.h"
 #include "LLVM/LLVMBitStreamWriter.h"
 #include "DXILIDMap.h"
 
@@ -178,16 +179,18 @@ struct DXILIDRemapper {
 
     /// Remap a DXIL value
     /// \param source source DXIL value
-    void RemapForwardRelative(const Anchor &anchor, const LLVMRecord &record, uint64_t &source) {
+    void RemapUnresolvedReference(const Anchor &anchor, const LLVMRecord &record, uint64_t &source) {
         uint32_t absoluteRemap;
 
         // Original source mappings are allocated at a given range
         if (IsSourceOperand(source)) {
+            int64_t ref = LLVMBitStreamReader::DecodeSigned(source);
+
             // Backwards or forwards?
-            if (record.resultOrAnchor < source) {
-                absoluteRemap = record.resultOrAnchor + source;
+            if (ref < 0) {
+                absoluteRemap = record.resultOrAnchor + static_cast<uint32_t>(-ref);
             } else {
-                absoluteRemap = record.resultOrAnchor - source;
+                absoluteRemap = record.resultOrAnchor - ref;
             }
 
             // Must be within the source range
