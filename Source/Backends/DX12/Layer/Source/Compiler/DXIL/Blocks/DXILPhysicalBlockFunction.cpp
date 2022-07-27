@@ -1096,11 +1096,11 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
     }
 
     // Linear block to il mapper
-    std::map<IL::ID, uint32_t> mapping;
+    std::map<IL::ID, uint32_t> branchMappings;
 
     // Create mappings
     for (const IL::BasicBlock *bb: fn->GetBasicBlocks()) {
-        mapping[bb->GetID()] = mapping.size() + 1;
+        branchMappings[bb->GetID()] = branchMappings.size();
     }
 
     // Emit the number of blocks
@@ -1442,7 +1442,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBr);
                     record.opCount = 1;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
-                    record.ops[0] = _instr->branch;
+                    record.ops[0] = branchMappings.at(_instr->branch);
                     break;
                 }
                 case IL::OpCode::BranchConditional: {
@@ -1452,8 +1452,8 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBr);
                     record.opCount = 3;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
-                    record.ops[0] = _instr->pass;
-                    record.ops[1] = _instr->fail;
+                    record.ops[0] = branchMappings.at(_instr->pass);
+                    record.ops[1] = branchMappings.at(_instr->fail);
                     record.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->cond);
                     break;
                 }
@@ -1469,7 +1469,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     for (uint32_t i = 0; i < _instr->cases.count; i++) {
                         record.ops[2 + i * 2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->cases[i].literal);
-                        record.ops[3 + i * 2] = _instr->cases[i].branch;
+                        record.ops[3 + i * 2] = branchMappings.at(_instr->cases[i].branch);
                     }
                     break;
                 }
@@ -1484,7 +1484,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     for (uint32_t i = 0; i < _instr->values.count; i++) {
                         record.ops[1 + i * 2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i].value);
-                        record.ops[2 + i * 2] = _instr->values[i].branch;
+                        record.ops[2 + i * 2] = branchMappings.at(_instr->values[i].branch);
                     }
                     break;
                 }
@@ -1692,14 +1692,14 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             case LLVMFunctionRecord::InstPhi: {
                 for (uint32_t i = 1; i < record.opCount; i += 2) {
                     // Decode value
-                    int64_t signedValue = LLVMBitStreamReader::DecodeSigned(record.ops[1]);
+                    int64_t signedValue = LLVMBitStreamReader::DecodeSigned(record.ops[i]);
                     if (signedValue >= 0) {
-                        uint64_t op = static_cast<uint64_t>(signedValue);
+                        auto op = static_cast<uint64_t>(signedValue);
                         table.idRemapper.RemapRelative(anchor, record, op);
                         record.ops[i] = LLVMBitStreamWriter::EncodeSigned(op);
                     } else {
                         record.ops[i] = static_cast<uint32_t>(-signedValue);
-                        table.idRemapper.RemapForwardRelative(anchor, record, record.ops[1]);
+                        table.idRemapper.RemapForwardRelative(anchor, record, record.ops[i]);
                     }
                 }
                 break;
