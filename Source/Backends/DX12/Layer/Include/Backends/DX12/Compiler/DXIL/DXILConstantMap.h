@@ -4,6 +4,7 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBlock.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamWriter.h>
 #include <Backends/DX12/Compiler/DXIL/DXILTypeMap.h>
+#include <Backends/DX12/Compiler/DXIL/DXILIDRemapper.h>
 
 // Backend
 #include <Backend/IL/ConstantMap.h>
@@ -63,13 +64,13 @@ public:
     /// Get a constant from a type
     /// \param type IL type
     /// \return DXIL id
-    uint32_t GetConstant(const Backend::IL::Constant* constant) {
+    uint64_t GetConstant(const Backend::IL::Constant* constant) {
         // Allocate if need be
         if (!HasConstant(constant)) {
             return CompileConstant(constant);
         }
 
-        uint32_t id = constantLookup.at(constant->id);
+        uint64_t id = constantLookup.at(constant->id);
         ASSERT(id != ~0u, "Unallocated constant");
         return id;
     }
@@ -77,12 +78,12 @@ public:
     /// Add a new constant mapping
     /// \param type IL type
     /// \param index DXIL id
-    void AddConstantMapping(const Backend::IL::Constant* type, uint32_t index) {
-        if (constantLookup.size() <= type->id) {
-            constantLookup.resize(type->id + 1, ~0u);
+    void AddConstantMapping(const Backend::IL::Constant* constant, uint64_t index) {
+        if (constantLookup.size() <= constant->id) {
+            constantLookup.resize(constant->id + 1, ~0u);
         }
 
-        constantLookup[type->id] = index;
+        constantLookup[constant->id] = index;
     }
 
     /// Check if a constant is present in DXIL
@@ -102,7 +103,7 @@ private:
     /// Compile a given constant
     /// \param constant
     /// \return DXIL id
-    uint32_t CompileConstant(const Backend::IL::Constant* constant) {
+    uint64_t CompileConstant(const Backend::IL::Constant* constant) {
         switch (constant->type->kind) {
             default:
                 ASSERT(false, "Unsupported constant type for recompilation");
@@ -117,7 +118,7 @@ private:
     }
 
     /// Compile a given constant
-    uint32_t CompileConstant(const Backend::IL::BoolConstant* constant) {
+    uint64_t CompileConstant(const Backend::IL::BoolConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Integer);
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -126,7 +127,7 @@ private:
     }
 
     /// Compile a given constant
-    uint32_t CompileConstant(const Backend::IL::IntConstant* constant) {
+    uint64_t CompileConstant(const Backend::IL::IntConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Integer);
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -135,7 +136,7 @@ private:
     }
 
     /// Compile a given constant
-    uint32_t CompileConstant(const Backend::IL::FPConstant* constant) {
+    uint64_t CompileConstant(const Backend::IL::FPConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Float);
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -147,7 +148,7 @@ private:
     /// \param constant constant to be emitted
     /// \param record constant record
     /// \return DXIL id
-    uint32_t Emit(const Backend::IL::Constant* constant, LLVMRecord& record) {
+    uint64_t Emit(const Backend::IL::Constant* constant, LLVMRecord& record) {
         // Insert type record prior
         LLVMRecord setTypeRecord(LLVMConstantRecord::SetType);
         setTypeRecord.opCount = 1;
@@ -158,17 +159,18 @@ private:
         declarationBlock->AddRecord(setTypeRecord);
 
         // Add mapping
-        uint32_t id = constantLookup.size();
-        AddConstantMapping(constant, id);
+        uint64_t id = constantLookup.size();
+        uint64_t encodedId = DXILIDRemapper::EncodeUserOperand(id);
+        AddConstantMapping(constant, encodedId);
 
         // Always user record
-        record.userRecord = true;
+        record.SetUser(true, id);
 
         // Emit into block
         declarationBlock->AddRecord(record);
 
         // OK
-        return id;
+        return encodedId;
     }
 
 private:
@@ -182,7 +184,7 @@ private:
     std::vector<const IL::Constant*> constants;
 
     /// IL type to DXIL type table
-    std::vector<uint32_t> constantLookup;
+    std::vector<uint64_t> constantLookup;
 
     /// Shared type map
     DXILTypeMap& typeMap;

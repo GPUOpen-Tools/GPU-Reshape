@@ -104,5 +104,17 @@ void DXILPhysicalBlockSymbol::CompileSymTab(struct LLVMBlock *block) {
 }
 
 void DXILPhysicalBlockSymbol::StitchSymTab(struct LLVMBlock *block) {
+    for (LLVMRecord &record: block->records) {
+        switch (static_cast<LLVMSymTabRecord>(record.id)) {
+            default: {
+                // Ignored
+                break;
+            }
 
+            case LLVMSymTabRecord::Entry: {
+                table.idRemapper.Remap(record.Op(0));
+                break;
+            }
+        }
+    }
 }

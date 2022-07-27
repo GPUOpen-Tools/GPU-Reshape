@@ -14,15 +14,27 @@ DXILPhysicalBlockGlobal::DXILPhysicalBlockGlobal(const Allocators &allocators, I
 
 }
 
-void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
+void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
     // Current type
     const Backend::IL::Type* type{nullptr};
 
     // Get maps
     Backend::IL::TypeMap& types = program.GetTypeMap();
 
-    for (const LLVMRecord &record: block->records) {
+    for (LLVMRecord &record: block->records) {
+        if (record.Is(LLVMConstantRecord::SetType)) {
+            type = table.type.typeMap.GetType(record.ops[0]);
+            continue;
+        }
+
+        // Get anchor
         uint32_t anchor = table.idMap.GetAnchor();
+
+        // Allocate source id
+        IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
+
+        // Assign as source
+        record.SetSource(true, anchor);
 
         // Final constant
         const Backend::IL::Constant* constant{nullptr};
@@ -33,15 +45,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
                 return;
             }
 
-            /* Set type for succeeding constants */
-            case LLVMConstantRecord::SetType: {
-                type = table.type.typeMap.GetType(record.ops[0]);
-                break;
-            }
-
             case LLVMConstantRecord::Null: {
-                IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
-
                 // Emit null type
                 switch (type->kind) {
                     default: {
@@ -69,8 +73,6 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
             }
 
             case LLVMConstantRecord::Integer: {
-                IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
-
                 constant = constantMap.AddConstant(id, type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
                     .value = LLVMBitStreamReader::DecodeSigned(record.Op(0))
                 });
@@ -78,8 +80,6 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
             }
 
             case LLVMConstantRecord::Float: {
-                IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
-
                 constant = constantMap.AddConstant(id, type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
                     .value = record.OpBitCast<float>(0)
                 });
@@ -87,8 +87,6 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
             }
 
             case LLVMConstantRecord::Undef: {
-                IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
-
                 constant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
                 break;
             }
@@ -101,8 +99,6 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
             case LLVMConstantRecord::GEP:
             case LLVMConstantRecord::InBoundsGEP:
             case LLVMConstantRecord::Data: {
-                IL::ID id = table.idMap.AllocMappedID(DXILIDType::Constant);
-
                 constant = constantMap.AddConstant(id, types.FindTypeOrAdd(Backend::IL::UnexposedType{}), Backend::IL::UnexposedConstant {});
                 break;
             }
@@ -116,59 +112,18 @@ void DXILPhysicalBlockGlobal::ParseConstants(const struct LLVMBlock *block) {
     }
 }
 
-void DXILPhysicalBlockGlobal::ParseGlobalVar(const struct LLVMRecord& record) {
+void DXILPhysicalBlockGlobal::ParseGlobalVar(struct LLVMRecord& record) {
+    record.SetSource(true, table.idMap.GetAnchor());
     table.idMap.AllocMappedID(DXILIDType::Variable);
 }
 
-void DXILPhysicalBlockGlobal::ParseAlias(const LLVMRecord &record) {
+void DXILPhysicalBlockGlobal::ParseAlias(LLVMRecord &record) {
+    record.SetSource(true, table.idMap.GetAnchor());
     table.idMap.AllocMappedID(DXILIDType::Alias);
 }
 
 void DXILPhysicalBlockGlobal::CompileConstants(struct LLVMBlock *block) {
-    // Compile all missing constants
-    for (Backend::IL::Constant* constant : program.GetConstants()) {
-        if (constantMap.HasConstant(constant)) {
-            continue;
-        }
 
-        LLVMRecord record{};
-
-        // Attempt to compile the constant, not all types are supported for compilation
-        switch (constant->type->kind) {
-            default:
-                ASSERT(false, "Invalid constant for DXIL compilation");
-                break;
-            case Backend::IL::TypeKind::Bool:
-            case Backend::IL::TypeKind::Int: {
-                record.id = static_cast<uint32_t>(LLVMConstantRecord::Integer);
-                record.opCount = 1;
-
-                record.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
-
-                if (constant->type->kind == Backend::IL::TypeKind::Bool) {
-                    record.ops[0] = LLVMBitStreamWriter::EncodeSigned(constant->As<Backend::IL::BoolConstant>()->value);
-                } else {
-                    auto _constant = constant->As<Backend::IL::IntConstant>();
-                    record.ops[0] = LLVMBitStreamWriter::EncodeSigned(_constant->value);
-                }
-                break;
-            }
-            case Backend::IL::TypeKind::FP: {
-                auto _constant = constant->As<Backend::IL::FPConstant>();
-
-                record.id = static_cast<uint32_t>(LLVMConstantRecord::Float);
-                record.opCount = 1;
-
-                record.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
-                record.OpBitWrite(0, _constant->value);
-                break;
-            }
-        }
-
-        // Add final record
-        block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, block->records.Size()));
-        block->records.Add(record);
-    }
 }
 
 void DXILPhysicalBlockGlobal::CompileGlobalVar(LLVMRecord &record) {
@@ -180,27 +135,21 @@ void DXILPhysicalBlockGlobal::CompileAlias(LLVMRecord &record) {
 }
 
 void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
-    // Source mappings
     for (const LLVMRecord &record: block->records) {
-        switch (static_cast<LLVMConstantRecord>(record.id)) {
-            default: {
-                table.idRemapper.AllocSourceMapping();
-            }
-
-                /* Ignored */
-            case LLVMConstantRecord::SetType: {
-                break;
-            }
+        if (record.Is(LLVMConstantRecord::SetType)) {
+            continue;
         }
+
+        table.idRemapper.AllocRecordMapping(record);
     }
 }
 
 void DXILPhysicalBlockGlobal::StitchGlobalVar(LLVMRecord &record) {
-    table.idRemapper.AllocSourceMapping();
+    table.idRemapper.AllocRecordMapping(record);
 }
 
 void DXILPhysicalBlockGlobal::StitchAlias(LLVMRecord &record) {
-    table.idRemapper.AllocSourceMapping();
+    table.idRemapper.AllocRecordMapping(record);
 }
 
 void DXILPhysicalBlockGlobal::CopyTo(DXILPhysicalBlockGlobal &out) {

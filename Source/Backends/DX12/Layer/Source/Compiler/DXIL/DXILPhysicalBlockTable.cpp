@@ -5,6 +5,7 @@ DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL:
     scan(allocators),
     program(program),
     idMap(program),
+    idRemapper(idMap),
     function(allocators, program, *this),
     type(allocators, program, *this),
     global(allocators, program, *this),
@@ -27,7 +28,7 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
      * more involved to parse.
      * */
 
-    const LLVMBlock &root = scan.GetRoot();
+    LLVMBlock &root = scan.GetRoot();
 
     // Pre-parse all types for local fetching
     for (const LLVMBlock *block: root.blocks) {
@@ -42,7 +43,7 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     }
 
     // Visit all records
-    for (const LLVMRecord &record: root.records) {
+    for (LLVMRecord &record: root.records) {
         switch (static_cast<LLVMModuleRecord>(record.id)) {
             default: {
                 ASSERT(false, "Unexpected block id");
@@ -87,7 +88,7 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 
 
     // Visit all blocks
-    for (const LLVMBlock *block: root.blocks) {
+    for (LLVMBlock *block: root.blocks) {
         switch (static_cast<LLVMReservedBlock>(block->id)) {
             default:
                 ASSERT(false, "Unexpected block id");
@@ -129,6 +130,9 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 
 bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
     LLVMBlock &root = scan.GetRoot();
+
+    // Set the remap bound
+    idRemapper.SetBound(idMap.GetBound(), program.GetIdentifierMap().GetMaxID());
 
     // Set declaration blocks for on-demand records
     type.typeMap.SetDeclarationBlock(root.GetBlock(LLVMReservedBlock::Type));
@@ -294,6 +298,9 @@ void DXILPhysicalBlockTable::Stitch(DXStream &out) {
         }
     }
 
+    // Fixup all forward references to their new value indices
+    idRemapper.ResolveForwardReferences();
+
     // Stitch final block
     scan.Stitch(out);
 }
@@ -307,4 +314,5 @@ void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
     // Blocks
     type.CopyTo(out.type);
     global.CopyTo(out.global);
+    function.CopyTo(out.function);
 }

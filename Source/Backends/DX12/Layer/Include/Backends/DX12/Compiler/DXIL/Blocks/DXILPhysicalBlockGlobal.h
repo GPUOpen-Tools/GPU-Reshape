@@ -15,15 +15,15 @@ struct DXILPhysicalBlockGlobal : public DXILPhysicalBlockSection {
 public:
     /// Parse a constant block
     /// \param block source block
-    void ParseConstants(const struct LLVMBlock* block);
+    void ParseConstants(struct LLVMBlock* block);
 
     /// Parse a global variable
     /// \param record source record
-    void ParseGlobalVar(const struct LLVMRecord& record);
+    void ParseGlobalVar(struct LLVMRecord& record);
 
     /// Parse an alias
     /// \param record source record
-    void ParseAlias(const struct LLVMRecord& record);
+    void ParseAlias(struct LLVMRecord& record);
 
 public:
     /// Compile a constant block

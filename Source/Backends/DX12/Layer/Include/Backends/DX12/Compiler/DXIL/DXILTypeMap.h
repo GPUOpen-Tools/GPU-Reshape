@@ -3,6 +3,7 @@
 // Layer
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBlock.h>
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
+#include <Backends/DX12/Compiler/DXIL/DXILIDRemapper.h>
 
 // Backend
 #include <Backend/IL/TypeMap.h>
@@ -16,7 +17,14 @@
 
 class DXILTypeMap {
 public:
-    DXILTypeMap(const Allocators& allocators, Backend::IL::TypeMap& programMap, Backend::IL::IdentifierMap& identifierMap) : programMap(programMap), identifierMap(identifierMap), recordAllocator(allocators) {
+    DXILTypeMap(const Allocators& allocators,
+                DXILIDRemapper& remapper,
+                Backend::IL::TypeMap& programMap,
+                Backend::IL::IdentifierMap& identifierMap) :
+                programMap(programMap),
+                remapper(remapper),
+                identifierMap(identifierMap),
+                recordAllocator(allocators) {
 
     }
 
@@ -271,10 +279,14 @@ private:
         AddTypeMapping(type, id);
 
         // Always user
-        record.userRecord = true;
+        record.SetUser(false, type->id);
 
         // Emit into block
         declarationBlock->AddRecord(record);
+
+        // Set user mapping directly, types are guaranteed to be allocated linearly at the end of the global block
+        // There is no risk of collision
+        remapper.SetUserMapping(type->id, id);
 
         // OK
         return id;
@@ -283,6 +295,9 @@ private:
 private:
     /// IL map
     Backend::IL::TypeMap& programMap;
+
+    /// Remapping
+    DXILIDRemapper& remapper;
 
     /// Identifier map
     Backend::IL::IdentifierMap& identifierMap;

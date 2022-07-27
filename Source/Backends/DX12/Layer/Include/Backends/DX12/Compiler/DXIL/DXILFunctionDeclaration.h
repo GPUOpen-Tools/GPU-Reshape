@@ -6,12 +6,15 @@
 // Backend
 #include <Backend/IL/Type.h>
 
+// Common
+#include <Common/Containers/TrivialStackVector.h>
+
 // Std
 #include <string_View>
 
 struct DXILFunctionDeclaration {
     /// DXIL identifier of this declaration
-    uint32_t id;
+    uint64_t id;
 
     /// Name of this declaration
     std::string_view name;
@@ -24,4 +27,7 @@ struct DXILFunctionDeclaration {
 
     /// Associated linkage
     LLVMLinkage linkage;
+
+    /// All parameter values
+    TrivialStackVector<uint32_t, 8> parameters;
 };

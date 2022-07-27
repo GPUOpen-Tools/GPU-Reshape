@@ -10,12 +10,12 @@
 #include <cstdint>
 
 struct LLVMRecord {
-    LLVMRecord() : opCount(0), userRecord(0) {
+    LLVMRecord() : opCount(0), userRecord(0), hasValue(0) {
 
     }
 
     template<typename T>
-    LLVMRecord(T id) : id(static_cast<uint32_t>(id)), opCount(0), userRecord(0) {
+    LLVMRecord(T id) : id(static_cast<uint32_t>(id)), opCount(0), userRecord(0), hasValue(0) {
 
     }
 
@@ -33,6 +33,12 @@ struct LLVMRecord {
 
     /// Get an operand
     uint64_t Op(uint32_t i) const {
+        ASSERT(i < opCount, "Operand out of bounds");
+        return ops[i];
+    }
+
+    /// Get an operand
+    uint64_t& Op(uint32_t i) {
         ASSERT(i < opCount, "Operand out of bounds");
         return ops[i];
     }
@@ -94,6 +100,24 @@ struct LLVMRecord {
         }
     }
 
+    /// Set as a user record
+    /// \param hasLinearResult if true, allocates linear llvm value
+    /// \param result value index
+    void SetUser(bool hasLinearResult, uint32_t result = ~0u) {
+        userRecord = 1;
+        hasValue = hasLinearResult;
+        resultOrAnchor = result;
+    }
+
+    /// Set as source record
+    /// \param hasLinearResult if true, allocates linear llvm value
+    /// \param anchor value index or anchor
+    void SetSource(bool hasLinearResult, uint32_t anchor) {
+        userRecord = 0;
+        hasValue = hasLinearResult;
+        resultOrAnchor = anchor;
+    }
+
     /// Identifier of this record, may be reserved
     uint32_t id{~0u};
 
@@ -101,13 +125,17 @@ struct LLVMRecord {
     LLVMRecordAbbreviation abbreviation;
 
     /// Number of operands within this record
-    uint32_t opCount : 31;
+    uint32_t opCount : 30;
 
     /// Is this a user generated record?
     uint32_t userRecord : 1;
 
-    /// User allocated result for stitching
-    uint32_t userResult = ~0u;
+    /// Contains a linearly allocated LLVM value?
+    uint32_t hasValue : 1;
+
+    /// Allocated result for stitching, may be source or user
+    ///  ? As the visitation order can change as a result of user manipulation, the source value index is preserved
+    uint32_t resultOrAnchor = ~0u;
 
     /// All operands
     uint64_t* ops{nullptr};

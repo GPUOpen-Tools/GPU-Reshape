@@ -387,5 +387,21 @@ void DXILPhysicalBlockMetadata::CompileMetadata(struct LLVMBlock *block) {
 }
 
 void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
+    for (size_t i = 0; i < block->records.Size(); i++) {
+        LLVMRecord &record = block->records[i];
 
+        // Handle record
+        switch (static_cast<LLVMMetadataRecord>(record.id)) {
+            default: {
+                // Ignored
+                break;
+            }
+
+                // Constant value
+            case LLVMMetadataRecord::Value: {
+                table.idRemapper.Remap(record.Op(1));
+                break;
+            }
+        }
+    }
 }

@@ -12,13 +12,18 @@
 struct DXILPhysicalBlockFunction : public DXILPhysicalBlockSection {
     using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
 
+    /// Copy this block
+    /// \param out destination block
+    void CopyTo(DXILPhysicalBlockFunction& out);
+
+public:
     /// Parse a function
     /// \param block source block
-    void ParseFunction(const struct LLVMBlock *block);
+    void ParseFunction(struct LLVMBlock *block);
 
     /// Parse a module function
     /// \param record source record
-    void ParseModuleFunction(const struct LLVMRecord& record);
+    void ParseModuleFunction(struct LLVMRecord& record);
 
     /// Get the declaration associated with an id
     const DXILFunctionDeclaration* GetFunctionDeclaration(uint32_t id);
@@ -37,7 +42,7 @@ public:
     /// \param opCount argument op count
     /// \param ops operands
     /// \return call record
-    LLVMRecord CompileIntrinsicCall(const DXILFunctionDeclaration* decl, uint32_t opCount, const uint64_t* ops);
+    LLVMRecord CompileIntrinsicCall(IL::ID result, const DXILFunctionDeclaration* decl, uint32_t opCount, const uint64_t* ops);
 
 public:
     /// Compile a module function
@@ -76,6 +81,9 @@ private:
     bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
 
 private:
+    /// Function visitation counters
+    uint32_t stitchFunctionIndex{0};
+
     /// All function declarations
     TrivialStackVector<DXILFunctionDeclaration, 32> functions;
 
