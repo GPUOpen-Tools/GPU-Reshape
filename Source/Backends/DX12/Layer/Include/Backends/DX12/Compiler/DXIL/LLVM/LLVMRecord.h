@@ -8,6 +8,7 @@
 
 // Std
 #include <cstdint>
+#include <memory>
 
 struct LLVMRecord {
     LLVMRecord() : opCount(0), userRecord(0), hasValue(0) {
