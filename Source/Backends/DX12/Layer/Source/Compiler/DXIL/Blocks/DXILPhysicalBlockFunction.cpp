@@ -1135,9 +1135,39 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                 default:
                 ASSERT(false, "Invalid instruction in basic block");
                     break;
-                case IL::OpCode::Literal:
-                    // Handled in CompileInlineConstants
+                case IL::OpCode::Literal: {
+                    auto* _instr = instr->As<IL::LiteralInstruction>();
+
+                    // Create constant
+                    const Backend::IL::Constant* constant{nullptr};
+                    switch (_instr->type) {
+                        default: {
+                            ASSERT(false, "Invalid literal instruction");
+                            break;
+                        }
+                        case IL::LiteralType::Int: {
+                            constant = program.GetConstants().FindConstantOrAdd(
+                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=_instr->bitWidth, .signedness=_instr->signedness}),
+                                Backend::IL::IntConstant{.value = _instr->value.integral}
+                            );
+                            break;
+                        }
+                        case IL::LiteralType::FP: {
+                            constant = program.GetConstants().FindConstantOrAdd(
+                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{.bitWidth=_instr->bitWidth}),
+                                Backend::IL::FPConstant{.value = _instr->value.fp}
+                            );
+                            break;
+                        }
+                    }
+
+                    // Ensure allocation
+                    table.global.constantMap.GetConstant(constant);
+
+                    // Set redirection for constant
+                    table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(constant->id));
                     break;
+                }
 
                     /* Binary ops */
                 case IL::OpCode::Add:
@@ -1165,22 +1195,22 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             break;
                         case IL::OpCode::Add: {
                             auto _instr = instr->As<IL::AddInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
                             opCode = LLVMBinOp::Add;
                             break;
                         }
                         case IL::OpCode::Sub: {
                             auto _instr = instr->As<IL::SubInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
                             opCode = LLVMBinOp::Sub;
                             break;
                         }
                         case IL::OpCode::Div: {
                             auto _instr = instr->As<IL::DivInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
                             const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
                             if (type->Is<Backend::IL::FPType>()) {
@@ -1194,64 +1224,64 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         }
                         case IL::OpCode::Mul: {
                             auto _instr = instr->As<IL::MulInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
                             opCode = LLVMBinOp::Mul;
                             break;
                         }
                         case IL::OpCode::Or: {
                             auto _instr = instr->As<IL::OrInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
                             opCode = LLVMBinOp::Or;
                             break;
                         }
                         case IL::OpCode::BitOr: {
                             auto _instr = instr->As<IL::BitOrInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
                             opCode = LLVMBinOp::Or;
                             break;
                         }
                         case IL::OpCode::BitXOr: {
                             auto _instr = instr->As<IL::BitXOrInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
                             opCode = LLVMBinOp::XOr;
                             break;
                         }
                         case IL::OpCode::And: {
                             auto _instr = instr->As<IL::AndInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
                             opCode = LLVMBinOp::And;
                             break;
                         }
                         case IL::OpCode::BitAnd: {
                             auto _instr = instr->As<IL::BitAndInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
                             opCode = LLVMBinOp::And;
                             break;
                         }
                         case IL::OpCode::BitShiftLeft: {
                             auto _instr = instr->As<IL::BitShiftLeftInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->value);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->shift);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->shift);
                             opCode = LLVMBinOp::SHL;
                             break;
                         }
                         case IL::OpCode::BitShiftRight: {
                             auto _instr = instr->As<IL::BitShiftRightInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->value);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->shift);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->shift);
                             opCode = LLVMBinOp::AShR;
                             break;
                         }
                         case IL::OpCode::Rem: {
                             auto _instr = instr->As<IL::RemInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
                             const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
                             if (type->Is<Backend::IL::FPType>()) {
@@ -1284,7 +1314,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                      */
 
                     uint64_t ops[2];
-                    ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->resource);
+                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->resource);
                     ops[1] = table.global.constantMap.GetConstant(program.GetConstants().FindConstantOrAdd(
                         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
                         Backend::IL::IntConstant{.value = 0}
@@ -1314,8 +1344,8 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             break;
                         case IL::OpCode::Equal: {
                             auto _instr = instr->As<IL::EqualInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
                             const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
                             if (type->Is<Backend::IL::FPType>()) {
@@ -1327,8 +1357,8 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         }
                         case IL::OpCode::NotEqual: {
                             auto _instr = instr->As<IL::NotEqualInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
                             const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
                             if (type->Is<Backend::IL::FPType>()) {
@@ -1340,8 +1370,8 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         }
                         case IL::OpCode::LessThan: {
                             auto _instr = instr->As<IL::LessThanInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
                             const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
                             if (type->Is<Backend::IL::FPType>()) {
@@ -1355,8 +1385,8 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         }
                         case IL::OpCode::LessThanEqual: {
                             auto _instr = instr->As<IL::LessThanEqualInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
                             const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
                             if (type->Is<Backend::IL::FPType>()) {
@@ -1370,8 +1400,8 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         }
                         case IL::OpCode::GreaterThan: {
                             auto _instr = instr->As<IL::GreaterThanInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
                             const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
                             if (type->Is<Backend::IL::FPType>()) {
@@ -1385,8 +1415,8 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         }
                         case IL::OpCode::GreaterThanEqual: {
                             auto _instr = instr->As<IL::GreaterThanEqualInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->lhs);
-                            record.ops[1] = DXILIDRemapper::EncodeUserOperand(_instr->rhs);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
                             const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
                             if (type->Is<Backend::IL::FPType>()) {
@@ -1424,7 +1454,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                     record.ops[0] = _instr->pass;
                     record.ops[1] = _instr->fail;
-                    record.ops[2] = DXILIDRemapper::EncodeUserOperand(_instr->cond);
+                    record.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->cond);
                     break;
                 }
                 case IL::OpCode::Switch: {
@@ -1434,11 +1464,11 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstSwitch);
                     record.opCount = 2 + _instr->cases.count;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
-                    record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->value);
+                    record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
                     record.ops[1] = _instr->_default;
 
                     for (uint32_t i = 0; i < _instr->cases.count; i++) {
-                        record.ops[2 + i * 2] = DXILIDRemapper::EncodeUserOperand(_instr->cases[i].literal);
+                        record.ops[2 + i * 2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->cases[i].literal);
                         record.ops[3 + i * 2] = _instr->cases[i].branch;
                     }
                     break;
@@ -1453,7 +1483,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     record.ops[0] = _instr->result;
 
                     for (uint32_t i = 0; i < _instr->values.count; i++) {
-                        record.ops[1 + i * 2] = DXILIDRemapper::EncodeUserOperand(_instr->values[i].value);
+                        record.ops[1 + i * 2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i].value);
                         record.ops[2 + i * 2] = _instr->values[i].branch;
                     }
                     break;
@@ -1487,32 +1517,32 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             break;
                         case IL::OpCode::Trunc: {
                             auto _instr = instr->As<IL::TruncInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->value);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
                             opCode = LLVMCastOp::Trunc;
                             break;
                         }
                         case IL::OpCode::FloatToInt: {
                             auto _instr = instr->As<IL::FloatToIntInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->value);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
                             opCode = LLVMCastOp::FPToUI;
                             break;
                         }
                         case IL::OpCode::IntToFloat: {
                             auto _instr = instr->As<IL::IntToFloatInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->value);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
                             opCode = LLVMCastOp::SIToFP;
                             break;
                         }
                         case IL::OpCode::BitCast: {
                             auto _instr = instr->As<IL::BitCastInstruction>();
-                            record.ops[0] = DXILIDRemapper::EncodeUserOperand(_instr->value);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
                             opCode = LLVMCastOp::BitCast;
                             break;
                         }
                     }
 
                     // Assign type
-                    record.ops[1] = DXILIDRemapper::EncodeUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(record.ops[0])));
+                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(record.ops[0])));
 
                     // Set cmp op
                     record.ops[2] = static_cast<uint64_t>(opCode);
@@ -1815,7 +1845,10 @@ LLVMRecord DXILPhysicalBlockFunction::CompileIntrinsicCall(IL::ID result, const 
     record.ops[1] = 0;
     record.ops[2] = table.type.typeMap.GetType(decl->type);
     record.ops[3] = decl->id;
-    record.ops[4] = decl->id;
+    record.ops[4] = table.type.typeMap.GetType(program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = decl->type,
+        .addressSpace = Backend::IL::AddressSpace::Function
+    }));
 
     // Emit call operands
     for (uint32_t i = 0; i < opCount; i++) {

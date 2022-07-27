@@ -70,7 +70,10 @@ struct DXILIDRemapper {
         return valueId;
     }
 
-    void SetUserMapping(IL::ID user, uint32_t source) {
+    /// Set a user mapping
+    /// \param user source user operand
+    /// \param source destination LLVM value index
+    void SetUserMapping(IL::ID user, uint64_t source) {
         if (userMappings.size() <= user) {
             userMappings.resize(user + 1);
         }
@@ -78,6 +81,8 @@ struct DXILIDRemapper {
         userMappings.at(user) = source;
     }
 
+    /// Allocate a user or source record mapping
+    /// \param record given record
     void AllocRecordMapping(const LLVMRecord &record) {
         if (record.userRecord) {
             // Strictly a user record, no source references to this
@@ -158,6 +163,14 @@ struct DXILIDRemapper {
             // Assign absolute
             absoluteRemap = mapping;
         }
+
+#ifndef NDEBUG
+        if (absoluteRemap == ~0u)
+        {
+            source = ~0u;
+            return;
+        }
+#endif // NDEBUG
 
         // Re-encode relative
         source = anchor.stitchAnchor - absoluteRemap;
@@ -240,6 +253,14 @@ struct DXILIDRemapper {
                 absoluteRemap = mapping;
             }
 
+#ifndef NDEBUG
+            if (absoluteRemap == ~0u)
+            {
+                *entry.source = ~0u;
+                continue;
+            }
+#endif // NDEBUG
+
             // Re-encode relative
             *entry.source = LLVMBitStreamWriter::EncodeSigned(-static_cast<int64_t>(entry.anchor - absoluteRemap));
         }
@@ -257,6 +278,38 @@ struct DXILIDRemapper {
     /// \return remapped value, UINT32_MAX if not found
     uint32_t TryGetUserMapping(uint32_t user) {
         return user < userMappings.size() ? userMappings.at(user) : ~0u;
+    }
+
+    /// Set a redirected value
+    /// \param user the given user id
+    /// \param operand the redirected operand
+    void SetUserRedirect(IL::ID user, uint64_t operand) {
+        if (userRedirects.size() <= user) {
+            userRedirects.resize(user + 1, ~0u);
+        }
+
+        userRedirects.at(user) = operand;
+    }
+
+    /// Try to get a redirect
+    /// \param id user id
+    /// \return UINT32_MAX if invalid
+    uint64_t TryGetUserRedirect(IL::ID id) {
+        return id < userRedirects.size() ? userRedirects.at(id) : ~0u;
+    }
+
+    /// Encode a potentially redirected user operand
+    /// \param id user id
+    /// \return encoded operand
+    uint64_t EncodeRedirectedUserOperand(IL::ID id) {
+        // Try to get redirect
+        uint64_t redirect = TryGetUserRedirect(id);
+        if (redirect != ~0u) {
+            return redirect;
+        }
+
+        // Encode regular user
+        return EncodeUserOperand(id);
     }
 
     /// Get the current record anchor
@@ -291,6 +344,9 @@ private:
 
     /// All present user mappings
     std::vector<uint32_t> userMappings;
+
+    /// All present user redirects
+    std::vector<uint64_t> userRedirects;
 
     /// Shared id map
     DXILIDMap& idMap;
