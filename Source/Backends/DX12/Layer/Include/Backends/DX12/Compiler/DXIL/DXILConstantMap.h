@@ -159,12 +159,11 @@ private:
         declarationBlock->AddRecord(setTypeRecord);
 
         // Add mapping
-        uint64_t id = constantLookup.size();
-        uint64_t encodedId = DXILIDRemapper::EncodeUserOperand(id);
+        uint64_t encodedId = DXILIDRemapper::EncodeUserOperand(constant->id);
         AddConstantMapping(constant, encodedId);
 
         // Always user record
-        record.SetUser(true, id);
+        record.SetUser(true, constant->id);
 
         // Emit into block
         declarationBlock->AddRecord(record);
