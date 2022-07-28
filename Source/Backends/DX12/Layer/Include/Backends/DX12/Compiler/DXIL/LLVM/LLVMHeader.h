@@ -334,3 +334,16 @@ struct LLVMAbbreviationParameter {
     /// Optional value associated with encoding
     uint64_t value{0};
 };
+
+/// Returns true if the record type is dependent on a branch
+inline bool IsBranchDependent(LLVMFunctionRecord record) {
+    switch (record) {
+        default:
+            return false;
+        case LLVMFunctionRecord::InstBr:
+        case LLVMFunctionRecord::InstIndirectBR:
+        case LLVMFunctionRecord::InstPhi:
+        case LLVMFunctionRecord::InstSwitch:
+            return true;
+    }
+}

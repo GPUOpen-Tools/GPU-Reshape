@@ -604,7 +604,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         value.value = table.idMap.GetMappedForward(anchor, static_cast<uint32_t>(-signedValue));
                     }
 
-                    value.branch = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                    value.branch = blockMapping[reader.ConsumeOp()]->GetID();
                     instr->values[i] = value;
                 }
 
@@ -1117,12 +1117,13 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
             LLVMRecord record;
 
             // If it's valid, copy record
-            if (instr->source.TriviallyCopyable()) {
+            if (instr->source.IsValid()) {
                 // Copy the source
                 record = source[instr->source.codeOffset];
 
                 // If trivial, just send it off
-                if (instr->source.TriviallyCopyable()) {
+                //   ? Branch dependent records are resolved immediately for branch remapping
+                if (instr->source.TriviallyCopyable() && !IsBranchDependent(static_cast<LLVMFunctionRecord>(record.id))) {
                     block->AddRecord(record);
                     continue;
                 } else {
@@ -1554,13 +1555,21 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                 case IL::OpCode::Any: {
                     // Dummy
-                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstAlloca);
+                    table.idRemapper.SetUserRedirect(instr->result, table.global.constantMap.GetConstant(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
+                        Backend::IL::BoolConstant{.value = true}
+                    )));
+
                     break;
                 }
 
                 case IL::OpCode::All: {
                     // Dummy
-                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstAlloca);
+                    table.idRemapper.SetUserRedirect(instr->result, table.global.constantMap.GetConstant(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
+                        Backend::IL::BoolConstant{.value = true}
+                    )));
+
                     break;
                 }
 

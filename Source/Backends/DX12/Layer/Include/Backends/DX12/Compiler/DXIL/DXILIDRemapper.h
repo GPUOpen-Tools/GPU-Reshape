@@ -85,7 +85,10 @@ struct DXILIDRemapper {
     /// Allocate a user or source record mapping
     /// \param record given record
     void AllocRecordMapping(const LLVMRecord &record) {
-        if (record.userRecord) {
+        if (record.sourceAnchor == ~0u) {
+            // Must have a user record
+            ASSERT(record.userRecord, "Record without source mapping must be user generated");
+
             // Strictly a user record, no source references to this
             AllocUserMapping(record.result);
         } else {
