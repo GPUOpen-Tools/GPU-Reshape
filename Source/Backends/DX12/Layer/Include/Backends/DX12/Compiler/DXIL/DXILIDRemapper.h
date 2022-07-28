@@ -151,6 +151,8 @@ struct DXILIDRemapper {
 
         // Original source mappings are allocated at a given range
         if (IsSourceOperand(source)) {
+            ASSERT(record.sourceAnchor != ~0u, "Source operand on a user record");
+
             uint32_t mapping = sourceMappings.at(record.sourceAnchor - source);
             ASSERT(mapping != ~0u, "Remapped not found on source operand");
 

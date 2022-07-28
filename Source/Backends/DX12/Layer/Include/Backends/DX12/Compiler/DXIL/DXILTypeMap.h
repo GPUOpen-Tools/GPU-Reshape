@@ -111,6 +111,11 @@ public:
         declarationBlock = block;
     }
 
+    /// Get the number of entries
+    uint32_t GetEntryCount() const {
+        return indexLookup.size();
+    }
+
 private:
     /// Compile a given type
     /// \param type
@@ -158,6 +163,24 @@ private:
 
     /// Compile a given type
     uint32_t CompileType(const Backend::IL::IntType* type) {
+        // LLVM shared signed and unsigned integer types
+        if (!type->signedness) {
+            uint32_t signedId = GetType(programMap.FindTypeOrAdd(Backend::IL::IntType {
+                .bitWidth = type->bitWidth,
+                .signedness = true
+            }));
+
+            // add mapping
+            AddTypeMapping(type, signedId);
+
+            // Set user mapping directly, types are guaranteed to be allocated linearly at the end of the global block
+            // There is no risk of collision
+            remapper.SetUserMapping(type->id, signedId);
+
+            // OK
+            return signedId;
+        }
+
         LLVMRecord record(LLVMTypeRecord::Integer);
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
@@ -256,7 +279,7 @@ private:
 
     /// Compile a given type
     uint32_t CompileType(const Backend::IL::StructType* type) {
-        LLVMRecord record(LLVMTypeRecord::Function);
+        LLVMRecord record(LLVMTypeRecord::StructAnon);
         record.opCount = 1 + type->memberTypes.size();
 
         record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
@@ -275,8 +298,9 @@ private:
     /// \return DXIL id
     uint32_t Emit(const Backend::IL::Type* type, LLVMRecord& record) {
         // Add mapping
-        uint32_t id = typeLookup.size();
+        uint32_t id = indexLookup.size();
         AddTypeMapping(type, id);
+        indexLookup.push_back(type);
 
         // Always user
         record.SetUser(false, ~0u, type->id);
@@ -291,7 +315,7 @@ private:
         // OK
         return id;
     }
-    
+
 private:
     /// IL map
     Backend::IL::TypeMap& programMap;

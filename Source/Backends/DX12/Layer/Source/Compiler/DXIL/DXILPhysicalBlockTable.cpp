@@ -212,6 +212,7 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
             case LLVMReservedBlock::MetadataAttachment:
                 break;
             case LLVMReservedBlock::Type:
+                type.CompileType(block);
                 break;
             case LLVMReservedBlock::StrTab:
                 string.CompileStrTab(block);
@@ -291,6 +292,7 @@ void DXILPhysicalBlockTable::Stitch(DXStream &out) {
             case LLVMReservedBlock::MetadataAttachment:
                 break;
             case LLVMReservedBlock::Type:
+                type.StitchType(block);
                 break;
             case LLVMReservedBlock::StrTab:
                 string.StitchStrTab(block);

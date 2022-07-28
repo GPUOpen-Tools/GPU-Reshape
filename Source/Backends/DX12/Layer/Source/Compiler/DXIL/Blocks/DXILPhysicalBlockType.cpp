@@ -54,7 +54,8 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                     typeMap.AddType(typeAlloc++, Backend::IL::BoolType{ });
                 } else {
                     typeMap.AddType(typeAlloc++, Backend::IL::IntType{
-                        .bitWidth = bitWidth
+                        .bitWidth = bitWidth,
+                        .signedness = true
                     });
                 }
                 break;
@@ -190,4 +191,13 @@ void DXILPhysicalBlockType::CopyTo(DXILPhysicalBlockType &out) {
     out.typeAlloc = typeAlloc;
 
     typeMap.CopyTo(out.typeMap);
+}
+
+void DXILPhysicalBlockType::StitchType(LLVMBlock *block) {
+    // Stitch entry record, must be done after compilation as types may be allocated during
+    LLVMRecord& record = block->records[0];
+    ASSERT(record.Is(LLVMTypeRecord::NumEntry), "Invalid type block");
+
+    // Set new number of entries
+    record.ops[0] = typeMap.GetEntryCount();
 }

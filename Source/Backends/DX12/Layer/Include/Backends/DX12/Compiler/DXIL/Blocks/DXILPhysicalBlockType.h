@@ -18,6 +18,10 @@ public:
     /// Compile all instructions
     void CompileType(LLVMBlock *block);
 
+public:
+    /// Stitch all instructions
+    void StitchType(LLVMBlock *block);
+
     /// Type mapper
     DXILTypeMap typeMap;
 

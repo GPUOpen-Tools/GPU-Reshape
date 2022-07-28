@@ -1318,10 +1318,10 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     uint64_t ops[2];
                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->resource);
-                    ops[1] = table.global.constantMap.GetConstant(program.GetConstants().FindConstantOrAdd(
+                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
                         Backend::IL::IntConstant{.value = 0}
-                    ));
+                    )->id);
 
                     // Invoke
                     record = CompileIntrinsicCall(_instr->result, intrinsic, 2, ops);
