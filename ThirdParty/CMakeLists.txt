@@ -26,6 +26,7 @@ include(GraphViz.cmake)
 include(DXC.cmake)
 include(Detour.cmake)
 include(DXIL.cmake)
+include(DxbcSigner.cmake)
 
 # UI?
 if (${ENABLE_UIX})

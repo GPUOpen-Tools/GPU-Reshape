@@ -116,6 +116,30 @@ struct TrivialStackVector {
         return data[size - 1];
     }
 
+    /// Add a value to this container
+    /// \param value the value to be added
+    T& Insert(const T* location, const T& value = {}) {
+        size_t offset = location - data;
+
+        if (data != stack || size >= STACK_LENGTH) {
+            if (data == stack) {
+                fallback.insert(fallback.end(), data, data + size);
+            }
+
+            fallback.insert(fallback.begin() + offset, value);
+            data = fallback.data();
+        } else {
+            if (offset != size) {
+                std::memmove(data + offset + 1, data + offset, sizeof(T) * size - offset);
+            }
+            data[offset] = value;
+        }
+
+        size++;
+
+        return data[offset];
+    }
+
     /// Size of this container
     size_t Size() const {
         return size;

@@ -1108,7 +1108,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
     declareBlocks.opCount = 1;
     declareBlocks.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
     declareBlocks.ops[0] = fn->GetBasicBlocks().GetBlockCount();
-    block->AddRecord(declareBlocks);
+    block->InsertRecord(block->elements.begin(), declareBlocks);
 
     // Compile all blocks
     for (const IL::BasicBlock *bb: fn->GetBasicBlocks()) {
@@ -1125,10 +1125,13 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                 if (instr->source.TriviallyCopyable()) {
                     block->AddRecord(record);
                     continue;
+                } else {
+                    // Preserve source anchor
+                    record.SetUser(instr->result != IL::InvalidID, record.sourceAnchor, instr->result);
                 }
             } else {
                 // Entirely new record, user generated
-                record.SetUser(instr->result != IL::InvalidID, instr->result);
+                record.SetUser(instr->result != IL::InvalidID, ~0u, instr->result);
             }
 
             switch (instr->opCode) {
@@ -1650,6 +1653,11 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
                 break;
             }
 
+            case LLVMFunctionRecord::InstExtractVal: {
+                table.idRemapper.RemapRelative(anchor, record, record.Op(0));
+                break;
+            }
+
             case LLVMFunctionRecord::InstBinOp: {
                 table.idRemapper.RemapRelative(anchor, record, record.Op(0));
                 table.idRemapper.RemapRelative(anchor, record, record.Op(1));
@@ -1787,7 +1795,7 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
 
     // Module scope function declaration
     LLVMRecord record(LLVMModuleRecord::Function);
-    record.SetUser(true, program.GetIdentifierMap().AllocID());
+    record.SetUser(true, ~0u, program.GetIdentifierMap().AllocID());
     record.opCount = 5;
     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
     record.ops[0] = table.type.typeMap.GetType(fnType);
@@ -1802,11 +1810,11 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
 
     // Symbol entry
     LLVMRecord syRecord(LLVMSymTabRecord::Entry);
-    syRecord.SetUser(false);
+    syRecord.SetUser(false, ~0u, ~0u);
     syRecord.opCount = 1 + std::strlen(symbolName);
 
     syRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(syRecord.opCount);
-    syRecord.ops[0] = DXILIDRemapper::EncodeUserOperand(record.resultOrAnchor);
+    syRecord.ops[0] = DXILIDRemapper::EncodeUserOperand(record.result);
 
     // Copy name
     for (uint32_t i = 0; i < syRecord.opCount - 1; i++) {
@@ -1821,7 +1829,7 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
 
     // Create function
     DXILFunctionDeclaration &function = functions.Add();
-    function.id = DXILIDRemapper::EncodeUserOperand(record.resultOrAnchor);
+    function.id = DXILIDRemapper::EncodeUserOperand(record.result);
     function.type = fnType;
     function.linkage = LLVMLinkage::CommonLinkage;
     return &function;
@@ -1829,7 +1837,7 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
 
 LLVMRecord DXILPhysicalBlockFunction::CompileIntrinsicCall(IL::ID result, const DXILFunctionDeclaration *decl, uint32_t opCount, const uint64_t *ops) {
     LLVMRecord record(LLVMFunctionRecord::InstCall2);
-    record.SetUser(result != IL::InvalidID, result);
+    record.SetUser(result != IL::InvalidID, ~0u, result);
     record.opCount = 5 + opCount;
     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
     record.ops[0] = 0;

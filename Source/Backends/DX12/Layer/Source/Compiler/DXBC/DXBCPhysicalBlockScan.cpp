@@ -1,6 +1,11 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockScan.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
+#include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXStream.h>
+#include <Backends/DX12/Compiler/DXJob.h>
+
+// DxbcSigner
+#include <DxbcSigner/DxbcSigner.hpp>
 
 /// Dump byte stream to file?
 #define DXBC_DUMP_STREAM 1
@@ -100,9 +105,9 @@ bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
     return true;
 }
 
-void DXBCPhysicalBlockScan::Stitch(DXStream &out) {
+void DXBCPhysicalBlockScan::Stitch(const DXJob& job, DXStream &out) {
     // Write header out
-    out.Append(header);
+    uint64_t headerOffset = out.Append(header);
 
     // Starting chunk offset
     uint32_t chunkOffset = out.GetByteSize() + sizeof(DXBCChunkEntryHeader) * sections.size();
@@ -147,6 +152,26 @@ void DXBCPhysicalBlockScan::Stitch(DXStream &out) {
         } else {
             out.AppendData(section.block.ptr, section.block.length);
         }
+    }
+
+    // End offset
+    uint64_t endOffset = out.GetOffset();
+
+    // Total length
+    uint64_t byteLength = endOffset - headerOffset;
+
+    // Patch the header
+    auto* stitchHeader = out.GetMutableDataAt<DXBCHeader>(headerOffset);
+    std::memset(stitchHeader->privateChecksum, 0x0, sizeof(stitchHeader->privateChecksum));
+    stitchHeader->byteCount = byteLength;
+
+    // Finally, sign the resulting byte-code using the official signers
+    if (GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
+        bool result = job.dxilSigner->Sign(out.GetMutableDataAt(headerOffset), byteLength);
+        ASSERT(result, "Failed to sign DXIL");
+    } else {
+        HRESULT hr = SignDxbc(out.GetMutableDataAt(headerOffset), byteLength);
+        ASSERT(SUCCEEDED(hr), "Failed to sign DXBC");
     }
 
     // Dump?

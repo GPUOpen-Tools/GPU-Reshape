@@ -279,7 +279,7 @@ private:
         AddTypeMapping(type, id);
 
         // Always user
-        record.SetUser(false, type->id);
+        record.SetUser(false, ~0u, type->id);
 
         // Emit into block
         declarationBlock->AddRecord(record);

@@ -17,6 +17,7 @@ struct DispatcherBucket;
 class IFeature;
 class IShaderFeature;
 class ShaderCompilerDebug;
+class DXILSigner;
 
 class ShaderCompiler : public TComponent<ShaderCompiler> {
 public:
@@ -53,6 +54,9 @@ private:
 
     /// Debug device
     ComRef<ShaderCompilerDebug> debug;
+
+    /// DXIL signer
+    ComRef<DXILSigner> dxilSigner;
 
     /// All features
     std::vector<ComRef<IShaderFeature>> shaderFeatures;

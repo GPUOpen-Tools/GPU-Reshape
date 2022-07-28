@@ -14,6 +14,7 @@
 
 // Forward declarations
 struct DXStream;
+struct DXJob;
 
 /// DXBC Scanner
 struct DXBCPhysicalBlockScan {
@@ -28,7 +29,7 @@ public:
 
     /// Stitch the resulting stream
     /// \param out
-    void Stitch(DXStream& out);
+    void Stitch(const DXJob& job, DXStream& out);
 
     /// Copy to a new table
     /// \param out the destination table

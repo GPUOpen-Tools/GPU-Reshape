@@ -104,19 +104,20 @@ struct LLVMRecord {
     /// Set as a user record
     /// \param hasLinearResult if true, allocates linear llvm value
     /// \param result value index
-    void SetUser(bool hasLinearResult, uint32_t result = ~0u) {
+    void SetUser(bool hasLinearResult, uint32_t _sourceAnchor, uint32_t _result) {
         userRecord = 1;
         hasValue = hasLinearResult;
-        resultOrAnchor = result;
+        sourceAnchor = _sourceAnchor;
+        result = _result;
     }
 
     /// Set as source record
     /// \param hasLinearResult if true, allocates linear llvm value
     /// \param anchor value index or anchor
-    void SetSource(bool hasLinearResult, uint32_t anchor) {
+    void SetSource(bool hasLinearResult, uint32_t _sourceAnchor) {
         userRecord = 0;
         hasValue = hasLinearResult;
-        resultOrAnchor = anchor;
+        sourceAnchor = _sourceAnchor;
     }
 
     /// Identifier of this record, may be reserved
@@ -134,9 +135,12 @@ struct LLVMRecord {
     /// Contains a linearly allocated LLVM value?
     uint32_t hasValue : 1;
 
-    /// Allocated result for stitching, may be source or user
+    /// Allocated result for stitching
     ///  ? As the visitation order can change as a result of user manipulation, the source value index is preserved
-    uint32_t resultOrAnchor = ~0u;
+    uint32_t sourceAnchor = ~0u;
+
+    /// IL result
+    uint32_t result = ~0u;
 
     /// All operands
     uint64_t* ops{nullptr};

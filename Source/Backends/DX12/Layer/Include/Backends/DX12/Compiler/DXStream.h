@@ -28,9 +28,13 @@ struct DXStream {
     /// Append a value
     /// \param value the value to be appended
     template<typename T>
-    void Append(const T& value) {
+    size_t Append(const T& value) {
+        uint64_t offset = GetOffset();
+
         auto* chPtr = reinterpret_cast<const uint8_t*>(&value);
         stream.insert(stream.end(), chPtr, chPtr + sizeof(T));
+
+        return offset;
     }
 
     /// Pop the next 64 bit word
@@ -61,6 +65,14 @@ struct DXStream {
         stream.clear();
     }
 
+    /// Write a value into the stream, entire range must be available
+    /// \param offset byte offset
+    /// \param value value to be written, must be available
+    template<typename T>
+    void Write(size_t offset, const T& value) {
+        std::memcpy(stream.data() + offset, &value, sizeof(T));
+    }
+
     /// Get the word data
     template<typename T = uint8_t>
     T* GetMutableData() {
@@ -73,9 +85,26 @@ struct DXStream {
         return reinterpret_cast<const T*>(stream.data());
     }
 
+    /// Get the word data
+    template<typename T = uint8_t>
+    T* GetMutableDataAt(size_t offset) {
+        return reinterpret_cast<T*>(stream.data() + offset);
+    }
+
+    /// Get the word data
+    template<typename T = uint8_t>
+    const T* GetDataAt(size_t offset) const {
+        return reinterpret_cast<const T*>(stream.data() + offset);
+    }
+
     /// Get the byte size of this stream
     size_t GetByteSize() const {
         return stream.size() * sizeof(uint8_t);
+    }
+
+    /// Get the offset of this stream
+    size_t GetOffset() const {
+        return GetByteSize();
     }
 
 private:

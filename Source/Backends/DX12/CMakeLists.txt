@@ -247,6 +247,7 @@ add_library(
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockType.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockGlobal.cpp
     Layer/Source/Compiler/DXIL/LLVM/LLVMPrettyPrint.cpp
+    Layer/Source/Compiler/DXIL/DXILSigner.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Export/ExportHost.cpp
 
@@ -283,6 +284,7 @@ target_link_libraries(
 
 # Setup dependencies
 ExternalProject_Link(Backends.DX12.Layer Detour Detour)
+ExternalProject_Link(Backends.DX12.Layer DxbcSigner DxbcSigner)
 
 # Include directories
 target_include_directories(

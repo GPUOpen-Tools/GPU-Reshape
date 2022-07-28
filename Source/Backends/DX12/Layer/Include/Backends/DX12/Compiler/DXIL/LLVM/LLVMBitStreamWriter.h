@@ -115,8 +115,8 @@ struct LLVMBitStreamWriter {
 
     /// Encode a signed LLVM value
     static uint64_t EncodeSigned(int64_t value) {
-        uint64_t shl = value << 1;
-        return (value < 0) ? (shl | 0x1) : shl;
+        int64_t shl = value << 1;
+        return (value < 0) ? ((-shl) | 0x1) : shl;
     }
 
     /// Align the stream to 32 bits

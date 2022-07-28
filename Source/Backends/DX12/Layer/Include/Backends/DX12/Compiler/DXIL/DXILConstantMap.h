@@ -163,7 +163,7 @@ private:
         AddConstantMapping(constant, encodedId);
 
         // Always user record
-        record.SetUser(true, constant->id);
+        record.SetUser(true, ~0u, constant->id);
 
         // Emit into block
         declarationBlock->AddRecord(record);

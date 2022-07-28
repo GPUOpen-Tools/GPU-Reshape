@@ -135,12 +135,31 @@ void DXILPhysicalBlockGlobal::CompileAlias(LLVMRecord &record) {
 }
 
 void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
-    for (const LLVMRecord &record: block->records) {
+    for (LLVMRecord &record: block->records) {
         if (record.Is(LLVMConstantRecord::SetType)) {
             continue;
         }
 
+        // Current remapping anchor
+        DXILIDRemapper::Anchor anchor = table.idRemapper.GetAnchor();
+
+        // Allocate result
         table.idRemapper.AllocRecordMapping(record);
+
+        switch (static_cast<LLVMConstantRecord>(record.id)) {
+            default:
+                break;
+
+            case LLVMConstantRecord::GEP: {
+                break;
+            }
+            case LLVMConstantRecord::InBoundsGEP: {
+                for (uint32_t i = 1; i < record.opCount; i += 2) {
+                    table.idRemapper.RemapRelative(anchor, record, record.Op(i + 1));
+                }
+                break;
+            }
+        }
     }
 }
 

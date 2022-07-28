@@ -87,14 +87,14 @@ struct DXILIDRemapper {
     void AllocRecordMapping(const LLVMRecord &record) {
         if (record.userRecord) {
             // Strictly a user record, no source references to this
-            AllocUserMapping(record.resultOrAnchor);
+            AllocUserMapping(record.result);
         } else {
             // Source record, create source wise mapping
-            uint32_t valueId = AllocSourceMapping(record.resultOrAnchor);
+            uint32_t valueId = AllocSourceMapping(record.sourceAnchor);
 
             // Create IL mapping, source records can be referenced by both other source records and user records
-            if (idMap.IsMapped(record.resultOrAnchor)) {
-                SetUserMapping(idMap.GetMapped(record.resultOrAnchor), valueId);
+            if (idMap.IsMapped(record.sourceAnchor)) {
+                SetUserMapping(idMap.GetMapped(record.sourceAnchor), valueId);
             }
         }
     }
@@ -151,7 +151,7 @@ struct DXILIDRemapper {
 
         // Original source mappings are allocated at a given range
         if (IsSourceOperand(source)) {
-            uint32_t mapping = sourceMappings.at(record.resultOrAnchor - source);
+            uint32_t mapping = sourceMappings.at(record.sourceAnchor - source);
             ASSERT(mapping != ~0u, "Remapped not found on source operand");
 
             // Assign absolute
@@ -188,9 +188,9 @@ struct DXILIDRemapper {
 
             // Backwards or forwards?
             if (ref < 0) {
-                absoluteRemap = record.resultOrAnchor + static_cast<uint32_t>(-ref);
+                absoluteRemap = record.sourceAnchor + static_cast<uint32_t>(-ref);
             } else {
-                absoluteRemap = record.resultOrAnchor - ref;
+                absoluteRemap = record.sourceAnchor - ref;
             }
 
             // Must be within the source range
@@ -264,8 +264,11 @@ struct DXILIDRemapper {
             }
 #endif // NDEBUG
 
+            // Forward reference capable resolves are signed
+            int64_t relative = static_cast<int64_t>(entry.anchor) - absoluteRemap;
+
             // Re-encode relative
-            *entry.source = LLVMBitStreamWriter::EncodeSigned(-static_cast<int64_t>(entry.anchor - absoluteRemap));
+            *entry.source = LLVMBitStreamWriter::EncodeSigned(relative);
         }
     }
 

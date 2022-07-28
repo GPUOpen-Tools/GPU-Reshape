@@ -26,7 +26,7 @@ struct DXBCPhysicalBlockTable {
 
     /// Stitch the compiled table
     /// \param out destination stream
-    void Stitch(DXStream &out);
+    void Stitch(const DXJob& job, DXStream &out);
 
     /// Copy to a new table
     /// \param out the destination table

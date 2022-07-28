@@ -47,6 +47,13 @@ struct LLVMBlock {
         records.Add(record);
     }
 
+    /// Add a record to the end of this block
+    /// \param record record to be added
+    void InsertRecord(const LLVMBlockElement* location, const LLVMRecord& record) {
+        elements.Insert(location, LLVMBlockElement(LLVMBlockElementType::Record, records.Size()));
+        records.Add(record);
+    }
+
     /// Identifier of this block, may be reserved
     uint32_t id{~0u};
 

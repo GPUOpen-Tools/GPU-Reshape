@@ -621,7 +621,7 @@ void DXILPhysicalBlockScan::Stitch(DXStream &out) {
 #endif // DXIL_DUMP_BITSTREAM
 
     // Write back header
-    out.Append(header);
+    uint64_t headerOffset = out.Append(header);
 
 #if DXIL_VALIDATE_MIRROR
     size_t validationOffset = out.GetByteSize();
@@ -641,6 +641,17 @@ void DXILPhysicalBlockScan::Stitch(DXStream &out) {
 
     // Close up any loose words
     stream.Close();
+
+    // End offset
+    uint64_t endOffset = out.GetOffset();
+
+    // Total length
+    uint64_t byteLength = endOffset - headerOffset;
+
+    // Patch header
+    auto* stitchHeader = out.GetMutableDataAt<DXILHeader>(headerOffset);
+    stitchHeader->dwordCount = static_cast<uint32_t>(byteLength / sizeof(uint32_t));
+    stitchHeader->codeSize = static_cast<uint32_t>(byteLength - sizeof(DXILHeader));
 
     // Dump?
 #if DXIL_DUMP_BITSTREAM

@@ -85,3 +85,18 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
     # Set output
     set(${OUT_GENERATED} "${${OUT_GENERATED}};${Generated}" PARENT_SCOPE)
 endfunction()
+
+# Get all includes
+file(GLOB Sources DXC/include/*)
+
+# Configure all includes
+foreach (File ${Sources})
+    get_filename_component(BaseName "${File}" NAME)
+    configure_file(${File} ${CMAKE_BINARY_DIR}/External/include/DXC/${BaseName})
+endforeach ()
+
+# Copy binaries
+if (WIN32)
+    ConfigureOutput(DXC/bin/win64/dxil.dll dxil.dll)
+    ConfigureOutput(DXC/bin/win64/dxcompiler.dll dxcompiler.dll)
+endif()

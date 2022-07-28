@@ -62,7 +62,7 @@ bool DXBCModule::Compile(const DXJob& job, DXStream& out) {
     }
 
     // Stitch to the program
-    table.Stitch(out);
+    table.Stitch(job, out);
 
     // OK!
     return true;
