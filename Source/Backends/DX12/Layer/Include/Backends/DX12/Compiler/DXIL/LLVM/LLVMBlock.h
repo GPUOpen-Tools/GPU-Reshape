@@ -40,6 +40,36 @@ struct LLVMBlock {
         return nullptr;
     }
 
+    /// Find a record block placement
+    /// \param rid record id
+    /// \return nullptr if none found
+    template<typename T>
+    const LLVMBlockElement* FindRecordPlacement(const T& rid) {
+        for (const LLVMBlockElement& element : elements) {
+            if (element.Is(LLVMBlockElementType::Record) && records[element.id].Is(rid)) {
+                return &element;
+            }
+        }
+
+        return nullptr;
+    }
+
+    /// Find a record block placement, reverse search
+    /// \param rid record id
+    /// \return nullptr if none found
+    template<typename T>
+    const LLVMBlockElement* FindRecordPlacementReverse(const T& rid) {
+        for (int64_t i = elements.Size() - 1; i >= 0; i--) {
+            const LLVMBlockElement& element = elements[i];
+
+            if (element.Is(LLVMBlockElementType::Record) && records[element.id].Is(rid)) {
+                return &element;
+            }
+        }
+
+        return nullptr;
+    }
+
     /// Add a record to the end of this block
     /// \param record record to be added
     void AddRecord(const LLVMRecord& record) {

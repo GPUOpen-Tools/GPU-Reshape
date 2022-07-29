@@ -579,6 +579,32 @@ namespace IL {
             return Offset(relocationTable.back(), static_cast<uint32_t>(relocationTable.size()) - 1);
         }
 
+        /// Get an iterator from a reference
+        Iterator GetIterator(const ConstOpaqueInstructionRef& ref) {
+            ASSERT(ref.basicBlock == this, "Invalid reference");
+
+            // Find location
+            auto relocationIt = std::find(relocationTable.begin(), relocationTable.end(), ref.relocationOffset);
+            ASSERT(relocationIt != relocationTable.end(), "Missing relocation offset");
+
+            // Get the relocation index
+            uint32_t index = static_cast<uint32_t>(relocationIt - relocationTable.begin());
+            return Offset(ref.relocationOffset, index);
+        }
+
+        /// Get an iterator from a reference
+        ConstIterator GetIterator(const ConstOpaqueInstructionRef& ref) const {
+            ASSERT(ref.basicBlock == this, "Invalid reference");
+
+            // Find location
+            auto relocationIt = std::find(relocationTable.begin(), relocationTable.end(), ref.relocationOffset);
+            ASSERT(relocationIt != relocationTable.end(), "Missing relocation offset");
+
+            // Get the relocation index
+            uint32_t index = static_cast<uint32_t>(relocationIt - relocationTable.begin());
+            return Offset(ref.relocationOffset, index);
+        }
+
         /// Mark this basic block as dirty
         void MarkAsDirty() {
             dirty = true;

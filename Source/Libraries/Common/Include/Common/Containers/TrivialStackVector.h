@@ -130,7 +130,7 @@ struct TrivialStackVector {
             data = fallback.data();
         } else {
             if (offset != size) {
-                std::memmove(data + offset + 1, data + offset, sizeof(T) * size - offset);
+                std::memmove(data + offset + 1, data + offset, sizeof(T) * (size - offset));
             }
             data[offset] = value;
         }

@@ -123,7 +123,10 @@ void DXILPhysicalBlockGlobal::ParseAlias(LLVMRecord &record) {
 }
 
 void DXILPhysicalBlockGlobal::CompileConstants(struct LLVMBlock *block) {
-
+    // Ensure all IL constants are mapped
+    for (const Backend::IL::Constant* constant : program.GetConstants()) {
+        constantMap.GetConstant(constant);
+    }
 }
 
 void DXILPhysicalBlockGlobal::CompileGlobalVar(LLVMRecord &record) {

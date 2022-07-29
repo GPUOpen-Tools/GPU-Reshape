@@ -704,7 +704,6 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
                 // Get callee
                 uint64_t called = table.idMap.GetRelative(anchor, reader.ConsumeOp());
-                uint64_t calledType = reader.ConsumeOp();
 
                 // Get call declaration
                 const DXILFunctionDeclaration *callDecl = GetFunctionDeclaration(called);
@@ -878,6 +877,9 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration
 
 bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration) {
     LLVMRecordStringView view = table.symbol.GetValueString(called);
+
+    // Get op-code
+    uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
 
     // Check hash
     switch (view.GetHash()) {
@@ -1317,9 +1319,18 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                      *   i32)                  ; MIP level
                      */
 
-                    uint64_t ops[2];
-                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->resource);
-                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                    // TODO: Clean up, ugly
+
+                    uint64_t ops[3];
+
+                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::GetDimensions)}
+                    )->id);
+
+                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->resource);
+
+                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
                         Backend::IL::IntConstant{.value = 0}
                     )->id);
@@ -1482,9 +1493,9 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     // Prepare record
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstPhi);
-                    record.opCount = 1 + _instr->values.count;
+                    record.opCount = 1 + 2 * _instr->values.count;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
-                    record.ops[0] = _instr->result;
+                    record.ops[0] = table.type.typeMap.GetType(program.GetTypeMap().GetType(_instr->result));
 
                     for (uint32_t i = 0; i < _instr->values.count; i++) {
                         record.ops[1 + i * 2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i].value);
@@ -1733,7 +1744,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             case LLVMFunctionRecord::InstCall2: {
                 table.idRemapper.RemapRelative(anchor, record, record.Op(3));
 
-                for (uint32_t i = 5; i < record.opCount; i++) {
+                for (uint32_t i = 4; i < record.opCount; i++) {
                     table.idRemapper.RemapRelative(anchor, record, record.ops[i]);
                 }
                 break;
@@ -1802,6 +1813,9 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
      *     dllstorageclass, comdat, prefixdata, personalityfn, preemptionspecifier]
      */
 
+    // Insert after previous functions
+    const LLVMBlockElement* insertionPoint = global->FindRecordPlacementReverse(LLVMModuleRecord::Function) + 1;
+
     // Module scope function declaration
     LLVMRecord record(LLVMModuleRecord::Function);
     record.SetUser(true, ~0u, program.GetIdentifierMap().AllocID());
@@ -1812,7 +1826,7 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
     record.ops[2] = 1;
     record.ops[3] = static_cast<uint64_t>(LLVMLinkage::CommonLinkage);
     record.ops[4] = 0;
-    global->AddRecord(record);
+    global->InsertRecord(insertionPoint, record);
 
     // Symbol tab for linking
     LLVMBlock *symTab = global->GetBlock(LLVMReservedBlock::ValueSymTab);
@@ -1847,7 +1861,7 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
 LLVMRecord DXILPhysicalBlockFunction::CompileIntrinsicCall(IL::ID result, const DXILFunctionDeclaration *decl, uint32_t opCount, const uint64_t *ops) {
     LLVMRecord record(LLVMFunctionRecord::InstCall2);
     record.SetUser(result != IL::InvalidID, ~0u, result);
-    record.opCount = 5 + opCount;
+    record.opCount = 4 + opCount;
     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
     record.ops[0] = 0;
     record.ops[1] = 0;
@@ -1860,7 +1874,7 @@ LLVMRecord DXILPhysicalBlockFunction::CompileIntrinsicCall(IL::ID result, const 
 
     // Emit call operands
     for (uint32_t i = 0; i < opCount; i++) {
-        record.ops[5 + i] = ops[i];
+        record.ops[4 + i] = ops[i];
     }
 
     // OK
