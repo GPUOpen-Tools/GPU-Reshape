@@ -18,7 +18,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
     separate_arguments(Args WINDOWS_COMMAND ${ARGS})
 
     # Generated dependencies
-    set(Generated "")
+    set(InternalGenerated "")
 
     # Generate vulkan
     if (${ENABLE_BACKEND_VULKAN})
@@ -39,7 +39,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
         )
 
         # Add output
-        list(APPEND Generated ${HEADER}Vulkan.h)
+        list(APPEND InternalGenerated ${HEADER}Vulkan.h)
     endif()
 
     # Generate d3d12
@@ -60,7 +60,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
         )
 
         # Add output
-        list(APPEND Generated ${HEADER}D3D12.h)
+        list(APPEND InternalGenerated ${HEADER}D3D12.h)
 
         if (${ENABLE_DXIL_DUMP})
             add_custom_command(
@@ -78,12 +78,12 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
             )
 
             # Add output
-            list(APPEND Generated ${HEADER}D3D12.dxil.txt)
+            list(APPEND InternalGenerated ${HEADER}D3D12.dxil.txt)
         endif()
     endif()
 
     # Set output
-    set(${OUT_GENERATED} "${${OUT_GENERATED}};${Generated}" PARENT_SCOPE)
+    set(${OUT_GENERATED} "${${OUT_GENERATED}};${InternalGenerated}" PARENT_SCOPE)
 endfunction()
 
 # Get all includes
