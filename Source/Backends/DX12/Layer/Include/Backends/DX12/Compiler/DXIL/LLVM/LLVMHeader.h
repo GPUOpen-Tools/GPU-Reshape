@@ -86,7 +86,7 @@ enum class LLVMFunctionRecord : uint32_t {
     DeclareBlocks = 1,
     InstBinOp = 2,
     InstCast = 3,
-    InstGEP = 4,
+    InstGEPOld = 4,
     InstSelect = 5,
     InstExtractELT = 6,
     InstInsertELT = 7,
@@ -103,7 +103,7 @@ enum class LLVMFunctionRecord : uint32_t {
     InstFree = 18,
     InstAlloca = 19,
     InstLoad = 20,
-    InstStore = 21,
+    InstStoreOld = 21,
     InstCall = 22,
     InstVaArg = 23,
     InstStore2 = 24,
@@ -117,7 +117,119 @@ enum class LLVMFunctionRecord : uint32_t {
     DebugLOC = 32,
     DebugLOCAgain = 33,
     InstCall2 = 34,
-    DebugLOC2 = 35
+    DebugLOC2 = 35,
+    InstFence = 36,
+    InstCompareExchangeOld = 37,
+    InstAtomicRW = 38,
+    InstResume = 39,
+    InstLandingPadOld = 40,
+    InstLoadAtomic = 31,
+    InstStoreAtomicOld = 42,
+    InstGEP = 43,
+    InstStore = 44,
+    InstStoreAtomic = 45,
+    InstCompareExchange = 48,
+    InstLandingPad = 47
+};
+
+enum class LLVMParameterGroupRecord : uint32_t {
+    Entry = 3
+};
+
+enum class LLVMParameterRecord : uint32_t {
+    Entry = 2
+};
+
+enum class LLVMParameterGroupRecordIndex : uint32_t {
+    Return = 0,
+    FunctionAttribute = ~0u
+};
+
+enum class LLVMParameterGroupKind : uint32_t {
+    WellKnown = 0,
+    WellKnownValue = 1,
+    String = 3,
+    StringValue = 4
+};
+
+enum class LLVMParameterGroupValue : uint32_t {
+    None = 0,
+    Align = 1,
+    AlwaysInline = 2,
+    ByVal = 3,
+    InlineHint = 4,
+    InReg = 5,
+    MinSize = 6,
+    Naked = 7,
+    Nest = 8,
+    NoAlias = 9,
+    NoBuiltin = 10,
+    NoCapture = 11,
+    NodeDuplicate = 12,
+    NoImplicitFloat = 13,
+    NoInline = 14,
+    NonLazyBind = 15,
+    NoRedZone = 16,
+    NoReturn = 17,
+    NoUnwind = 18,
+    OptSize = 19,
+    ReadNone = 20,
+    ReadOnly = 21,
+    Returned = 22,
+    ReturnsTwice = 23,
+    SignExt = 24,
+    AlignStack = 25,
+    SSP = 26,
+    SSPReq = 27,
+    SSPStrong = 28,
+    SRet = 29,
+    SanitizeAddress = 30,
+    SanitizeThread = 31,
+    SanitizeMemory = 32,
+    UwTable = 33,
+    ZeroExt = 34,
+    Builtin = 35,
+    Cold = 36,
+    OptNone = 37,
+    InAlloca = 38,
+    NonNull = 39,
+    JumpTable = 40,
+    Dereferenceable = 41,
+    DereferenceableOrNull = 42,
+    Convergent = 43,
+    SafeStack = 44,
+    ArgMemOnly = 45,
+    SwiftSelf = 46,
+    SwifTerror = 47,
+    NoRecurse = 48,
+    InaccessibleMemOnly = 49,
+    InaccessibleMemOnlyOrArgMemOnly = 50,
+    AllocSize = 51,
+    WriteOnly = 52,
+    Speculatable = 53,
+    StrictFP = 54,
+    SanitizeHWAddress = 55,
+    NoCFCheck = 56,
+    OptForFuzzing = 57,
+    ShadowCallstack = 58,
+    SpeculativeLoadHardening = 59,
+    ImmArg = 60,
+    WillReturn = 61,
+    NoFree = 62,
+    NoSync = 63,
+    SanitizeMemTag = 64,
+    PreAllocated = 65,
+    NoMerge = 66,
+    NullPointerIsValid = 67,
+    NoUndef = 68,
+    ByRef = 69,
+    MustProgress = 70,
+    VScaleRange = 74,
+    SwiftAsync = 75,
+    NoSanitizeCoverage = 76,
+    ElementType = 77,
+    DisableSanitizerInstrumentation = 78,
+    NoSanitizeBounds = 79
 };
 
 enum class LLVMBinOp : uint8_t {

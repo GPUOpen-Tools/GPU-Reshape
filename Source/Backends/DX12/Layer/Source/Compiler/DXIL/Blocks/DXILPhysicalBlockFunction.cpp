@@ -798,12 +798,12 @@ bool DXILPhysicalBlockFunction::HasResult(const struct LLVMRecord &record) {
         case LLVMFunctionRecord::InstLoad:
             return true;
         case LLVMFunctionRecord::InstStore:
+        case LLVMFunctionRecord::InstStoreOld:
+        case LLVMFunctionRecord::InstStore2:
             return false;
         case LLVMFunctionRecord::InstCall:
         case LLVMFunctionRecord::InstCall2:
             // Handle in call
-            return false;
-        case LLVMFunctionRecord::InstStore2:
             return false;
         case LLVMFunctionRecord::InstGetResult:
             return true;
@@ -1330,13 +1330,21 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->resource);
 
-                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = 0}
-                    )->id);
+                    // Buffer types are assigned undefined constants
+                    if (typeMap.GetType(_instr->resource)->Is<Backend::IL::BufferType>()) {
+                        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::UndefConstant{}
+                        )->id);
+                    } else {
+                        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::IntConstant{.value = 0}
+                        )->id);
+                    }
 
                     // Invoke
-                    record = CompileIntrinsicCall(_instr->result, intrinsic, 2, ops);
+                    record = CompileIntrinsicCall(_instr->result, intrinsic, 3, ops);
                     break;
                 }
 
@@ -1789,7 +1797,7 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
     Backend::IL::StructType handle;
     handle.memberTypes.push_back(typeMap.FindTypeOrAdd(Backend::IL::PointerType{
         .pointee = i8,
-        .addressSpace = Backend::IL::AddressSpace::Resource
+        .addressSpace = Backend::IL::AddressSpace::Function
     }));
 
     // Standard return
@@ -1799,9 +1807,13 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
     ret4.memberTypes.push_back(i32);
     ret4.memberTypes.push_back(i32);
 
+    // Export as special
+    table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(ret4), "dx.types.Dimensions");
+
     // Function signature
     Backend::IL::FunctionType funcTy;
     funcTy.returnType = typeMap.FindTypeOrAdd(ret4);
+    funcTy.parameterTypes.push_back(i32);
     funcTy.parameterTypes.push_back(typeMap.FindTypeOrAdd(handle));
     funcTy.parameterTypes.push_back(i32);
     const Backend::IL::FunctionType *fnType = typeMap.FindTypeOrAdd(funcTy);
@@ -1814,18 +1826,32 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrins
      */
 
     // Insert after previous functions
-    const LLVMBlockElement* insertionPoint = global->FindRecordPlacementReverse(LLVMModuleRecord::Function) + 1;
+    const LLVMBlockElement* insertionPoint = global->FindPlacementReverse(LLVMBlockElementType::Record, LLVMModuleRecord::Function) + 1;
 
     // Module scope function declaration
     LLVMRecord record(LLVMModuleRecord::Function);
     record.SetUser(true, ~0u, program.GetIdentifierMap().AllocID());
-    record.opCount = 5;
+    record.opCount = 15;
     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
     record.ops[0] = table.type.typeMap.GetType(fnType);
-    record.ops[1] = 0;
+    record.ops[1] = static_cast<uint32_t>(LLVMCallingConvention::C);
     record.ops[2] = 1;
-    record.ops[3] = static_cast<uint64_t>(LLVMLinkage::CommonLinkage);
-    record.ops[4] = 0;
+    record.ops[3] = static_cast<uint64_t>(LLVMLinkage::ExternalLinkage);
+
+    LLVMParameterGroupValue attributes[] = { LLVMParameterGroupValue::NoUnwind, LLVMParameterGroupValue::ReadOnly };
+    record.ops[4] = table.functionAttribute.FindOrCompileAttributeList(2, attributes);
+
+    record.ops[5] = 0;
+    record.ops[6] = 0;
+    record.ops[7] = 0;
+    record.ops[8] = 0;
+    record.ops[9] = 0;
+    record.ops[10] = 0;
+    record.ops[11] = 0;
+    record.ops[12] = 0;
+    record.ops[13] = 0;
+    record.ops[14] = 0;
+
     global->InsertRecord(insertionPoint, record);
 
     // Symbol tab for linking
@@ -1865,12 +1891,14 @@ LLVMRecord DXILPhysicalBlockFunction::CompileIntrinsicCall(IL::ID result, const 
     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
     record.ops[0] = 0;
     record.ops[1] = 0;
+
+    record.ops[1] = (0u << 1u);
+    record.ops[1] |= static_cast<uint32_t>(LLVMCallingConvention::C) << 1;
+    record.ops[1] |= (0u << 14u);
+    record.ops[1] |= (1u << 15u);
+
     record.ops[2] = table.type.typeMap.GetType(decl->type);
     record.ops[3] = decl->id;
-    record.ops[4] = table.type.typeMap.GetType(program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
-        .pointee = decl->type,
-        .addressSpace = Backend::IL::AddressSpace::Function
-    }));
 
     // Emit call operands
     for (uint32_t i = 0; i < opCount; i++) {

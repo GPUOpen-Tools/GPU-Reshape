@@ -3,6 +3,7 @@
 // Layer
 #include <Backends/DX12/Compiler/DXIL/DXILFunctionDeclaration.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordReader.h>
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordStringView.h>
 #include "DXILPhysicalBlockSection.h"
 
 // Common

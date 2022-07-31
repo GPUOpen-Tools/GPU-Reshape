@@ -7,6 +7,7 @@ DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL:
     idMap(program),
     idRemapper(idMap),
     function(allocators, program, *this),
+    functionAttribute(allocators, program, *this),
     type(allocators, program, *this),
     global(allocators, program, *this),
     string(allocators, program, *this),
@@ -98,8 +99,10 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
             case LLVMReservedBlock::Module:
                 break;
             case LLVMReservedBlock::Parameter:
+                functionAttribute.ParseParameterBlock(block);
                 break;
             case LLVMReservedBlock::ParameterGroup:
+                functionAttribute.ParseParameterAttributeGroup(block);
                 break;
             case LLVMReservedBlock::Constants:
                 global.ParseConstants(block);
@@ -135,6 +138,7 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
     idRemapper.SetBound(idMap.GetBound(), program.GetIdentifierMap().GetMaxID());
 
     // Set declaration blocks for on-demand records
+    functionAttribute.SetDeclarationBlock(&root);
     type.typeMap.SetDeclarationBlock(root.GetBlock(LLVMReservedBlock::Type));
     global.constantMap.SetDeclarationBlock(root.GetBlock(LLVMReservedBlock::Constants));
 
@@ -198,7 +202,6 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
             case LLVMReservedBlock::ParameterGroup:
                 break;
             case LLVMReservedBlock::Constants:
-                global.CompileConstants(block);
                 break;
             case LLVMReservedBlock::Function:
                 function.CompileFunction(block);
@@ -212,10 +215,23 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
             case LLVMReservedBlock::MetadataAttachment:
                 break;
             case LLVMReservedBlock::Type:
-                type.CompileType(block);
                 break;
             case LLVMReservedBlock::StrTab:
                 string.CompileStrTab(block);
+                break;
+        }
+    }
+
+    // Compile dynamic blocks last
+    for (LLVMBlock *block: root.blocks) {
+        switch (static_cast<LLVMReservedBlock>(block->id)) {
+            default:
+                break;
+            case LLVMReservedBlock::Constants:
+                global.CompileConstants(block);
+                break;
+            case LLVMReservedBlock::Type:
+                type.CompileType(block);
                 break;
         }
     }
@@ -317,4 +333,5 @@ void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
     type.CopyTo(out.type);
     global.CopyTo(out.global);
     function.CopyTo(out.function);
+    functionAttribute.CopyTo(out.functionAttribute);
 }

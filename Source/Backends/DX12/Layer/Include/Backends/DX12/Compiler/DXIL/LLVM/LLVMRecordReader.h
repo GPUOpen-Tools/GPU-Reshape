@@ -34,6 +34,11 @@ struct LLVMRecordReader {
         return record.opCount - offset;
     }
 
+    /// Get remaining operands
+    uint32_t Offset() const {
+        return offset;
+    }
+
 private:
     const LLVMRecord& record;
 

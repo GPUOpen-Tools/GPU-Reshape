@@ -104,16 +104,18 @@ private:
     /// \param constant
     /// \return DXIL id
     uint64_t CompileConstant(const Backend::IL::Constant* constant) {
-        switch (constant->type->kind) {
+        switch (constant->kind) {
             default:
                 ASSERT(false, "Unsupported constant type for recompilation");
                 return ~0;
-            case Backend::IL::TypeKind::Bool:
+            case Backend::IL::ConstantKind::Bool:
                 return CompileConstant(static_cast<const Backend::IL::BoolConstant*>(constant));
-            case Backend::IL::TypeKind::Int:
+            case Backend::IL::ConstantKind::Int:
                 return CompileConstant(static_cast<const Backend::IL::IntConstant*>(constant));
-            case Backend::IL::TypeKind::FP:
+            case Backend::IL::ConstantKind::FP:
                 return CompileConstant(static_cast<const Backend::IL::FPConstant*>(constant));
+            case Backend::IL::ConstantKind::Undef:
+                return CompileConstant(static_cast<const Backend::IL::UndefConstant*>(constant));
         }
     }
 
@@ -141,6 +143,14 @@ private:
         record.opCount = 1;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
         record.OpBitWrite(0, constant->value);
+        return Emit(constant, record);
+    }
+
+    /// Compile a given constant
+    uint64_t CompileConstant(const Backend::IL::UndefConstant* constant) {
+        LLVMRecord record(LLVMConstantRecord::Undef);
+        record.opCount = 0;
+        record.ops = recordAllocator.AllocateArray<uint64_t>(1);
         return Emit(constant, record);
     }
 

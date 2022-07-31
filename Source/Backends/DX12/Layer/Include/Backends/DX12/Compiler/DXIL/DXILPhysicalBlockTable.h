@@ -8,6 +8,7 @@
 #include "Blocks/DXILPhysicalBlockString.h"
 #include "Blocks/DXILPhysicalBlockMetadata.h"
 #include "Blocks/DXILPhysicalBlockSymbol.h"
+#include "Blocks/DXILPhysicalBlockFunctionAttribute.h"
 #include "DXILIDMap.h"
 #include "DXILIDRemapper.h"
 
@@ -48,6 +49,7 @@ struct DXILPhysicalBlockTable {
 
     /// Blocks
     DXILPhysicalBlockFunction function;
+    DXILPhysicalBlockFunctionAttribute functionAttribute;
     DXILPhysicalBlockType type;
     DXILPhysicalBlockGlobal global;
     DXILPhysicalBlockString string;

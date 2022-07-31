@@ -5,6 +5,7 @@
 #include "LLVM/LLVMBitStreamReader.h"
 #include "LLVM/LLVMBitStreamWriter.h"
 #include "DXILIDMap.h"
+#include "DXILIDRemapRule.h"
 
 // Backend
 #include <Backend/IL/ID.h>
@@ -102,17 +103,48 @@ struct DXILIDRemapper {
         }
     }
 
+    /// Remove the remapping rule from an operand
+    /// \param value source operand
+    /// \param rule given rule
+    /// \return operand
+    uint64_t RemoveRemapRule(uint64_t value, DXILIDRemapRule rule) {
+        switch (rule) {
+            case DXILIDRemapRule::None:
+                return value;
+            case DXILIDRemapRule::Nullable:
+                ASSERT(value > 0, "Nullable remap with zero value");
+                return value - 1;
+        }
+    }
+
+    /// Apply the remapping rule to an operand
+    /// \param value source operand
+    /// \param rule given rule
+    /// \return operand
+    uint64_t ApplyRemapRule(uint64_t value, DXILIDRemapRule rule) {
+        switch (rule) {
+            case DXILIDRemapRule::None:
+                return value;
+            case DXILIDRemapRule::Nullable:
+                ASSERT(value > 0, "Nullable remap with zero value");
+                return value + 1;
+        }
+    }
+
     /// Remap a DXIL value
     /// \param source source DXIL value
-    void Remap(uint64_t &source) {
+    void Remap(uint64_t &source, DXILIDRemapRule rule = DXILIDRemapRule::None) {
         // Original source mappings are allocated at a given range
         if (IsSourceOperand(source)) {
-            uint32_t mapping = sourceMappings.at(source);
+            uint64_t unmapped = RemoveRemapRule(source, rule);
+
+            uint32_t mapping = sourceMappings.at(unmapped);
             if (mapping == ~0u) {
                 // Mapping doesn't exist yet, add as unresolved
                 unresolvedReferences.Add(UnresolvedReferenceEntry{
                     .source = &source,
-                    .absolute = source
+                    .absolute = unmapped,
+                    .rule = rule
                 });
 
                 // Sanity
@@ -124,14 +156,15 @@ struct DXILIDRemapper {
             }
 
             // Assign source to new mapping
-            source = mapping;
+            source = ApplyRemapRule(mapping, rule);
         } else {
             uint32_t mapping = userMappings.at(DecodeUserOperand(source));
             if (mapping == ~0u) {
                 // Mapping doesn't exist yet, add as unresolved
                 unresolvedReferences.Add(UnresolvedReferenceEntry{
                     .source = &source,
-                    .absolute = source
+                    .absolute = source,
+                    .rule = rule
                 });
 
                 // Sanity
@@ -143,7 +176,7 @@ struct DXILIDRemapper {
             }
 
             // Assign source to new mapping
-            source = mapping;
+            source = ApplyRemapRule(mapping, rule);
         }
     }
 
@@ -244,7 +277,7 @@ struct DXILIDRemapper {
             }
 
             // Re-encode relative
-            *entry.source = absoluteRemap;
+            *entry.source = ApplyRemapRule(absoluteRemap, entry.rule);
         }
 
         for (const UnresolvedForwardReferenceEntry &entry: unresolvedForwardReferences) {
@@ -334,6 +367,7 @@ private:
     struct UnresolvedReferenceEntry {
         uint64_t *source{nullptr};
         uint64_t absolute;
+        DXILIDRemapRule rule;
     };
 
     struct UnresolvedForwardReferenceEntry {

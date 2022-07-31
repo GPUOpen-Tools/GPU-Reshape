@@ -87,6 +87,23 @@ public:
         return id;
     }
 
+    /// Compile a named type
+    /// \param type given type, must be namable
+    /// \param name given name
+    void CompileNamedType(const Backend::IL::Type* type, const char* name) {
+        ASSERT(!HasType(type), "Cannot recompile a type");
+
+        // Only certain named types
+        switch (type->kind) {
+            default:
+                ASSERT(false, "Type does not support naming");
+                break;
+            case Backend::IL::TypeKind::Struct:
+                CompileType(static_cast<const Backend::IL::StructType*>(type), name);
+                break;
+        }
+    }
+
     /// Add a type mapping from IL to DXIL
     /// \param type IL type
     /// \param index DXIL index
@@ -142,7 +159,7 @@ private:
             case Backend::IL::TypeKind::Function:
                 return CompileType(static_cast<const Backend::IL::FunctionType*>(type));
             case Backend::IL::TypeKind::Struct:
-                return CompileType(static_cast<const Backend::IL::StructType*>(type));
+                return CompileType(static_cast<const Backend::IL::StructType*>(type), nullptr);
         }
     }
 
@@ -278,10 +295,26 @@ private:
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::StructType* type) {
-        LLVMRecord record(LLVMTypeRecord::StructAnon);
-        record.opCount = 1 + type->memberTypes.size();
+    uint32_t CompileType(const Backend::IL::StructType* type, const char* name) {
+        // Insert name record if needed
+        if (name) {
+            LLVMRecord record(LLVMTypeRecord::StructName);
+            record.SetUser(false, ~0u, ~0u);
+            record.opCount = std::strlen(name);
+            record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
 
+            // Copy name
+            for (uint32_t i = 0; i < record.opCount; i++) {
+                record.ops[i] = name[i];
+            }
+
+            // Emit
+            declarationBlock->AddRecord(record);
+        }
+
+        // Insert struct record, optionally named
+        LLVMRecord record(name ? LLVMTypeRecord::StructNamed : LLVMTypeRecord::StructAnon);
+        record.opCount = 1 + type->memberTypes.size();
         record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
         record.ops[0] = 0;
 

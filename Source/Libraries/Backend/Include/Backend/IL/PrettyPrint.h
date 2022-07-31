@@ -10,6 +10,7 @@
 namespace Backend::IL {
     struct ConstantMap;
     struct TypeMap;
+    struct Type;
 }
 
 namespace IL {
@@ -63,6 +64,7 @@ namespace IL {
     void PrettyPrint(const SOVValue& value, PrettyPrintContext out);
     void PrettyPrint(Backend::IL::Format format, PrettyPrintContext out);
     void PrettyPrint(Backend::IL::ResourceSamplerMode mode, PrettyPrintContext out);
+    void PrettyPrint(const Backend::IL::Type* map, PrettyPrintContext out);
     void PrettyPrint(const Backend::IL::TypeMap& map, PrettyPrintContext out);
     void PrettyPrint(const Backend::IL::ConstantMap& map, PrettyPrintContext out);
     void PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext out);

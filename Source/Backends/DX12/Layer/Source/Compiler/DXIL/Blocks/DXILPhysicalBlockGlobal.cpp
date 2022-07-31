@@ -87,7 +87,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
             }
 
             case LLVMConstantRecord::Undef: {
-                constant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
+                constant = constantMap.AddConstant(id, type, Backend::IL::UndefConstant{ });
                 break;
             }
 
@@ -123,10 +123,6 @@ void DXILPhysicalBlockGlobal::ParseAlias(LLVMRecord &record) {
 }
 
 void DXILPhysicalBlockGlobal::CompileConstants(struct LLVMBlock *block) {
-    // Ensure all IL constants are mapped
-    for (const Backend::IL::Constant* constant : program.GetConstants()) {
-        constantMap.GetConstant(constant);
-    }
 }
 
 void DXILPhysicalBlockGlobal::CompileGlobalVar(LLVMRecord &record) {
@@ -138,6 +134,11 @@ void DXILPhysicalBlockGlobal::CompileAlias(LLVMRecord &record) {
 }
 
 void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
+    // Ensure all IL constants are mapped
+    for (const Backend::IL::Constant* constant : program.GetConstants()) {
+        constantMap.GetConstant(constant);
+    }
+
     for (LLVMRecord &record: block->records) {
         if (record.Is(LLVMConstantRecord::SetType)) {
             continue;
@@ -167,7 +168,22 @@ void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
 }
 
 void DXILPhysicalBlockGlobal::StitchGlobalVar(LLVMRecord &record) {
+    /*
+     * LLVM Specification
+     *   [GLOBALVAR, strtab offset, strtab size, pointer type, isconst, initid, linkage, alignment, section,
+     *   visibility, threadlocal, unnamed_addr, externally_initialized, dllstorageclass, comdat, attributes, preemptionspecifier]
+     *
+     * DXC "Specification"
+     *   [GLOBALVAR, type, isconst, initid, linkage, alignment, section, visibility, threadlocal,
+     *   unnamed_addr, externally_initialized, dllstorageclass, comdat]
+     */
+
     table.idRemapper.AllocRecordMapping(record);
+
+    // Initializer?
+    if (record.Op(2) > 0) {
+        table.idRemapper.Remap(record.Op(2), DXILIDRemapRule::Nullable);
+    }
 }
 
 void DXILPhysicalBlockGlobal::StitchAlias(LLVMRecord &record) {

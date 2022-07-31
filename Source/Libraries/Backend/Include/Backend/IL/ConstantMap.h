@@ -141,6 +141,7 @@ namespace Backend::IL {
             auto *constant = blockAllocator.Allocate<T>(decl);
             constant->id = id;
             constant->type = type;
+            constant->kind = T::kKind;
             constants.push_back(constant);
             return constant;
         }
@@ -157,6 +158,7 @@ namespace Backend::IL {
         template<> SortMap<BoolConstant>& GetSortMap<BoolConstant>() { return maps.boolMap; }
         template<> SortMap<IntConstant>& GetSortMap<IntConstant>() { return maps.intMap; }
         template<> SortMap<FPConstant>& GetSortMap<FPConstant>() { return maps.fpMap; }
+        template<> SortMap<UndefConstant>& GetSortMap<UndefConstant>() { return maps.undefMap; }
 
     private:
         Allocators allocators;
@@ -170,6 +172,7 @@ namespace Backend::IL {
             SortMap<BoolConstant> boolMap;
             SortMap<IntConstant> intMap;
             SortMap<FPConstant> fpMap;
+            SortMap<UndefConstant> undefMap;
         };
         
         /// Declaration order

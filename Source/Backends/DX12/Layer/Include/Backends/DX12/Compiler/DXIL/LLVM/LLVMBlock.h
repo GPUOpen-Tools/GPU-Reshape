@@ -40,13 +40,31 @@ struct LLVMBlock {
         return nullptr;
     }
 
-    /// Find a record block placement
+    /// Find a block placement
     /// \param rid record id
     /// \return nullptr if none found
     template<typename T>
-    const LLVMBlockElement* FindRecordPlacement(const T& rid) {
+    const LLVMBlockElement* FindPlacement(LLVMBlockElementType type, const T& rid) {
         for (const LLVMBlockElement& element : elements) {
-            if (element.Is(LLVMBlockElementType::Record) && records[element.id].Is(rid)) {
+            if (!element.Is(type)) {
+                continue;
+            }
+
+            bool match = false;
+
+            switch (type) {
+                case LLVMBlockElementType::Abbreviation:
+                    match = true;
+                    break;
+                case LLVMBlockElementType::Record:
+                    match = records[element.id].Is(rid);
+                    break;
+                case LLVMBlockElementType::Block:
+                    match = blocks[element.id]->Is(rid);
+                    break;
+            }
+
+            if (match) {
                 return &element;
             }
         }
@@ -54,15 +72,33 @@ struct LLVMBlock {
         return nullptr;
     }
 
-    /// Find a record block placement, reverse search
+    /// Find a block placement, reverse search
     /// \param rid record id
     /// \return nullptr if none found
     template<typename T>
-    const LLVMBlockElement* FindRecordPlacementReverse(const T& rid) {
+    const LLVMBlockElement* FindPlacementReverse(LLVMBlockElementType type, const T& rid) {
         for (int64_t i = elements.Size() - 1; i >= 0; i--) {
             const LLVMBlockElement& element = elements[i];
 
-            if (element.Is(LLVMBlockElementType::Record) && records[element.id].Is(rid)) {
+            if (!element.Is(type)) {
+                continue;
+            }
+
+            bool match = false;
+
+            switch (type) {
+                case LLVMBlockElementType::Abbreviation:
+                    match = true;
+                    break;
+                case LLVMBlockElementType::Record:
+                    match = records[element.id].Is(rid);
+                    break;
+                case LLVMBlockElementType::Block:
+                    match = blocks[element.id]->Is(rid);
+                    break;
+            }
+
+            if (match) {
                 return &element;
             }
         }

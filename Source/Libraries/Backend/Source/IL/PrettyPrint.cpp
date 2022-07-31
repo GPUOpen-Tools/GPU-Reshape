@@ -503,6 +503,181 @@ void IL::PrettyPrint(Backend::IL::ResourceSamplerMode mode, PrettyPrintContext o
     }
 }
 
+void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
+    std::ostream &line = out.stream;
+    switch (type->kind) {
+        default: {
+            ASSERT(false, "Unexpected type");
+            break;
+        }
+        case Backend::IL::TypeKind::Bool: {
+            line << "Bool";
+            break;
+        }
+        case Backend::IL::TypeKind::Void: {
+            line << "Void";
+            break;
+        }
+        case Backend::IL::TypeKind::Int: {
+            auto _int = type->As<Backend::IL::IntType>();
+
+            if (_int->signedness) {
+                line << "Int";
+            } else {
+                line << "UInt";
+            }
+
+            line << " width:" << static_cast<uint32_t>(_int->bitWidth);
+            break;
+        }
+        case Backend::IL::TypeKind::FP: {
+            auto fp = type->As<Backend::IL::FPType>();
+            line << "FP width:" << static_cast<uint32_t>(fp->bitWidth);
+            break;
+        }
+        case Backend::IL::TypeKind::Vector: {
+            auto vec = type->As<Backend::IL::VectorType>();
+            line << "Vector" << " contained:%" << vec->containedType->id << " dim:" << static_cast<uint32_t>(vec->dimension);
+            break;
+        }
+        case Backend::IL::TypeKind::Matrix: {
+            auto mat = type->As<Backend::IL::MatrixType>();
+            line << "Matrix" << " contained:%" << mat->containedType->id << " rows:" << static_cast<uint32_t>(mat->rows) << " columns:" << static_cast<uint32_t>(mat->columns);
+            break;
+        }
+        case Backend::IL::TypeKind::Pointer: {
+            auto ptr = type->As<Backend::IL::PointerType>();
+            line << "Pointer pointee:%" << ptr->pointee->id << " space:";
+            switch (ptr->addressSpace) {
+                case Backend::IL::AddressSpace::Constant:
+                    line << "Constant";
+                    break;
+                case Backend::IL::AddressSpace::Texture:
+                    line << "Texture";
+                    break;
+                case Backend::IL::AddressSpace::Buffer:
+                    line << "Buffer";
+                    break;
+                case Backend::IL::AddressSpace::Function:
+                    line << "Function";
+                    break;
+                case Backend::IL::AddressSpace::Resource:
+                    line << "Resource";
+                    break;
+                case Backend::IL::AddressSpace::GroupShared:
+                    line << "GroupShared";
+                    break;
+                case Backend::IL::AddressSpace::Unexposed:
+                    line << "Unexposed";
+                    break;
+            }
+            break;
+        }
+        case Backend::IL::TypeKind::Array: {
+            auto arr = type->As<Backend::IL::ArrayType>();
+            line << "Array" << " element:%" << arr->elementType->id << " count:" << arr->count;
+            break;
+        }
+        case Backend::IL::TypeKind::Texture: {
+            auto tex = type->As<Backend::IL::TextureType>();
+            line << "Texture dim:";
+
+            switch (tex->dimension) {
+                case Backend::IL::TextureDimension::Texture1D:
+                    line << "Texture1D";
+                    break;
+                case Backend::IL::TextureDimension::Texture2D:
+                    line << "Texture2D";
+                    break;
+                case Backend::IL::TextureDimension::Texture3D:
+                    line << "Texture3D";
+                    break;
+                case Backend::IL::TextureDimension::Texture1DArray:
+                    line << "Texture1DArray";
+                    break;
+                case Backend::IL::TextureDimension::Texture2DArray:
+                    line << "Texture2DArray";
+                    break;
+                case Backend::IL::TextureDimension::Texture2DCube:
+                    line << "Texture2DCube";
+                    break;
+                case Backend::IL::TextureDimension::Texture2DCubeArray:
+                    line << "Texture2DCubeArray";
+                    break;
+                case Backend::IL::TextureDimension::Unexposed:
+                    line << "Unexposed";
+                    break;
+            }
+
+            if (tex->sampledType) {
+                line << " sampledType:%" << tex->sampledType->id;
+            }
+
+            line << " format:";
+            PrettyPrint(tex->format, out);
+
+            line << " samplerMode:";
+            PrettyPrint(tex->samplerMode, out);
+
+            if (tex->multisampled) {
+                line << " multisampled";
+            }
+            break;
+        }
+        case Backend::IL::TypeKind::Buffer: {
+            auto buf = type->As<Backend::IL::BufferType>();
+            line << "Buffer format:";
+
+            if (buf->elementType) {
+                line << " elementType:%" << buf->elementType->id;
+            }
+
+            if (buf->texelType != Backend::IL::Format::None) {
+                line << " texelType:";
+                PrettyPrint(buf->texelType, out);
+            }
+
+            line << " samplerMode:";
+            PrettyPrint(buf->samplerMode, out);
+            break;
+        }
+        case Backend::IL::TypeKind::Function: {
+            auto fn = type->As<Backend::IL::FunctionType>();
+            line << "Function return:%" << fn->returnType->id << " parameters:[";
+
+            for (size_t i = 0; i < fn->parameterTypes.size(); i++) {
+                if (i != 0) {
+                    line << ", ";
+                }
+
+                line << "%" << fn->parameterTypes[i]->id;
+            }
+
+            line << "]";
+            break;
+        }
+        case Backend::IL::TypeKind::Struct: {
+            auto str = type->As<Backend::IL::StructType>();
+            line << "Struct members:[";
+
+            for (size_t i = 0; i < str->memberTypes.size(); i++) {
+                if (i != 0) {
+                    line << ", ";
+                }
+
+                line << "%" << str->memberTypes[i]->id;
+            }
+
+            line << "]";
+            break;
+        }
+        case Backend::IL::TypeKind::Unexposed: {
+            line << "Unexposed";
+            break;
+        }
+    }
+}
+
 void IL::PrettyPrint(const Backend::IL::TypeMap &map, PrettyPrintContext out) {
     out.stream << "Type\n";
     out.TabInline();
@@ -511,178 +686,7 @@ void IL::PrettyPrint(const Backend::IL::TypeMap &map, PrettyPrintContext out) {
         std::ostream &line = out.Line();
         line << "%" << type->id << " = ";
 
-        switch (type->kind) {
-            default: {
-                ASSERT(false, "Unexpected type");
-                break;
-            }
-            case Backend::IL::TypeKind::Bool: {
-                line << "Bool";
-                break;
-            }
-            case Backend::IL::TypeKind::Void: {
-                line << "Void";
-                break;
-            }
-            case Backend::IL::TypeKind::Int: {
-                auto _int = type->As<Backend::IL::IntType>();
-
-                if (_int->signedness) {
-                    line << "Int";
-                } else {
-                    line << "UInt";
-                }
-
-                line << " width:" << static_cast<uint32_t>(_int->bitWidth);
-                break;
-            }
-            case Backend::IL::TypeKind::FP: {
-                auto fp = type->As<Backend::IL::FPType>();
-                line << "FP width:" << static_cast<uint32_t>(fp->bitWidth);
-                break;
-            }
-            case Backend::IL::TypeKind::Vector: {
-                auto vec = type->As<Backend::IL::VectorType>();
-                line << "Vector" << " contained:%" << vec->containedType->id << " dim:" << static_cast<uint32_t>(vec->dimension);
-                break;
-            }
-            case Backend::IL::TypeKind::Matrix: {
-                auto mat = type->As<Backend::IL::MatrixType>();
-                line << "Matrix" << " contained:%" << mat->containedType->id << " rows:" << static_cast<uint32_t>(mat->rows) << " columns:" << static_cast<uint32_t>(mat->columns);
-                break;
-            }
-            case Backend::IL::TypeKind::Pointer: {
-                auto ptr = type->As<Backend::IL::PointerType>();
-                line << "Pointer pointee:%" << ptr->pointee->id << " space:";
-                switch (ptr->addressSpace) {
-                    case Backend::IL::AddressSpace::Constant:
-                        line << "Constant";
-                        break;
-                    case Backend::IL::AddressSpace::Texture:
-                        line << "Texture";
-                        break;
-                    case Backend::IL::AddressSpace::Buffer:
-                        line << "Buffer";
-                        break;
-                    case Backend::IL::AddressSpace::Function:
-                        line << "Function";
-                        break;
-                    case Backend::IL::AddressSpace::Resource:
-                        line << "Resource";
-                        break;
-                    case Backend::IL::AddressSpace::GroupShared:
-                        line << "GroupShared";
-                        break;
-                    case Backend::IL::AddressSpace::Unexposed:
-                        line << "Unexposed";
-                        break;
-                }
-                break;
-            }
-            case Backend::IL::TypeKind::Array: {
-                auto arr = type->As<Backend::IL::ArrayType>();
-                line << "Array" << " element:%" << arr->elementType->id << " count:" << arr->count;
-                break;
-            }
-            case Backend::IL::TypeKind::Texture: {
-                auto tex = type->As<Backend::IL::TextureType>();
-                line << "Texture dim:";
-
-                switch (tex->dimension) {
-                    case Backend::IL::TextureDimension::Texture1D:
-                        line << "Texture1D";
-                        break;
-                    case Backend::IL::TextureDimension::Texture2D:
-                        line << "Texture2D";
-                        break;
-                    case Backend::IL::TextureDimension::Texture3D:
-                        line << "Texture3D";
-                        break;
-                    case Backend::IL::TextureDimension::Texture1DArray:
-                        line << "Texture1DArray";
-                        break;
-                    case Backend::IL::TextureDimension::Texture2DArray:
-                        line << "Texture2DArray";
-                        break;
-                    case Backend::IL::TextureDimension::Texture2DCube:
-                        line << "Texture2DCube";
-                        break;
-                    case Backend::IL::TextureDimension::Texture2DCubeArray:
-                        line << "Texture2DCubeArray";
-                        break;
-                    case Backend::IL::TextureDimension::Unexposed:
-                        line << "Unexposed";
-                        break;
-                }
-
-                if (tex->sampledType) {
-                    line << " sampledType:%" << tex->sampledType->id;
-                }
-
-                line << " format:";
-                PrettyPrint(tex->format, out);
-
-                line << " samplerMode:";
-                PrettyPrint(tex->samplerMode, out);
-
-                if (tex->multisampled) {
-                    line << " multisampled";
-                }
-                break;
-            }
-            case Backend::IL::TypeKind::Buffer: {
-                auto buf = type->As<Backend::IL::BufferType>();
-                line << "Buffer format:";
-
-                if (buf->elementType) {
-                    line << " elementType:%" << buf->elementType->id;
-                }
-
-                if (buf->texelType != Backend::IL::Format::None) {
-                    line << " texelType:";
-                    PrettyPrint(buf->texelType, out);
-                }
-
-                line << " samplerMode:";
-                PrettyPrint(buf->samplerMode, out);
-                break;
-            }
-            case Backend::IL::TypeKind::Function: {
-                auto fn = type->As<Backend::IL::FunctionType>();
-                line << "Function return:%" << fn->returnType->id << " parameters:[";
-
-                for (size_t i = 0; i < fn->parameterTypes.size(); i++) {
-                    if (i != 0) {
-                        line << ", ";
-                    }
-
-                    line << "%" << fn->parameterTypes[i]->id;
-                }
-
-                line << "]";
-                break;
-            }
-            case Backend::IL::TypeKind::Struct: {
-                auto str = type->As<Backend::IL::StructType>();
-                line << "Struct members:[";
-
-                for (size_t i = 0; i < str->memberTypes.size(); i++) {
-                    if (i != 0) {
-                        line << ", ";
-                    }
-
-                    line << "%" << str->memberTypes[i]->id;
-                }
-
-                line << "]";
-                break;
-            }
-            case Backend::IL::TypeKind::Unexposed: {
-                line << "Unexposed";
-                break;
-            }
-        }
-
+        PrettyPrint(type, out);
         line << "\n";
     }
 }
@@ -696,12 +700,12 @@ void IL::PrettyPrint(const Backend::IL::ConstantMap &map, PrettyPrintContext out
 
         line << "%" << constant->id << " type:%" << constant->type->id << " = ";
 
-        switch (constant->type->kind) {
+        switch (constant->kind) {
             default: {
                 line << "Unexposed";
                 break;
             }
-            case Backend::IL::TypeKind::Bool: {
+            case Backend::IL::ConstantKind::Bool: {
                 auto _bool = constant->As<Backend::IL::BoolConstant>();
                 line << "Bool ";
                 if (_bool->value) {
@@ -711,7 +715,7 @@ void IL::PrettyPrint(const Backend::IL::ConstantMap &map, PrettyPrintContext out
                 }
                 break;
             }
-            case Backend::IL::TypeKind::Int: {
+            case Backend::IL::ConstantKind::Int: {
                 auto _int = constant->As<Backend::IL::IntConstant>();
 
                 if (_int->type->As<Backend::IL::IntType>()->signedness) {
@@ -723,10 +727,15 @@ void IL::PrettyPrint(const Backend::IL::ConstantMap &map, PrettyPrintContext out
                 line << " " << _int->value;
                 break;
             }
-            case Backend::IL::TypeKind::FP: {
+            case Backend::IL::ConstantKind::FP: {
                 auto fp = constant->As<Backend::IL::FPConstant>();
                 line << "FP";
                 line << " " << fp->value;
+                break;
+            }
+            case Backend::IL::ConstantKind::Undef: {
+                PrettyPrint(constant->type, out);
+                line << " Undef";
                 break;
             }
         }
