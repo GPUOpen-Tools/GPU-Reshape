@@ -38,6 +38,13 @@ public:
     /// \param record record
     void CompileModuleFunction(struct LLVMRecord& record);
 
+    /// Compile a scalar / vector-of-x operation
+    /// \param lhs lhs operand
+    /// \param rhs rhs operand
+    /// \param functor functor(uint32_t lhs, uint32_t rhs)
+    template<typename F>
+    void CompileSVOX(IL::ID lhs, IL::ID rhs, F&& functor);
+
     /// Compile a standard intrinsic call
     /// \param decl given declaration
     /// \param opCount argument op count

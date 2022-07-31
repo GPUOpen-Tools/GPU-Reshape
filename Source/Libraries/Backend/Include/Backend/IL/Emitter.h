@@ -569,7 +569,7 @@ namespace IL {
             BranchInstruction instr{};
             instr.opCode = OpCode::Branch;
             instr.source = Source::Invalid();
-            instr.result = map->AllocID();
+            instr.result = IL::InvalidID;
             instr.branch = branch->GetID();
             return Op(instr);
         }
@@ -587,7 +587,7 @@ namespace IL {
             BranchConditionalInstruction instr{};
             instr.opCode = OpCode::BranchConditional;
             instr.source = Source::Invalid();
-            instr.result = map->AllocID();
+            instr.result = IL::InvalidID;
             instr.cond = cond;
             instr.pass = pass->GetID();
             instr.fail = fail->GetID();

@@ -39,6 +39,10 @@ bool SpvModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
     // Create new program
     program = new(allocators) IL::Program(allocators, shaderGUID);
 
+    // Capatility table
+    IL::CapabilityTable& caps = program->GetCapabilityTable();
+    caps.hasControlFlow = true;
+
     // Create physical block table
     physicalBlockTable = new(allocators) SpvPhysicalBlockTable(allocators, *program);
 
@@ -53,7 +57,7 @@ bool SpvModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
 
 bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount, const SpvJob& job) {
     for (IL::Function* fn : program->GetFunctionList()) {
-        if (!fn->ReorderByDominantBlocks()) {
+        if (!fn->ReorderByDominantBlocks(true)) {
             return false;
         }
     }

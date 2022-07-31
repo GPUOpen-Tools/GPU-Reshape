@@ -6,6 +6,7 @@
 #include "LLVM/LLVMBitStreamWriter.h"
 #include "DXILIDMap.h"
 #include "DXILIDRemapRule.h"
+#include "DXILIDUserType.h"
 
 // Backend
 #include <Backend/IL/ID.h>
@@ -50,7 +51,7 @@ struct DXILIDRemapper {
     /// \param user user modified program bound
     void SetBound(uint32_t source, uint32_t user) {
         sourceMappings.resize(source, ~0u);
-        userMappings.resize(user, ~0u);
+        userMappings.resize(user, UserMapping {.index = ~0u, .type = DXILIDUserType::Singular});
     }
 
     /// Allocate a source record value
@@ -68,7 +69,7 @@ struct DXILIDRemapper {
         }
 
         uint32_t valueId = allocationIndex++;
-        userMappings.at(id) = valueId;
+        userMappings.at(id).index = valueId;
         return valueId;
     }
 
@@ -80,7 +81,7 @@ struct DXILIDRemapper {
             userMappings.resize(user + 1);
         }
 
-        userMappings.at(user) = source;
+        userMappings.at(user).index = source;
     }
 
     /// Allocate a user or source record mapping
@@ -158,7 +159,7 @@ struct DXILIDRemapper {
             // Assign source to new mapping
             source = ApplyRemapRule(mapping, rule);
         } else {
-            uint32_t mapping = userMappings.at(DecodeUserOperand(source));
+            uint32_t mapping = userMappings.at(DecodeUserOperand(source)).index;
             if (mapping == ~0u) {
                 // Mapping doesn't exist yet, add as unresolved
                 unresolvedReferences.Add(UnresolvedReferenceEntry{
@@ -271,7 +272,7 @@ struct DXILIDRemapper {
                 ASSERT(mapping != ~0u, "Remapped not found on source operand");
                 absoluteRemap = mapping;
             } else {
-                uint32_t mapping = userMappings.at(DecodeUserOperand(entry.absolute));
+                uint32_t mapping = userMappings.at(DecodeUserOperand(entry.absolute)).index;
                 ASSERT(mapping != ~0u, "Remapped not found on user operand");
                 absoluteRemap = mapping;
             }
@@ -289,7 +290,7 @@ struct DXILIDRemapper {
                 ASSERT(mapping != ~0u, "Remapped not found on source operand");
                 absoluteRemap = mapping;
             } else {
-                uint32_t mapping = userMappings.at(DecodeUserOperand(entry.absolute));
+                uint32_t mapping = userMappings.at(DecodeUserOperand(entry.absolute)).index;
                 ASSERT(mapping != ~0u, "Remapped not found on user operand");
                 absoluteRemap = mapping;
             }
@@ -321,7 +322,21 @@ struct DXILIDRemapper {
     /// \param source source DXIL value
     /// \return remapped value, UINT32_MAX if not found
     uint32_t TryGetUserMapping(uint32_t user) {
-        return user < userMappings.size() ? userMappings.at(user) : ~0u;
+        return user < userMappings.size() ? userMappings.at(user).index : ~0u;
+    }
+
+    /// Set the user mapping type
+    /// \param user given user, must exist
+    /// \param type final type
+    void SetUserMappingType(uint32_t user, DXILIDUserType type) {
+        userMappings.at(user).type = type;
+    }
+
+    /// Get the user type
+    /// \param user given user, must exist
+    /// \return type
+    DXILIDUserType GetUserMappingType(uint32_t user) {
+        return userMappings.at(user).type;
     }
 
     /// Set a redirected value
@@ -381,6 +396,15 @@ private:
     TrivialStackVector<UnresolvedForwardReferenceEntry, 64> unresolvedForwardReferences;
 
 private:
+    struct UserMapping {
+        /// Mapped index
+        uint32_t index;
+
+        /// Underlying type
+        DXILIDUserType type;
+    };
+
+private:
     /// Current user allocation index
     uint32_t allocationIndex{0};
 
@@ -388,7 +412,7 @@ private:
     std::vector<uint32_t> sourceMappings;
 
     /// All present user mappings
-    std::vector<uint32_t> userMappings;
+    std::vector<UserMapping> userMappings;
 
     /// All present user redirects
     std::vector<uint64_t> userRedirects;

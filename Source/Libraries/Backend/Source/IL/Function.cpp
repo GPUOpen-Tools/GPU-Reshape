@@ -18,35 +18,119 @@
 #   undef max
 #endif
 
-static void AddSuccessor(std::map<IL::ID, uint32_t> &userMap, IL::BasicBlockList &basicBlocks, IL::BasicBlock *block, IL::ID successor) {
-    IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
-    ASSERT(successorBlock, "Successor block invalid");
+// TODO: Can be array lookups
+struct TraversalState {
+    /// Block user counters
+    std::map<IL::ID, int32_t> userMap;
+
+    /// Vistation state stack
+    std::map<IL::ID, bool> visitationStack;
+};
+
+static bool IsPredecessor(TraversalState& state, IL::BasicBlockList &basicBlocks, IL::BasicBlock *block, IL::BasicBlock *successorBlock) {
+    bool anyBranchPredecessor = false;
+
+    // No re-entry
+    if (state.visitationStack[successorBlock->GetID()]) {
+        return false;
+    }
+
+    // Mark as visited
+    state.visitationStack[successorBlock->GetID()] = true;
 
     // Must have terminator
     auto terminator = successorBlock->GetTerminator();
     ASSERT(terminator, "Must have terminator");
 
-    // Get control flow, if present
-    IL::BranchControlFlow controlFlow;
+    // Terminator type
     switch (terminator.GetOpCode()) {
         default:
             break;
-        case IL::OpCode::BranchConditional:
-            controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
+        case IL::OpCode::Branch: {
+            auto _terminator = terminator.As<IL::BranchInstruction>();
+            anyBranchPredecessor |= _terminator->branch == block->GetID();
+
+            // If not direct match, visit
+            if (!anyBranchPredecessor){
+                anyBranchPredecessor |= IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->branch));
+            }
             break;
+        }
+        case IL::OpCode::BranchConditional: {
+            auto _terminator = terminator.As<IL::BranchConditionalInstruction>();
+            anyBranchPredecessor |= _terminator->pass == block->GetID() || _terminator->fail == block->GetID();
+
+            // If not direct match, visit
+            if (!anyBranchPredecessor){
+                anyBranchPredecessor |= IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->pass));
+                anyBranchPredecessor |= IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->fail));
+            }
+            break;
+        }
     }
 
-    // Skip loop back continue block for order resolving
-    if (controlFlow._continue == block->GetID()) {
-        return;
-    }
-
-    userMap[successor]++;
+    // OK
+    return anyBranchPredecessor;
 }
 
-bool IL::Function::ReorderByDominantBlocks() {
-    // Block user counters
-    std::map<IL::ID, uint32_t> userMap;
+static void AddSuccessor(TraversalState& state, IL::BasicBlockList &basicBlocks, IL::BasicBlock *block, IL::ID successor, bool hasControlFlow) {
+    IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
+    ASSERT(successorBlock, "Successor block invalid");
+
+    // Control flow is not guaranteed
+    if (hasControlFlow) {
+        // Must have terminator
+        auto terminator = successorBlock->GetTerminator();
+        ASSERT(terminator, "Must have terminator");
+
+        // Get control flow, if present
+        IL::BranchControlFlow controlFlow;
+        switch (terminator.GetOpCode()) {
+            default:
+                break;
+            case IL::OpCode::BranchConditional:
+                controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
+                break;
+        }
+
+        // Skip loop back continue block for order resolving
+        if (controlFlow._continue == block->GetID()) {
+            return;
+        }
+    } else {
+        // Must have terminator
+        auto terminator = block->GetTerminator();
+        ASSERT(terminator, "Must have terminator");
+
+        if (auto _terminator = terminator->Cast<IL::BranchConditionalInstruction>()) {
+            // LHS
+            state.visitationStack.clear();
+            bool lhsPredecessor = IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->pass));
+
+            // RHS
+            state.visitationStack.clear();
+            bool rhsPredecessor = IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->fail));
+
+            // Joint point?
+            if (lhsPredecessor != rhsPredecessor) {
+                // Is LHS?
+                if (lhsPredecessor && _terminator->pass == successor) {
+                    return;
+                }
+
+                // Is RHS?
+                if (rhsPredecessor && _terminator->fail == successor) {
+                    return;
+                }
+            }
+        }
+    }
+
+    state.userMap[successor]++;
+}
+
+bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
+    TraversalState state;
 
     // Phi instruction producers
     std::map<IL::ID, std::vector<IL::ID>> phiProducers;
@@ -72,21 +156,21 @@ bool IL::Function::ReorderByDominantBlocks() {
                 default:
                     break;
                 case IL::OpCode::Branch: {
-                    AddSuccessor(userMap, basicBlocks, block, instr->As<IL::BranchInstruction>()->branch);
+                    AddSuccessor(state, basicBlocks, block, instr->As<IL::BranchInstruction>()->branch, hasControlFlow);
                     break;
                 }
                 case IL::OpCode::BranchConditional: {
-                    AddSuccessor(userMap, basicBlocks, block, instr->As<IL::BranchConditionalInstruction>()->pass);
-                    AddSuccessor(userMap, basicBlocks, block, instr->As<IL::BranchConditionalInstruction>()->fail);
+                    AddSuccessor(state, basicBlocks, block, instr->As<IL::BranchConditionalInstruction>()->pass, hasControlFlow);
+                    AddSuccessor(state, basicBlocks, block, instr->As<IL::BranchConditionalInstruction>()->fail, hasControlFlow);
                     break;
                 }
                 case IL::OpCode::Switch: {
                     auto *_switch = instr->As<IL::SwitchInstruction>();
-                    AddSuccessor(userMap, basicBlocks, block, _switch->_default);
+                    AddSuccessor(state, basicBlocks, block, _switch->_default, hasControlFlow);
 
                     // Add cases
                     for (uint32_t i = 0; i < _switch->cases.count; i++) {
-                        AddSuccessor(userMap, basicBlocks, block, _switch->cases[i].branch);
+                        AddSuccessor(state, basicBlocks, block, _switch->cases[i].branch, hasControlFlow);
                     }
                     break;
                 }
@@ -100,7 +184,10 @@ bool IL::Function::ReorderByDominantBlocks() {
                         }
 
                         phiProducers[phi->values[i].branch].push_back(block->GetID());
-                        userMap[block->GetID()]++;
+
+                        if (hasControlFlow) {
+                            state.userMap[block->GetID()]++;
+                        }
                     }
                     break;
                 }
@@ -118,7 +205,7 @@ bool IL::Function::ReorderByDominantBlocks() {
         // Find candidate
         for (auto it = blocks.begin(); it != blocks.end(); it++) {
             // Find first with free users
-            uint32_t users = userMap[(*it)->GetID()];
+            uint32_t users = state.userMap[(*it)->GetID()];
             if (users) {
                 continue;
             }
@@ -132,29 +219,31 @@ bool IL::Function::ReorderByDominantBlocks() {
                 default:
                     break;
                 case IL::OpCode::Branch: {
-                    userMap[terminator->As<IL::BranchInstruction>()->branch]--;
+                    state.userMap[terminator->As<IL::BranchInstruction>()->branch]--;
                     break;
                 }
                 case IL::OpCode::BranchConditional: {
-                    userMap[terminator->As<IL::BranchConditionalInstruction>()->pass]--;
-                    userMap[terminator->As<IL::BranchConditionalInstruction>()->fail]--;
+                    state.userMap[terminator->As<IL::BranchConditionalInstruction>()->pass]--;
+                    state.userMap[terminator->As<IL::BranchConditionalInstruction>()->fail]--;
                     break;
                 }
                 case IL::OpCode::Switch: {
                     auto *_switch = terminator->As<IL::SwitchInstruction>();
-                    userMap[_switch->_default]--;
+                    state.userMap[_switch->_default]--;
 
                     // Remove cases
                     for (uint32_t i = 0; i < _switch->cases.count; i++) {
-                        userMap[_switch->cases[i].branch]--;
+                        state.userMap[_switch->cases[i].branch]--;
                     }
                     break;
                 }
             }
 
             // Handle producers
-            for (IL::ID acceptor: phiProducers[(*it)->GetID()]) {
-                userMap[acceptor]--;
+            if (hasControlFlow) {
+                for (IL::ID acceptor: phiProducers[(*it)->GetID()]) {
+                    state.userMap[acceptor]--;
+                }
             }
 
             // Move block back to function

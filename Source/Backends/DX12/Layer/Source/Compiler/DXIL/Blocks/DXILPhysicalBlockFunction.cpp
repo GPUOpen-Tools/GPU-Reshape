@@ -1046,7 +1046,37 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
     }
 }
 
+template<typename F>
+void DXILPhysicalBlockFunction::CompileSVOX(IL::ID lhs, IL::ID rhs, F &&functor) {
+    DXILIDUserType lhsIdType = table.idRemapper.GetUserMappingType(lhs);
+    DXILIDUserType rhsIdType = table.idRemapper.GetUserMappingType(rhs);
+
+    // Singular operations are pass through
+    if (lhsIdType == DXILIDUserType::Singular) {
+        ASSERT(rhsIdType == DXILIDUserType::Singular, "Singular operations must match");
+        return functor(lhs, rhs);
+    }
+
+    // Get types
+    const Backend::IL::Type* lhsType = program.GetTypeMap().GetType(lhs);
+    const Backend::IL::Type* rhsType = program.GetTypeMap().GetType(rhs);
+
+    // Get count
+    uint32_t componentCount = lhsType->As<Backend::IL::VectorType>()->dimension;
+
+    for (uint32_t i = 0; i < componentCount; i++) {
+
+    }
+}
+
 void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
+    // Remap all blocks by dominance
+    for (IL::Function* fn : program.GetFunctionList()) {
+        if (!fn->ReorderByDominantBlocks(false)) {
+            return;
+        }
+    }
+
     LLVMBlock *constantBlock{nullptr};
 
     // Visit child blocks
@@ -1303,6 +1333,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     // Set bin op
                     record.ops[2] = static_cast<uint64_t>(opCode);
+                    block->AddRecord(record);
                     break;
                 }
 
@@ -1343,8 +1374,25 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         )->id);
                     }
 
-                    // Invoke
-                    record = CompileIntrinsicCall(_instr->result, intrinsic, 3, ops);
+                    // Scalar return?
+                    if (!typeMap.GetType(_instr->result)->Is<Backend::IL::VectorType>()){
+                        IL::ID structDimensions = program.GetIdentifierMap().AllocID();
+
+                        // Invoke
+                        block->AddRecord(CompileIntrinsicCall(structDimensions, intrinsic, 3, ops));
+
+                        // Extract first value
+                        LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+                        recordExtract.SetUser(true, ~0u, _instr->result);
+                        recordExtract.opCount = 2;
+                        recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+                        recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(structDimensions);
+                        recordExtract.ops[1] = 0;
+                        block->AddRecord(recordExtract);
+                    } else {
+                        // Invoke
+                        block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 3, ops));
+                    }
                     break;
                 }
 
@@ -1455,6 +1503,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     // Set cmp op
                     record.ops[2] = static_cast<uint64_t>(opCode);
+                    block->AddRecord(record);
                     break;
                 }
 
@@ -1466,6 +1515,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     record.opCount = 1;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
                     record.ops[0] = branchMappings.at(_instr->branch);
+                    block->AddRecord(record);
                     break;
                 }
                 case IL::OpCode::BranchConditional: {
@@ -1478,6 +1528,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     record.ops[0] = branchMappings.at(_instr->pass);
                     record.ops[1] = branchMappings.at(_instr->fail);
                     record.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->cond);
+                    block->AddRecord(record);
                     break;
                 }
                 case IL::OpCode::Switch: {
@@ -1494,6 +1545,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         record.ops[2 + i * 2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->cases[i].literal);
                         record.ops[3 + i * 2] = branchMappings.at(_instr->cases[i].branch);
                     }
+                    block->AddRecord(record);
                     break;
                 }
                 case IL::OpCode::Phi: {
@@ -1509,6 +1561,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         record.ops[1 + i * 2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i].value);
                         record.ops[2 + i * 2] = branchMappings.at(_instr->values[i].branch);
                     }
+                    block->AddRecord(record);
                     break;
                 }
                 case IL::OpCode::Return: {
@@ -1521,6 +1574,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                         record.opCount = 1;
                         record.ops[0] = _instr->value;
                     }
+                    block->AddRecord(record);
                     break;
                 }
                 case IL::OpCode::Trunc:
@@ -1569,6 +1623,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     // Set cmp op
                     record.ops[2] = static_cast<uint64_t>(opCode);
+                    block->AddRecord(record);
                     break;
                 }
 
@@ -1616,11 +1671,6 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     case IL::OpCode::LoadBuffer:
                         break;
 #endif
-            }
-
-            // Emit if needed
-            if (record.id != ~0u) {
-                block->AddRecord(record);
             }
         }
     }

@@ -55,7 +55,7 @@ namespace IL {
 
         /// Attempt to reorder all blocks by their dominant usage
         /// \return success state
-        bool ReorderByDominantBlocks();
+        bool ReorderByDominantBlocks(bool hasControlFlow);
 
         /// Add a new flag to this function
         /// \param value flag to be added
