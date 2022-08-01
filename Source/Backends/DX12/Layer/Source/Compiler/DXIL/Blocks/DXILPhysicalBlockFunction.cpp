@@ -1534,16 +1534,20 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                 case IL::OpCode::Switch: {
                     auto _instr = instr->As<IL::SwitchInstruction>();
 
+                    // TODO: New switch statements
+                    uint64_t type = record.ops ? record.ops[0] : 0;
+
                     // Prepare record
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstSwitch);
-                    record.opCount = 2 + _instr->cases.count;
+                    record.opCount = 3 + 2 * _instr->cases.count;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
-                    record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                    record.ops[1] = _instr->_default;
+                    record.ops[0] = type;
+                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                    record.ops[2] = branchMappings.at(_instr->_default);
 
                     for (uint32_t i = 0; i < _instr->cases.count; i++) {
-                        record.ops[2 + i * 2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->cases[i].literal);
-                        record.ops[3 + i * 2] = branchMappings.at(_instr->cases[i].branch);
+                        record.ops[3 + i * 2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->cases[i].literal);
+                        record.ops[4 + i * 2] = branchMappings.at(_instr->cases[i].branch);
                     }
                     block->AddRecord(record);
                     break;
@@ -1767,9 +1771,9 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
                 break;
             }
             case LLVMFunctionRecord::InstSwitch: {
-                table.idRemapper.RemapRelative(anchor, record, record.Op(0));
+                table.idRemapper.RemapRelative(anchor, record, record.Op(1));
 
-                for (uint32_t i = 1; i < record.opCount - 2; i += 2) {
+                for (uint32_t i = 3; i < record.opCount; i += 2) {
                     table.idRemapper.RemapRelative(anchor, record, record.ops[i]);
                 }
                 break;
