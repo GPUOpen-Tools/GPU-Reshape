@@ -202,6 +202,7 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
             case LLVMReservedBlock::ParameterGroup:
                 break;
             case LLVMReservedBlock::Constants:
+                global.CompileConstants(block);
                 break;
             case LLVMReservedBlock::Function:
                 function.CompileFunction(block);
@@ -246,73 +247,73 @@ void DXILPhysicalBlockTable::Stitch(DXStream &out) {
     // Set the remap bound
     idRemapper.SetBound(idMap.GetBound(), program.GetIdentifierMap().GetMaxID());
 
-    // Visit all records
-    for (LLVMRecord &record: root.records) {
-        switch (static_cast<LLVMModuleRecord>(record.id)) {
-            default: {
-                ASSERT(false, "Unexpected block id");
-                break;
+    // Visit in declaration order
+    for (const LLVMBlockElement& element : root.elements) {
+        if (element.Is(LLVMBlockElementType::Record)) {
+            LLVMRecord& record = root.records[element.id];
+            switch (static_cast<LLVMModuleRecord>(record.id)) {
+                default:
+                    ASSERT(false, "Unexpected block id");
+                    break;
+                case LLVMModuleRecord::Version:
+                    break;
+                case LLVMModuleRecord::Triple:
+                    break;
+                case LLVMModuleRecord::DataLayout:
+                    break;
+                case LLVMModuleRecord::ASM:
+                    break;
+                case LLVMModuleRecord::SectionName:
+                    break;
+                case LLVMModuleRecord::DepLib:
+                    break;
+                case LLVMModuleRecord::GlobalVar:
+                    global.StitchGlobalVar(record);
+                    break;
+                case LLVMModuleRecord::Function:
+                    function.StitchModuleFunction(record);
+                    break;
+                case LLVMModuleRecord::Alias:
+                    global.StitchAlias(record);
+                    break;
+                case LLVMModuleRecord::GCName:
+                    break;
             }
-            case LLVMModuleRecord::Version:
-                break;
-            case LLVMModuleRecord::Triple:
-                break;
-            case LLVMModuleRecord::DataLayout:
-                break;
-            case LLVMModuleRecord::ASM:
-                break;
-            case LLVMModuleRecord::SectionName:
-                break;
-            case LLVMModuleRecord::DepLib:
-                break;
-            case LLVMModuleRecord::GlobalVar:
-                global.StitchGlobalVar(record);
-                break;
-            case LLVMModuleRecord::Function:
-                function.StitchModuleFunction(record);
-                break;
-            case LLVMModuleRecord::Alias:
-                global.StitchAlias(record);
-                break;
-            case LLVMModuleRecord::GCName:
-                break;
-        }
-    }
-
-    // Visit all blocks
-    for (LLVMBlock *block: root.blocks) {
-        switch (static_cast<LLVMReservedBlock>(block->id)) {
-            default:
-            ASSERT(false, "Unexpected block id");
-                break;
-            case LLVMReservedBlock::Info:
-                break;
-            case LLVMReservedBlock::Module:
-                break;
-            case LLVMReservedBlock::Parameter:
-                break;
-            case LLVMReservedBlock::ParameterGroup:
-                break;
-            case LLVMReservedBlock::Constants:
-                global.StitchConstants(block);
-                break;
-            case LLVMReservedBlock::Function:
-                function.StitchFunction(block);
-                break;
-            case LLVMReservedBlock::ValueSymTab:
-                symbol.StitchSymTab(block);
-                break;
-            case LLVMReservedBlock::Metadata:
-                metadata.StitchMetadata(block);
-                break;
-            case LLVMReservedBlock::MetadataAttachment:
-                break;
-            case LLVMReservedBlock::Type:
-                type.StitchType(block);
-                break;
-            case LLVMReservedBlock::StrTab:
-                string.StitchStrTab(block);
-                break;
+        } else if (element.Is(LLVMBlockElementType::Block)) {
+            LLVMBlock* block = root.blocks[element.id];
+            switch (static_cast<LLVMReservedBlock>(block->id)) {
+                default:
+                    ASSERT(false, "Unexpected block id");
+                    break;
+                case LLVMReservedBlock::Info:
+                    break;
+                case LLVMReservedBlock::Module:
+                    break;
+                case LLVMReservedBlock::Parameter:
+                    break;
+                case LLVMReservedBlock::ParameterGroup:
+                    break;
+                case LLVMReservedBlock::Constants:
+                    global.StitchConstants(block);
+                    break;
+                case LLVMReservedBlock::Function:
+                    function.StitchFunction(block);
+                    break;
+                case LLVMReservedBlock::ValueSymTab:
+                    symbol.StitchSymTab(block);
+                    break;
+                case LLVMReservedBlock::Metadata:
+                    metadata.StitchMetadata(block);
+                    break;
+                case LLVMReservedBlock::MetadataAttachment:
+                    break;
+                case LLVMReservedBlock::Type:
+                    type.StitchType(block);
+                    break;
+                case LLVMReservedBlock::StrTab:
+                    string.StitchStrTab(block);
+                    break;
+            }
         }
     }
 

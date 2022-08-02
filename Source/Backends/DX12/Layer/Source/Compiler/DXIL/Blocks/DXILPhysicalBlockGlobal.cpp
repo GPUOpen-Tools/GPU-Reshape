@@ -123,6 +123,7 @@ void DXILPhysicalBlockGlobal::ParseAlias(LLVMRecord &record) {
 }
 
 void DXILPhysicalBlockGlobal::CompileConstants(struct LLVMBlock *block) {
+
 }
 
 void DXILPhysicalBlockGlobal::CompileGlobalVar(LLVMRecord &record) {
@@ -139,7 +140,12 @@ void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
         constantMap.GetConstant(constant);
     }
 
-    for (LLVMRecord &record: block->records) {
+    for (const LLVMBlockElement& element : block->elements) {
+        if (!element.Is(LLVMBlockElementType::Record)) {
+            continue;
+        }
+
+        LLVMRecord& record = block->records[element.id];
         if (record.Is(LLVMConstantRecord::SetType)) {
             continue;
         }

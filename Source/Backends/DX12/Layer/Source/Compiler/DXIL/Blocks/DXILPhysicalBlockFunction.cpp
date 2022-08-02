@@ -540,7 +540,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 // Fill cases
                 for (uint32_t i = 0; i < caseCount; i++) {
                     IL::SwitchCase _case;
-                    _case.literal = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                    _case.literal = table.idMap.GetMapped(reader.ConsumeOp());
                     _case.branch = blockMapping[reader.ConsumeOp()]->GetID();
                     instr->cases[i] = _case;
                 }
@@ -1633,20 +1633,20 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                 case IL::OpCode::Any: {
                     // Dummy
-                    table.idRemapper.SetUserRedirect(instr->result, table.global.constantMap.GetConstant(program.GetConstants().FindConstantOrAdd(
+                    table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(program.GetConstants().FindConstantOrAdd(
                         program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
                         Backend::IL::BoolConstant{.value = true}
-                    )));
+                    )->id));
 
                     break;
                 }
 
                 case IL::OpCode::All: {
                     // Dummy
-                    table.idRemapper.SetUserRedirect(instr->result, table.global.constantMap.GetConstant(program.GetConstants().FindConstantOrAdd(
+                    table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(program.GetConstants().FindConstantOrAdd(
                         program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
                         Backend::IL::BoolConstant{.value = true}
-                    )));
+                    )->id));
 
                     break;
                 }
@@ -1774,7 +1774,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
                 table.idRemapper.RemapRelative(anchor, record, record.Op(1));
 
                 for (uint32_t i = 3; i < record.opCount; i += 2) {
-                    table.idRemapper.RemapRelative(anchor, record, record.ops[i]);
+                    table.idRemapper.Remap(record.ops[i]);
                 }
                 break;
             }

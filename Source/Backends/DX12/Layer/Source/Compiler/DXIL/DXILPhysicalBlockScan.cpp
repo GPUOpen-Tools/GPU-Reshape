@@ -554,52 +554,53 @@ static void ValidateBlock(const LLVMBlock *lhs, const LLVMBlock *rhs) {
     ASSERT(lhs->blocks.Size() == rhs->blocks.Size(), "Block count mismatch");
     ASSERT(lhs->abbreviations.Size() == rhs->abbreviations.Size(), "Abbreviation count mismatch");
     ASSERT(lhs->records.Size() == rhs->records.Size(), "Record count mismatch");
+    ASSERT(lhs->elements.Size() == rhs->elements.Size(), "Element count mismatch");
 
-    // Validate all child blocks
-    for (size_t i = 0; i < lhs->blocks.Size(); i++) {
-        const LLVMBlock* blockLhs = lhs->blocks[i];
-        const LLVMBlock* blockRhs = rhs->blocks[i];
-        ValidateBlock(blockLhs, blockRhs);
-    }
+    for (size_t elementIdx = 0; elementIdx < lhs->elements.Size(); elementIdx++) {
+        const LLVMBlockElement& elementLhs = lhs->elements[elementIdx];
+        const LLVMBlockElement& elementRhs = rhs->elements[elementIdx];
 
-    // Validate abbreviations
-    for (size_t i = 0; i < lhs->abbreviations.Size(); i++) {
-        const LLVMAbbreviation& abbreviationLhs = lhs->abbreviations[i];
-        const LLVMAbbreviation& abbreviationRhs = rhs->abbreviations[i];
+        ASSERT(elementLhs.type == elementRhs.type, "Element type mismatch");
 
-        // Validate size
-        ASSERT(abbreviationLhs.parameters.Size() == abbreviationRhs.parameters.Size(), "Abbreviation parameter count mismatch");
+        if (elementLhs.Is(LLVMBlockElementType::Block)) {
+            const LLVMBlock* blockLhs = lhs->blocks[elementLhs.id];
+            const LLVMBlock* blockRhs = rhs->blocks[elementRhs.id];
+            ValidateBlock(blockLhs, blockRhs);
+        } else if (elementLhs.Is(LLVMBlockElementType::Abbreviation)) {
+            const LLVMAbbreviation& abbreviationLhs = lhs->abbreviations[elementLhs.id];
+            const LLVMAbbreviation& abbreviationRhs = rhs->abbreviations[elementRhs.id];
 
-        // Validate parameters
-        for (size_t parameterIdx = 0; parameterIdx < abbreviationLhs.parameters.Size(); parameterIdx++) {
-            const LLVMAbbreviationParameter& paramLhs = abbreviationLhs.parameters[parameterIdx];
-            const LLVMAbbreviationParameter& paramRhs = abbreviationRhs.parameters[parameterIdx];
+            // Validate size
+            ASSERT(abbreviationLhs.parameters.Size() == abbreviationRhs.parameters.Size(), "Abbreviation parameter count mismatch");
+
+            // Validate parameters
+            for (size_t parameterIdx = 0; parameterIdx < abbreviationLhs.parameters.Size(); parameterIdx++) {
+                const LLVMAbbreviationParameter& paramLhs = abbreviationLhs.parameters[parameterIdx];
+                const LLVMAbbreviationParameter& paramRhs = abbreviationRhs.parameters[parameterIdx];
+
+                // Validate properties
+                ASSERT(paramLhs.encoding == paramRhs.encoding, "Abbreviation parameter encoding mismatch");
+                ASSERT(paramLhs.value == paramRhs.value, "Abbreviation parameter value mismatch");
+            }
+        } else if (elementLhs.Is(LLVMBlockElementType::Record)) {
+            const LLVMRecord& recordLhs = lhs->records[elementLhs.id];
+            const LLVMRecord& recordRhs = rhs->records[elementRhs.id];
 
             // Validate properties
-            ASSERT(paramLhs.encoding == paramRhs.encoding, "Abbreviation parameter encoding mismatch");
-            ASSERT(paramLhs.value == paramRhs.value, "Abbreviation parameter value mismatch");
-        }
-    }
+            ASSERT(recordLhs.id == recordRhs.id, "Record id mismatch");
+            ASSERT(recordLhs.abbreviation.type == recordRhs.abbreviation.type, "Record encoded abbreviation type mismatch");
+            ASSERT(recordLhs.blobSize == recordRhs.blobSize, "Record blob size mismatch");
+            ASSERT(recordLhs.opCount == recordRhs.opCount, "Record op count mismatch");
 
-    // Validate records
-    for (size_t i = 0; i < lhs->records.Size(); i++) {
-        const LLVMRecord& recordLhs = lhs->records[i];
-        const LLVMRecord& recordRhs = rhs->records[i];
+            // Validate blob if present
+            if (recordLhs.blobSize) {
+                ASSERT(!std::memcmp(recordLhs.blob, recordRhs.blob, recordLhs.blobSize), "Record blob mismatch");
+            }
 
-        // Validate properties
-        ASSERT(recordLhs.id == recordRhs.id, "Record id mismatch");
-        ASSERT(recordLhs.abbreviation.type == recordRhs.abbreviation.type, "Record encoded abbreviation type mismatch");
-        ASSERT(recordLhs.blobSize == recordRhs.blobSize, "Record blob size mismatch");
-        ASSERT(recordLhs.opCount == recordRhs.opCount, "Record op count mismatch");
-
-        // Validate blob if present
-        if (recordLhs.blobSize) {
-            ASSERT(!std::memcmp(recordLhs.blob, recordRhs.blob, recordLhs.blobSize), "Record blob mismatch");
-        }
-
-        // Validate all ops
-        for (size_t opIdx = 0; opIdx < recordLhs.opCount; opIdx++) {
-            ASSERT(recordLhs.ops[opIdx] == recordRhs.ops[opIdx], "Record op mismatch");
+            // Validate all ops
+            for (size_t opIdx = 0; opIdx < recordLhs.opCount; opIdx++) {
+                ASSERT(recordLhs.ops[opIdx] == recordRhs.ops[opIdx], "Record op mismatch");
+            }
         }
     }
 
