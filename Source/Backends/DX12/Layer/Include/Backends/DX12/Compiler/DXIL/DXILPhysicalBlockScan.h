@@ -163,6 +163,9 @@ private:
     LLVMBlock root;
 
 private:
+    /// UID counter
+    uint32_t uidCounter{0};
+
     /// Cache for flat operand scanning
     std::vector<uint64_t> recordOperandCache;
 

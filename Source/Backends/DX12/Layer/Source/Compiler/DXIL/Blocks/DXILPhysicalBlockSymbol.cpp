@@ -118,3 +118,8 @@ void DXILPhysicalBlockSymbol::StitchSymTab(struct LLVMBlock *block) {
         }
     }
 }
+
+void DXILPhysicalBlockSymbol::CopyTo(DXILPhysicalBlockSymbol &out) {
+    out.valueAllocations = valueAllocations;
+    out.valueStrings = valueStrings;
+}

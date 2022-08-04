@@ -13,6 +13,9 @@
 #include <string_View>
 
 struct DXILFunctionDeclaration {
+    /// DXIL anchor of this declaration
+    uint64_t anchor;
+
     /// DXIL identifier of this declaration
     uint64_t id;
 

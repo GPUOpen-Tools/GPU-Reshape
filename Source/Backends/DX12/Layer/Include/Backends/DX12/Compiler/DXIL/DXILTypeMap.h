@@ -91,7 +91,9 @@ public:
     /// \param type given type, must be namable
     /// \param name given name
     void CompileNamedType(const Backend::IL::Type* type, const char* name) {
-        ASSERT(!HasType(type), "Cannot recompile a type");
+        if (HasType(type)) {
+            return;
+        }
 
         // Only certain named types
         switch (type->kind) {

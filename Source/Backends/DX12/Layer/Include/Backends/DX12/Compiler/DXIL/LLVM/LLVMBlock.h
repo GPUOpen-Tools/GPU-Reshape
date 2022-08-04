@@ -30,9 +30,22 @@ struct LLVMBlock {
     /// Get a sub-block
     /// \param id reserved identifier
     /// \return nullptr if not found
-    LLVMBlock* GetBlock(LLVMReservedBlock id) {
+    LLVMBlock* GetBlock(LLVMReservedBlock _id) {
         for (LLVMBlock* block : blocks) {
-            if (block->Is(id)) {
+            if (block->Is(_id)) {
+                return block;
+            }
+        }
+
+        return nullptr;
+    }
+
+    /// Get a sub-block
+    /// \param uid unique id
+    /// \return nullptr if not found
+    LLVMBlock* GetBlockWithUID(uint32_t _uid) {
+        for (LLVMBlock* block : blocks) {
+            if (block->uid == _uid) {
                 return block;
             }
         }
@@ -122,6 +135,9 @@ struct LLVMBlock {
 
     /// Identifier of this block, may be reserved
     uint32_t id{~0u};
+
+    /// Unique identifier of this block
+    uint32_t uid{~0u};
 
     /// Abbreviation size
     uint32_t abbreviationSize{~0u};

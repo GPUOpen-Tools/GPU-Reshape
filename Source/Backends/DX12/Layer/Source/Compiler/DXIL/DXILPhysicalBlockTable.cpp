@@ -138,9 +138,13 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
     idRemapper.SetBound(idMap.GetBound(), program.GetIdentifierMap().GetMaxID());
 
     // Set declaration blocks for on-demand records
+    metadata.SetDeclarationBlock(&root);
     functionAttribute.SetDeclarationBlock(&root);
     type.typeMap.SetDeclarationBlock(root.GetBlock(LLVMReservedBlock::Type));
     global.constantMap.SetDeclarationBlock(root.GetBlock(LLVMReservedBlock::Constants));
+
+    // Insert all SE metadata
+    metadata.CompileShaderExportResources();
 
     // Pre-parse all types for local fetching
     for (LLVMBlock *block: root.blocks) {
@@ -333,6 +337,8 @@ void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
     // Blocks
     type.CopyTo(out.type);
     global.CopyTo(out.global);
+    symbol.CopyTo(out.symbol);
+    metadata.CopyTo(out.metadata);
     function.CopyTo(out.function);
     functionAttribute.CopyTo(out.functionAttribute);
 }

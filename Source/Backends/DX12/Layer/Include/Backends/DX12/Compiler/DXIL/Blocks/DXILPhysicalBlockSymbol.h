@@ -12,6 +12,10 @@
 struct DXILPhysicalBlockSymbol : public DXILPhysicalBlockSection {
     DXILPhysicalBlockSymbol(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
 
+    /// Copy this block
+    /// \param out destination block
+    void CopyTo(DXILPhysicalBlockSymbol& out);
+
 public:
     /// Parse all records
     void ParseSymTab(const struct LLVMBlock *block);

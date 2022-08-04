@@ -10,7 +10,8 @@ DXBCPhysicalBlockTable::DXBCPhysicalBlockTable(const Allocators &allocators, IL:
     allocators(allocators),
     program(program),
     scan(allocators),
-    shader(allocators, program, *this) {
+    shader(allocators, program, *this),
+    pipelineStateValidation(allocators, program, *this) {
     /* */
 }
 
@@ -21,6 +22,7 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 
     // Parse blocks
     shader.Parse();
+    pipelineStateValidation.Parse();
 
     // DXIL?
     if (DXBCPhysicalBlock *block = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
@@ -37,6 +39,9 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 }
 
 bool DXBCPhysicalBlockTable::Compile(const DXJob &job) {
+    // Compile validation
+    pipelineStateValidation.Compile();
+
     // DXIL?
     if (dxilModule) {
         DXBCPhysicalBlock *block = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL);
@@ -57,6 +62,9 @@ void DXBCPhysicalBlockTable::Stitch(const DXJob& job, DXStream &out) {
 
 void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {
     scan.CopyTo(out.scan);
+
+    // Copy blocks
+    pipelineStateValidation.CopyTo(out.pipelineStateValidation);
 
     // Copy submodule if present
     if (dxilModule) {

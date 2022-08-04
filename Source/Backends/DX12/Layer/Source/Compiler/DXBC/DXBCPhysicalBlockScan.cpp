@@ -56,6 +56,8 @@ static DXBCPhysicalBlockType FilterChunkType(uint32_t type) {
             return DXBCPhysicalBlockType::ShaderDebug1;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::Statistics):
             return DXBCPhysicalBlockType::Statistics;
+        case static_cast<uint32_t>(DXBCPhysicalBlockType::PipelineStateValidation):
+            return DXBCPhysicalBlockType::PipelineStateValidation;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::Unexposed):
             return DXBCPhysicalBlockType::Unexposed;
     }
@@ -165,6 +167,14 @@ void DXBCPhysicalBlockScan::Stitch(const DXJob& job, DXStream &out) {
     std::memset(stitchHeader->privateChecksum, 0x0, sizeof(stitchHeader->privateChecksum));
     stitchHeader->byteCount = byteLength;
 
+    // Dump?
+#if DXBC_DUMP_STREAM
+    // Write stream to immediate path
+    std::ofstream outStream(GetIntermediateDebugPath() / "stitch.dxbc", std::ios_base::binary);
+    outStream.write(reinterpret_cast<const char *>(out.GetMutableData()), out.GetByteSize());
+    outStream.close();
+#endif // DXBC_DUMP_STREAM
+
     // Finally, sign the resulting byte-code using the official signers
     if (GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
         bool result = job.dxilSigner->Sign(out.GetMutableDataAt(headerOffset), byteLength);
@@ -173,14 +183,6 @@ void DXBCPhysicalBlockScan::Stitch(const DXJob& job, DXStream &out) {
         HRESULT hr = SignDxbc(out.GetMutableDataAt(headerOffset), byteLength);
         ASSERT(SUCCEEDED(hr), "Failed to sign DXBC");
     }
-
-    // Dump?
-#if DXBC_DUMP_STREAM
-    // Write stream to immediate path
-    std::ofstream outStream(GetIntermediateDebugPath() / "stitch.dxbc", std::ios_base::binary);
-    outStream.write(reinterpret_cast<const char *>(out.GetMutableData()), out.GetByteSize());
-    outStream.close();
-#endif // DXBC_DUMP_STREAM
 }
 
 void DXBCPhysicalBlockScan::CopyTo(DXBCPhysicalBlockScan& out) {

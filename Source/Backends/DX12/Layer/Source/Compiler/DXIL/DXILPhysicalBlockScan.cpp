@@ -107,6 +107,9 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMB
     // Read identifier
     block->id = stream.VBR<uint32_t>(8);
 
+    // Set uid
+    block->uid = uidCounter++;
+
     // Any metadata?
     if (auto it = metadataLookup.find(block->id); it != metadataLookup.end()) {
         block->metadata = it->second;
@@ -694,6 +697,7 @@ void DXILPhysicalBlockScan::CopyTo(DXILPhysicalBlockScan &out) {
 void DXILPhysicalBlockScan::CopyBlock(const LLVMBlock *block, LLVMBlock &out) {
     // Immutable data
     out.id = block->id;
+    out.uid = block->uid;
     out.abbreviationSize = block->abbreviationSize;
     out.blockLength = block->blockLength;
     out.metadata = block->metadata;

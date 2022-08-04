@@ -237,6 +237,7 @@ add_library(
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockScan.cpp
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockTable.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockShader.cpp
+    Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockPipelineStateValidation.cpp
     Layer/Source/Compiler/DXIL/DXILModule.cpp
     Layer/Source/Compiler/DXIL/DXILPhysicalBlockScan.cpp
     Layer/Source/Compiler/DXIL/DXILPhysicalBlockTable.cpp

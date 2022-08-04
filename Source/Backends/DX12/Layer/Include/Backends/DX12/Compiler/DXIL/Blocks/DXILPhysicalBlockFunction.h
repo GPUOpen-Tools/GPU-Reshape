@@ -66,13 +66,29 @@ public:
     void RemapRecord(struct LLVMRecord& record);
 
 private:
+    /// Create an export handle
+    /// \param block appended block
+    /// \return user id
+    uint32_t CreateExportHandle(struct LLVMBlock* block);
+
+private:
     /// Get the resource size intrinsic
     /// \return shared declaration
     const DXILFunctionDeclaration* GetResourceSizeIntrinsic();
 
+    /// Get the bufferStore.f32 intrinsic
+    /// \return shared declaration
+    const DXILFunctionDeclaration* GetBufferStoreI32Intrinsic();
+
+    /// Get the createHandle intrinsic
+    /// \return shared declaration
+    const DXILFunctionDeclaration* GetCreateHandleIntrinsic();
+
     /// Cached intrinsics
     struct Intrinsics {
         uint32_t resourceSize = ~0u;
+        uint32_t bufferStoreI32 = ~0u;
+        uint32_t createHandle = ~0u;
     } intrinsics;
 
 private:

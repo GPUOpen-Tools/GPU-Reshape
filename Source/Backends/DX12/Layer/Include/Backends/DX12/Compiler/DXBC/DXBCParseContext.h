@@ -48,6 +48,17 @@ struct DXBCParseContext {
         return ptr + size <= end;
     }
 
+    /// Skip a number of bytes
+    void Skip(uint32_t count) {
+        ASSERT(ptr + count <= end, "Skipped beyond EOS");
+        ptr += count;
+    }
+
+    /// Get current offset
+    size_t Offset() const {
+        return ptr - start;
+    }
+
     const uint8_t *start;
     const uint8_t *ptr;
     const uint8_t *end;
