@@ -32,7 +32,7 @@
     <Grid Margin="5">
         <!-- Tool Header -->
         <StackPanel VerticalAlignment="Top" Orientation="Horizontal">
-            <Image Source="/Resources/Icons/App.png" Width="17" />
+            <Image Source="/Resources/Icons/AppBlack.png" Width="17" />
 
             <TextBlock Margin="7,0,0,0">Create workspace connection</TextBlock>
         </StackPanel>

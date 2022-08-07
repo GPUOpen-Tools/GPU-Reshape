@@ -3,7 +3,7 @@
         <OutputType>WinExe</OutputType>
         <TargetFramework>net5.0</TargetFramework>
         <Nullable>enable</Nullable>
-        <ApplicationIcon>Resources\Icons\App.ico</ApplicationIcon>
+        <ApplicationIcon>Resources\Icons\AppBlack.ico</ApplicationIcon>
         <TargetCulture>en</TargetCulture>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
         <Configurations>Debug;Release</Configurations>
@@ -13,10 +13,10 @@
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <DebugType>none</DebugType>
-      <OutputPath>..\..\..\Bin\Release\</OutputPath>
+      <OutputPath>..\..\..\Bin\MSVC\Release\</OutputPath>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-      <OutputPath>..\..\..\Bin\Debug\</OutputPath>
+      <OutputPath>..\..\..\Bin\MSVC\Debug\</OutputPath>
     </PropertyGroup>
     <ItemGroup>
         <None Remove=".gitignore" />
@@ -71,6 +71,10 @@
         <DependentUpon>WorkspacePropertyView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <None Remove="Resources\Icons\AppBlack.ico" />
+      <AvaloniaResource Include="Resources\Icons\AppBlack.ico" />
+      <None Remove="Resources\Icons\AppBlack.png" />
+      <AvaloniaResource Include="Resources\Icons\AppBlack.png" />
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
@@ -82,22 +86,22 @@
     </ItemGroup>
     <ItemGroup>
       <Reference Include="Features.ResourceBounds.Backend.DotNet">
-        <HintPath>..\..\..\Bin\Debug\Features.ResourceBounds.Backend.DotNet.dll</HintPath>
+        <HintPath>$(OutputPath)\Features.ResourceBounds.Backend.DotNet.dll</HintPath>
       </Reference>
       <Reference Include="Libraries.Bridge.DotNet">
-        <HintPath>..\..\..\Bin\Debug\Libraries.Bridge.DotNet.dll</HintPath>
+        <HintPath>$(OutputPath)\Libraries.Bridge.DotNet.dll</HintPath>
       </Reference>
       <Reference Include="Libraries.Message.DotNet">
-        <HintPath>..\..\..\Bin\Debug\Libraries.Message.DotNet.dll</HintPath>
+        <HintPath>$(OutputPath)\Libraries.Message.DotNet.dll</HintPath>
       </Reference>
         <Reference Include="Services.HostResolver.DotNet">
-            <HintPath>..\..\..\Bin\Debug\Services.HostResolver.DotNet.dll</HintPath>
+            <HintPath>$(OutputPath)\Services.HostResolver.DotNet.dll</HintPath>
         </Reference>
         <Reference Include="Libraries.Bridge.Schema.DotNet">
-            <HintPath>..\..\..\Bin\Debug\Libraries.Bridge.Schema.DotNet.dll</HintPath>
+            <HintPath>$(OutputPath)\Libraries.Bridge.Schema.DotNet.dll</HintPath>
         </Reference>
         <Reference Include="Libraries.Backend.Schema.DotNet">
-            <HintPath>..\..\..\Bin\Debug\Libraries.Backend.Schema.DotNet.dll</HintPath>
+            <HintPath>$(OutputPath)\Libraries.Backend.Schema.DotNet.dll</HintPath>
         </Reference>
     </ItemGroup>
     <ItemGroup>

@@ -17,7 +17,7 @@
   </Design.DataContext>
   <Grid RowDefinitions="30,*,25" ColumnDefinitions="Auto,*" Name="MainGrid">
     <Menu Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"  Height="30">
-      <Image Source="/Resources/Icons/App.png" Width="20"/>
+      <Image Source="/Resources/Icons/AppBlack.png" Width="20"/>
       
       <MenuItem Header="_File" Height="30">
         <MenuItem Header="_New Layout" Command="{Binding NewLayout}" />
