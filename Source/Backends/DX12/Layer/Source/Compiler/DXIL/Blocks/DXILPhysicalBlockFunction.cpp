@@ -1693,29 +1693,17 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(0)}
+                        Backend::IL::UndefConstant{}
                     )->id);
 
                     ops[4] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-
-                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::UndefConstant{}
-                    )->id);
-
-                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::UndefConstant{}
-                    )->id);
-
-                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::UndefConstant{}
-                    )->id);
+                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
 
                     ops[8] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::X)}
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::All)}
                     )->id);
 
                     // Invoke
