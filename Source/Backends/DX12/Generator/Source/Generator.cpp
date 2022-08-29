@@ -21,7 +21,7 @@ int main(int argc, char *const argv[]) {
     program.add_argument("-hooksjson").help("Path of the hooks json file").default_value(std::string(""));
     program.add_argument("-deepcopyjson").help("Path of the deep copy json file").default_value(std::string(""));
     program.add_argument("-template").help("The file to template").required();
-    program.add_argument("-gentype").help("The generation type, one of [specification, detour, wrappers, wrappersimpl, vtable, table, deepcopy, deepcopyimpl, dxil]").required();
+    program.add_argument("-gentype").help("The generation type, one of [specification, detour, wrappers, wrappersimpl, vtable, table, deepcopy, deepcopyimpl, dxiltables, dxilintrinsics]").required();
     program.add_argument("-d3d12h").help("The d3d12 header file").default_value(std::string(""));
     program.add_argument("-o").help("Output of the generated file").required();
 
@@ -139,8 +139,10 @@ int main(int argc, char *const argv[]) {
         generatorResult = Generators::DeepCopy(generatorInfo, templateEngine);
     } else if (gentype == "deepcopyimpl") {
         generatorResult = Generators::DeepCopyImpl(generatorInfo, templateEngine);
-    } else if (gentype == "dxil") {
-        generatorResult = Generators::DXIL(generatorInfo, templateEngine);
+    } else if (gentype == "dxiltables") {
+        generatorResult = Generators::DXILTables(generatorInfo, templateEngine);
+    } else if (gentype == "dxilintrinsics") {
+        generatorResult = Generators::DXILIntrinsics(generatorInfo, templateEngine);
     } else {
         std::cerr << "Invalid generator type: " << gentype << ", see help." << std::endl;
         return 1;

@@ -16,7 +16,8 @@ add_executable(
     Generator/Source/Table.cpp
     Generator/Source/DeepCopy.cpp
     Generator/Source/DeepCopyImpl.cpp
-    Generator/Source/DXIL.cpp
+    Generator/Source/DXILTables.cpp
+    Generator/Source/DXILIntrinsics.cpp
 )
 
 # IDE source discovery
@@ -55,13 +56,14 @@ set(DeepCopyImplTemplate               ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(TableTemplate                      ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Table.ht)
 set(VTableTemplate                     ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/VTable.cppt)
 set(DXILTemplate                       ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DXIL.ht)
+set(DXILIntrinsicsTemplate             ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DXILIntrinsics.ht)
 
 # Resource Paths
 set(HooksSpec    ${CMAKE_CURRENT_SOURCE_DIR}/Layer/Resources/Hooks.json)
 set(DeepCopySpec ${CMAKE_CURRENT_SOURCE_DIR}/Layer/Resources/DeepCopy.json)
 set(DXILRST      ${CMAKE_SOURCE_DIR}/ThirdParty/DXIL/DXIL.rst)
 
-# Generate the DXIL header
+# Generate the DXIL tables
 add_custom_command(
     OUTPUT Layer/Include/Backends/DX12/Compiler/DXIL/DXIL.Gen.h
     DEPENDS Backends.DX12.Generator
@@ -72,8 +74,23 @@ add_custom_command(
         -template ${DXILTemplate}
         -dxilrst ${DXILRST}
         -hooksjson ${HooksSpec}
-        -gentype dxil
+        -gentype dxiltables
         -o Layer/Include/Backends/DX12/Compiler/DXIL/DXIL.Gen.h
+)
+
+# Generate the DXIL intrinsics
+add_custom_command(
+    OUTPUT Layer/Include/Backends/DX12/Compiler/DXIL/Intrinsic/DXILIntrinsics.Gen.h
+    DEPENDS Backends.DX12.Generator
+    DEPENDS
+        ${DXILIntrinsicsTemplate}
+        ${DXILRST}
+    COMMAND Backends.DX12.Generator
+        -template ${DXILIntrinsicsTemplate}
+        -dxilrst ${DXILRST}
+        -hooksjson ${HooksSpec}
+        -gentype dxilintrinsics
+        -o Layer/Include/Backends/DX12/Compiler/DXIL/DXILIntrinsics.Gen.h
 )
 
 # Generate the specification
@@ -265,6 +282,7 @@ add_library(
 
     # Generated header dependencies
     Layer/Include/Backends/DX12/Compiler/DXIL/DXIL.Gen.h
+    Layer/Include/Backends/DX12/Compiler/DXIL/Intrinsic/DXILIntrinsics.Gen.h
     Layer/Include/Backends/DX12/Detour.Gen.h
     Layer/Include/Backends/DX12/Table.Gen.h
     Layer/Include/Backends/DX12/DeepCopy.Gen.h

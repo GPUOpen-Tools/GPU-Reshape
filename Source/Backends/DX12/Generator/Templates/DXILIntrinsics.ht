@@ -1,0 +1,8 @@
+#pragma once
+
+// Layer
+#include <Backends/DX12/Compiler/DXIL/Intrinsic/DXILIntrinsicSpec.h>
+
+namespace Intrinsics {
+$INTRINSICS
+}

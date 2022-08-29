@@ -82,5 +82,11 @@ namespace Generators {
     /// \param info generation info
     /// \param templateEngine template destination
     /// \return success
-    bool DXIL(const GeneratorInfo& info, TemplateEngine& templateEngine);
+    bool DXILTables(const GeneratorInfo& info, TemplateEngine& templateEngine);
+
+    /// Generate the DXIL intrinsics
+    /// \param info generation info
+    /// \param templateEngine template destination
+    /// \return success
+    bool DXILIntrinsics(const GeneratorInfo& info, TemplateEngine& templateEngine);
 }

@@ -37,7 +37,7 @@ struct DXILTable {
     std::vector<DXILTableHeader> headers;
 };
 
-bool Generators::DXIL(const GeneratorInfo &info, TemplateEngine &templateEngine) {
+bool Generators::DXILTables(const GeneratorInfo &info, TemplateEngine &templateEngine) {
     std::stringstream enums;
 
     // Current search string
