@@ -32,6 +32,11 @@ public:
         return bound;
     }
 
+    /// Get the allocation prefix offset
+    uint32_t GetPrefixOffset() const {
+        return bound * descriptorAdvance;
+    }
+
     /// Get the descriptor ptr advance
     uint64_t GetAdvance() const {
         return descriptorAdvance;
