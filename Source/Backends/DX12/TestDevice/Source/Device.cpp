@@ -119,7 +119,7 @@ void Device::CreateSharedQueues() {
 void Device::CreateSharedHeaps() {
     // Create heap
     D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-    heapDesc.NumDescriptors = 2048;
+    heapDesc.NumDescriptors = 1'000'000;
     heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     REQUIRE(SUCCEEDED(device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&sharedHeap))));
@@ -544,4 +544,8 @@ void Device::Flush() {
         REQUIRE(SUCCEEDED(waitFence->SetEventOnCompletion(waitFenceCounter, waitFenceEvent)));
         WaitForSingleObject(waitFenceEvent, INFINITE);
     }
+
+    // Let the backend catch up to the messages
+    graphicsQueue->ExecuteCommandLists(0u, nullptr);
+    computeQueue->ExecuteCommandLists(0u, nullptr);
 }

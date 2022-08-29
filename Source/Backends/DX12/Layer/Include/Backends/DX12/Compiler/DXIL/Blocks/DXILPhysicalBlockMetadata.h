@@ -29,7 +29,7 @@ public:
     /// Get the medata handle type
     /// \param handleID the unique handle id
     /// \return nullptr if not found
-    const Backend::IL::Type* GetHandleType(uint32_t handleID);
+    const Backend::IL::Type* GetHandleType(DXILShaderResourceClass _class, uint32_t handleID);
 
 public:
     /// Compile all instructions
@@ -182,10 +182,8 @@ private:
         uint64_t samplers = ~0;
     } resources;
 
+    /// Represents a handle within a space
     struct HandleEntry {
-        /// Class of parent list
-        DXILShaderResourceClass _class;
-
         /// Source record
         const LLVMRecord* record{nullptr};
 
@@ -193,11 +191,36 @@ private:
         const Backend::IL::Type* type{nullptr};
     };
 
+    /// A mapped register space
+    struct RegisterSpace {
+        /// Linearly allocated bind space
+        uint32_t bindSpace{~0u};
+
+        /// Class of this space
+        DXILShaderResourceClass _class;
+
+        /// All handles within this space
+        std::vector<HandleEntry> handles;
+
+        /// Current register bound
+        uint32_t registerBound{0};
+    };
+
     /// All handles
-    std::vector<HandleEntry> handleEntries;
+    std::vector<RegisterSpace> registerSpaces;
 
     /// All hosted metadata blocks
     std::vector<MetadataBlock> metadataBlocks;
+
+private:
+    /// Find a register space, allocate if missing
+    /// \param _class designated class
+    /// \return register space
+    RegisterSpace& FindOrAddRegisterSpace(DXILShaderResourceClass _class);
+
+private:
+    /// Internal handle id
+    uint32_t exportHandleId{ 0 };
 
 private:
     /// Declaration blocks

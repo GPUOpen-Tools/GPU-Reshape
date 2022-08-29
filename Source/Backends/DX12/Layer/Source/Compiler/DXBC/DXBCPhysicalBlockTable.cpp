@@ -39,9 +39,6 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 }
 
 bool DXBCPhysicalBlockTable::Compile(const DXJob &job) {
-    // Compile validation
-    pipelineStateValidation.Compile();
-
     // DXIL?
     if (dxilModule) {
         DXBCPhysicalBlock *block = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL);
@@ -51,6 +48,9 @@ bool DXBCPhysicalBlockTable::Compile(const DXJob &job) {
             return false;
         }
     }
+
+    // Compile validation
+    pipelineStateValidation.Compile();
 
     // OK
     return true;

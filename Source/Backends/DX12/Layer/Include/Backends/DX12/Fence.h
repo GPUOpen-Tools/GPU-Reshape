@@ -5,4 +5,5 @@
 
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreateFence(ID3D12Device*, UINT64, D3D12_FENCE_FLAGS, const IID&, void**);
+HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* _this, ID3D12Fence* pFence, UINT64 Value);
 ULONG WINAPI HookID3D12FenceRelease(ID3D12Fence* fence);

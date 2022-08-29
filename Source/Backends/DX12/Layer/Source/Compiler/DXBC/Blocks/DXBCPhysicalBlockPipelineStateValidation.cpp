@@ -1,6 +1,7 @@
 #include <Backends/DX12/Compiler/DXBC/Blocks/DXBCPhysicalBlockPipelineStateValidation.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
+#include <Backends/DX12/Compiler/DXIL/DXILModule.h>
 
 void DXBCPhysicalBlockPipelineStateValidation::Parse() {
     // Block is optional
@@ -53,14 +54,23 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
 
     // Skip current resources
     block->stream.AppendData(ctx.ptr, bindInfoSize * resourceCount);
-    ctx.Skip(bindInfoSize * resourceCount);
+
+    // Skip existing binds
+    for (uint32_t i = 0; i < resourceCount; i++) {
+        auto& data = ctx.Get<DXBCPSVBindInfoRevision1>();
+        ctx.Skip(bindInfoSize);
+    }
+
+    // Get compiled binding info
+    ASSERT(table.dxilModule, "PSV not supported for native DXBC");
+    const DXILBindingInfo& bindingInfo = table.dxilModule->GetBindingInfo();
 
     // Write base bind info
     block->stream.Append(DXBCPSVBindInfo0{
         .type = DXBCPSVBindInfoType::UnorderedAccessView,
-        .space = 0,
-        .low = 1,
-        .high = 1
+        .space = bindingInfo.space,
+        .low = bindingInfo._register,
+        .high = bindingInfo._register + (bindingInfo.count - 1)
     });
 
     // Extended1?

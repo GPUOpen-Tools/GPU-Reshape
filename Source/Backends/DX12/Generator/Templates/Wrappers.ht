@@ -15,7 +15,3 @@ $WRAPPERS
 /* Hooks */
 
 $HOOKS
-
-/* Special Hooks */
-
-void Wrapper_HookID3D12ResourceGetDesc(ID3D12ResourceWrapper* _thisRCX, D3D12_RESOURCE_DESC* rdx);

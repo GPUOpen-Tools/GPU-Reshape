@@ -163,6 +163,7 @@ void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
             case LLVMConstantRecord::GEP: {
                 break;
             }
+
             case LLVMConstantRecord::InBoundsGEP: {
                 for (uint32_t i = 1; i < record.opCount; i += 2) {
                     table.idRemapper.Remap(record.Op(i + 1));

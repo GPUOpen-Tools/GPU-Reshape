@@ -49,9 +49,15 @@ static bool DetourInterface(const GeneratorInfo &info, DetourState& state, const
         if (!state.functions.contains(pfnName)) {
             state.pfn << "using " << pfnName << " = ";
 
-            // Print return
-            if (!PrettyPrintType(state.pfn, method["returnType"])) {
-                return false;
+            bool isStructRet = IsTypeStruct(method["returnType"]);
+
+            // Structured?
+            if (!isStructRet) {
+                if (!PrettyPrintType(state.pfn, method["returnType"])) {
+                    return false;
+                }
+            } else {
+                state.pfn << "void";
             }
 
             state.pfn << "(*)(";
@@ -63,6 +69,17 @@ static bool DetourInterface(const GeneratorInfo &info, DetourState& state, const
                 if (!PrettyPrintParameter(state.pfn, param["type"], param["name"].get<std::string>())) {
                     return false;
                 }
+            }
+
+            // Structured argument
+            if (isStructRet) {
+                state.pfn << ", ";
+
+                if (!PrettyPrintType(state.pfn, method["returnType"])) {
+                    return false;
+                }
+
+                state.pfn << "* rdx";
             }
 
             state.pfn << ");\n";

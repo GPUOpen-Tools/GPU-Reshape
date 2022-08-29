@@ -66,10 +66,16 @@ public:
     void RemapRecord(struct LLVMRecord& record);
 
 private:
+    /// Handle information
+    struct ExportHandleInfo {
+        uint32_t counterHandle;
+        uint32_t streamHandle;
+    };
+
     /// Create an export handle
     /// \param block appended block
     /// \return user id
-    uint32_t CreateExportHandle(struct LLVMBlock* block);
+    ExportHandleInfo CreateExportHandle(struct LLVMBlock* block);
 
 private:
     /// Get the resource size intrinsic

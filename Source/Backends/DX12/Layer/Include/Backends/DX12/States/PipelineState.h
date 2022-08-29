@@ -7,6 +7,7 @@
 
 // Common
 #include <Common/Containers/ReferenceObject.h>
+#include <Common/Enum.h>
 
 // Std
 #include <atomic>
@@ -20,10 +21,13 @@ struct RootSignatureState;
 struct ShaderState;
 
 enum class PipelineType {
-    None,
-    Graphics,
-    Compute
+    None = 0,
+    Graphics = BIT(1),
+    Compute = BIT(2),
+    Count = 2
 };
+
+BIT_SET(PipelineType);
 
 struct PipelineState : public ReferenceObject {
     /// Reference counted destructor

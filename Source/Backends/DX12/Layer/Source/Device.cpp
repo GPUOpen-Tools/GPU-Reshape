@@ -13,6 +13,9 @@
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
+#include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
+#include <Backends/DX12/Export/ShaderExportStreamer.h>
+#include <Backends/DX12/Allocation/DeviceAllocator.h>
 #include <Backends/DX12/Layer.h>
 
 // Backend
@@ -110,7 +113,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         }
 
         // Install the shader export host
-        state->registry.AddNew<ShaderExportHost>();
+        state->exportHost = state->registry.AddNew<ShaderExportHost>();
 
         // Install all features
         ENSURE(PoolAndInstallFeatures(state), "Failed to install features");
@@ -133,8 +136,23 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         ENSURE(pipelineCompiler->Install(), "Failed to install pipeline compiler");
 
         // Install the instrumentation controller
-        state->instrumentationController = state->registry.New<InstrumentationController>(state);
+        state->instrumentationController = state->registry.AddNew<InstrumentationController>(state);
         ENSURE(state->instrumentationController->Install(), "Failed to install instrumentation controller");
+
+        IDXGIAdapter* dxgiAdapter{nullptr};
+        ENSURE(SUCCEEDED(pAdapter->QueryInterface(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter))), "Failed to cast adapter");
+
+        // Install the streamer
+        auto deviceAllocator = state->registry.AddNew<DeviceAllocator>();
+        ENSURE(deviceAllocator->Install(state->object, dxgiAdapter), "Failed to install device allocator");
+
+        // Install the streamer
+        auto streamAllocator = state->registry.AddNew<ShaderExportStreamAllocator>();
+        ENSURE(streamAllocator->Install(), "Failed to install shader export stream allocator");
+
+        // Install the streamer
+        state->exportStreamer = state->registry.AddNew<ShaderExportStreamer>(state);
+        ENSURE(state->exportStreamer->Install(), "Failed to install shader export streamer");
     }
 
     // Cleanup

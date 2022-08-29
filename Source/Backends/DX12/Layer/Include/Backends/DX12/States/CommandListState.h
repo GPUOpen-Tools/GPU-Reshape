@@ -5,8 +5,15 @@
 
 // Forward declarations
 struct DeviceState;
+struct ShaderExportStreamState;
 
 struct CommandListState {
     /// Parent state
-    DeviceState* parent{};
+    DeviceState* parent{nullptr};
+
+    /// Current streaming state
+    ShaderExportStreamState* streamState{nullptr};
+
+    /// Object
+    ID3D12GraphicsCommandList* object{nullptr};
 };

@@ -11,6 +11,7 @@
 #include "Blocks/DXILPhysicalBlockFunctionAttribute.h"
 #include "DXILIDMap.h"
 #include "DXILIDRemapper.h"
+#include "DXILBindingInfo.h"
 
 // Common
 #include <Common/Containers/LinearBlockAllocator.h>
@@ -55,6 +56,9 @@ struct DXILPhysicalBlockTable {
     DXILPhysicalBlockString string;
     DXILPhysicalBlockSymbol symbol;
     DXILPhysicalBlockMetadata metadata;
+
+    /// Shared binding info
+    DXILBindingInfo bindingInfo;
 
     /// IL program
     IL::Program& program;

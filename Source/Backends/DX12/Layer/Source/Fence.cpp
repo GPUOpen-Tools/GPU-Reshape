@@ -52,3 +52,20 @@ ULONG WINAPI HookID3D12FenceRelease(ID3D12Fence* fence) {
     // OK
     return 0;
 }
+
+uint64_t FenceState::GetLatestCommit() {
+    // Pass down callchain
+    uint64_t completedValue = object->GetCompletedValue();
+
+    // If not signalled yet, and fence is done, advance the commit
+    if (!signallingState || lastCompletedValue != completedValue) {
+        signallingState = true;
+        cpuSignalCommitId++;
+    }
+
+    // Set known last
+    lastCompletedValue = completedValue;
+
+    // Return new commit
+    return cpuSignalCommitId;
+}

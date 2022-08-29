@@ -225,6 +225,7 @@ add_library(
     Layer/Source/Fence.cpp
     Layer/Source/CommandList.cpp
     Layer/Source/RootSignature.cpp
+    Layer/Source/DescriptorHeap.cpp
     Layer/Source/Pipeline.cpp
     Layer/Source/SwapChain.cpp
     Layer/Source/DLL.cpp
@@ -252,6 +253,11 @@ add_library(
     Layer/Source/Compiler/DXIL/DXILSigner.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Export/ExportHost.cpp
+    Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
+    Layer/Source/Export/ShaderExportStreamer.cpp
+    Layer/Source/Export/ShaderExportStreamAllocator.cpp
+    Layer/Source/Allocation/DeviceAllocator.cpp
+    Layer/Source/IncrementalFence.cpp
 
     # Generated source dependencies
     Layer/Source/DeepCopy.Gen.cpp
@@ -287,6 +293,7 @@ target_link_libraries(
 # Setup dependencies
 ExternalProject_Link(Backends.DX12.Layer Detour Detour)
 ExternalProject_Link(Backends.DX12.Layer DxbcSigner DxbcSigner)
+ExternalProject_Link(Backends.DX12.Layer D3D12MA D3D12MAd)
 
 # Include directories
 target_include_directories(

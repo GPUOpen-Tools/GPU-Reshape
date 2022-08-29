@@ -37,6 +37,29 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             }
             case LLVMReservedBlock::Constants: {
                 table.global.ParseConstants(fnBlock);
+
+                /*
+                 * Migrate all in-function constants to global constant map due to an
+                 * LLVM bug with metadata value forward references. The LLVM bit-decoder
+                 * reallocates the value lookup map to the forward bound, however, sets the initial
+                 * value index during function reading to the array bound, not the *current* value bound.
+                 */
+
+                // Get the destination migration block
+                LLVMBlock* migrationBlock = table.scan.GetRoot().GetBlock(LLVMReservedBlock::Constants);
+
+                // Move all records
+                for (const LLVMBlockElement& element : fnBlock->elements) {
+                    if (element.Is(LLVMBlockElementType::Record)) {
+                        LLVMRecord record = fnBlock->records[element.id];
+                        record.abbreviation.type = LLVMRecordAbbreviationType::None;
+                        migrationBlock->AddRecord(record);
+                    }
+                }
+
+                // Flush block
+                fnBlock->elements.Resize(0);
+                fnBlock->records.Resize(0);
                 break;
             }
         }
@@ -915,7 +938,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             auto isNonUniform = program.GetConstants().GetConstant<IL::BoolConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
 
             // Get the actual handle type
-            auto type = table.metadata.GetHandleType(id);
+            auto type = table.metadata.GetHandleType(_class, id);
 
             // Set as pointee type
             program.GetTypeMap().SetType(result, type);
@@ -1144,7 +1167,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
     block->InsertRecord(block->elements.begin(), declareBlocks);
 
     // Add export handle
-    uint32_t exportHandle = CreateExportHandle(block);
+    ExportHandleInfo exportInfo = CreateExportHandle(block);
 
     // Compile all blocks
     for (const IL::BasicBlock *bb: fn->GetBasicBlocks()) {
@@ -1679,35 +1702,76 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     uint64_t ops[9];
 
-                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferStore)}
-                    )->id);
+                    {
 
-                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportHandle);
+                        ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferStore)}
+                        )->id);
 
-                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(0)}
-                    )->id);
+                        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportInfo.counterHandle);
 
-                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::UndefConstant{}
-                    )->id);
+                        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::IntConstant{.value = static_cast<uint32_t>(0)}
+                        )->id);
 
-                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::UndefConstant{}
+                        )->id);
 
-                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::All)}
-                    )->id);
+                        uint64_t value = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::IntConstant{.value = static_cast<uint32_t>(1)}
+                        )->id);
 
-                    // Invoke
-                    block->AddRecord(CompileIntrinsicCall(IL::InvalidID, intrinsic, 9, ops));
+                        ops[4] = value;
+                        ops[5] = value;
+                        ops[6] = value;
+                        ops[7] = value;
+
+                        ops[8] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
+                            Backend::IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::All)}
+                        )->id);
+
+                        // Invoke
+                        block->AddRecord(CompileIntrinsicCall(IL::InvalidID, intrinsic, 9, ops));
+                    }
+
+                    {
+
+                        ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferStore)}
+                        )->id);
+
+                        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportInfo.streamHandle);
+
+                        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::IntConstant{.value = static_cast<uint32_t>(0)}
+                        )->id);
+
+                        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::UndefConstant{}
+                        )->id);
+
+                        ops[4] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                        ops[5] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                        ops[6] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                        ops[7] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+
+                        ops[8] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
+                            Backend::IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::All)}
+                        )->id);
+
+                        // Invoke
+                        block->AddRecord(CompileIntrinsicCall(IL::InvalidID, intrinsic, 9, ops));
+                    }
 
                     // NOOP
                     break;
@@ -2270,8 +2334,10 @@ void DXILPhysicalBlockFunction::CopyTo(DXILPhysicalBlockFunction &out) {
     out.internalLinkedFunctions = internalLinkedFunctions;
 }
 
-uint32_t DXILPhysicalBlockFunction::CreateExportHandle(struct LLVMBlock *block) {
-    IL::ID result = program.GetIdentifierMap().AllocID();
+DXILPhysicalBlockFunction::ExportHandleInfo DXILPhysicalBlockFunction::CreateExportHandle(struct LLVMBlock *block) {
+    ExportHandleInfo info;
+    info.counterHandle = program.GetIdentifierMap().AllocID();
+    info.streamHandle = program.GetIdentifierMap().AllocID();
 
     // Get intrinsic
     const DXILFunctionDeclaration *intrinsic = GetCreateHandleIntrinsic();
@@ -2300,12 +2366,12 @@ uint32_t DXILPhysicalBlockFunction::CreateExportHandle(struct LLVMBlock *block) 
 
     ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-        Backend::IL::IntConstant{.value = 0}
+        Backend::IL::IntConstant{.value = table.bindingInfo.handleId}
     )->id);
 
     ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-        Backend::IL::IntConstant{.value = 0}
+        Backend::IL::IntConstant{.value = table.bindingInfo._register}
     )->id);
 
     ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
@@ -2314,7 +2380,15 @@ uint32_t DXILPhysicalBlockFunction::CreateExportHandle(struct LLVMBlock *block) 
     )->id);
 
     // Invoke
-    block->AddRecord(CompileIntrinsicCall(result, intrinsic, 5, ops));
+    block->AddRecord(CompileIntrinsicCall(info.counterHandle, intrinsic, 5, ops));
 
-    return result;
+    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+        Backend::IL::IntConstant{.value = table.bindingInfo._register + 1}
+    )->id);
+
+    // Invoke
+    block->AddRecord(CompileIntrinsicCall(info.streamHandle, intrinsic, 5, ops));
+
+    return info;
 }

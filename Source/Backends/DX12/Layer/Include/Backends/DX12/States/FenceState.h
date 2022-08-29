@@ -7,6 +7,44 @@
 struct DeviceState;
 
 struct FenceState {
+    /// Check if a commit has been completed
+    /// \param commit the commit to check for
+    /// \return true if completed
+    bool IsCommitted(uint64_t commit) {
+        // Check last known commit id
+        if (cpuSignalCommitId >= commit) {
+            return true;
+        }
+
+        // Query the gpu commit id
+        return GetLatestCommit() >= commit;
+    }
+
+    /// Get the latest GPU commit id
+    /// \return the
+    uint64_t GetLatestCommit();
+
+    /// Get the next to be signalled state
+    /// \return
+    uint64_t GetNextCommitID() const {
+        return cpuSignalCommitId + 1;
+    }
+
     /// Parent state
-    DeviceState* parent{};
+    DeviceState* parent{nullptr};
+
+    /// Fence object
+    ID3D12Fence* object{nullptr};
+
+    /// Last completed GPU value
+    uint64_t lastCompletedValue{0};
+
+    /// Current CPU commit id, i.e. the currently known commit id
+    uint64_t cpuSignalCommitId{0};
+
+    /// Current signalling state
+    bool signallingState{false};
+
+    /// Unique identifier, unique for the type
+    uint64_t uid;
 };

@@ -33,14 +33,16 @@ static bool WrapClassInterface(const GeneratorInfo &info, WrapperState& state, c
         // Get contained (fptr) type
         auto &&parameters = method["params"];
 
-        // Code-gen whitelist (register shenanigans)
-        if (consumerKey == "ID3D12Resource" && methodName == "GetDesc") {
-            continue;
-        }
+        bool isStructRet = IsTypeStruct(method["returnType"]);
 
-        // Print return type
-        if (!PrettyPrintType(state.hooks, method["returnType"])) {
-            return false;
+        // Structured?
+        if (!isStructRet) {
+            // Print return type
+            if (!PrettyPrintType(state.hooks, method["returnType"])) {
+                return false;
+            }
+        } else {
+            state.hooks << "void";
         }
 
         // Print name of wrapper
@@ -59,6 +61,17 @@ static bool WrapClassInterface(const GeneratorInfo &info, WrapperState& state, c
             if (!PrettyPrintParameter(state.hooks, param["type"], param["name"].get<std::string>())) {
                 return false;
             }
+        }
+
+        // Structured parameter
+        if (isStructRet) {
+            state.hooks << ", ";
+
+            if (!PrettyPrintType(state.hooks, method["returnType"])) {
+                return false;
+            }
+
+            state.hooks << "* rdx";
         }
 
         // End wrapper

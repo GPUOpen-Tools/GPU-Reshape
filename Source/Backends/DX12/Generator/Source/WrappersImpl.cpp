@@ -81,14 +81,19 @@ static bool WrapClassMethods(const GeneratorInfo &info, WrapperImplState &state,
         // Get parameters
         auto &&parameters = method["params"];
 
-        // Code-gen whitelist (register shenanigans)
-        if (consumerKey == "ID3D12Resource" && methodName == "GetDesc") {
-            continue;
-        }
+        bool isStructRet = IsTypeStruct(method["returnType"]);
 
-        // Print return type
-        if (!PrettyPrintType(state.hooks, method["returnType"])) {
-            return false;
+        // Structured?
+        if (!isStructRet) {
+            // Print return type
+            if (!PrettyPrintType(state.hooks, method["returnType"])) {
+                return false;
+            }
+        } else {
+            // Disable runtime checks, causes issues with the hooking mechanism
+            state.hooks << "/* Preserve rax/rdx */\n";
+            state.hooks << "#pragma runtime_checks(\"scu\", off)\n\n";
+            state.hooks << "void";
         }
 
         // Print name of wrapper
@@ -109,6 +114,17 @@ static bool WrapClassMethods(const GeneratorInfo &info, WrapperImplState &state,
             }
         }
 
+        // Structured?
+        if (isStructRet) {
+            state.hooks << ", ";
+
+            if (!PrettyPrintType(state.hooks, method["returnType"])) {
+                return false;
+            }
+
+            state.hooks << "* rdx";
+        }
+
         // Begin body
         state.hooks << ") {\n";
 
@@ -118,10 +134,21 @@ static bool WrapClassMethods(const GeneratorInfo &info, WrapperImplState &state,
             isHooked |= hook.get<std::string>() == methodName;
         }
 
+        // Local structured type
+        if (isStructRet) {
+            state.hooks << "\t";
+
+            if (!PrettyPrintType(state.hooks, method["returnType"])) {
+                return false;
+            }
+
+            state.hooks << " out;\n";
+        }
+        
         // Hooked?
         if (isHooked) {
             // Print return if needed
-            if (method["returnType"]["type"] == "void") {
+            if (isStructRet || method["returnType"]["type"] == "void") {
                 state.hooks << "\t";
             } else {
                 state.hooks << "\treturn ";
@@ -133,6 +160,11 @@ static bool WrapClassMethods(const GeneratorInfo &info, WrapperImplState &state,
             // Forward parameters
             for (size_t i = 0; i < parameters.size(); i++) {
                 state.hooks << ", " << parameters[i]["name"].get<std::string>();
+            }
+
+            // Forward local structured type
+            if (isStructRet) {
+                state.hooks << ", &out";
             }
         } else {
             // Special generator for interface querying
@@ -152,7 +184,7 @@ static bool WrapClassMethods(const GeneratorInfo &info, WrapperImplState &state,
                 state.hooks << "\n\n\treturn GetVTableRaw<" << outerRevision << "DetourVTable>(_this->next)->next_" << methodName << "(";
             } else {
                 // Print return if needed
-                if (method["returnType"]["type"] == "void") {
+                if (isStructRet || method["returnType"]["type"] == "void") {
                     state.hooks << "\t";
                 } else {
                     state.hooks << "\treturn ";
@@ -169,13 +201,28 @@ static bool WrapClassMethods(const GeneratorInfo &info, WrapperImplState &state,
             for (size_t i = 0; i < parameters.size(); i++) {
                 state.hooks << ", Unwrap(" << parameters[i]["name"].get<std::string>() << ")";
             }
+
+            // Forward local structured type
+            if (isStructRet) {
+                state.hooks << ", &out";
+            }
         }
 
         // End call
         state.hooks << ");\n";
 
+        // Copy structured output
+        if (isStructRet) {
+            state.hooks << "\t*rdx = out;\n";
+        }
+
         // End function
         state.hooks << "}\n\n";
+
+        // Pop runtime checks
+        if (isStructRet) {
+            state.hooks << "#pragma runtime_checks(\"scu\", restore)\n\n";
+        }
     }
 
     // OK

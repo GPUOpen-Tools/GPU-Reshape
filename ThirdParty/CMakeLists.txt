@@ -27,6 +27,7 @@ include(DXC.cmake)
 include(Detour.cmake)
 include(DXIL.cmake)
 include(DxbcSigner.cmake)
+include(D3D12MA.cmake)
 
 # UI?
 if (${ENABLE_UIX})

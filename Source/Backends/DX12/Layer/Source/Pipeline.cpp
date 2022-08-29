@@ -92,12 +92,6 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     // Object
     ID3D12PipelineState *pipeline{nullptr};
 
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateGraphicsPipelineState(table.next, desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
-    if (FAILED(hr)) {
-        return hr;
-    }
-
     // Create state
     auto *state = new GraphicsPipelineState();
     state->parent = table.state;
@@ -106,6 +100,16 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
 
     // Perform deep copy
     state->deepCopy.DeepCopy(Allocators{}, *desc);
+
+    // Unwrap description states
+    state->deepCopy->pRootSignature = Next(state->deepCopy->pRootSignature);
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateGraphicsPipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
+    if (FAILED(hr)) {
+        delete state;
+        return hr;
+    }
 
     // Add reference to signature
     desc->pRootSignature->AddRef();
@@ -178,12 +182,6 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     // Object
     ID3D12PipelineState *pipeline{nullptr};
 
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateComputePipelineState(table.next, desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
-    if (FAILED(hr)) {
-        return hr;
-    }
-
     // Create state
     auto *state = new ComputePipelineState();
     state->parent = table.state;
@@ -192,6 +190,16 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
 
     // Perform deep copy
     state->deepCopy.DeepCopy(Allocators{}, *desc);
+
+    // Unwrap description states
+    state->deepCopy->pRootSignature = Next(state->deepCopy->pRootSignature);
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateComputePipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
+    if (FAILED(hr)) {
+        delete state;
+        return hr;
+    }
 
     // Add reference to signature
     desc->pRootSignature->AddRef();

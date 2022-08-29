@@ -7,6 +7,13 @@
 #include <sstream>
 #include <iostream>
 
+/// Check if a structured type
+/// \param type json type
+/// \return true if structured
+static bool IsTypeStruct(const nlohmann::json &type) {
+    return type["type"].get<std::string>() == "pod" && type["name"].get<std::string>().starts_with("D3D12_");
+}
+
 /// Pretty print a type
 /// \param ss output stream
 /// \param type the json type

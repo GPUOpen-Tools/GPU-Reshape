@@ -32,6 +32,12 @@ public:
     GlobalUID GetInstrumentationGUID() override;
     bool Compile(const DXJob& job, DXStream& out) override;
 
+    /// Get the binding info
+    /// \return
+    const DXILBindingInfo& GetBindingInfo() {
+        return table.bindingInfo;
+    }
+
 private:
     /// All physical blocks
     DXILPhysicalBlockTable table;

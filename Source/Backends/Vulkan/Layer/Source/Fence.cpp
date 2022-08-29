@@ -25,6 +25,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateFence(VkDevice device, const VkFence
     // OK
     return VK_SUCCESS;
 }
+
 VKAPI_ATTR VkResult VKAPI_PTR Hook_vkGetFenceStatus(VkDevice device, VkFence fence) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 

@@ -18,9 +18,12 @@
 class ShaderSet;
 class IFeature;
 struct ShaderState;
+struct CommandQueueState;
 struct PipelineState;
 class InstrumentationController;
 class IBridge;
+class ShaderExportHost;
+class ShaderExportStreamer;
 
 struct DeviceState {
     /// Owned object
@@ -38,9 +41,16 @@ struct DeviceState {
     /// Message bridge
     ComRef<IBridge> bridge;
 
+    /// Shared export host
+    ComRef<ShaderExportHost> exportHost;
+
+    /// Shared export streamer
+    ComRef<ShaderExportStreamer> exportStreamer;
+
     /// Tracked objects
     TrackedObject<ShaderState> states_Shaders;
     TrackedObject<PipelineState> states_Pipelines;
+    TrackedObject<CommandQueueState> states_Queues;
 
     /// Dependency objects
     DependentObject<ShaderState, PipelineState> dependencies_shaderPipelines;

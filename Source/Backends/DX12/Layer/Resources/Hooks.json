@@ -3,6 +3,7 @@
     "Device.h",
     "Resource.h",
     "RootSignature.h",
+    "DescriptorHeap.h",
     "Pipeline.h",
     "Fence.h",
     "CommandList.h",
@@ -36,6 +37,8 @@
         "CreateCommandAllocator",
         "CreateCommandList",
         "CreateFence",
+        "CreateCommandQueue",
+        "CreateDescriptorHeap",
         "CreateRootSignature",
         "CreatePipelineState",
         "CreateGraphicsPipelineState",
@@ -48,6 +51,8 @@
       "state": "CommandQueueState",
       "hooks": [
         "ExecuteCommandLists",
+        "Signal",
+        "Wait",
         "Release"
       ]
     },
@@ -66,7 +71,10 @@
         "Release",
         "Reset",
         "Close",
-        "SetPipelineState"
+        "SetPipelineState",
+        "SetDescriptorHeaps",
+        "SetGraphicsRootSignature",
+        "SetComputeRootSignature"
       ]
     },
     "ID3D12Fence": {
@@ -95,6 +103,15 @@
       "name": "RootSignature",
       "state": "RootSignatureState",
       "hooks": [
+        "Release"
+      ]
+    },
+    "ID3D12DescriptorHeap": {
+      "name": "DescriptorHeap",
+      "state": "DescriptorHeapState",
+      "hooks": [
+        "GetCPUDescriptorHandleForHeapStart",
+        "GetGPUDescriptorHandleForHeapStart",
         "Release"
       ]
     },

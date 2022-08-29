@@ -4,9 +4,13 @@
 #include <Backends/DX12/States/CommandQueueState.h>
 #include <Backends/DX12/States/CommandAllocatorState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/States/PipelineState.h>
+#include <Backends/DX12/States/DescriptorHeapState.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
+#include <Backends/DX12/Export/ShaderExportStreamer.h>
+#include <Backends/DX12/IncrementalFence.h>
 
-HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COMMAND_QUEUE_DESC *desc, const IID& riid, void **pCommandQueue) {
+HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COMMAND_QUEUE_DESC *desc, const IID &riid, void **pCommandQueue) {
     auto table = GetTable(device);
 
     // Object
@@ -21,6 +25,8 @@ HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COM
     // Create state
     auto *state = new CommandQueueState();
     state->parent = table.state;
+    state->desc = *desc;
+    state->object = commandQueue;
 
     // Create detours
     commandQueue = CreateDetour(Allocators{}, commandQueue, state);
@@ -31,6 +37,24 @@ HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COM
         if (FAILED(hr)) {
             return hr;
         }
+
+        // Create shared allocator
+        hr = table.next->CreateCommandAllocator(desc->Type, IID_PPV_ARGS(&state->commandAllocator));
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        // Create shared fence
+        state->sharedFence = new (table.state->allocators) IncrementalFence();
+        if (!state->sharedFence->Install(table.next, state->object)) {
+            return E_FAIL;
+        }
+
+        // Create export state
+        state->exportState = table.state->exportStreamer->AllocateQueueState(commandQueue);
+
+        // Add state
+        table.state->states_Queues.Add(state);
     }
 
     // Cleanup
@@ -40,7 +64,21 @@ HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COM
     return S_OK;
 }
 
-HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMAND_LIST_TYPE type, const IID& riid, void **pCommandAllocator) {
+HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
+    auto table = GetTable(queue);
+
+    // Pass down callchain
+    return table.bottom->next_Signal(table.next, Next(pFence), Value);
+}
+
+HRESULT WINAPI HookID3D12CommandQueueWait(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
+    auto table = GetTable(queue);
+
+    // Pass down callchain
+    return table.bottom->next_Wait(table.next, Next(pFence), Value);
+}
+
+HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMAND_LIST_TYPE type, const IID &riid, void **pCommandAllocator) {
     auto table = GetTable(device);
 
     // Object
@@ -74,14 +112,30 @@ HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMA
     return S_OK;
 }
 
-HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *allocator, ID3D12PipelineState *initialState, const IID& riid, void **pCommandList) {
+static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState) {
+    if (!initialState) {
+        return nullptr;
+    }
+
+    // Available hot swap?
+    if (ID3D12PipelineState *hotSwap = GetState(initialState)->hotSwapObject.load()) {
+        return hotSwap;
+    }
+
+    return Next(initialState);
+}
+
+HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *allocator, ID3D12PipelineState *initialState, const IID &riid, void **pCommandList) {
     auto table = GetTable(device);
 
     // Object
     ID3D12CommandList *commandList{nullptr};
 
+    // Get hot swap
+    ID3D12PipelineState *hotSwap = GetHotSwapPipeline(initialState);
+
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateCommandList(table.next, nodeMask, type, Next(allocator), Next(initialState), __uuidof(ID3D12CommandList), reinterpret_cast<void **>(&commandList));
+    HRESULT hr = table.bottom->next_CreateCommandList(table.next, nodeMask, type, Next(allocator), hotSwap ? hotSwap : Next(initialState), __uuidof(ID3D12CommandList), reinterpret_cast<void **>(&commandList));
     if (FAILED(hr)) {
         return hr;
     }
@@ -89,6 +143,7 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
     // Create state
     auto *state = new CommandListState();
     state->parent = table.state;
+    state->object = static_cast<ID3D12GraphicsCommandList*>(commandList);
 
     // Create detours
     commandList = CreateDetour(Allocators{}, commandList, state);
@@ -98,6 +153,14 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
         hr = commandList->QueryInterface(riid, pCommandList);
         if (FAILED(hr)) {
             return hr;
+        }
+
+        // Create export state
+        state->streamState = table.state->exportStreamer->AllocateStreamState();
+
+        // Inform the streamer of a new pipeline
+        if (initialState) {
+            table.state->exportStreamer->BindPipeline(state->streamState, GetState(initialState), hotSwap != nullptr, state);
         }
 
         // Pass down the controller
@@ -111,47 +174,130 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
     return S_OK;
 }
 
-HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList* list, ID3D12CommandAllocator* allocator, ID3D12PipelineState* state) {
+HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12CommandAllocator *allocator, ID3D12PipelineState *state) {
     auto table = GetTable(list);
 
     // Pass down the controller
     table.state->parent->instrumentationController->BeginCommandList();
 
+    // Get hot swap
+    ID3D12PipelineState *hotSwap = GetHotSwapPipeline(state);
+
     // Pass down callchain
-    HRESULT result = table.bottom->next_Reset(table.next, Next(allocator), Next(state));
+    HRESULT result = table.bottom->next_Reset(table.next, Next(allocator), hotSwap ? hotSwap : Next(state));
     if (FAILED(result)) {
         return result;
+    }
+
+    // Inform the streamer of a new pipeline
+    if (state) {
+        table.state->parent->exportStreamer->BindPipeline(table.state->streamState, GetState(state), hotSwap != nullptr, table.state);
     }
 
     // OK
     return S_OK;
 }
 
-HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList* list) {
+void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UINT NumDescriptorHeaps, ID3D12DescriptorHeap *const *ppDescriptorHeaps) {
+    auto table = GetTable(list);
+
+    // Allocate unwrapped
+    auto *unwrapped = ALLOCA_ARRAY(ID3D12DescriptorHeap*, NumDescriptorHeaps);
+
+    // Process lists
+    for (uint32_t i = 0; i < NumDescriptorHeaps; i++) {
+        auto heapTable = GetTable(ppDescriptorHeaps[i]);
+
+        // Heap of interest?
+        if (heapTable.state->type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
+            // Let the streamer handle allocations
+            table.state->parent->exportStreamer->SetDescriptorHeap(table.state->streamState, heapTable.state);
+        }
+
+        // Set unwrapped
+        unwrapped[i] = heapTable.next;
+    }
+
+    // Pass down callchain
+    table.bottom->next_SetDescriptorHeaps(table.next, NumDescriptorHeaps, unwrapped);
+}
+
+void WINAPI HookID3D12CommandListSetGraphicsRootSignature(ID3D12CommandList* list, ID3D12RootSignature* rootSignature) {
+    auto table = GetTable(list);
+    auto rsTable = GetTable(rootSignature);
+
+    // Pass down callchain
+    table.bottom->next_SetGraphicsRootSignature(table.next, rsTable.next);
+
+    // Inform the streamer of a new root signature
+    table.state->parent->exportStreamer->SetRootSignature(table.state->streamState, rsTable.state);
+}
+
+void WINAPI HookID3D12CommandListSetComputeRootSignature(ID3D12CommandList* list, ID3D12RootSignature* rootSignature) {
+    auto table = GetTable(list);
+    auto rsTable = GetTable(rootSignature);
+
+    // Pass down callchain
+    table.bottom->next_SetComputeRootSignature(table.next, rsTable.next);
+
+    // Inform the streamer of a new root signature
+    table.state->parent->exportStreamer->SetRootSignature(table.state->streamState, rsTable.state);
+}
+
+HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList *list) {
     auto table = GetTable(list);
 
     // Pass down callchain
     return table.bottom->next_Close(table.next);
 }
 
-void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList* list, ID3D12PipelineState* pipeline) {
+void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D12PipelineState *pipeline) {
     auto table = GetTable(list);
 
+    // Get hot swap
+    ID3D12PipelineState *hotSwap = GetHotSwapPipeline(pipeline);
+
     // Pass down callchain
-    return table.bottom->next_SetPipelineState(table.next, Next(pipeline));
+    table.bottom->next_SetPipelineState(table.next, hotSwap ? hotSwap : Next(pipeline));
+
+    // Inform the streamer of a new pipeline
+    table.state->parent->exportStreamer->BindPipeline(table.state->streamState, GetState(pipeline), hotSwap != nullptr, table.state);
 }
 
-void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT count, ID3D12CommandList *const * lists) {
+void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT count, ID3D12CommandList *const *lists) {
     auto table = GetTable(queue);
 
-    // Unwrap all lists
-    auto* unwrapped = ALLOCA_ARRAY(ID3D12CommandList*, count);
+    // Parent device
+    DeviceState* device = table.state->parent;
+
+    // Process any remaining work on the queue
+    device->exportStreamer->Process(table.state);
+
+    // Allocate submission segment
+    ShaderExportStreamSegment* segment = device->exportStreamer->AllocateSegment();
+
+    // Allocate unwrapped, +1 for patch
+    auto *unwrapped = ALLOCA_ARRAY(ID3D12CommandList*, count + 1);
+
+    // Process all lists
     for (uint32_t i = 0; i < count; i++) {
-        unwrapped[i] = Next(lists[i]);
+        auto listTable = GetTable(lists[i]);
+
+        // Create streamer allocation association
+        device->exportStreamer->MapSegment(listTable.state->streamState, segment);
+
+        // Pass down unwrapped
+        unwrapped[i] = listTable.next;
     }
 
+    // Record the streaming patching
+    unwrapped[count] = device->exportStreamer->RecordPatchCommandBuffer(table.state, segment);
+
     // Pass down callchain
-    table.bottom->next_ExecuteCommandLists(table.next, count, unwrapped);
+    table.bottom->next_ExecuteCommandLists(table.next, count + 1, unwrapped);
+
+    // Notify streamer of submission
+    device->exportStreamer->Enqueue(table.state, segment);
 }
 
 ULONG WINAPI HookID3D12CommandQueueRelease(ID3D12CommandQueue *queue) {
@@ -162,6 +308,9 @@ ULONG WINAPI HookID3D12CommandQueueRelease(ID3D12CommandQueue *queue) {
     if (users) {
         return users;
     }
+
+    // Remove state
+    table.state->parent->states_Queues.Remove(table.state);
 
     // Cleanup
     delete table.state;
@@ -216,4 +365,37 @@ ULONG HookID3D12GraphicsCommandListRelease(ID3D12GraphicsCommandList *list) {
 
     // OK
     return 0;
+}
+
+ID3D12GraphicsCommandList *CommandQueueState::PopCommandList() {
+    ID3D12GraphicsCommandList* list{nullptr};
+
+    // Free list?
+    if (!commandLists.empty()) {
+        list = commandLists.back();
+        commandLists.pop_back();
+
+        // Reopen
+        list->Reset(commandAllocator, nullptr);
+
+        // OK
+        return list;
+    }
+
+    // Attempt to create
+    if (FAILED(parent->object->CreateCommandList(
+        0,
+        desc.Type,
+        commandAllocator,
+        nullptr,
+        IID_PPV_ARGS(&list)
+    ))) {
+        return nullptr;
+    }
+
+    return list;
+}
+
+void CommandQueueState::PushCommandList(ID3D12GraphicsCommandList *list) {
+    commandLists.push_back(list);
 }
