@@ -4,13 +4,17 @@ enum class DXILIntrinsicTypeSpec {
     Void,
 
     /// Data types
-    I32,
+    F64,
     F32,
+    F16,
+    I64,
+    I32,
     I8,
     I1,
 
     /// Structured types
     Handle,
+    Dimensions,
     ResRetF32,
     ResRetI32,
 };
