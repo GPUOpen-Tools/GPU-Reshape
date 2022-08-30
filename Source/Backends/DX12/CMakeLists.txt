@@ -80,7 +80,7 @@ add_custom_command(
 
 # Generate the DXIL intrinsics
 add_custom_command(
-    OUTPUT Layer/Include/Backends/DX12/Compiler/DXIL/Intrinsic/DXILIntrinsics.Gen.h
+    OUTPUT Layer/Include/Backends/DX12/Compiler/DXIL/DXILIntrinsics.Gen.h
     DEPENDS Backends.DX12.Generator
     DEPENDS
         ${DXILIntrinsicsTemplate}
@@ -283,7 +283,7 @@ add_library(
 
     # Generated header dependencies
     Layer/Include/Backends/DX12/Compiler/DXIL/DXIL.Gen.h
-    Layer/Include/Backends/DX12/Compiler/DXIL/Intrinsic/DXILIntrinsics.Gen.h
+    Layer/Include/Backends/DX12/Compiler/DXIL/DXILIntrinsics.Gen.h
     Layer/Include/Backends/DX12/Detour.Gen.h
     Layer/Include/Backends/DX12/Table.Gen.h
     Layer/Include/Backends/DX12/DeepCopy.Gen.h
