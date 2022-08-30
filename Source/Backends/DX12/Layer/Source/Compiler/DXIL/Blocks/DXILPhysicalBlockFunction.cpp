@@ -1,5 +1,6 @@
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockFunction.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
+#include <Backends/DX12/Compiler/DXIL/DXILIntrinsics.Gen.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordReader.h>
 #include <Backends/DX12/Compiler/DXIL/DXILIDMap.h>
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
@@ -18,7 +19,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     uint32_t linkedIndex = internalLinkedFunctions[program.GetFunctionList().GetCount()];
 
     // Get function definition
-    DXILFunctionDeclaration &declaration = functions[linkedIndex];
+    DXILFunctionDeclaration *declaration = functions[linkedIndex];
 
     // Get type map
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
@@ -27,7 +28,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     IL::Function *fn = program.GetFunctionList().AllocFunction();
 
     // Set the type
-    fn->SetFunctionType(declaration.type);
+    fn->SetFunctionType(declaration->type);
 
     // Visit child blocks
     for (LLVMBlock *fnBlock: block->blocks) {
@@ -66,8 +67,8 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     }
 
     // Create parameter mappings
-    for (uint32_t i = 0; i < declaration.type->parameterTypes.size(); i++) {
-        declaration.parameters.Add(table.idMap.GetAnchor());
+    for (uint32_t i = 0; i < declaration->type->parameterTypes.size(); i++) {
+        declaration->parameters.Add(table.idMap.GetAnchor());
         table.idMap.AllocMappedID(DXILIDType::Parameter);
     }
 
@@ -865,25 +866,25 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
     IL::ID id = table.idMap.AllocMappedID(DXILIDType::Function, functions.Size());
 
     // Create function
-    DXILFunctionDeclaration &function = functions.Add();
+    auto *function = functions.Add(new (allocators) DXILFunctionDeclaration);
 
     // Set id
-    function.anchor = record.sourceAnchor;
-    function.id = DXILIDRemapper::EncodeUserOperand(id);
+    function->anchor = record.sourceAnchor;
+    function->id = DXILIDRemapper::EncodeUserOperand(id);
 
     // Hash name
-    function.hash = std::hash<std::string_view>{}(function.name);
+    function->hash = std::hash<std::string_view>{}(function->name);
 
     // Get function type
     uint64_t type = reader.ConsumeOp();
-    function.type = table.type.typeMap.GetType(type)->As<Backend::IL::FunctionType>();
+    function->type = table.type.typeMap.GetType(type)->As<Backend::IL::FunctionType>();
 
     // Ignored
     uint64_t callingConv = reader.ConsumeOp();
     uint64_t proto = reader.ConsumeOp();
 
     // Get function linkage
-    function.linkage = static_cast<LLVMLinkage>(reader.ConsumeOp());
+    function->linkage = static_cast<LLVMLinkage>(reader.ConsumeOp());
 
     // Ignored
     uint64_t paramAttr = reader.ConsumeOp();
@@ -896,7 +897,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
 
 const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration(uint32_t id) {
     ASSERT(table.idMap.GetType(id) == DXILIDType::Function, "Invalid function id");
-    return &functions[table.idMap.GetDataIndex(id)];
+    return functions[table.idMap.GetDataIndex(id)];
 }
 
 bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration) {
@@ -1368,7 +1369,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     auto _instr = instr->As<IL::ResourceSizeInstruction>();
 
                     // Get intrinsic
-                    const DXILFunctionDeclaration *intrinsic = GetResourceSizeIntrinsic();
+                    const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpGetDimensions);
 
                     /*
                      * declare %dx.types.Dimensions @dx.op.getDimensions(
@@ -1682,7 +1683,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     auto _instr = instr->As<IL::ExportInstruction>();
 
                     // Get intrinsic
-                    const DXILFunctionDeclaration *intrinsic = GetBufferStoreI32Intrinsic();
+                    const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferStoreI32);
 
                     /*
                      * ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
@@ -1811,7 +1812,7 @@ void DXILPhysicalBlockFunction::StitchModuleFunction(LLVMRecord &record) {
 
 void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
     // Definition order is linear to the internally linked functions
-    const DXILFunctionDeclaration &declaration = functions[internalLinkedFunctions[stitchFunctionIndex++]];
+    const DXILFunctionDeclaration *declaration = functions[internalLinkedFunctions[stitchFunctionIndex++]];
 
     // Visit child blocks
     for (LLVMBlock *fnBlock: block->blocks) {
@@ -1827,8 +1828,8 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
     }
 
     // Create parameter mappings
-    for (uint32_t i = 0; i < declaration.parameters.Size(); i++) {
-        table.idRemapper.AllocSourceMapping(declaration.parameters[i]);
+    for (uint32_t i = 0; i < declaration->parameters.Size(); i++) {
+        table.idRemapper.AllocSourceMapping(declaration->parameters[i]);
     }
 
     // Visit function records
@@ -1936,374 +1937,6 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
     }
 }
 
-const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetResourceSizeIntrinsic() {
-    if (intrinsics.resourceSize != IL::InvalidID) {
-        return &functions[intrinsics.resourceSize];
-    }
-
-    /*
-     * declare %dx.types.Dimensions @dx.op.getDimensions(
-     *   i32,                  ; opcode
-     *   %dx.types.Handle,     ; resource handle
-     *   i32)                  ; MIP level
-     */
-
-    // RST symbol name
-    const char *symbolName = "dx.op.getDimensions";
-
-    // Search existing declarations
-    for (const DXILFunctionDeclaration &decl: functions) {
-        if (table.symbol.GetValueString(decl.anchor) == symbolName) {
-            return &decl;
-        }
-    }
-
-    // Root block
-    LLVMBlock *global = &table.scan.GetRoot();
-
-    // Get type map
-    Backend::IL::TypeMap &typeMap = program.GetTypeMap();
-
-    // Integral types
-    const Backend::IL::Type *i8 = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 8, .signedness = true});
-    const Backend::IL::Type *i32 = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true});
-
-    // Opaque handle type
-    Backend::IL::StructType handle;
-    handle.memberTypes.push_back(typeMap.FindTypeOrAdd(Backend::IL::PointerType{
-        .pointee = i8,
-        .addressSpace = Backend::IL::AddressSpace::Function
-    }));
-
-    // Standard return
-    Backend::IL::StructType ret4;
-    ret4.memberTypes.push_back(i32);
-    ret4.memberTypes.push_back(i32);
-    ret4.memberTypes.push_back(i32);
-    ret4.memberTypes.push_back(i32);
-
-    // Export as special
-    table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(ret4), "dx.types.Dimensions");
-
-    // Function signature
-    Backend::IL::FunctionType funcTy;
-    funcTy.returnType = typeMap.FindTypeOrAdd(ret4);
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(typeMap.FindTypeOrAdd(handle));
-    funcTy.parameterTypes.push_back(i32);
-    const Backend::IL::FunctionType *fnType = typeMap.FindTypeOrAdd(funcTy);
-
-    /*
-     * LLVM Specification
-     *   [FUNCTION, type, callingconv, isproto,
-     *    linkage, paramattr, alignment, section, visibility, gc, prologuedata,
-     *     dllstorageclass, comdat, prefixdata, personalityfn, preemptionspecifier]
-     */
-
-    // Insert after previous functions
-    const LLVMBlockElement* insertionPoint = global->FindPlacementReverse(LLVMBlockElementType::Record, LLVMModuleRecord::Function) + 1;
-
-    // Module scope function declaration
-    LLVMRecord record(LLVMModuleRecord::Function);
-    record.SetUser(true, ~0u, program.GetIdentifierMap().AllocID());
-    record.opCount = 15;
-    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
-    record.ops[0] = table.type.typeMap.GetType(fnType);
-    record.ops[1] = static_cast<uint32_t>(LLVMCallingConvention::C);
-    record.ops[2] = 1;
-    record.ops[3] = static_cast<uint64_t>(LLVMLinkage::ExternalLinkage);
-
-    LLVMParameterGroupValue attributes[] = { LLVMParameterGroupValue::NoUnwind, LLVMParameterGroupValue::ReadOnly };
-    record.ops[4] = table.functionAttribute.FindOrCompileAttributeList(2, attributes);
-
-    record.ops[5] = 0;
-    record.ops[6] = 0;
-    record.ops[7] = 0;
-    record.ops[8] = 0;
-    record.ops[9] = 0;
-    record.ops[10] = 0;
-    record.ops[11] = 0;
-    record.ops[12] = 0;
-    record.ops[13] = 0;
-    record.ops[14] = 0;
-
-    global->InsertRecord(insertionPoint, record);
-
-    // Symbol tab for linking
-    LLVMBlock *symTab = global->GetBlock(LLVMReservedBlock::ValueSymTab);
-
-    // Symbol entry
-    LLVMRecord syRecord(LLVMSymTabRecord::Entry);
-    syRecord.SetUser(false, ~0u, ~0u);
-    syRecord.opCount = 1 + std::strlen(symbolName);
-
-    syRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(syRecord.opCount);
-    syRecord.ops[0] = DXILIDRemapper::EncodeUserOperand(record.result);
-
-    // Copy name
-    for (uint32_t i = 0; i < syRecord.opCount - 1; i++) {
-        syRecord.ops[1 + i] = symbolName[i];
-    }
-
-    // Emit symbol
-    symTab->AddRecord(syRecord);
-
-    // Cache intrinsic
-    intrinsics.resourceSize = functions.Size();
-
-    // Create function
-    DXILFunctionDeclaration &function = functions.Add();
-    function.id = DXILIDRemapper::EncodeUserOperand(record.result);
-    function.type = fnType;
-    function.linkage = LLVMLinkage::CommonLinkage;
-    return &function;
-}
-
-const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetBufferStoreI32Intrinsic() {
-    if (intrinsics.bufferStoreI32 != IL::InvalidID) {
-        return &functions[intrinsics.bufferStoreI32];
-    }
-
-    /*
-     * ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
-     * declare void @dx.op.bufferStore.i32(
-     *     i32,                  ; opcode
-     *     %dx.types.Handle,     ; resource handle
-     *     i32,                  ; coordinate c0
-     *     i32,                  ; coordinate c1
-     *     i32,                  ; value v0
-     *     i32,                  ; value v1
-     *     i32,                  ; value v2
-     *     i32,                  ; value v3
-     *     i8)                   ; write mask
-     */
-
-    // RST symbol name
-    const char *symbolName = "dx.op.bufferStore.i32";
-
-    // Search existing declarations
-    for (const DXILFunctionDeclaration &decl: functions) {
-        if (table.symbol.GetValueString(decl.anchor) == symbolName) {
-            return &decl;
-        }
-    }
-
-    // Root block
-    LLVMBlock *global = &table.scan.GetRoot();
-
-    // Get type map
-    Backend::IL::TypeMap &typeMap = program.GetTypeMap();
-
-    // Integral types
-    const Backend::IL::Type *i8 = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 8, .signedness = true});
-    const Backend::IL::Type *i32 = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true});
-
-    // Opaque handle type
-    Backend::IL::StructType handle;
-    handle.memberTypes.push_back(typeMap.FindTypeOrAdd(Backend::IL::PointerType{
-        .pointee = i8,
-        .addressSpace = Backend::IL::AddressSpace::Function
-    }));
-
-    // Function signature
-    Backend::IL::FunctionType funcTy;
-    funcTy.returnType = typeMap.FindTypeOrAdd(Backend::IL::VoidType{});
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(typeMap.FindTypeOrAdd(handle));
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(i8);
-    const Backend::IL::FunctionType *fnType = typeMap.FindTypeOrAdd(funcTy);
-
-    /*
-     * LLVM Specification
-     *   [FUNCTION, type, callingconv, isproto,
-     *    linkage, paramattr, alignment, section, visibility, gc, prologuedata,
-     *     dllstorageclass, comdat, prefixdata, personalityfn, preemptionspecifier]
-     */
-
-    // Insert after previous functions
-    const LLVMBlockElement* insertionPoint = global->FindPlacementReverse(LLVMBlockElementType::Record, LLVMModuleRecord::Function) + 1;
-
-    // Module scope function declaration
-    LLVMRecord record(LLVMModuleRecord::Function);
-    record.SetUser(true, ~0u, program.GetIdentifierMap().AllocID());
-    record.opCount = 15;
-    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
-    record.ops[0] = table.type.typeMap.GetType(fnType);
-    record.ops[1] = static_cast<uint32_t>(LLVMCallingConvention::C);
-    record.ops[2] = 1;
-    record.ops[3] = static_cast<uint64_t>(LLVMLinkage::ExternalLinkage);
-
-    LLVMParameterGroupValue attributes[] = { LLVMParameterGroupValue::NoUnwind };
-    record.ops[4] = table.functionAttribute.FindOrCompileAttributeList(1, attributes);
-
-    record.ops[5] = 0;
-    record.ops[6] = 0;
-    record.ops[7] = 0;
-    record.ops[8] = 0;
-    record.ops[9] = 0;
-    record.ops[10] = 0;
-    record.ops[11] = 0;
-    record.ops[12] = 0;
-    record.ops[13] = 0;
-    record.ops[14] = 0;
-
-    global->InsertRecord(insertionPoint, record);
-
-    // Symbol tab for linking
-    LLVMBlock *symTab = global->GetBlock(LLVMReservedBlock::ValueSymTab);
-
-    // Symbol entry
-    LLVMRecord syRecord(LLVMSymTabRecord::Entry);
-    syRecord.SetUser(false, ~0u, ~0u);
-    syRecord.opCount = 1 + std::strlen(symbolName);
-
-    syRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(syRecord.opCount);
-    syRecord.ops[0] = DXILIDRemapper::EncodeUserOperand(record.result);
-
-    // Copy name
-    for (uint32_t i = 0; i < syRecord.opCount - 1; i++) {
-        syRecord.ops[1 + i] = symbolName[i];
-    }
-
-    // Emit symbol
-    symTab->AddRecord(syRecord);
-
-    // Cache intrinsic
-    intrinsics.bufferStoreI32 = functions.Size();
-
-    // Create function
-    DXILFunctionDeclaration &function = functions.Add();
-    function.id = DXILIDRemapper::EncodeUserOperand(record.result);
-    function.type = fnType;
-    function.linkage = LLVMLinkage::CommonLinkage;
-    return &function;
-}
-
-const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetCreateHandleIntrinsic() {
-    if (intrinsics.createHandle != IL::InvalidID) {
-        return &functions[intrinsics.createHandle];
-    }
-
-    /*
-     * DXIL Specification
-     *   declare %dx.types.Handle @dx.op.createHandle(
-     *       i32,                  ; opcode
-     *       i8,                   ; resource class: SRV=0, UAV=1, CBV=2, Sampler=3
-     *       i32,                  ; resource range ID (constant)
-     *       i32,                  ; index into the range
-     *       i1)                   ; non-uniform resource index: false or true
-     */
-
-    // RST symbol name
-    const char *symbolName = "dx.op.createHandle";
-
-    // Search existing declarations
-    for (const DXILFunctionDeclaration &decl: functions) {
-        if (table.symbol.GetValueString(decl.anchor) == symbolName) {
-            return &decl;
-        }
-    }
-
-    // Root block
-    LLVMBlock *global = &table.scan.GetRoot();
-
-    // Get type map
-    Backend::IL::TypeMap &typeMap = program.GetTypeMap();
-
-    // Integral types
-    const Backend::IL::Type *_bool = typeMap.FindTypeOrAdd(Backend::IL::BoolType{});
-    const Backend::IL::Type *i8 = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 8, .signedness = true});
-    const Backend::IL::Type *i32 = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true});
-
-    // Opaque handle type
-    Backend::IL::StructType handle;
-    handle.memberTypes.push_back(typeMap.FindTypeOrAdd(Backend::IL::PointerType{
-        .pointee = i8,
-        .addressSpace = Backend::IL::AddressSpace::Function
-    }));
-
-    // Function signature
-    Backend::IL::FunctionType funcTy;
-    funcTy.returnType = typeMap.FindTypeOrAdd(handle);
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(i8);
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(i32);
-    funcTy.parameterTypes.push_back(_bool);
-    const Backend::IL::FunctionType *fnType = typeMap.FindTypeOrAdd(funcTy);
-
-    /*
-     * LLVM Specification
-     *   [FUNCTION, type, callingconv, isproto,
-     *    linkage, paramattr, alignment, section, visibility, gc, prologuedata,
-     *     dllstorageclass, comdat, prefixdata, personalityfn, preemptionspecifier]
-     */
-
-    // Insert after previous functions
-    const LLVMBlockElement* insertionPoint = global->FindPlacementReverse(LLVMBlockElementType::Record, LLVMModuleRecord::Function) + 1;
-
-    // Module scope function declaration
-    LLVMRecord record(LLVMModuleRecord::Function);
-    record.SetUser(true, ~0u, program.GetIdentifierMap().AllocID());
-    record.opCount = 15;
-    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
-    record.ops[0] = table.type.typeMap.GetType(fnType);
-    record.ops[1] = static_cast<uint32_t>(LLVMCallingConvention::C);
-    record.ops[2] = 1;
-    record.ops[3] = static_cast<uint64_t>(LLVMLinkage::ExternalLinkage);
-
-    LLVMParameterGroupValue attributes[] = { LLVMParameterGroupValue::NoUnwind };
-    record.ops[4] = table.functionAttribute.FindOrCompileAttributeList(1, attributes);
-
-    record.ops[5] = 0;
-    record.ops[6] = 0;
-    record.ops[7] = 0;
-    record.ops[8] = 0;
-    record.ops[9] = 0;
-    record.ops[10] = 0;
-    record.ops[11] = 0;
-    record.ops[12] = 0;
-    record.ops[13] = 0;
-    record.ops[14] = 0;
-
-    global->InsertRecord(insertionPoint, record);
-
-    // Symbol tab for linking
-    LLVMBlock *symTab = global->GetBlock(LLVMReservedBlock::ValueSymTab);
-
-    // Symbol entry
-    LLVMRecord syRecord(LLVMSymTabRecord::Entry);
-    syRecord.SetUser(false, ~0u, ~0u);
-    syRecord.opCount = 1 + std::strlen(symbolName);
-
-    syRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(syRecord.opCount);
-    syRecord.ops[0] = DXILIDRemapper::EncodeUserOperand(record.result);
-
-    // Copy name
-    for (uint32_t i = 0; i < syRecord.opCount - 1; i++) {
-        syRecord.ops[1 + i] = symbolName[i];
-    }
-
-    // Emit symbol
-    symTab->AddRecord(syRecord);
-
-    // Cache intrinsic
-    intrinsics.createHandle = functions.Size();
-
-    // Create function
-    DXILFunctionDeclaration &function = functions.Add();
-    function.id = DXILIDRemapper::EncodeUserOperand(record.result);
-    function.type = fnType;
-    function.linkage = LLVMLinkage::CommonLinkage;
-    return &function;
-}
-
 LLVMRecord DXILPhysicalBlockFunction::CompileIntrinsicCall(IL::ID result, const DXILFunctionDeclaration *decl, uint32_t opCount, const uint64_t *ops) {
     LLVMRecord record(LLVMFunctionRecord::InstCall2);
     record.SetUser(result != IL::InvalidID, ~0u, result);
@@ -2340,7 +1973,7 @@ DXILPhysicalBlockFunction::ExportHandleInfo DXILPhysicalBlockFunction::CreateExp
     info.streamHandle = program.GetIdentifierMap().AllocID();
 
     // Get intrinsic
-    const DXILFunctionDeclaration *intrinsic = GetCreateHandleIntrinsic();
+    const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCreateHandle);
 
     /*
      * DXIL Specification
@@ -2391,4 +2024,18 @@ DXILPhysicalBlockFunction::ExportHandleInfo DXILPhysicalBlockFunction::CreateExp
     block->AddRecord(CompileIntrinsicCall(info.streamHandle, intrinsic, 5, ops));
 
     return info;
+}
+
+const DXILFunctionDeclaration *DXILPhysicalBlockFunction::FindDeclaration(const std::string_view &view) {
+    for (const DXILFunctionDeclaration *decl: functions) {
+        if (table.symbol.GetValueString(decl->anchor) == view) {
+            return decl;
+        }
+    }
+
+    return nullptr;
+}
+
+DXILFunctionDeclaration *DXILPhysicalBlockFunction::AddDeclaration(const DXILFunctionDeclaration &declaration) {
+    return functions.Add(new (allocators) DXILFunctionDeclaration(declaration));
 }

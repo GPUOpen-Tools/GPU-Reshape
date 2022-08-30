@@ -90,9 +90,9 @@ public:
     /// Compile a named type
     /// \param type given type, must be namable
     /// \param name given name
-    void CompileNamedType(const Backend::IL::Type* type, const char* name) {
+    const Backend::IL::Type* CompileNamedType(const Backend::IL::Type* type, const char* name) {
         if (HasType(type)) {
-            return;
+            return type;
         }
 
         // Only certain named types
@@ -104,6 +104,9 @@ public:
                 CompileType(static_cast<const Backend::IL::StructType*>(type), name);
                 break;
         }
+
+        // OK
+        return type;
     }
 
     /// Add a type mapping from IL to DXIL

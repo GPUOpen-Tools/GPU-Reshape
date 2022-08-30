@@ -13,6 +13,7 @@ DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL:
     string(allocators, program, *this),
     symbol(allocators, program, *this),
     metadata(allocators, program, *this),
+    intrinsics(allocators, program, *this),
     recordAllocator(allocators) {
 
 }
@@ -142,6 +143,9 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
     functionAttribute.SetDeclarationBlock(&root);
     type.typeMap.SetDeclarationBlock(root.GetBlock(LLVMReservedBlock::Type));
     global.constantMap.SetDeclarationBlock(root.GetBlock(LLVMReservedBlock::Constants));
+
+    // Compile utilities
+    intrinsics.Compile();
 
     // Insert all SE metadata
     metadata.CompileShaderExportResources();

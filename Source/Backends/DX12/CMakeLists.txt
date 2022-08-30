@@ -266,6 +266,7 @@ add_library(
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockSymbol.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockType.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockGlobal.cpp
+    Layer/Source/Compiler/DXIL/Utils/DXILUtilIntrinsics.cpp
     Layer/Source/Compiler/DXIL/LLVM/LLVMPrettyPrint.cpp
     Layer/Source/Compiler/DXIL/DXILSigner.cpp
     Layer/Source/Controllers/InstrumentationController.cpp

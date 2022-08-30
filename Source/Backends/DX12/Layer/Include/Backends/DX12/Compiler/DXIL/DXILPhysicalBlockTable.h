@@ -9,6 +9,7 @@
 #include "Blocks/DXILPhysicalBlockMetadata.h"
 #include "Blocks/DXILPhysicalBlockSymbol.h"
 #include "Blocks/DXILPhysicalBlockFunctionAttribute.h"
+#include "Utils/DXILUtilIntrinsics.h"
 #include "DXILIDMap.h"
 #include "DXILIDRemapper.h"
 #include "DXILBindingInfo.h"
@@ -56,6 +57,9 @@ struct DXILPhysicalBlockTable {
     DXILPhysicalBlockString string;
     DXILPhysicalBlockSymbol symbol;
     DXILPhysicalBlockMetadata metadata;
+
+    /// Utilities
+    DXILUtilIntrinsics intrinsics;
 
     /// Shared binding info
     DXILBindingInfo bindingInfo;

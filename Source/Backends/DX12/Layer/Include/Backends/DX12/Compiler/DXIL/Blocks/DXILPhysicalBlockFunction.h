@@ -9,6 +9,9 @@
 // Common
 #include <Common/Containers/TrivialStackVector.h>
 
+// Std
+#include <string_view>
+
 /// Function block
 struct DXILPhysicalBlockFunction : public DXILPhysicalBlockSection {
     using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
@@ -65,6 +68,17 @@ public:
     /// \param record
     void RemapRecord(struct LLVMRecord& record);
 
+public:
+    /// Find a function declaration
+    /// \param view symbol name
+    /// \return nullptr if not found
+    const DXILFunctionDeclaration* FindDeclaration(const std::string_view& view);
+
+    /// Add a new function declaration
+    /// \param declaration declaration template
+    /// \return declaration handle
+    DXILFunctionDeclaration* AddDeclaration(const DXILFunctionDeclaration& declaration);
+
 private:
     /// Handle information
     struct ExportHandleInfo {
@@ -76,26 +90,6 @@ private:
     /// \param block appended block
     /// \return user id
     ExportHandleInfo CreateExportHandle(struct LLVMBlock* block);
-
-private:
-    /// Get the resource size intrinsic
-    /// \return shared declaration
-    const DXILFunctionDeclaration* GetResourceSizeIntrinsic();
-
-    /// Get the bufferStore.f32 intrinsic
-    /// \return shared declaration
-    const DXILFunctionDeclaration* GetBufferStoreI32Intrinsic();
-
-    /// Get the createHandle intrinsic
-    /// \return shared declaration
-    const DXILFunctionDeclaration* GetCreateHandleIntrinsic();
-
-    /// Cached intrinsics
-    struct Intrinsics {
-        uint32_t resourceSize = ~0u;
-        uint32_t bufferStoreI32 = ~0u;
-        uint32_t createHandle = ~0u;
-    } intrinsics;
 
 private:
     /// Does the record have a result?
@@ -115,7 +109,7 @@ private:
     uint32_t stitchFunctionIndex{0};
 
     /// All function declarations
-    TrivialStackVector<DXILFunctionDeclaration, 32> functions;
+    TrivialStackVector<DXILFunctionDeclaration*, 32> functions;
 
     /// All internally linked declaration indices
     TrivialStackVector<uint32_t, 32> internalLinkedFunctions;
