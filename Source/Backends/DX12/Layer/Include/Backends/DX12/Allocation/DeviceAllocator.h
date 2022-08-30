@@ -55,5 +55,9 @@ public:
     void Unmap(const Allocation& allocation);
 
 private:
+    /// Underlying allocator
     D3D12MA::Allocator* allocator{nullptr};
+
+    /// Special host pool
+    D3D12MA::Pool* wcHostPool{nullptr};
 };

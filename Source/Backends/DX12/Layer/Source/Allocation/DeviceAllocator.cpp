@@ -7,14 +7,30 @@ DeviceAllocator::~DeviceAllocator() {
 }
 
 bool DeviceAllocator::Install(ID3D12Device* device, IDXGIAdapter* adapter) {
+    // Attempt to create allocator
     D3D12MA::ALLOCATOR_DESC desc{};
     desc.pDevice = device;
     desc.pAdapter = adapter;
     desc.Flags |= D3D12MA::ALLOCATOR_FLAG_DEFAULT_POOLS_NOT_ZEROED;
+    if (FAILED(D3D12MA::CreateAllocator(&desc, &allocator))) {
+        return false;
+    }
 
-    // Attempt to create
-    HRESULT hr = D3D12MA::CreateAllocator(&desc, &allocator);
-    return SUCCEEDED(hr);
+    // Attempt to create special host pool
+    D3D12MA::POOL_DESC poolDesc{};
+    poolDesc.Flags = D3D12MA::POOL_FLAG_NONE;
+    poolDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
+    poolDesc.HeapProperties.CreationNodeMask = 1u;
+    poolDesc.HeapProperties.VisibleNodeMask = 1u;
+    poolDesc.HeapProperties.Type = D3D12_HEAP_TYPE_CUSTOM;
+    poolDesc.HeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE;
+    poolDesc.HeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+    if (FAILED(allocator->CreatePool(&poolDesc, &wcHostPool))) {
+        return false;
+    }
+
+    // OK
+    return true;
 }
 
 Allocation DeviceAllocator::Allocate(const D3D12_RESOURCE_DESC& desc, AllocationResidency residency) {
@@ -34,10 +50,11 @@ Allocation DeviceAllocator::Allocate(const D3D12_RESOURCE_DESC& desc, Allocation
             state = D3D12_RESOURCE_STATE_COMMON;
             break;
         case AllocationResidency::Host:
-            allocDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+            allocDesc.HeapType = D3D12_HEAP_TYPE_CUSTOM;
             state = D3D12_RESOURCE_STATE_COPY_DEST;
 
-            filteredDesc.Flags &= ~D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            // Set to special write-combine pool
+            allocDesc.CustomPool = wcHostPool;
             break;
     }
 

@@ -153,7 +153,7 @@ ShaderExportStreamInfo ShaderExportStreamAllocator::AllocateStreamInfo(const Sha
     bufferDesc.SampleDesc.Count = 1;
 
     // Create allocation
-    info.allocation = deviceAllocator->AllocateMirror(bufferDesc);
+    info.allocation = deviceAllocator->AllocateMirror(bufferDesc, AllocationResidency::Host);
 
     // Setup view
     info.view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
