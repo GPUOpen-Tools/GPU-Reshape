@@ -9,7 +9,8 @@ ExternalProject_Add(
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/External
-        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+        -DCMAKE_RELEASE_POSTFIX=r
         -G ${CMAKE_GENERATOR}
 )
