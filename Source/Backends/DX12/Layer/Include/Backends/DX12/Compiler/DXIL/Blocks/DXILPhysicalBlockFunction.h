@@ -48,6 +48,13 @@ public:
     template<typename F>
     void CompileSVOX(IL::ID lhs, IL::ID rhs, F&& functor);
 
+    /// Iterate a scalar / vector-of-x operation
+    /// \param lhs lhs operand
+    /// \param rhs rhs operand
+    /// \param functor functor(const Backend::IL::Type* type, uint32_t value, uint32_t index, uint32_t max)
+    template<typename F>
+    void IterateSVOX(LLVMBlock* block, IL::ID value, F&& functor);
+
     /// Compile a standard intrinsic call
     /// \param decl given declaration
     /// \param opCount argument op count

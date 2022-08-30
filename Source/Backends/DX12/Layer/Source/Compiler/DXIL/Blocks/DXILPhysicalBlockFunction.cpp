@@ -1094,6 +1094,56 @@ void DXILPhysicalBlockFunction::CompileSVOX(IL::ID lhs, IL::ID rhs, F &&functor)
     }
 }
 
+template<typename F>
+void DXILPhysicalBlockFunction::IterateSVOX(LLVMBlock* block, IL::ID value, F&& functor) {
+    DXILIDUserType idType = table.idRemapper.GetUserMappingType(value);
+
+    // Get type
+    const auto* type = program.GetTypeMap().GetType(value);
+
+    // Pass through if singular
+    if (idType == DXILIDUserType::Singular) {
+        functor(type, value, 0u, 1u);
+        return;
+    }
+
+    // Handle compound
+    switch (idType) {
+        default:
+        ASSERT(false, "Invalid id type");
+            break;
+        case DXILIDUserType::VectorOnStruct: {
+            const auto* _struct = type->As<Backend::IL::StructType>();
+
+            for (uint32_t i = 0; i < _struct->memberTypes.size(); i++) {
+                IL::ID extractedId = program.GetIdentifierMap().AllocID();
+
+                // Extract current value
+                LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+                recordExtract.SetUser(true, ~0u, extractedId);
+                recordExtract.opCount = 2;
+                recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+                recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(value);
+                recordExtract.ops[1] = i;
+                block->AddRecord(recordExtract);
+
+                // Invoke on extracted value
+                functor(_struct->memberTypes[i], extractedId, i, _struct->memberTypes.size());
+            }
+            break;
+        }
+        case DXILIDUserType::VectorOnSequential: {
+            const auto* vector = type->As<Backend::IL::VectorType>();
+
+            // Invoke on sequential value
+            for (uint32_t i = 0; i < vector->dimension; i++) {
+                functor(vector->containedType, value + i, i, vector->dimension);
+            }
+            break;
+        }
+    }
+}
+
 void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
     // Remap all blocks by dominance
     for (IL::Function* fn : program.GetFunctionList()) {
@@ -1659,23 +1709,104 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     break;
                 }
 
-                case IL::OpCode::Any: {
-                    // Dummy
-                    table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
-                        Backend::IL::BoolConstant{.value = true}
-                    )->id));
-
-                    break;
-                }
-
+                case IL::OpCode::Any:
                 case IL::OpCode::All: {
-                    // Dummy
-                    table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
-                        Backend::IL::BoolConstant{.value = true}
-                    )->id));
+                    // Get value
+                    IL::ID value;
+                    if (instr->opCode == IL::OpCode::Any) {
+                        value = instr->As<IL::AnyInstruction>()->value;
+                    } else {
+                        value = instr->As<IL::AllInstruction>()->value;
+                    }
 
+                    // Handle as SVOX
+                    IterateSVOX(block, value, [&](const Backend::IL::Type* type, IL::ID id, uint32_t index, IL::ID max) {
+                        IL::ID cmpId;
+
+                        // Set comparison operation
+                        switch (type->kind) {
+                            default: {
+                                ASSERT(false, "Invalid type");
+                                break;
+                            }
+                            case Backend::IL::TypeKind::Bool: {
+                                // Already in perfect form
+                                cmpId = id;
+                                break;
+                            }
+                            case Backend::IL::TypeKind::Int:
+                            case Backend::IL::TypeKind::FP: {
+                                // Allocate new id
+                                cmpId = program.GetIdentifierMap().AllocID();
+
+                                // Compare current component with zero
+                                LLVMRecord cmpRecord{};
+                                cmpRecord.SetUser(true, ~0u, cmpId);
+                                cmpRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCmp);
+                                cmpRecord.opCount = 3;
+                                cmpRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                cmpRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(id);
+
+                                if (type->kind == Backend::IL::TypeKind::FP) {
+                                    // Compare against 0.0f
+                                    cmpRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                        type->As<Backend::IL::FPType>(),
+                                        Backend::IL::FPConstant{.value = 0.0f}
+                                    )->id);
+
+                                    // Float comparison
+                                    cmpRecord.ops[2] = static_cast<uint64_t>(LLVMCmpOp::FloatUnorderedNotEqual);
+                                } else {
+                                    // Compare against 0
+                                    cmpRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                        type->As<Backend::IL::IntType>(),
+                                        Backend::IL::IntConstant{.value = 0}
+                                    )->id);
+
+                                    // Integer comparison
+                                    cmpRecord.ops[2] = static_cast<uint64_t>(LLVMCmpOp::IntNotEqual);
+                                }
+
+                                // Add op
+                                block->AddRecord(cmpRecord);
+                                break;
+                            }
+                        }
+
+                        // First component?
+                        if (!index) {
+                            value = cmpId;
+                            return;
+                        }
+
+                        // Allocate intermediate id
+                        IL::ID pushValue = program.GetIdentifierMap().AllocID();
+
+                        // BitAnd previous component, into temporary value
+                        LLVMRecord andOp{};
+                        andOp.SetUser(true, ~0u, pushValue);
+                        andOp.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+                        andOp.opCount = 3;
+                        andOp.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                        andOp.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                        andOp.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(cmpId);
+
+                        // Set comparison mode
+                        if (instr->opCode == IL::OpCode::Any) {
+                            andOp.ops[2] = static_cast<uint64_t>(LLVMBinOp::Or);
+                        } else {
+                            andOp.ops[2] = static_cast<uint64_t>(LLVMBinOp::And);
+                        }
+
+                        // Add record
+                        block->AddRecord(andOp);
+
+                        // Set next
+                        value = pushValue;
+                    });
+
+                    // Set final redirect
+                    table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(value));
                     break;
                 }
 
