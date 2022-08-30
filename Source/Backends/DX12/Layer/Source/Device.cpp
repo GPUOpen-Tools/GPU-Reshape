@@ -23,6 +23,9 @@
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
 
+// Bridge
+#include <Bridge/IBridge.h>
+
 // Common
 #include <Common/IComponentTemplate.h>
 
@@ -111,6 +114,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
             // Reparent
             state->registry.SetParent(state->environment.GetRegistry());
         }
+
+        // Get common components
+        state->bridge = state->registry.Get<IBridge>();
 
         // Install the shader export host
         state->exportHost = state->registry.AddNew<ShaderExportHost>();
@@ -206,4 +212,9 @@ bool GlobalDeviceDetour::Install() {
 void GlobalDeviceDetour::Uninstall() {
     // Detach from detour
     DetourDetach(&reinterpret_cast<void*&>(D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
+}
+
+void BridgeDeviceSyncPoint(DeviceState *device) {
+    // Commit bridge
+    device->bridge->Commit();
 }

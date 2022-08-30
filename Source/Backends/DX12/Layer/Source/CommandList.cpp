@@ -273,6 +273,11 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     // Process any remaining work on the queue
     device->exportStreamer->Process(table.state);
 
+    // Special case, invoke a device sync point during empty submissions
+    if (count == 0) {
+        BridgeDeviceSyncPoint(device);
+    }
+
     // Allocate submission segment
     ShaderExportStreamSegment* segment = device->exportStreamer->AllocateSegment();
 
