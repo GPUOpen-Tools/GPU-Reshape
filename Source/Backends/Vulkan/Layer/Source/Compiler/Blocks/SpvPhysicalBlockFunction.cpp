@@ -1006,6 +1006,24 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
                 }
                 break;
             }
+            case IL::OpCode::BitCast: {
+                auto *bitCast = instr.As<IL::BitCastInstruction>();
+
+                // Get value type
+                const Backend::IL::Type* valueType = ilTypeMap.GetType(bitCast->value);
+
+                // Any need to cast at all?
+                if (valueType == resultType) {
+                    // Same, just set the value directly
+                    idMap.Set(bitCast->result, bitCast->value);
+                } else {
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpBitcast, 4, bitCast->source);
+                    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                    spv[2] = bitCast->result;
+                    spv[3] = bitCast->value;
+                }
+                break;
+            }
             case IL::OpCode::BitOr: {
                 auto *bitOr = instr.As<IL::BitOrInstruction>();
 

@@ -1593,10 +1593,39 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     block->AddRecord(record);
                     break;
                 }
+                case IL::OpCode::BitCast: {
+                    auto _instr = instr->As<IL::BitCastInstruction>();
+
+                    // Get types
+                    const Backend::IL::Type* valueType = typeMap.GetType(_instr->value);
+                    const Backend::IL::Type* resultType =typeMap.GetType(_instr->result);
+
+                    // LLVM IR does not differentiate between signed and unsigned, and is instead part of the instructions themselves (Fx. SDiv, UDiv)
+                    // So, the resulting type will dictate future operations, value redirection is enough.
+                    const bool bIsIntegerCast = valueType->Is<Backend::IL::IntType>() && resultType->Is<Backend::IL::IntType>();
+
+                    // Any need to cast at all?
+                    if (valueType == resultType || bIsIntegerCast) {
+                        // Same, just redirect
+                        table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(_instr->value));
+                    }
+
+                    // Other casts
+                    else if (valueType != resultType) {
+                        // Prepare record
+                        record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCast);
+                        record.opCount = 3;
+                        record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                        record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                        record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(record.ops[0])));
+                        record.ops[2] = static_cast<uint64_t>(LLVMCastOp::BitCast);
+                        block->AddRecord(record);
+                    }
+                    break;
+                }
                 case IL::OpCode::Trunc:
                 case IL::OpCode::FloatToInt:
-                case IL::OpCode::IntToFloat:
-                case IL::OpCode::BitCast: {
+                case IL::OpCode::IntToFloat: {
                     // Prepare record
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCast);
                     record.opCount = 3;
@@ -1624,12 +1653,6 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             auto _instr = instr->As<IL::IntToFloatInstruction>();
                             record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
                             opCode = LLVMCastOp::SIToFP;
-                            break;
-                        }
-                        case IL::OpCode::BitCast: {
-                            auto _instr = instr->As<IL::BitCastInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                            opCode = LLVMCastOp::BitCast;
                             break;
                         }
                     }

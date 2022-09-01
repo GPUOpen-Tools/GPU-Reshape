@@ -4,6 +4,7 @@
 #include <Backend/IShaderExportHost.h>
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
+#include <Backend/IL/TypeCommon.h>
 
 // Generated schema
 #include <Schemas/Features/ResourceBounds.h>
@@ -44,6 +45,10 @@ void ResourceBoundsFeature::CollectMessages(IMessageStorage *storage) {
 }
 
 void ResourceBoundsFeature::Inject(IL::Program &program) {
+    // Unsigned target type
+    const Backend::IL::Type* uint32Type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false});
+
+    // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
         bool isTexture;
         bool isWrite;
@@ -122,22 +127,22 @@ void ResourceBoundsFeature::Inject(IL::Program &program) {
                 break;
             case IL::OpCode::StoreBuffer: {
                 auto* storeBuffer = instr->As<IL::StoreBufferInstruction>();
-                cond = pre.Any(pre.GreaterThanEqual(storeBuffer->index, pre.ResourceSize(storeBuffer->buffer)));
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(storeBuffer->index, SplatToValue(program, uint32Type, storeBuffer->index)), pre.ResourceSize(storeBuffer->buffer)));
                 break;
             }
             case IL::OpCode::LoadBuffer: {
                 auto* loadBuffer = instr->As<IL::LoadBufferInstruction>();
-                cond = pre.Any(pre.GreaterThanEqual(loadBuffer->index, pre.ResourceSize(loadBuffer->buffer)));
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(loadBuffer->index, SplatToValue(program, uint32Type, loadBuffer->index)), pre.ResourceSize(loadBuffer->buffer)));
                 break;
             }
             case IL::OpCode::StoreTexture: {
                 auto* storeTexture = instr->As<IL::StoreTextureInstruction>();
-                cond = pre.Any(pre.GreaterThanEqual(storeTexture->index, pre.ResourceSize(storeTexture->texture)));
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(storeTexture->index, SplatToValue(program, uint32Type, storeTexture->index)), pre.ResourceSize(storeTexture->texture)));
                 break;
             }
             case IL::OpCode::LoadTexture: {
                 auto* loadTexture = instr->As<IL::LoadTextureInstruction>();
-                cond = pre.Any(pre.GreaterThanEqual(loadTexture->index, pre.ResourceSize(loadTexture->texture)));
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(loadTexture->index, SplatToValue(program, uint32Type, loadTexture->index)), pre.ResourceSize(loadTexture->texture)));
                 break;
             }
         }

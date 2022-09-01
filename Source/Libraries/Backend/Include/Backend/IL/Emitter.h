@@ -278,6 +278,21 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
+        InstructionRef <BitCastInstruction> BitCast(ID value, const Backend::IL::Type* type) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            BitCastInstruction instr{};
+            instr.opCode = OpCode::BitCast;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            return Op(instr, type);
+        }
+
+        /// Binary add two values
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
         InstructionRef <AddInstruction> Add(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
@@ -668,6 +683,16 @@ namespace IL {
             if (const Backend::IL::Type* type = Backend::IL::ResultOf(*program, &instruction)) {
                 program->GetTypeMap().SetType(instruction.result, type);
             }
+
+            // Perform the insertion
+            return OP::template Op<T>(basicBlock, insertionPoint, instruction);
+        }
+
+        /// Perform the operation
+        template<typename T>
+        InstructionRef <T> Op(T &instruction, const Backend::IL::Type* type) {
+            // Set type of the instruction
+            program->GetTypeMap().SetType(instruction.result, type);
 
             // Perform the insertion
             return OP::template Op<T>(basicBlock, insertionPoint, instruction);

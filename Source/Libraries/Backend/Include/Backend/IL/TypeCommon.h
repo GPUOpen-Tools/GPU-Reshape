@@ -20,4 +20,32 @@ namespace Backend::IL {
                 return type->As<BufferType>()->elementType;
         }
     }
+
+    inline const Type* Splat(Program& program, const Type* scalarType, uint8_t count) {
+        return program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+            .containedType = scalarType,
+            .dimension = count
+        });
+    }
+
+    inline const Type* SplatToValue(Program& program, const Type* scalarType, IL::ID value) {
+        const Type* valueType = program.GetTypeMap().GetType(value);
+        if (!valueType) {
+            ASSERT(false, "No type on splat value");
+            return nullptr;
+        }
+
+        // Splat to target type
+        switch (valueType->kind) {
+            default:
+                ASSERT(false, "Invalid splat target");
+                return nullptr;
+            case TypeKind::Bool:
+            case TypeKind::Int:
+            case TypeKind::FP:
+                return scalarType;
+            case TypeKind::Vector:
+                return Splat(program, scalarType, valueType->As<VectorType>()->dimension);
+        }
+    }
 }
