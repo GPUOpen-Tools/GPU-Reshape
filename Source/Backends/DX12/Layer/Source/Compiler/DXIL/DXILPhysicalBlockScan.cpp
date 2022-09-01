@@ -40,6 +40,10 @@ DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : all
 
 }
 
+void DXILPhysicalBlockScan::SetBlockFilter(uint64_t shlBitMask) {
+    shlBlockFilter = shlBitMask;
+}
+
 bool DXILPhysicalBlockScan::Scan(const void *byteCode, uint64_t byteLength) {
     auto bcHeader = static_cast<const DXILHeader *>(byteCode);
 
@@ -127,6 +131,13 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMB
     // Id zero indicates BLOCKINFO
     if (block->id == 0) {
         return ScanBlockInfo(stream, block, block->abbreviationSize);
+    }
+
+    // Part of filter?
+    if (shlBlockFilter != UINT64_MAX && !(shlBlockFilter & (1ull << block->id))) {
+        // Just skip the contents
+        stream.Skip(block->blockLength - sizeof(uint32_t));
+        return ScanResult::OK;
     }
 
     // Scan all abbreviations

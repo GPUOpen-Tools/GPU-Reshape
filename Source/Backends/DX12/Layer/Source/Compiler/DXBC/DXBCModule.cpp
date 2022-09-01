@@ -67,3 +67,7 @@ bool DXBCModule::Compile(const DXJob& job, DXStream& out) {
     // OK!
     return true;
 }
+
+IDXDebugModule *DXBCModule::GetDebug() {
+    return table.debugModule;
+}

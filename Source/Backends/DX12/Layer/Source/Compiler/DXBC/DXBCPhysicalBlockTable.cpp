@@ -2,6 +2,7 @@
 
 // DXIL Extension
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
+#include <Backends/DX12/Compiler/DXIL/DXILDebugModule.h>
 
 // Common
 #include <Common/Allocators.h>
@@ -24,14 +25,29 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     shader.Parse();
     pipelineStateValidation.Parse();
 
-    // DXIL?
-    if (DXBCPhysicalBlock *block = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
+    // Parse canonical program
+    if (DXBCPhysicalBlock *dxilBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
         dxilModule = new(Allocators{}) DXILModule(allocators, &program);
 
         // Attempt to parse the module
-        if (!dxilModule->Parse(block->ptr, block->length)) {
+        if (!dxilModule->Parse(dxilBlock->ptr, dxilBlock->length)) {
             return false;
         }
+    }
+
+    // The ILDB physical block contains the canonical program and debug information.
+    // Unfortunately basing the main program off the ILDB is more trouble than it's worth,
+    // as stripping the debug data after recompilation is quite troublesome.
+    if (DXBCPhysicalBlock *ildbBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::ILDB)) {
+        auto* dxilDebugModule = new(Allocators{}) DXILDebugModule(allocators);
+
+        // Attempt to parse the module
+        if (!dxilDebugModule->Parse(ildbBlock->ptr, ildbBlock->length)) {
+            return false;
+        }
+
+        // Set interface
+        debugModule = dxilDebugModule;
     }
 
     // OK
@@ -65,6 +81,9 @@ void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {
 
     // Copy blocks
     pipelineStateValidation.CopyTo(out.pipelineStateValidation);
+
+    // Keep the debug interface
+    out.debugModule = debugModule;
 
     // Copy submodule if present
     if (dxilModule) {

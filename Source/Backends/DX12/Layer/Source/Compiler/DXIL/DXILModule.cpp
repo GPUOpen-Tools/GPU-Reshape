@@ -49,3 +49,8 @@ bool DXILModule::Compile(const DXJob& job, DXStream& out) {
 void DXILModule::CopyTo(DXILModule *out) {
     table.CopyTo(out->table);
 }
+
+IDXDebugModule *DXILModule::GetDebug() {
+    // No debug data
+    return nullptr;
+}

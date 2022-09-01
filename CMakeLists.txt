@@ -13,7 +13,7 @@ option(ENABLE_UIX            "Enables UIX building (Experimental)" OFF)
 option(ENABLE_MIXED_COMPILER "Enables mixed compiler building, separates build folders" ON)
 
 # Developmental options
-option(ENABLE_DXIL_DUMP      "Enables DXIL dumping on shader builds" OFF)
+option(ENABLE_DXIL_DUMP      "Enables DXIL dumping on shader builds" ON)
 option(ENABLE_ASAN           "Enables ASAN" OFF)
 option(ENABLE_RELEASE_DEBUG  "Enables debug information in release" ON)
 

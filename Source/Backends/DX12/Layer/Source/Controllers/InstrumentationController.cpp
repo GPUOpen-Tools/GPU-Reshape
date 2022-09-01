@@ -4,6 +4,7 @@
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -313,7 +314,7 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Commit all sguid changes
     auto bridge = registry->Get<IBridge>();
-    // device->sguidHost->Commit(bridge.GetUnsafe());
+    device->sguidHost->Commit(bridge.GetUnsafe());
 
     // Set the enabled feature bit set
     // SetDeviceCommandFeatureSetAndCommit(table, batch->featureBitSet);

@@ -758,7 +758,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             case LLVMFunctionRecord::DebugLOC:
             case LLVMFunctionRecord::DebugLOCAgain:
             case LLVMFunctionRecord::DebugLOC2: {
-                // Nothing yet
+                // Handled in non-canonical ILDB path
                 break;
             }
         }
@@ -772,82 +772,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 }
 
 bool DXILPhysicalBlockFunction::HasResult(const struct LLVMRecord &record) {
-    switch (static_cast<LLVMFunctionRecord>(record.id)) {
-        default: {
-            ASSERT(false, "Unexpected LLVM function record");
-            return false;
-        }
-
-            /* Unsupported functions */
-        case LLVMFunctionRecord::InstInvoke:
-        case LLVMFunctionRecord::InstUnwind:
-        case LLVMFunctionRecord::InstFree:
-        case LLVMFunctionRecord::InstVaArg:
-        case LLVMFunctionRecord::InstIndirectBR:
-        case LLVMFunctionRecord::InstMalloc: {
-            ASSERT(false, "Unsupported instruction");
-            return false;
-        }
-
-        case LLVMFunctionRecord::DeclareBlocks:
-            return false;
-        case LLVMFunctionRecord::InstBinOp:
-            return true;
-        case LLVMFunctionRecord::InstCast:
-            return true;
-        case LLVMFunctionRecord::InstGEP:
-            return true;
-        case LLVMFunctionRecord::InstSelect:
-            return true;
-        case LLVMFunctionRecord::InstExtractELT:
-            return true;
-        case LLVMFunctionRecord::InstInsertELT:
-            return true;
-        case LLVMFunctionRecord::InstShuffleVec:
-            return true;
-        case LLVMFunctionRecord::InstCmp:
-            return true;
-        case LLVMFunctionRecord::InstRet:
-            return record.opCount > 0;
-        case LLVMFunctionRecord::InstBr:
-            return false;
-        case LLVMFunctionRecord::InstSwitch:
-            return false;
-        case LLVMFunctionRecord::InstUnreachable:
-            return false;
-        case LLVMFunctionRecord::InstPhi:
-            return true;
-        case LLVMFunctionRecord::InstAlloca:
-            return true;
-        case LLVMFunctionRecord::InstLoad:
-            return true;
-        case LLVMFunctionRecord::InstStore:
-        case LLVMFunctionRecord::InstStoreOld:
-        case LLVMFunctionRecord::InstStore2:
-            return false;
-        case LLVMFunctionRecord::InstCall:
-        case LLVMFunctionRecord::InstCall2:
-            // Handle in call
-            return false;
-        case LLVMFunctionRecord::InstGetResult:
-            return true;
-        case LLVMFunctionRecord::InstExtractVal:
-            return true;
-        case LLVMFunctionRecord::InstInsertVal:
-            return true;
-        case LLVMFunctionRecord::InstCmp2:
-            return true;
-        case LLVMFunctionRecord::InstVSelect:
-            return true;
-        case LLVMFunctionRecord::InstInBoundsGEP:
-            return true;
-        case LLVMFunctionRecord::DebugLOC:
-            return false;
-        case LLVMFunctionRecord::DebugLOCAgain:
-            return false;
-        case LLVMFunctionRecord::DebugLOC2:
-            return false;
-    }
+    return HasValueAllocation(record.As<LLVMFunctionRecord>(), record.opCount);
 }
 
 void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
@@ -903,9 +828,6 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration
 bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration) {
     LLVMRecordStringView view = table.symbol.GetValueString(called);
 
-    // Get op-code
-    uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
-
     // Check hash
     switch (view.GetHash()) {
         default: {
@@ -927,6 +849,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             if (view != "dx.op.createHandle") {
                 return false;
             }
+
+            // Get op-code
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
 
             // Resource class
             auto _class = static_cast<DXILShaderResourceClass>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value);
@@ -969,6 +894,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
                 return false;
             }
 
+            // Get op-code
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+
             uint64_t outputID = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
             uint64_t row = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
             uint64_t column = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
@@ -1002,6 +930,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             if (!view.StartsWith("dx.op.bufferLoad.")) {
                 return false;
             }
+
+            // Get op-code
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
 
             // Get operands, ignore offset for now
             uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
@@ -1039,6 +970,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             if (!view.StartsWith("dx.op.bufferStore.")) {
                 return false;
             }
+
+            // Get op-code
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
 
             // Get operands, ignore offset for now
             uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());

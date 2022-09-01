@@ -9,6 +9,7 @@
 struct DXJob;
 struct DXStream;
 struct DXILModule;
+struct IDXDebugModule;
 
 /// Complete physical block table
 struct DXBCPhysicalBlockTable {
@@ -42,6 +43,9 @@ struct DXBCPhysicalBlockTable {
 
     /// DXBC containers can host DXIL data
     DXILModule* dxilModule{nullptr};
+
+    /// Optional debug data
+    IDXDebugModule* debugModule{nullptr};
 
 private:
     Allocators allocators;

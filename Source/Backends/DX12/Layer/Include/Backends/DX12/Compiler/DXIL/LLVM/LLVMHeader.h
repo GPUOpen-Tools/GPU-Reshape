@@ -1,5 +1,9 @@
 #pragma once
 
+// Common
+#include <Common/Assert.h>
+
+// Std
 #include <cstdint>
 
 /*
@@ -457,5 +461,85 @@ inline bool IsBranchDependent(LLVMFunctionRecord record) {
         case LLVMFunctionRecord::InstPhi:
         case LLVMFunctionRecord::InstSwitch:
             return true;
+    }
+}
+
+/// Returns true if the record has a result value
+inline bool HasValueAllocation(LLVMFunctionRecord record, uint32_t opCount) {
+    switch (record) {
+        default: {
+            ASSERT(false, "Unexpected LLVM function record");
+            return false;
+        }
+
+            /* Unsupported functions */
+        case LLVMFunctionRecord::InstInvoke:
+        case LLVMFunctionRecord::InstUnwind:
+        case LLVMFunctionRecord::InstFree:
+        case LLVMFunctionRecord::InstVaArg:
+        case LLVMFunctionRecord::InstIndirectBR:
+        case LLVMFunctionRecord::InstMalloc: {
+            ASSERT(false, "Unsupported instruction");
+            return false;
+        }
+
+        case LLVMFunctionRecord::DeclareBlocks:
+            return false;
+        case LLVMFunctionRecord::InstBinOp:
+            return true;
+        case LLVMFunctionRecord::InstCast:
+            return true;
+        case LLVMFunctionRecord::InstGEP:
+            return true;
+        case LLVMFunctionRecord::InstSelect:
+            return true;
+        case LLVMFunctionRecord::InstExtractELT:
+            return true;
+        case LLVMFunctionRecord::InstInsertELT:
+            return true;
+        case LLVMFunctionRecord::InstShuffleVec:
+            return true;
+        case LLVMFunctionRecord::InstCmp:
+            return true;
+        case LLVMFunctionRecord::InstRet:
+            return opCount > 0;
+        case LLVMFunctionRecord::InstBr:
+            return false;
+        case LLVMFunctionRecord::InstSwitch:
+            return false;
+        case LLVMFunctionRecord::InstUnreachable:
+            return false;
+        case LLVMFunctionRecord::InstPhi:
+            return true;
+        case LLVMFunctionRecord::InstAlloca:
+            return true;
+        case LLVMFunctionRecord::InstLoad:
+            return true;
+        case LLVMFunctionRecord::InstStore:
+        case LLVMFunctionRecord::InstStoreOld:
+        case LLVMFunctionRecord::InstStore2:
+            return false;
+        case LLVMFunctionRecord::InstCall:
+        case LLVMFunctionRecord::InstCall2:
+            // Handle in call
+            return false;
+        case LLVMFunctionRecord::InstGetResult:
+            return true;
+        case LLVMFunctionRecord::InstExtractVal:
+            return true;
+        case LLVMFunctionRecord::InstInsertVal:
+            return true;
+        case LLVMFunctionRecord::InstCmp2:
+            return true;
+        case LLVMFunctionRecord::InstVSelect:
+            return true;
+        case LLVMFunctionRecord::InstInBoundsGEP:
+            return true;
+        case LLVMFunctionRecord::DebugLOC:
+            return false;
+        case LLVMFunctionRecord::DebugLOCAgain:
+            return false;
+        case LLVMFunctionRecord::DebugLOC2:
+            return false;
     }
 }

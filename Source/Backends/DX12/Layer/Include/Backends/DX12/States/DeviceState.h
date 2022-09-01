@@ -24,6 +24,7 @@ class InstrumentationController;
 class IBridge;
 class ShaderExportHost;
 class ShaderExportStreamer;
+class ShaderSGUIDHost;
 
 struct DeviceState {
     /// Owned object
@@ -46,6 +47,9 @@ struct DeviceState {
 
     /// Shared export streamer
     ComRef<ShaderExportStreamer> exportStreamer;
+
+    /// Shared SGUID host
+    ComRef<ShaderSGUIDHost> sguidHost{nullptr};
 
     /// Tracked objects
     TrackedObject<ShaderState> states_Shaders;

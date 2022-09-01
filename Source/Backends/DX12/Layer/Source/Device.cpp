@@ -16,6 +16,7 @@
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
+#include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 #include <Backends/DX12/Layer.h>
 
 // Backend
@@ -120,6 +121,10 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
         // Install the shader export host
         state->exportHost = state->registry.AddNew<ShaderExportHost>();
+
+        // Install the shader sguid host
+        state->sguidHost = state->registry.AddNew<ShaderSGUIDHost>(state);
+        ENSURE(state->sguidHost->Install(), "Failed to install shader sguid host");
 
         // Install all features
         ENSURE(PoolAndInstallFeatures(state), "Failed to install features");

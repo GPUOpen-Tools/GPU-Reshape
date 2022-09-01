@@ -27,6 +27,10 @@ struct DXILPhysicalBlockScan {
 public:
     DXILPhysicalBlockScan(const Allocators& allocators);
 
+    /// Set the block filter
+    /// \param shlBitMask
+    void SetBlockFilter(uint64_t shlBitMask);
+
     /// Scan the DXIL bytecode
     /// \param byteCode code start
     /// \param byteLength byte size of code
@@ -165,6 +169,9 @@ private:
 private:
     /// UID counter
     uint32_t uidCounter{0};
+
+    /// Current filter
+    uint64_t shlBlockFilter = UINT64_MAX;
 
     /// Cache for flat operand scanning
     std::vector<uint64_t> recordOperandCache;

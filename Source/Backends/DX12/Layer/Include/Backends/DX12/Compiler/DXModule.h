@@ -12,6 +12,7 @@
 // Forward declarations
 struct DXJob;
 struct DXStream;
+struct IDXDebugModule;
 namespace IL {
     struct Program;
 }
@@ -39,6 +40,10 @@ public:
     /// Get the program of this module
     /// \return program
     virtual IL::Program* GetProgram() = 0;
+
+    /// Get the debug information
+    /// \return debug interface
+    virtual IDXDebugModule* GetDebug() = 0;
 
     /// Get the guid
     /// \return

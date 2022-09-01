@@ -269,11 +269,13 @@ add_library(
     Layer/Source/Compiler/DXIL/Utils/DXILUtilIntrinsics.cpp
     Layer/Source/Compiler/DXIL/LLVM/LLVMPrettyPrint.cpp
     Layer/Source/Compiler/DXIL/DXILSigner.cpp
+    Layer/Source/Compiler/DXIL/DXILDebugModule.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Export/ExportHost.cpp
     Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
     Layer/Source/Export/ShaderExportStreamer.cpp
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
+    Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/IncrementalFence.cpp
 
