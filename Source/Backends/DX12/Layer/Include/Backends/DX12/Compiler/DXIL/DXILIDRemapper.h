@@ -46,6 +46,12 @@ struct DXILIDRemapper {
 
     }
 
+    /// Partial source to instrumented copy
+    /// \param out destination map
+    void CopyTo(DXILIDRemapper& out) {
+        out.userMappings = userMappings;
+    }
+
     /// Set the remap bound
     /// \param source source program bound
     /// \param user user modified program bound
@@ -71,6 +77,20 @@ struct DXILIDRemapper {
         uint32_t valueId = allocationIndex++;
         userMappings.at(id).index = valueId;
         return valueId;
+    }
+
+    /// Allocate a source user mapping, copied over to instrumented map during partial copies
+    /// \param id destination id
+    /// \param type user type
+    /// \param index index mapping
+    void AllocSourceUserMapping(IL::ID id, DXILIDUserType type, uint32_t index) {
+        if (userMappings.size() <= id) {
+            userMappings.resize(id + 1);
+        }
+
+        UserMapping& mapping = userMappings.at(id);
+        mapping.type = type;
+        mapping.index = index;
     }
 
     /// Set a user mapping
@@ -342,12 +362,28 @@ struct DXILIDRemapper {
     /// Set a redirected value
     /// \param user the given user id
     /// \param operand the redirected operand
-    void SetUserRedirect(IL::ID user, uint64_t operand) {
+    void SetUserRedirect(IL::ID user, IL::ID redirect) {
+        // Ensure space
         if (userRedirects.size() <= user) {
             userRedirects.resize(user + 1, ~0u);
         }
 
-        userRedirects.at(user) = operand;
+        // Unfold redirects
+        while(redirect < userRedirects.size() && userRedirects.at(redirect) != ~0u) {
+            redirect = userRedirects.at(redirect);
+        }
+
+        // Preserve user mappings
+        if (redirect < userMappings.size()) {
+            if (userMappings.size() <= user) {
+                userMappings.resize(user + 1);
+            }
+
+            userMappings.at(user) = userMappings.at(redirect);
+        }
+
+        // Set final redirect
+        userRedirects.at(user) = redirect;
     }
 
     /// Try to get a redirect
@@ -364,7 +400,7 @@ struct DXILIDRemapper {
         // Try to get redirect
         uint64_t redirect = TryGetUserRedirect(id);
         if (redirect != ~0u) {
-            return redirect;
+            return EncodeUserOperand(redirect);
         }
 
         // Encode regular user

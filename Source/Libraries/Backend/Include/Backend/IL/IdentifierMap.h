@@ -21,6 +21,14 @@ namespace IL {
             return static_cast<ID>(map.size() - 1);
         }
 
+        /// Allocate a range of IDs
+        /// \return base ID
+        ID AllocIDRange(uint32_t count) {
+            auto base = static_cast<ID>(map.size());
+            map.resize(map.size() + count);
+            return base;
+        }
+
         /// Set the number of bound ids
         /// \param id the capacity
         void SetBound(uint32_t bound) {

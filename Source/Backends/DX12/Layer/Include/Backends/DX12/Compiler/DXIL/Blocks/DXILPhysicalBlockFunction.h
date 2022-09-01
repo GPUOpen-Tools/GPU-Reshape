@@ -41,12 +41,33 @@ public:
     /// \param record record
     void CompileModuleFunction(struct LLVMRecord& record);
 
-    /// Compile a scalar / vector-of-x operation
-    /// \param lhs lhs operand
-    /// \param rhs rhs operand
-    /// \param functor functor(uint32_t lhs, uint32_t rhs)
-    template<typename F>
-    void CompileSVOX(IL::ID lhs, IL::ID rhs, F&& functor);
+    /// Compile a standard intrinsic call
+    /// \param decl given declaration
+    /// \param opCount argument op count
+    /// \param ops operands
+    /// \return call record
+    LLVMRecord CompileIntrinsicCall(IL::ID result, const DXILFunctionDeclaration* decl, uint32_t opCount, const uint64_t* ops);
+
+private:
+    struct SVOXElement {
+        /// Extracted type
+        const Backend::IL::Type* type{nullptr};
+
+        /// Extracted value
+        IL::ID value{IL::InvalidID};
+    };
+
+    /// Get the number of SVOX values
+    /// \param value SVOX value
+    /// \return component count
+    uint32_t GetSVOXCount(IL::ID value);
+
+    /// Extract an SVOX element
+    /// \param block block for record emitting
+    /// \param value SVOX value to be extracted from
+    /// \param index element index
+    /// \return SVOX element info
+    SVOXElement ExtractSVOXElement(LLVMBlock* block, IL::ID value, uint32_t index);
 
     /// Iterate a scalar / vector-of-x operation
     /// \param lhs lhs operand
@@ -55,12 +76,19 @@ public:
     template<typename F>
     void IterateSVOX(LLVMBlock* block, IL::ID value, F&& functor);
 
-    /// Compile a standard intrinsic call
-    /// \param decl given declaration
-    /// \param opCount argument op count
-    /// \param ops operands
-    /// \return call record
-    LLVMRecord CompileIntrinsicCall(IL::ID result, const DXILFunctionDeclaration* decl, uint32_t opCount, const uint64_t* ops);
+    /// Compile a unary scalar / vector-of-x operation
+    /// \param lhs lhs operand
+    /// \param rhs rhs operand
+    /// \param functor functor(const Backend::IL::Type* type, uint32_t result, uint32_t lhs)
+    template<typename F>
+    void UnaryOpSVOX(LLVMBlock* block, IL::ID result, IL::ID value, F&& functor);
+
+    /// Compile a binary scalar / vector-of-x operation
+    /// \param lhs lhs operand
+    /// \param rhs rhs operand
+    /// \param functor functor(const Backend::IL::Type* type, uint32_t result, uint32_t lhs, uint32_t rhs)
+    template<typename F>
+    void BinaryOpSVOX(LLVMBlock* block, IL::ID result, IL::ID lhs, IL::ID rhs, F&& functor);
 
 public:
     /// Compile a module function

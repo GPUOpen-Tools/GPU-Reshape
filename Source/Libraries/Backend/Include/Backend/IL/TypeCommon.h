@@ -48,4 +48,20 @@ namespace Backend::IL {
                 return Splat(program, scalarType, valueType->As<VectorType>()->dimension);
         }
     }
+
+    inline const bool IsComponentType(const Type* type, TypeKind kind) {
+        switch (type->kind) {
+            default:
+                return type->kind == kind;
+            case TypeKind::Vector:
+                return type->As<VectorType>()->containedType->kind == kind;
+            case TypeKind::Matrix:
+                return type->As<MatrixType>()->containedType->kind == kind;
+        }
+    }
+
+    template<typename T>
+    inline const bool IsComponentType(const Type* type) {
+        return IsComponentType(type, T::kKind);
+    }
 }

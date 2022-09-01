@@ -6,6 +6,9 @@
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
 
+// Backend
+#include <Backend/IL/TypeCommon.h>
+
 /*
  * LLVM DXIL Specification
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/DXIL.rst
@@ -828,6 +831,15 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration
 bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration) {
     LLVMRecordStringView view = table.symbol.GetValueString(called);
 
+    // Get type map
+    Backend::IL::TypeMap& ilTypeMap = program.GetTypeMap();
+
+    // Must match, if it needs to deviate then do translation instead
+    static_assert(static_cast<uint32_t>(IL::ComponentMask::X) == BIT(0), "Unexpected color mask");
+    static_assert(static_cast<uint32_t>(IL::ComponentMask::Y) == BIT(1), "Unexpected color mask");
+    static_assert(static_cast<uint32_t>(IL::ComponentMask::Z) == BIT(2), "Unexpected color mask");
+    static_assert(static_cast<uint32_t>(IL::ComponentMask::W) == BIT(3), "Unexpected color mask");
+
     // Check hash
     switch (view.GetHash()) {
         default: {
@@ -867,7 +879,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             auto type = table.metadata.GetHandleType(_class, id);
 
             // Set as pointee type
-            program.GetTypeMap().SetType(result, type);
+            ilTypeMap.SetType(result, type);
 
             // Keep the original record
             IL::UnexposedInstruction instr{};
@@ -984,12 +996,6 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint64_t w = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
             uint64_t mask = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
-            // Must match, if it needs to deviate then do translation instead
-            static_assert(static_cast<uint32_t>(IL::ComponentMask::X) == BIT(0), "Unexpected color mask");
-            static_assert(static_cast<uint32_t>(IL::ComponentMask::Y) == BIT(1), "Unexpected color mask");
-            static_assert(static_cast<uint32_t>(IL::ComponentMask::Z) == BIT(2), "Unexpected color mask");
-            static_assert(static_cast<uint32_t>(IL::ComponentMask::W) == BIT(3), "Unexpected color mask");
-
             // Emit as store
             IL::StoreBufferInstruction instr{};
             instr.opCode = IL::OpCode::StoreBuffer;
@@ -1002,29 +1008,223 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             basicBlock->Append(instr);
             return true;
         }
+
+            /*
+             * DXIL Specification
+             *  ; overloads: SM5.1: f32|i32,  SM6.0: f16|f32|i16|i32
+             *  declare %dx.types.ResRet.f32 @dx.op.textureLoad.f32(
+             *      i32,                  ; opcode
+             *      %dx.types.Handle,     ; texture handle
+             *      i32,                  ; MIP level; sample for Texture2DMS
+             *      i32,                  ; coordinate c0
+             *      i32,                  ; coordinate c1
+             *      i32,                  ; coordinate c2
+             *      i32,                  ; offset o0
+             *      i32,                  ; offset o1
+             *      i32)                  ; offset o2
+             */
+
+        case CRC64("dx.op.textureLoad.f32"):
+        case CRC64("dx.op.textureLoad.f16"):
+        case CRC64("dx.op.textureLoad.i32"):
+        case CRC64("dx.op.textureLoad.i16"): {
+            if (!view.StartsWith("dx.op.textureLoad.")) {
+                return false;
+            }
+
+            // Get op-code
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+
+            // Get operands, ignore offset for now
+            uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t mip = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t cx = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t cy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t cz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t ox = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t oy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t oz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+            // Get type
+            const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
+
+            // Number of dimensions
+            uint32_t dimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
+
+            // Vectorize coordinate
+            IL::ID coordinateBase = program.GetIdentifierMap().AllocIDRange(dimensionCount);
+            if (dimensionCount > 0)
+                table.idRemapper.AllocSourceUserMapping(coordinateBase + 0, DXILIDUserType::Singular, cx);
+            if (dimensionCount > 1)
+                table.idRemapper.AllocSourceUserMapping(coordinateBase + 1, DXILIDUserType::Singular, cy);
+            if (dimensionCount > 2)
+                table.idRemapper.AllocSourceUserMapping(coordinateBase + 2, DXILIDUserType::Singular, cz);
+
+            // Set base
+            IL::ID coordinate = program.GetIdentifierMap().AllocID();
+            table.idRemapper.AllocSourceUserMapping(coordinate, DXILIDUserType::VectorOnSequential, coordinateBase);
+
+            // Set type
+            if (dimensionCount > 1) {
+                ilTypeMap.SetType(coordinate, ilTypeMap.FindTypeOrAdd(Backend::IL::VectorType{
+                    .containedType = ilTypeMap.GetType(cx),
+                    .dimension = static_cast<uint8_t>(dimensionCount)
+                }));
+            } else {
+                ilTypeMap.SetType(coordinate, ilTypeMap.GetType(cx));
+            }
+
+            // Emit as store
+            IL::LoadTextureInstruction instr{};
+            instr.opCode = IL::OpCode::LoadTexture;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.texture = resource;
+            instr.index = coordinate;
+            basicBlock->Append(instr);
+            return true;
+        }
+
+            /*
+             * DXIL Specification
+             *   ; overloads: SM5.1: f32|i32,  SM6.0: f16|f32|i16|i32
+             *   ; returns: status
+             *   declare void @dx.op.textureStore.f32(
+             *       i32,                  ; opcode
+             *       %dx.types.Handle,     ; texture handle
+             *       i32,                  ; coordinate c0
+             *       i32,                  ; coordinate c1
+             *       i32,                  ; coordinate c2
+             *       float,                ; value v0
+             *       float,                ; value v1
+             *       float,                ; value v2
+             *       float,                ; value v3
+             *       i8)                   ; write mask
+             */
+
+        case CRC64("dx.op.textureStore.f32"):
+        case CRC64("dx.op.textureStore.f16"):
+        case CRC64("dx.op.textureStore.i32"):
+        case CRC64("dx.op.textureStore.i16"): {
+            if (!view.StartsWith("dx.op.textureStore.")) {
+                return false;
+            }
+
+            // Get op-code
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+
+            // Get operands, ignore offset for now
+            uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t cx = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t cy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t cz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t vx = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t vy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t vz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t vw = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint64_t mask = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+            // Get type
+            const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
+
+            // Number of dimensions
+            uint32_t dimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
+
+            // Vectorize coordinate
+            IL::ID coordinateBase = program.GetIdentifierMap().AllocIDRange(dimensionCount);
+            if (dimensionCount > 0)
+                table.idRemapper.AllocSourceUserMapping(coordinateBase + 0, DXILIDUserType::Singular, cx);
+            if (dimensionCount > 1)
+                table.idRemapper.AllocSourceUserMapping(coordinateBase + 1, DXILIDUserType::Singular, cy);
+            if (dimensionCount > 2)
+                table.idRemapper.AllocSourceUserMapping(coordinateBase + 2, DXILIDUserType::Singular, cz);
+
+            // Set base
+            IL::ID coordinate = program.GetIdentifierMap().AllocID();
+            table.idRemapper.AllocSourceUserMapping(coordinate, DXILIDUserType::VectorOnSequential, coordinateBase);
+
+            // Set type
+            if (dimensionCount > 1) {
+                ilTypeMap.SetType(coordinate, ilTypeMap.FindTypeOrAdd(Backend::IL::VectorType{
+                    .containedType = ilTypeMap.GetType(cx),
+                    .dimension = static_cast<uint8_t>(dimensionCount)
+                }));
+            } else {
+                ilTypeMap.SetType(coordinate, ilTypeMap.GetType(cx));
+            }
+
+            // Emit as store
+            IL::StoreTextureInstruction instr{};
+            instr.opCode = IL::OpCode::StoreTexture;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.texture = resource;
+            instr.index = coordinate;
+            instr.texel = IL::SOVValue(vx, vy, vz, vw);
+            instr.mask = IL::ComponentMaskSet(mask);
+            basicBlock->Append(instr);
+            return true;
+        }
     }
 }
 
-template<typename F>
-void DXILPhysicalBlockFunction::CompileSVOX(IL::ID lhs, IL::ID rhs, F &&functor) {
-    DXILIDUserType lhsIdType = table.idRemapper.GetUserMappingType(lhs);
-    DXILIDUserType rhsIdType = table.idRemapper.GetUserMappingType(rhs);
+uint32_t DXILPhysicalBlockFunction::GetSVOXCount(IL::ID value) {
+    // Get type
+    const auto* lhsType = program.GetTypeMap().GetType(value);
 
-    // Singular operations are pass through
-    if (lhsIdType == DXILIDUserType::Singular) {
-        ASSERT(rhsIdType == DXILIDUserType::Singular, "Singular operations must match");
-        return functor(lhs, rhs);
+    // Determine count
+    switch (table.idRemapper.GetUserMappingType(value)) {
+        default:
+            ASSERT(false, "Invalid id type");
+            break;
+        case DXILIDUserType::Singular: {
+            return 1;
+        }
+        case DXILIDUserType::VectorOnStruct: {
+            const auto* _struct = lhsType->As<Backend::IL::StructType>();
+            return _struct->memberTypes.size();
+        }
+        case DXILIDUserType::VectorOnSequential: {
+            const auto* vector = lhsType->As<Backend::IL::VectorType>();
+            return vector->dimension;
+        }
     }
+}
 
-    // Get types
-    const Backend::IL::Type* lhsType = program.GetTypeMap().GetType(lhs);
-    const Backend::IL::Type* rhsType = program.GetTypeMap().GetType(rhs);
+DXILPhysicalBlockFunction::SVOXElement DXILPhysicalBlockFunction::ExtractSVOXElement(LLVMBlock* block, IL::ID value, uint32_t index) {
+    // Get type
+    const auto* lhsType = program.GetTypeMap().GetType(value);
 
-    // Get count
-    uint32_t componentCount = lhsType->As<Backend::IL::VectorType>()->dimension;
+    // Determine count
+    switch (table.idRemapper.GetUserMappingType(value)) {
+        default:
+            ASSERT(false, "Invalid id type");
+            break;
+        case DXILIDUserType::Singular: {
+            return {lhsType, value};
+        }
+        case DXILIDUserType::VectorOnStruct: {
+            const auto* vector = lhsType->As<Backend::IL::VectorType>();
 
-    for (uint32_t i = 0; i < componentCount; i++) {
+            IL::ID extractedId = program.GetIdentifierMap().AllocID();
 
+            // Extract current value
+            LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+            recordExtract.SetUser(true, ~0u, extractedId);
+            recordExtract.opCount = 2;
+            recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+            recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(value);
+            recordExtract.ops[1] = index;
+            block->AddRecord(recordExtract);
+
+            // Invoke on extracted value
+            return {vector->containedType, extractedId};
+        }
+        case DXILIDUserType::VectorOnSequential: {
+            const auto* vector = lhsType->As<Backend::IL::VectorType>();
+            uint32_t base = table.idRemapper.TryGetUserMapping(value);
+            return {vector->containedType, table.idRemapper.TryGetUserMapping(base + index)};
+        }
     }
 }
 
@@ -1041,41 +1241,90 @@ void DXILPhysicalBlockFunction::IterateSVOX(LLVMBlock* block, IL::ID value, F&& 
         return;
     }
 
-    // Handle compound
-    switch (idType) {
-        default:
-        ASSERT(false, "Invalid id type");
-            break;
-        case DXILIDUserType::VectorOnStruct: {
-            const auto* _struct = type->As<Backend::IL::StructType>();
+    // Get component count
+    uint32_t count = GetSVOXCount(value);
 
-            for (uint32_t i = 0; i < _struct->memberTypes.size(); i++) {
-                IL::ID extractedId = program.GetIdentifierMap().AllocID();
-
-                // Extract current value
-                LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-                recordExtract.SetUser(true, ~0u, extractedId);
-                recordExtract.opCount = 2;
-                recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
-                recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(value);
-                recordExtract.ops[1] = i;
-                block->AddRecord(recordExtract);
-
-                // Invoke on extracted value
-                functor(_struct->memberTypes[i], extractedId, i, _struct->memberTypes.size());
-            }
-            break;
-        }
-        case DXILIDUserType::VectorOnSequential: {
-            const auto* vector = type->As<Backend::IL::VectorType>();
-
-            // Invoke on sequential value
-            for (uint32_t i = 0; i < vector->dimension; i++) {
-                functor(vector->containedType, value + i, i, vector->dimension);
-            }
-            break;
-        }
+    // Visit all cases
+    for (uint32_t i = 0; i < count; i++) {
+        SVOXElement element = ExtractSVOXElement(block, value, i);
+        functor(element.type, element.value, i, count);
     }
+}
+
+template<typename F>
+void DXILPhysicalBlockFunction::UnaryOpSVOX(LLVMBlock *block, IL::ID result, IL::ID value, F &&functor) {
+    DXILIDUserType idType = table.idRemapper.GetUserMappingType(value);
+
+    // Get type
+    const auto* type = program.GetTypeMap().GetType(value);
+
+    // Pass through if singular
+    if (idType == DXILIDUserType::Singular) {
+        functor(type, result, value);
+        return;
+    }
+
+    // Get component count
+    uint32_t count = GetSVOXCount(value);
+
+    // Allocate base index
+    IL::ID base = program.GetIdentifierMap().AllocIDRange(count);
+
+    // Visit all cases
+    for (uint32_t i = 0; i < count; i++) {
+        SVOXElement element = ExtractSVOXElement(block, value, i);
+
+        // Allocate component result
+        IL::ID componentResult = program.GetIdentifierMap().AllocID();
+
+        // Allocate result as sequential
+        table.idRemapper.AllocSourceUserMapping(base + i, DXILIDUserType::Singular, componentResult);
+
+        // Invoke functor
+        functor(element.type, componentResult, element.value);
+    }
+
+    // Mark final result as VOS
+    table.idRemapper.AllocSourceUserMapping(result, DXILIDUserType::VectorOnSequential, base);
+}
+
+template<typename F>
+void DXILPhysicalBlockFunction::BinaryOpSVOX(LLVMBlock* block, IL::ID result, IL::ID lhs, IL::ID rhs, F&& functor) {
+    DXILIDUserType lhsIdType = table.idRemapper.GetUserMappingType(lhs);
+    DXILIDUserType rhsIdType = table.idRemapper.GetUserMappingType(rhs);
+
+    // Get types
+    const auto* lhsType = program.GetTypeMap().GetType(lhs);
+
+    // Singular operations are pass through
+    if (lhsIdType == DXILIDUserType::Singular) {
+        ASSERT(rhsIdType == DXILIDUserType::Singular, "Singular operations must match");
+        return functor(lhsType, result, lhs, rhs);
+    }
+
+    // Get component count
+    uint32_t count = GetSVOXCount(lhs);
+
+    // Allocate base index
+    IL::ID base = program.GetIdentifierMap().AllocIDRange(count);
+
+    // Handle all cases
+    for (uint32_t i = 0; i < count; i++) {
+        SVOXElement lhsElement = ExtractSVOXElement(block, lhs, i);
+        SVOXElement rhsElement = ExtractSVOXElement(block, rhs, i);
+
+        // Allocate component result
+        IL::ID componentResult = program.GetIdentifierMap().AllocID();
+
+        // Allocate result as sequential
+        table.idRemapper.AllocSourceUserMapping(base + i, DXILIDUserType::Singular, componentResult);
+
+        // Invoke functor
+        functor(lhsElement.type, componentResult, lhsElement.value, rhsElement.value);
+    }
+
+    // Mark final result as VOS
+    table.idRemapper.AllocSourceUserMapping(result, DXILIDUserType::VectorOnSequential, base);
 }
 
 void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
@@ -1213,7 +1462,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     table.global.constantMap.GetConstant(constant);
 
                     // Set redirection for constant
-                    table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(constant->id));
+                    table.idRemapper.SetUserRedirect(instr->result, constant->id);
                     break;
                 }
 
@@ -1404,6 +1653,9 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     } else {
                         // Invoke
                         block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 3, ops));
+
+                        // Set as VOS
+                        table.idRemapper.AllocSourceUserMapping(_instr->result, DXILIDUserType::VectorOnStruct, 0);
                     }
                     break;
                 }
@@ -1436,6 +1688,10 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             } else {
                                 opCode = LLVMCmpOp::IntEqual;
                             }
+
+                            // Set cmp op
+                            record.ops[2] = static_cast<uint64_t>(opCode);
+                            block->AddRecord(record);
                             break;
                         }
                         case IL::OpCode::NotEqual: {
@@ -1449,6 +1705,10 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             } else {
                                 opCode = LLVMCmpOp::IntNotEqual;
                             }
+
+                            // Set cmp op
+                            record.ops[2] = static_cast<uint64_t>(opCode);
+                            block->AddRecord(record);
                             break;
                         }
                         case IL::OpCode::LessThan: {
@@ -1464,6 +1724,10 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             } else {
                                 ASSERT(false, "Invalid type in LessThan");
                             }
+
+                            // Set cmp op
+                            record.ops[2] = static_cast<uint64_t>(opCode);
+                            block->AddRecord(record);
                             break;
                         }
                         case IL::OpCode::LessThanEqual: {
@@ -1479,6 +1743,10 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             } else {
                                 ASSERT(false, "Invalid type in LessThanEqual");
                             }
+
+                            // Set cmp op
+                            record.ops[2] = static_cast<uint64_t>(opCode);
+                            block->AddRecord(record);
                             break;
                         }
                         case IL::OpCode::GreaterThan: {
@@ -1494,28 +1762,36 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             } else {
                                 ASSERT(false, "Invalid type in GreaterThan");
                             }
+
+                            // Set cmp op
+                            record.ops[2] = static_cast<uint64_t>(opCode);
+                            block->AddRecord(record);
                             break;
                         }
                         case IL::OpCode::GreaterThanEqual: {
                             auto _instr = instr->As<IL::GreaterThanEqualInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
-                            const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
-                            if (type->Is<Backend::IL::FPType>()) {
-                                opCode = LLVMCmpOp::FloatUnorderedGreaterEqual;
-                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
-                                opCode = intType->signedness ? LLVMCmpOp::IntSignedGreaterEqual : LLVMCmpOp::IntUnsignedGreaterEqual;
-                            } else {
-                                ASSERT(false, "Invalid type in GreaterThanEqual");
-                            }
+                            BinaryOpSVOX(block, _instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+
+                                if (type->Is<Backend::IL::FPType>()) {
+                                    opCode = LLVMCmpOp::FloatUnorderedGreaterEqual;
+                                } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                    opCode = intType->signedness ? LLVMCmpOp::IntSignedGreaterEqual : LLVMCmpOp::IntUnsignedGreaterEqual;
+                                } else {
+                                    ASSERT(false, "Invalid type in GreaterThanEqual");
+                                }
+
+                                // Set cmp op
+                                record.ops[2] = static_cast<uint64_t>(opCode);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                     }
-
-                    // Set cmp op
-                    record.ops[2] = static_cast<uint64_t>(opCode);
-                    block->AddRecord(record);
                     break;
                 }
 
@@ -1598,28 +1874,28 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
 
                     // Get types
                     const Backend::IL::Type* valueType = typeMap.GetType(_instr->value);
-                    const Backend::IL::Type* resultType =typeMap.GetType(_instr->result);
+                    const Backend::IL::Type* resultType = typeMap.GetType(_instr->result);
 
                     // LLVM IR does not differentiate between signed and unsigned, and is instead part of the instructions themselves (Fx. SDiv, UDiv)
                     // So, the resulting type will dictate future operations, value redirection is enough.
-                    const bool bIsIntegerCast = valueType->Is<Backend::IL::IntType>() && resultType->Is<Backend::IL::IntType>();
+                    const bool bIsIntegerCast = IsComponentType<Backend::IL::IntType>(valueType) && IsComponentType<Backend::IL::IntType>(resultType);
 
                     // Any need to cast at all?
                     if (valueType == resultType || bIsIntegerCast) {
                         // Same, just redirect
-                        table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(_instr->value));
-                    }
-
-                    // Other casts
-                    else if (valueType != resultType) {
-                        // Prepare record
-                        record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCast);
-                        record.opCount = 3;
-                        record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
-                        record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                        record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(record.ops[0])));
-                        record.ops[2] = static_cast<uint64_t>(LLVMCastOp::BitCast);
-                        block->AddRecord(record);
+                        table.idRemapper.SetUserRedirect(instr->result, _instr->value);
+                    } else {
+                        // Handle as unary
+                        UnaryOpSVOX(block, _instr->result, _instr->value, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value) {
+                            // Prepare record
+                            record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCast);
+                            record.opCount = 3;
+                            record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(record.ops[0])));
+                            record.ops[2] = static_cast<uint64_t>(LLVMCastOp::BitCast);
+                            block->AddRecord(record);
+                        });
                     }
                     break;
                 }
@@ -1763,7 +2039,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     });
 
                     // Set final redirect
-                    table.idRemapper.SetUserRedirect(instr->result, DXILIDRemapper::EncodeUserOperand(value));
+                    table.idRemapper.SetUserRedirect(instr->result, value);
                     break;
                 }
 

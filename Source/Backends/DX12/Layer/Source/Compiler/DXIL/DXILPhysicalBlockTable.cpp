@@ -337,6 +337,7 @@ void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
 
     // Table maps
     idMap.CopyTo(out.idMap);
+    idRemapper.CopyTo(out.idRemapper);
 
     // Blocks
     type.CopyTo(out.type);

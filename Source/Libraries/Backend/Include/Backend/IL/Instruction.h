@@ -188,7 +188,8 @@ namespace IL {
 
         ID texture;
         ID index;
-        ID texel;
+        SOVValue texel;
+        ComponentMaskSet mask;
     };
 
     struct OrInstruction : public Instruction {

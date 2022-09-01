@@ -281,8 +281,9 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             break;
         }
         case OpCode::StoreTexture: {
-            auto load = instr->As<IL::StoreTextureInstruction>();
-            line << "StoreTexture texture:%" << load->texture << " index:%" << load->index << " texel:%" << load->texel;
+            auto store = instr->As<IL::StoreTextureInstruction>();
+            line << "StoreTexture texture:%" << store->texture << " index:%" << store->index << " texel:%";
+            PrettyPrint(store->texel, out);
             break;
         }
         case OpCode::Any: {

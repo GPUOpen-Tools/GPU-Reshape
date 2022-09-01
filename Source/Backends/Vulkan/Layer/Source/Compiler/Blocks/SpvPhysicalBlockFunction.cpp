@@ -587,7 +587,8 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                     instr.source = source;
                     instr.texture = image;
                     instr.index = coordinate;
-                    instr.texel = texel;
+                    instr.texel = IL::SOVValue(texel);
+                    instr.mask = IL::ComponentMask::All;
                     basicBlock->Append(instr);
                 }
                 break;
@@ -729,11 +730,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
                 // Get the texture type
                 const auto* textureType = ilTypeMap.GetType(storeTexture->texture)->As<Backend::IL::TextureType>();
 
+                // TODO: Get rid of SOV values
+                ASSERT(storeTexture->texel.IsVectorized(), "Spv backend does not support scalarized stores (yet)");
+
                 // Write image
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
                 spv[1] = storeTexture->texture;
                 spv[2] = idMap.Get(storeTexture->index);
-                spv[3] = idMap.Get(storeTexture->texel);
+                spv[3] = idMap.Get(storeTexture->texel.GetVector());
                 break;
             }
             case IL::OpCode::Add: {
