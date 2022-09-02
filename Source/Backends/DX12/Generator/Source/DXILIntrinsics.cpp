@@ -176,7 +176,7 @@ bool Generators::DXILIntrinsics(const GeneratorInfo &info, TemplateEngine &templ
 
             // Emit intrinsic spec
             intrinsics << "\tstatic DXILIntrinsicSpec " << keyName << " {\n";
-            intrinsics << "\t\t.uid = " << (uid++) << ",\n";
+            intrinsics << "\t\t.uid = kInbuiltCount + " << (uid++) << ",\n";
             intrinsics << "\t\t.name = \"" << name << "\",\n";
             intrinsics << "\t\t.returnType = " << returnType << ",\n";
             intrinsics << "\t\t.parameterTypes = {\n";

@@ -72,11 +72,23 @@ namespace Backend::IL {
         return program.GetTypeMap().GetType(instr->value);
     }
 
+    inline const Type* ResultOf(Program& program, const SelectInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->pass);
+    }
+
     inline const Type* ResultOf(Program& program, const AndInstruction* instr) {
         return program.GetTypeMap().FindTypeOrAdd(BoolType{});
     }
 
     inline const Type* ResultOf(Program& program, const OrInstruction* instr) {
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+    }
+
+    inline const Type* ResultOf(Program& program, const IsNaNInstruction* instr) {
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+    }
+
+    inline const Type* ResultOf(Program& program, const IsInfInstruction* instr) {
         return program.GetTypeMap().FindTypeOrAdd(BoolType{});
     }
 

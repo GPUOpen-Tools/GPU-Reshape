@@ -37,6 +37,7 @@ private:
 
     /// Data types
     const Backend::IL::Type *voidType{nullptr};
+    const Backend::IL::Type *i1Type{nullptr};
     const Backend::IL::Type *i8Type{nullptr};
     const Backend::IL::Type *i32Type{nullptr};
     const Backend::IL::Type *f32Type{nullptr};

@@ -69,6 +69,15 @@ private:
     /// \return SVOX element info
     SVOXElement ExtractSVOXElement(LLVMBlock* block, IL::ID value, uint32_t index);
 
+    /// Allocate a sequential SV
+    /// \param x count number of components
+    /// \param x first component, required
+    /// \param y second component, optional
+    /// \param z third component, optional
+    /// \param w fourth component, optional
+    /// \return
+    IL::ID AllocateSVOSequential(uint32_t count, IL::ID x, IL::ID y = IL::InvalidID, IL::ID z = IL::InvalidID, IL::ID w = IL::InvalidID);
+
     /// Iterate a scalar / vector-of-x operation
     /// \param lhs lhs operand
     /// \param rhs rhs operand

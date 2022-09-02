@@ -31,6 +31,12 @@ public:
     /// \param shlBitMask
     void SetBlockFilter(uint64_t shlBitMask);
 
+    /// Set debugging functionality
+    /// \param _enableDebugging
+    void SetEnableDebugging(bool _enableDebugging) {
+        enableDebugging = _enableDebugging;
+    }
+
     /// Scan the DXIL bytecode
     /// \param byteCode code start
     /// \param byteLength byte size of code
@@ -172,6 +178,9 @@ private:
 
     /// Current filter
     uint64_t shlBlockFilter = UINT64_MAX;
+
+    /// Enable debugging functionality
+    bool enableDebugging = true;
 
     /// Cache for flat operand scanning
     std::vector<uint64_t> recordOperandCache;

@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/DX12/Compiler/DXIL/Intrinsic/DXILIntrinsicSpec.h>
+#include <Backends/DX12/Compiler/DXIL/Intrinsic/DXILInbuiltIntrinsics.h>
 
 namespace Intrinsics {
 $INTRINSICS

@@ -178,7 +178,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
             case SpvOpFSub:
             case SpvOpISub: {
-
                 // Append
                 IL::SubInstruction instr{};
                 instr.opCode = IL::OpCode::Sub;
@@ -193,7 +192,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpFDiv:
             case SpvOpSDiv:
             case SpvOpUDiv: {
-
                 // Append
                 IL::DivInstruction instr{};
                 instr.opCode = IL::OpCode::Div;
@@ -207,7 +205,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
             case SpvOpFMul:
             case SpvOpIMul: {
-
                 // Append
                 IL::MulInstruction instr{};
                 instr.opCode = IL::OpCode::Mul;
@@ -220,7 +217,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpLogicalAnd: {
-
                 // Append
                 IL::AndInstruction instr{};
                 instr.opCode = IL::OpCode::And;
@@ -233,7 +229,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpLogicalOr: {
-
                 // Append
                 IL::OrInstruction instr{};
                 instr.opCode = IL::OpCode::Or;
@@ -249,7 +244,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpIEqual:
             case SpvOpFOrdEqual:
             case SpvOpFUnordEqual: {
-
                 // Append
                 IL::EqualInstruction instr{};
                 instr.opCode = IL::OpCode::Equal;
@@ -265,7 +259,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpINotEqual:
             case SpvOpFOrdNotEqual:
             case SpvOpFUnordNotEqual: {
-
                 // Append
                 IL::NotEqualInstruction instr{};
                 instr.opCode = IL::OpCode::NotEqual;
@@ -281,7 +274,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpULessThan:
             case SpvOpFOrdLessThan:
             case SpvOpFUnordLessThan: {
-
                 // Append
                 IL::LessThanInstruction instr{};
                 instr.opCode = IL::OpCode::LessThan;
@@ -297,7 +289,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpULessThanEqual:
             case SpvOpFOrdLessThanEqual:
             case SpvOpFUnordLessThanEqual: {
-
                 // Append
                 IL::LessThanEqualInstruction instr{};
                 instr.opCode = IL::OpCode::LessThanEqual;
@@ -313,7 +304,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpUGreaterThan:
             case SpvOpFOrdGreaterThan:
             case SpvOpFUnordGreaterThan: {
-
                 // Append
                 IL::GreaterThanInstruction instr{};
                 instr.opCode = IL::OpCode::GreaterThan;
@@ -329,7 +319,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpUGreaterThanEqual:
             case SpvOpFOrdGreaterThanEqual:
             case SpvOpFUnordGreaterThanEqual: {
-
                 // Append
                 IL::GreaterThanEqualInstruction instr{};
                 instr.opCode = IL::OpCode::GreaterThanEqual;
@@ -341,8 +330,42 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 break;
             }
 
-            case SpvOpBitwiseOr: {
+            case SpvOpIsInf: {
+                // Append
+                IL::IsInfInstruction instr{};
+                instr.opCode = IL::OpCode::IsInf;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
 
+            case SpvOpIsNan: {
+                // Append
+                IL::IsNaNInstruction instr{};
+                instr.opCode = IL::OpCode::IsNaN;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpSelect: {
+                // Append
+                IL::SelectInstruction instr{};
+                instr.opCode = IL::OpCode::Select;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.condition = ctx++;
+                instr.pass = ctx++;
+                instr.fail = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpBitwiseOr: {
                 // Append
                 IL::BitOrInstruction instr{};
                 instr.opCode = IL::OpCode::BitOr;
@@ -355,7 +378,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpBitwiseAnd: {
-
                 // Append
                 IL::BitAndInstruction instr{};
                 instr.opCode = IL::OpCode::BitAnd;
@@ -368,7 +390,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpShiftLeftLogical: {
-
                 // Append
                 IL::BitShiftLeftInstruction instr{};
                 instr.opCode = IL::OpCode::BitShiftLeft;
@@ -382,7 +403,6 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
             case SpvOpShiftRightLogical:
             case SpvOpShiftRightArithmetic: {
-
                 // Append
                 IL::BitShiftRightInstruction instr{};
                 instr.opCode = IL::OpCode::BitShiftRight;
@@ -576,7 +596,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                     instr.source = source;
                     instr.buffer = image;
                     instr.index = coordinate;
-                    instr.value = IL::SOVValue(texel);
+                    instr.value = texel;
                     instr.mask = IL::ComponentMask::All;
                     basicBlock->Append(instr);
                 } else {
@@ -587,7 +607,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                     instr.source = source;
                     instr.texture = image;
                     instr.index = coordinate;
-                    instr.texel = IL::SOVValue(texel);
+                    instr.texel = texel;
                     instr.mask = IL::ComponentMask::All;
                     basicBlock->Append(instr);
                 }
@@ -730,14 +750,11 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
                 // Get the texture type
                 const auto* textureType = ilTypeMap.GetType(storeTexture->texture)->As<Backend::IL::TextureType>();
 
-                // TODO: Get rid of SOV values
-                ASSERT(storeTexture->texel.IsVectorized(), "Spv backend does not support scalarized stores (yet)");
-
                 // Write image
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
                 spv[1] = storeTexture->texture;
                 spv[2] = idMap.Get(storeTexture->index);
-                spv[3] = idMap.Get(storeTexture->texel.GetVector());
+                spv[3] = idMap.Get(storeTexture->texel);
                 break;
             }
             case IL::OpCode::Add: {
@@ -945,6 +962,35 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
                 spv[4] = idMap.Get(greaterThanEqual->rhs);
                 break;
             }
+            case IL::OpCode::IsInf: {
+                auto *isInf = instr.As<IL::IsInfInstruction>();
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpIsInf, 4, isInf->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = isInf->result;
+                spv[3] = idMap.Get(isInf->value);
+                break;
+            }
+            case IL::OpCode::IsNaN: {
+                auto *isNaN = instr.As<IL::IsNaNInstruction>();
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpIsNan, 4, isNaN->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = isNaN->result;
+                spv[3] = idMap.Get(isNaN->value);
+                break;
+            }
+            case IL::OpCode::Select: {
+                auto *select = instr.As<IL::SelectInstruction>();
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpIsNan, 6, select->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = select->result;
+                spv[3] = idMap.Get(select->condition);
+                spv[4] = idMap.Get(select->pass);
+                spv[5] = idMap.Get(select->fail);
+                break;
+            }
             case IL::OpCode::Branch: {
                 auto *branch = instr.As<IL::BranchInstruction>();
 
@@ -1126,16 +1172,11 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
 
                 // Texel buffer?
                 if (bufferType->texelType != Backend::IL::Format::None) {
-                    // Could easily be supported, just need to compose the vector
-                    // TODO: Just compose a vector if the input is scalarized
-                    ASSERT(storeBuffer->value.IsVectorized(), "Spv backend does not support scalarized stores (yet)");
-                    ASSERT(storeBuffer->value.GetVector() != IL::InvalidID, "Expected value id");
-
                     // Write image
                     SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
                     spv[1] = idMap.Get(storeBuffer->buffer);
                     spv[2] = idMap.Get(storeBuffer->index);
-                    spv[3] = idMap.Get(storeBuffer->value.GetVector());
+                    spv[3] = idMap.Get(storeBuffer->value);
                 } else {
                     ASSERT(false, "Not implemented");
                     return false;

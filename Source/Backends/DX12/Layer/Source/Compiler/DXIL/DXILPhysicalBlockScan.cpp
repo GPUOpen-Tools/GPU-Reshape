@@ -61,10 +61,12 @@ bool DXILPhysicalBlockScan::Scan(const void *byteCode, uint64_t byteLength) {
 
     // Dump?
 #if DXIL_DUMP_BITSTREAM
-    // Write stream to immediate path
-    std::ofstream out(GetIntermediateDebugPath() / "LLVM.bstream", std::ios_base::binary);
-    out.write(reinterpret_cast<const char *>(&bcHeader->identifier) + header.codeOffset, header.codeSize);
-    out.close();
+    if (enableDebugging) {
+        // Write stream to immediate path
+        std::ofstream out(GetIntermediateDebugPath() / "LLVM.bstream", std::ios_base::binary);
+        out.write(reinterpret_cast<const char *>(&bcHeader->identifier) + header.codeOffset, header.codeSize);
+        out.close();
+    }
 #endif
 
     // Validate bit stream
@@ -92,10 +94,12 @@ bool DXILPhysicalBlockScan::Scan(const void *byteCode, uint64_t byteLength) {
 
     // Dump?
 #if DXIL_DUMP_BITSTREAM
-    // Write stream to immediate path
-    std::ofstream outScan(GetIntermediateDebugPath() / "LLVM.scan.txt");
-    PrettyPrint(outScan, &root);
-    outScan.close();
+    if (enableDebugging) {
+        // Write stream to immediate path
+        std::ofstream outScan(GetIntermediateDebugPath() / "LLVM.scan.txt");
+        PrettyPrint(outScan, &root);
+        outScan.close();
+    }
 #endif
 
     // OK
@@ -629,10 +633,12 @@ static void ValidateBlock(const LLVMBlock *lhs, const LLVMBlock *rhs) {
 void DXILPhysicalBlockScan::Stitch(DXStream &out) {
     // Dump?
 #if DXIL_DUMP_BITSTREAM
-    // Write stream to immediate path
-    std::ofstream outScan(GetIntermediateDebugPath() / "LLVM.stitch.txt");
-    PrettyPrint(outScan, &root);
-    outScan.close();
+    if (enableDebugging) {
+        // Write stream to immediate path
+        std::ofstream outScan(GetIntermediateDebugPath() / "LLVM.stitch.txt");
+        PrettyPrint(outScan, &root);
+        outScan.close();
+    }
 #endif // DXIL_DUMP_BITSTREAM
 
     // Write back header
@@ -670,10 +676,12 @@ void DXILPhysicalBlockScan::Stitch(DXStream &out) {
 
     // Dump?
 #if DXIL_DUMP_BITSTREAM
-    // Write stream to immediate path
-    std::ofstream outStitch(GetIntermediateDebugPath() / "LLVM.stitch.bstream", std::ios_base::binary);
-    outStitch.write(reinterpret_cast<const char*>(out.GetData()) + validationOffset, out.GetByteSize() - validationOffset);
-    outStitch.close();
+    if (enableDebugging) {
+        // Write stream to immediate path
+        std::ofstream outStitch(GetIntermediateDebugPath() / "LLVM.stitch.bstream", std::ios_base::binary);
+        outStitch.write(reinterpret_cast<const char *>(out.GetData()) + validationOffset, out.GetByteSize() - validationOffset);
+        outStitch.close();
+    }
 #endif
 
     // Validate written stream by re-reading it,

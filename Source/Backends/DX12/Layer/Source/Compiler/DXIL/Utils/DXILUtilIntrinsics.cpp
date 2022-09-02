@@ -9,6 +9,7 @@ void DXILUtilIntrinsics::Compile() {
     voidType = typeMap.FindTypeOrAdd(Backend::IL::VoidType{});
 
     // Numeric
+    i1Type = typeMap.FindTypeOrAdd(Backend::IL::BoolType{});
     i8Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 8, .signedness = true});
     i32Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true});
     f32Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 32});
@@ -148,6 +149,8 @@ const Backend::IL::Type *DXILUtilIntrinsics::GetType(const DXILIntrinsicTypeSpec
             return f32Type;
         case DXILIntrinsicTypeSpec::I8:
             return i8Type;
+        case DXILIntrinsicTypeSpec::I1:
+            return i1Type;
         case DXILIntrinsicTypeSpec::Handle:
             return handleType;
         case DXILIntrinsicTypeSpec::Dimensions:

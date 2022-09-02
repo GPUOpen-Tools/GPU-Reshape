@@ -11,7 +11,6 @@
 #include "LiteralType.h"
 #include "ID.h"
 #include "ComponentMask.h"
-#include "SOVValue.h"
 
 namespace IL {
     struct Instruction {
@@ -159,7 +158,7 @@ namespace IL {
 
         ID buffer;
         ID index;
-        SOVValue value;
+        ID value;
         ComponentMaskSet mask;
     };
 
@@ -188,7 +187,7 @@ namespace IL {
 
         ID texture;
         ID index;
-        SOVValue texel;
+        ID texel;
         ComponentMaskSet mask;
     };
 
@@ -248,6 +247,18 @@ namespace IL {
         ID rhs;
     };
 
+    struct IsInfInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::IsInf;
+
+        ID value;
+    };
+
+    struct IsNaNInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::IsNaN;
+
+        ID value;
+    };
+
     struct BitOrInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::BitOr;
 
@@ -299,6 +310,14 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::BitCast;
 
         ID value;
+    };
+
+    struct SelectInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Select;
+
+        ID condition;
+        ID pass;
+        ID fail;
     };
 
     struct BranchInstruction : public Instruction {
@@ -499,8 +518,14 @@ namespace IL {
                 return sizeof(IntToFloatInstruction);
             case OpCode::BitCast:
                 return sizeof(BitCastInstruction);
+            case OpCode::Select:
+                return sizeof(SelectInstruction);
             case OpCode::StoreOutput:
                 return sizeof(StoreOutputInstruction);
+            case OpCode::IsInf:
+                return sizeof(IsInfInstruction);
+            case OpCode::IsNaN:
+                return sizeof(IsNaNInstruction);
         }
     }
 }

@@ -41,13 +41,6 @@ void IL::PrettyPrint(const BasicBlock &basicBlock, IL::PrettyPrintContext out) {
     }
 }
 
-void IL::PrettyPrint(const SOVValue &value, PrettyPrintContext out) {
-    if (value.IsVectorized()) {
-        out.stream << "%" << value.GetVector();
-    } else {
-        out.stream << "[%" << value.GetScalar(0) << ", %" << value.GetScalar(1) << ", %" << value.GetScalar(2) << ", %" << value.GetScalar(3) << "]";
-    }
-}
 
 void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
     std::ostream &line = out.Line();
@@ -131,13 +124,22 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         }
         case OpCode::StoreBuffer: {
             auto store = instr->As<IL::StoreBufferInstruction>();
-            line << "StoreBuffer buffer:%" << store->buffer << " index:%" << store->index << " value:";
-            PrettyPrint(store->value, out);
+            line << "StoreBuffer buffer:%" << store->buffer << " index:%" << store->index << " value:%" << store->value;
             break;
         }
         case OpCode::StoreOutput: {
             auto store = instr->As<IL::StoreOutputInstruction>();
             line << "StoreOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value;
+            break;
+        }
+        case OpCode::IsInf: {
+            auto isInf = instr->As<IL::IsInfInstruction>();
+            line << "IsInf %" << isInf->value;
+            break;
+        }
+        case OpCode::IsNaN: {
+            auto isNaN = instr->As<IL::IsNaNInstruction>();
+            line << "IsNaN %" << isNaN->value;
             break;
         }
         case OpCode::Sub: {
@@ -193,6 +195,11 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         case OpCode::GreaterThanEqual: {
             auto greaterThanEqual = instr->As<IL::GreaterThanEqualInstruction>();
             line << "GreaterThanEqual %" << greaterThanEqual->lhs << " %" << greaterThanEqual->rhs;
+            break;
+        }
+        case OpCode::Select: {
+            auto select = instr->As<IL::SelectInstruction>();
+            line << "Select cond:%" << select->condition << " pass:%" << select->pass << " fail:%" << select->fail;
             break;
         }
         case OpCode::Branch: {
@@ -282,8 +289,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         }
         case OpCode::StoreTexture: {
             auto store = instr->As<IL::StoreTextureInstruction>();
-            line << "StoreTexture texture:%" << store->texture << " index:%" << store->index << " texel:%";
-            PrettyPrint(store->texel, out);
+            line << "StoreTexture texture:%" << store->texture << " index:%" << store->index << " texel:%" << store->texel;
             break;
         }
         case OpCode::Any: {

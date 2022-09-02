@@ -1,0 +1,5 @@
+<schema>
+    <shader-export name="UnstableExport">
+        <field name="isNaN" type="uint32" bits="1"/>
+    </shader-export>
+</schema>

@@ -230,8 +230,8 @@ namespace IL {
         /// \param index the index of the element
         /// \param value the element data
         /// \return instruction reference
-        InstructionRef <StoreBufferInstruction> StoreBuffer(ID buffer, ID index, const SOVValue& value) {
-            ASSERT(IsMapped(buffer) && IsMapped(index) && IsMapped(value.GetVector()), "Unmapped identifier");
+        InstructionRef <StoreBufferInstruction> StoreBuffer(ID buffer, ID index, ID value) {
+            ASSERT(IsMapped(buffer) && IsMapped(index) && IsMapped(value), "Unmapped identifier");
 
             StoreBufferInstruction instr{};
             instr.opCode = OpCode::StoreBuffer;
@@ -287,6 +287,23 @@ namespace IL {
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr, type);
+        }
+
+        /// Select a value
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        InstructionRef <SelectInstruction> Select(ID condition, ID pass, ID fail) {
+            ASSERT(IsMapped(condition) && IsMapped(pass) && IsMapped(fail), "Unmapped identifier");
+
+            SelectInstruction instr{};
+            instr.opCode = OpCode::Select;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.condition = condition;
+            instr.pass = pass;
+            instr.fail = fail;
+            return Op(instr);
         }
 
         /// Binary add two values
@@ -446,6 +463,34 @@ namespace IL {
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Check if a value is infinite
+        /// \param value value operand
+        /// \return instruction reference
+        InstructionRef <IsInfInstruction> IsInf(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            IsInfInstruction instr{};
+            instr.opCode = OpCode::IsInf;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Check if a value is NaN
+        /// \param value value operand
+        /// \return instruction reference
+        InstructionRef <IsNaNInstruction> IsNaN(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            IsNaNInstruction instr{};
+            instr.opCode = OpCode::IsNaN;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
             return Op(instr);
         }
 

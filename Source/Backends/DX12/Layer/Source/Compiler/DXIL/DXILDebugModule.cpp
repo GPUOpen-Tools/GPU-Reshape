@@ -39,6 +39,9 @@ std::string_view DXILDebugModule::GetLine(uint32_t fileUID, uint32_t line) {
 }
 
 bool DXILDebugModule::Parse(const void *byteCode, uint64_t byteLength) {
+    // Disable debug writing
+    scan.SetEnableDebugging(false);
+
     // Scan data
     if (!scan.Scan(byteCode, byteLength)) {
         return false;
@@ -169,7 +172,6 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
 
     // Pending metadata
     InstructionMetadata metadata;
-    InstructionMetadata pendingMetadata;
 
     for (const LLVMBlockElement& element : block->elements) {
         if (!element.Is(LLVMBlockElementType::Record)) {
@@ -191,8 +193,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
                 }
 
                 // Add metadata and consume
-                instructionMetadata.emplace_back(pendingMetadata);
-                pendingMetadata = {};
+                instructionMetadata.emplace_back();
                 break;
             }
 
@@ -206,9 +207,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
                 }
 
                 if (!called.bIsNonSemantic) {
-                    // Add metadata and consume
-                    instructionMetadata.emplace_back(pendingMetadata);
-                    pendingMetadata = {};
+                    instructionMetadata.emplace_back();
                 }
                 break;
             }
@@ -218,13 +217,18 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
                 metadata.sourceAssociation.fileUID = 0;
                 metadata.sourceAssociation.line = record.OpAs<uint32_t>(0) - 1;
                 metadata.sourceAssociation.column = record.OpAs<uint32_t>(1);
-                pendingMetadata = metadata;
+
+                if (instructionMetadata.size()) {
+                    instructionMetadata.back() = metadata;
+                }
                 break;
             }
 
             case LLVMFunctionRecord::DebugLOCAgain: {
                 // Repush pending
-                pendingMetadata = metadata;
+                if (instructionMetadata.size()) {
+                    instructionMetadata.back() = metadata;
+                }
                 break;
             }
         }

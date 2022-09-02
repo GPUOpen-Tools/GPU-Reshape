@@ -1,0 +1,5 @@
+<spec>
+    <backend>
+        <plugin name="Features.ExportStability.Backend"/>
+    </backend>
+</spec>

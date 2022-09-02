@@ -33,7 +33,12 @@ namespace IL {
         GreaterThan,
         GreaterThanEqual,
 
+        /// Special
+        IsInf,
+        IsNaN,
+
         /// Flow control
+        Select,
         Branch,
         BranchConditional,
         Switch,

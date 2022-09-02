@@ -133,4 +133,90 @@ namespace Backend::IL {
                 return 1;
         }
     }
+
+    /// Get the dimension size of a format
+    inline uint8_t GetDimensionSize(Format format) {
+        switch (format) {
+            default:
+                return 4;
+            case Format::RGBA32Float:
+                return 4;
+            case Format::RGBA16Float:
+                return 4;
+            case Format::R32Float:
+                return 1;
+            case Format::RGBA8:
+                return 4;
+            case Format::RGBA8Snorm:
+                return 4;
+            case Format::RG32Float:
+                return 2;
+            case Format::RG16Float:
+                return 2;
+            case Format::R11G11B10Float:
+                return 3;
+            case Format::R16Float:
+                return 1;
+            case Format::RGBA16:
+                return 4;
+            case Format::RGB10A2:
+                return 4;
+            case Format::RG16:
+                return 2;
+            case Format::RG8:
+                return 2;
+            case Format::R16:
+                return 1;
+            case Format::R8:
+                return 1;
+            case Format::RGBA16Snorm:
+                return 4;
+            case Format::RG16Snorm:
+                return 2;
+            case Format::RG8Snorm:
+                return 2;
+            case Format::R16Snorm:
+                return 1;
+            case Format::R8Snorm:
+                return 1;
+            case Format::RGBA32Int:
+                return 46;
+            case Format::RGBA16Int:
+                return 4;
+            case Format::RGBA8Int:
+                return 4;
+            case Format::R32Int:
+                return 1;
+            case Format::RG32Int:
+                return 2;
+            case Format::RG16Int:
+                return 2;
+            case Format::RG8Int:
+                return 2;
+            case Format::R16Int:
+                return 1;
+            case Format::R8Int:
+                return 1;
+            case Format::RGBA32UInt:
+                return 4;
+            case Format::RGBA16UInt:
+                return 4;
+            case Format::RGBA8UInt:
+                return 4;
+            case Format::R32UInt:
+                return 1;
+            case Format::RGB10a2UInt:
+                return 4;
+            case Format::RG32UInt:
+                return 2;
+            case Format::RG16UInt:
+                return 2;
+            case Format::RG8UInt:
+                return 2;
+            case Format::R16UInt:
+                return 1;
+            case Format::R8UInt:
+                return 1;
+        }
+    }
 }
