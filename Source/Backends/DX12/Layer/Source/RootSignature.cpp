@@ -127,7 +127,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
 #ifndef NDEBUG
             hr = SerializeRootSignature1_0(table.state, unconverted->Desc_1_0, &serialized, &error);
 #else // NDEBUG
-            hr = SerializeRootSignature1_0(unconverted->Desc_1_0, &serialized, nullptr);
+            hr = SerializeRootSignature1_0(table.state, unconverted->Desc_1_0, &serialized, nullptr);
 #endif // NDEBUG
             break;
         }
