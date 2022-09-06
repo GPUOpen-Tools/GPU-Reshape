@@ -120,6 +120,12 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Instrumented data
     DXStream stream;
 
+    // Debugging
+    if (!debugPath.empty()) {
+        // Add instrumented module
+        debug->Add(debugPath, "user", module);
+    }
+
     // Attempt to recompile
     if (!module->Compile(compileJob, stream)) {
         return;

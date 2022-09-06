@@ -148,7 +148,7 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
     intrinsics.Compile();
 
     // Insert all SE metadata
-    metadata.CompileShaderExportResources();
+    metadata.CompileShaderExportResources(job);
 
     // Pre-parse all types for local fetching
     for (LLVMBlock *block: root.blocks) {
@@ -213,7 +213,7 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
                 global.CompileConstants(block);
                 break;
             case LLVMReservedBlock::Function:
-                function.CompileFunction(block);
+                function.CompileFunction(job, block);
                 break;
             case LLVMReservedBlock::ValueSymTab:
                 symbol.CompileSymTab(block);

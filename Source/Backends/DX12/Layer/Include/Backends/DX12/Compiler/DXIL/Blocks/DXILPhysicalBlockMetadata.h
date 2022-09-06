@@ -9,6 +9,9 @@
 #include <string_view>
 #include <vector>
 
+// Forward declarations
+struct DXJob;
+
 /// Type block
 struct DXILPhysicalBlockMetadata : public DXILPhysicalBlockSection {
     using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
@@ -40,7 +43,7 @@ public:
 
 public:
     /// Compile the export resource metadata
-    void CompileShaderExportResources();
+    void CompileShaderExportResources(const DXJob& job);
 
 private:
     enum class MetadataType {

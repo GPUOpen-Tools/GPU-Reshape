@@ -233,6 +233,7 @@ struct DXILIDRemapper {
 #endif // NDEBUG
 
         // Re-encode relative
+        ASSERT(anchor.stitchAnchor >= absoluteRemap, "Remapping an unresolved relative, requires forward referencing");
         source = anchor.stitchAnchor - absoluteRemap;
     }
 

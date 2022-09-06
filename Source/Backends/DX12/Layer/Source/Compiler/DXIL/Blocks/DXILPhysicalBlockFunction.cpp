@@ -5,6 +5,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILIDMap.h>
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
+#include <Backends/DX12/Compiler/DXJob.h>
 
 // Backend
 #include <Backend/IL/TypeCommon.h>
@@ -1394,7 +1395,7 @@ void DXILPhysicalBlockFunction::BinaryOpSVOX(LLVMBlock* block, IL::ID result, IL
     table.idRemapper.AllocSourceUserMapping(result, DXILIDUserType::VectorOnSequential, base);
 }
 
-void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlock *block) {
     // Remap all blocks by dominance
     for (IL::Function* fn : program.GetFunctionList()) {
         if (!fn->ReorderByDominantBlocks(false)) {
@@ -1468,7 +1469,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
     block->InsertRecord(block->elements.begin(), declareBlocks);
 
     // Add export handle
-    ExportHandleInfo exportInfo = CreateExportHandle(block);
+    CreateExportHandle(job, block);
 
     // Compile all blocks
     for (const IL::BasicBlock *bb: fn->GetBasicBlocks()) {
@@ -1549,7 +1550,6 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     // Prepare record
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
                     record.opCount = 3;
-                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
 
                     // Translate op code
                     LLVMBinOp opCode{};
@@ -1559,109 +1559,193 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             break;
                         case IL::OpCode::Add: {
                             auto _instr = instr->As<IL::AddInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
-                            opCode = LLVMBinOp::Add;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+                                opCode = LLVMBinOp::Add;
+
+                                // Set bin op
+                                record.ops[2] = static_cast<uint64_t>(opCode);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::Sub: {
                             auto _instr = instr->As<IL::SubInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
-                            opCode = LLVMBinOp::Sub;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::Sub);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::Div: {
                             auto _instr = instr->As<IL::DivInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
-                            const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
-                            if (type->Is<Backend::IL::FPType>()) {
-                                opCode = LLVMBinOp::SDiv;
-                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
-                                opCode = intType->signedness ? LLVMBinOp::SDiv : LLVMBinOp::UDiv;
-                            } else {
-                                ASSERT(false, "Invalid type in Div");
-                            }
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+
+                                if (type->Is<Backend::IL::FPType>()) {
+                                    opCode = LLVMBinOp::SDiv;
+                                } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                    opCode = intType->signedness ? LLVMBinOp::SDiv : LLVMBinOp::UDiv;
+                                } else {
+                                    ASSERT(false, "Invalid type in Div");
+                                }
+
+                                record.ops[2] = static_cast<uint64_t>(opCode);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::Mul: {
                             auto _instr = instr->As<IL::MulInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
-                            opCode = LLVMBinOp::Mul;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::Mul);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::Or: {
                             auto _instr = instr->As<IL::OrInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
-                            opCode = LLVMBinOp::Or;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::Or);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::BitOr: {
                             auto _instr = instr->As<IL::BitOrInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
-                            opCode = LLVMBinOp::Or;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::Or);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::BitXOr: {
                             auto _instr = instr->As<IL::BitXOrInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
-                            opCode = LLVMBinOp::XOr;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::XOr);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::And: {
                             auto _instr = instr->As<IL::AndInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
-                            opCode = LLVMBinOp::And;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::And);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::BitAnd: {
                             auto _instr = instr->As<IL::BitAndInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
-                            opCode = LLVMBinOp::And;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::And);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::BitShiftLeft: {
                             auto _instr = instr->As<IL::BitShiftLeftInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->shift);
-                            opCode = LLVMBinOp::SHL;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->value, _instr->shift, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value, IL::ID shift) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(shift);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::SHL);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::BitShiftRight: {
                             auto _instr = instr->As<IL::BitShiftRightInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->shift);
-                            opCode = LLVMBinOp::AShR;
+
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->value, _instr->shift, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value, IL::ID shift) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(shift);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::AShR);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                         case IL::OpCode::Rem: {
                             auto _instr = instr->As<IL::RemInstruction>();
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->lhs);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->rhs);
 
-                            const Backend::IL::Type *type = typeMap.GetType(_instr->lhs);
-                            if (type->Is<Backend::IL::FPType>()) {
-                                opCode = LLVMBinOp::SRem;
-                            } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
-                                opCode = intType->signedness ? LLVMBinOp::SRem : LLVMBinOp::URem;
-                            } else {
-                                ASSERT(false, "Invalid type in Rem");
-                            }
+                            // Handle as binary
+                            BinaryOpSVOX(block, instr->result, _instr->lhs, _instr->rhs, [&](const Backend::IL::Type* type, IL::ID result, IL::ID lhs, IL::ID rhs) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(lhs);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(rhs);
+
+                                if (type->Is<Backend::IL::FPType>()) {
+                                    opCode = LLVMBinOp::SRem;
+                                } else if (auto intType = type->Cast<Backend::IL::IntType>()) {
+                                    opCode = intType->signedness ? LLVMBinOp::SRem : LLVMBinOp::URem;
+                                } else {
+                                    ASSERT(false, "Invalid type in Rem");
+                                }
+                                record.ops[2] = static_cast<uint64_t>(opCode);
+                                block->AddRecord(record);
+                            });
                             break;
                         }
                     }
-
-                    // Set bin op
-                    record.ops[2] = static_cast<uint64_t>(opCode);
-                    block->AddRecord(record);
                     break;
                 }
 
@@ -1919,7 +2003,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                     auto _instr = instr->As<IL::SelectInstruction>();
 
                     // Prepare record
-                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstSelect);
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstVSelect);
                     record.opCount = 3;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                     record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->pass);
@@ -2210,7 +2294,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AtomicBinOp)}
                         )->id);
 
-                        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportInfo.counterHandle);
+                        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportCounterHandle);
 
                         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                             program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
@@ -2267,7 +2351,7 @@ void DXILPhysicalBlockFunction::CompileFunction(struct LLVMBlock *block) {
                             Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferStore)}
                         )->id);
 
-                        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportInfo.streamHandle);
+                        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportStreamHandles[_instr->exportID]);
 
                         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(atomicHead);
 
@@ -2490,10 +2574,9 @@ void DXILPhysicalBlockFunction::CopyTo(DXILPhysicalBlockFunction &out) {
     out.internalLinkedFunctions = internalLinkedFunctions;
 }
 
-DXILPhysicalBlockFunction::ExportHandleInfo DXILPhysicalBlockFunction::CreateExportHandle(struct LLVMBlock *block) {
-    ExportHandleInfo info;
-    info.counterHandle = program.GetIdentifierMap().AllocID();
-    info.streamHandle = program.GetIdentifierMap().AllocID();
+void DXILPhysicalBlockFunction::CreateExportHandle(const DXJob &job, struct LLVMBlock *block) {
+    // Allocate sharted counter
+    exportCounterHandle = program.GetIdentifierMap().AllocID();
 
     // Get intrinsic
     const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCreateHandle);
@@ -2535,18 +2618,22 @@ DXILPhysicalBlockFunction::ExportHandleInfo DXILPhysicalBlockFunction::CreateExp
         Backend::IL::BoolConstant{.value = false}
     )->id);
 
-    // Invoke
-    block->AddRecord(CompileIntrinsicCall(info.counterHandle, intrinsic, 5, ops));
+    // Create shared counter handle
+    block->AddRecord(CompileIntrinsicCall(exportCounterHandle, intrinsic, 5, ops));
 
-    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-        Backend::IL::IntConstant{.value = table.bindingInfo._register + 1}
-    )->id);
+    // Allocate all export streams
+    for (uint32_t i = 0; i < job.streamCount; i++) {
+        uint32_t streamHandle = exportStreamHandles.Add(program.GetIdentifierMap().AllocID());
 
-    // Invoke
-    block->AddRecord(CompileIntrinsicCall(info.streamHandle, intrinsic, 5, ops));
+        // Set binding offset
+        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = table.bindingInfo._register + (i + 1)}
+        )->id);
 
-    return info;
+        // Invoke
+        block->AddRecord(CompileIntrinsicCall(streamHandle, intrinsic, 5, ops));
+    }
 }
 
 const DXILFunctionDeclaration *DXILPhysicalBlockFunction::FindDeclaration(const std::string_view &view) {

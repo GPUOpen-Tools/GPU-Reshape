@@ -1,6 +1,7 @@
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockMetadata.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockScan.h>
+#include <Backends/DX12/Compiler/DXJob.h>
 
 /*
  * LLVM DXIL Specification
@@ -618,22 +619,24 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMe
     return metadata.metadata.size();
 }
 
-void DXILPhysicalBlockMetadata::CompileShaderExportResources() {
+void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
     // Get the metadata
     MetadataBlock* metadataBlock = GetMetadataBlock(resources.uid);
 
     // Get the block
     LLVMBlock* block = declarationBlock->GetBlockWithUID(resources.uid);
 
+    // Always exported as UAV
     RegisterSpace& space = FindOrAddRegisterSpace(DXILShaderResourceClass::UAVs);
 
     // Handle id
     exportHandleId = space.handles.size();
 
+    // Setup binding info
     table.bindingInfo.handleId = exportHandleId;
     table.bindingInfo.space = space.bindSpace;
     table.bindingInfo._register = space.registerBound;
-    table.bindingInfo.count = 2;
+    table.bindingInfo.count = 1 + job.streamCount;
 
     // i32
     const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});
@@ -643,6 +646,7 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources() {
     retTyDecl.memberTypes.push_back(i32);
     const Backend::IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(retTyDecl);
 
+    // {i32}[count]
     const Backend::IL::Type* retArrayTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType{
         .elementType = retTy,
         .count = table.bindingInfo.count
@@ -681,11 +685,9 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources() {
     resource.ops[0] = FindOrAddOperandU32Constant(*metadataBlock, block, exportHandleId);
     resource.ops[1] = FindOrAddOperandConstant(*metadataBlock, block, program.GetConstants().FindConstantOrAdd(retTyPtr, Backend::IL::UndefConstant{}));
     resource.ops[2] = FindOrAddString(*metadataBlock, block, "ShaderExportBuffers");
-
     resource.ops[3] = FindOrAddOperandU32Constant(*metadataBlock, block, table.bindingInfo.space);
     resource.ops[4] = FindOrAddOperandU32Constant(*metadataBlock, block, table.bindingInfo._register);
     resource.ops[5] = FindOrAddOperandU32Constant(*metadataBlock, block, table.bindingInfo.count);
-
     resource.ops[6] = FindOrAddOperandU32Constant(*metadataBlock, block, static_cast<uint32_t>(DXILShaderResourceShape::TypedBuffer));
     resource.ops[7] = FindOrAddOperandBoolConstant(*metadataBlock, block, false);
     resource.ops[8] = FindOrAddOperandBoolConstant(*metadataBlock, block, false);

@@ -103,8 +103,8 @@ void ExportStabilityFeature::Inject(IL::Program &program) {
         IL::Emitter<> pre(program, context.basicBlock);
 
         // Failure conditions
-        IL::ID isInf = pre.IsInf(value);
-        IL::ID isNaN = pre.IsNaN(value);
+        IL::ID isInf = pre.Any(pre.IsInf(value));
+        IL::ID isNaN = pre.Any(pre.IsNaN(value));
 
         // Out of bounds block
         IL::Emitter<> oob(program, *context.function.GetBasicBlocks().AllocBlock());

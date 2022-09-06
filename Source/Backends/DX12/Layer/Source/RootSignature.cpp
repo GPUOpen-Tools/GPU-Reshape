@@ -2,6 +2,7 @@
 #include <Backends/DX12/Table.Gen.h>
 #include <Backends/DX12/States/RootSignatureState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/Export/ShaderExportHost.h>
 
 struct RegisterBindingInfo {
     uint32_t space{~0u};
@@ -56,7 +57,7 @@ RegisterBindingInfo GetBindingInfo(const D3D12_ROOT_SIGNATURE_DESC& source) {
     return bindingInfo;
 }
 
-HRESULT SerializeRootSignature1_0(const D3D12_ROOT_SIGNATURE_DESC& source, ID3DBlob** out, ID3DBlob** error) {
+HRESULT SerializeRootSignature1_0(DeviceState* state, const D3D12_ROOT_SIGNATURE_DESC& source, ID3DBlob** out, ID3DBlob** error) {
     RegisterBindingInfo bindingInfo = GetBindingInfo(source);
 
     // Copy parameters
@@ -69,7 +70,7 @@ HRESULT SerializeRootSignature1_0(const D3D12_ROOT_SIGNATURE_DESC& source, ID3DB
     exportRange.OffsetInDescriptorsFromTableStart = 0;
     exportRange.RegisterSpace = bindingInfo.space;
     exportRange.BaseShaderRegister = bindingInfo._register;
-    exportRange.NumDescriptors = 2u;
+    exportRange.NumDescriptors = 1 + state->exportHost->GetBound();
 
     // Shader export parameter
     D3D12_ROOT_PARAMETER& exportParameter = parameters[source.NumParameters];
@@ -124,7 +125,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
             rootUserCount = unconverted->Desc_1_1.NumParameters;
 
 #ifndef NDEBUG
-            hr = SerializeRootSignature1_0(unconverted->Desc_1_0, &serialized, &error);
+            hr = SerializeRootSignature1_0(table.state, unconverted->Desc_1_0, &serialized, &error);
 #else // NDEBUG
             hr = SerializeRootSignature1_0(unconverted->Desc_1_0, &serialized, nullptr);
 #endif // NDEBUG

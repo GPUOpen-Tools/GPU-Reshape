@@ -2,6 +2,7 @@
 
 #include "Program.h"
 #include "Instruction.h"
+#include "TypeCommon.h"
 
 namespace Backend::IL {
     inline const Type* ReplaceVectorizedType(Program& program, const Type* type, const Type* component) {
@@ -85,11 +86,11 @@ namespace Backend::IL {
     }
 
     inline const Type* ResultOf(Program& program, const IsNaNInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+        return SplatToValue(program, program.GetTypeMap().FindTypeOrAdd(BoolType{}), instr->value);
     }
 
     inline const Type* ResultOf(Program& program, const IsInfInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+        return SplatToValue(program, program.GetTypeMap().FindTypeOrAdd(BoolType{}), instr->value);
     }
 
     inline const Type* ResultOf(Program& program, const EqualInstruction* instr) {

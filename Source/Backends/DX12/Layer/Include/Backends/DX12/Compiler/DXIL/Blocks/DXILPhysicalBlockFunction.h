@@ -12,6 +12,9 @@
 // Std
 #include <string_view>
 
+// Forward declarations
+struct DXJob;
+
 /// Function block
 struct DXILPhysicalBlockFunction : public DXILPhysicalBlockSection {
     using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
@@ -35,7 +38,7 @@ public:
 public:
     /// Compile a function
     /// \param block block
-    void CompileFunction(struct LLVMBlock *block);
+    void CompileFunction(const DXJob &job, struct LLVMBlock *block);
 
     /// Compile a module function
     /// \param record record
@@ -124,16 +127,15 @@ public:
     DXILFunctionDeclaration* AddDeclaration(const DXILFunctionDeclaration& declaration);
 
 private:
-    /// Handle information
-    struct ExportHandleInfo {
-        uint32_t counterHandle;
-        uint32_t streamHandle;
-    };
+    /// Shared counter handle
+    uint32_t exportCounterHandle;
+
+    /// All stream handles
+    TrivialStackVector<uint32_t, 64> exportStreamHandles;
 
     /// Create an export handle
     /// \param block appended block
-    /// \return user id
-    ExportHandleInfo CreateExportHandle(struct LLVMBlock* block);
+    void CreateExportHandle(const DXJob &job, struct LLVMBlock* block);
 
 private:
     /// Does the record have a result?
