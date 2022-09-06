@@ -62,6 +62,34 @@ bool InstallImplicitLayer(HKEY key, const wchar_t* path) {
     // OK
     return true;
 }
+
+bool UninstallImplicitLayer(HKEY key, const wchar_t* path) {
+    // Open properties
+    HKEY keyHandle{};
+
+    // Open the implicit layer key
+    DWORD error = RegOpenKeyW(
+        key,
+        path,
+        &keyHandle
+    );
+    if (error != ERROR_SUCCESS) {
+        // Failed to open, key doesn't exist
+        return true;
+    }
+
+    // Delete the implicit layer key
+    error = RegDeleteKeyW(
+        key,
+        path
+    );
+    if (error != ERROR_SUCCESS) {
+        return false;
+    }
+
+    // OK
+    return true;
+}
 #endif
 
 bool VulkanDiscoveryListener::Install() {
@@ -72,6 +100,21 @@ bool VulkanDiscoveryListener::Install() {
 
     // Attempt to install implicit administrator layer, optional success
     InstallImplicitLayer(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers");
+
+    // OK
+    return true;
+}
+
+bool VulkanDiscoveryListener::Uninstall() {
+    // Attempt to install implicit non-administrator layer
+    if (!UninstallImplicitLayer(HKEY_CURRENT_USER, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers")) {
+        return false;
+    }
+
+    // Attempt to install implicit administrator layer
+    if (!UninstallImplicitLayer(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers")) {
+        return false;
+    }
 
     // OK
     return true;

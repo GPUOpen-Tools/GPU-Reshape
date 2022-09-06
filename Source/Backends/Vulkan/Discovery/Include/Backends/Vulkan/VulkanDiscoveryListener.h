@@ -10,4 +10,5 @@ class VulkanDiscoveryListener final : public IDiscoveryListener {
 public:
     /// Overrides
     bool Install() override;
+    bool Uninstall() override;
 };
