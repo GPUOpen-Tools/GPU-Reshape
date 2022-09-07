@@ -11,6 +11,7 @@
 #include <Backends/DX12/Compiler/PipelineCompiler.h>
 #include <Backends/DX12/Compiler/ShaderCompilerDebug.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
@@ -134,9 +135,13 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         auto shaderDebug = state->registry.AddNew<ShaderCompilerDebug>();
 #endif
 
-        // Install the shader compiler
+        // Install the dxil signer
         auto dxilSigner = state->registry.AddNew<DXILSigner>();
         ENSURE(dxilSigner->Install(), "Failed to install DXIL signer");
+
+        // Install the dxbc signer
+        auto dxbcSigner = state->registry.AddNew<DXBCSigner>();
+        ENSURE(dxbcSigner->Install(), "Failed to install DXBC signer");
 
         // Install the shader compiler
         auto shaderCompiler = state->registry.AddNew<ShaderCompiler>(state);

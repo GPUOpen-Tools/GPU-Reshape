@@ -8,6 +8,7 @@
 
 // Forward declarations
 class DXILSigner;
+class DXBCSigner;
 
 /// Job description
 struct DXJob {
@@ -17,6 +18,7 @@ struct DXJob {
     /// The number of streams
     uint32_t streamCount{0};
 
-    /// DXIL signer
+    /// Signers
     ComRef<DXILSigner> dxilSigner;
+    ComRef<DXBCSigner> dxbcSigner;
 };

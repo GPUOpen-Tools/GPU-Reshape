@@ -1,6 +1,7 @@
 // Common
 #include <Common/FileSystem.h>
 #include <Common/GlobalUID.h>
+#include <Common/String.h>
 
 // System
 #include <Windows.h>
@@ -17,6 +18,9 @@
 /// Enables naive debugging
 #define ENABLE_LOGGING 1
 
+/// Greatly simplifies debugging
+#define ENABLE_WHITELIST 1
+
 /// Symbol helper (nay, repent! a macro!)
 #define SYMBOL(NAME, STR) \
     static constexpr const char* k##NAME = STR; \
@@ -28,12 +32,16 @@ SYMBOL(LayerModuleName, "Backends.DX12.Layer.dll");
 SYMBOL(Kernel32ModuleName, "kernel32.dll");
 
 /// Function types
-using PFN_LOAD_LIBRARY_A = HMODULE (*WINAPI)(LPCSTR lpLibFileName);
-using PFN_LOAD_LIBRARY_W = HMODULE (*WINAPI)(LPCWSTR lpLibFileName);
+using PFN_LOAD_LIBRARY_A = HMODULE (WINAPI*)(LPCSTR lpLibFileName);
+using PFN_LOAD_LIBRARY_W = HMODULE (WINAPI*)(LPCWSTR lpLibFileName);
+using PFN_LOAD_LIBRARY_EX_A = HMODULE (WINAPI*)(LPCSTR lpLibFileName, HANDLE, DWORD);
+using PFN_LOAD_LIBRARY_EX_W = HMODULE (WINAPI*)(LPCWSTR lpLibFileName, HANDLE, DWORD);
 
 /// Next
 PFN_LOAD_LIBRARY_A Kernel32LoadLibraryAOriginal;
 PFN_LOAD_LIBRARY_W Kernel32LoadLibraryWOriginal;
+PFN_LOAD_LIBRARY_EX_A Kernel32LoadLibraryExAOriginal;
+PFN_LOAD_LIBRARY_EX_W Kernel32LoadLibraryExWOriginal;
 
 /// Bootstrapped layer
 HMODULE LayerModule;
@@ -69,17 +77,22 @@ struct LogContext {
 #endif // ENABLE_LOGGING
 
 void BootstrapLayer(const char* invoker, bool native) {
+    std::filesystem::path modulePath = GetCurrentModuleDirectory();
+
+    // Add search directory
+    AddDllDirectory(modulePath.wstring().c_str());
+
     // Process path
-    std::filesystem::path path = GetCurrentModuleDirectory() / "Backends.DX12.Layer.dll";
+    std::filesystem::path path = modulePath / "Backends.DX12.Layer.dll";
 #if ENABLE_LOGGING
     LogContext{} << invoker << " - Loading layer " << path << " ... ";
 #endif // ENABLE_LOGGING
 
     // User attempting to load d3d12.dll, warranting bootstrapping of the layer
     if (native) {
-        LayerModule = LoadLibraryW(path.wstring().c_str());
+        LayerModule = LoadLibraryExW(path.wstring().c_str(), nullptr, 0x0);
     } else {
-        LayerModule = Kernel32LoadLibraryWOriginal(path.wstring().c_str());
+        LayerModule = Kernel32LoadLibraryExWOriginal(path.wstring().c_str(), nullptr, 0x0);
     }
 
     // Failed?
@@ -99,7 +112,7 @@ WINAPI HMODULE HookLoadLibraryA(LPCSTR lpLibFileName) {
 
     // Intercepted library?
     // TODO: May not just be the module name!
-    if (lpLibFileName && std::strcmp(lpLibFileName, kD3D12ModuleName)) {
+    if (lpLibFileName && std::strcmp(lpLibFileName, kD3D12ModuleName) == 0) {
         BootstrapLayer("HookLoadLibraryA", false);
     }
 
@@ -114,7 +127,7 @@ WINAPI HMODULE HookLoadLibraryW(LPCWSTR lpLibFileName) {
 
     // Intercepted library?
     // TODO: May not just be the module name!
-    if (lpLibFileName && std::wcscmp(lpLibFileName, kD3D12ModuleNameW)) {
+    if (lpLibFileName && std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0) {
         BootstrapLayer("HookLoadLibraryW", false);
     }
 
@@ -122,9 +135,64 @@ WINAPI HMODULE HookLoadLibraryW(LPCWSTR lpLibFileName) {
     return Kernel32LoadLibraryWOriginal(lpLibFileName);
 }
 
+WINAPI HMODULE HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD flags) {
+#if ENABLE_LOGGING
+    LogContext{} << "HookLoadLibraryExA '" << lpLibFileName << "'\n";
+#endif // ENABLE_LOGGING
+
+    // Intercepted library?
+    // TODO: May not just be the module name!
+    if (lpLibFileName && std::strcmp(lpLibFileName, kD3D12ModuleName) == 0) {
+        BootstrapLayer("HookLoadLibraryExA", false);
+    }
+
+    // Pass down call chain, preserve error stack
+    return Kernel32LoadLibraryExAOriginal(lpLibFileName, handle, flags);
+}
+
+WINAPI HMODULE HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD flags) {
+#if ENABLE_LOGGING
+    LogContext{} << "HookLoadLibraryExW '" << lpLibFileName << "'\n";
+#endif // ENABLE_LOGGING
+
+    // Intercepted library?
+    // TODO: May not just be the module name!
+    if (lpLibFileName && std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0) {
+        BootstrapLayer("HookLoadLibraryExW", false);
+    }
+
+    // Pass down call chain, preserve error stack
+    return Kernel32LoadLibraryExWOriginal(lpLibFileName, handle, flags);
+}
+
 DWORD DeferredInitialization(void*) {
-    // ! Call native LoadLibraryW, not detoured
-    BootstrapLayer("Entry detected mounted d3d12 module", true);
+#if ENABLE_LOGGING
+    // Get executable filename
+    char filename[2048];
+    GetModuleFileName(nullptr, filename, sizeof(filename));
+
+    // Strip directories
+    std::filesystem::path basename = std::filesystem::path(filename).filename().replace_extension("");
+
+    // Setup log path
+    std::filesystem::path logPath = GetIntermediatePath("Bootstrapper") / (basename.string() + " " + GlobalUID::New().ToString() + ".txt");
+
+    // Open at path
+    LoggingFile.open(logPath);
+#endif // ENABLE_LOGGING
+
+    // Attempt to find module, directly load the layer if available
+    //  i.e. Already loaded or scheduled to be
+    HMODULE d3d12Module{nullptr};
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, kD3D12ModuleNameW, &d3d12Module)) {
+        // ! Call native LoadLibraryW, not detoured
+        BootstrapLayer("Entry detected mounted d3d12 module", false);
+        return 0;
+    }
+
+#if ENABLE_LOGGING
+    LogContext{} << "No mount detected, detouring application\n";
+#endif // ENABLE_LOGGING
 
     // OK
     return 0;
@@ -136,44 +204,27 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         return TRUE;
     }
 
+#if ENABLE_WHITELIST
+    // Get executable filename
+    char filename[2048];
+    GetModuleFileName(nullptr, filename, sizeof(filename));
+
+    // Whitelist executable
+    if (!std::ends_with(filename, "D3D12HelloTriangle.exe")) {
+        return TRUE;
+    }
+#endif // ENABLE_WHITELIST
+
     // Attach?
     if (dwReason == DLL_PROCESS_ATTACH) {
-#if ENABLE_LOGGING
-        // Get executable filename
-        char filename[2048];
-        GetModuleFileName(nullptr, filename, sizeof(filename));
-
-        // Strip directories
-        std::filesystem::path basename = std::filesystem::path(filename).filename().replace_extension("");
-
-        // Setup log path
-        std::filesystem::path logPath = GetIntermediatePath("Bootstrapper") / (basename.string() + " " + GlobalUID::New().ToString() + ".txt");
-
-        // Open at path
-        LoggingFile.open(logPath);
-#endif // ENABLE_LOGGING
-
-        // Attempt to find module, directly load the layer if available
-        //  i.e. Already loaded or scheduled to be
-        HMODULE d3d12Module{nullptr};
-        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, kD3D12ModuleNameW, &d3d12Module)) {
-            if (!CreateThread(
-                NULL,
-                0,
-                DeferredInitialization,
-                NULL,
-                0,
-                NULL)) {
-#if ENABLE_LOGGING
-                LogContext{} << "Failed to create initialization thread\n";
-#endif // ENABLE_LOGGING
-            }
-            return TRUE;
-        }
-
-#if ENABLE_LOGGING
-        LogContext{} << "No mount detected, detouring application\n";
-#endif // ENABLE_LOGGING
+        (void)CreateThread(
+            NULL,
+            0,
+            DeferredInitialization,
+            NULL,
+            0,
+            NULL
+        );
 
         // Otherwise, begin detouring against potential loads
         DetourRestoreAfterWith();
@@ -197,6 +248,14 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         Kernel32LoadLibraryWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_W>(GetProcAddress(kernel32Module, "LoadLibraryW"));
         DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
 
+        // Attach against original address
+        Kernel32LoadLibraryExAOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_A>(GetProcAddress(kernel32Module, "LoadLibraryExA"));
+        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
+
+        // Attach against original address
+        Kernel32LoadLibraryExWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_W>(GetProcAddress(kernel32Module, "LoadLibraryExW"));
+        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
+
         // Commit all transactions
         if (FAILED(DetourTransactionCommit())) {
             return FALSE;
@@ -213,13 +272,6 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         }
 #endif // ENABLE_LOGGING
 
-        // Release layer
-        if (LayerModule) {
-            if (!FreeLibrary(LayerModule)) {
-                return false;
-            }
-        }
-
         // May not have detoured at all
         if (Kernel32LoadLibraryAOriginal) {
             // Open transaction
@@ -229,6 +281,8 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
             // Detach from detours
             DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryAOriginal), reinterpret_cast<void*>(HookLoadLibraryA));
             DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
+            DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
+            DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
 
             // Commit all transactions
             if (FAILED(DetourTransactionCommit())) {

@@ -1,11 +1,9 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockScan.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 #include <Backends/DX12/Compiler/DXStream.h>
 #include <Backends/DX12/Compiler/DXJob.h>
-
-// DxbcSigner
-#include <DxbcSigner/DxbcSigner.hpp>
 
 /// Dump byte stream to file?
 #define DXBC_DUMP_STREAM 1
@@ -180,8 +178,8 @@ void DXBCPhysicalBlockScan::Stitch(const DXJob& job, DXStream &out) {
         bool result = job.dxilSigner->Sign(out.GetMutableDataAt(headerOffset), byteLength);
         ASSERT(result, "Failed to sign DXIL");
     } else {
-        HRESULT hr = SignDxbc(out.GetMutableDataAt(headerOffset), byteLength);
-        ASSERT(SUCCEEDED(hr), "Failed to sign DXBC");
+        bool result = job.dxbcSigner->Sign(out.GetMutableDataAt(headerOffset), byteLength);
+        ASSERT(result, "Failed to sign DXBC");
     }
 }
 

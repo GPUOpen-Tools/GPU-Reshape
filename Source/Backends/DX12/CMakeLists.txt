@@ -256,6 +256,7 @@ add_library(
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockTable.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockShader.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockPipelineStateValidation.cpp
+    Layer/Source/Compiler/DXBC/DXBCSigner.cpp
     Layer/Source/Compiler/DXIL/DXILModule.cpp
     Layer/Source/Compiler/DXIL/DXILPhysicalBlockScan.cpp
     Layer/Source/Compiler/DXIL/DXILPhysicalBlockTable.cpp
@@ -313,7 +314,7 @@ target_link_libraries(
 
 # Setup dependencies
 ExternalProject_Link(Backends.DX12.Layer Detour Detour)
-ExternalProject_Link(Backends.DX12.Layer DxbcSigner DxbcSigner)
+ExternalProject_Link(Backends.DX12.Layer DxbcSigner)
 ExternalProject_Link(Backends.DX12.Layer D3D12MA $<$<CONFIG:Debug>:D3D12MAd> $<$<CONFIG:Release>:D3D12MAr>)
 
 # Include directories

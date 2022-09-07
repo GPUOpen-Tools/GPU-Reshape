@@ -18,6 +18,7 @@ class IFeature;
 class IShaderFeature;
 class ShaderCompilerDebug;
 class DXILSigner;
+class DXBCSigner;
 
 class ShaderCompiler : public TComponent<ShaderCompiler> {
 public:
@@ -55,8 +56,9 @@ private:
     /// Debug device
     ComRef<ShaderCompilerDebug> debug;
 
-    /// DXIL signer
+    /// Signers
     ComRef<DXILSigner> dxilSigner;
+    ComRef<DXBCSigner> dxbcSigner;
 
     /// All features
     std::vector<ComRef<IShaderFeature>> shaderFeatures;

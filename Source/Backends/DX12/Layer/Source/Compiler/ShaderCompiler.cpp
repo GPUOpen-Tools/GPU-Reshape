@@ -6,6 +6,7 @@
 #include <Backends/DX12/Compiler/DXJob.h>
 #include <Backends/DX12/Compiler/DXStream.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
@@ -44,6 +45,7 @@ bool ShaderCompiler::Install() {
 
     // Get the dxil signer
     dxilSigner = registry->Get<DXILSigner>();
+    dxbcSigner = registry->Get<DXBCSigner>();
 
     // OK
     return true;
@@ -116,6 +118,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     compileJob.instrumentationKey = job.instrumentationKey;
     compileJob.streamCount = exportCount;
     compileJob.dxilSigner = dxilSigner;
+    compileJob.dxbcSigner = dxbcSigner;
 
     // Instrumented data
     DXStream stream;
