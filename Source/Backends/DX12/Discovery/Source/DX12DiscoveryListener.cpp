@@ -53,7 +53,7 @@ bool UninstallService(const wchar_t* name) {
     // Open properties
     HKEY keyHandle{};
 
-    // Open the implicit layer key
+    // Open the run key
     DWORD error = RegOpenKeyW(
         HKEY_CURRENT_USER,
         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",

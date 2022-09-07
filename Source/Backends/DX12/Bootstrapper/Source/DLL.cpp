@@ -68,6 +68,30 @@ struct LogContext {
 };
 #endif // ENABLE_LOGGING
 
+void BootstrapLayer(const char* invoker, bool native) {
+    // Process path
+    std::filesystem::path path = GetCurrentModuleDirectory() / "Backends.DX12.Layer.dll";
+#if ENABLE_LOGGING
+    LogContext{} << invoker << " - Loading layer " << path << " ... ";
+#endif // ENABLE_LOGGING
+
+    // User attempting to load d3d12.dll, warranting bootstrapping of the layer
+    if (native) {
+        LayerModule = LoadLibraryW(path.wstring().c_str());
+    } else {
+        LayerModule = Kernel32LoadLibraryWOriginal(path.wstring().c_str());
+    }
+
+    // Failed?
+#if ENABLE_LOGGING
+    if (LayerModule) {
+        LogContext{} << "OK\n";
+    } else {
+        LogContext{} << "Failed [" << GetLastError() << "]\n";
+    }
+#endif // ENABLE_LOGGING
+}
+
 WINAPI HMODULE HookLoadLibraryA(LPCSTR lpLibFileName) {
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryA '" << lpLibFileName << "'\n";
@@ -76,12 +100,7 @@ WINAPI HMODULE HookLoadLibraryA(LPCSTR lpLibFileName) {
     // Intercepted library?
     // TODO: May not just be the module name!
     if (lpLibFileName && std::strcmp(lpLibFileName, kD3D12ModuleName)) {
-#if ENABLE_LOGGING
-        LogContext{} << "HookLoadLibraryA loading d3d12, loading layer\n";
-#endif // ENABLE_LOGGING
-
-        // User attempting to load d3d12.dll, warranting bootstrapping of the layer
-        LayerModule = Kernel32LoadLibraryWOriginal(kLayerModuleNameW);
+        BootstrapLayer("HookLoadLibraryA", false);
     }
 
     // Pass down call chain, preserve error stack
@@ -96,16 +115,19 @@ WINAPI HMODULE HookLoadLibraryW(LPCWSTR lpLibFileName) {
     // Intercepted library?
     // TODO: May not just be the module name!
     if (lpLibFileName && std::wcscmp(lpLibFileName, kD3D12ModuleNameW)) {
-#if ENABLE_LOGGING
-        LogContext{} << "HookLoadLibraryW loading d3d12, loading layer\n";
-#endif // ENABLE_LOGGING
-
-        // User attempting to load d3d12.dll, warranting bootstrapping of the layer
-        LayerModule = Kernel32LoadLibraryWOriginal(kLayerModuleNameW);
+        BootstrapLayer("HookLoadLibraryW", false);
     }
 
     // Pass down call chain, preserve error stack
     return Kernel32LoadLibraryWOriginal(lpLibFileName);
+}
+
+DWORD DeferredInitialization(void*) {
+    // ! Call native LoadLibraryW, not detoured
+    BootstrapLayer("Entry detected mounted d3d12 module", true);
+
+    // OK
+    return 0;
 }
 
 /// DLL entrypoint
@@ -135,12 +157,17 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         //  i.e. Already loaded or scheduled to be
         HMODULE d3d12Module{nullptr};
         if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, kD3D12ModuleNameW, &d3d12Module)) {
+            if (!CreateThread(
+                NULL,
+                0,
+                DeferredInitialization,
+                NULL,
+                0,
+                NULL)) {
 #if ENABLE_LOGGING
-            LogContext{} << "Entry detected mounted d3d12 module, early loading layer\n";
+                LogContext{} << "Failed to create initialization thread\n";
 #endif // ENABLE_LOGGING
-
-            // ! Call native LoadLibraryW, not detoured
-            LoadLibraryW(kLayerModuleNameW);
+            }
             return TRUE;
         }
 
