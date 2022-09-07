@@ -1,8 +1,8 @@
 #include <Services/HostResolver/HostResolverService.h>
 #include <Services/HostResolver/Shared.h>
-#include <Services/HostResolver/IPGlobalLock.h>
 
 // Common
+#include <Common/IPGlobalLock.h>
 #include <Common/FileSystem.h>
 
 // System
@@ -12,7 +12,7 @@
 
 bool HostResolverService::Install() {
     // Already acquired?
-    if (!IPGlobalLock{}.Acquire(false)) {
+    if (!IPGlobalLock{}.Acquire(kSharedMutexName, false)) {
         return true;
     }
 

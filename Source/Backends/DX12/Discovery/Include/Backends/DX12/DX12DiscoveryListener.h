@@ -11,4 +11,9 @@ public:
     /// Overrides
     bool Install() override;
     bool Uninstall() override;
+
+private:
+    /// Start the host resolve process
+    /// \return success state
+    bool StartProcess();
 };

@@ -1,26 +1,25 @@
 #pragma once
 
-// Resolver
-#include "Shared.h"
-
 // System
 #ifdef _WIN64
 #include <winsock2.h>
 #include <sddl.h>
 #include <sysinfoapi.h>
 #include <Windows.h>
-#endif
+#endif // _WIN64
 
 class IPGlobalLock {
 public:
     ~IPGlobalLock() {
+#ifdef _WIN64
         CloseHandle(mutexHandle);
+#endif // _WIN64
     }
 
     /// Acquire this global lock
     /// \param inheritHandle system handle inheriting
     /// \return false if already acquired
-    bool Acquire(bool inheritHandle) {
+    bool Acquire(const char* name, bool inheritHandle) {
 #ifdef _WIN64
         LPCSTR pszStringSecurityDescriptor = "D:(A;;GA;;;WD)(A;;GA;;;AN)S:(ML;;NW;;;ME)";
 
@@ -37,7 +36,7 @@ public:
         SecAttr.bInheritHandle = inheritHandle;
 
         // Try to open and inherit mutex
-        mutexHandle = CreateMutex(&SecAttr, inheritHandle, kWin32SharedMutexName);
+        mutexHandle = CreateMutex(&SecAttr, inheritHandle, name);
         if (mutexHandle && GetLastError() != ERROR_ALREADY_EXISTS) {
             return true;
         }
@@ -45,13 +44,13 @@ public:
         // Couldn't open, or already exists
         mutexHandle = nullptr;
         return false;
-#else
+#else // _WIN64
 #    error Not implemented
-#endif
+#endif // _WIN64
     }
 
 private:
 #ifdef _WIN64
     HANDLE mutexHandle{};
-#endif
+#endif // _WIN64
 };

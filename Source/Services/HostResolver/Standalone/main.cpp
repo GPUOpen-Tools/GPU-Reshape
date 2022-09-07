@@ -1,5 +1,7 @@
 #include <Services/HostResolver/Shared.h>
-#include <Services/HostResolver/IPGlobalLock.h>
+
+// Common
+#include <Common/IPGlobalLock.h>
 
 // Bridge
 #include <Bridge/Asio/AsioHostResolverServer.h>
@@ -14,8 +16,8 @@ int main(int32_t argc, const char* const* argv) {
 
     // Try to acquire lock
     IPGlobalLock globalLock;
-    if (!globalLock.Acquire(true)) {
-        std::cerr << "Failed to open or create shared mutex '" << kWin32SharedMutexName << "'" << std::endl;
+    if (!globalLock.Acquire(kSharedMutexName, true)) {
+        std::cerr << "Failed to open or create shared mutex '" << kSharedMutexName << "'" << std::endl;
 
 #ifndef NDEBUG
         std::cin.ignore();

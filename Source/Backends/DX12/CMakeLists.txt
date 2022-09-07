@@ -322,6 +322,49 @@ target_include_directories(
     Layer/Include ${CMAKE_CURRENT_BINARY_DIR}/Layer/Include
 )
 
+#----- Bootstrapper -----#
+
+# Create service
+add_library(
+    Backends.DX12.Bootstrapper SHARED
+    Bootstrapper/Source/DLL.cpp
+)
+
+# IDE source discovery
+SetSourceDiscovery(Backends.DX12.Bootstrapper CXX Bootstrapper)
+
+# Include directories
+target_include_directories(Backends.DX12.Bootstrapper PUBLIC Bootstrapper/Include)
+
+# Dependencies
+target_link_libraries(Backends.DX12.Bootstrapper PUBLIC Libraries.Common)
+
+# External dependencies
+ExternalProject_Link(Backends.DX12.Bootstrapper Detour Detour)
+
+# Binary dependencies
+add_dependencies(Backends.DX12.Bootstrapper Backends.DX12.Layer)
+
+#----- Service -----#
+
+# Create service
+add_executable(
+    Backends.DX12.Service
+    Service/Source/main.cpp
+)
+
+# IDE source discovery
+SetSourceDiscovery(Backends.DX12.Service CXX Service)
+
+# Include directories
+target_include_directories(Backends.DX12.Service PUBLIC Service/Include)
+
+# Dependencies
+target_link_libraries(Backends.DX12.Service PUBLIC Libraries.Common)
+
+# Binary dependencies
+add_dependencies(Backends.DX12.Service Backends.DX12.Bootstrapper)
+
 #----- Discovery -----#
 
 # Create feature
@@ -336,7 +379,7 @@ add_library(
 SetSourceDiscovery(Backends.DX12.Discovery CXX Discovery)
 
 # Includes
-target_include_directories(Backends.DX12.Discovery PUBLIC Discovery/Include)
+target_include_directories(Backends.DX12.Discovery PUBLIC Discovery/Include Service/Include)
 
 # Links
 target_link_libraries(Backends.DX12.Discovery PUBLIC Libraries.Discovery Backends.DX12.Layer)
