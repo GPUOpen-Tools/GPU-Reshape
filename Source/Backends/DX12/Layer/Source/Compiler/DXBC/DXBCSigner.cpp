@@ -1,10 +1,13 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 
-// Std
-#include <string>
+// Common
+#include <Common/FileSystem.h>
 
 // System
 #include <Windows.h>
+
+// Std
+#include <string>
 
 // Special includes
 #ifndef NDEBUG
@@ -12,8 +15,12 @@
 #endif // NDEBUG
 
 bool DXBCSigner::Install() {
+    // Get path of the layer
+    std::filesystem::path modulePath = GetCurrentModuleDirectory();
+
     // Load DXBC
-    module = LoadLibraryExW(L"dxbcsigner.dll", nullptr, LOAD_LIBRARY_SEARCH_USER_DIRS);
+    //   ! No non-system/runtime dependents in dxbcsigner.dll, verified with dumpbin
+    module = LoadLibrary((modulePath / "dxbcsigner.dll").string().c_str());
     if (!module) {
         return false;
     }

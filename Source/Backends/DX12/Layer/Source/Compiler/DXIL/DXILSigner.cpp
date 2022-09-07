@@ -1,10 +1,13 @@
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 
-// Std
-#include <string>
-
 // System
 #include <Windows.h>
+
+// Common
+#include <Common/FileSystem.h>
+
+// Std
+#include <string>
 
 // Special includes
 #ifndef NDEBUG
@@ -16,14 +19,19 @@
  * */
 
 bool DXILSigner::Install() {
+    // Get path of the layer
+    std::filesystem::path modulePath = GetCurrentModuleDirectory();
+
     // Load dxil
-    dxilModule = LoadLibrary("dxil.dll");
+    //   ! No non-system/runtime dependents in dxil.dll, verified with dumpbin
+    dxilModule = LoadLibrary((modulePath / "dxil.dll").string().c_str());
     if (!dxilModule) {
         return false;
     }
 
     // Load dxcompiler
-    dxCompilerModule = LoadLibrary("dxcompiler.dll");
+    //   ! No non-system/runtime dependents in dxcompiler.dll, verified with dumpbin
+    dxCompilerModule = LoadLibrary((modulePath / "dxcompiler.dll").string().c_str());
     if (!dxCompilerModule) {
         return false;
     }
