@@ -38,7 +38,18 @@ static nlohmann::json TranslateType(CXType type) {
         default: {
             CXCursor declaration = clang_getTypeDeclaration(type);
 
-            obj["type"] = "pod";
+            // Get canonical type
+            CXCursor underlyingDeclaration = declaration;
+            if (underlyingDeclaration.kind == CXCursor_TypedefDecl) {
+                underlyingDeclaration = clang_getTypeDeclaration(clang_getTypedefDeclUnderlyingType(declaration));
+            }
+
+            // Is the declaration structural?
+            if (underlyingDeclaration.kind == CXCursor_StructDecl) {
+                obj["type"] = "struct";
+            } else {
+                obj["type"] = "pod";
+            }
 
             if (clang_equalCursors(declaration, clang_getNullCursor())) {
                 obj["name"] = clang_getCString(clang_getTypeSpelling(type));

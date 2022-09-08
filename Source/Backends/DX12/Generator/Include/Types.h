@@ -11,7 +11,7 @@
 /// \param type json type
 /// \return true if structured
 static bool IsTypeStruct(const nlohmann::json &type) {
-    return type["type"].get<std::string>() == "pod" && type["name"].get<std::string>().starts_with("D3D12_");
+    return type["type"].get<std::string>() == "struct" && type["name"].get<std::string>().starts_with("D3D12_");
 }
 
 /// Pretty print a type
@@ -33,6 +33,8 @@ static bool PrettyPrintType(std::stringstream &ss, const nlohmann::json &type, b
 
     // Handle kind
     if (typeKind == "pod") {
+        ss << type["name"].get<std::string>();
+    } else if (typeKind == "struct") {
         ss << type["name"].get<std::string>();
     } else if (typeKind == "void") {
         ss << "void";
@@ -122,6 +124,8 @@ static bool PrettyPrintParameter(std::stringstream &ss, const nlohmann::json &ty
 
     // Handle kind
     if (typeKind == "pod") {
+        ss << type["name"].get<std::string>();
+    } else if (typeKind == "struct") {
         ss << type["name"].get<std::string>();
     } else if (typeKind == "void") {
         ss << "void";

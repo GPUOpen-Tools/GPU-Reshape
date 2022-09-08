@@ -69,7 +69,9 @@ void WINAPI HookID3D12DescriptorHeapGetCPUDescriptorHandleForHeapStart(ID3D12Des
     table.bottom->next_GetCPUDescriptorHandleForHeapStart(table.next, &reg);
 
     // Advance base by heap prefix
-    reg.ptr += table.state->allocator->GetPrefixOffset();
+    if (table.state->allocator) {
+        reg.ptr += table.state->allocator->GetPrefixOffset();
+    }
 
     *out = reg;
 }
@@ -81,7 +83,9 @@ void WINAPI HookID3D12DescriptorHeapGetGPUDescriptorHandleForHeapStart(ID3D12Des
     table.bottom->next_GetGPUDescriptorHandleForHeapStart(table.next, &reg);
 
     // Advance base by heap prefix
-    reg.ptr += table.state->allocator->GetPrefixOffset();
+    if (table.state->allocator) {
+        reg.ptr += table.state->allocator->GetPrefixOffset();
+    }
 
     *out = reg;
 }

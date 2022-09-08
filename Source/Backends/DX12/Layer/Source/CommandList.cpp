@@ -122,7 +122,7 @@ static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState
         return hotSwap;
     }
 
-    return Next(initialState);
+    return nullptr;
 }
 
 HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *allocator, ID3D12PipelineState *initialState, const IID &riid, void **pCommandList) {
