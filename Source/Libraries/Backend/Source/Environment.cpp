@@ -70,7 +70,7 @@ bool Environment::Install(const EnvironmentInfo &info) {
     // Need plugins?
     if (info.loadPlugins) {
         // Find all plugins
-        if (!resolver->FindPlugins("backend", &plugins)) {
+        if (!resolver->FindPlugins("backend", &plugins, PluginResolveFlag::ContinueOnFailure)) {
             return false;
         }
 

@@ -6,12 +6,18 @@
 #include <Common/Plugin/Plugin.h>
 #include <Common/Plugin/PluginInfo.h>
 #include <Common/Plugin/PluginList.h>
+#include <Common/Plugin/PluginResolveFlag.h>
 
 // Std
 #include <string_view>
 #include <filesystem>
 #include <string>
 #include <map>
+
+// Forward declarations
+namespace tinyxml2 {
+    class XMLNode;
+}
 
 class PluginResolver : public TComponent<PluginResolver> {
 public:
@@ -22,16 +28,23 @@ public:
     /// Find all plugins of a certain category
     /// \param category the category to be found
     /// \param list the output list
+    /// \param flags the resolve flags
     /// \return true if successful
-    bool FindPlugins(const std::string_view& category, PluginList* list);
+    bool FindPlugins(const std::string_view& category, PluginList* list, PluginResolveFlagSet flags = PluginResolveFlag::None);
 
     /// Install all plugins from a list
     /// \param list the list of plugins to be installed
+    /// \param flags the resolve flags
     /// \return true if successful
-    bool InstallPlugins(const PluginList& list);
+    bool InstallPlugins(const PluginList& list, PluginResolveFlagSet flags = PluginResolveFlag::None);
 
     /// Uninstall all installed plugins
     void Uninstall();
+
+private:
+    bool FindPluginAtNode(tinyxml2::XMLNode* catChildNode, PluginList* list);
+
+    bool InstallPlugin(const PluginEntry& entry);
 
 private:
     /// Internal plugin mode

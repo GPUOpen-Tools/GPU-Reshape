@@ -12,7 +12,7 @@ PluginResolver::PluginResolver() {
     pluginPath = GetCurrentModuleDirectory() / "Plugins";
 }
 
-bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* list) {
+bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* list, PluginResolveFlagSet flags) {
     for (const auto & entry : std::filesystem::directory_iterator(pluginPath)) {
         // TODO: Casing?
         if (entry.path().extension() != ".xml") {
@@ -47,40 +47,15 @@ bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* l
 
             // Process all plugins
             for (tinyxml2::XMLNode *catChildNode = cat->FirstChild(); catChildNode; catChildNode = catChildNode->NextSibling()) {
-                tinyxml2::XMLElement *catChild = catChildNode->ToElement();
+                // Attempt to pre-load
+                if (!FindPluginAtNode(catChildNode, list)) {
+                    if (flags & PluginResolveFlag::ContinueOnFailure) {
+                        continue;
+                    }
 
-                // Must be plugin under categories
-                if (std::strcmp(catChild->Name(), "plugin")) {
-                    std::cerr << "Category child must be plugin in line: " << catChild->GetLineNum() << std::endl;
+                    // Considered failure
                     return false;
                 }
-
-                // Get the name
-                const char *name = catChild->Attribute("name", nullptr);
-                if (!name) {
-                    std::cerr << "Malformed command in line: " << catChild->GetLineNum() << ", name not found" << std::endl;
-                    return false;
-                }
-
-                // Attempt to load
-                PluginState &state = GetPluginOrLoad(name);
-                if (!state.library.IsGood()) {
-                    return false;
-                }
-
-                // Get the info delegate
-                auto* delegate = state.library.GetFn<PluginInfoDelegate>(PLUGIN_INFO_S);
-                if (!delegate) {
-                    std::cerr << "Plugin '" << name << "' missing entrypoint '" << PLUGIN_INFO_S << "'" << std::endl;
-                    return false;
-                }
-
-                delegate(&state.info);
-
-                PluginEntry pluginEntry{};
-                pluginEntry.info = state.info;
-                pluginEntry.plugin = name;
-                list->plugins.push_back(pluginEntry);
             }
         }
     }
@@ -89,7 +64,49 @@ bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* l
     return true;
 }
 
-bool PluginResolver::InstallPlugins(const PluginList &list) {
+bool PluginResolver::FindPluginAtNode(tinyxml2::XMLNode *catChildNode, PluginList* list) {
+    tinyxml2::XMLElement *catChild = catChildNode->ToElement();
+
+    // Must be plugin under categories
+    if (std::strcmp(catChild->Name(), "plugin")) {
+        std::cerr << "Category child must be plugin in line: " << catChild->GetLineNum() << std::endl;
+        return false;
+    }
+
+    // Get the name
+    const char *name = catChild->Attribute("name", nullptr);
+    if (!name) {
+        std::cerr << "Malformed command in line: " << catChild->GetLineNum() << ", name not found" << std::endl;
+        return false;
+    }
+
+    // Attempt to load
+    PluginState &state = GetPluginOrLoad(name);
+    if (!state.library.IsGood()) {
+        return false;
+    }
+
+    // Get the info delegate
+    auto* delegate = state.library.GetFn<PluginInfoDelegate>(PLUGIN_INFO_S);
+    if (!delegate) {
+        std::cerr << "Plugin '" << name << "' missing entrypoint '" << PLUGIN_INFO_S << "'" << std::endl;
+        return false;
+    }
+
+    // Invoke info delegate
+    delegate(&state.info);
+
+    // Add entry
+    PluginEntry pluginEntry{};
+    pluginEntry.info = state.info;
+    pluginEntry.plugin = name;
+    list->plugins.push_back(pluginEntry);
+
+    // OK
+    return true;
+}
+
+bool PluginResolver::InstallPlugins(const PluginList &list, PluginResolveFlagSet flags) {
     std::vector<PluginEntry> entries = list.plugins;
 
     while (!entries.empty()) {
@@ -100,13 +117,15 @@ bool PluginResolver::InstallPlugins(const PluginList &list) {
 
             // Passed?
             bool pass{true};
+            bool failedDependency{false};
 
             // Check all dependencies
             for (const std::string& dependency : entry.info.dependencies) {
                 auto dep = plugins.find(dependency);
                 if (dep == plugins.end()) {
                     std::cerr << "Plugin '" << entry.plugin << "' listed missing dependency '" << dependency << "'" << std::endl;
-                    return false;
+                    failedDependency = true;
+                    break;
                 }
 
                 // Installed yet?
@@ -116,29 +135,25 @@ bool PluginResolver::InstallPlugins(const PluginList &list) {
                 }
             }
 
+            // No dependency?
+            if (failedDependency) {
+                if (flags & PluginResolveFlag::ContinueOnFailure) {
+                    continue;
+                }
+                return false;
+            }
+
             // Not satisfied
             if (!pass) {
                 continue;
             }
 
-            PluginState &state = GetPluginOrLoad(entry.plugin);
-
-            if (state.mode != PluginMode::Installed) {
-                // Get the install delegate
-                auto* delegate = state.library.GetFn<PluginInstallDelegate>(PLUGIN_INSTALL_S);
-                if (!delegate) {
-                    std::cerr << "Plugin '" << entry.plugin << "' missing entrypoint '" << PLUGIN_INSTALL_S << "'" << std::endl;
-                    return false;
+            // Attempt to install the plugin
+            if (!InstallPlugin(entry)) {
+                if (flags & PluginResolveFlag::ContinueOnFailure) {
+                    continue;
                 }
-
-                // Try to install
-                if (!delegate(registry)) {
-                    std::cerr << "Plugin '" << entry.plugin << "' failed to install" << std::endl;
-                    return false;
-                }
-
-                // Mark as installed
-                state.mode = PluginMode::Installed;
+                return false;
             }
 
             // Remove
@@ -173,6 +188,8 @@ PluginResolver::PluginState &PluginResolver::GetPluginOrLoad(const std::string &
     PluginState& state = plugins[path];
     if (!state.library.Load((pluginPath / path).string().c_str())) {
         std::cerr << "Failed to load plugin '" << path << "'" << std::endl;
+        state.mode = PluginMode::None;
+        return state;
     }
 
     state.mode = PluginMode::Loaded;
@@ -233,4 +250,38 @@ void PluginResolver::Uninstall() {
             break;
         }
     }
+}
+
+bool PluginResolver::InstallPlugin(const PluginEntry &entry) {
+    // Get the plugin state
+    PluginState &state = GetPluginOrLoad(entry.plugin);
+
+    // Check the plugin is in a good state
+    if (state.mode == PluginMode::None) {
+        return false;
+    }
+
+    // Already installed?
+    if (state.mode == PluginMode::Installed) {
+        return true;
+    }
+
+    // Get the install delegate
+    auto* delegate = state.library.GetFn<PluginInstallDelegate>(PLUGIN_INSTALL_S);
+    if (!delegate) {
+        std::cerr << "Plugin '" << entry.plugin << "' missing entrypoint '" << PLUGIN_INSTALL_S << "'" << std::endl;
+        return false;
+    }
+
+    // Try to install
+    if (!delegate(registry)) {
+        std::cerr << "Plugin '" << entry.plugin << "' failed to install" << std::endl;
+        return false;
+    }
+
+    // Mark as installed
+    state.mode = PluginMode::Installed;
+
+    // OK
+    return true;
 }
