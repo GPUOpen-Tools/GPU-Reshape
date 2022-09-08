@@ -292,6 +292,23 @@ add_library(
     Layer/Include/Backends/DX12/DeepCopy.Gen.h
 )
 
+if (${DX12TableType} STREQUAL WRAPPER)
+    # Disable stack cookies, messes with hooking method on wide returns
+    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "MSVC")
+        # Native MSVC compiler
+        set(NoCookies "/GS-")
+    elseif ("${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" MATCHES "MSVC")
+        # Supports MSVC arguments (like clang-cl)
+        set(NoCookies "/GS-")
+    else()
+        # GNU like
+        set(NoCookies "-fno-stack-protector")
+    endif()
+
+    # Set on file
+    set_source_files_properties(Layer/Source/Wrappers.Gen.cpp PROPERTIES COMPILE_FLAGS ${NoCookies})
+endif()
+
 # Internal definitions
 target_compile_definitions(Backends.DX12.Layer PRIVATE DX12_PRIVATE=1)
 

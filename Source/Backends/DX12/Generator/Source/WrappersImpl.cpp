@@ -92,8 +92,8 @@ static bool WrapClassMethods(const GeneratorInfo &info, WrapperImplState &state,
         } else {
             // Disable runtime checks, causes issues with the hooking mechanism
             state.hooks << "/* Preserve rax/rdx */\n";
-            state.hooks << "#pragma runtime_checks(\"scu\", off)\n\n";
-            state.hooks << "void";
+            state.hooks << "#pragma runtime_checks(\"scu\", off)\n";
+            state.hooks << "__declspec(safebuffers) void";
         }
 
         // Print name of wrapper
