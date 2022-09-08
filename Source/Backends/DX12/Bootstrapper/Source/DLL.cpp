@@ -105,7 +105,7 @@ void BootstrapLayer(const char* invoker, bool native) {
 #endif // ENABLE_LOGGING
 }
 
-WINAPI HMODULE HookLoadLibraryA(LPCSTR lpLibFileName) {
+HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryA '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
@@ -120,7 +120,7 @@ WINAPI HMODULE HookLoadLibraryA(LPCSTR lpLibFileName) {
     return Kernel32LoadLibraryAOriginal(lpLibFileName);
 }
 
-WINAPI HMODULE HookLoadLibraryW(LPCWSTR lpLibFileName) {
+HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryW '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
@@ -135,7 +135,7 @@ WINAPI HMODULE HookLoadLibraryW(LPCWSTR lpLibFileName) {
     return Kernel32LoadLibraryWOriginal(lpLibFileName);
 }
 
-WINAPI HMODULE HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD flags) {
+HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD flags) {
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryExA '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
@@ -150,7 +150,7 @@ WINAPI HMODULE HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
     return Kernel32LoadLibraryExAOriginal(lpLibFileName, handle, flags);
 }
 
-WINAPI HMODULE HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD flags) {
+HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD flags) {
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryExW '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
