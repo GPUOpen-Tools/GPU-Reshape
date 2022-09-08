@@ -20,7 +20,9 @@
       <Image Source="/Resources/Icons/AppBlack.png" Width="20"/>
       
       <MenuItem Header="_File" Height="30">
-        <MenuItem Header="_New Layout" Command="{Binding NewLayout}" />
+        <MenuItem Header="_New Layout" Command="{Binding ResetLayout}" />
+        <Separator/>
+        <MenuItem Header="_Settings" Command="{Binding OpenSettings}" />
       </MenuItem>
       <MenuItem Header="_Window" DataContext="{Binding Layout}">
         <MenuItem Header="_Exit Windows" Command="{Binding ExitWindows}" />

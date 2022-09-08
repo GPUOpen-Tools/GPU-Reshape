@@ -1,0 +1,87 @@
+﻿<Window x:Class="Studio.Views.SettingsWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:id="using:Dock.Avalonia"
+        xmlns:vm="using:Studio.ViewModels"
+        xmlns:views="using:Studio.Views"
+        xmlns:vc="using:Studio.ValueConverters"
+        xmlns:r="using:Studio.Resources"
+        mc:Ignorable="d"
+        d:DesignWidth="500" d:DesignHeight="300"
+        Width="500" Height="300"
+        UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
+        WindowState="Normal" WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="None"
+        Foreground="{DynamicResource DockThemeForegroundBrush}"
+        BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
+        FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome">
+    <Window.DataContext>
+        <vm:SettingsViewModel />
+    </Window.DataContext>
+    
+    <!--
+        ! WILL BE MODULARIZED
+    -->
+    
+    <Grid>
+        <!-- Tool Header -->
+        <StackPanel VerticalAlignment="Top" Orientation="Horizontal"  Margin="5">
+            <Image Source="/Resources/Icons/AppBlack.png" Width="17" />
+
+            <TextBlock Margin="7,0,0,0">Settings</TextBlock>
+        </StackPanel>
+        
+        <Border 
+            Margin="0,28,0,0" 
+            Height="2" 
+            Background="{StaticResource DockThemeBorderLowBrush}"
+            HorizontalAlignment="Stretch" 
+            VerticalAlignment="Top"/>
+
+        <!-- Categories -->
+        <Grid Margin="0,30,5,0" Width="200" HorizontalAlignment="Left" VerticalAlignment="Stretch">
+            <TreeView HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <TreeViewItem Header="Discovery" IsSelected="True"/>
+            </TreeView>
+        </Grid>
+
+        <!-- View -->
+        <Grid Margin="210,35,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <StackPanel Orientation="Vertical">
+                <TextBlock Text="Discovery"/>
+                
+                <Grid Margin="15,5,0,0" HorizontalAlignment="Stretch">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Status: "/>
+                        <TextBlock Text="{Binding Status, FallbackValue=[Status]}"/>
+                    </StackPanel>
+                    
+                    <Button 
+                        Margin="0,-5,0,0" 
+                        Command="{Binding LocalStateToggle}"
+                        Content="{Binding ButtonText, FallbackValue=[STATE]}" 
+                        HorizontalAlignment="Right"/>
+                </Grid>
+                
+                <Grid Margin="0,15,0,0" HorizontalAlignment="Stretch">
+                    <TextBlock Text="Global"/>
+                    <Separator
+                        Margin="45,0,0,0" 
+                        Background="{StaticResource DockThemeBorderLowBrush}" 
+                        HorizontalAlignment="Stretch" Height="1"/>
+                </Grid>
+                
+                <Grid Margin="15,5,0,0">
+                    <CheckBox 
+                        Command="{Binding GlobalStateToggle}"
+                        IsChecked="{Binding IsGloballyInstalled}"
+                        Content="Enable global hook"/>
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

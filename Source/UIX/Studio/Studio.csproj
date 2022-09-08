@@ -75,6 +75,10 @@
       <AvaloniaResource Include="Resources\Icons\AppBlack.ico" />
       <None Remove="Resources\Icons\AppBlack.png" />
       <AvaloniaResource Include="Resources\Icons\AppBlack.png" />
+      <Compile Update="Views\SettingsWindow.axaml.cs">
+        <DependentUpon>SettingWindow.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
@@ -96,6 +100,9 @@
       </Reference>
         <Reference Include="Services.HostResolver.DotNet">
             <HintPath>$(OutputPath)\Services.HostResolver.DotNet.dll</HintPath>
+        </Reference>
+        <Reference Include="Services.Discovery.DotNet">
+            <HintPath>$(OutputPath)\Services.Discovery.DotNet.dll</HintPath>
         </Reference>
         <Reference Include="Libraries.Bridge.Schema.DotNet">
             <HintPath>$(OutputPath)\Libraries.Bridge.Schema.DotNet.dll</HintPath>

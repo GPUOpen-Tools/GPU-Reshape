@@ -2,12 +2,15 @@ using System;
 using System.Diagnostics;
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Studio.Models;
 using Dock.Model.Controls;
 using Dock.Model.Core;
 using DynamicData;
 using ReactiveUI;
 using Studio.Services;
+using Studio.Views;
 
 namespace Studio.ViewModels
 {
@@ -19,7 +22,15 @@ namespace Studio.ViewModels
             set => this.RaiseAndSetIfChanged(ref _layout, value);
         }
 
-        public ICommand NewLayout { get; }
+        /// <summary>
+        /// Reset the layout
+        /// </summary>
+        public ICommand ResetLayout { get; }
+
+        /// <summary>
+        /// Open the settings window
+        /// </summary>
+        public ICommand OpenSettings { get; }
 
         public MainWindowViewModel()
         {
@@ -39,7 +50,8 @@ namespace Studio.ViewModels
             Interactions.DocumentInteractions.OpenDocument.InvokeCommand(_factory.Documents.CreateDocument);
 
             // Create commands
-            NewLayout = ReactiveCommand.Create(ResetLayout);
+            ResetLayout = ReactiveCommand.Create(OnResetLayout);
+            OpenSettings = ReactiveCommand.Create(OnOpenSettings);
         }
 
         public void CloseLayout()
@@ -53,7 +65,10 @@ namespace Studio.ViewModels
             }
         }
 
-        public void ResetLayout()
+        /// <summary>
+        /// Invoked on layout resets
+        /// </summary>
+        public void OnResetLayout()
         {
             if (Layout is not null)
             {
@@ -69,6 +84,27 @@ namespace Studio.ViewModels
                 Layout = layout;
                 _factory?.InitLayout(layout);
             }
+        }
+
+        /// <summary>
+        /// Invoked on setting opening
+        /// </summary>
+        public void OnOpenSettings()
+        {
+            // Must have desktop lifetime
+            if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                return;
+            }
+            
+            // Create dialog
+            var dialog = new SettingsWindow()
+            {
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+
+            // Blocking
+            dialog.ShowDialog(desktop.MainWindow);
         }
 
         private readonly DockFactory? _factory;
