@@ -5,15 +5,31 @@
 
 // Std
 #include <string_view>
+#include <filesystem>
 
 class DX12DiscoveryListener final : public IDiscoveryListener {
 public:
+    DX12DiscoveryListener();
+
     /// Overrides
-    bool Install() override;
-    bool Uninstall() override;
+    bool Start() override;
+    bool Stop() override;
+    bool InstallGlobal() override;
+    bool UninstallGlobal() override;
 
 private:
-    /// Start the host resolve process
+    /// Start the service process
     /// \return success state
     bool StartProcess();
+
+    /// Stop the service process
+    /// \return success state
+    bool StopProcess();
+
+private:
+    /// Is this listener presently globally installed?
+    bool isGlobal{false};
+
+    /// Backend path
+    std::filesystem::path servicePath;
 };

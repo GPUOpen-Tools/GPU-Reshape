@@ -8,7 +8,15 @@
 
 class VulkanDiscoveryListener final : public IDiscoveryListener {
 public:
+    VulkanDiscoveryListener();
+
     /// Overrides
-    bool Install() override;
-    bool Uninstall() override;
+    bool Start() override;
+    bool Stop() override;
+    bool InstallGlobal() override;
+    bool UninstallGlobal() override;
+
+private:
+    /// Is this listener presently globally installed?
+    bool isGlobal{false};
 };

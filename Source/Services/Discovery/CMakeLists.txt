@@ -33,3 +33,9 @@ add_dependencies(Services.Discovery.Standalone Backends.Vulkan.Discovery)
 
 # Pull in all features, for convinience
 add_dependencies(Services.Discovery.Standalone Features)
+
+#----- .Net bindings -----#
+
+if (${ENABLE_UIX})
+    include(DotNet.cmake)
+endif()

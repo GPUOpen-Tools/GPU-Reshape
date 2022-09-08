@@ -4,8 +4,12 @@
 #include <Common/Plugin/PluginResolver.h>
 #include <Common/Registry.h>
 
+// Std
+#include <vector>
+
 // Forward declarations
 class IDiscoveryHost;
+class IDiscoveryListener;
 
 class DiscoveryService {
 public:
@@ -15,15 +19,28 @@ public:
     /// \return success state
     bool Install();
 
+    /// Starts all listeners
+    /// \return success state
+    bool Start();
+
+    /// Stops all listeners
+    /// \return success state
+    bool Stop();
+
+    /// Install all listeners
+    ///   ? Enables global hooking of respective discovery, always on for the end user
+    /// \return success state
+    bool InstallGlobal();
+
+    /// Uninstall all listeners
+    ///   ? Disables global hooking of respective discovery
+    /// \return success state
+    bool UninstallGlobal();
+
     /// Get the registry
     Registry* GetRegistry() {
         return &registry;
     }
-
-private:
-    /// Install all listeners
-    /// \return success state
-    bool InstallListeners();
 
 private:
     /// Local registry
@@ -34,4 +51,7 @@ private:
 
     /// Shared resolver
     ComRef<PluginResolver> resolver{nullptr};
+
+    /// All listeners
+    std::vector<ComRef<IDiscoveryListener>> listeners;
 };

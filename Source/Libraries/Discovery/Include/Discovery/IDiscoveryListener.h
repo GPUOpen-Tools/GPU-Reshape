@@ -6,11 +6,21 @@ class IDiscoveryListener : public TComponent<IDiscoveryListener> {
 public:
     COMPONENT(IDiscoveryListener);
 
-    /// Install this listener
+    /// Starts this listener
     /// \return success state
-    virtual bool Install() = 0;
+    virtual bool Start() = 0;
+
+    /// Stops this listener
+    /// \return success state
+    virtual bool Stop() = 0;
+
+    /// Install this listener
+    ///   ? Enables global hooking of respective discovery, always on for the end user
+    /// \return success state
+    virtual bool InstallGlobal() = 0;
 
     /// Uninstall this listener
+    ///   ? Disables global hooking of respective discovery
     /// \return success state
-    virtual bool Uninstall() = 0;
+    virtual bool UninstallGlobal() = 0;
 };

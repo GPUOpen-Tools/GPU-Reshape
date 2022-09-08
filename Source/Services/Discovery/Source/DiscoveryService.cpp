@@ -26,27 +26,58 @@ bool DiscoveryService::Install() {
         return false;
     }
 
-    // Try to install the listeners
-    if (!InstallListeners()) {
-        return false;
+    // Get the number of listeners
+    uint32_t listenerCount{0};
+    host->Enumerate(&listenerCount, nullptr);
+
+    // Get all listeners
+    listeners.resize(listenerCount);
+    host->Enumerate(&listenerCount, listeners.data());
+
+    // OK
+    return true;
+}
+
+bool DiscoveryService::Start() {
+    // Install all
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
+        if (!listener->Start()) {
+            return false;
+        }
     }
 
     // OK
     return true;
 }
 
-bool DiscoveryService::InstallListeners() {
-    // Get the number of listeners
-    uint32_t listenerCount{0};
-    host->Enumerate(&listenerCount, nullptr);
-
-    // Get all listeners
-    std::vector<ComRef<IDiscoveryListener>> listeners(listenerCount);
-    host->Enumerate(&listenerCount, listeners.data());
-
+bool DiscoveryService::Stop() {
     // Install all
     for (const ComRef<IDiscoveryListener>& listener : listeners) {
-        if (!listener->Install()) {
+        if (!listener->Stop()) {
+            return false;
+        }
+    }
+
+    // OK
+    return true;
+}
+
+bool DiscoveryService::InstallGlobal() {
+    // Install all
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
+        if (!listener->InstallGlobal()) {
+            return false;
+        }
+    }
+
+    // OK
+    return true;
+}
+
+bool DiscoveryService::UninstallGlobal() {
+    // Install all
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
+        if (!listener->UninstallGlobal()) {
             return false;
         }
     }
