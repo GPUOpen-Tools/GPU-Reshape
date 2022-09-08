@@ -19,7 +19,7 @@ bool QueryService(const wchar_t *name, const wchar_t *path) {
         HKEY_CURRENT_USER,
         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
         0, nullptr, 0,
-        KEY_WRITE, nullptr,
+        KEY_READ, nullptr,
         &keyHandle, &dwDisposition
     );
     if (error != ERROR_SUCCESS) {
@@ -60,7 +60,7 @@ bool InstallService(const wchar_t *name, const wchar_t *path) {
         HKEY_CURRENT_USER,
         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
         0, nullptr, 0,
-        KEY_WRITE, nullptr,
+        KEY_ALL_ACCESS, nullptr,
         &keyHandle, &dwDisposition
     );
     if (error != ERROR_SUCCESS) {
@@ -94,7 +94,7 @@ bool InstallService(const wchar_t *name, const wchar_t *path) {
     error = RegSetValueExW(
         keyHandle,
         name, 0, REG_SZ,
-        reinterpret_cast<const BYTE *>(&path), (std::wcslen(path) + 1) * sizeof(wchar_t)
+        reinterpret_cast<const BYTE *>(path), (std::wcslen(path) + 1) * sizeof(wchar_t)
     );
     if (error != ERROR_SUCCESS) {
         return false;
@@ -107,15 +107,17 @@ bool InstallService(const wchar_t *name, const wchar_t *path) {
 bool UninstallService(const wchar_t *name) {
     // Open properties
     HKEY keyHandle{};
+    DWORD dwDisposition;
 
-    // Open the run key
-    DWORD error = RegOpenKeyW(
+    // Create or open the run key
+    DWORD error = RegCreateKeyExW(
         HKEY_CURRENT_USER,
         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
-        &keyHandle
+        0, nullptr, 0,
+        KEY_ALL_ACCESS, nullptr,
+        &keyHandle, &dwDisposition
     );
     if (error != ERROR_SUCCESS) {
-        // Failed to open, key doesn't exist
         return true;
     }
 
@@ -124,7 +126,7 @@ bool UninstallService(const wchar_t *name) {
         keyHandle,
         nullptr,
         name,
-        RRF_RT_DWORD,
+        RRF_RT_REG_SZ,
         nullptr,
         nullptr, 0
     );
@@ -133,7 +135,7 @@ bool UninstallService(const wchar_t *name) {
     }
 
     // Delete the service key
-    error = RegDeleteKeyW(
+    error = RegDeleteValueW(
         keyHandle,
         name
     );
@@ -160,20 +162,27 @@ bool DX12DiscoveryListener::InstallGlobal() {
     }
 
     // Already started?
-    if (!IPGlobalLock{}.Acquire(kSharedMutexName, false)) {
-        return true;
+    if (IPGlobalLock{}.Acquire(kSharedMutexName, false)) {
+        if (!StartProcess()) {
+            return false;
+        }
     }
 
     // Attached!
     isGlobal = true;
 
     // OK
-    return StartProcess();
+    return true;
 }
 
 bool DX12DiscoveryListener::UninstallGlobal() {
     // Uninstall startup keys
     if (!UninstallService(L"GPUOpenDX12Service")) {
+        return false;
+    }
+
+    // Stop any running instance
+    if (!StopProcess()) {
         return false;
     }
 
@@ -190,8 +199,15 @@ bool DX12DiscoveryListener::Start() {
         return true;
     }
 
-    // Attempt to start
-    return StartProcess();
+    // Already started?
+    if (IPGlobalLock{}.Acquire(kSharedMutexName, false)) {
+        if (!StartProcess()) {
+            return false;
+        }
+    }
+
+    // OK
+    return true;
 }
 
 bool DX12DiscoveryListener::Stop() {
@@ -205,9 +221,6 @@ bool DX12DiscoveryListener::Stop() {
 }
 
 bool DX12DiscoveryListener::StartProcess() {
-    // Process path
-    std::filesystem::path path = GetCurrentModuleDirectory() / "Backends.DX12.Service";
-
     // Startup info
     STARTUPINFO startupInfo;
     ZeroMemory(&startupInfo, sizeof(startupInfo));
@@ -220,7 +233,7 @@ bool DX12DiscoveryListener::StartProcess() {
     // Attempt to create process
     if (!CreateProcess(
         nullptr,
-        path.string().data(),
+        servicePath.string().data(),
         nullptr,
         nullptr,
         true,
@@ -247,23 +260,26 @@ bool DX12DiscoveryListener::StopProcess() {
     PROCESSENTRY32 entry{sizeof(PROCESSENTRY32)};
 
     // Now walk the snapshot of processes
-    while (Process32First(snapshot, &entry)) {
+    for (bool result = Process32First(snapshot, &entry); result; result = Process32Next(snapshot, &entry)) {
         if (!std::strcmp(entry.szExeFile, "Backends.DX12.Service.exe")) {
             // Attempt to open the process of interest at PID
             HANDLE processHandle = OpenProcess(PROCESS_TERMINATE, FALSE, entry.th32ProcessID);
             if (processHandle == nullptr) {
+                CloseHandle(snapshot);
                 return false;
             }
 
             // Attempt to terminate
             if (!TerminateProcess(processHandle, 0u)) {
+                CloseHandle(snapshot);
+                CloseHandle(processHandle);
                 return false;
             }
 
             // Cleanup
             CloseHandle(processHandle);
         }
-    };
+    }
 
     // Cleanup
     CloseHandle(snapshot);
@@ -272,3 +288,31 @@ bool DX12DiscoveryListener::StopProcess() {
     return true;
 }
 
+bool DX12DiscoveryListener::IsGloballyInstalled() {
+    return isGlobal;
+}
+
+bool DX12DiscoveryListener::IsRunning() {
+    // Create snapshot
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    // Entry information
+    PROCESSENTRY32 entry{sizeof(PROCESSENTRY32)};
+
+    // Now walk the snapshot of processes
+    for (bool result = Process32First(snapshot, &entry); result; result = Process32Next(snapshot, &entry)) {
+        if (!std::strcmp(entry.szExeFile, "Backends.DX12.Service.exe")) {
+            CloseHandle(snapshot);
+            return true;
+        }
+    }
+
+    // Cleanup
+    CloseHandle(snapshot);
+
+    // OK
+    return false;
+}

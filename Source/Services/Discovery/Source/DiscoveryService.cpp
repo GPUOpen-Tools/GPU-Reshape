@@ -38,50 +38,82 @@ bool DiscoveryService::Install() {
     return true;
 }
 
+bool DiscoveryService::IsGloballyInstalled() {
+    // Install all
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
+        if (!listener->IsGloballyInstalled()) {
+            return false;
+        }
+    }
+
+    // OK
+    return true;
+}
+
+bool DiscoveryService::IsRunning() {
+    // Install all
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
+        if (!listener->IsRunning()) {
+            return false;
+        }
+    }
+
+    // OK
+    return true;
+}
+
 bool DiscoveryService::Start() {
+    bool anyFailed = false;
+
     // Install all
     for (const ComRef<IDiscoveryListener>& listener : listeners) {
         if (!listener->Start()) {
-            return false;
+            anyFailed = true;
         }
     }
 
     // OK
-    return true;
+    return !anyFailed;
 }
 
 bool DiscoveryService::Stop() {
+    bool anyFailed = false;
+
     // Install all
     for (const ComRef<IDiscoveryListener>& listener : listeners) {
         if (!listener->Stop()) {
-            return false;
+            anyFailed = true;
         }
     }
 
     // OK
-    return true;
+    return !anyFailed;
 }
 
 bool DiscoveryService::InstallGlobal() {
+    bool anyFailed = false;
+
     // Install all
     for (const ComRef<IDiscoveryListener>& listener : listeners) {
         if (!listener->InstallGlobal()) {
-            return false;
+            anyFailed = true;
         }
     }
 
     // OK
-    return true;
+    return !anyFailed;
 }
 
 bool DiscoveryService::UninstallGlobal() {
+    bool anyFailed = false;
+
     // Install all
     for (const ComRef<IDiscoveryListener>& listener : listeners) {
         if (!listener->UninstallGlobal()) {
-            return false;
+            anyFailed = true;
         }
     }
 
     // OK
-    return true;
+    return !anyFailed;
 }

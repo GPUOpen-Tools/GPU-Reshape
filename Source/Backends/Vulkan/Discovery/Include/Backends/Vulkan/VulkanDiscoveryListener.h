@@ -11,6 +11,8 @@ public:
     VulkanDiscoveryListener();
 
     /// Overrides
+    bool IsRunning() override;
+    bool IsGloballyInstalled() override;
     bool Start() override;
     bool Stop() override;
     bool InstallGlobal() override;

@@ -26,7 +26,7 @@ bool QueryImplicitLayer(HKEY key, const wchar_t* path) {
         key,
         path,
         0, nullptr, 0,
-        KEY_WRITE, nullptr,
+        KEY_READ, nullptr,
         &keyHandle, &dwDisposition
     );
     if (error != ERROR_SUCCESS) {
@@ -64,7 +64,7 @@ bool InstallImplicitLayer(HKEY key, const wchar_t* path) {
         key,
         path,
         0, nullptr, 0,
-        KEY_WRITE, nullptr,
+        KEY_ALL_ACCESS, nullptr,
         &keyHandle, &dwDisposition
     );
     if (error != ERROR_SUCCESS) {
@@ -102,24 +102,45 @@ bool InstallImplicitLayer(HKEY key, const wchar_t* path) {
 }
 
 bool UninstallImplicitLayer(HKEY key, const wchar_t* path) {
+    // Determine the json path
+    std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
+    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GBV.json";
+
     // Open properties
     HKEY keyHandle{};
+    DWORD dwDisposition;
 
-    // Open the implicit layer key
-    DWORD error = RegOpenKeyW(
+    // Create or open the implicit layer key
+    DWORD error = RegCreateKeyExW(
         key,
         path,
-        &keyHandle
+        0, nullptr, 0,
+        KEY_ALL_ACCESS, nullptr,
+        &keyHandle, &dwDisposition
     );
     if (error != ERROR_SUCCESS) {
-        // Failed to open, key doesn't exist
+        // Master doesn't exist, ok
+        return true;
+    }
+
+    // Attempt to query key, may not exist
+    error = RegGetValueW(
+        keyHandle,
+        nullptr,
+        layerJsonPath.wstring().c_str(),
+        RRF_RT_DWORD,
+        nullptr,
+        nullptr, 0
+    );
+    if (error != ERROR_SUCCESS) {
+        // Layer doesn't exist, ok
         return true;
     }
 
     // Delete the implicit layer key
-    error = RegDeleteKeyW(
-        key,
-        path
+    error = RegDeleteValueW(
+        keyHandle,
+        layerJsonPath.wstring().c_str()
     );
     if (error != ERROR_SUCCESS) {
         return false;
@@ -206,4 +227,15 @@ bool VulkanDiscoveryListener::Stop() {
 
     // OK
     return true;
+}
+
+bool VulkanDiscoveryListener::IsGloballyInstalled() {
+    return isGlobal;
+}
+
+bool VulkanDiscoveryListener::IsRunning() {
+    bool isRunning = false;
+    isRunning |= QueryImplicitLayer(HKEY_CURRENT_USER, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers");
+    isRunning |= QueryImplicitLayer(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers");
+    return isRunning;
 }

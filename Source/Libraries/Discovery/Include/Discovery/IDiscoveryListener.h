@@ -6,6 +6,14 @@ class IDiscoveryListener : public TComponent<IDiscoveryListener> {
 public:
     COMPONENT(IDiscoveryListener);
 
+    /// Check if this discovery is running
+    /// \return if running, returns true
+    virtual bool IsRunning() = 0;
+
+    /// Check if this discovery is installed globally
+    /// \return if installed, returns true
+    virtual bool IsGloballyInstalled() = 0;
+
     /// Starts this listener
     /// \return success state
     virtual bool Start() = 0;

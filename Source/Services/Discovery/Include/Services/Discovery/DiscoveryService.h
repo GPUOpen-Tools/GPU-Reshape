@@ -19,6 +19,14 @@ public:
     /// \return success state
     bool Install();
 
+    /// Check if all listeners are installed globally
+    /// \return if all are installed, returns true
+    bool IsGloballyInstalled();
+
+    /// Check if all listeners are running
+    /// \return if all are running, returns true
+    bool IsRunning();
+
     /// Starts all listeners
     /// \return success state
     bool Start();

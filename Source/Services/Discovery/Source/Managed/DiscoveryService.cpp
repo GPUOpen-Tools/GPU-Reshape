@@ -16,6 +16,16 @@ bool Discovery::CLR::DiscoveryService::Install()
 	return service->Install();
 }
 
+bool Discovery::CLR::DiscoveryService::IsGloballyInstalled()
+{
+    return service->IsGloballyInstalled();
+}
+
+bool Discovery::CLR::DiscoveryService::IsRunning()
+{
+    return service->IsRunning();
+}
+
 bool Discovery::CLR::DiscoveryService::Start()
 {
 	return service->Start();
