@@ -23,7 +23,10 @@
       "name": "DXGIFactory",
       "state": "DXGIFactoryState",
       "hooks": [
-
+        "CreateSwapChain",
+        "CreateSwapChainForHwnd",
+        "CreateSwapChainForCoreWindow",
+        "CreateSwapChainForComposition"
       ]
     },
     "ID3D12Device": {
@@ -74,7 +77,9 @@
         "SetPipelineState",
         "SetDescriptorHeaps",
         "SetGraphicsRootSignature",
-        "SetComputeRootSignature"
+        "SetComputeRootSignature",
+        "CopyTextureRegion",
+        "ResourceBarrier"
       ]
     },
     "ID3D12Fence": {
@@ -119,6 +124,9 @@
       "name": "SwapChain",
       "state": "SwapChainState",
       "hooks": [
+        "GetBuffer",
+        "Present",
+        "Present1",
         "Release"
       ]
     }

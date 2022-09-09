@@ -85,6 +85,7 @@ inline bool IsBuffer(DXILShaderResourceShape shape) {
         default:
             ASSERT(false, "Unexpected resource shape");
             return false;
+        case DXILShaderResourceShape::CBuffer:
         case DXILShaderResourceShape::Texture1D:
         case DXILShaderResourceShape::Texture2D:
         case DXILShaderResourceShape::Texture2DMS:
