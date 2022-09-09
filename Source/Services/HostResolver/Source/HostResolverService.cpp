@@ -12,7 +12,7 @@
 
 bool HostResolverService::Install() {
     // Already acquired?
-    if (!IPGlobalLock{}.Acquire(kSharedMutexName, false)) {
+    if (!IPGlobalLock{}.Acquire(kSharedHostResolverMutexName, false)) {
         return true;
     }
 

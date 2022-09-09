@@ -16,8 +16,8 @@ int main(int32_t argc, const char* const* argv) {
 
     // Try to acquire lock
     IPGlobalLock globalLock;
-    if (!globalLock.Acquire(kSharedMutexName, true)) {
-        std::cerr << "Failed to open or create shared mutex '" << kSharedMutexName << "'" << std::endl;
+    if (!globalLock.Acquire(kSharedHostResolverMutexName, true)) {
+        std::cerr << "Failed to open or create shared mutex '" << kSharedHostResolverMutexName << "'" << std::endl;
 
 #ifndef NDEBUG
         std::cin.ignore();
@@ -43,7 +43,8 @@ int main(int32_t argc, const char* const* argv) {
     std::cout << "Sever started" << std::endl;
 
     // Seconds before closure
-    constexpr uint32_t kMaxLonelyElapsed = 30;
+    // ! Disable timeout
+    constexpr uint32_t kMaxLonelyElapsed = ~0u;
 
     // Number of seconds without any connections
     uint32_t elapsedLonelyServer = 0;

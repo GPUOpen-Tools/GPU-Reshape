@@ -222,6 +222,58 @@ void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UIN
     table.bottom->next_SetDescriptorHeaps(table.next, NumDescriptorHeaps, unwrapped);
 }
 
+
+void WINAPI HookID3D12CommandListCopyTextureRegion(ID3D12CommandList* list, const D3D12_TEXTURE_COPY_LOCATION* pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION* pSrc, const D3D12_BOX* pSrcBox) {
+    auto table = GetTable(list);
+
+    // Unwrap src
+    D3D12_TEXTURE_COPY_LOCATION src = *pSrc;
+    src.pResource = Next(src.pResource);
+
+    // Unwrap dst
+    D3D12_TEXTURE_COPY_LOCATION dst = *pDst;
+    dst.pResource = Next(dst.pResource);
+
+    // Pass down callchain
+    table.bottom->next_CopyTextureRegion(table.next, &dst, DstX, DstY, DstZ, &src, pSrcBox);
+}
+
+void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT NumBarriers, const D3D12_RESOURCE_BARRIER* pBarriers) {
+    auto table = GetTable(list);
+
+    // Copy wrapper barriers
+    auto barriers = ALLOCA_ARRAY(D3D12_RESOURCE_BARRIER, NumBarriers);
+    std::memcpy(barriers, pBarriers, sizeof(D3D12_RESOURCE_BARRIER) * NumBarriers);
+
+    // Unwrap all objects
+    for (uint32_t i = 0; i < NumBarriers; i++) {
+        switch (barriers[i].Type) {
+            case D3D12_RESOURCE_BARRIER_TYPE_TRANSITION: {
+                barriers[i].Transition.pResource = Next(barriers[i].Transition.pResource);
+                break;
+            }
+            case D3D12_RESOURCE_BARRIER_TYPE_ALIASING: {
+                if (barriers[i].Aliasing.pResourceBefore) {
+                    barriers[i].Aliasing.pResourceBefore = Next(barriers[i].Aliasing.pResourceBefore);
+                }
+                if (barriers[i].Aliasing.pResourceAfter) {
+                    barriers[i].Aliasing.pResourceAfter = Next(barriers[i].Aliasing.pResourceAfter);
+                }
+                break;
+            }
+            case D3D12_RESOURCE_BARRIER_TYPE_UAV: {
+                if (barriers[i].UAV.pResource) {
+                    barriers[i].UAV.pResource = Next(barriers[i].Transition.pResource);
+                }
+                break;
+            }
+        }
+    }
+
+    // Pass down callchain
+    table.bottom->next_ResourceBarrier(table.next, NumBarriers, barriers);
+}
+
 void WINAPI HookID3D12CommandListSetGraphicsRootSignature(ID3D12CommandList* list, ID3D12RootSignature* rootSignature) {
     auto table = GetTable(list);
     auto rsTable = GetTable(rootSignature);
