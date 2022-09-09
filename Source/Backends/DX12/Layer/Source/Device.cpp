@@ -155,8 +155,22 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         state->instrumentationController = state->registry.AddNew<InstrumentationController>(state);
         ENSURE(state->instrumentationController->Install(), "Failed to install instrumentation controller");
 
+        // Specifying an adapter is optional
         IDXGIAdapter* dxgiAdapter{nullptr};
-        ENSURE(SUCCEEDED(pAdapter->QueryInterface(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter))), "Failed to cast adapter");
+        if (pAdapter) {
+            // Query underlying adapter
+            ENSURE(SUCCEEDED(pAdapter->QueryInterface(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter))), "Failed to cast adapter");
+        } else {
+            // Attempt to create a factory
+            IDXGIFactory1* factory;
+            ENSURE(SUCCEEDED(CreateDXGIFactory1(__uuidof(IDXGIFactory1) , reinterpret_cast<void**>(&factory))), "Failed to create default factory");
+
+            // Query base adapter
+            ENSURE(SUCCEEDED(factory->EnumAdapters(0, &dxgiAdapter)), "Failed to query default adapter");
+
+            // Cleanup
+            factory->Release();
+        }
 
         // Install the streamer
         auto deviceAllocator = state->registry.AddNew<DeviceAllocator>();
