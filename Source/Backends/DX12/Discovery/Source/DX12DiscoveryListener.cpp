@@ -162,7 +162,7 @@ bool DX12DiscoveryListener::InstallGlobal() {
     }
 
     // Already started?
-    if (IPGlobalLock{}.Acquire(kSharedMutexName, false)) {
+    if (IPGlobalLock{}.Acquire(kSharedD3D12ServiceMutexName, false)) {
         if (!StartProcess()) {
             return false;
         }
@@ -200,7 +200,7 @@ bool DX12DiscoveryListener::Start() {
     }
 
     // Already started?
-    if (IPGlobalLock{}.Acquire(kSharedMutexName, false)) {
+    if (IPGlobalLock{}.Acquire(kSharedD3D12ServiceMutexName, false)) {
         if (!StartProcess()) {
             return false;
         }

@@ -56,8 +56,8 @@ int main(int32_t argc, const char *const *argv) {
 
     // Try to acquire lock
     IPGlobalLock globalLock;
-    if (!globalLock.Acquire(kSharedMutexName, true)) {
-        std::cerr << "Failed to open or create shared mutex '" << kSharedMutexName << "'" << std::endl;
+    if (!globalLock.Acquire(kSharedD3D12ServiceMutexName, true)) {
+        std::cerr << "Failed to open or create shared mutex '" << kSharedD3D12ServiceMutexName << "'" << std::endl;
 
 #ifndef NDEBUG
         std::cin.ignore();

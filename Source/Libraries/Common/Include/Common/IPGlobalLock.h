@@ -37,8 +37,8 @@ public:
 
         // Try to open and inherit mutex
         mutexHandle = CreateMutex(&SecAttr, inheritHandle, name);
-        if (mutexHandle && GetLastError() != ERROR_ALREADY_EXISTS) {
-            return true;
+        if (mutexHandle) {
+            return GetLastError() != ERROR_ALREADY_EXISTS;
         }
 
         // Couldn't open, or already exists
