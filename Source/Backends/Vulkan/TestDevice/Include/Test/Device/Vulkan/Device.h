@@ -20,6 +20,7 @@ namespace Test::Vulkan {
         QueueID GetQueue(QueueType type) override;
         BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, void *data) override;
         TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, void *data) override;
+        SamplerID CreateSampler() override;
         ResourceLayoutID CreateResourceLayout(const ResourceType *types, uint32_t count) override;
         ResourceSetID CreateResourceSet(ResourceLayoutID layout, const ResourceID *resources, uint32_t count) override;
         PipelineID CreateComputePipeline(const ResourceLayoutID* layouts, uint32_t layoutCount, const void *shaderCode, uint32_t shaderSize) override;
@@ -32,6 +33,7 @@ namespace Test::Vulkan {
         void Submit(QueueID queue, CommandBufferID commandBuffer) override;
         void Flush() override;
         void InitializeResources(CommandBufferID commandBuffer) override;
+        CBufferID CreateCBuffer(uint32_t byteSize, void *data) override;
 
     private:
         /// Creation utilities
@@ -114,6 +116,17 @@ namespace Test::Vulkan {
                 VkImageView view;
                 VmaAllocation allocation;
             } texture;
+
+            struct {
+                ResourceType type;
+                VkSampler sampler;
+            } sampler;
+
+            struct {
+                ResourceType type;
+                VkBuffer buffer;
+                VmaAllocation allocation;
+            } cbuffer;
         };
 
         struct ResourceLayoutInfo {

@@ -7,6 +7,7 @@ function(Project_AddBackendTest_Common OUT_GENERATED FEATURE_NAME)
     Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/ControlFlowLoopMerge.hlsl)
     Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/ControlFlowSwitch.hlsl)
     Project_AddBackendTest(Generated "-O3" ${FEATURE_NAME} ${DataDir}/Phi.hlsl)
+    Project_AddBackendTest(Generated "-O3" ${FEATURE_NAME} ${DataDir}/Bindings.hlsl)
 
     # Set output
     set(${OUT_GENERATED} "${${OUT_GENERATED}};${Generated}" PARENT_SCOPE)

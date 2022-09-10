@@ -11,7 +11,10 @@
 void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
     out.resources = resources;
     out.metadataBlocks = metadataBlocks;
+    out.registerClasses = registerClasses;
     out.registerSpaces = registerSpaces;
+    out.registerSpaceBound = registerSpaceBound;
+    out.handles = handles;
 }
 
 void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
@@ -121,15 +124,12 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
 void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadataBlock, const struct LLVMBlock *block, DXILShaderResourceClass type, uint32_t id) {
     const LLVMRecord &record = block->records[id - 1];
 
-    RegisterSpace& space = FindOrAddRegisterSpace(type);
+    // Get the class
+    MappedRegisterClass& registerClass = FindOrAddRegisterClass(type);
 
     // For each resource
     for (uint32_t i = 0; i < record.opCount; i++) {
         const LLVMRecord &resource = block->records[record.ops[i] - 1];
-
-        // Prepare entry
-        HandleEntry entry;
-        entry.record = &resource;
 
         // Get handle id
         uint64_t resourceID = GetOperandU32Constant(metadataBlock, resource.Op(0));
@@ -145,11 +145,18 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         uint64_t rsBase = GetOperandU32Constant(metadataBlock, resource.Op(4));
         uint64_t rsRange = GetOperandU32Constant(metadataBlock, resource.Op(5));
 
-        ASSERT(space.bindSpace == ~0u || space.bindSpace == bindSpace, "Invalid bind space");
-        space.bindSpace = bindSpace;
+        // Get the space
+        UserRegisterSpace& registerSpace = FindOrAddRegisterSpace(bindSpace);
 
-        // Set the bound
-        space.registerBound = std::max<uint32_t>(space.registerBound, rsBase + rsRange);
+        // Prepare entry
+        HandleEntry entry;
+        entry.record = &resource;
+        entry.bindSpace = bindSpace;
+        entry.registerBase = rsBase;
+        entry.registerRange = rsRange;
+
+        // Update bound
+        registerSpace.registerBound = std::max<uint32_t>(registerSpace.registerBound, entry.registerBase + entry.registerRange);
 
         // Handle based on type
         switch (type) {
@@ -276,36 +283,61 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
             case DXILShaderResourceClass::CBVs: {
                 // Unique ops
                 uint64_t byteSize = GetOperandU32Constant(metadataBlock, resource.Op(6));
-                uint64_t extendedMetadata = GetOperandU32Constant(metadataBlock, resource.Op(7));
+
+                if (uint32_t nullableMetadata = resource.Op(7)) {
+                    uint64_t extendedMetadata = GetOperandU32Constant(metadataBlock, nullableMetadata);
+                }
+
+                Backend::IL::CBufferType cbuffer{};
+                entry.type = program.GetTypeMap().FindTypeOrAdd(cbuffer);
                 break;
             }
             case DXILShaderResourceClass::Samplers: {
                 // Unique ops
                 uint64_t samplerType = GetOperandU32Constant(metadataBlock, resource.Op(6));
-                uint64_t extendedMetadata = GetOperandU32Constant(metadataBlock, resource.Op(7));
+
+                if (uint32_t nullableMetadata = resource.Op(7)) {
+                    uint64_t extendedMetadata = GetOperandU32Constant(metadataBlock, nullableMetadata);
+                }
+
+                Backend::IL::SamplerType sampler{};
+                entry.type = program.GetTypeMap().FindTypeOrAdd(sampler);
                 break;
             }
         }
 
+        // Push handle
+        uint32_t handleID = handles.size();
+        handles.push_back(entry);
+
         // Ensure space
-        if (space.handles.size() <= resourceID) {
-            space.handles.resize(resourceID + 1);
+        if (registerClass.resourceLookup.size() <= resourceID) {
+            registerClass.resourceLookup.resize(resourceID + 1);
         }
 
         // Set entry at id
-        space.handles[resourceID] = entry;
+        registerClass.resourceLookup[resourceID] = handleID;
+
+        // Add handles
+        registerClass.handles.push_back(handleID);
+        registerSpace.handles.push_back(handleID);
     }
 }
 
 const Backend::IL::Type *DXILPhysicalBlockMetadata::GetHandleType(DXILShaderResourceClass _class, uint32_t handleID) {
-    RegisterSpace& space = FindOrAddRegisterSpace(_class);
+    MappedRegisterClass& registerClass = FindOrAddRegisterClass(_class);
 
-    if (space.handles.size() <= handleID || !space.handles[handleID].record) {
+    if (registerClass.resourceLookup.size() <= handleID) {
+        return nullptr;
+    }
+
+    HandleEntry& handle = handles[registerClass.resourceLookup[handleID]];
+    if (!handle.record) {
         return nullptr;
     }
 
     // Get entry
-    return space.handles[handleID].type;
+    return handle.type;
 }
 
 const Backend::IL::Type *DXILPhysicalBlockMetadata::GetComponentType(ComponentType type) {
@@ -626,17 +658,23 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
     // Get the block
     LLVMBlock* block = declarationBlock->GetBlockWithUID(resources.uid);
 
-    // Always exported as UAV
-    RegisterSpace& space = FindOrAddRegisterSpace(DXILShaderResourceClass::UAVs);
+    // Get the register class, always mapped as a UAV for shader exports
+    MappedRegisterClass& registerClass = FindOrAddRegisterClass(DXILShaderResourceClass::UAVs);
+
+    // Get the unique register space, always allocated at the end
+    UserRegisterSpace& registerSpace = FindOrAddRegisterSpace(registerSpaceBound);
 
     // Handle id
-    exportHandleId = space.handles.size();
+    exportHandleId = registerClass.handles.size();
 
     // Setup binding info
     table.bindingInfo.handleId = exportHandleId;
-    table.bindingInfo.space = space.bindSpace;
-    table.bindingInfo._register = space.registerBound;
+    table.bindingInfo.space = registerSpace.space;
+    table.bindingInfo._register = registerSpace.registerBound;
     table.bindingInfo.count = 1 + job.streamCount;
+
+    // Update bound
+    registerSpace.registerBound += table.bindingInfo.count;
 
     // i32
     const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});
@@ -725,15 +763,28 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
     uavNode->ops[uavNode->opCount - 1] = resourceIndex;
 }
 
-DXILPhysicalBlockMetadata::RegisterSpace &DXILPhysicalBlockMetadata::FindOrAddRegisterSpace(DXILShaderResourceClass _class) {
-    for (RegisterSpace& space : registerSpaces) {
+DXILPhysicalBlockMetadata::MappedRegisterClass &DXILPhysicalBlockMetadata::FindOrAddRegisterClass(DXILShaderResourceClass _class) {
+    for (MappedRegisterClass& space : registerClasses) {
         if (space._class == _class) {
             return space;
         }
     }
 
-    RegisterSpace& space = registerSpaces.emplace_back();
+    MappedRegisterClass& space = registerClasses.emplace_back();
     space._class = _class;
-    space.bindSpace = registerSpaces.size() - 1;
     return space;
+}
+
+DXILPhysicalBlockMetadata::UserRegisterSpace &DXILPhysicalBlockMetadata::FindOrAddRegisterSpace(uint32_t space) {
+    for (UserRegisterSpace& registerSpace : registerSpaces) {
+        if (registerSpace.space == space) {
+            return registerSpace;
+        }
+    }
+
+    registerSpaceBound = std::max<uint32_t>(registerSpaceBound, space + 1);
+
+    UserRegisterSpace& registerSpace = registerSpaces.emplace_back();
+    registerSpace.space = space;
+    return registerSpace;
 }

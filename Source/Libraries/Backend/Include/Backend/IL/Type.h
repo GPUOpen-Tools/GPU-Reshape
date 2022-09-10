@@ -176,6 +176,22 @@ namespace Backend::IL {
         Format texelType{Format::None};
     };
 
+    struct SamplerType : public Type {
+        static constexpr TypeKind kKind = TypeKind::Sampler;
+
+        auto SortKey() const {
+            return std::make_tuple(0);
+        }
+    };
+
+    struct CBufferType : public Type {
+        static constexpr TypeKind kKind = TypeKind::CBuffer;
+
+        auto SortKey() const {
+            return std::make_tuple(0);
+        }
+    };
+
     struct FunctionType : public Type {
         static constexpr TypeKind kKind = TypeKind::Function;
 

@@ -177,6 +177,12 @@ void Assembler::AssembleResources() {
             case ResourceType::RWTexture3D:
                 types << "ResourceType::RWTexture3D";
                 break;
+            case ResourceType::SamplerState:
+                types << "ResourceType::SamplerState";
+                break;
+            case ResourceType::CBuffer:
+                types << "ResourceType::CBuffer";
+                break;
         }
         types << ",\n";
 
@@ -236,6 +242,12 @@ void Assembler::AssembleResources() {
                 create << resource.initialization.sizes.at(1) << ", ";
                 create << resource.initialization.sizes.at(2);
                 create << ", nullptr);\n";
+                break;
+            case ResourceType::SamplerState:
+                create << "SamplerID resource" << i << " = device->CreateSampler();\n";
+                break;
+            case ResourceType::CBuffer:
+                create << "CBufferID resource" << i << " = device->CreateCBuffer(64, nullptr);\n";
                 break;
         }
 

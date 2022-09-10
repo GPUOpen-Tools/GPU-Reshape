@@ -34,6 +34,8 @@ namespace Test::DX12 {
         void Submit(QueueID queue, CommandBufferID commandBuffer) override;
         void InitializeResources(CommandBufferID commandBuffer) override;
         void Flush() override;
+        SamplerID CreateSampler() override;
+        CBufferID CreateCBuffer(uint32_t byteSize, void *data) override;
 
     private:
         /// Creators
@@ -70,15 +72,31 @@ namespace Test::DX12 {
         /// Current wait fence counter
         uint32_t waitFenceCounter{0};
 
-        /// Shared descriptor heap
-        ComPtr<ID3D12DescriptorHeap> sharedHeap;
+    private:
+        struct HeapInfo {
+            /// Shared descriptor heap
+            ComPtr<ID3D12DescriptorHeap> sharedHeap;
 
-        /// Shared heap descriptor handle stride
-        size_t sharedHeapStride{0};
+            /// Shared heap descriptor handle stride
+            size_t sharedHeapStride{0};
 
-        /// Shared descriptor heap offsets, incremented
-        D3D12_CPU_DESCRIPTOR_HANDLE sharedCPUHeapOffset{0};
-        D3D12_GPU_DESCRIPTOR_HANDLE sharedGPUHeapOffset{0};
+            /// Shared descriptor heap offsets, incremented
+            D3D12_CPU_DESCRIPTOR_HANDLE sharedCPUHeapOffset{0};
+            D3D12_GPU_DESCRIPTOR_HANDLE sharedGPUHeapOffset{0};
+        };
+
+        /// Heaps
+        HeapInfo sharedResourceHeap;
+        HeapInfo sharedSamplerHeap;
+
+        /// Get the heap for a given resource type
+        HeapInfo& GetHeapForType(ResourceType type);
+
+        /// Create a new shared heap
+        /// \param heap given type
+        /// \param count number of descriptors
+        /// \param info output heap
+        void CreateSharedHeap(D3D12_DESCRIPTOR_HEAP_TYPE heap, uint32_t count, HeapInfo& info);
 
     private:
         struct ResourceInfo {
@@ -89,11 +107,18 @@ namespace Test::DX12 {
 
         struct ResourceLayoutInfo {
             std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
+            std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers;
+        };
+
+        struct ResourceSetHeapInfo {
+            D3D12_CPU_DESCRIPTOR_HANDLE heapCPUHandleOffset{0};
+            D3D12_GPU_DESCRIPTOR_HANDLE heapGPUHandleOffset{0};
+            uint32_t count{0};
         };
 
         struct ResourceSetInfo {
-            D3D12_CPU_DESCRIPTOR_HANDLE heapCPUHandleOffset{0};
-            D3D12_GPU_DESCRIPTOR_HANDLE heapGPUHandleOffset{0};
+            ResourceSetHeapInfo resources;
+            ResourceSetHeapInfo samplers;
         };
 
         struct CommandBufferInfo {

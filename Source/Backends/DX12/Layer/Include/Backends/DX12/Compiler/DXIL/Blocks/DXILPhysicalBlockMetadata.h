@@ -192,34 +192,62 @@ private:
 
         /// Resource type
         const Backend::IL::Type* type{nullptr};
+
+        /// Bind space
+        uint32_t registerBase{~0u};
+        uint32_t registerRange{~0u};
+        uint32_t bindSpace{~0u};
     };
 
-    /// A mapped register space
-    struct RegisterSpace {
-        /// Linearly allocated bind space
-        uint32_t bindSpace{~0u};
-
+    /// A mapped register class
+    struct MappedRegisterClass {
         /// Class of this space
         DXILShaderResourceClass _class;
 
         /// All handles within this space
-        std::vector<HandleEntry> handles;
+        std::vector<uint32_t> handles;
+
+        /// All handles within this space
+        std::vector<uint32_t> resourceLookup;
+    };
+
+    /// A user register space
+    struct UserRegisterSpace {
+        /// Space index
+        uint32_t space{~0u};
+
+        /// All handles within this space
+        std::vector<uint32_t> handles;
 
         /// Current register bound
         uint32_t registerBound{0};
     };
 
     /// All handles
-    std::vector<RegisterSpace> registerSpaces;
+    std::vector<MappedRegisterClass> registerClasses;
+
+    /// All handles
+    std::vector<UserRegisterSpace> registerSpaces;
+
+    /// All handles within this space
+    std::vector<HandleEntry> handles;
+
+    /// Current register space bound
+    uint32_t registerSpaceBound{0};
 
     /// All hosted metadata blocks
     std::vector<MetadataBlock> metadataBlocks;
 
 private:
-    /// Find a register space, allocate if missing
+    /// Find a register class, allocate if missing
     /// \param _class designated class
+    /// \return register class
+    MappedRegisterClass& FindOrAddRegisterClass(DXILShaderResourceClass _class);
+
+    /// Find a register space, allocate if missing
+    /// \param space designated space
     /// \return register space
-    RegisterSpace& FindOrAddRegisterSpace(DXILShaderResourceClass _class);
+    UserRegisterSpace& FindOrAddRegisterSpace(uint32_t space);
 
 private:
     /// Internal handle id

@@ -12,4 +12,6 @@ namespace Test {
 
     UNIQUE_ID(ResourceID, BufferID);
     UNIQUE_ID(ResourceID, TextureID);
+    UNIQUE_ID(ResourceID, SamplerID);
+    UNIQUE_ID(ResourceID, CBufferID);
 }

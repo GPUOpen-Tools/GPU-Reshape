@@ -254,23 +254,20 @@ bool Parser::ParseResource(Parser::Context &context) {
         return false;
     }
 
-    if (!context.TryNext("<")) {
-        context.Error("Expected start of format template");
-        return false;
-    }
+    if (context.TryNext("<")) {
+        Token format = context.Next();
 
-    Token format = context.Next();
+        if (format.type != TokenType::ID) {
+            context.Error("Expected format identifier");
+            return false;
+        }
 
-    if (format.type != TokenType::ID) {
-        context.Error("Expected format identifier");
-        return false;
-    }
+        resource.format = format.str;
 
-    resource.format = format.str;
-
-    if (!context.TryNext(">")) {
-        context.Error("Expected end of format template");
-        return false;
+        if (!context.TryNext(">")) {
+            context.Error("Expected end of format template");
+            return false;
+        }
     }
 
     while (context) {
@@ -428,6 +425,10 @@ bool Parser::ParseResourceType(Parser::Context &context, ResourceType *out) {
         *out = ResourceType::Texture3D;
     } else if (context.TryNext("RWTexture3D")) {
         *out = ResourceType::RWTexture3D;
+    } else if (context.TryNext("SamplerState")) {
+        *out = ResourceType::SamplerState;
+    } else if (context.TryNext("CBuffer")) {
+        *out = ResourceType::CBuffer;
     } else {
         context.Error("Unknown resource type");
         return false;

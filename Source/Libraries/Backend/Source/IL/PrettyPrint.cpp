@@ -648,6 +648,16 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
             PrettyPrint(buf->samplerMode, out);
             break;
         }
+        case Backend::IL::TypeKind::Sampler: {
+            auto buf = type->As<Backend::IL::SamplerType>();
+            line << "Sampler";
+            break;
+        }
+        case Backend::IL::TypeKind::CBuffer: {
+            auto buf = type->As<Backend::IL::CBufferType>();
+            line << "CBuffer";
+            break;
+        }
         case Backend::IL::TypeKind::Function: {
             auto fn = type->As<Backend::IL::FunctionType>();
             line << "Function return:%" << fn->returnType->id << " parameters:[";

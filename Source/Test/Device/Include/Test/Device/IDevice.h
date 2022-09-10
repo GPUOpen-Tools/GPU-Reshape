@@ -45,6 +45,16 @@ namespace Test {
         /// \return resource identifier
         virtual TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, void *data) = 0;
 
+        /// Create a new sampler
+        /// \return resource identifier
+        virtual SamplerID CreateSampler() = 0;
+
+        /// Create a new constant buffer
+        /// \param byteSize size of data
+        /// \param data optional, initial data
+        /// \return resource identifier
+        virtual CBufferID CreateCBuffer(uint32_t byteSize, void* data) = 0;
+
         /// Create a resource layout
         /// \param types all types of the layout
         /// \param count number of types

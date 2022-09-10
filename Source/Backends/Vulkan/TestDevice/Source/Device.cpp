@@ -386,6 +386,12 @@ void Device::ReleaseResources() {
                 vkDestroyImageView(device, info.texture.view, nullptr);
                 vmaDestroyImage(allocator, info.texture.image, info.texture.allocation);
                 break;
+            case ResourceType::CBuffer:
+                vmaDestroyBuffer(allocator, info.cbuffer.buffer, info.cbuffer.allocation);
+                break;
+            case ResourceType::SamplerState:
+                vkDestroySampler(device, info.sampler.sampler, nullptr);
+                break;
         }
     }
 
@@ -601,6 +607,12 @@ ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_
             case ResourceType::RWTexture3D:
                 binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 break;
+            case ResourceType::SamplerState:
+                binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+                break;
+            case ResourceType::CBuffer:
+                binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                break;
         }
     }
 
@@ -614,6 +626,21 @@ ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_
     REQUIRE(vkCreateDescriptorSetLayout(device, &descriptorLayoutInfo, nullptr, &info.layout) == VK_SUCCESS);
 
     return Test::ResourceLayoutID(static_cast<uint32_t>(resourceLayouts.size()) - 1);
+}
+
+static bool HasImageDescriptor(ResourceType type) {
+    switch (type) {
+        default:
+            return false;
+        case ResourceType::Texture1D:
+        case ResourceType::RWTexture1D:
+        case ResourceType::Texture2D:
+        case ResourceType::RWTexture2D:
+        case ResourceType::Texture3D:
+        case ResourceType::RWTexture3D:
+        case ResourceType::SamplerState:
+            return true;
+    }
 }
 
 ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceID *setResources, uint32_t count) {
@@ -631,48 +658,61 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
 
     // Temp
     std::vector<VkDescriptorImageInfo> imageInfos;
+    std::vector<VkDescriptorBufferInfo> bufferInfos;
     std::vector<VkWriteDescriptorSet> writes;
 
     // Translate additional descriptor infos
     for (uint32_t i = 0; i < count; i++) {
         ResourceType type = resourceLayouts.at(layout).resources[i];
 
-        // Skip
-        switch (type) {
-            default:
-                continue;
-            case ResourceType::Texture1D:
-            case ResourceType::RWTexture1D:
-            case ResourceType::Texture2D:
-            case ResourceType::RWTexture2D:
-            case ResourceType::Texture3D:
-            case ResourceType::RWTexture3D:
-                break;
+        if (type == ResourceType::CBuffer) {
+            VkDescriptorBufferInfo& bufferInfo = bufferInfos.emplace_back();
+            bufferInfo.offset = 0;
+            bufferInfo.buffer = resources.at(setResources[i]).cbuffer.buffer;
+            bufferInfo.range = VK_WHOLE_SIZE;
+
+            // OK
+            continue;
         }
 
-        VkDescriptorImageInfo& imageInfo = imageInfos.emplace_back();
-        imageInfo.imageView = resources.at(setResources[i]).texture.view;
-        imageInfo.sampler = nullptr;
+        if (HasImageDescriptor(type)) {
+            VkDescriptorImageInfo& imageInfo = imageInfos.emplace_back();
 
-        switch (type) {
-            default:
+            if (type == ResourceType::SamplerState) {
+                imageInfo.imageView = nullptr;
+                imageInfo.sampler = resources.at(setResources[i]).sampler.sampler;
+            } else {
+                imageInfo.imageView = resources.at(setResources[i]).texture.view;
+                imageInfo.sampler = nullptr;
+            }
+
+            switch (type) {
+                default:
                 ASSERT(false, "Invalid type");
-                break;
-            case ResourceType::Texture1D:
-            case ResourceType::Texture2D:
-            case ResourceType::Texture3D:
-                imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                break;
-            case ResourceType::RWTexture1D:
-            case ResourceType::RWTexture2D:
-            case ResourceType::RWTexture3D:
-                imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-                break;
+                    break;
+                case ResourceType::Texture1D:
+                case ResourceType::Texture2D:
+                case ResourceType::Texture3D:
+                    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    break;
+                case ResourceType::RWTexture1D:
+                case ResourceType::RWTexture2D:
+                case ResourceType::RWTexture3D:
+                    imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                    break;
+                case ResourceType::SamplerState:
+                    imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                    break;
+            }
+
+            // OK
+            continue;
         }
     }
 
     // Current offsets
     uint32_t imageOffset{0};
+    uint32_t bufferOffset{0};
 
     // Translate writes
     for (uint32_t i = 0; i < count; i++) {
@@ -701,6 +741,14 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
             case ResourceType::RWTexture3D:
                 write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 write.pImageInfo = &imageInfos[imageOffset++];
+                break;
+            case ResourceType::SamplerState:
+                write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+                write.pImageInfo = &imageInfos[imageOffset++];
+                break;
+            case ResourceType::CBuffer:
+                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                write.pBufferInfo = &bufferInfos[bufferOffset++];
                 break;
         }
     }
@@ -883,4 +931,43 @@ void Device::InitializeResources(CommandBufferID commandBuffer) {
             }
         }
     }
+}
+
+SamplerID Device::CreateSampler() {
+    ResourceInfo& resource = resources.emplace_back();
+    resource.type = ResourceType::SamplerState;
+
+    // Buffer info
+    VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+    samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.minFilter = VK_FILTER_NEAREST;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+
+    // Attempt to create the sampler
+    REQUIRE(vkCreateSampler(device, &samplerInfo, nullptr, &resource.sampler.sampler) == VK_SUCCESS);
+
+    return SamplerID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
+}
+
+CBufferID Device::CreateCBuffer(uint32_t byteSize, void *data) {
+    ResourceInfo& resource = resources.emplace_back();
+    resource.type = ResourceType::CBuffer;
+
+    // Buffer info
+    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.size = byteSize;
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+    // Allocation info
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+    // Attempt to allocate and create buffer
+    vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &resource.cbuffer.buffer, &resource.cbuffer.allocation, nullptr);
+
+    return CBufferID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
 }

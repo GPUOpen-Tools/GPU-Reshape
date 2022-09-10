@@ -10,8 +10,6 @@ struct RegisterBindingInfo {
 };
 
 RegisterBindingInfo GetBindingInfo(const D3D12_ROOT_SIGNATURE_DESC& source) {
-    RegisterBindingInfo bindingInfo;
-
     uint32_t userRegisterSpaceBound = 0;
 
     // Get the user bound
@@ -21,39 +19,30 @@ RegisterBindingInfo GetBindingInfo(const D3D12_ROOT_SIGNATURE_DESC& source) {
             case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
                 for (uint32_t j = 0; j < parameter.DescriptorTable.NumDescriptorRanges; j++) {
                     const D3D12_DESCRIPTOR_RANGE& range = parameter.DescriptorTable.pDescriptorRanges[j];
-
-                    userRegisterSpaceBound = std::max(userRegisterSpaceBound, range.RegisterSpace);
-
-                    if (range.RangeType == D3D12_DESCRIPTOR_RANGE_TYPE::D3D12_DESCRIPTOR_RANGE_TYPE_UAV) {
-                        bindingInfo.space = range.RegisterSpace;
-                        bindingInfo._register = range.BaseShaderRegister + range.NumDescriptors;
-                    }
+                    userRegisterSpaceBound = std::max(userRegisterSpaceBound, range.RegisterSpace + 1);
                 }
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
-                userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Constants.RegisterSpace);
+                userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Constants.RegisterSpace + 1);
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV:
             case D3D12_ROOT_PARAMETER_TYPE_SRV: {
-                userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Descriptor.RegisterSpace);
+                userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Descriptor.RegisterSpace + 1);
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_UAV: {
-                userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Descriptor.RegisterSpace);
-                bindingInfo.space = parameter.Descriptor.RegisterSpace;
-                bindingInfo._register = parameter.Descriptor.ShaderRegister;
+                userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Descriptor.RegisterSpace + 1);
                 break;
             }
         }
     }
 
-    if (bindingInfo.space == ~0u) {
-        bindingInfo.space = userRegisterSpaceBound + 1;
-        bindingInfo._register = 0;
-    }
-
+    // Prepare space
+    RegisterBindingInfo bindingInfo;
+    bindingInfo.space = userRegisterSpaceBound;
+    bindingInfo._register = 0;
     return bindingInfo;
 }
 

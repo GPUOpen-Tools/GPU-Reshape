@@ -152,6 +152,8 @@ namespace Backend::IL {
         template<> SortMap<ArrayType>& GetSortMap<ArrayType>() { return maps.arrayMap; }
         template<> SortMap<TextureType>& GetSortMap<TextureType>() { return maps.textureMap; }
         template<> SortMap<BufferType>& GetSortMap<BufferType>() { return maps.bufferMap; }
+        template<> SortMap<CBufferType>& GetSortMap<CBufferType>() { return maps.cbufferMap; }
+        template<> SortMap<SamplerType>& GetSortMap<SamplerType>() { return maps.samplerMap; }
         template<> SortMap<FunctionType>& GetSortMap<FunctionType>() { return maps.functionMap; }
         template<> SortMap<StructType>& GetSortMap<StructType>() { return maps.structMap; }
 
@@ -174,6 +176,8 @@ namespace Backend::IL {
             SortMap<ArrayType> arrayMap;
             SortMap<TextureType> textureMap;
             SortMap<BufferType> bufferMap;
+            SortMap<CBufferType> cbufferMap;
+            SortMap<SamplerType> samplerMap;
             SortMap<FunctionType> functionMap;
             SortMap<StructType> structMap;
         };

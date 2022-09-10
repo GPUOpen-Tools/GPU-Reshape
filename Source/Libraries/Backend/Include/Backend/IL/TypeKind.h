@@ -17,6 +17,8 @@ namespace Backend::IL {
         Array,
         Texture,
         Buffer,
+        Sampler,
+        CBuffer,
         Function,
         Struct,
         Unexposed

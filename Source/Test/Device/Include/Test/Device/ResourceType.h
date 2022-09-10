@@ -9,6 +9,8 @@ namespace Test {
         Texture2D,
         RWTexture2D,
         Texture3D,
-        RWTexture3D
+        RWTexture3D,
+        SamplerState,
+        CBuffer
     };
 }
