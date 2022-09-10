@@ -22,5 +22,8 @@ set_target_properties(Libraries.Bridge.DotNet PROPERTIES DOTNET_SDK "Microsoft.N
 set_target_properties(Libraries.Bridge.DotNet PROPERTIES VS_DOTNET_REFERENCES "System;System.Core;WindowsBase;Libraries.Message.DotNet")
 set_target_properties(Libraries.Bridge.DotNet PROPERTIES COMMON_LANGUAGE_RUNTIME "")
 
+# Add explicit dependencies
+add_dependencies(Libraries.Bridge.DotNet Libraries.Message.DotNet)
+
 # IDE source discovery
 SetSourceDiscovery(Libraries.Bridge.DotNet CXX Include Source)

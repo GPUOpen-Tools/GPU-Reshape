@@ -28,4 +28,7 @@ function(Project_AddSchemaDotNet NAME)
 
     # Link to message
     set_property(TARGET ${NAME} PROPERTY VS_DOTNET_REFERENCES "System;System.Memory;Libraries.Message.DotNet")
+
+    # Add explicit dependencies
+    add_dependencies(${NAME} Libraries.Message.DotNet)
 endfunction()
