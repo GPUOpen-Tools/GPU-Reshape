@@ -171,6 +171,17 @@ uint32_t DXILPhysicalBlockFunctionAttribute::FindOrCompileAttributeList(uint32_t
 }
 
 void DXILPhysicalBlockFunctionAttribute::SetDeclarationBlock(struct LLVMBlock *block) {
-    groupDeclarationBlock = block->GetBlock(LLVMReservedBlock::ParameterGroup);
     parameterDeclarationBlock = block->GetBlock(LLVMReservedBlock::Parameter);
+    if (!parameterDeclarationBlock) {
+        parameterDeclarationBlock = new (allocators) LLVMBlock(LLVMReservedBlock::Parameter);
+        parameterDeclarationBlock->abbreviationSize = 4u;
+        block->InsertBlock(block->FindPlacement(LLVMBlockElementType::Block), parameterDeclarationBlock);
+    }
+
+    groupDeclarationBlock = block->GetBlock(LLVMReservedBlock::ParameterGroup);
+    if (!groupDeclarationBlock) {
+        groupDeclarationBlock = new (allocators) LLVMBlock(LLVMReservedBlock::ParameterGroup);
+        groupDeclarationBlock->abbreviationSize = 4u;
+        block->InsertBlock(block->FindPlacement(LLVMBlockElementType::Block), groupDeclarationBlock);
+    }
 }

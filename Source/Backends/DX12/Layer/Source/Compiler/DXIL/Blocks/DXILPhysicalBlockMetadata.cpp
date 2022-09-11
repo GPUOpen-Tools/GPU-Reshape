@@ -10,6 +10,7 @@
 
 void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
     out.resources = resources;
+    out.entryPoint = entryPoint;
     out.metadataBlocks = metadataBlocks;
     out.registerClasses = registerClasses;
     out.registerSpaces = registerSpaces;
@@ -116,6 +117,22 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
                 ParseResourceList(metadataBlock, block, DXILShaderResourceClass::Samplers, resources.samplers);
             }
 
+            break;
+        }
+
+        // Program entrypoints
+        case CRC64("dx.entryPoints"): {
+            if (name != "dx.entryPoints") {
+                return;
+            }
+
+            // Get list
+            ASSERT(record.opCount == 1, "Expected a single value for dx.entryPoints");
+            const LLVMRecord &list = block->records[record.Op(0)];
+
+            // Set ids
+            entryPoint.uid = block->uid;
+            entryPoint.program = record.Op(0);
             break;
         }
     }
@@ -581,6 +598,10 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
             }
         }
 
+        // Mark
+        name.result = ~0u;
+        node.result = ~0u;
+
         // Append
         block->AddRecord(name);
         block->AddRecord(node);
@@ -652,6 +673,70 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMe
 }
 
 void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
+    if (resources.uid == ~0u) {
+        LLVMBlock* mdBlock = table.scan.GetRoot().GetBlock(LLVMReservedBlock::Metadata);
+
+        // Set block
+        resources.uid = mdBlock->uid;
+
+        // Get the metadata
+        MetadataBlock* metadataBlock = GetMetadataBlock(resources.uid);
+
+        // UAV list, empty by default
+        LLVMRecord uavRecord(LLVMMetadataRecord::Node);
+        uavRecord.opCount = 0;
+        mdBlock->AddRecord(uavRecord);
+
+        // UAV identifier (+1 for nullability)
+        Metadata uavMd = metadataBlock->metadata.emplace_back();
+        uavMd.source = mdBlock->records.Size();
+        resources.uavs = uavMd.source;
+
+        // Class list, points to the individual class handles
+        LLVMRecord classRecord(LLVMMetadataRecord::Node);
+        classRecord.opCount = static_cast<uint32_t>(DXILShaderResourceClass::Count);
+        classRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(classRecord.opCount);
+        classRecord.ops[static_cast<uint32_t>(DXILShaderResourceClass::CBVs)] = 0;
+        classRecord.ops[static_cast<uint32_t>(DXILShaderResourceClass::SRVs)] = 0;
+        classRecord.ops[static_cast<uint32_t>(DXILShaderResourceClass::UAVs)] = resources.uavs;
+        classRecord.ops[static_cast<uint32_t>(DXILShaderResourceClass::Samplers)] = 0;
+        mdBlock->AddRecord(classRecord);
+
+        // Class identifier (+1 for nullability)
+        Metadata classMd = metadataBlock->metadata.emplace_back();
+        classMd.source = mdBlock->records.Size();
+
+        // Get the program block
+        LLVMRecord& programRecord = declarationBlock->GetBlockWithUID(entryPoint.uid)->records[entryPoint.program];
+
+        // Set class id at program
+        ASSERT(programRecord.Op(3) == 0, "Program record already a resource class node");
+        programRecord.Op(3) = classMd.source;
+
+        // Expected name
+        const char* name = "dx.resources";
+
+        // Name dx.resources
+        LLVMRecord nameRecord(LLVMMetadataRecord::Name);
+        nameRecord.opCount = std::strlen(name);
+        nameRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(nameRecord.opCount);
+        std::copy(name, name + nameRecord.opCount, nameRecord.ops);
+        mdBlock->AddRecord(nameRecord);
+
+        // Add md
+        metadataBlock->metadata.emplace_back().source = mdBlock->records.Size();
+
+        // Insert dx.resources, points to the class list
+        LLVMRecord dxResourceRecord(LLVMMetadataRecord::NamedNode);
+        dxResourceRecord.opCount = 1u;
+        dxResourceRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(1u);
+        dxResourceRecord.ops[0] = classMd.source - 1;
+        mdBlock->AddRecord(dxResourceRecord);
+
+        // Add md
+        metadataBlock->metadata.emplace_back().source = mdBlock->records.Size();
+    }
+
     // Get the metadata
     MetadataBlock* metadataBlock = GetMetadataBlock(resources.uid);
 

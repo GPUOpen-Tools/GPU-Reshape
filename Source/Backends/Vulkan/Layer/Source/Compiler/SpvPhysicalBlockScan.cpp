@@ -83,17 +83,22 @@ bool SpvPhysicalBlockScan::Scan(const uint32_t *const code, uint32_t count) {
         section.physicalBlock.stream = SpvStream(code);
 
         // Create source
-        if (section.physicalBlock.source.span.begin != IL::InvalidOffset) {
-            uint32_t wordCount = section.physicalBlock.source.span.end - section.physicalBlock.source.span.begin;
+        if (section.physicalBlock.source.span.begin == IL::InvalidOffset) {
+            section.physicalBlock.source.code = nullptr;
+            section.physicalBlock.source.end = 0;
+            continue;
+        }
 
-            section.physicalBlock.source.code = (code + section.physicalBlock.source.span.begin);
-            section.physicalBlock.source.end = section.physicalBlock.source.code + wordCount;
+        uint32_t wordCount = section.physicalBlock.source.span.end - section.physicalBlock.source.span.begin;
 
-            // Append any data
-            //   ? Functions are handled separately
-            if (i < static_cast<uint32_t>(SpvPhysicalBlockType::Function)) {
-                section.physicalBlock.stream.AppendData(code + section.physicalBlock.source.span.begin, wordCount);
-            }
+        // Set segment
+        section.physicalBlock.source.code = (code + section.physicalBlock.source.span.begin);
+        section.physicalBlock.source.end = section.physicalBlock.source.code + wordCount;
+
+        // Append any data
+        //   ? Functions are handled separately
+        if (i < static_cast<uint32_t>(SpvPhysicalBlockType::Function)) {
+            section.physicalBlock.stream.AppendData(code + section.physicalBlock.source.span.begin, wordCount);
         }
     }
 

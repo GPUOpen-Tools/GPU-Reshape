@@ -174,6 +174,13 @@ private:
         return nullptr;
     }
 
+public:
+    /// Entrypoint
+    struct EntryPoint {
+        uint32_t uid = ~0u;
+        uint32_t program = ~0u;
+    } entryPoint;
+
 private:
     /// All resource entries
     struct Resources {

@@ -8,7 +8,9 @@
 struct SpvParseContext {
     SpvParseContext(const SpvPhysicalBlockSource& source) : source(source), code(source.code) {
         // Read the first operands
-        ReadOperands();
+        if (source.code) {
+            ReadOperands();
+        }
     }
 
     /// Get the current instruction

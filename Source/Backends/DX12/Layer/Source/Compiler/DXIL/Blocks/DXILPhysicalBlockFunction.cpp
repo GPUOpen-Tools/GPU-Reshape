@@ -1421,8 +1421,14 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
 
     // If no constant block, create one
     if (!constantBlock) {
-        constantBlock = block->blocks.Add(new(allocators) LLVMBlock);
-        constantBlock->id = static_cast<uint32_t>(LLVMReservedBlock::Constants);
+        LLVMBlock& root = table.scan.GetRoot();
+
+        // Allocate block
+        constantBlock = new(allocators) LLVMBlock(LLVMReservedBlock::Constants);
+        constantBlock->abbreviationSize = 4;
+
+        // Insert before metadata
+        root.InsertBlock(root.FindPlacement(LLVMBlockElementType::Block, LLVMReservedBlock::Metadata), constantBlock);
     }
 
     // Get the program map
