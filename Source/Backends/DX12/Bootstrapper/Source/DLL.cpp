@@ -16,10 +16,14 @@
 #include <Detour/detours.h>
 
 /// Enables naive debugging
+#ifndef NDEBUG
 #define ENABLE_LOGGING 1
+#else // NDEBUG
+#define ENABLE_LOGGING 0
+#endif // NDEBUG
 
 /// Greatly simplifies debugging
-#define ENABLE_WHITELIST 1
+#define ENABLE_WHITELIST 0
 
 /// Symbol helper (nay, repent! a macro!)
 #define SYMBOL(NAME, STR) \
@@ -77,7 +81,8 @@ struct LogContext {
 #endif // ENABLE_LOGGING
 
 void BootstrapLayer(const char* invoker, bool native) {
-    std::filesystem::path modulePath = GetCurrentModuleDirectory();
+    // Get module path, the bootstrapper sessions are hosted under Intermedaite
+    std::filesystem::path modulePath = GetBaseModuleDirectory();
 
     // Add search directory
     AddDllDirectory(modulePath.wstring().c_str());
@@ -175,7 +180,7 @@ DWORD DeferredInitialization(void*) {
     std::filesystem::path basename = std::filesystem::path(filename).filename().replace_extension("");
 
     // Setup log path
-    std::filesystem::path logPath = GetIntermediatePath("Bootstrapper") / (basename.string() + " " + GlobalUID::New().ToString() + ".txt");
+    std::filesystem::path logPath = GetIntermediatePath("Bootstrapper/Entries") / (basename.string() + " " + GlobalUID::New().ToString() + ".txt");
 
     // Open at path
     LoggingFile.open(logPath);
@@ -210,8 +215,9 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     GetModuleFileName(nullptr, filename, sizeof(filename));
 
     // Whitelist executable
-    if (!std::ends_with(filename, "D3D12HelloTriangle.exe")) {
-        return TRUE;
+    if (!std::ends_with(filename, "Backends.DX12.Service.exe") && !std::ends_with(filename, "D3D12HelloTexture.exe")) {
+        // Note: This is a terrible idea, hook will attempt to load over and over
+        return FALSE;
     }
 #endif // ENABLE_WHITELIST
 

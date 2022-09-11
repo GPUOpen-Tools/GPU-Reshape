@@ -2,20 +2,22 @@
 
 // Common
 #include <Common/IPGlobalLock.h>
+#include <Common/FileSystem.h>
+#include <Common/GlobalUID.h>
 
 // Std
 #include <cstdint>
 #include <iostream>
 
 /// Shared Win32 hook
-HHOOK KeyboardLLHook;
+HHOOK Hook;
 
 /// Graceful exit handler
 BOOL CtrlHandler(DWORD event) {
     if (event == CTRL_CLOSE_EVENT) {
         // Graceful cleanup
-        if (KeyboardLLHook) {
-            UnhookWindowsHookEx(KeyboardLLHook);
+        if (Hook) {
+            UnhookWindowsHookEx(Hook);
         }
 
         // OK
@@ -67,8 +69,26 @@ int main(int32_t argc, const char *const *argv) {
 
     std::cout << "OK." << std::endl;
 
+    // Host all sessions under intermediate
+    std::filesystem::path sessionDir = GetIntermediatePath("Bootstrapper/Sessions");
+
+    // Clean up all old sessions
+    for (std::filesystem::path file : std::filesystem::directory_iterator(sessionDir)) {
+        std::error_code ignored;
+        std::filesystem::remove(file, ignored);
+    }
+
+    // Create unique name
+    std::string sessionName = "Backends.DX12.Bootstrapper " + GlobalUID::New().ToString() + ".dll";
+
+    // Copy the bootstrapper to a new session, makes handling unique sessions somewhat bearable (certain programs refuse to let go of handle)
+    std::filesystem::path sessionPath = sessionDir / sessionName;
+
+    // Copy current bootstrapper
+    std::filesystem::copy("Backends.DX12.Bootstrapper.dll", sessionPath);
+
     // Load the boostrapper
-    HMODULE bootstrapperModule = LoadLibraryW(L"Backends.DX12.Bootstrapper.dll");
+    HMODULE bootstrapperModule = LoadLibraryW(sessionPath.wstring().c_str());
     if (!bootstrapperModule) {
         std::cerr << "Failed to open bootstrapper" << std::endl;
 
@@ -90,8 +110,8 @@ int main(int32_t argc, const char *const *argv) {
     }
 
     // Attempt to attach global hook
-    KeyboardLLHook = SetWindowsHookEx(WH_CBT, gpa, bootstrapperModule, 0);
-    if (!KeyboardLLHook) {
+    Hook = SetWindowsHookEx(WH_CBT, gpa, bootstrapperModule, 0);
+    if (!Hook) {
         std::cerr << "Failed to attach global hook" << std::endl;
 
 #ifndef NDEBUG
@@ -105,7 +125,7 @@ int main(int32_t argc, const char *const *argv) {
     MessagePump();
 
     // Cleanup
-    UnhookWindowsHookEx(KeyboardLLHook);
+    UnhookWindowsHookEx(Hook);
 
     // OK
     std::cout << "DX12 service shutdown" << std::endl;
