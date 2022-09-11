@@ -258,4 +258,5 @@ void Assembler::AssembleResources() {
     testTemplate.Substitute("$RESOURCES_CREATE", create.str().c_str());
     testTemplate.Substitute("$RESOURCES_TYPES", types.str().c_str());
     testTemplate.Substitute("$RESOURCES_SET", set.str().c_str());
+    testTemplate.Substitute("$HAS_RESOURCES", program.resources.empty() ? "false" : "true");
 }

@@ -104,27 +104,41 @@ private:
         info.enableValidation = false;
         device->Install(info);
 
-        // Create all resources
+        // Optional, resource set
+        ResourceSetID resourceSet;
+
+        // All layouts
+        std::vector<ResourceLayoutID> layouts;
+
+        // Any resources?
+        const bool hasResources = $HAS_RESOURCES;
+
+        if (hasResources) {
+            // Create all resources
 $RESOURCES_CREATE
 
-        // Types for layout definition
-        ResourceType resourceTypes[] = {
+            // Types for layout definition
+            ResourceType resourceTypes[] = {
 $RESOURCES_TYPES
-        };
+            };
 
-        // Create layout
-        ResourceLayoutID layout = device->CreateResourceLayout(resourceTypes, sizeof(resourceTypes) / sizeof(ResourceType));
+            // Create layout
+            ResourceLayoutID layout = device->CreateResourceLayout(resourceTypes, sizeof(resourceTypes) / sizeof(ResourceType));
 
-        // Resources for set
-        ResourceID resources[] = {
+            // Resources for set
+            ResourceID resources[] = {
 $RESOURCES_SET
-        };
+            };
 
-        // Create set
-        ResourceSetID resourceSet = device->CreateResourceSet(layout, resources, sizeof(resources) / sizeof(ResourceID));
+            // Create set
+            resourceSet = device->CreateResourceSet(layout, resources, sizeof(resources) / sizeof(ResourceID));
+
+            // Add layout
+            layouts.push_back(layout);
+        }
 
         // Create pipeline
-        PipelineID pipeline = device->CreateComputePipeline(&layout, 1u, code.code, code.size);
+        PipelineID pipeline = device->CreateComputePipeline(layouts.data(), layouts.size(), code.code, code.size);
 
         // Set the bridge up for the expected communication
         ConfigureBridge();
@@ -140,7 +154,10 @@ $RESOURCES_SET
 
         // Bind pipeline and resources
         device->BindPipeline(commandBuffer, pipeline);
-        device->BindResourceSet(commandBuffer, resourceSet);
+
+        if (hasResources) {
+            device->BindResourceSet(commandBuffer, resourceSet);
+        }
 
 $COMMANDS
 

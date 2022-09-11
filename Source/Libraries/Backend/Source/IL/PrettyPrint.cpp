@@ -649,12 +649,12 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
             break;
         }
         case Backend::IL::TypeKind::Sampler: {
-            auto buf = type->As<Backend::IL::SamplerType>();
+            auto sampler = type->As<Backend::IL::SamplerType>();
             line << "Sampler";
             break;
         }
         case Backend::IL::TypeKind::CBuffer: {
-            auto buf = type->As<Backend::IL::CBufferType>();
+            auto cbuffer = type->As<Backend::IL::CBufferType>();
             line << "CBuffer";
             break;
         }

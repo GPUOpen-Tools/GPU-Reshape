@@ -76,8 +76,8 @@ void CreateDirectoryTree(const std::filesystem::path &path) {
 std::filesystem::path GetBaseModuleDirectory() {
     std::filesystem::path path = GetCurrentModuleDirectory();
 
-    // TODO: Ugly
-    if (path.filename() == "Plugins") {
+    // Walk back until root
+    while (!std::filesystem::exists(path / "Plugins")) {
         path = path.parent_path();
     }
 
