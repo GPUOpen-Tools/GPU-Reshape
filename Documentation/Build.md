@@ -4,9 +4,13 @@ Build instructions for Windows. _Linux support pending._
 
 ## Supported environments
 
-A minimum version of CMake 3.17 is required to configure and build the project. Additionally, pulled dependencies expect the following tools to be installed on the system:
+A minimum version of **CMake 3.17** is required to configure and build the project. Additionally, pulled dependencies expect the following tools to be installed on the system:
 
-- Python 3.x 
+- **Python 3.x**
+
+Building experimental UIX requires the following dependencies to be installed on the system:
+
+- **.NET Framework 4.8.1 (.NET 5.0)**
 
 ### Windows
 
@@ -16,19 +20,23 @@ the below set-ups are supported:
 - Toolchains
     - Visual Studio 2017 / 2019
 - Generators
-  - Visual Studio
-  - Ninja
+    - Visual Studio
+    - Ninja
 - Compilers
-  - MSVC
-  - Clang-cl (11+)
+    - MSVC
+    - Clang-cl (11+)
 
 ## Configuration options
 
-| Option              | Platform | Default | Description                             |
-|---------------------|----------|---------|-----------------------------------------|
-| INSTALL_THIRD_PARTY | All      | `OFF`   | Fetch and install third party libraries |
-| ENABLE_ASAN         | All      | `OFF`   | Enables ASAN diagnostics (WIP)          |
-| ENABLE_UIX          | All      | `OFF`   | Enables UIX building (Experimental)     |
+| Option                | Platform | Default | Description                                                      |
+|-----------------------|----------|---------|------------------------------------------------------------------|
+| INSTALL_THIRD_PARTY   | All      | `ON`    | Fetch and install third party libraries                          |
+| ENABLE_UIX            | All      | `OFF`   | Enables UIX building (Experimental)                              |
+| ENABLE_BACKEND_VULKAN | All      | `ON`    | Enables Vulkan support                                           |
+| ENABLE_BACKEND_DX12   | All      | `ON`    | Enables DX12 support                                             |
+| ENABLE_MIXED_COMPILER | All      | `ON`    | Enables support for multiple compilers, separates built binaries |
+
+Please see *Developmental configuration options* below for additional options.
 
 ## Dependencies
 
@@ -74,6 +82,7 @@ the below set-ups are supported:
   Write once run everywhere UI framework
 
 #### [NUGET]
+
 - **Avalonia.AvaloniaEdit/0.10.12.2**
 - **Avalonia.Controls.TreeDataGrid/0.10.10**
 - **Avalonia.Desktop/0.10.14**
@@ -108,4 +117,10 @@ Dependencies only used for testing and development.
 - **GraphViz** </br>
   DotGraph visualization for dependency debugging
 
+## Developmental configuration options
 
+| Option               | Platform | Default | Description                             |
+|----------------------|----------|---------|-----------------------------------------|
+| ENABLE_DXIL_DUMP     | All      | `ON`    | Enables dumping of built test DXIL data |
+| ENABLE_ASAN          | All      | `OFF`   | Enables clang ASAN                      |
+| ENABLE_RELEASE_DEBUG | All      | `ON`    | Enables debug information in release    |
