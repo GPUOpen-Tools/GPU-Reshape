@@ -92,7 +92,7 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
 
         # Generate the schema
         add_custom_command(
-            OUTPUT ${OutputPath}
+            OUTPUT ${OutputPath}.sham
             DEPENDS
                 Libraries.Message.Generator
                 ${LIBS}
@@ -106,9 +106,16 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
                 -opath ${SCHEMA_OUT_PATH}
         )
 
+        # Write dummy generated file
+        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${OutputPath} "Generated file")
+
         # Set output
         list(APPEND ${OUT_GENERATED}CS ${OutputPath})
         set(${OUT_GENERATED}CS "${${OUT_GENERATED}CS}" PARENT_SCOPE)
+
+        # Set sham output
+        list(APPEND ${OUT_GENERATED}CS_Sham ${OutputPath}.sham)
+        set(${OUT_GENERATED}CS_Sham "${${OUT_GENERATED}CS_Sham}" PARENT_SCOPE)
     endif()
 endfunction()
 

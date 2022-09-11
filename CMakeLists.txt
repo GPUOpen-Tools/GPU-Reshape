@@ -46,9 +46,6 @@ if (${ENABLE_UIX})
 
     # Enable additional languages
     enable_language(CSharp)
-
-    # .NET 5.0 unfortunately has several issues with cmake
-    set(CMAKE_DOTNET_TARGET_FRAMEWORK_VERSION  "v4.7.2")
 endif()
 
 # Release configuration

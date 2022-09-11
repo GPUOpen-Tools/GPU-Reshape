@@ -1,29 +1,22 @@
 
-Project_AddSchemaDotNet(Libraries.Bridge.Schema.DotNet ${GeneratedLibSchemaCS})
+# Create schema
+Project_AddSchemaDotNet(Libraries.Bridge.Schema.DotNet GeneratedLibSchemaCS)
 
-add_library(
-    Libraries.Bridge.DotNet SHARED
-    Source/Managed/IBridge.cpp
-    Source/Managed/BridgeMessageStorage.cpp
-    Source/Managed/RemoteClientBridge.cpp
+# Create bridge
+Project_AddDotNetEx(
+    NAME Libraries.Bridge.DotNet
+    LANG CXX
+    SOURCE
+        Source/Managed/IBridge.cpp
+        Source/Managed/BridgeMessageStorage.cpp
+        Source/Managed/RemoteClientBridge.cpp
+    ASSEMBLIES
+        System
+        System.Core
+        WindowsBase
+    LIBS
+        Libraries.Bridge
+        Libraries.Message.DotNet
+    FLAGS
+        /Zc:twoPhase-
 )
-
-# Includes
-target_include_directories(Libraries.Bridge.DotNet PUBLIC Include)
-
-# Links
-target_link_libraries(Libraries.Bridge.DotNet PUBLIC Libraries.Bridge Libraries.Message.DotNet)
-
-# Resolver workaround
-target_compile_options(Libraries.Bridge.DotNet PRIVATE /Zc:twoPhase-)
-
-# DotNet
-set_target_properties(Libraries.Bridge.DotNet PROPERTIES DOTNET_SDK "Microsoft.NET.Sdk")
-set_target_properties(Libraries.Bridge.DotNet PROPERTIES VS_DOTNET_REFERENCES "System;System.Core;WindowsBase;Libraries.Message.DotNet")
-set_target_properties(Libraries.Bridge.DotNet PROPERTIES COMMON_LANGUAGE_RUNTIME "")
-
-# Add explicit dependencies
-add_dependencies(Libraries.Bridge.DotNet Libraries.Message.DotNet)
-
-# IDE source discovery
-SetSourceDiscovery(Libraries.Bridge.DotNet CXX Include Source)

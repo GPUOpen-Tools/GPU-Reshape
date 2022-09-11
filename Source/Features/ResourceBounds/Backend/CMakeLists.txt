@@ -51,5 +51,5 @@ target_link_libraries(Features.ResourceBounds.Tests PUBLIC Test.Device Features.
 #----- .Net bindings -----#
 
 if (${ENABLE_UIX})
-    Project_AddSchemaDotNet(Features.ResourceBounds.Backend.DotNet ${GeneratedCS})
+    Project_AddSchemaDotNet(Features.ResourceBounds.Backend.DotNet GeneratedCS)
 endif()

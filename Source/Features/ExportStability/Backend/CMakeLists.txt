@@ -51,5 +51,5 @@ target_link_libraries(Features.ExportStability.Tests PUBLIC Test.Device Features
 #----- .Net bindings -----#
 
 if (${ENABLE_UIX})
-    Project_AddSchemaDotNet(Features.ExportStability.Backend.DotNet ${GeneratedCS})
+    Project_AddSchemaDotNet(Features.ExportStability.Backend.DotNet GeneratedCS)
 endif()

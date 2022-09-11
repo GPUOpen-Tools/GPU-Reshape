@@ -83,5 +83,5 @@ target_link_libraries(Libraries.Backend.Tests PUBLIC Libraries.Backend)
 #---- .Net Bindings ----#
 
 if (${ENABLE_UIX})
-    Project_AddSchemaDotNet(Libraries.Backend.Schema.DotNet ${GeneratedLibSchemaCS})
+    Project_AddSchemaDotNet(Libraries.Backend.Schema.DotNet GeneratedLibSchemaCS)
 endif()

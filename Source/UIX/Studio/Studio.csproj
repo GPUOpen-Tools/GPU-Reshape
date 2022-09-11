@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net5.0</TargetFramework>
@@ -7,9 +7,10 @@
         <TargetCulture>en</TargetCulture>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
         <Configurations>Debug;Release</Configurations>
-        <Platforms>AnyCPU</Platforms>
+        <Platforms>x64</Platforms>
         <PublishTrimmed>true</PublishTrimmed>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <StartupObject>Studio.Program</StartupObject>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <DebugType>none</DebugType>

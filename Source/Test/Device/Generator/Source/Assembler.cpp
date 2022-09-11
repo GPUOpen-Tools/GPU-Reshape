@@ -254,6 +254,11 @@ void Assembler::AssembleResources() {
         set << "\t\t\tresource" << i << ",\n";
     }
 
+    if (program.resources.empty()) {
+        types << "{}";
+        set << "{}";
+    }
+
     // Replace
     testTemplate.Substitute("$RESOURCES_CREATE", create.str().c_str());
     testTemplate.Substitute("$RESOURCES_TYPES", types.str().c_str());
