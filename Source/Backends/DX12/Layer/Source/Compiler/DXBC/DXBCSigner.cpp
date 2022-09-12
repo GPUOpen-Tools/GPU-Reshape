@@ -16,7 +16,7 @@
 
 bool DXBCSigner::Install() {
     // Get path of the layer
-    std::filesystem::path modulePath = GetCurrentModuleDirectory();
+    std::filesystem::path modulePath = GetBaseModuleDirectory();
 
     // Load DXBC
     //   ! No non-system/runtime dependents in dxbcsigner.dll, verified with dumpbin

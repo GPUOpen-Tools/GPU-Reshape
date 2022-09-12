@@ -9,7 +9,7 @@
 #include <iostream>
 
 PluginResolver::PluginResolver() {
-    pluginPath = GetCurrentModuleDirectory() / "Plugins";
+    pluginPath = GetBaseModuleDirectory() / "Plugins";
 }
 
 bool PluginResolver::FindPlugins(const std::string_view &category, PluginList* list, PluginResolveFlagSet flags) {

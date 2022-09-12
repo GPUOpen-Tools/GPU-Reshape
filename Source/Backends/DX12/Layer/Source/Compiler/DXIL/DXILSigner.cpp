@@ -20,7 +20,7 @@
 
 bool DXILSigner::Install() {
     // Get path of the layer
-    std::filesystem::path modulePath = GetCurrentModuleDirectory();
+    std::filesystem::path modulePath = GetBaseModuleDirectory();
 
     // Load dxil
     //   ! No non-system/runtime dependents in dxil.dll, verified with dumpbin

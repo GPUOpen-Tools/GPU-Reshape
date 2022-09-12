@@ -81,7 +81,7 @@ struct LogContext {
 #endif // ENABLE_LOGGING
 
 void BootstrapLayer(const char* invoker, bool native) {
-    // Get module path, the bootstrapper sessions are hosted under Intermedaite
+    // Get module path, the bootstrapper sessions are hosted under Intermediate
     std::filesystem::path modulePath = GetBaseModuleDirectory();
 
     // Add search directory
@@ -93,11 +93,23 @@ void BootstrapLayer(const char* invoker, bool native) {
     LogContext{} << invoker << " - Loading layer " << path << " ... ";
 #endif // ENABLE_LOGGING
 
+    // Get current session dir
+    std::filesystem::path sessionDir = GetCurrentModuleDirectory();
+
+    // Create unique name
+    std::string sessionName = "Backends.DX12.Layer " + GlobalUID::New().ToString() + ".dll";
+
+    // Copy the bootstrapper to a new session, makes handling unique sessions somewhat bearable (certain programs refuse to let go of handle)
+    std::filesystem::path sessionPath = sessionDir / sessionName;
+
+    // Copy current bootstrapper
+    std::filesystem::copy(path, sessionPath);
+
     // User attempting to load d3d12.dll, warranting bootstrapping of the layer
     if (native) {
-        LayerModule = LoadLibraryExW(path.wstring().c_str(), nullptr, 0x0);
+        LayerModule = LoadLibraryExW(sessionPath.wstring().c_str(), nullptr, 0x0);
     } else {
-        LayerModule = Kernel32LoadLibraryExWOriginal(path.wstring().c_str(), nullptr, 0x0);
+        LayerModule = Kernel32LoadLibraryExWOriginal(sessionPath.wstring().c_str(), nullptr, 0x0);
     }
 
     // Failed?

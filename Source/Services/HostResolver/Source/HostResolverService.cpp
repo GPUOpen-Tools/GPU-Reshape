@@ -22,7 +22,7 @@ bool HostResolverService::Install() {
 
 bool HostResolverService::StartProcess() {
     // Process path
-    std::filesystem::path path = GetCurrentModuleDirectory() / "Services.HostResolver.Standalone";
+    std::filesystem::path path = GetBaseModuleDirectory() / "Services.HostResolver.Standalone";
 
 #ifdef _WIN64
     // Startup info
