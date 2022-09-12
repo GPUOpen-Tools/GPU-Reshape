@@ -904,20 +904,17 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
     // Get the register class, always mapped as a UAV for shader exports
     MappedRegisterClass& registerClass = FindOrAddRegisterClass(DXILShaderResourceClass::UAVs);
 
-    // Get the unique register space, always allocated at the end
-    UserRegisterSpace& registerSpace = FindOrAddRegisterSpace(registerSpaceBound);
+    // Validation of current spaces against instrumentation keys
+    ASSERT(registerSpaceBound <= job.instrumentationKey.bindingInfo.space, "Current register space bound exceeds given instrumentation key space, suggesting either invalid IL or mishandling");
 
     // Handle id
     exportHandleId = registerClass.handles.size();
 
     // Setup binding info
     table.bindingInfo.handleId = exportHandleId;
-    table.bindingInfo.space = registerSpace.space;
-    table.bindingInfo._register = registerSpace.registerBound;
+    table.bindingInfo.space = job.instrumentationKey.bindingInfo.space;
+    table.bindingInfo._register = job.instrumentationKey.bindingInfo._register;
     table.bindingInfo.count = 1 + job.streamCount;
-
-    // Update bound
-    registerSpace.registerBound += table.bindingInfo.count;
 
     // i32
     const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});

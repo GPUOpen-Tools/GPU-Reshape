@@ -89,6 +89,9 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
 HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc, const IID &riid, void **pPipeline) {
     auto table = GetTable(device);
 
+    // Get root signature
+    auto rootSignatureTable = GetTable(desc->pRootSignature);
+
     // Object
     ID3D12PipelineState *pipeline{nullptr};
 
@@ -102,7 +105,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     state->deepCopy.DeepCopy(Allocators{}, *desc);
 
     // Unwrap description states
-    state->deepCopy->pRootSignature = Next(state->deepCopy->pRootSignature);
+    state->deepCopy->pRootSignature = rootSignatureTable.next;
 
     // Pass down callchain
     HRESULT hr = table.bottom->next_CreateGraphicsPipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
@@ -113,7 +116,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
 
     // Add reference to signature
     desc->pRootSignature->AddRef();
-    state->signature = GetState(desc->pRootSignature);
+    state->signature = rootSignatureTable.state;
 
     // Create VS state
     if (desc->VS.BytecodeLength) {
@@ -179,6 +182,9 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
 HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc, const IID &riid, void **pPipeline) {
     auto table = GetTable(device);
 
+    // Get root signature
+    auto rootSignatureTable = GetTable(desc->pRootSignature);
+
     // Object
     ID3D12PipelineState *pipeline{nullptr};
 
@@ -192,7 +198,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     state->deepCopy.DeepCopy(Allocators{}, *desc);
 
     // Unwrap description states
-    state->deepCopy->pRootSignature = Next(state->deepCopy->pRootSignature);
+    state->deepCopy->pRootSignature = rootSignatureTable.next;
 
     // Pass down callchain
     HRESULT hr = table.bottom->next_CreateComputePipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
@@ -203,7 +209,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
 
     // Add reference to signature
     desc->pRootSignature->AddRef();
-    state->signature = GetState(desc->pRootSignature);
+    state->signature = rootSignatureTable.state;
 
     // Create VS state
     if (desc->CS.BytecodeLength) {

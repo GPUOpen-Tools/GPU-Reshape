@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
+#include "RootRegisterBindingInfo.h"
 
 // Forward declarations
 struct DeviceState;
@@ -10,6 +11,9 @@ struct RootSignatureState {
     /// Parent state
     DeviceState* parent{};
 
-    /// Number of user provided root constants
-    uint32_t userRootCount{0};
+    /// Root binding information
+    RootRegisterBindingInfo rootBindingInfo;
+
+    /// Number of user parameters
+    uint32_t userRootCount;
 };

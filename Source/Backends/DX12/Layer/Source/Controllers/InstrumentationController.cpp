@@ -4,6 +4,7 @@
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/States/RootSignatureState.h>
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 
 // Bridge
@@ -214,9 +215,13 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             // Get the super feature set
             uint64_t featureBitSet = shaderFeatureBitSet | dependentObject->instrumentationInfo.featureBitSet;
 
+            // Number root info
+            const RootRegisterBindingInfo& signatureBindingInfo = dependentObject->signature->rootBindingInfo;
+
             // Create the instrumentation key
             ShaderInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
+            instrumentationKey.bindingInfo = signatureBindingInfo;
 
             // Attempt to reserve
             if (!state->Reserve(instrumentationKey)) {
@@ -263,9 +268,13 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             featureBitSet |= state->shaders[shaderIndex]->instrumentationInfo.featureBitSet;
             featureBitSet |= state->instrumentationInfo.featureBitSet;
 
+            // Number root info
+            const RootRegisterBindingInfo& signatureBindingInfo = state->signature->rootBindingInfo;
+
             // Create the instrumentation key
             ShaderInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
+            instrumentationKey.bindingInfo = signatureBindingInfo;
 
             // Assign key
             job.shaderInstrumentationKeys[shaderIndex] = instrumentationKey;

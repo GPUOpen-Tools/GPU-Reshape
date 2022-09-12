@@ -4,12 +4,7 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 
-struct RegisterBindingInfo {
-    uint32_t space{~0u};
-    uint32_t _register{~0u};
-};
-
-RegisterBindingInfo GetBindingInfo(const D3D12_ROOT_SIGNATURE_DESC& source) {
+RootRegisterBindingInfo GetBindingInfo(const D3D12_ROOT_SIGNATURE_DESC& source) {
     uint32_t userRegisterSpaceBound = 0;
 
     // Get the user bound
@@ -40,14 +35,14 @@ RegisterBindingInfo GetBindingInfo(const D3D12_ROOT_SIGNATURE_DESC& source) {
     }
 
     // Prepare space
-    RegisterBindingInfo bindingInfo;
+    RootRegisterBindingInfo bindingInfo;
     bindingInfo.space = userRegisterSpaceBound;
     bindingInfo._register = 0;
     return bindingInfo;
 }
 
-HRESULT SerializeRootSignature1_0(DeviceState* state, const D3D12_ROOT_SIGNATURE_DESC& source, ID3DBlob** out, ID3DBlob** error) {
-    RegisterBindingInfo bindingInfo = GetBindingInfo(source);
+HRESULT SerializeRootSignature1_0(DeviceState* state, const D3D12_ROOT_SIGNATURE_DESC& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, ID3DBlob** error) {
+    *outRoot = GetBindingInfo(source);
 
     // Copy parameters
     auto* parameters = ALLOCA_ARRAY(D3D12_ROOT_PARAMETER, source.NumParameters + 1);
@@ -57,8 +52,8 @@ HRESULT SerializeRootSignature1_0(DeviceState* state, const D3D12_ROOT_SIGNATURE
     D3D12_DESCRIPTOR_RANGE exportRange{};
     exportRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
     exportRange.OffsetInDescriptorsFromTableStart = 0;
-    exportRange.RegisterSpace = bindingInfo.space;
-    exportRange.BaseShaderRegister = bindingInfo._register;
+    exportRange.RegisterSpace = outRoot->space;
+    exportRange.BaseShaderRegister = outRoot->_register;
     exportRange.NumDescriptors = 1 + state->exportHost->GetBound();
 
     // Shader export parameter
@@ -101,8 +96,11 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     ID3DBlob* error{ nullptr };
 #endif // NDEBUG
 
-    // Number of user roots
-    uint32_t rootUserCount{0};
+    // Populated binding info
+    RootRegisterBindingInfo bindingInfo;
+
+    // Number of user parameters
+    uint32_t userRootCount = 0;
 
     // Attempt to re-serialize
     ID3DBlob* serialized{nullptr};
@@ -111,10 +109,10 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
             ASSERT(false, "Invalid root signature version");
             return E_INVALIDARG;
         case D3D_ROOT_SIGNATURE_VERSION_1: {
-            rootUserCount = unconverted->Desc_1_1.NumParameters;
+            userRootCount = unconverted->Desc_1_0.NumParameters;
 
 #ifndef NDEBUG
-            hr = SerializeRootSignature1_0(table.state, unconverted->Desc_1_0, &serialized, &error);
+            hr = SerializeRootSignature1_0(table.state, unconverted->Desc_1_0, &serialized, &bindingInfo, &error);
 #else // NDEBUG
             hr = SerializeRootSignature1_0(table.state, unconverted->Desc_1_0, &serialized, nullptr);
 #endif // NDEBUG
@@ -154,7 +152,8 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     // Create state
     auto* state = new RootSignatureState();
     state->parent = table.state;
-    state->userRootCount = rootUserCount;
+    state->rootBindingInfo = bindingInfo;
+    state->userRootCount = userRootCount;
 
     // Create detours
     rootSignature = CreateDetour(Allocators{}, rootSignature, state);
