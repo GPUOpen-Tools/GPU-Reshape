@@ -38,6 +38,9 @@ public:
     /// Compile all instructions
     void CompileMetadata(struct LLVMBlock *block);
 
+    /// Compile global metadata
+    void CompileMetadata();
+
     /// Stitch all instructions
     void StitchMetadata(struct LLVMBlock *block);
 
@@ -270,12 +273,17 @@ private:
         DXILShadingModelClass _class;
     } shadingModel;
 
+    struct ProgramMetadata {
+        /// User provided flags
+        DXILProgramShaderFlagSet shaderFlags{ 0 };
+
+        /// Internal shader flags
+        DXILProgramShaderFlagSet internalShaderFlags{ 0 };
+    } programMetadata;
+
 private:
     /// Internal handle id
     uint32_t exportHandleId{ 0 };
-
-    /// Internal shader flags
-    DXILProgramShaderFlagSet shaderFlags{ 0 };
 
 private:
     /// Declaration blocks

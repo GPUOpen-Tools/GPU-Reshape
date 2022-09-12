@@ -16,7 +16,7 @@ void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
     out.registerClasses = registerClasses;
     out.registerSpaces = registerSpaces;
     out.registerSpaceBound = registerSpaceBound;
-    out.shaderFlags = shaderFlags;
+    out.programMetadata = programMetadata;
     out.shadingModel = shadingModel;
     out.handles = handles;
 }
@@ -98,7 +98,7 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
 
             // Set ids
             resources.uid = block->uid;
-            resources.source = index;
+            resources.source = record.Op(0);
 
             // Check SRVs
             if (resources.srvs = list.Op(static_cast<uint32_t>(DXILShaderResourceClass::SRVs)); resources.srvs != 0) {
@@ -149,7 +149,7 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
                         }
                         case DXILProgramTag::ShaderFlags: {
                             // Get current flags
-                            shaderFlags = DXILProgramShaderFlagSet(GetOperandU32Constant(metadataBlock, kvRecord.Op(kv + 1)));
+                            programMetadata.shaderFlags = DXILProgramShaderFlagSet(GetOperandU32Constant(metadataBlock, kvRecord.Op(kv + 1)));
                             break;
                         }
                     }
@@ -591,6 +591,9 @@ Backend::IL::Format DXILPhysicalBlockMetadata::GetComponentFormat(ComponentType 
 }
 
 void DXILPhysicalBlockMetadata::CompileMetadata(struct LLVMBlock *block) {
+}
+
+void DXILPhysicalBlockMetadata::CompileMetadata() {
     CompileProgramEntryPoints();
 }
 
@@ -804,22 +807,22 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMe
 }
 
 void DXILPhysicalBlockMetadata::EnsureUAVCapability() {
-    // CS is implicit
-    if (shadingModel._class == DXILShadingModelClass::CS) {
+    // CS, PS is implicit
+    if (shadingModel._class == DXILShadingModelClass::CS || shadingModel._class == DXILShadingModelClass::PS) {
         return;
     }
 
     // Either or already implies UAV capabilities
-    if (shaderFlags & (DXILProgramShaderFlag::UseRelaxedTypedUAVLoads | DXILProgramShaderFlag::UseUAVs | DXILProgramShaderFlag::Use64UAVs)) {
+    if (programMetadata.shaderFlags & (DXILProgramShaderFlag::UseRelaxedTypedUAVLoads | DXILProgramShaderFlag::UseUAVs | DXILProgramShaderFlag::Use64UAVs)) {
         return;
     }
 
     // Enable the base UAV mask
-    shaderFlags |= DXILProgramShaderFlag::UseUAVs;
+    programMetadata.internalShaderFlags |= DXILProgramShaderFlag::UseUAVs;
 }
 
 void DXILPhysicalBlockMetadata::AddProgramFlag(DXILProgramShaderFlagSet flags) {
-    shaderFlags |= flags;
+    programMetadata.internalShaderFlags |= flags;
 }
 
 void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
@@ -836,15 +839,20 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
         // Get the metadata
         MetadataBlock* metadataBlock = GetMetadataBlock(resources.uid);
 
+        // UAV identifier
+        Metadata& uavMd = metadataBlock->metadata.emplace_back();
+        uavMd.source = mdBlock->records.Size();
+        resources.uavs = uavMd.source + 1;
+
         // UAV list, empty by default
         LLVMRecord uavRecord(LLVMMetadataRecord::Node);
         uavRecord.opCount = 0;
         mdBlock->AddRecord(uavRecord);
 
-        // UAV identifier (+1 for nullability)
-        Metadata uavMd = metadataBlock->metadata.emplace_back();
-        uavMd.source = mdBlock->records.Size();
-        resources.uavs = uavMd.source;
+        // Class identifier (+1 for nullability)
+        Metadata& classMd = metadataBlock->metadata.emplace_back();
+        classMd.source = mdBlock->records.Size();
+        uint32_t classId = classMd.source + 1;
 
         // Class list, points to the individual class handles
         LLVMRecord classRecord(LLVMMetadataRecord::Node);
@@ -856,19 +864,18 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
         classRecord.ops[static_cast<uint32_t>(DXILShaderResourceClass::Samplers)] = 0;
         mdBlock->AddRecord(classRecord);
 
-        // Class identifier (+1 for nullability)
-        Metadata classMd = metadataBlock->metadata.emplace_back();
-        classMd.source = mdBlock->records.Size();
-
         // Get the program block
         LLVMRecord& programRecord = declarationBlock->GetBlockWithUID(entryPoint.uid)->records[entryPoint.program];
 
         // Set class id at program
         ASSERT(programRecord.Op(3) == 0, "Program record already a resource class node");
-        programRecord.Op(3) = classMd.source;
+        programRecord.Op(3) = classId;
 
         // Expected name
         const char* name = "dx.resources";
+
+        // Add md
+        metadataBlock->metadata.emplace_back().source = mdBlock->records.Size();
 
         // Name dx.resources
         LLVMRecord nameRecord(LLVMMetadataRecord::Name);
@@ -884,11 +891,8 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
         LLVMRecord dxResourceRecord(LLVMMetadataRecord::NamedNode);
         dxResourceRecord.opCount = 1u;
         dxResourceRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(1u);
-        dxResourceRecord.ops[0] = classMd.source - 1;
+        dxResourceRecord.ops[0] = classId - 1;
         mdBlock->AddRecord(dxResourceRecord);
-
-        // Add md
-        metadataBlock->metadata.emplace_back().source = mdBlock->records.Size();
     }
 
     // Get the metadata
@@ -948,8 +952,8 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
     block->AddRecord(extendedMetadata);
 
     // Create extended metadata row
-    Metadata extendedMd = metadataBlock->metadata.emplace_back();
-    extendedMd.source = block->records.Size();
+    Metadata& extendedMd = metadataBlock->metadata.emplace_back();
+    extendedMd.source = block->records.Size() - 1;
 
     // Index of extended node
     uint32_t extendedMdIndex = metadataBlock->metadata.size();
@@ -973,8 +977,8 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
     block->AddRecord(resource);
 
     // Create resource metadata row
-    Metadata resourceMd = metadataBlock->metadata.emplace_back();
-    extendedMd.source = block->records.Size();
+    Metadata& resourceMd = metadataBlock->metadata.emplace_back();
+    resourceMd.source = block->records.Size() - 1;
 
     // Index of resource node
     uint32_t resourceIndex = metadataBlock->metadata.size();
@@ -996,6 +1000,20 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
         uavNode->id = static_cast<uint32_t>(LLVMMetadataRecord::Node);
         uavNode->opCount = 1;
         uavNode->ops = table.recordAllocator.AllocateArray<uint64_t>(1);
+
+        // Set new UAV node, +1 for nullability
+        resources.uavs = block->records.Size();
+
+        // Create resource metadata row
+        Metadata& uavMd = metadataBlock->metadata.emplace_back();
+        uavMd.source = block->records.Size() - 1;
+
+        // Get class record
+        LLVMRecord& classRecord = block->records[resources.source];
+        ASSERT(classRecord.opCount == 4, "Invalid class record");
+
+        // Redirect UAV
+        classRecord.Op(static_cast<uint32_t>(DXILShaderResourceClass::UAVs)) = resources.uavs;
     }
 
     // Append resource
@@ -1037,6 +1055,9 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
     // Get the program block
     LLVMRecordView programRecord(mdBlock, entryPoint.program);
 
+    // Copy info to binding
+    table.bindingInfo.shaderFlags = programMetadata.internalShaderFlags;
+
     // Unbound kv node?
     if (!programRecord->Op(4)) {
         // Create KV node
@@ -1044,10 +1065,10 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
         kvRecord.opCount = 0;
         mdBlock->AddRecord(kvRecord);
 
-        // KV identifier (+1 for nullability)
+        // KV identifier
         Metadata& uavMd = metadataBlock->metadata.emplace_back();
-        uavMd.source = mdBlock->records.Size();
-        programRecord->Op(4) = uavMd.source;
+        uavMd.source = mdBlock->records.Size() - 1;
+        programRecord->Op(4) = uavMd.source + 1;
     }
 
     // Get the kv node
@@ -1064,27 +1085,27 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
                 uint64_t existingFlags = GetOperandU32Constant(*metadataBlock, kvRecord->Op(kv + 1));
 
                 // Or flags
-                uint64_t combined = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, existingFlags | shaderFlags.value);
+                uint64_t combined = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, existingFlags | programMetadata.internalShaderFlags.value);
 
                 // Write combined
                 kvRecord->Op(kv + 1) = combined;
 
                 // OK
-                shaderFlags = {};
+                programMetadata.internalShaderFlags = {};
                 break;
             }
         }
     }
 
     // Pending flags?
-    if (shaderFlags.value) {
+    if (programMetadata.internalShaderFlags.value) {
         // Copy ops
         auto ops = table.recordAllocator.AllocateArray<uint64_t>(kvRecord->opCount + 2);
         std::memcpy(ops, kvRecord->ops, sizeof(uint64_t) * kvRecord->opCount);
 
         // Append flag
         ops[kvRecord->opCount + 0] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint64_t>(DXILProgramTag::ShaderFlags));
-        ops[kvRecord->opCount + 1] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, shaderFlags.value);
+        ops[kvRecord->opCount + 1] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, programMetadata.internalShaderFlags.value);
 
         // Set new ops
         kvRecord->ops = ops;

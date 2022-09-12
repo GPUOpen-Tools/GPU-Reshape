@@ -12,7 +12,7 @@ enum class DXBCPhysicalBlockType : uint32_t {
     Patch = 'GSCP',
     Resource = 'FEDR',
     ShaderDebug0 = 'BGDS',
-    Capabilities = '0IFS',
+    FeatureInfo = '0IFS',
     Shader4 = 'RDHS',
     Shader5 = 'XEHS',
     ShaderDebug1 = 'BDPS',

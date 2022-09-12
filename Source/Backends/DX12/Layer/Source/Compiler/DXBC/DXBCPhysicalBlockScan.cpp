@@ -40,8 +40,8 @@ static DXBCPhysicalBlockType FilterChunkType(uint32_t type) {
             return DXBCPhysicalBlockType::Resource;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::ShaderDebug0):
             return DXBCPhysicalBlockType::ShaderDebug0;
-        case static_cast<uint32_t>(DXBCPhysicalBlockType::Capabilities):
-            return DXBCPhysicalBlockType::Capabilities;
+        case static_cast<uint32_t>(DXBCPhysicalBlockType::FeatureInfo):
+            return DXBCPhysicalBlockType::FeatureInfo;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::Shader4):
             return DXBCPhysicalBlockType::Shader4;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::Shader5):

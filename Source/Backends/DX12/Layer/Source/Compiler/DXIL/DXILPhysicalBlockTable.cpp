@@ -247,6 +247,9 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
         }
     }
 
+    // Compile dynamic global metadata
+    metadata.CompileMetadata();
+
     // OK
     return true;
 }

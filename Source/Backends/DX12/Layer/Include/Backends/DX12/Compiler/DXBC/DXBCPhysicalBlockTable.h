@@ -4,6 +4,7 @@
 #include "DXBCPhysicalBlockScan.h"
 #include "Blocks/DXBCPhysicalBlockShader.h"
 #include "Blocks/DXBCPhysicalBlockPipelineStateValidation.h"
+#include "Blocks/DXBCPhysicalBlockFeatureInfo.h"
 
 // Forward declarations
 struct DXJob;
@@ -40,6 +41,7 @@ struct DXBCPhysicalBlockTable {
     /// Blocks
     DXBCPhysicalBlockShader shader;
     DXBCPhysicalBlockPipelineStateValidation pipelineStateValidation;
+    DXBCPhysicalBlockFeatureInfo featureInfo;
 
     /// DXBC containers can host DXIL data
     DXILModule* dxilModule{nullptr};

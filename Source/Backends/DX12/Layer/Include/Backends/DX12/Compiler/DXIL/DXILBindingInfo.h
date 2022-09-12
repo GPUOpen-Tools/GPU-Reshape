@@ -1,5 +1,8 @@
 #pragma once
 
+// Layer
+#include "DXILHeader.h"
+
 // Std
 #include <cstdint>
 
@@ -15,4 +18,7 @@ struct DXILBindingInfo {
 
     /// Number of registers
     uint32_t count{};
+
+    /// Added features
+    DXILProgramShaderFlagSet shaderFlags{};
 };

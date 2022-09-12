@@ -1,5 +1,8 @@
 #pragma once
 
+// Common
+#include <Common/Enum.h>
+
 // Std
 #include <cstdint>
 
@@ -65,6 +68,41 @@ enum class DXBCPSVBindInfoKind : uint32_t {
     FeedbackTexture2D = 17,
     FeedbackTexture2DArray = 18
 };
+
+enum class DXBCShaderFeature {
+    UseDouble = 1 << 0,
+    ComputeShadersPlusRawAndStructuredBuffersViaShader4X = 1 << 1,
+    UAVsAtEveryStage = 1 << 2,
+    Use64UAVs = 1 << 3,
+    MinimumPrecision = 1 << 4,
+    Use11_1_DoubleExtensions = 1 << 5,
+    Use11_1_ShaderExtensions = 1 << 6,
+    LEVEL9ComparisonFiltering = 1 << 7,
+    TiledResources = 1 << 8,
+    StencilRef = 1 << 9,
+    InnerCoverage = 1 << 10,
+    TypedUAVLoadAdditionalFormats = 1 << 11,
+    ROVs = 1 << 12,
+    ViewportAndRTArrayIndexFromAnyShaderFeedingRasterizer = 1 << 13,
+    WaveOps = 1 << 14,
+    Int64Ops = 1 << 15,
+    ViewID = 1 << 16,
+    Barycentrics = 1 << 17,
+    NativeLowPrecision = 1 << 18,
+    ShadingRate = 1 << 19,
+    Raytracing_Tier_1_1 = 1 << 20,
+    SamplerFeedback = 1 << 21,
+    AtomicInt64OnTypedResource = 1 << 22,
+    AtomicInt64OnGroupShared = 1 << 23,
+    DerivativesInMeshAndAmpShaders = 1 << 24,
+    ResourceDescriptorHeapIndexing = 1 << 25,
+    SamplerDescriptorHeapIndexing = 1 << 26,
+    AtomicInt64OnHeapResource = 1 << 27,
+    AdvancedTextureOps = 1 << 28,
+    WriteableMSAATextures = 1 << 29
+};
+
+BIT_SET(DXBCShaderFeature);
 
 enum class DXBCPSVBindInfoFlag {
     None = 0,

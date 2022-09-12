@@ -12,7 +12,8 @@ DXBCPhysicalBlockTable::DXBCPhysicalBlockTable(const Allocators &allocators, IL:
     program(program),
     scan(allocators),
     shader(allocators, program, *this),
-    pipelineStateValidation(allocators, program, *this) {
+    pipelineStateValidation(allocators, program, *this),
+    featureInfo(allocators, program, *this) {
     /* */
 }
 
@@ -24,6 +25,7 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     // Parse blocks
     shader.Parse();
     pipelineStateValidation.Parse();
+    featureInfo.Parse();
 
     // Parse canonical program
     if (DXBCPhysicalBlock *dxilBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
@@ -67,6 +69,7 @@ bool DXBCPhysicalBlockTable::Compile(const DXJob &job) {
 
     // Compile validation
     pipelineStateValidation.Compile();
+    featureInfo.Compile();
 
     // OK
     return true;
@@ -81,6 +84,7 @@ void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {
 
     // Copy blocks
     pipelineStateValidation.CopyTo(out.pipelineStateValidation);
+    featureInfo.CopyTo(out.featureInfo);
 
     // Keep the debug interface
     out.debugModule = debugModule;
