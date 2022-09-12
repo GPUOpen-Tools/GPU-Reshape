@@ -16,11 +16,18 @@ struct RootSignatureState;
 struct ShaderExportSegmentInfo;
 struct IncrementalFence;
 struct FenceState;
+struct PipelineState;
 
 /// Single stream state
 struct ShaderExportStreamState {
     /// Currently bound root signature
     const RootSignatureState* rootSignature{nullptr};
+
+    /// Currently bound pipeline
+    const PipelineState* pipeline{nullptr};
+
+    /// Is the current pipeline instrumented?
+    bool isInstrumented{false};
 
     /// Current mask of bound segments
     PipelineTypeSet pipelineSegmentMask{0};
@@ -37,8 +44,8 @@ struct ShaderExportStreamSegment {
     /// Allocation for this segment
     ShaderExportSegmentInfo* allocation{nullptr};
 
-    /// The patch command buffer, optional
-    ID3D12GraphicsCommandList* patchCommandBuffer{nullptr};
+    /// The patch command list, optional
+    ID3D12GraphicsCommandList* patchCommandList{nullptr};
 
     ShaderExportSegmentDescriptorInfo patchDeviceCPUDescriptor;
     ShaderExportSegmentDescriptorInfo patchDeviceGPUDescriptor;

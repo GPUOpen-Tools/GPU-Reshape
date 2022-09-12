@@ -137,8 +137,11 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
     queueState->exportState->liveSegments.push_back(segment);
 }
 
-void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, CommandListState* commandList) {
-
+void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, CommandListState* commandList) {
+    state->rootSignature = nullptr;
+    state->isInstrumented = false;
+    state->pipeline = nullptr;
+    state->pipelineSegmentMask = {};
 }
 
 void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, DescriptorHeapState *heap) {
@@ -155,14 +158,26 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, Des
     state->segmentDescriptors.push_back(descriptorInfo);
 }
 
-void ShaderExportStreamer::SetRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature) {
+void ShaderExportStreamer::SetRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, CommandListState* commandList) {
+    // Reset mask in case it's changed
+    if (state->rootSignature) {
+        state->pipelineSegmentMask = PipelineType::None;
+    }
+
     state->rootSignature = rootSignature;
-    state->pipelineSegmentMask = PipelineType::None;
+
+    // Ensure the shader export states are bound
+    if (state->pipeline && state->isInstrumented) {
+        BindShaderExport(state, state->pipeline, commandList);
+    }
 }
 
 void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, bool instrumented, CommandListState* commandList) {
+    state->pipeline = pipeline;
+    state->isInstrumented = instrumented;
+
     // Ensure the shader export states are bound
-    if (instrumented) {
+    if (state->rootSignature && instrumented) {
         BindShaderExport(state, pipeline, commandList);
     }
 }
@@ -291,14 +306,14 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     sharedCPUHeapAllocator->Free(segment->patchDeviceCPUDescriptor);
     sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
 
-    // Release command buffer
-    queue->PushCommandList(segment->patchCommandBuffer);
+    // Release command list
+    queue->PushCommandList(segment->patchCommandList);
 
     // Add back to pool
     segmentPool.Push(segment);
 }
 
-ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandBuffer(CommandQueueState* queueState, ShaderExportStreamSegment* segment) {
+ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* segment) {
     segment->patchDeviceCPUDescriptor = sharedCPUHeapAllocator->Allocate(1);
     segment->patchDeviceGPUDescriptor = sharedGPUHeapAllocator->Allocate(1);
 
@@ -319,11 +334,11 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandBuffer(Comman
         segment->patchDeviceGPUDescriptor.cpuHandle
     );
 
-    // Pop a new command buffer
-    segment->patchCommandBuffer = queueState->PopCommandList();
+    // Pop a new command list
+    segment->patchCommandList = queueState->PopCommandList();
 
     // Set heap
-    segment->patchCommandBuffer->SetDescriptorHeaps(1u, &sharedGPUHeap);
+    segment->patchCommandList->SetDescriptorHeaps(1u, &sharedGPUHeap);
 
     // Flush all pending work and transition to src
     D3D12_RESOURCE_BARRIER barrier{};
@@ -332,10 +347,10 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandBuffer(Comman
     barrier.Transition.pResource = counter.allocation.device.resource;
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-    segment->patchCommandBuffer->ResourceBarrier(1u, &barrier);
+    segment->patchCommandList->ResourceBarrier(1u, &barrier);
 
     // Copy the counter from device to host
-    segment->patchCommandBuffer->CopyBufferRegion(
+    segment->patchCommandList->CopyBufferRegion(
         counter.allocation.host.resource, 0u,
         counter.allocation.device.resource, 0u,
         sizeof(ShaderExportCounter) * segment->allocation->streams.size()
@@ -347,12 +362,12 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandBuffer(Comman
     barrier.Transition.pResource = counter.allocation.device.resource;
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    segment->patchCommandBuffer->ResourceBarrier(1u, &barrier);
+    segment->patchCommandList->ResourceBarrier(1u, &barrier);
 
     uint32_t clearValue[4] = { 0x0, 0x0, 0x0, 0x0 };
 
     // Clear device counters
-    segment->patchCommandBuffer->ClearUnorderedAccessViewUint(
+    segment->patchCommandList->ClearUnorderedAccessViewUint(
         segment->patchDeviceGPUDescriptor.gpuHandle, segment->patchDeviceCPUDescriptor.cpuHandle,
         counter.allocation.device.resource,
         clearValue,
@@ -361,11 +376,11 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandBuffer(Comman
     );
 
     // Done
-    HRESULT hr = segment->patchCommandBuffer->Close();
+    HRESULT hr = segment->patchCommandList->Close();
     if (FAILED(hr)) {
         return nullptr;
     }
 
     // OK
-    return segment->patchCommandBuffer;
+    return segment->patchCommandList;
 }

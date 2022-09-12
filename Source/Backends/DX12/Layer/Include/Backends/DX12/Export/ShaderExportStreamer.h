@@ -62,11 +62,11 @@ public:
     /// \param state the queue state
     void Free(ShaderExportQueueState* state);
 
-    /// Record a patch command buffer for submissions
+    /// Record a patch command list for submissions
     /// \param queueState the queue to record for
     /// \param state the segment state
-    /// \return command buffer to be submitted
-    ID3D12GraphicsCommandList* RecordPatchCommandBuffer(CommandQueueState* queueState, ShaderExportStreamSegment* state);
+    /// \return command list to be submitted
+    ID3D12GraphicsCommandList* RecordPatchCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* state);
 
     /// Enqueue a submitted segment
     /// \param queue the queue state that was submitted on
@@ -75,30 +75,30 @@ public:
     void Enqueue(CommandQueueState* queueState, ShaderExportStreamSegment* segment);
 
 public:
-    /// Invoked during command buffer recording
+    /// Invoked during command list recording
     /// \param state the stream state
-    /// \param commandBuffer the command buffer
-    void BeginCommandBuffer(ShaderExportStreamState* state, CommandListState* commandList);
+    /// \param commandList the command list
+    void BeginCommandList(ShaderExportStreamState* state, CommandListState* commandList);
 
     /// Invoked during pipeline binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
-    /// \param commandBuffer the command buffer
+    /// \param commandList the command list
     void SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap);
 
     /// Invoked during pipeline binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
-    /// \param commandBuffer the command buffer
-    void SetRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature);
+    /// \param commandList the command list
+    void SetRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, CommandListState* commandList);
 
     /// Invoked during pipeline binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
-    /// \param commandBuffer the command buffer
+    /// \param commandList the command list
     void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, bool instrumented, CommandListState* list);
 
     /// Map a stream state pre submission
@@ -118,7 +118,7 @@ private:
     /// Bind the shader export for a pipeline
     /// \param state the stream state
     /// \param pipeline the pipeline to bind for
-    /// \param commandBuffer the command buffer
+    /// \param commandList the command list
     void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, CommandListState* commandList);
 
     /// Process all segments within a queue

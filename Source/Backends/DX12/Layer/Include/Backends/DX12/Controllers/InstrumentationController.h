@@ -46,7 +46,7 @@ public:
     /// Overrides
     void Handle(const MessageStream *streams, uint32_t count) final;
 
-    /// Invoked once a command buffer has begun recording
+    /// Invoked once a command list has begun recording
     void BeginCommandList();
 
     /// Commit all changes

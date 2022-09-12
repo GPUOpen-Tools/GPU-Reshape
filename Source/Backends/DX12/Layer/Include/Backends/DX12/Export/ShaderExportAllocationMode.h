@@ -4,9 +4,9 @@
 #include <Common/Enum.h>
 
 enum class ShaderExportAllocationMode : uint8_t {
-    /// Allocate stream data for each command buffer
-    LocalCommandBuffer,
+    /// Allocate stream data for each command list
+    LocalCommandList,
 
-    /// Allocate stream data for all command buffers, cyclic buffer
+    /// Allocate stream data for all command lists, cyclic buffer
     GlobalCyclicBufferNoOverwrite,
 };

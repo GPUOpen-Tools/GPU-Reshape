@@ -160,6 +160,7 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
 
         // Inform the streamer of a new pipeline
         if (initialState) {
+            table.state->exportStreamer->BeginCommandList(state->streamState, state);
             table.state->exportStreamer->BindPipeline(state->streamState, GetState(initialState), hotSwap != nullptr, state);
         }
 
@@ -189,8 +190,9 @@ HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12Command
         return result;
     }
 
-    // Inform the streamer of a new pipeline
+    // Inform the streamer
     if (state) {
+        table.state->parent->exportStreamer->BeginCommandList(table.state->streamState, table.state);
         table.state->parent->exportStreamer->BindPipeline(table.state->streamState, GetState(state), hotSwap != nullptr, table.state);
     }
 
@@ -282,7 +284,7 @@ void WINAPI HookID3D12CommandListSetGraphicsRootSignature(ID3D12CommandList* lis
     table.bottom->next_SetGraphicsRootSignature(table.next, rsTable.next);
 
     // Inform the streamer of a new root signature
-    table.state->parent->exportStreamer->SetRootSignature(table.state->streamState, rsTable.state);
+    table.state->parent->exportStreamer->SetRootSignature(table.state->streamState, rsTable.state, table.state);
 }
 
 void WINAPI HookID3D12CommandListSetComputeRootSignature(ID3D12CommandList* list, ID3D12RootSignature* rootSignature) {
@@ -293,7 +295,7 @@ void WINAPI HookID3D12CommandListSetComputeRootSignature(ID3D12CommandList* list
     table.bottom->next_SetComputeRootSignature(table.next, rsTable.next);
 
     // Inform the streamer of a new root signature
-    table.state->parent->exportStreamer->SetRootSignature(table.state->streamState, rsTable.state);
+    table.state->parent->exportStreamer->SetRootSignature(table.state->streamState, rsTable.state, table.state);
 }
 
 HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList *list) {
@@ -348,7 +350,7 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     }
 
     // Record the streaming patching
-    unwrapped[count] = device->exportStreamer->RecordPatchCommandBuffer(table.state, segment);
+    unwrapped[count] = device->exportStreamer->RecordPatchCommandList(table.state, segment);
 
     // Pass down callchain
     table.bottom->next_ExecuteCommandLists(table.next, count + 1, unwrapped);

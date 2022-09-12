@@ -19,7 +19,7 @@
 #include <vector>
 
 // Forward declarations
-struct CommandBufferObject;
+struct CommandListObject;
 struct DeviceDispatchTable;
 class DeviceAllocator;
 
