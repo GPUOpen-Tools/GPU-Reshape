@@ -208,16 +208,24 @@ namespace Backend::IL {
         }
 
         switch (resource->kind) {
-            default:
+            default: {
                 ASSERT(false, "Invalid ResourceSize instruction");
                 return nullptr;
-            case TypeKind::Texture:
+            }
+            case TypeKind::Texture: {
+                auto dimension = static_cast<uint8_t>(GetDimensionSize(resource->As<TextureType>()->dimension));
+                if (dimension == 1) {
+                    return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
+                }
+
                 return program.GetTypeMap().FindTypeOrAdd(VectorType {
                     .containedType = program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false }),
-                    .dimension = static_cast<uint8_t>(GetDimensionSize(resource->As<TextureType>()->dimension))
+                    .dimension = dimension
                 });
-            case TypeKind::Buffer:
+            }
+            case TypeKind::Buffer: {
                 return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
+            }
         }
     }
 }

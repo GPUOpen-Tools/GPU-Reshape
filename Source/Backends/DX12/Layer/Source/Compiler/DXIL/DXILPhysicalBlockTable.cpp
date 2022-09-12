@@ -219,7 +219,6 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
                 symbol.CompileSymTab(block);
                 break;
             case LLVMReservedBlock::Metadata:
-                metadata.CompileMetadata(block);
                 break;
             case LLVMReservedBlock::MetadataAttachment:
                 break;
@@ -238,6 +237,9 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
                 break;
             case LLVMReservedBlock::Constants:
                 global.CompileConstants(block);
+                break;
+            case LLVMReservedBlock::Metadata:
+                metadata.CompileMetadata(block);
                 break;
             case LLVMReservedBlock::Type:
                 type.CompileType(block);

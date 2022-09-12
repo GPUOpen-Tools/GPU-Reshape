@@ -2,6 +2,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockScan.h>
 #include <Backends/DX12/Compiler/DXJob.h>
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordView.h>
 
 /*
  * LLVM DXIL Specification
@@ -15,6 +16,8 @@ void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
     out.registerClasses = registerClasses;
     out.registerSpaces = registerSpaces;
     out.registerSpaceBound = registerSpaceBound;
+    out.shaderFlags = shaderFlags;
+    out.shadingModel = shadingModel;
     out.handles = handles;
 }
 
@@ -133,7 +136,59 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
             // Set ids
             entryPoint.uid = block->uid;
             entryPoint.program = record.Op(0);
+
+            // Extended metadata kv pairs?
+            if (list.Op(4)) {
+                const LLVMRecord &kvRecord = block->records[list.ops[4] - 1];
+
+                // Parse tags
+                for (uint32_t kv = 0; kv < kvRecord.opCount; kv += 2) {
+                    switch (GetOperandU32Constant<DXILProgramTag>(metadataBlock, kvRecord.Op(kv + 0))) {
+                        default: {
+                            break;
+                        }
+                        case DXILProgramTag::ShaderFlags: {
+                            // Get current flags
+                            shaderFlags = DXILProgramShaderFlagSet(GetOperandU32Constant(metadataBlock, kvRecord.Op(kv + 1)));
+                            break;
+                        }
+                    }
+                }
+            }
             break;
+        }
+
+            // Program entrypoints
+        case CRC64("dx.shaderModel"): {
+            if (name != "dx.shaderModel") {
+                return;
+            }
+
+            // Get list
+            ASSERT(record.opCount == 1, "Expected a single value for dx.shaderModel");
+            const LLVMRecord &list = block->records[record.Op(0)];
+
+            // Get shading model
+            LLVMRecordStringView shadingModelStr(block->records[list.Op(0) - 1], 0);
+
+            // Translate
+            if (shadingModelStr == "cs") {
+                shadingModel._class = DXILShadingModelClass::CS;
+            } else if (shadingModelStr == "vs") {
+                shadingModel._class = DXILShadingModelClass::VS;
+            } else if (shadingModelStr == "ps") {
+                shadingModel._class = DXILShadingModelClass::PS;
+            } else if (shadingModelStr == "gs") {
+                shadingModel._class = DXILShadingModelClass::GS;
+            } else if (shadingModelStr == "ds") {
+                shadingModel._class = DXILShadingModelClass::DS;
+            } else if (shadingModelStr == "hs") {
+                shadingModel._class = DXILShadingModelClass::HS;
+            } else if (shadingModelStr == "as") {
+                shadingModel._class = DXILShadingModelClass::AS;
+            } else if (shadingModelStr == "ms") {
+                shadingModel._class = DXILShadingModelClass::MS;
+            }
         }
     }
 }
@@ -153,6 +208,16 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
         // Undef constant
         const IL::Constant *constantPointer = GetOperandConstant(metadataBlock, resource.Op(1));
+
+        // Get pointer
+        auto* constantPointerType = constantPointer->type->As<Backend::IL::PointerType>();
+
+        // Must be struct of
+        auto* constantStruct = constantPointerType->pointee->As<Backend::IL::StructType>();
+
+        // Get resource types
+        ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
+        auto* containedType = constantStruct->memberTypes[0];
 
         // TODO: How on earth are the names stored?
         // uint64_t name = GetOperandU32Constant(resource.Op(2))->value;
@@ -182,7 +247,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 break;
             case DXILShaderResourceClass::SRVs: {
                 // Unique ops
-                auto shape = resource.OpAs<DXILShaderResourceShape>(6);
+                auto shape = GetOperandU32Constant<DXILShaderResourceShape>(metadataBlock, resource.Op(6));
                 uint64_t sampleCount = GetOperandU32Constant(metadataBlock, resource.Op(7));
 
                 // Get extended metadata
@@ -192,14 +257,80 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 const LLVMRecord& extendedRecord = block->records[extendedMetadata.source];
                 ASSERT(extendedRecord.opCount == 2, "Expected 2 operands for extended metadata");
 
+                // Optional element type
+                const Backend::IL::Type* elementType{nullptr};
+
+                // Optional texel format
+                Backend::IL::Format format{Backend::IL::Format::None};
+
+                // Parse tags
+                for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
+                    switch (static_cast<DXILSRVTag>(GetOperandU32Constant(metadataBlock, resource.Op(kv + 0)))) {
+                        case DXILSRVTag::ElementType: {
+                            // Get type
+                            auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op(kv + 1));
+
+                            // Get type and format
+                            elementType = GetComponentType(componentType);
+                            format = GetComponentFormat(componentType);
+                            break;
+                        }
+                        case DXILSRVTag::ByteStride: {
+                            break;
+                        }
+                    }
+                }
+
                 // Buffer shape?
                 if (IsBuffer(shape)) {
                     Backend::IL::BufferType buffer{};
                     buffer.samplerMode = Backend::IL::ResourceSamplerMode::RuntimeOnly;
+                    buffer.elementType = containedType;
+                    buffer.texelType = format;
                     entry.type = program.GetTypeMap().FindTypeOrAdd(buffer);
                 } else {
                     Backend::IL::TextureType texture{};
                     texture.samplerMode = Backend::IL::ResourceSamplerMode::RuntimeOnly;
+                    texture.sampledType = containedType;
+                    texture.format = format;
+
+                    // Translate shape
+                    switch (shape) {
+                        default:
+                            texture.dimension = Backend::IL::TextureDimension::Unexposed;
+                            break;
+                        case DXILShaderResourceShape::Invalid:
+                            break;
+                        case DXILShaderResourceShape::Texture1D:
+                            texture.dimension = Backend::IL::TextureDimension::Texture1D;
+                            break;
+                        case DXILShaderResourceShape::Texture2D:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2D;
+                            break;
+                        case DXILShaderResourceShape::Texture2DMS:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2D;
+                            texture.multisampled = true;
+                            break;
+                        case DXILShaderResourceShape::Texture3D:
+                            texture.dimension = Backend::IL::TextureDimension::Texture3D;
+                            break;
+                        case DXILShaderResourceShape::TextureCube:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2DCube;
+                            break;
+                        case DXILShaderResourceShape::Texture1DArray:
+                            texture.dimension = Backend::IL::TextureDimension::Texture1DArray;
+                            break;
+                        case DXILShaderResourceShape::Texture2DArray:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                            break;
+                        case DXILShaderResourceShape::Texture2DMSArray:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2DArray;
+                            texture.multisampled = true;
+                            break;
+                        case DXILShaderResourceShape::TextureCubeArray:
+                            texture.dimension = Backend::IL::TextureDimension::Texture2DCubeArray;
+                            break;
+                    }
                     entry.type = program.GetTypeMap().FindTypeOrAdd(texture);
                 }
                 break;
@@ -246,13 +377,13 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 if (IsBuffer(shape)) {
                     Backend::IL::BufferType buffer{};
                     buffer.samplerMode = Backend::IL::ResourceSamplerMode::Writable;
-                    buffer.elementType = elementType;
+                    buffer.elementType = containedType;
                     buffer.texelType = format;
                     entry.type = program.GetTypeMap().FindTypeOrAdd(buffer);
                 } else {
                     Backend::IL::TextureType texture{};
                     texture.samplerMode = Backend::IL::ResourceSamplerMode::Writable;
-                    texture.sampledType = elementType;
+                    texture.sampledType = containedType;
                     texture.format = format;
 
                     // Translate shape
@@ -460,7 +591,7 @@ Backend::IL::Format DXILPhysicalBlockMetadata::GetComponentFormat(ComponentType 
 }
 
 void DXILPhysicalBlockMetadata::CompileMetadata(struct LLVMBlock *block) {
-
+    CompileProgramEntryPoints();
 }
 
 void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
@@ -672,7 +803,30 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMe
     return metadata.metadata.size();
 }
 
+void DXILPhysicalBlockMetadata::EnsureUAVCapability() {
+    // CS is implicit
+    if (shadingModel._class == DXILShadingModelClass::CS) {
+        return;
+    }
+
+    // Either or already implies UAV capabilities
+    if (shaderFlags & (DXILProgramShaderFlag::UseRelaxedTypedUAVLoads | DXILProgramShaderFlag::UseUAVs | DXILProgramShaderFlag::Use64UAVs)) {
+        return;
+    }
+
+    // Enable the base UAV mask
+    shaderFlags |= DXILProgramShaderFlag::UseUAVs;
+}
+
+void DXILPhysicalBlockMetadata::AddProgramFlag(DXILProgramShaderFlagSet flags) {
+    shaderFlags |= flags;
+}
+
 void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
+    // Ensure capabilities
+    table.metadata.EnsureUAVCapability();
+
+    // Missing resource list entirely?
     if (resources.uid == ~0u) {
         LLVMBlock* mdBlock = table.scan.GetRoot().GetBlock(LLVMReservedBlock::Metadata);
 
@@ -829,7 +983,7 @@ void DXILPhysicalBlockMetadata::CompileShaderExportResources(const DXJob& job) {
     LLVMRecord* uavNode{nullptr};
 
     // Existing uav list?
-    if (resources.uavs != ~0u) {
+    if (resources.uavs != 0u) {
         uavNode = &block->records[resources.uavs - 1];
 
         // Extend operands
@@ -872,4 +1026,68 @@ DXILPhysicalBlockMetadata::UserRegisterSpace &DXILPhysicalBlockMetadata::FindOrA
     UserRegisterSpace& registerSpace = registerSpaces.emplace_back();
     registerSpace.space = space;
     return registerSpace;
+}
+
+void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
+    LLVMBlock* mdBlock = declarationBlock->GetBlockWithUID(entryPoint.uid);
+
+    // Get the metadata
+    MetadataBlock* metadataBlock = GetMetadataBlock(entryPoint.uid);
+
+    // Get the program block
+    LLVMRecordView programRecord(mdBlock, entryPoint.program);
+
+    // Unbound kv node?
+    if (!programRecord->Op(4)) {
+        // Create KV node
+        LLVMRecord kvRecord(LLVMMetadataRecord::Node);
+        kvRecord.opCount = 0;
+        mdBlock->AddRecord(kvRecord);
+
+        // KV identifier (+1 for nullability)
+        Metadata& uavMd = metadataBlock->metadata.emplace_back();
+        uavMd.source = mdBlock->records.Size();
+        programRecord->Op(4) = uavMd.source;
+    }
+
+    // Get the kv node
+    LLVMRecordView kvRecord(mdBlock, programRecord->Op(4) - 1);
+
+    // Parse tags
+    for (uint32_t kv = 0; kv < kvRecord->opCount; kv += 2) {
+        switch (GetOperandU32Constant<DXILProgramTag>(*metadataBlock, kvRecord->Op(kv + 0))) {
+            default: {
+                break;
+            }
+            case DXILProgramTag::ShaderFlags: {
+                // Get current flags
+                uint64_t existingFlags = GetOperandU32Constant(*metadataBlock, kvRecord->Op(kv + 1));
+
+                // Or flags
+                uint64_t combined = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, existingFlags | shaderFlags.value);
+
+                // Write combined
+                kvRecord->Op(kv + 1) = combined;
+
+                // OK
+                shaderFlags = {};
+                break;
+            }
+        }
+    }
+
+    // Pending flags?
+    if (shaderFlags.value) {
+        // Copy ops
+        auto ops = table.recordAllocator.AllocateArray<uint64_t>(kvRecord->opCount + 2);
+        std::memcpy(ops, kvRecord->ops, sizeof(uint64_t) * kvRecord->opCount);
+
+        // Append flag
+        ops[kvRecord->opCount + 0] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint64_t>(DXILProgramTag::ShaderFlags));
+        ops[kvRecord->opCount + 1] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, shaderFlags.value);
+
+        // Set new ops
+        kvRecord->ops = ops;
+        kvRecord->opCount += 2;
+    }
 }

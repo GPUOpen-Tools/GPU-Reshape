@@ -45,6 +45,15 @@ public:
     /// Compile the export resource metadata
     void CompileShaderExportResources(const DXJob& job);
 
+    /// Ensure this program supports UAV operations
+    void EnsureUAVCapability();
+
+    /// Add a new program shader flag
+    void AddProgramFlag(DXILProgramShaderFlagSet flags);
+
+private:
+    void CompileProgramEntryPoints();
+
 private:
     enum class MetadataType {
         None,
@@ -257,8 +266,16 @@ private:
     UserRegisterSpace& FindOrAddRegisterSpace(uint32_t space);
 
 private:
+    struct ShadingModel {
+        DXILShadingModelClass _class;
+    } shadingModel;
+
+private:
     /// Internal handle id
     uint32_t exportHandleId{ 0 };
+
+    /// Internal shader flags
+    DXILProgramShaderFlagSet shaderFlags{ 0 };
 
 private:
     /// Declaration blocks

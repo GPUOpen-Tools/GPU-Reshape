@@ -2,6 +2,7 @@
 
 // Common
 #include <Common/Assert.h>
+#include <Common/Enum.h>
 
 // Std
 #include <cstdint>
@@ -51,6 +52,64 @@ enum class DXILShaderResourceShape {
     RTAccelerationStructure = 16,
     FeedbackTexture2D = 17,
     FeedbackTexture2DArray = 18
+};
+
+enum class DXILProgramTag {
+    ShaderFlags = 0,
+    GSState,
+    DSState,
+    HSState,
+    NumThreads,
+    AutoBindingsSpace,
+    RayPayloadSize,
+    RayAttributeSize,
+    ShaderKind,
+    MSState,
+    ASState,
+    WaveSize,
+    EntryRootSignature
+};
+
+enum class DXILShadingModelClass {
+    CS,
+    VS,
+    PS,
+    GS,
+    HS,
+    DS,
+    AS,
+    MS
+};
+
+enum class DXILProgramShaderFlag {
+    NoOpt = 1 << 0,
+    NoMathRefactor = 1 << 1,
+    UseDouble = 1 << 2,
+    ForceEarlyDepthStencil = 1 << 3,
+    EnableRawAndStructuredBuffers = 1 << 4,
+    UseMinPrecision = 1 << 5,
+    UseDoubleExtensionIntrinsics = 1 << 6,
+    UseMSAD = 1 << 7,
+    FullBindings = 1 << 8,
+    EnableViewportAndRTArray = 1 << 9,
+    UseInnerCoverage = 1 << 10,
+    UseStencil = 1 << 11,
+    UseTiledResourceIntrinsics = 1 << 12,
+    UseRelaxedTypedUAVLoads = 1 << 13,
+    UseLevel9ComparisonFiltering = 1 << 14,
+    Use64UAVs = 1 << 15,
+    UseUAVs = 1 << 16,
+    UseCS4RawAndStructuredBuffers = 1 << 17,
+    UseROVs = 1 << 18,
+    UseWaveIntrinsics = 1 << 19,
+    UseIn64Instructions = 1 << 20
+};
+
+BIT_SET(DXILProgramShaderFlag);
+
+enum class DXILSRVTag {
+    ElementType = 0,
+    ByteStride = 1
 };
 
 enum class DXILUAVTag {

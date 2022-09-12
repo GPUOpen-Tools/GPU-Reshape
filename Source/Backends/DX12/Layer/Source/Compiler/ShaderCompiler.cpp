@@ -67,6 +67,11 @@ void ShaderCompiler::Worker(void *data) {
 }
 
 void ShaderCompiler::CompileShader(const ShaderJob &job) {
+#if SHADER_COMPILER_SERIAL
+    static std::mutex mutex;
+    std::lock_guard guard(mutex);
+#endif
+
     // Create the module on demand
     if (!job.state->module) {
         // Get type

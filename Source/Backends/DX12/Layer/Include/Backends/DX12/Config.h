@@ -9,3 +9,6 @@
 
 /// Enable debugging mode for shader compiler
 #define SHADER_COMPILER_DEBUG 1
+
+/// Enable serial compilation for debugging purposes
+#define SHADER_COMPILER_SERIAL 1
