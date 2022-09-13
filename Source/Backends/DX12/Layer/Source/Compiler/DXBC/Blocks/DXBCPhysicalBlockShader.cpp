@@ -17,6 +17,6 @@ void DXBCPhysicalBlockShader::Parse() {
 
     // ...
     while (ctx.IsGood()) {
-
+        return;
     }
 }

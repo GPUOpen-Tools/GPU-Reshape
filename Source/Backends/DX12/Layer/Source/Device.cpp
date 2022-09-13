@@ -247,6 +247,9 @@ void BridgeDeviceSyncPoint(DeviceState *device) {
     // Commit controllers
     device->metadataController->Commit();
 
+    // Commit all logging to bridge
+    device->logBuffer.Commit(device->bridge.GetUnsafe());
+
     // Commit bridge
     device->bridge->Commit();
 }

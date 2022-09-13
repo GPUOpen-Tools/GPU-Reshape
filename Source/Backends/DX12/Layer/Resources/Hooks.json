@@ -125,6 +125,8 @@
       "state": "SwapChainState",
       "hooks": [
         "GetBuffer",
+        "ResizeBuffers",
+        "ResizeBuffers1",
         "Present",
         "Present1",
         "Release"

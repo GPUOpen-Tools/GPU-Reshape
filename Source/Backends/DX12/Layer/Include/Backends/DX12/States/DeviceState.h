@@ -9,6 +9,9 @@
 // Backend
 #include <Backend/Environment.h>
 
+// Bridge
+#include <Bridge/Log/LogBuffer.h>
+
 // Common
 #include <Common/ComRef.h>
 #include <Common/Registry.h>
@@ -63,6 +66,9 @@ struct DeviceState {
     /// Controllers
     ComRef<InstrumentationController> instrumentationController{nullptr};
     ComRef<MetadataController> metadataController{nullptr};
+
+    /// Shared logging buffer
+    LogBuffer logBuffer;
 
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;

@@ -4,27 +4,37 @@
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/States/CommandQueueState.h>
 
-template<typename T, typename U>
-static T* CreateSwapChainState(const DXGIFactoryTable& table, DeviceState* device, T* swapChain, U* desc) {
-    // Create state
-    auto* state = new SwapChainState();
-    state->parent = device;
-    state->buffers.resize(desc->BufferCount);
+static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count) {
+    // Set count
+    state->buffers.resize(count);
 
-    for (uint32_t i = 0; i < desc->BufferCount; i++) {
-        // Get buffer
+    // Wrap all resources
+    for (uint32_t i = 0; i < count; i++) {
+        // Get buffer (increments lifetime by one)
         ID3D12Resource* bottomBuffer{nullptr};
-        if (FAILED(swapChain->GetBuffer(i, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&bottomBuffer)))) {
+        if (FAILED(state->object->GetBuffer(i, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&bottomBuffer)))) {
             state->buffers[i] = nullptr;
         }
 
         // Create state
         auto* bufferState = new ResourceState();
-        bufferState->parent = device;
+        bufferState->parent = state->parent;
 
         // Create detours
         state->buffers[i] = CreateDetour(Allocators{}, bottomBuffer, bufferState);
     }
+}
+
+template<typename T, typename U>
+static T* CreateSwapChainState(const DXGIFactoryTable& table, DeviceState* device, T* swapChain, U* desc) {
+    // Create state
+    auto* state = new SwapChainState();
+    state->parent = device;
+    state->object = swapChain;
+    state->buffers.resize(desc->BufferCount);
+
+    // Create wrappers
+    CreateSwapchainBufferWrappers(state, desc->BufferCount);
 
     // Create detours
     return static_cast<T*>(CreateDetour(Allocators{}, swapChain, state));
@@ -184,6 +194,54 @@ HRESULT WINAPI HookIDXGIFactoryCreateSwapChainForComposition(IDXGIFactory* facto
     return S_OK;
 }
 
+HRESULT WINAPI HookIDXGISwapChainResizeBuffers(IDXGISwapChain1* swapchain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags) {
+    auto table = GetTable(swapchain);
+
+    // Release wrapped objects
+    for (ID3D12Resource* buffer : table.state->buffers) {
+        buffer->Release();
+    }
+
+    // Cleanup
+    table.state->buffers.clear();
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_ResizeBuffers(table.next, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Recreate wrappers
+    CreateSwapchainBufferWrappers(table.state, BufferCount);
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookIDXGISwapChainResizeBuffers1(IDXGISwapChain1* swapchain, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT* pCreationNodeMask, IUnknown* const* ppPresentQueue) {
+    auto table = GetTable(swapchain);
+
+    // Release wrapped objects
+    for (ID3D12Resource* buffer : table.state->buffers) {
+        buffer->Release();
+    }
+
+    // Cleanup
+    table.state->buffers.clear();
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_ResizeBuffers1(table.next, BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Recreate wrappers
+    CreateSwapchainBufferWrappers(table.state, BufferCount);
+
+    // OK
+    return S_OK;
+}
+
 HRESULT WINAPI HookIDXGISwapChainGetBuffer(IDXGISwapChain1 * swapchain, UINT Buffer, REFIID riid, void **ppSurface) {
     auto table = GetTable(swapchain);
 
@@ -198,6 +256,7 @@ HRESULT WINAPI HookIDXGISwapChainGetBuffer(IDXGISwapChain1 * swapchain, UINT Buf
     ID3D12Resource* bottomBuffer{nullptr};
     if (SUCCEEDED(table.bottom->next_GetBuffer(table.next, Buffer, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&bottomBuffer)))) {
         ASSERT(bottomBuffer == Next(table.state->buffers[Buffer]), "Invalid swapchain buffer");
+        bottomBuffer->Release();
     }
 #endif // NDEBUG
 

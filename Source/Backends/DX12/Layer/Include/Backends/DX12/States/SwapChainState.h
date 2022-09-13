@@ -13,6 +13,9 @@ struct SwapChainState {
     /// Parent state
     DeviceState* parent{};
 
+    /// Parent object
+    IDXGISwapChain* object{};
+
     /// Wrapped buffers
     std::vector<ID3D12Resource*> buffers;
 };

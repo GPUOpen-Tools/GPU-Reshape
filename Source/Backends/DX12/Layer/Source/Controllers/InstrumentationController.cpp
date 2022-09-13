@@ -173,7 +173,7 @@ void InstrumentationController::Commit() {
 
     // Diagnostic
 #if LOG_INSTRUMENTATION
-    table->parent->logBuffer.Add("DX12", Format(
+    device->logBuffer.Add("DX12", Format(
         "Committing {} shaders and {} pipelines for instrumentation",
         immediateBatch.dirtyShaders.size(),
         immediateBatch.dirtyPipelines.size()
@@ -303,11 +303,11 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
         // Compose keys
         for (auto&& kv : rejectedKeys) {
-            keyMessage << "\tShader " << kv.first->uid << " [" << kv.second.featureBitSet << "] with " << kv.second.pipelineLayoutUserSlots << " user slots\n";
+            keyMessage << "\tShader " << kv.first->uid << " [" << kv.second.featureBitSet << "] with {s" << kv.second.bindingInfo.space << ", r" << kv.second.bindingInfo._register << "} root binding\n";
         }
 
         // Submit
-        table->parent->logBuffer.Add("DX12", keyMessage.str());
+        device->logBuffer.Add("DX12", keyMessage.str());
 #endif
     }
 
@@ -330,7 +330,7 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Diagnostic
 #if LOG_INSTRUMENTATION
-    table->parent->logBuffer.Add("DX12", Format(
+    device->logBuffer.Add("DX12", Format(
         "Instrumented {} shaders and {} pipelines ({} ms)",
         batch->dirtyShaders.size(),
         batch->dirtyPipelines.size(),
