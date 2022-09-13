@@ -138,13 +138,26 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
 }
 
 void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, CommandListState* commandList) {
+    // Reset state
     state->rootSignature = nullptr;
     state->isInstrumented = false;
     state->pipeline = nullptr;
     state->pipelineSegmentMask = {};
+
+    // Set initial heap
+    commandList->object->SetDescriptorHeaps(1u, &sharedGPUHeap);
+
+    // Allocate initial segment from shared allocator
+    ShaderExportSegmentDescriptorInfo descriptorInfo = sharedGPUHeapAllocator->Allocate(2);
+
+    // Set current for successive binds
+    state->currentSegment = descriptorInfo;
+
+    // Append for later mapping
+    state->segmentDescriptors.push_back(descriptorInfo);
 }
 
-void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, DescriptorHeapState *heap) {
+void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, DescriptorHeapState *heap, CommandListState* commandList) {
     if (heap->type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
         return;
     }
@@ -156,6 +169,14 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, Des
 
     // Append for later mapping
     state->segmentDescriptors.push_back(descriptorInfo);
+
+    // Changing descriptor set invalidates all bound information
+    state->pipelineSegmentMask = {};
+
+    // Set if valid
+    if (state->rootSignature && state->pipeline && state->isInstrumented) {
+        BindShaderExport(state, state->pipeline, commandList);
+    }
 }
 
 void ShaderExportStreamer::SetRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, CommandListState* commandList) {

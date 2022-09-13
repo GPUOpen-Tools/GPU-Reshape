@@ -158,9 +158,11 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
         // Create export state
         state->streamState = table.state->exportStreamer->AllocateStreamState();
 
+        // Inform the streamer
+        table.state->exportStreamer->BeginCommandList(state->streamState, state);
+
         // Inform the streamer of a new pipeline
         if (initialState) {
-            table.state->exportStreamer->BeginCommandList(state->streamState, state);
             table.state->exportStreamer->BindPipeline(state->streamState, GetState(initialState), hotSwap != nullptr, state);
         }
 
@@ -191,8 +193,10 @@ HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12Command
     }
 
     // Inform the streamer
+    table.state->parent->exportStreamer->BeginCommandList(table.state->streamState, table.state);
+
+    // Inform the streamer
     if (state) {
-        table.state->parent->exportStreamer->BeginCommandList(table.state->streamState, table.state);
         table.state->parent->exportStreamer->BindPipeline(table.state->streamState, GetState(state), hotSwap != nullptr, table.state);
     }
 
@@ -206,22 +210,20 @@ void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UIN
     // Allocate unwrapped
     auto *unwrapped = ALLOCA_ARRAY(ID3D12DescriptorHeap*, NumDescriptorHeaps);
 
-    // Process lists
+    // Unwrap
     for (uint32_t i = 0; i < NumDescriptorHeaps; i++) {
         auto heapTable = GetTable(ppDescriptorHeaps[i]);
-
-        // Heap of interest?
-        if (heapTable.state->type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
-            // Let the streamer handle allocations
-            table.state->parent->exportStreamer->SetDescriptorHeap(table.state->streamState, heapTable.state);
-        }
-
-        // Set unwrapped
         unwrapped[i] = heapTable.next;
     }
 
     // Pass down callchain
     table.bottom->next_SetDescriptorHeaps(table.next, NumDescriptorHeaps, unwrapped);
+
+    // Let the streamer handle allocations
+    for (uint32_t i = 0; i < NumDescriptorHeaps; i++) {
+        auto heapTable = GetTable(ppDescriptorHeaps[i]);
+        table.state->parent->exportStreamer->SetDescriptorHeap(table.state->streamState, heapTable.state, table.state);
+    }
 }
 
 

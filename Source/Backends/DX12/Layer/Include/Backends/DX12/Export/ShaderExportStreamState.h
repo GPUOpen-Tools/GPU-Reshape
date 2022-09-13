@@ -17,6 +17,7 @@ struct ShaderExportSegmentInfo;
 struct IncrementalFence;
 struct FenceState;
 struct PipelineState;
+struct PipelineState;
 
 /// Single stream state
 struct ShaderExportStreamState {

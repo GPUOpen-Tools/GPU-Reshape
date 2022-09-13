@@ -85,7 +85,7 @@ public:
     /// \param pipeline the pipeline state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandList the command list
-    void SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap);
+    void SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, CommandListState* commandList);
 
     /// Invoked during pipeline binding
     /// \param state the stream state
