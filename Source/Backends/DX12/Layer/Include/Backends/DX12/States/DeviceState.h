@@ -21,6 +21,7 @@ struct ShaderState;
 struct CommandQueueState;
 struct PipelineState;
 class InstrumentationController;
+class MetadataController;
 class IBridge;
 class ShaderExportHost;
 class ShaderExportStreamer;
@@ -61,6 +62,7 @@ struct DeviceState {
 
     /// Controllers
     ComRef<InstrumentationController> instrumentationController{nullptr};
+    ComRef<MetadataController> metadataController{nullptr};
 
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;

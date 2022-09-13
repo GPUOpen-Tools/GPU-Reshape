@@ -35,6 +35,8 @@ class PipelineCompiler;
 
 class InstrumentationController final : public IController, public IBridgeListener {
 public:
+    COMPONENT(InstrumentationController);
+
     InstrumentationController(DeviceState* device);
 
     /// Install the controller

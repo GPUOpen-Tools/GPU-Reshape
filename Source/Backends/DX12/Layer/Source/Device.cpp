@@ -13,6 +13,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
+#include <Backends/DX12/Controllers/MetadataController.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
@@ -155,6 +156,10 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         state->instrumentationController = state->registry.AddNew<InstrumentationController>(state);
         ENSURE(state->instrumentationController->Install(), "Failed to install instrumentation controller");
 
+        // Install the instrumentation controller
+        state->metadataController = state->registry.AddNew<MetadataController>(state);
+        ENSURE(state->metadataController->Install(), "Failed to install metadata controller");
+
         // Specifying an adapter is optional
         IDXGIAdapter* dxgiAdapter{nullptr};
         if (pAdapter) {
@@ -239,6 +244,9 @@ void GlobalDeviceDetour::Uninstall() {
 }
 
 void BridgeDeviceSyncPoint(DeviceState *device) {
+    // Commit controllers
+    device->metadataController->Commit();
+
     // Commit bridge
     device->bridge->Commit();
 }
