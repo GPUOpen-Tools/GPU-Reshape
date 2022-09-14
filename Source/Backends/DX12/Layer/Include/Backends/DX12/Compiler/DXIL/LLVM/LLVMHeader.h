@@ -35,6 +35,7 @@ enum class LLVMReservedBlock : uint8_t {
     Metadata = 15,
     MetadataAttachment = 16,
     Type = 17,
+    UseList = 18,
     StrTab = 23
 };
 

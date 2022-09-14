@@ -161,6 +161,8 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
                 break;
             case LLVMReservedBlock::ValueSymTab:
                 break;
+            case LLVMReservedBlock::UseList:
+                break;
             case LLVMReservedBlock::Metadata:
                 ParseMetadata(child);
                 break;
@@ -285,39 +287,9 @@ void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, const LLVMRecord &rec
                 return;
             }
 
-            // Get list
-            ASSERT(record.opCount == 1, "Expected a single value for dx.source.contents");
-            const LLVMRecord &list = block->records[record.Op(0)];
-
-            // Get all filenames
-            for (uint32_t i = 0; i < list.opCount; i += 2) {
-                LLVMRecordStringView filename(block->records[list.Op(i) - 1], 0);
-                LLVMRecordStringView contents(block->records[list.Op(i + 1) - 1], 0);
-
-                // Create fragment
-                SourceFragment& fragment = sourceFragments.emplace_back();
-
-                // Allocate
-                fragment.filename.resize(filename.Length());
-                fragment.contents.resize(contents.Length());
-
-                // Copy data
-                filename.Copy(fragment.filename.data());
-                contents.Copy(fragment.contents.data());
-
-                // Count number of line endings
-                uint32_t lineEndingCount = std::count(fragment.contents.begin(), fragment.contents.end(), '\n');
-                fragment.lineOffsets.reserve(lineEndingCount + 1);
-
-                // First line
-                fragment.lineOffsets.push_back(0);
-
-                // Summarize line offsets
-                for (size_t offset = 0; offset < fragment.contents.length(); offset++) {
-                    if (fragment.contents[offset] == '\n') {
-                        fragment.lineOffsets.push_back(offset + 1);
-                    }
-                }
+            // Parse all files
+            for (uint32_t i = 0; i < record.opCount; i++) {
+                ParseContents(block, block->records[record.Op(i)]);
             }
             break;
         }
@@ -327,6 +299,36 @@ void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, const LLVMRecord &rec
                 return;
             }
             break;
+        }
+    }
+}
+
+void DXILDebugModule::ParseContents(LLVMBlock* block, const LLVMRecord& record) {
+    LLVMRecordStringView filename(block->records[record.Op(0) - 1], 0);
+    LLVMRecordStringView contents(block->records[record.Op(1) - 1], 0);
+
+    // Create fragment
+    SourceFragment& fragment = sourceFragments.emplace_back();
+
+    // Allocate
+    fragment.filename.resize(filename.Length());
+    fragment.contents.resize(contents.Length());
+
+    // Copy data
+    filename.Copy(fragment.filename.data());
+    contents.Copy(fragment.contents.data());
+
+    // Count number of line endings
+    uint32_t lineEndingCount = std::count(fragment.contents.begin(), fragment.contents.end(), '\n');
+    fragment.lineOffsets.reserve(lineEndingCount + 1);
+
+    // First line
+    fragment.lineOffsets.push_back(0);
+
+    // Summarize line offsets
+    for (size_t offset = 0; offset < fragment.contents.length(); offset++) {
+        if (fragment.contents[offset] == '\n') {
+            fragment.lineOffsets.push_back(offset + 1);
         }
     }
 }

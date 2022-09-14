@@ -50,6 +50,11 @@ private:
     /// \param name given name of the node
     void ParseNamedMetadata(LLVMBlock* block, const LLVMRecord& record, const struct LLVMRecordStringView& name);
 
+    /// Parse operand contents
+    /// \param block source block
+    /// \param record source record
+    void ParseContents(LLVMBlock* block, const LLVMRecord& record);
+
     /// Parse a function
     /// \param block source block
     void ParseFunction(LLVMBlock* block);
