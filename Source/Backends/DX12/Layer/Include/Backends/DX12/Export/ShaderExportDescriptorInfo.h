@@ -9,7 +9,9 @@
 /// A single allocation descriptor allocation
 struct ShaderExportSegmentDescriptorInfo {
     /// Originating heap
+#ifndef NDEBUG
     ID3D12DescriptorHeap* heap{};
+#endif // NDEBUG
 
     /// Base CPU handle
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;

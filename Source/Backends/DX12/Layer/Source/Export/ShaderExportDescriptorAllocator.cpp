@@ -27,7 +27,9 @@ ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate(uint
         freeDescriptors.pop_back();
 
         ShaderExportSegmentDescriptorInfo info;
+#ifndef NDEBUG
         info.heap = heap;
+#endif // NDEBUG
         info.offset = id;
         info.cpuHandle.ptr = cpuHandle.ptr + info.offset * descriptorAdvance;
         info.gpuHandle.ptr = gpuHandle.ptr + info.offset * descriptorAdvance;
@@ -41,7 +43,9 @@ ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate(uint
 
     // Next!
     ShaderExportSegmentDescriptorInfo info;
+#ifndef NDEBUG
     info.heap = heap;
+#endif // NDEBUG
     info.offset = slotAllocationCounter;
     info.cpuHandle.ptr = cpuHandle.ptr + info.offset * descriptorAdvance;
     info.gpuHandle.ptr = gpuHandle.ptr + info.offset * descriptorAdvance;
@@ -52,6 +56,8 @@ ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate(uint
 }
 
 void ShaderExportDescriptorAllocator::Free(const ShaderExportSegmentDescriptorInfo& id) {
+#ifndef NDEBUG
     ASSERT(id.heap == heap, "Mismatched heap in shader export descriptor free");
+#endif // NDEBUG
     freeDescriptors.push_back(id.offset);
 }

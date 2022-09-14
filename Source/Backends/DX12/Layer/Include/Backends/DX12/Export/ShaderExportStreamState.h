@@ -15,9 +15,19 @@
 struct RootSignatureState;
 struct ShaderExportSegmentInfo;
 struct IncrementalFence;
+struct ShaderExportDescriptorAllocator;
 struct FenceState;
 struct PipelineState;
 struct PipelineState;
+
+/// Tracked descriptor allocation
+struct ShaderExportSegmentDescriptorAllocation {
+    /// Owning allocation
+    ShaderExportDescriptorAllocator* allocator{nullptr};
+
+    /// Allocated info
+    ShaderExportSegmentDescriptorInfo info;
+};
 
 /// Single stream state
 struct ShaderExportStreamState {
@@ -36,8 +46,8 @@ struct ShaderExportStreamState {
     /// The descriptor info, may not be mapped
     ShaderExportSegmentDescriptorInfo currentSegment{};
 
-    /// All segments
-    std::vector<ShaderExportSegmentDescriptorInfo> segmentDescriptors;
+    /// All segment descriptors, lifetime bound to deferred segment
+    std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
 };
 
 /// Single stream segment, i.e. submission
@@ -48,8 +58,12 @@ struct ShaderExportStreamSegment {
     /// The patch command list, optional
     ID3D12GraphicsCommandList* patchCommandList{nullptr};
 
+    /// Patch descriptors
     ShaderExportSegmentDescriptorInfo patchDeviceCPUDescriptor;
     ShaderExportSegmentDescriptorInfo patchDeviceGPUDescriptor;
+
+    /// Combined segment descriptors, lifetime bound to this segment
+    std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
 
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{UINT64_MAX};
