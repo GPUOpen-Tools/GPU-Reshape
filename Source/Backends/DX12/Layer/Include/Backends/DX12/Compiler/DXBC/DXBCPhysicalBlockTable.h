@@ -4,6 +4,7 @@
 #include "DXBCPhysicalBlockScan.h"
 #include "Blocks/DXBCPhysicalBlockShader.h"
 #include "Blocks/DXBCPhysicalBlockPipelineStateValidation.h"
+#include "Blocks/DXBCPhysicalBlockRootSignature.h"
 #include "Blocks/DXBCPhysicalBlockFeatureInfo.h"
 
 // Forward declarations
@@ -41,6 +42,7 @@ struct DXBCPhysicalBlockTable {
     /// Blocks
     DXBCPhysicalBlockShader shader;
     DXBCPhysicalBlockPipelineStateValidation pipelineStateValidation;
+    DXBCPhysicalBlockRootSignature rootSignature;
     DXBCPhysicalBlockFeatureInfo featureInfo;
 
     /// DXBC containers can host DXIL data

@@ -129,3 +129,99 @@ struct DXBCPSVBindInfoRevision1 {
     DXBCPSVBindInfo0 info0;
     DXBCPSVBindInfo1 info1;
 };
+
+enum class DXBCRootSignatureVersion : uint32_t {
+    Version0 = 1,
+    Version1 = 2
+};
+
+struct DXBCRootSignatureHeader {
+    DXBCRootSignatureVersion version;
+    uint32_t parameterCount;
+    uint32_t rootParameterOffset;
+    uint32_t staticSamplerCount;
+    uint32_t staticSamplerOffset;
+    uint32_t flags;
+};
+
+struct DXBCRootSignatureParameter1 {
+    uint32_t _register;
+    uint32_t space;
+    uint32_t flags;
+};
+
+struct DXBCRootSignatureConstant {
+    uint32_t _register;
+    uint32_t space;
+    uint32_t dwordCount;
+};
+
+enum class DXBCRootSignatureRangeType : uint32_t {
+    SRV = 0,
+    UAV = 1,
+    CBV = 2,
+    Sampler = 3
+};
+
+enum class DXBCRootSignatureParameterType : uint32_t {
+    DescriptorTable = 0,
+    Constant32 = 1,
+    CBV = 2,
+    SRV = 3,
+    UAV = 4
+};
+
+enum class DXBCRootSignatureVisibility : uint32_t {
+    All = 0,
+    Vertex = 1,
+    Hull = 2,
+    Domain = 32,
+    Geometry = 4,
+    Pixel = 5,
+    Amplification = 6,
+    Mesh = 7
+};
+
+struct DXBCRootSignatureDescriptorRange {
+    DXBCRootSignatureRangeType type;
+    uint32_t descriptorCount;
+    uint32_t _register;
+    uint32_t space;
+    uint32_t offsetFromTableStart;
+};
+
+struct DXBCRootSignatureDescriptorRange1 {
+    DXBCRootSignatureRangeType type;
+    uint32_t descriptorCount;
+    uint32_t _register;
+    uint32_t space;
+    uint32_t flags;
+    uint32_t offsetFromTableStart;
+};
+
+struct DXBCRootSignatureDescriptorTable {
+    uint32_t rangeCount;
+    uint32_t rangeOffset;
+};
+
+struct DXILRootSignatureParameter {
+    DXBCRootSignatureParameterType type;
+    DXBCRootSignatureVisibility visibility;
+    uint32_t payloadOffset;
+};
+
+struct DXBCRootSignatureSamplerStub {
+    uint32_t filter;
+    uint32_t addressU;
+    uint32_t addressV;
+    uint32_t addressW;
+    float mipLODBias;
+    uint32_t maxAnisotropy;
+    uint32_t comparisonFunc;
+    uint32_t borderColor;
+    float minLOD;
+    float maxLOD;
+    uint32_t _register;
+    uint32_t space;
+    uint32_t visibility;
+};

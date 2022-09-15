@@ -87,6 +87,16 @@ void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
 void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, const struct LLVMBlock *block, const LLVMRecord &record, const LLVMRecordStringView &name, uint32_t index) {
     switch (name.GetHash()) {
         // Resource declaration record
+        case CRC64("dx.rootSignature"): {
+            if (name != "dx.rootSignature") {
+                return;
+            }
+
+            ASSERT(false, "Metadata embedded root signatures not implemented");
+            break;
+        }
+
+        // Resource declaration record
         case CRC64("dx.resources"): {
             if (name != "dx.resources") {
                 return;

@@ -45,9 +45,6 @@ void ExportStabilityFeature::CollectMessages(IMessageStorage *storage) {
 }
 
 void ExportStabilityFeature::Inject(IL::Program &program) {
-    // Unsigned target type
-    const Backend::IL::Type* uint32Type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false});
-
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
         // Instruction of interest?

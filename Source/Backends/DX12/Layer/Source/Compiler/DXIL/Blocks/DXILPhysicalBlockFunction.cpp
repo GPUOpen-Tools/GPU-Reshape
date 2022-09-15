@@ -1395,6 +1395,15 @@ void DXILPhysicalBlockFunction::BinaryOpSVOX(LLVMBlock* block, IL::ID result, IL
     table.idRemapper.AllocSourceUserMapping(result, DXILIDUserType::VectorOnSequential, base);
 }
 
+static bool IsFunctionPostRecordDependentBlock(LLVMReservedBlock block) {
+    switch (block) {
+        default:
+            return false;
+        case LLVMReservedBlock::ValueSymTab:
+            return true;
+    }
+}
+
 void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlock *block) {
     // Remap all blocks by dominance
     for (IL::Function* fn : program.GetFunctionList()) {
@@ -1454,8 +1463,20 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
 
     // Filter all records
     for (const LLVMBlockElement &element: elements) {
-        if (!element.Is(LLVMBlockElementType::Record)) {
-            block->elements.Add(element);
+        switch (static_cast<LLVMBlockElementType>(element.type)) {
+            case LLVMBlockElementType::Record: {
+                break;
+            }
+            case LLVMBlockElementType::Abbreviation: {
+                block->elements.Add(element);
+                break;
+            }
+            case LLVMBlockElementType::Block: {
+                if (!IsFunctionPostRecordDependentBlock(static_cast<LLVMReservedBlock>(block->blocks[element.id]->id))) {
+                    block->elements.Add(element);
+                }
+                break;
+            }
         }
     }
 
@@ -2403,6 +2424,21 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     case IL::OpCode::LoadBuffer:
                         break;
 #endif
+            }
+        }
+    }
+
+    // Add post record blocks
+    for (const LLVMBlockElement &element: elements) {
+        switch (static_cast<LLVMBlockElementType>(element.type)) {
+            default: {
+                break;
+            }
+            case LLVMBlockElementType::Block: {
+                if (IsFunctionPostRecordDependentBlock(static_cast<LLVMReservedBlock>(block->blocks[element.id]->id))) {
+                    block->elements.Add(element);
+                }
+                break;
             }
         }
     }

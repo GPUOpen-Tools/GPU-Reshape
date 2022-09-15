@@ -18,6 +18,7 @@ enum class DXBCPhysicalBlockType : uint32_t {
     ShaderDebug1 = 'BDPS',
     Statistics = 'TATS',
     PipelineStateValidation = '0VSP',
+    RootSignature = '0STR',
 
     /// SM6
     ILDB = 'BDLI',

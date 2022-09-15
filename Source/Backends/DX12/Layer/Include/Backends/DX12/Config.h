@@ -8,10 +8,10 @@
 #endif
 
 /// Enable debugging mode for shader compiler
-#define SHADER_COMPILER_DEBUG 1
+#define SHADER_COMPILER_DEBUG (DX12_DIAGNOSTIC && 1)
 
 /// Enable serial compilation for debugging purposes
-#define SHADER_COMPILER_SERIAL 1
+#define SHADER_COMPILER_SERIAL (DX12_DIAGNOSTIC && 1)
 
 /// Log allocations
 #define LOG_ALLOCATION (DX12_DIAGNOSTIC && 0)
