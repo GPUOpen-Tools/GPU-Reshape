@@ -130,6 +130,105 @@ struct DXBCPSVBindInfoRevision1 {
     DXBCPSVBindInfo1 info1;
 };
 
+struct DXBCPSVVSInfo {
+    char hasOutputPosition;
+};
+
+struct DXBCPSVHSInfo {
+    uint32_t inputControlCount;
+    uint32_t outputControlCount;
+    uint32_t tessellatorDomain;
+    uint32_t tessellatorOutputPrimitive;
+};
+
+struct DXBCPSVDSInfo {
+    uint32_t inputControlCount;
+    char hasOutputPosition;
+    uint32_t tessellatorDomain;
+};
+
+struct DXBCPSVGSInfo {
+    uint32_t inputPrimitive;
+    uint32_t outputTopology;
+    uint32_t outputStreamMask;
+    char hasOutputPosition;
+};
+
+struct DXBCPSVPSInfo {
+    char hasDepthOutput;
+    char sampleFrequency;
+};
+
+struct DXBCPSVMSInfo {
+    uint32_t groupSharedByteCount;
+    uint32_t groupSharedDependentByteCount;
+    uint32_t payloadByteCount;
+    uint16_t maxVertexCount;
+    uint16_t maxPrimitiveCount;
+};
+
+struct DXBCPSVASInfo {
+    uint32_t payloadByteCount;
+};
+
+struct DXBCPSVMSInfo1 {
+    uint8_t primVectors;
+    uint8_t topology;
+};
+
+struct DXBCPSVRuntimeInfo0 {
+    union {
+        DXBCPSVVSInfo vs;
+        DXBCPSVHSInfo hs;
+        DXBCPSVDSInfo ds;
+        DXBCPSVGSInfo gs;
+        DXBCPSVPSInfo ps;
+        DXBCPSVMSInfo ms;
+        DXBCPSVASInfo as;
+    };
+
+    uint32_t minWaveCount;
+    uint32_t maxWaveCount;
+};
+
+struct DXBCPSVRuntimeInfo1 {
+    uint8_t stage;
+    uint8_t hasViewID;
+
+    union {
+        uint16_t maxVertexCount;
+        uint8_t patchConstOrPrimVectors;
+        DXBCPSVMSInfo1 ms1;
+    };
+
+    uint8_t inputElements;
+    uint8_t outputElements;
+    uint8_t patchConstOrPrimElements;
+    uint8_t inputVectors;
+    uint8_t outputVectors[4];
+};
+
+struct DXBCPSVRuntimeInfo2 {
+    uint32_t threadCountX;
+    uint32_t threadCountY;
+    uint32_t threadCountZ;
+};
+
+struct DXBCPSVRuntimeInfoRevision0 {
+    DXBCPSVRuntimeInfo0 info0;
+};
+
+struct DXBCPSVRuntimeInfoRevision1 {
+    DXBCPSVRuntimeInfo0 info0;
+    DXBCPSVRuntimeInfo1 info1;
+};
+
+struct DXBCPSVRuntimeInfoRevision2 {
+    DXBCPSVRuntimeInfo0 info0;
+    DXBCPSVRuntimeInfo1 info1;
+    DXBCPSVRuntimeInfo2 info2;
+};
+
 enum class DXBCRootSignatureVersion : uint32_t {
     Version0 = 1,
     Version1 = 2

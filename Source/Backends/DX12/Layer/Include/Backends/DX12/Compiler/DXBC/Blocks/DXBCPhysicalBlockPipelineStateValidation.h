@@ -1,6 +1,7 @@
 #pragma once
 
 // Layer
+#include <Backends/DX12/Compiler/DXBC/DXBCHeader.h>
 #include "DXBCPhysicalBlockSection.h"
 
 /// Shader block
@@ -17,5 +18,9 @@ struct DXBCPhysicalBlockPipelineStateValidation : public DXBCPhysicalBlockSectio
     void CopyTo(DXBCPhysicalBlockPipelineStateValidation& out);
 
 private:
-    size_t resourceOffset{};
+    /// Size of the runtime info
+    uint32_t runtimeInfoSize{};
+
+    /// Runtime info, revision depends on the size
+    DXBCPSVRuntimeInfoRevision2 runtimeInfo{};
 };

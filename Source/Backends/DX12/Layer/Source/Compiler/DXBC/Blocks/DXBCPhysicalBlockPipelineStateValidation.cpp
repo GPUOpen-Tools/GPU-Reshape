@@ -13,12 +13,23 @@ void DXBCPhysicalBlockPipelineStateValidation::Parse() {
     // Setup parser
     DXBCParseContext ctx(block->ptr, block->length);
 
-    // Skip runtime info
-    auto runtimeInfoSize = ctx.Consume<uint32_t>();
-    ctx.Skip(runtimeInfoSize);
+    // Get the size
+    runtimeInfoSize = ctx.Consume<uint32_t>();
 
-    // Resource offset
-    resourceOffset = ctx.Offset();
+    // Read version 0
+    if (runtimeInfoSize >= sizeof(DXBCPSVRuntimeInfoRevision0)) {
+        runtimeInfo.info0 = ctx.Consume<DXBCPSVRuntimeInfo0>();
+    }
+
+    // Read version 0
+    if (runtimeInfoSize >= sizeof(DXBCPSVRuntimeInfoRevision1)) {
+        runtimeInfo.info1 = ctx.Consume<DXBCPSVRuntimeInfo1>();
+    }
+
+    // Read version 0
+    if (runtimeInfoSize >= sizeof(DXBCPSVRuntimeInfoRevision2)) {
+        runtimeInfo.info2 = ctx.Consume<DXBCPSVRuntimeInfo2>();
+    }
 }
 
 void DXBCPhysicalBlockPipelineStateValidation::Compile() {
@@ -28,12 +39,14 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
         return;
     }
 
-    // Add pre
-    block->stream.AppendData(block->ptr, resourceOffset);
-
     // Setup parser
     DXBCParseContext ctx(block->ptr, block->length);
-    ctx.Skip(resourceOffset);
+    ctx.Skip(sizeof(uint32_t));
+    ctx.Skip(runtimeInfoSize);
+
+    // Emit runtime info with the original size
+    block->stream.Append(runtimeInfoSize);
+    block->stream.AppendData(&runtimeInfo, runtimeInfoSize);
 
     // Number of existing resources
     auto resourceCount = ctx.Consume<uint32_t>();
@@ -46,7 +59,11 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
     if (resourceCount) {
         bindInfoSize = ctx.Consume<uint32_t>();
     } else {
-        bindInfoSize = sizeof(DXBCPSVBindInfoRevision1);
+        if (runtimeInfoSize >= sizeof(DXBCPSVRuntimeInfoRevision2)) {
+            bindInfoSize = sizeof(DXBCPSVBindInfoRevision1);
+        } else {
+            bindInfoSize = sizeof(DXBCPSVBindInfoRevision0);
+        }
     }
 
     // Set size
@@ -86,5 +103,6 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
 }
 
 void DXBCPhysicalBlockPipelineStateValidation::CopyTo(DXBCPhysicalBlockPipelineStateValidation &out) {
-    out.resourceOffset = resourceOffset;
+    out.runtimeInfoSize = runtimeInfoSize;
+    out.runtimeInfo = runtimeInfo;
 }
