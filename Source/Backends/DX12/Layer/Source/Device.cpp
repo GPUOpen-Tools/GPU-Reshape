@@ -35,9 +35,6 @@
 // Detour
 #include <Detour/detours.h>
 
-/// Per-image device creation handle
-PFN_D3D12_CREATE_DEVICE D3D12CreateDeviceOriginal{nullptr};
-
 static bool PoolAndInstallFeatures(DeviceState* state) {
     // Get the feature host
     auto host = state->registry.Get<IFeatureHost>();
@@ -82,7 +79,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     ID3D12Device *device{nullptr};
 
     // Pass down callchain
-    HRESULT hr = D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
     if (FAILED(hr)) {
         return hr;
     }
@@ -222,7 +219,7 @@ ULONG HookID3D12DeviceRelease(ID3D12Device* device) {
 }
 
 bool GlobalDeviceDetour::Install() {
-    ASSERT(!D3D12CreateDeviceOriginal, "Global device detour re-entry");
+    ASSERT(!D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal, "Global device detour re-entry");
 
     // Attempt to find module
     HMODULE handle = nullptr;
@@ -231,8 +228,8 @@ bool GlobalDeviceDetour::Install() {
     }
 
     // Attach against original address
-    D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(handle, "D3D12CreateDevice"));
-    DetourAttach(&reinterpret_cast<void*&>(D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
+    D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(handle, "D3D12CreateDevice"));
+    DetourAttach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
 
     // OK
     return true;
@@ -240,7 +237,7 @@ bool GlobalDeviceDetour::Install() {
 
 void GlobalDeviceDetour::Uninstall() {
     // Detach from detour
-    DetourDetach(&reinterpret_cast<void*&>(D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
+    DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
 }
 
 void BridgeDeviceSyncPoint(DeviceState *device) {

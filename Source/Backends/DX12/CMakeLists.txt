@@ -355,7 +355,7 @@ add_library(
 SetSourceDiscovery(Backends.DX12.Bootstrapper CXX Bootstrapper)
 
 # Include directories
-target_include_directories(Backends.DX12.Bootstrapper PUBLIC Bootstrapper/Include)
+target_include_directories(Backends.DX12.Bootstrapper PUBLIC Layer/Include Bootstrapper/Include)
 
 # Dependencies
 target_link_libraries(Backends.DX12.Bootstrapper PUBLIC Libraries.Common)

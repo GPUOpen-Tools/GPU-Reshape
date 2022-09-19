@@ -12,6 +12,19 @@
 GlobalDXGIFactoryDetour dxgiFactoryDetour;
 GlobalDeviceDetour deviceDetour;
 
+/// Check if the process is already bootstrapped, the boostrapper performs its own detouring of calls
+/// \return true if bootstrapped
+static bool IsBootstrapped() {
+    char buffer[32];
+
+    // Load the bootstrapper env flag
+    size_t length;
+    getenv_s(&length, buffer, "GPUOPEN_DX12_BOOTSTRAPPER");
+
+    // If set to "1", the bootstrapper attached this layer
+    return !std::strcmp(buffer, "1");
+}
+
 /// DLL entrypoint
 BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     if (DetourIsHelperProcess()) {
@@ -20,6 +33,11 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
 
     // Attach?
     if (dwReason == DLL_PROCESS_ATTACH) {
+        // If the process is already bootstrapped, skip
+        if (IsBootstrapped()) {
+            return TRUE;
+        }
+
         DetourRestoreAfterWith();
 
         // Open transaction
@@ -44,6 +62,11 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
 
     // Detach?
     else if (dwReason == DLL_PROCESS_DETACH) {
+        // If the process is already bootstrapped, skip
+        if (IsBootstrapped()) {
+            return TRUE;
+        }
+
         // Open transaction
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
@@ -61,6 +84,3 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     // OK
     return TRUE;
 }
-
-// TODO: Temporary hack to ensure libs are produced
-__declspec(dllexport) int __LibHack;

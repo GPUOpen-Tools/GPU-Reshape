@@ -6,17 +6,12 @@
 // Detour
 #include <Detour/detours.h>
 
-/// Per-image device creation handle
-PFN_CREATE_DXGI_FACTORY  CreateDXGIFactoryOriginal{nullptr};
-PFN_CREATE_DXGI_FACTORY1 CreateDXGIFactory1Original{nullptr};
-PFN_CREATE_DXGI_FACTORY2 CreateDXGIFactory2Original{nullptr};
-
 HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory) {
     // Object
     IDXGIFactory *factory{nullptr};
 
     // Pass down callchain
-    HRESULT hr = CreateDXGIFactoryOriginal(IID_PPV_ARGS(&factory));
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactoryOriginal(IID_PPV_ARGS(&factory));
     if (FAILED(hr)) {
         return hr;
     }
@@ -47,7 +42,7 @@ HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory
     IDXGIFactory *factory{nullptr};
 
     // Pass down callchain
-    HRESULT hr = CreateDXGIFactory1Original(IID_PPV_ARGS(&factory));
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory1Original(IID_PPV_ARGS(&factory));
     if (FAILED(hr)) {
         return hr;
     }
@@ -78,7 +73,7 @@ HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void
     IDXGIFactory *factory{nullptr};
 
     // Pass down callchain
-    HRESULT hr = CreateDXGIFactory2Original(flags, IID_PPV_ARGS(&factory));
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory2Original(flags, IID_PPV_ARGS(&factory));
     if (FAILED(hr)) {
         return hr;
     }
@@ -121,7 +116,7 @@ ULONG HookIDXGIFactoryRelease(IDXGIFactory* factory) {
 }
 
 bool GlobalDXGIFactoryDetour::Install() {
-    ASSERT(!CreateDXGIFactoryOriginal, "Global dxgi factory detour re-entry");
+    ASSERT(!D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactoryOriginal, "Global dxgi factory detour re-entry");
 
     // Attempt to find module
     HMODULE handle = nullptr;
@@ -130,19 +125,19 @@ bool GlobalDXGIFactoryDetour::Install() {
     }
 
     // Attach against original address
-    CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(GetProcAddress(handle, "CreateDXGIFactory"));
-    DetourAttach(&reinterpret_cast<void*&>(CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
+    D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(GetProcAddress(handle, "CreateDXGIFactory"));
+    DetourAttach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
 
     // Attach against original address
-    CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(GetProcAddress(handle, "CreateDXGIFactory1"));
-    if (CreateDXGIFactory1Original) {
-        DetourAttach(&reinterpret_cast<void*&>(CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
+    D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(GetProcAddress(handle, "CreateDXGIFactory1"));
+    if (D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory1Original) {
+        DetourAttach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
     }
 
     // Attach against original address
-    CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(handle, "CreateDXGIFactory2"));
-    if (CreateDXGIFactory2Original) {
-        DetourAttach(&reinterpret_cast<void *&>(CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
+    D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(handle, "CreateDXGIFactory2"));
+    if (D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory2Original) {
+        DetourAttach(&reinterpret_cast<void *&>(D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
     }
 
     // OK
@@ -151,11 +146,11 @@ bool GlobalDXGIFactoryDetour::Install() {
 
 void GlobalDXGIFactoryDetour::Uninstall() {
     // Detach from detour
-    DetourDetach(&reinterpret_cast<void*&>(CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
-    if (CreateDXGIFactory1Original) {
-        DetourDetach(&reinterpret_cast<void*&>(CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
+    DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
+    if (D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory1Original) {
+        DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
     }
-    if (CreateDXGIFactory2Original) {
-        DetourDetach(&reinterpret_cast<void*&>(CreateDXGIFactory2Original), reinterpret_cast<void*>(HookCreateDXGIFactory2));
+    if (D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory2Original) {
+        DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_CreateDXGIFactory2Original), reinterpret_cast<void*>(HookCreateDXGIFactory2));
     }
 }

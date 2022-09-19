@@ -3,8 +3,13 @@
 #include <Common/GlobalUID.h>
 #include <Common/String.h>
 
+// Layer (only header)
+#include <Backends/DX12/Layer.h>
+
 // System
 #include <Windows.h>
+#include <d3d12.h>
+#include <dxgi1_6.h>
 
 // Std
 #include <mutex>
@@ -42,13 +47,20 @@ using PFN_LOAD_LIBRARY_EX_A = HMODULE (WINAPI*)(LPCSTR lpLibFileName, HANDLE, DW
 using PFN_LOAD_LIBRARY_EX_W = HMODULE (WINAPI*)(LPCWSTR lpLibFileName, HANDLE, DWORD);
 
 /// Next
-PFN_LOAD_LIBRARY_A Kernel32LoadLibraryAOriginal;
-PFN_LOAD_LIBRARY_W Kernel32LoadLibraryWOriginal;
-PFN_LOAD_LIBRARY_EX_A Kernel32LoadLibraryExAOriginal;
-PFN_LOAD_LIBRARY_EX_W Kernel32LoadLibraryExWOriginal;
+PFN_LOAD_LIBRARY_A        Kernel32LoadLibraryAOriginal;
+PFN_LOAD_LIBRARY_W        Kernel32LoadLibraryWOriginal;
+PFN_LOAD_LIBRARY_EX_A     Kernel32LoadLibraryExAOriginal;
+PFN_LOAD_LIBRARY_EX_W     Kernel32LoadLibraryExWOriginal;
+D3D12GPUOpenFunctionTable DetourFunctionTable;
+
+/// Event fired after deferred initialization has completed
+HANDLE InitializationEvent;
 
 /// Bootstrapped layer
 HMODULE LayerModule;
+
+/// Layer function table
+D3D12GPUOpenFunctionTable LayerFunctionTable;
 
 #if ENABLE_LOGGING
 std::mutex LoggingLock;
@@ -105,11 +117,39 @@ void BootstrapLayer(const char* invoker, bool native) {
     // Copy current bootstrapper
     std::filesystem::copy(path, sessionPath);
 
+    // Flag that the bootstrapper is active
+    _putenv_s("GPUOPEN_DX12_BOOTSTRAPPER", "1");
+
     // User attempting to load d3d12.dll, warranting bootstrapping of the layer
     if (native) {
         LayerModule = LoadLibraryExW(sessionPath.wstring().c_str(), nullptr, 0x0);
     } else {
         LayerModule = Kernel32LoadLibraryExWOriginal(sessionPath.wstring().c_str(), nullptr, 0x0);
+    }
+
+    // Fetch function table
+    if (LayerModule) {
+        // Get hook points
+        LayerFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(LayerModule, "HookID3D12CreateDevice"));
+        LayerFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(GetProcAddress(LayerModule, "HookCreateDXGIFactory"));
+        LayerFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(GetProcAddress(LayerModule, "HookCreateDXGIFactory1"));
+        LayerFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(LayerModule, "HookCreateDXGIFactory2"));
+        if (!LayerFunctionTable.next_D3D12CreateDeviceOriginal ||
+            !LayerFunctionTable.next_CreateDXGIFactoryOriginal ||
+            !LayerFunctionTable.next_CreateDXGIFactory1Original ||
+            !LayerFunctionTable.next_CreateDXGIFactory2Original) {
+#if ENABLE_LOGGING
+            LogContext{} << "Failed to get layer function table\n";
+#endif // ENABLE_LOGGING
+        }
+
+        // Set function table in layer
+        auto* gpaSetFunctionTable = reinterpret_cast<PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN>(GetProcAddress(LayerModule, "D3D12SetFunctionTableGPUOpen"));
+        if (!gpaSetFunctionTable || FAILED(gpaSetFunctionTable(&DetourFunctionTable))) {
+#if ENABLE_LOGGING
+            LogContext{} << "Failed to set layer function table\n";
+#endif // ENABLE_LOGGING
+        }
     }
 
     // Failed?
@@ -120,6 +160,14 @@ void BootstrapLayer(const char* invoker, bool native) {
         LogContext{} << "Failed [" << GetLastError() << "]\n";
     }
 #endif // ENABLE_LOGGING
+
+    // Fire event
+    if (!SetEvent(InitializationEvent))
+    {
+#if ENABLE_LOGGING
+        LogContext{} << "Failed to release deferred initialization lock\n";
+#endif // ENABLE_LOGGING
+    }
 }
 
 HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
@@ -215,6 +263,97 @@ DWORD DeferredInitialization(void*) {
     return 0;
 }
 
+void WaitForDeferredInitialization() {
+    // Wait for the deferred event
+    DWORD result = WaitForSingleObject(InitializationEvent, INFINITE);
+    if (result != WAIT_OBJECT_0) {
+#if ENABLE_LOGGING
+        LogContext{} << "Failed to wait for deferred initialization\n";
+#endif // ENABLE_LOGGIN
+        return;
+    }
+}
+
+HRESULT WINAPI HookID3D12CreateDevice(
+    _In_opt_ IUnknown *pAdapter,
+    D3D_FEATURE_LEVEL minimumFeatureLevel,
+    _In_ REFIID riid,
+    _COM_Outptr_opt_ void **ppDevice) {
+    WaitForDeferredInitialization();
+    return LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, riid, ppDevice);
+}
+
+HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory) {
+    WaitForDeferredInitialization();
+    return LayerFunctionTable.next_CreateDXGIFactoryOriginal(riid, ppFactory);
+}
+
+HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory) {
+    WaitForDeferredInitialization();
+    return LayerFunctionTable.next_CreateDXGIFactory1Original(riid, ppFactory);
+}
+
+HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory) {
+    WaitForDeferredInitialization();
+    return LayerFunctionTable.next_CreateDXGIFactory2Original(flags, riid, ppFactory);
+}
+
+void DetourInitialCreation() {
+    HMODULE handle = nullptr;
+
+    // Attempt to find d3d12 module
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, L"d3d12.dll", &handle)) {
+        // Attach against original address
+        DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(handle, "D3D12CreateDevice"));
+        DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
+    }
+
+    // Attempt to find dxgi module
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, L"dxgi.dll", &handle)) {
+        // Attach against original address
+        DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(GetProcAddress(handle, "CreateDXGIFactory"));
+        DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
+
+        // Attach against original address
+        DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(GetProcAddress(handle, "CreateDXGIFactory1"));
+        if (DetourFunctionTable.next_CreateDXGIFactory1Original) {
+            DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
+        }
+
+        // Attach against original address
+        DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(handle, "CreateDXGIFactory2"));
+        if (DetourFunctionTable.next_CreateDXGIFactory2Original) {
+            DetourAttach(&reinterpret_cast<void *&>(DetourFunctionTable.next_CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
+        }
+    }
+}
+
+void DetachInitialCreation() {
+    // Remove device
+    if (DetourFunctionTable.next_D3D12CreateDeviceOriginal) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
+        DetourFunctionTable.next_D3D12CreateDeviceOriginal = nullptr;
+    }
+
+    // Remove factory revision 0
+    if (DetourFunctionTable.next_CreateDXGIFactoryOriginal) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
+        DetourFunctionTable.next_CreateDXGIFactoryOriginal = nullptr;
+    }
+
+    // Remove factory revision 1
+    if (DetourFunctionTable.next_CreateDXGIFactory1Original) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
+        DetourFunctionTable.next_CreateDXGIFactory1Original = nullptr;
+    }
+
+    // Remove factory revision 2
+    if (DetourFunctionTable.next_CreateDXGIFactory2Original) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory2Original), reinterpret_cast<void*>(HookCreateDXGIFactory2));
+        DetourFunctionTable.next_CreateDXGIFactory2Original = nullptr;
+    }
+}
+
 /// DLL entrypoint
 BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     if (DetourIsHelperProcess()) {
@@ -227,7 +366,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     GetModuleFileName(nullptr, filename, sizeof(filename));
 
     // Whitelist executable
-    if (!std::ends_with(filename, "Backends.DX12.Service.exe") && !std::ends_with(filename, "D3D12HelloTexture.exe")) {
+    if (!std::ends_with(filename, "Backends.DX12.Service.exe") && !std::ends_with(filename, "ModelViewer.exe")) {
         // Note: This is a terrible idea, hook will attempt to load over and over
         return FALSE;
     }
@@ -235,6 +374,10 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
 
     // Attach?
     if (dwReason == DLL_PROCESS_ATTACH) {
+        // Create deferred initialization event
+        InitializationEvent = CreateEvent(nullptr, true, false, nullptr);
+
+        // Defer the initialization, thread only invoked after the dll attach chain
         (void)CreateThread(
             NULL,
             0,
@@ -274,6 +417,9 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         Kernel32LoadLibraryExWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_W>(GetProcAddress(kernel32Module, "LoadLibraryExW"));
         DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
 
+        // Attempt to create initial detours
+        DetourInitialCreation();
+
         // Commit all transactions
         if (FAILED(DetourTransactionCommit())) {
             return FALSE;
@@ -301,6 +447,12 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
             DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
             DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
             DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
+
+            // Detach initial creation
+            DetachInitialCreation();
+
+            // Release event
+            CloseHandle(InitializationEvent);
 
             // Commit all transactions
             if (FAILED(DetourTransactionCommit())) {
