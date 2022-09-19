@@ -17,10 +17,10 @@
 #define LOG_ALLOCATION (DX12_DIAGNOSTIC && 0)
 
 /// Log instrumentation information
-#define LOG_INSTRUMENTATION (DX12_DIAGNOSTIC)
+#define LOG_INSTRUMENTATION (1)
 
 /// Log instrumentation keys that have been rejected
-#define LOG_REJECTED_KEYS (DX12_DIAGNOSTIC)
+#define LOG_REJECTED_KEYS (1)
 
 /// Enable instrumentation of a specific file for debugging purposes
 ///  ? Instrumentation of large applications can be difficult to debug and even harder to reproduce under the same conditions.

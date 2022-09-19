@@ -11,10 +11,10 @@
 #define LOG_ALLOCATION (VK_DIAGNOSTIC && 0)
 
 /// Log instrumentation information
-#define LOG_INSTRUMENTATION (VK_DIAGNOSTIC)
+#define LOG_INSTRUMENTATION (1)
 
 /// Log instrumentation keys that have been rejected
-#define LOG_REJECTED_KEYS (VK_DIAGNOSTIC)
+#define LOG_REJECTED_KEYS (1)
 
 /// Enable serial compilation for debugging purposes
 #define SHADER_COMPILER_SERIAL (VK_DIAGNOSTIC && 0)

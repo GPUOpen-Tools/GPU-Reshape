@@ -79,7 +79,9 @@ private:
     struct Batch {
         uint64_t featureBitSet;
 
-        std::chrono::high_resolution_clock::time_point stamp;
+        std::chrono::high_resolution_clock::time_point stampBegin;
+        std::chrono::high_resolution_clock::time_point stampBeginShaders;
+        std::chrono::high_resolution_clock::time_point stampBeginPipelines;
 
         std::set<ReferenceObject*> dirtyObjects;
         std::vector<ShaderModuleState*> dirtyShaderModules;

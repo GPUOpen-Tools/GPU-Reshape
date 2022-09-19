@@ -182,7 +182,7 @@ void InstrumentationController::Commit() {
 
     // Copy batch
     auto* batch = new (registry->GetAllocators()) Batch(immediateBatch);
-    batch->stamp = std::chrono::high_resolution_clock::now();
+    batch->stampBegin = std::chrono::high_resolution_clock::now();
 
     // Summarize the needed feature set
     batch->featureBitSet = SummarizeFeatureBitSet();
@@ -205,6 +205,7 @@ void InstrumentationController::Commit() {
 
 void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *data) {
     auto* batch = static_cast<Batch*>(data);
+    batch->stampBeginShaders = std::chrono::high_resolution_clock::now();
 
     // Submit compiler jobs
     for (ShaderState* state : batch->dirtyShaders) {
@@ -236,6 +237,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 
 void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *data) {
     auto* batch = static_cast<Batch*>(data);
+    batch->stampBeginPipelines = std::chrono::high_resolution_clock::now();
 
     // Collection of keys which failed
     std::vector<std::pair<ShaderState*, ShaderInstrumentationKey>> rejectedKeys;
@@ -319,7 +321,9 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     auto* batch = static_cast<Batch*>(data);
 
     // Determine time difference
-    uint32_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() -  batch->stamp).count();
+    uint32_t msTotal = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() -  batch->stampBegin).count();
+    uint32_t msPipelines = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() -  batch->stampBeginPipelines).count();
+    uint32_t msShaders = std::chrono::duration_cast<std::chrono::milliseconds>(batch->stampBeginPipelines -  batch->stampBeginShaders).count();
 
     // Commit all sguid changes
     auto bridge = registry->Get<IBridge>();
@@ -331,10 +335,12 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Diagnostic
 #if LOG_INSTRUMENTATION
     device->logBuffer.Add("DX12", Format(
-        "Instrumented {} shaders and {} pipelines ({} ms)",
+        "Instrumented {} shaders ({} ms) and {} pipelines ({} ms), total {} ms",
         batch->dirtyShaders.size(),
         batch->dirtyPipelines.size(),
-        ms
+        msShaders,
+        msPipelines,
+        msTotal
     ));
 #endif
 
