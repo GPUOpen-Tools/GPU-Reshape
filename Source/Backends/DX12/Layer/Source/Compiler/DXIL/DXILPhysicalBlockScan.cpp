@@ -989,6 +989,11 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteRecord(LLVMBitStr
     // Current operand offset
     uint32_t operandOffset{0};
 
+    // Write id, usually literal parameter with no writeback
+    if (abbreviation->parameters[0].encoding != LLVMAbbreviationEncoding::Literal) {
+        WriteTrivialAbbreviationParameter(stream, abbreviation->parameters[0], record.id);
+    }
+
     // Write all operands
     for (uint32_t i = 1; i < abbreviation->parameters.Size(); i++) {
         const LLVMAbbreviationParameter &parameter = abbreviation->parameters[i];

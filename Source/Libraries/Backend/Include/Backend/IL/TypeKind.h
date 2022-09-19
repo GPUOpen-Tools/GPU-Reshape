@@ -12,7 +12,6 @@ namespace Backend::IL {
         FP,
         Vector,
         Matrix,
-        Compound,
         Pointer,
         Array,
         Texture,

@@ -35,14 +35,17 @@ public:
     const Backend::IL::Type* GetHandleType(DXILShaderResourceClass _class, uint32_t handleID);
 
 public:
-    /// Compile all instructions
+    /// Compile all records
     void CompileMetadata(struct LLVMBlock *block);
 
     /// Compile global metadata
     void CompileMetadata();
 
-    /// Stitch all instructions
+    /// Stitch all records
     void StitchMetadata(struct LLVMBlock *block);
+
+    /// Stitch all metadata records
+    void StitchMetadataAttachments(struct LLVMBlock *block, const TrivialStackVector<uint32_t, 512>& recordRelocation);
 
 public:
     /// Compile the export resource metadata
@@ -85,6 +88,9 @@ private:
 
         /// All hosted metadata
         std::vector<Metadata> metadata;
+
+        /// All resolved source mappings
+        std::vector<uint64_t> sourceMappings;
     };
 
 private:

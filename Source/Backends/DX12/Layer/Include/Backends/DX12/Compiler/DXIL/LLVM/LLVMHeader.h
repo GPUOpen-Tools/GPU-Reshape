@@ -536,6 +536,8 @@ inline bool HasValueAllocation(LLVMFunctionRecord record, uint32_t opCount) {
             return true;
         case LLVMFunctionRecord::InstInBoundsGEP:
             return true;
+        case LLVMFunctionRecord::InstAtomicRW:
+            return true;
         case LLVMFunctionRecord::DebugLOC:
             return false;
         case LLVMFunctionRecord::DebugLOCAgain:

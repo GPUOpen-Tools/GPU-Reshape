@@ -197,6 +197,25 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "GreaterThanEqual %" << greaterThanEqual->lhs << " %" << greaterThanEqual->rhs;
             break;
         }
+        case OpCode::AddressChain: {
+            auto addressChain = instr->As<IL::AddressChainInstruction>();
+            line << "AddressChain composite:%" << addressChain->composite;
+
+            for (uint32_t i = 0; i < addressChain->chains.count; i++) {
+                line << "[ %" << addressChain->chains[i].index << " ]";
+            }
+            break;
+        }
+        case OpCode::Extract: {
+            auto extract = instr->As<IL::ExtractInstruction>();
+            line << "Extract composite:%" << extract->composite << " index:%" << extract->index;
+            break;
+        }
+        case OpCode::Insert: {
+            auto insert = instr->As<IL::InsertInstruction>();
+            line << "Insert composite:%" << insert->composite << " value:%" << insert->value;
+            break;
+        }
         case OpCode::Select: {
             auto select = instr->As<IL::SelectInstruction>();
             line << "Select cond:%" << select->condition << " pass:%" << select->pass << " fail:%" << select->fail;

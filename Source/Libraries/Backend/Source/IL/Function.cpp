@@ -23,57 +23,69 @@ struct TraversalState {
     /// Block user counters
     std::map<IL::ID, int32_t> userMap;
 
-    /// Vistation state stack
+    /// Visitation state stack
     std::map<IL::ID, bool> visitationStack;
+
+    /// Number of users on the current candidate
+    uint32_t candidateUsers{UINT32_MAX};
+
+    /// Current candidate
+    IL::ID candidate{IL::InvalidID};
 };
 
-static bool IsPredecessor(TraversalState& state, IL::BasicBlockList &basicBlocks, IL::BasicBlock *block, IL::BasicBlock *successorBlock) {
-    bool anyBranchPredecessor = false;
-
-    // No re-entry
-    if (state.visitationStack[successorBlock->GetID()]) {
-        return false;
+/// Get the least dependent basic block
+/// \param state traversal state
+/// \param basicBlocks all basic blocks in the function
+/// \param blockID the current block
+static void GetLeastDependent(TraversalState &state, IL::BasicBlockList &basicBlocks, IL::ID blockID) {
+    // Skip if already visited
+    if (state.visitationStack[blockID]) {
+        return;
     }
 
     // Mark as visited
-    state.visitationStack[successorBlock->GetID()] = true;
+    state.visitationStack[blockID] = true;
+
+    // Get number of users
+    const uint32_t users = state.userMap[blockID];
+
+    // Potential candidate?
+    if (users && users < state.candidateUsers) {
+        state.candidateUsers = users;
+        state.candidate = blockID;
+        return;
+    }
+
+    // Get block, may not be submitted to the function chain yet
+    IL::BasicBlock* block = basicBlocks.GetBlock(blockID);
+    if (!block) {
+        return;
+    }
 
     // Must have terminator
-    auto terminator = successorBlock->GetTerminator();
+    auto terminator = block->GetTerminator();
     ASSERT(terminator, "Must have terminator");
 
     // Terminator type
     switch (terminator.GetOpCode()) {
-        default:
+        default: {
             break;
+        }
         case IL::OpCode::Branch: {
             auto _terminator = terminator.As<IL::BranchInstruction>();
-            anyBranchPredecessor |= _terminator->branch == block->GetID();
-
-            // If not direct match, visit
-            if (!anyBranchPredecessor){
-                anyBranchPredecessor |= IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->branch));
-            }
+            GetLeastDependent(state, basicBlocks, _terminator->branch);
             break;
         }
         case IL::OpCode::BranchConditional: {
             auto _terminator = terminator.As<IL::BranchConditionalInstruction>();
-            anyBranchPredecessor |= _terminator->pass == block->GetID() || _terminator->fail == block->GetID();
-
-            // If not direct match, visit
-            if (!anyBranchPredecessor){
-                anyBranchPredecessor |= IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->pass));
-                anyBranchPredecessor |= IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->fail));
-            }
+            GetLeastDependent(state, basicBlocks, _terminator->pass);
+            GetLeastDependent(state, basicBlocks, _terminator->fail);
             break;
         }
     }
-
-    // OK
-    return anyBranchPredecessor;
 }
 
-static void AddSuccessor(TraversalState& state, IL::BasicBlockList &basicBlocks, IL::BasicBlock *block, IL::ID successor, bool hasControlFlow) {
+static void AddSuccessor(TraversalState &state, IL::BasicBlockList &basicBlocks, IL::BasicBlock *block, IL::ID successor, bool hasControlFlow) {
     IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
     ASSERT(successorBlock, "Successor block invalid");
 
@@ -96,33 +108,6 @@ static void AddSuccessor(TraversalState& state, IL::BasicBlockList &basicBlocks,
         // Skip loop back continue block for order resolving
         if (controlFlow._continue == block->GetID()) {
             return;
-        }
-    } else {
-        // Must have terminator
-        auto terminator = block->GetTerminator();
-        ASSERT(terminator, "Must have terminator");
-
-        if (auto _terminator = terminator->Cast<IL::BranchConditionalInstruction>()) {
-            // LHS
-            state.visitationStack.clear();
-            bool lhsPredecessor = IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->pass));
-
-            // RHS
-            state.visitationStack.clear();
-            bool rhsPredecessor = IsPredecessor(state, basicBlocks, block, basicBlocks.GetBlock(_terminator->fail));
-
-            // Joint point?
-            if (lhsPredecessor != rhsPredecessor) {
-                // Is LHS?
-                if (lhsPredecessor && _terminator->pass == successor) {
-                    return;
-                }
-
-                // Is RHS?
-                if (rhsPredecessor && _terminator->fail == successor) {
-                    return;
-                }
-            }
         }
     }
 
@@ -259,6 +244,24 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
 
         // If no more mutations, stop
         if (!mutated) {
+            // In case there is no control flow, and still blocks to resolve
+            if (!hasControlFlow && !blocks.empty()) {
+                state.visitationStack.clear();
+                state.candidate = IL::InvalidID;
+                state.candidateUsers = UINT32_MAX;
+
+                // Find the least dependent block and simply consider this a candidate
+                //   ! This is not a solution but a workaround, please don't think ill of me...
+                GetLeastDependent(state, basicBlocks, (*basicBlocks.begin())->GetID());
+
+                // If found, mark as valid for next iteration
+                if (state.candidate != IL::InvalidID) {
+                    state.userMap[state.candidate] = 0;
+                    continue;
+                }
+            }
+
+            // Stop iteration
             break;
         }
     }

@@ -264,7 +264,6 @@ HRESULT WINAPI HookIDXGISwapChainGetBuffer(IDXGISwapChain1 * swapchain, UINT Buf
     return table.state->buffers[Buffer]->QueryInterface(riid, ppSurface);
 }
 
-
 HRESULT WINAPI HookIDXGISwapChainPresent(IDXGISwapChain1* swapchain, UINT SyncInterval, UINT PresentFlags) {
     auto table = GetTable(swapchain);
 

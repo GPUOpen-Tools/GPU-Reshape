@@ -260,33 +260,36 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 auto shape = GetOperandU32Constant<DXILShaderResourceShape>(metadataBlock, resource.Op(6));
                 uint64_t sampleCount = GetOperandU32Constant(metadataBlock, resource.Op(7));
 
-                // Get extended metadata
-                Metadata &extendedMetadata = metadataBlock.metadata[resource.Op(8) - 1];
-
-                // Get extended record
-                const LLVMRecord& extendedRecord = block->records[extendedMetadata.source];
-                ASSERT(extendedRecord.opCount == 2, "Expected 2 operands for extended metadata");
-
                 // Optional element type
                 const Backend::IL::Type* elementType{nullptr};
 
                 // Optional texel format
                 Backend::IL::Format format{Backend::IL::Format::None};
 
-                // Parse tags
-                for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
-                    switch (static_cast<DXILSRVTag>(GetOperandU32Constant(metadataBlock, resource.Op(kv + 0)))) {
-                        case DXILSRVTag::ElementType: {
-                            // Get type
-                            auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op(kv + 1));
+                // Has extended metadata?
+                if (uint32_t extendedMetadataId = resource.Op(8)) {
+                    // Get extended metadata
+                    Metadata &extendedMetadata = metadataBlock.metadata[extendedMetadataId - 1];
 
-                            // Get type and format
-                            elementType = GetComponentType(componentType);
-                            format = GetComponentFormat(componentType);
-                            break;
-                        }
-                        case DXILSRVTag::ByteStride: {
-                            break;
+                    // Get extended record
+                    const LLVMRecord& extendedRecord = block->records[extendedMetadata.source];
+                    ASSERT(extendedRecord.opCount == 2, "Expected 2 operands for extended metadata");
+
+                    // Parse tags
+                    for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
+                        switch (static_cast<DXILSRVTag>(GetOperandU32Constant(metadataBlock, resource.Op(kv + 0)))) {
+                            case DXILSRVTag::ElementType: {
+                                // Get type
+                                auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op(kv + 1));
+
+                                // Get type and format
+                                elementType = GetComponentType(componentType);
+                                format = GetComponentFormat(componentType);
+                                break;
+                            }
+                            case DXILSRVTag::ByteStride: {
+                                break;
+                            }
                         }
                     }
                 }
@@ -352,33 +355,36 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 uint64_t counter = GetOperandBoolConstant(metadataBlock, resource.Op(8));
                 uint64_t rasterizerOrderedView = GetOperandBoolConstant(metadataBlock, resource.Op(9));
 
-                // Get extended metadata
-                Metadata &extendedMetadata = metadataBlock.metadata[resource.Op(10) - 1];
-
-                // Get extended record
-                const LLVMRecord& extendedRecord = block->records[extendedMetadata.source];
-                ASSERT(extendedRecord.opCount == 2, "Expected 2 operands for extended metadata");
-
                 // Optional element type
-                const Backend::IL::Type* elementType{nullptr};
+                const Backend::IL::Type *elementType{nullptr};
 
                 // Optional texel format
                 Backend::IL::Format format{Backend::IL::Format::None};
 
-                // Parse tags
-                for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
-                    switch (static_cast<DXILUAVTag>(GetOperandU32Constant(metadataBlock, resource.Op(kv + 0)))) {
-                        case DXILUAVTag::ElementType: {
-                            // Get type
-                            auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op(kv + 1));
+                // Has extended metadata?
+                if (uint32_t extendedMetadataId = resource.Op(10)) {
+                    // Get extended metadata
+                    Metadata &extendedMetadata = metadataBlock.metadata[extendedMetadataId - 1];
 
-                            // Get type and format
-                            elementType = GetComponentType(componentType);
-                            format = GetComponentFormat(componentType);
-                            break;
-                        }
-                        case DXILUAVTag::ByteStride: {
-                            break;
+                    // Get extended record
+                    const LLVMRecord &extendedRecord = block->records[extendedMetadata.source];
+                    ASSERT(extendedRecord.opCount == 2, "Expected 2 operands for extended metadata");
+
+                    // Parse tags
+                    for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
+                        switch (static_cast<DXILUAVTag>(GetOperandU32Constant(metadataBlock, resource.Op(kv + 0)))) {
+                            case DXILUAVTag::ElementType: {
+                                // Get type
+                                auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op(kv + 1));
+
+                                // Get type and format
+                                elementType = GetComponentType(componentType);
+                                format = GetComponentFormat(componentType);
+                                break;
+                            }
+                            case DXILUAVTag::ByteStride: {
+                                break;
+                            }
                         }
                     }
                 }
@@ -614,9 +620,11 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
         record.result = i;
     }
 
+    // Get the metadata
+    MetadataBlock* metadataBlock = GetMetadataBlock(block->uid);
+    
     // Source to stitched mappings
-    std::vector<uint64_t> sourceMappings;
-    sourceMappings.resize(block->records.Size(), ~0u);
+    metadataBlock->sourceMappings.resize(block->records.Size(), ~0u);
 
     // Swap source data
     TrivialStackVector<LLVMRecord, 32> source;
@@ -651,7 +659,7 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
             switch (static_cast<LLVMMetadataRecord>(record.id)) {
                 default: {
                     // Set new mapping
-                    sourceMappings.at(record.result) = block->records.Size();
+                    metadataBlock->sourceMappings.at(record.result) = block->records.Size();
 
                     // Append
                     block->AddRecord(record);
@@ -674,19 +682,19 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
                     // Ensure all operands are resolved
                     for (uint32_t opId = 0; opId < record.opCount; opId++) {
                         if (record.ops[opId] != 0) {
-                            resolved &= sourceMappings.at(record.ops[opId] - 1) != ~0u;
+                            resolved &= metadataBlock->sourceMappings.at(record.ops[opId] - 1) != ~0u;
                         }
                     }
 
                     // Ready?
                     if (resolved) {
                         // Set new mapping
-                        sourceMappings.at(record.result) = block->records.Size();
+                        metadataBlock->sourceMappings.at(record.result) = block->records.Size();
 
                         // Stitch ops
                         for (uint32_t opId = 0; opId < record.opCount; opId++) {
                             if (record.ops[opId] != 0) {
-                                record.ops[opId] = sourceMappings.at(record.ops[opId] - 1) + 1;
+                                record.ops[opId] = metadataBlock->sourceMappings.at(record.ops[opId] - 1) + 1;
                             }
                         }
 
@@ -706,7 +714,7 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
                     table.idRemapper.Remap(record.Op(1));
 
                     // Set new mapping
-                    sourceMappings.at(record.result) = block->records.Size();
+                    metadataBlock->sourceMappings.at(record.result) = block->records.Size();
 
                     // Append
                     block->AddRecord(record);
@@ -738,7 +746,7 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
         // Stitch ops
         for (uint32_t opId = 0; opId < node.opCount; opId++) {
             if (node.ops[opId] != 0) {
-                node.ops[opId] = sourceMappings.at(node.ops[opId]);
+                node.ops[opId] = metadataBlock->sourceMappings.at(node.ops[opId]);
             }
         }
 
@@ -1117,5 +1125,33 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
         // Set new ops
         kvRecord->ops = ops;
         kvRecord->opCount += 2;
+    }
+}
+
+void DXILPhysicalBlockMetadata::StitchMetadataAttachments(struct LLVMBlock *block, const TrivialStackVector<uint32_t, 512>& recordRelocation) {
+    MetadataBlock* mdBlock = &metadataBlocks[0];
+
+    for (LLVMRecord& record : block->records) {
+        switch (static_cast<LLVMMetadataRecord>(record.id)) {
+            default: {
+                break;
+            }
+            case LLVMMetadataRecord::Attachment: {
+                // Function attachment?
+                if (!(record.opCount % 2)) {
+                    continue;
+                }
+
+                // Stitch record index
+                record.Op(0) = recordRelocation[record.Op(0)];
+                ASSERT(record.Op(0) != IL::InvalidID, "Cannot stitch metadata attachment for non-existent relocation");
+
+                // Stitch metadata blocks
+                for (uint32_t i = 1; i < record.opCount; i += 2) {
+                    record.Op(i + 1) = mdBlock->sourceMappings[record.Op(i + 1) - 1] + 1;
+                }
+                break;
+            }
+        }
     }
 }

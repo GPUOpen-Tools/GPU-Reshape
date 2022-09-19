@@ -9,6 +9,12 @@
 
 // Backend
 #include <Backend/IL/TypeCommon.h>
+#include <Backend/IL/PrettyPrint.h>
+
+// Std
+#ifndef NDEBUG
+#include <sstream>
+#endif // NDEBUG
 
 /*
  * LLVM DXIL Specification
@@ -290,6 +296,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         instr.result = result;
                         instr.source = IL::Source::Code(recordIdx);
                         instr.backendOpCode = record.id;
+                        instr.symbol = "LLVMCastOp";
                         basicBlock->Append(instr);
                         break;
                     }
@@ -329,23 +336,180 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 break;
             }
 
-                /* Structural */
-            case LLVMFunctionRecord::InstGEP:
-            case LLVMFunctionRecord::InstExtractELT:
-            case LLVMFunctionRecord::InstInsertELT:
-            case LLVMFunctionRecord::InstExtractVal:
-            case LLVMFunctionRecord::InstInsertVal:
-            case LLVMFunctionRecord::InstSelect:
-            case LLVMFunctionRecord::InstInBoundsGEP: {
-                // Create type mapping
-                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::UnexposedType{}));
+            case LLVMFunctionRecord::InstSelect: {
+                ASSERT(false, "Unsupported instruction");
+                break;
+            }
 
-                // Emit as unexposed
-                IL::UnexposedInstruction instr{};
-                instr.opCode = IL::OpCode::Unexposed;
+            case LLVMFunctionRecord::InstInsertELT: {
+                ASSERT(false, "Untested path, validate and remove");
+
+                // Get composite
+                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp());
+                uint64_t compositeValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                // Get index
+                const Backend::IL::Type* indexType = table.type.typeMap.GetType(reader.ConsumeOp());
+                uint64_t indexValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                IL::InsertInstruction instr{};
+                instr.opCode = IL::OpCode::Insert;
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
-                instr.backendOpCode = record.id;
+                instr.composite = compositeValue;
+                instr.value = indexValue;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case LLVMFunctionRecord::InstExtractELT: {
+                ASSERT(false, "Untested path, validate and remove");
+
+                // Get composite
+                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp());
+                uint64_t compositeValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                // Get index
+                uint64_t indexValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                IL::ExtractInstruction instr{};
+                instr.opCode = IL::OpCode::Extract;
+                instr.result = result;
+                instr.source = IL::Source::Code(recordIdx);
+                instr.composite = compositeValue;
+                instr.index = indexValue;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case LLVMFunctionRecord::InstExtractVal: {
+                // Get composite
+                uint64_t compositeValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                // Get index, not relative
+                int64_t index = reader.ConsumeOp();
+
+                // Create type mapping
+                const Backend::IL::Type* type = ilTypeMap.GetType(compositeValue);
+                switch (type->kind)
+                {
+                    default:
+                        ASSERT(false, "Invalid composite extraction");
+                        break;
+                    case Backend::IL::TypeKind::Struct:
+                        ilTypeMap.SetType(result, type->As<Backend::IL::StructType>()->memberTypes[index]);
+                        break;
+                    case Backend::IL::TypeKind::Vector:
+                        ilTypeMap.SetType(result, type->As<Backend::IL::VectorType>()->containedType);
+                        break;
+                }
+
+                // While LLVM supports this, DXC, given the scalarized nature, does not make use of it
+                ASSERT(!reader.Any(), "Unexpected extraction count on InstExtractVal");
+
+                // Create extraction instruction
+                IL::ExtractInstruction instr{};
+                instr.opCode = IL::OpCode::Extract;
+                instr.result = result;
+                instr.source = IL::Source::Code(recordIdx);
+                instr.composite = compositeValue;
+
+                // Set as constant
+                instr.index = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                    Backend::IL::IntConstant{.value = index}
+                )->id);
+
+                basicBlock->Append(instr);
+                break;
+            }
+
+            /* Vectorized instruction not used */
+            case LLVMFunctionRecord::InstInsertVal: {
+                ASSERT(false, "Unsupported instruction");
+                break;
+            }
+
+                /* Structural */
+            case LLVMFunctionRecord::InstGEP:
+            case LLVMFunctionRecord::InstInBoundsGEP: {
+                bool inBounds{false};
+
+                // The current pointee type
+                const Backend::IL::Type* pointee{ nullptr };
+
+                // Handle old instruction types
+                if (record.Is(LLVMFunctionRecord::InstGEP)) {
+                    inBounds = reader.ConsumeOpAs<bool>();
+                    pointee = table.type.typeMap.GetType(reader.ConsumeOp());
+                } else if (record.Is(LLVMFunctionRecord::InstGEPOld)) {
+                    inBounds = true;
+                }
+
+                // Get first chain
+                uint64_t compositeId = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                // Get type of composite if needed
+                const auto* elementType = ilTypeMap.GetType(compositeId);
+
+                // Number of address cases
+                const uint32_t addressCount = reader.Remaining();
+
+                // Allocate instruction
+                auto *instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(addressCount));
+                instr->opCode = IL::OpCode::AddressChain;
+                instr->result = result;
+                instr->source = IL::Source::Code(recordIdx);
+                instr->composite = compositeId;
+                instr->chains.count = addressCount;
+
+                for (uint32_t i = 0; i < addressCount; i++) {
+                    // Get next chain
+                    uint64_t nextChainId = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+
+                    // Constant indexing into struct?
+                    switch (elementType->kind) {
+                        default:
+                            ASSERT(false, "Unexpected GEP chain type");
+                            break;
+                        case Backend::IL::TypeKind::None:
+                            break;
+                        case Backend::IL::TypeKind::Vector: {
+                            elementType = elementType->As<Backend::IL::VectorType>()->containedType;
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Matrix: {
+                            elementType = elementType->As<Backend::IL::MatrixType>()->containedType;
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Pointer:{
+                            elementType = elementType->As<Backend::IL::PointerType>()->pointee;
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Array:{
+                            elementType = elementType->As<Backend::IL::ArrayType>()->elementType;
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Struct: {
+                            const Backend::IL::Constant* constant = program.GetConstants().GetConstant(nextChainId);
+                            ASSERT(constant, "GEP struct chains must be constant");
+
+                            uint32_t memberIdx = constant->As<Backend::IL::IntConstant>()->value;
+                            elementType = elementType->As<Backend::IL::StructType>()->memberTypes[memberIdx];
+                            break;
+                        }
+                    }
+
+                    // Set index
+                    instr->chains[i].index = nextChainId;
+                }
+
+                // Set the resulting type as a pointer to the walked type
+                ilTypeMap.SetType(instr->result, ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
+                    .pointee = elementType,
+                    .addressSpace = Backend::IL::AddressSpace::Function
+                }));
+
                 basicBlock->Append(instr);
                 break;
             }
@@ -382,6 +546,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
                 instr.backendOpCode = record.id;
+                instr.symbol = "LLVMShuffle";
                 basicBlock->Append(instr);
                 break;
             }
@@ -413,6 +578,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         instr.result = result;
                         instr.source = IL::Source::Code(recordIdx);
                         instr.backendOpCode = record.id;
+                        instr.symbol = "LLVMCmpOp";
                         basicBlock->Append(instr);
                         break;
                     }
@@ -505,6 +671,30 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         break;
                     }
                 }
+                break;
+            }
+
+            case LLVMFunctionRecord::InstAtomicRW: {
+                uint64_t address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint64_t op = reader.ConsumeOp();
+                uint64_t _volatile = reader.ConsumeOp();
+                uint64_t ordering = reader.ConsumeOp();
+                uint64_t scope = reader.ConsumeOp();
+
+                const auto* pointerType = ilTypeMap.GetType(address)->As<Backend::IL::PointerType>();
+
+                // Emit as unexposed
+                IL::UnexposedInstruction instr{};
+                instr.opCode = IL::OpCode::Unexposed;
+                instr.result = result;
+                instr.source = IL::Source::Code(recordIdx);
+                instr.backendOpCode = record.id;
+                instr.symbol = "AtomicRW";
+                basicBlock->Append(instr);
+
+                // Set resulting type
+                ilTypeMap.SetType(result, pointerType->pointee);
                 break;
             }
 
@@ -610,6 +800,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
                 instr.backendOpCode = record.id;
+                instr.symbol = "Unreachable";
                 basicBlock->Append(instr);
 
                 // Advance block, otherwise assume last record
@@ -710,9 +901,6 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.source = IL::Source::Code(recordIdx);
                 instr.address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
-                // Type
-                reader.ConsumeOp();
-
                 instr.value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
                 basicBlock->Append(instr);
                 break;
@@ -792,6 +980,34 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
     // Validation
     ASSERT(blockIndex == blockMapping.Size(), "Terminator to block count mismatch");
+
+    // Validation
+#ifndef NDEBUG
+    for (const IL::BasicBlock *fnBB: fn->GetBasicBlocks()) {
+        for (const IL::Instruction *instr: *fnBB) {
+            if (instr->result == IL::InvalidID) {
+                continue;
+            }
+
+            // While the instructions themselves can be unexposed, the resulting type must never be.
+            // Supporting this from the user side would be needless complexity
+            const Backend::IL::Type* type = ilTypeMap.GetType(instr->result);
+            if (!type || type->kind == Backend::IL::TypeKind::Unexposed)
+            {
+                // Compose message
+                std::stringstream stream;
+                stream << "Instruction with unexposed results are invalid\n\t";
+                IL::PrettyPrint(instr, stream);
+
+                // Panic!
+                ASSERT(false, stream.str().c_str());
+            }
+
+            // Debugger hack to keep instr in the scope
+            bool _ = false;
+        }
+    }
+#endif // NDEBUG
 }
 
 bool DXILPhysicalBlockFunction::HasResult(const struct LLVMRecord &record) {
@@ -906,6 +1122,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             instr.opCode = IL::OpCode::Unexposed;
             instr.result = result;
             instr.source = IL::Source::Code(recordIdx);
+            instr.symbol = "dx.op.createHandle";
             basicBlock->Append(instr);
             return true;
         }
@@ -1400,11 +1617,21 @@ static bool IsFunctionPostRecordDependentBlock(LLVMReservedBlock block) {
         default:
             return false;
         case LLVMReservedBlock::ValueSymTab:
+        case LLVMReservedBlock::UseList:
+        case LLVMReservedBlock::MetadataAttachment:
             return true;
     }
 }
 
 void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlock *block) {
+    // Create a new function block
+    FunctionBlock& functionBlock = functionBlocks.Add();
+    functionBlock.uid = block->uid;
+    functionBlock.recordRelocation.Resize(block->records.Size());
+
+    // Default to no relocation
+    std::fill_n(functionBlock.recordRelocation.Data(), functionBlock.recordRelocation.Size(), IL::InvalidID);
+
     // Remap all blocks by dominance
     for (IL::Function* fn : program.GetFunctionList()) {
         if (!fn->ReorderByDominantBlocks(false)) {
@@ -1506,6 +1733,9 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
 
             // If it's valid, copy record
             if (instr->source.IsValid()) {
+                // Set relocation index
+                functionBlock.recordRelocation[instr->source.codeOffset] = block->records.Size();
+
                 // Copy the source
                 record = source[instr->source.codeOffset];
 
@@ -2453,6 +2683,10 @@ void DXILPhysicalBlockFunction::StitchModuleFunction(LLVMRecord &record) {
 }
 
 void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
+    // Get block
+    FunctionBlock* functionBlock = GetFunctionBlock(block->uid);
+    ASSERT(functionBlock, "Failed to deduce function block");
+
     // Definition order is linear to the internally linked functions
     const DXILFunctionDeclaration *declaration = functions[internalLinkedFunctions[stitchFunctionIndex++]];
 
@@ -2464,6 +2698,10 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             }
             case LLVMReservedBlock::Constants: {
                 table.global.StitchConstants(fnBlock);
+                break;
+            }
+            case LLVMReservedBlock::MetadataAttachment: {
+                table.metadata.StitchMetadataAttachments(fnBlock, functionBlock->recordRelocation);
                 break;
             }
         }
@@ -2501,6 +2739,26 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
 
             case LLVMFunctionRecord::InstExtractVal: {
                 table.idRemapper.RemapRelative(anchor, record, record.Op(0));
+                break;
+            }
+
+            case LLVMFunctionRecord::InstAtomicRW: {
+                table.idRemapper.RemapRelative(anchor, record, record.Op(0));
+                table.idRemapper.RemapRelative(anchor, record, record.Op(1));
+                break;
+            }
+
+            case LLVMFunctionRecord::InstGEP: {
+                for (uint32_t i = 2; i < record.opCount; i++) {
+                    table.idRemapper.RemapRelative(anchor, record, record.Op(i));
+                }
+                break;
+            }
+
+            case LLVMFunctionRecord::InstInBoundsGEP: {
+                for (uint32_t i = 0; i < record.opCount; i++) {
+                    table.idRemapper.RemapRelative(anchor, record, record.Op(i));
+                }
                 break;
             }
 
@@ -2566,7 +2824,12 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
                 break;
             }
 
-            case LLVMFunctionRecord::InstStore:
+            case LLVMFunctionRecord::InstStore: {
+                table.idRemapper.RemapRelative(anchor, record, record.Op(0));
+                table.idRemapper.RemapRelative(anchor, record, record.Op(1));
+                break;
+            }
+
             case LLVMFunctionRecord::InstStore2: {
                 table.idRemapper.RemapRelative(anchor, record, record.Op(0));
                 table.idRemapper.RemapRelative(anchor, record, record.Op(2));

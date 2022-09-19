@@ -1,6 +1,12 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 #include <Backends/DX12/Config.h>
 
+// Common
+#include <Common/FileSystem.h>
+
+// Std
+#include <fstream>
+
 DXBCModule::DXBCModule(const Allocators &allocators, uint64_t shaderGUID, const GlobalUID &instrumentationGUID) : DXBCModule(allocators, new(allocators) IL::Program(allocators, shaderGUID), instrumentationGUID) {
     nested = false;
 
@@ -38,6 +44,23 @@ DXModule *DXBCModule::Copy() {
 }
 
 bool DXBCModule::Parse(const void *byteCode, uint64_t byteLength) {
+#if SHADER_COMPILER_DEBUG_FILE
+    std::ifstream in(GetIntermediateDebugPath() / "scan.dxbc", std::ios_base::binary);
+
+    // Get file size
+    in.seekg(0, std::ios_base::end);
+    uint64_t size = in.tellg();
+    in.seekg(0);
+
+    // Stream data in
+    std::vector<char> data(size);
+    in.read(data.data(), size);
+
+    // Set new data
+    byteCode = data.data();
+    byteLength = data.size();
+#endif // SHADER_COMPILER_DEBUG_FILE
+
     // Try to parse
     if (!table.Parse(byteCode, byteLength)) {
         return false;

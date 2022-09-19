@@ -26,7 +26,7 @@ void DXBCPhysicalBlockRootSignature::Parse() {
         // Create parameter
         RootParameter &parameter = parameters.emplace_back();
         parameter.type = source.type;
-        parameter.visibility = parameter.visibility;
+        parameter.visibility = source.visibility;
 
         // Handle type
         switch (parameter.type) {
@@ -183,7 +183,7 @@ void DXBCPhysicalBlockRootSignature::Compile() {
     // Offset for all parameters
     uint32_t parameterOffset = block->stream.GetOffset();
 
-    // Emit constants
+    // Emit root parameters
     for (const RootParameter &parameter: parameters) {
         if (parameter.type == DXBCRootSignatureParameterType::CBV ||
             parameter.type == DXBCRootSignatureParameterType::SRV ||

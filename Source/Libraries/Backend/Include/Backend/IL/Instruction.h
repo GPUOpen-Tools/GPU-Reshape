@@ -312,6 +312,44 @@ namespace IL {
         ID value;
     };
 
+    struct AddressChain {
+        ID index;
+    };
+
+    struct AddressChainInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::AddressChain;
+
+        /// Get size of this instruction
+        /// \param chainCount number of chains
+        /// \return byte size
+        static uint64_t GetSize(uint32_t chainCount) {
+            return sizeof(AddressChainInstruction) + InlineArray<AddressChain>::ElementSize(chainCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(AddressChainInstruction) + chains.ElementSize();
+        }
+
+        ID composite;
+        InlineArray<AddressChain> chains;
+    };
+
+    struct ExtractInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Extract;
+
+        ID composite;
+        ID index;
+    };
+
+    struct InsertInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Extract;
+
+        ID composite;
+        ID value;
+    };
+
     struct SelectInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Select;
 
@@ -518,6 +556,12 @@ namespace IL {
                 return sizeof(IntToFloatInstruction);
             case OpCode::BitCast:
                 return sizeof(BitCastInstruction);
+            case OpCode::AddressChain:
+                return sizeof(AddressChainInstruction);
+            case OpCode::Extract:
+                return sizeof(ExtractInstruction);
+            case OpCode::Insert:
+                return sizeof(InsertInstruction);
             case OpCode::Select:
                 return sizeof(SelectInstruction);
             case OpCode::StoreOutput:

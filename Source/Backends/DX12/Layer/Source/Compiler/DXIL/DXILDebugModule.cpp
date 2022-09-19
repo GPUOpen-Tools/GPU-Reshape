@@ -166,6 +166,8 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
             case LLVMReservedBlock::Metadata:
                 ParseMetadata(child);
                 break;
+            case LLVMReservedBlock::MetadataAttachment:
+                break;
             case LLVMReservedBlock::Constants:
                 ParseConstants(child);
                 break;

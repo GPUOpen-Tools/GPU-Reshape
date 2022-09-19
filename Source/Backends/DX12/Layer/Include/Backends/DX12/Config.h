@@ -21,3 +21,8 @@
 
 /// Log instrumentation keys that have been rejected
 #define LOG_REJECTED_KEYS (DX12_DIAGNOSTIC)
+
+/// Enable instrumentation of a specific file for debugging purposes
+///  ? Instrumentation of large applications can be difficult to debug and even harder to reproduce under the same conditions.
+///    When such a fault occurs, it is very useful to simply be able to iterate on a binary file.
+#define SHADER_COMPILER_DEBUG_FILE (DX12_DIAGNOSTIC && 0)

@@ -73,9 +73,15 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
             }
 
             case LLVMConstantRecord::Integer: {
-                constant = constantMap.AddConstant(id, type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
-                    .value = LLVMBitStreamReader::DecodeSigned(record.Op(0))
-                });
+                if (type->Is<Backend::IL::BoolType>()) {
+                    constant = constantMap.AddConstant(id, type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                        .value = static_cast<bool>(LLVMBitStreamReader::DecodeSigned(record.Op(0)))
+                    });
+                } else {
+                    constant = constantMap.AddConstant(id, type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
+                        .value = LLVMBitStreamReader::DecodeSigned(record.Op(0))
+                    });
+                }
                 break;
             }
 
@@ -99,7 +105,8 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
             case LLVMConstantRecord::GEP:
             case LLVMConstantRecord::InBoundsGEP:
             case LLVMConstantRecord::Data: {
-                constant = constantMap.AddConstant(id, types.FindTypeOrAdd(Backend::IL::UnexposedType{}), Backend::IL::UnexposedConstant {});
+                // Emitting as unsorted is safe for DXIL resident types, as the IL has no applicable type anyway
+                constant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
                 break;
             }
         }
@@ -114,7 +121,18 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
 
 void DXILPhysicalBlockGlobal::ParseGlobalVar(struct LLVMRecord& record) {
     record.SetSource(true, table.idMap.GetAnchor());
-    table.idMap.AllocMappedID(DXILIDType::Variable);
+
+    // Allocate
+    IL::ID id = table.idMap.AllocMappedID(DXILIDType::Variable);
+
+    // Set type, IL programs have no concept of globals for now
+    const Backend::IL::Type* pointeeType = table.type.typeMap.GetType(record.ops[0]);
+
+    // Always stored as pointer to
+    program.GetTypeMap().SetType(id, program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = pointeeType,
+        .addressSpace = Backend::IL::AddressSpace::Function
+    }));
 }
 
 void DXILPhysicalBlockGlobal::ParseAlias(LLVMRecord &record) {
@@ -161,6 +179,13 @@ void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
                 break;
 
             case LLVMConstantRecord::GEP: {
+                break;
+            }
+
+            case LLVMConstantRecord::Aggregate: {
+                for (uint32_t i = 0; i < record.opCount; i++) {
+                    table.idRemapper.Remap(record.Op(i));
+                }
                 break;
             }
 

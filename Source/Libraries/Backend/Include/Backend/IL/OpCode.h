@@ -53,7 +53,9 @@ namespace IL {
         BitShiftRight,
 
         /// Structural
-        // ExtractElement,
+        AddressChain,
+        Extract,
+        Insert,
 
         /// Casting
         FloatToInt,

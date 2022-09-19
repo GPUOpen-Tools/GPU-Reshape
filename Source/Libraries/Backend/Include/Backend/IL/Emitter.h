@@ -6,6 +6,9 @@
 #include "TypeResult.h"
 #include "ControlFlow.h"
 
+// Common
+#include <Common/Alloca.h>
+
 namespace IL {
     namespace Op {
         /// Append operation
@@ -287,6 +290,54 @@ namespace IL {
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr, type);
+        }
+
+        /// Get the address of a composite element
+        /// \param composite the base composite address
+        /// \param index the uniform index
+        /// \return instruction reference
+        InstructionRef <AddressChainInstruction> AddressOf(ID composite, ID index) {
+            ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
+
+            auto *instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(1));
+            instr->opCode = OpCode::Extract;
+            instr->source = Source::Invalid();
+            instr->result = map->AllocID();
+            instr->composite = composite;
+            instr->chains[0].index = index;
+            return Op(instr);
+        }
+
+        /// Extract a value from a composite
+        /// \param composite the base composite
+        /// \param index the index
+        /// \return instruction reference
+        InstructionRef <ExtractInstruction> Extract(ID composite, ID index) {
+            ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
+
+            ExtractInstruction instr{};
+            instr.opCode = OpCode::Extract;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.composite = composite;
+            instr.index = index;
+            return Op(instr);
+        }
+
+        /// Insert a value to a composite
+        /// \param composite the base composite
+        /// \param index the value to be inserted
+        /// \return instruction reference
+        InstructionRef <InsertInstruction> Insert(ID composite, ID value) {
+            ASSERT(IsMapped(composite) && IsMapped(value), "Unmapped identifier");
+
+            InsertInstruction instr{};
+            instr.opCode = OpCode::Insert;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.composite = composite;
+            instr.value = value;
+            return Op(instr);
         }
 
         /// Select a value

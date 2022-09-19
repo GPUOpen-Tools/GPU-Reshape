@@ -12,6 +12,8 @@ function(Project_AddBackendTest_Common OUT_GENERATED FEATURE_NAME)
     Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/MultiFile.hlsl)
     Project_AddBackendTest(Generated "-Od -rootsig-define RS" ${FEATURE_NAME} ${DataDir}/EmbeddedRootSignature.hlsl)
     Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/Intrinsics.hlsl)
+    Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/Structural.hlsl)
+    Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/GroupShared.hlsl)
 
     # Set output
     set(${OUT_GENERATED} "${${OUT_GENERATED}};${Generated}" PARENT_SCOPE)

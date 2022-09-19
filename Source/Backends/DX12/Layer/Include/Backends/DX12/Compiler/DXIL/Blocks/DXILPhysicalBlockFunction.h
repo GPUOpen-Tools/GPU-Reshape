@@ -151,6 +151,31 @@ private:
     bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
 
 private:
+    struct FunctionBlock {
+        /// UID of the originating block
+        uint32_t uid;
+
+        /// Relocation table for records
+        TrivialStackVector<uint32_t, 512> recordRelocation;
+    };
+
+    /// Get the function block from a UID
+    /// \param uid LLVM block uid
+    /// \return nullptr if not found
+    FunctionBlock* GetFunctionBlock(uint32_t uid) {
+        for (FunctionBlock& block : functionBlocks) {
+            if (block.uid == uid) {
+                return &block;
+            }
+        }
+
+        return nullptr;
+    }
+
+    /// All function blocks
+    TrivialStackVector<FunctionBlock, 4> functionBlocks;
+
+private:
     /// Function visitation counters
     uint32_t stitchFunctionIndex{0};
 
