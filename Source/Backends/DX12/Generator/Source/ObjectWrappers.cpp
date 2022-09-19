@@ -1,0 +1,268 @@
+#include "GenTypes.h"
+#include "Types.h"
+
+// Std
+#include <vector>
+#include <iostream>
+
+struct ObjectWrappersState {
+    /// All streams
+    std::stringstream includes;
+    std::stringstream hooks;
+    std::stringstream detours;
+    std::stringstream getters;
+};
+
+/// Wrap the base interface queries
+static void WrapClassBaseQuery(const GeneratorInfo &info, ObjectWrappersState& state, const std::string& key, bool top = true) {
+    auto&& obj = info.specification["interfaces"][key];
+
+    // Keep it clean
+    if (!top) {
+        state.hooks << " else ";
+    }
+
+    // Query check
+    state.hooks << "if (riid == __uuidof(" << key << ")) {\n";
+    state.hooks << "\t\t\tnext->AddRef();\n";
+    state.hooks << "\t\t\t*ppvObject = reinterpret_cast<" << key << "*>(this);\n";
+    state.hooks << "\t\t\treturn S_OK;\n";
+    state.hooks << "\t\t}";
+
+    // Query all bases
+    for (auto&& base : obj["bases"]) {
+        WrapClassBaseQuery(info, state, base.get<std::string>(), false);
+    }
+}
+
+/// Wrap all class methods
+static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &state, const std::string &key, const std::string& consumerKey, const nlohmann::json &hooks, const nlohmann::json &obj) {
+    // For all bases
+    for (auto&& base : obj["bases"]) {
+        auto&& baseInterface = info.specification["interfaces"][base.get<std::string>()];
+
+        // Wrap base image
+        WrapClassMethods(info, state, key, consumerKey, hooks, baseInterface);
+    }
+
+    // Get the outer revision
+    std::string outerRevision = GetOuterRevision(info, key);
+
+    // Generate wrappers
+    for (auto &&method: obj["vtable"]) {
+        // Common
+        auto methodName = method["name"].get<std::string>();
+
+        // Get parameters
+        auto &&parameters = method["params"];
+
+        // Qualifiers
+        state.hooks << "\tvirtual ";
+
+        // Print return type
+        if (!PrettyPrintType(state.hooks, method["returnType"])) {
+            return false;
+        }
+
+        // Print name of wrapper
+        state.hooks << " " << methodName << "(";
+
+        for (size_t i = 0; i < parameters.size(); i++) {
+            auto&& param = parameters[i];
+
+            // Separator
+            if (i > 0) {
+                state.hooks << ", ";
+            }
+
+            // Dedicated printer
+            if (!PrettyPrintParameter(state.hooks, param["type"], param["name"].get<std::string>())) {
+                return false;
+            }
+        }
+
+        // Begin body
+        state.hooks << ") override {\n";
+
+        // Check if this wrapper is hooked
+        bool isHooked{false};
+        for (auto hook: hooks) {
+            isHooked |= hook.get<std::string>() == methodName;
+        }
+
+        // Structural return type? (kept in for compatability with other wrappers)
+        bool isStructRet = isHooked && IsTypeStruct(method["returnType"]);
+
+        // If structural, declare local value
+        if (isStructRet) {
+            state.hooks << "\t\t";
+
+            // Print return type
+            if (!PrettyPrintType(state.hooks, method["returnType"])) {
+                return false;
+            }
+
+            state.hooks << " out;\n";
+        }
+
+        // Hooked?
+        if (isHooked) {
+            // Print return if needed
+            if (isStructRet || method["returnType"]["type"] == "void") {
+                state.hooks << "\t";
+            } else {
+                state.hooks << "\t\treturn ";
+            }
+
+            // Proxy down to hook
+            state.hooks << "\tHook" << consumerKey << methodName << "(this";
+
+            // Forward parameters
+            for (size_t i = 0; i < parameters.size(); i++) {
+                state.hooks << ", " << parameters[i]["name"].get<std::string>();
+            }
+        } else {
+            // Special generator for interface querying
+            if (methodName == "QueryInterface") {
+                // If unwrapping, simply proxy down the next object
+                state.hooks << "\t\tif (riid == IID_Unwrap) {\n";
+                state.hooks << "\t\t\t/* No ref added */\n";
+                state.hooks << "\t\t\t*ppvObject = next;\n";
+                state.hooks << "\t\t\treturn S_OK;\n";
+                state.hooks << "\t\t}\n\n";
+
+                // Wrap query
+                state.hooks << "\t\t";
+                WrapClassBaseQuery(info, state, outerRevision);
+
+                // Unknown interface, pass down to next object
+                state.hooks << "\n\n\t\treturn next->" << methodName << "(";
+            } else {
+                // Print return if needed
+                if (isStructRet || method["returnType"]["type"] == "void") {
+                    state.hooks << "\t\t";
+                } else {
+                    state.hooks << "\t\treturn ";
+                }
+
+                // Pass down to next object
+                state.hooks << "next->" << methodName << "(";
+            }
+
+            // Unwrap arguments
+            for (size_t i = 0; i < parameters.size(); i++) {
+                if (i != 0) {
+                    state.hooks << ", ";
+                }
+
+                state.hooks << "Unwrap(" << parameters[i]["name"].get<std::string>() << ")";
+            }
+        }
+
+        // If structural, append the output value
+        if (isStructRet) {
+            if (isHooked || !parameters.empty()) {
+                state.hooks << ", ";
+            }
+
+            state.hooks << "&out";
+        }
+
+        // End call
+        state.hooks << ");\n";
+
+        // If structural, return the value!
+        if (isStructRet) {
+            state.hooks << "\t\treturn out;\n";
+        }
+
+        // End function
+        state.hooks << "\t}\n\n";
+    }
+
+    // OK
+    return true;
+}
+
+/// Wrap a hooked class
+static bool WrapClass(const GeneratorInfo &info, ObjectWrappersState &state, const std::string &key, const nlohmann::json &obj) {
+    // Get the outer revision
+    std::string outerRevision = GetOuterRevision(info, key);
+
+    // Common
+    auto&& hooks = obj["hooks"];
+    auto &&interfaces = info.specification["interfaces"];
+
+    // Get vtable
+    auto &&objInterface = interfaces[outerRevision];
+    auto &&objVtbl = objInterface["vtable"];
+
+    // Object common
+    auto name = obj["name"].get<std::string>();
+
+    // Requested key may differ
+    std::string consumerKey = obj.contains("type") ? obj["type"].get<std::string>() : key;
+
+    state.hooks << "class " << key << "Wrapper : public " << outerRevision << " {\n";
+    state.hooks << "public:\n";
+    state.hooks << "\t" << outerRevision << "* next;\n\n";
+    state.hooks << "\t" << obj["state"].get<std::string>() << "* state;\n\n";
+
+    // Generate methods
+    if (!WrapClassMethods(info, state, key, consumerKey, hooks, objInterface)) {
+        return false;
+    }
+
+    state.hooks << "};\n\n";
+
+    // Generate wrapper detouring
+    state.detours << consumerKey << "* CreateDetour(const Allocators& allocators, " << consumerKey << "* object, " << obj["state"].get<std::string>() << "* state) {\n";
+    state.detours << "\tauto* wrapper = new (allocators) " << key << "Wrapper();\n";
+    state.detours << "\twrapper->next = static_cast<" << outerRevision << "*>(object);\n";
+    state.detours << "\twrapper->state = state;\n";
+    state.detours << "\treturn reinterpret_cast<" << consumerKey << "*>(wrapper);\n";
+    state.detours << "}\n\n";
+
+    // Generate table getter
+    state.getters << name << "Table GetTable(" << consumerKey << "* object) {\n";
+    state.getters << "\t" << name << "Table table;\n\n";
+    state.getters << "\tauto wrapper = reinterpret_cast<" << key << "Wrapper*>(object);\n";
+    state.getters << "\ttable.next = wrapper->next;\n";
+    state.getters << "\ttable.bottom = GetVTableRaw<" << key << "TopDetourVTable>(wrapper->next);\n";
+    state.getters << "\ttable.state = wrapper->state;\n";
+    state.getters << "\treturn table;\n";
+    state.getters << "}\n\n";
+
+    // OK
+    return true;
+}
+
+bool Generators::ObjectWrappers(const GeneratorInfo &info, TemplateEngine &templateEngine) {
+    ObjectWrappersState state;
+
+    // Print includes
+    if (info.hooks.contains("includes")) {
+        for (auto &&include: info.hooks["includes"]) {
+            state.includes << "#include <Backends/DX12/" << include.get<std::string>() << ">\n";
+        }
+    }
+
+    // Common
+    auto &&objects = info.hooks["objects"];
+
+    // Wrap all hooked objects
+    for (auto it = objects.begin(); it != objects.end(); ++it) {
+        if (!WrapClass(info, state, it.key(), *it)) {
+            return false;
+        }
+    }
+
+    // Replace keys
+    templateEngine.Substitute("$INCLUDES", state.includes.str().c_str());
+    templateEngine.Substitute("$HOOKS", state.hooks.str().c_str());
+    templateEngine.Substitute("$DETOURS", state.detours.str().c_str());
+    templateEngine.Substitute("$GETTERS", state.getters.str().c_str());
+
+    // OK
+    return true;
+}

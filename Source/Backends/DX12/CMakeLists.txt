@@ -1,6 +1,6 @@
 #----- Config -----#
 
-set(DX12TableType WRAPPER)
+set(DX12TableType OBJECTWRAPPER)
 
 #----- Generator -----#
 
@@ -12,6 +12,7 @@ add_executable(
     Generator/Source/Detour.cpp
     Generator/Source/Wrappers.cpp
     Generator/Source/WrappersImpl.cpp
+    Generator/Source/ObjectWrappers.cpp
     Generator/Source/VTable.cpp
     Generator/Source/Table.cpp
     Generator/Source/DeepCopy.cpp
@@ -51,6 +52,7 @@ set(SpecificationTemplate              ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(DetourTemplate                     ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Detour.ht)
 set(WrappersTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Wrappers.ht)
 set(WrappersImplTemplate               ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Wrappers.cppt)
+set(ObjectWrappersImplTemplate         ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/ObjectWrappers.cppt)
 set(DeepCopyTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DeepCopy.ht)
 set(DeepCopyImplTemplate               ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DeepCopy.cppt)
 set(TableTemplate                      ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Table.ht)
@@ -159,7 +161,26 @@ add_custom_command(
 )
 
 # Handle table type
-if (${DX12TableType} STREQUAL WRAPPER)
+if (${DX12TableType} STREQUAL OBJECTWRAPPER)
+    # Generate the detour header
+    add_custom_command(
+        OUTPUT
+            Layer/Source/ObjectWrappers.Gen.cpp
+        DEPENDS Backends.DX12.Generator
+        DEPENDS
+            ${ObjectWrappersImplTemplate}
+            ${Specification}
+            ${HooksSpec}
+        COMMAND Backends.DX12.Generator
+            -template ${ObjectWrappersImplTemplate}
+            -specjson ${Specification}
+            -hooksjson ${HooksSpec}
+            -gentype objectwrappers
+            -o Layer/Source/ObjectWrappers.Gen.cpp
+    )
+
+    set(GeneratedSources Layer/Source/ObjectWrappers.Gen.cpp)
+elseif (${DX12TableType} STREQUAL WRAPPER)
     # Generate the detour header
     add_custom_command(
         OUTPUT

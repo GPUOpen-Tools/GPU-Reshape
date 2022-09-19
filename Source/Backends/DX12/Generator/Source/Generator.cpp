@@ -21,7 +21,7 @@ int main(int argc, char *const argv[]) {
     program.add_argument("-hooksjson").help("Path of the hooks json file").default_value(std::string(""));
     program.add_argument("-deepcopyjson").help("Path of the deep copy json file").default_value(std::string(""));
     program.add_argument("-template").help("The file to template").required();
-    program.add_argument("-gentype").help("The generation type, one of [specification, detour, wrappers, wrappersimpl, vtable, table, deepcopy, deepcopyimpl, dxiltables, dxilintrinsics]").required();
+    program.add_argument("-gentype").help("The generation type, one of [specification, detour, wrappers, wrappersimpl, objectwrappers, vtable, table, deepcopy, deepcopyimpl, dxiltables, dxilintrinsics]").required();
     program.add_argument("-d3d12h").help("The d3d12 header file").default_value(std::string(""));
     program.add_argument("-o").help("Output of the generated file").required();
 
@@ -131,6 +131,8 @@ int main(int argc, char *const argv[]) {
         generatorResult = Generators::Wrappers(generatorInfo, templateEngine);
     } else if (gentype == "wrappersimpl") {
         generatorResult = Generators::WrappersImpl(generatorInfo, templateEngine);
+    } else if (gentype == "objectwrappers") {
+        generatorResult = Generators::ObjectWrappers(generatorInfo, templateEngine);
     } else if (gentype == "vtable") {
         generatorResult = Generators::VTable(generatorInfo, templateEngine);
     } else if (gentype == "table") {

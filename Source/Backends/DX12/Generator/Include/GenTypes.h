@@ -54,6 +54,12 @@ namespace Generators {
     /// \return success
     bool WrappersImpl(const GeneratorInfo& info, TemplateEngine& templateEngine);
 
+    /// Generate the object wrapper implementation
+    /// \param info generation info
+    /// \param templateEngine template destination
+    /// \return success
+    bool ObjectWrappers(const GeneratorInfo& info, TemplateEngine& templateEngine);
+
     /// Generate the virtual table
     /// \param info generation info
     /// \param templateEngine template destination

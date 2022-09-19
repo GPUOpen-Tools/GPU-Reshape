@@ -1,0 +1,44 @@
+// Common
+#include <Common/Allocators.h>
+#include <Common/GlobalUID.h>
+
+// Layer
+#include <Backends/DX12/Table.Gen.h>
+$INCLUDES
+
+/// Unwrapping UUID
+///  ! May be replaced by faster methods, such as allocation arena checking
+/// {D3CD71B6-5E41-4A9C-BB04-7D8EF27CFB57}
+static const GUID IID_Unwrap = { 0xd3cd71b6, 0x5e41, 0x4a9c, { 0xbb, 0x4, 0x7d, 0x8e, 0xf2, 0x7c, 0xfb, 0x57 } };
+
+/// Unwrap a type derived from IUnknown
+template<typename T, typename = std::enable_if_t<std::is_base_of_v<IUnknown, T>>>
+static T* Unwrap(T* top) {
+    using U = std::remove_const_t<T>;
+
+    U* next;
+    if (top && SUCCEEDED(const_cast<U*>(top)->QueryInterface(IID_Unwrap, reinterpret_cast<void**>(&next)))) {
+        return next;
+    }
+
+    return top;
+}
+
+/// Pass through unwrapper
+template<typename T, typename = std::enable_if_t<!std::is_base_of_v<IUnknown, T>>>
+static const T& Unwrap(const T& top) {
+    return top;
+}
+
+
+/* Hooks */
+
+$HOOKS
+
+/* Detouring */
+
+$DETOURS
+
+/* Getters */
+
+$GETTERS
