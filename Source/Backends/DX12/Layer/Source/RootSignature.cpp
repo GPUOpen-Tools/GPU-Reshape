@@ -4,16 +4,17 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 
-RootRegisterBindingInfo GetBindingInfo(const D3D12_ROOT_SIGNATURE_DESC& source) {
+template<typename T>
+RootRegisterBindingInfo GetBindingInfo(const T& source) {
     uint32_t userRegisterSpaceBound = 0;
 
     // Get the user bound
     for (uint32_t i = 0; i < source.NumParameters; i++) {
-        const D3D12_ROOT_PARAMETER& parameter = source.pParameters[i];
+        const auto& parameter = source.pParameters[i];
         switch (parameter.ParameterType) {
             case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
                 for (uint32_t j = 0; j < parameter.DescriptorTable.NumDescriptorRanges; j++) {
-                    const D3D12_DESCRIPTOR_RANGE& range = parameter.DescriptorTable.pDescriptorRanges[j];
+                    const auto& range = parameter.DescriptorTable.pDescriptorRanges[j];
                     userRegisterSpaceBound = std::max(userRegisterSpaceBound, range.RegisterSpace + 1);
                 }
                 break;
@@ -41,15 +42,21 @@ RootRegisterBindingInfo GetBindingInfo(const D3D12_ROOT_SIGNATURE_DESC& source) 
     return bindingInfo;
 }
 
-HRESULT SerializeRootSignature1_0(DeviceState* state, const D3D12_ROOT_SIGNATURE_DESC& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, ID3DBlob** error) {
+template<typename T>
+HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION version, const T& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, ID3DBlob** error) {
     *outRoot = GetBindingInfo(source);
 
+    // Types
+    using Parameter = std::remove_const_t<std::remove_pointer_t<decltype(T::pParameters)>>;
+    using DescriptorTable = decltype(Parameter::DescriptorTable);
+    using Range = std::remove_const_t<std::remove_pointer_t<decltype(DescriptorTable::pDescriptorRanges)>>;
+
     // Copy parameters
-    auto* parameters = ALLOCA_ARRAY(D3D12_ROOT_PARAMETER, source.NumParameters + 1);
-    std::memcpy(parameters, source.pParameters, sizeof(D3D12_ROOT_PARAMETER) * source.NumParameters);
+    auto* parameters = ALLOCA_ARRAY(Parameter, source.NumParameters + 1);
+    std::memcpy(parameters, source.pParameters, sizeof(Parameter) * source.NumParameters);
 
     // Shader export range
-    D3D12_DESCRIPTOR_RANGE exportRange{};
+    Range exportRange{};
     exportRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
     exportRange.OffsetInDescriptorsFromTableStart = 0;
     exportRange.RegisterSpace = outRoot->space;
@@ -57,21 +64,30 @@ HRESULT SerializeRootSignature1_0(DeviceState* state, const D3D12_ROOT_SIGNATURE
     exportRange.NumDescriptors = 1 + state->exportHost->GetBound();
 
     // Shader export parameter
-    D3D12_ROOT_PARAMETER& exportParameter = parameters[source.NumParameters];
+    Parameter& exportParameter = parameters[source.NumParameters];
     exportParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     exportParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     exportParameter.DescriptorTable.NumDescriptorRanges = 1;
     exportParameter.DescriptorTable.pDescriptorRanges = &exportRange;
 
-    // Copy signature
-    D3D12_ROOT_SIGNATURE_DESC signature = source;
-    signature.pParameters = parameters;
-    signature.NumParameters = source.NumParameters + 1;
+    // Versioned creation info
+    D3D12_VERSIONED_ROOT_SIGNATURE_DESC versioned;
+    versioned.Version = version;
+
+    // Copy signatures
+    if constexpr(std::is_same_v<T, D3D12_ROOT_SIGNATURE_DESC1>) {
+        versioned.Desc_1_1 = source;
+        versioned.Desc_1_1.pParameters = parameters;
+        versioned.Desc_1_1.NumParameters = source.NumParameters + 1;
+    } else {
+        versioned.Desc_1_0 = source;
+        versioned.Desc_1_0.pParameters = parameters;
+        versioned.Desc_1_0.NumParameters = source.NumParameters + 1;
+    }
 
     // Create it
-    return D3D12SerializeRootSignature(
-        &signature,
-        D3D_ROOT_SIGNATURE_VERSION_1,
+    return D3D12SerializeVersionedRootSignature(
+        &versioned,
         out,
         error
     );
@@ -112,15 +128,21 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
             userRootCount = unconverted->Desc_1_0.NumParameters;
 
 #ifndef NDEBUG
-            hr = SerializeRootSignature1_0(table.state, unconverted->Desc_1_0, &serialized, &bindingInfo, &error);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &error);
 #else // NDEBUG
-            hr = SerializeRootSignature1_0(table.state, unconverted->Desc_1_0, &serialized, &bindingInfo, nullptr);
+            hr = SerializeRootSignature(table.state, unconverted->Desc_1_0, &serialized, &bindingInfo, nullptr);
 #endif // NDEBUG
             break;
         }
         case D3D_ROOT_SIGNATURE_VERSION_1_1: {
-            ASSERT(false, "Not implemented");
-            return E_INVALIDARG;
+            userRootCount = unconverted->Desc_1_1.NumParameters;
+
+#ifndef NDEBUG
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &error);
+#else // NDEBUG
+            hr = SerializeRootSignature(table.state, unconverted->Desc_1_1, &serialized, &bindingInfo, nullptr);
+#endif // NDEBUG
+            break;
         }
     }
 
