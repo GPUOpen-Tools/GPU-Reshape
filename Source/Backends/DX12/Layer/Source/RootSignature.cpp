@@ -130,7 +130,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
 #ifndef NDEBUG
             hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &error);
 #else // NDEBUG
-            hr = SerializeRootSignature(table.state, unconverted->Desc_1_0, &serialized, &bindingInfo, nullptr);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, nullptr);
 #endif // NDEBUG
             break;
         }
@@ -140,7 +140,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
 #ifndef NDEBUG
             hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &error);
 #else // NDEBUG
-            hr = SerializeRootSignature(table.state, unconverted->Desc_1_1, &serialized, &bindingInfo, nullptr);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, nullptr);
 #endif // NDEBUG
             break;
         }
