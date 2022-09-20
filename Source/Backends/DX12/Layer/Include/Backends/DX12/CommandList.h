@@ -2,6 +2,7 @@
 
 // Backend
 #include <Backends/DX12/DX12.h>
+#include <Backends/DX12/Layer.h>
 
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreateCommandQueue(ID3D12Device*, const D3D12_COMMAND_QUEUE_DESC*, const IID&, void**);
@@ -22,3 +23,9 @@ void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UIN
 void WINAPI HookID3D12CommandListCopyTextureRegion(ID3D12CommandList* list, const D3D12_TEXTURE_COPY_LOCATION* pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION* pSrc, const D3D12_BOX* pSrcBox);
 void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT NumBarriers, const D3D12_RESOURCE_BARRIER* pBarriers);
 ULONG WINAPI HookID3D12CommandListRelease(ID3D12CommandList* list);
+
+/// Extension hooks
+DX12_C_LINKAGE AGSReturnCode HookAMDAGSDestroyDevice(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences);
+DX12_C_LINKAGE AGSReturnCode HookAMDAGSPushMarker(AGSContext* context, ID3D12GraphicsCommandList* commandList, const char* data);
+DX12_C_LINKAGE AGSReturnCode HookAMDAGSPopMarker(AGSContext* context, ID3D12GraphicsCommandList* commandList);
+DX12_C_LINKAGE AGSReturnCode HookAMDAGSSetMarker(AGSContext* context, ID3D12GraphicsCommandList* commandList, const char* data);

@@ -73,7 +73,7 @@ int main(int32_t argc, const char *const *argv) {
     std::filesystem::path sessionDir = GetIntermediatePath("Bootstrapper/Sessions");
 
     // Clean up all old sessions
-    for (std::filesystem::path file : std::filesystem::directory_iterator(sessionDir)) {
+    for (std::filesystem::path file: std::filesystem::directory_iterator(sessionDir)) {
         std::error_code ignored;
         std::filesystem::remove(file, ignored);
     }
@@ -112,7 +112,17 @@ int main(int32_t argc, const char *const *argv) {
     // Attempt to attach global hook
     Hook = SetWindowsHookEx(WH_CBT, gpa, bootstrapperModule, 0);
     if (!Hook) {
-        std::cerr << "Failed to attach global hook" << std::endl;
+        DWORD error = GetLastError();
+
+        // Format the underlying error
+        char buffer[1024];
+        FormatMessage(
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            buffer, sizeof(buffer), NULL
+        );
+
+        std::cerr << "Failed to attach global hook: " << buffer << std::endl;
 
 #ifndef NDEBUG
         std::cin.ignore();

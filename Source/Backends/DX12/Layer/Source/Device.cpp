@@ -70,20 +70,12 @@ static bool PoolAndInstallFeatures(DeviceState* state) {
 }
 
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
+    ID3D12Device* device,
     IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
     REFIID riid, void **ppDevice,
     const D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info
 ) {
-    // Object
-    ID3D12Device *device{nullptr};
-
-    // Pass down callchain
-    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
-    if (FAILED(hr)) {
-        return hr;
-    }
-
     // Create state
     auto *state = new DeviceState();
     state->object = device;
@@ -93,7 +85,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
     // Query to external object if requested
     if (ppDevice) {
-        hr = device->QueryInterface(riid, ppDevice);
+        HRESULT hr = device->QueryInterface(riid, ppDevice);
         if (FAILED(hr)) {
             return hr;
         }
@@ -194,12 +186,87 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     return S_OK;
 }
 
+HRESULT WINAPI D3D12CreateDeviceGPUOpen(
+    IUnknown *pAdapter,
+    D3D_FEATURE_LEVEL minimumFeatureLevel,
+    REFIID riid, void **ppDevice,
+    const D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info
+) {
+    // Object
+    ID3D12Device *device{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create wrappers and states
+    return D3D12CreateDeviceGPUOpen(
+        device,
+        pAdapter,
+        minimumFeatureLevel,
+        riid,
+        ppDevice,
+        info
+    );
+}
+
 HRESULT WINAPI HookID3D12CreateDevice(
     _In_opt_ IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
     _In_ REFIID riid,
     _COM_Outptr_opt_ void **ppDevice) {
-    return D3D12CreateDeviceGPUOpen(pAdapter, minimumFeatureLevel, riid, ppDevice, D3D12DeviceGPUOpenGPUValidationInfo ? &*D3D12DeviceGPUOpenGPUValidationInfo : nullptr);
+    // Object
+    ID3D12Device *device{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create wrappers and states
+    return D3D12CreateDeviceGPUOpen(
+        device,
+        pAdapter,
+        minimumFeatureLevel,
+        riid,
+        ppDevice,
+        D3D12DeviceGPUOpenGPUValidationInfo ? &*D3D12DeviceGPUOpenGPUValidationInfo : nullptr
+    );
+}
+
+AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams) {
+    // Create with base interface
+    AGSDX12DeviceCreationParams params = *creationParams;
+    params.iid = __uuidof(ID3D12Device);
+
+    // Pass down callchain
+    AGSReturnCode code = D3D12GPUOpenFunctionTableNext.next_AMDAGSCreateDevice(context, &params, extensionParams, returnedParams);
+    if (code != AGS_SUCCESS) {
+        return code;
+    }
+
+    // Queried device
+    decltype(AGSDX12ReturnedParams::pDevice) device;
+
+    // Create wrapper, iid dictated by creation parameters
+    HRESULT hr = D3D12CreateDeviceGPUOpen(
+        reinterpret_cast<ID3D12Device*>(returnedParams->pDevice),
+        creationParams->pAdapter,
+        creationParams->FeatureLevel,
+        creationParams->iid,
+        reinterpret_cast<void**>(&device),
+        D3D12DeviceGPUOpenGPUValidationInfo ? &*D3D12DeviceGPUOpenGPUValidationInfo : nullptr
+    );
+    if (FAILED(hr)) {
+        return AGS_FAILURE;
+    }
+
+    // OK
+    returnedParams->pDevice = device;
+    return AGS_SUCCESS;
 }
 
 ULONG HookID3D12DeviceRelease(ID3D12Device* device) {
