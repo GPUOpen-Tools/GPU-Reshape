@@ -7,7 +7,19 @@
     "Pipeline.h",
     "Fence.h",
     "CommandList.h",
-    "SwapChain.h"
+    "SwapChain.h",
+    "States/DeviceState.h",
+    "States/ResourceState.h",
+    "States/RootSignatureState.h",
+    "States/DescriptorHeapState.h",
+    "States/PipelineState.h",
+    "States/FenceState.h",
+    "States/CommandListState.h",
+    "States/SwapChainState.h",
+    "States/SwapChainState.h",
+    "States/DXGIFactoryState.h",
+    "States/CommandAllocatorState.h",
+    "States/CommandQueueState.h"
   ],
   "files": [
     "d3d12.h",
@@ -45,8 +57,7 @@
         "CreateRootSignature",
         "CreatePipelineState",
         "CreateGraphicsPipelineState",
-        "CreateComputePipelineState",
-        "Release"
+        "CreateComputePipelineState"
       ]
     },
     "ID3D12CommandQueue": {
@@ -55,15 +66,13 @@
       "hooks": [
         "ExecuteCommandLists",
         "Signal",
-        "Wait",
-        "Release"
+        "Wait"
       ]
     },
     "ID3D12CommandAllocator": {
       "name": "CommandAllocator",
       "state": "CommandAllocatorState",
       "hooks": [
-        "Release"
       ]
     },
     "ID3D12GraphicsCommandList": {
@@ -71,7 +80,6 @@
       "state": "CommandListState",
       "type": "ID3D12CommandList",
       "hooks": [
-        "Release",
         "Reset",
         "Close",
         "SetPipelineState",
@@ -86,29 +94,25 @@
       "name": "Fence",
       "state": "FenceState",
       "hooks": [
-        "Release"
       ]
     },
     "ID3D12PipelineState": {
       "name": "Pipeline",
       "state": "PipelineState",
       "hooks": [
-        "Release"
       ]
     },
     "ID3D12Resource": {
       "name": "Resource",
       "state": "ResourceState",
       "hooks": [
-        "Map",
-        "Release"
+        "Map"
       ]
     },
     "ID3D12RootSignature": {
       "name": "RootSignature",
       "state": "RootSignatureState",
       "hooks": [
-        "Release"
       ]
     },
     "ID3D12DescriptorHeap": {
@@ -116,8 +120,7 @@
       "state": "DescriptorHeapState",
       "hooks": [
         "GetCPUDescriptorHandleForHeapStart",
-        "GetGPUDescriptorHandleForHeapStart",
-        "Release"
+        "GetGPUDescriptorHandleForHeapStart"
       ]
     },
     "IDXGISwapChain": {
@@ -128,8 +131,7 @@
         "ResizeBuffers",
         "ResizeBuffers1",
         "Present",
-        "Present1",
-        "Release"
+        "Present1"
       ]
     }
   }

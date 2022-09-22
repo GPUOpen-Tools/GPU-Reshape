@@ -8,6 +8,7 @@
 // Common
 #include <Common/Containers/ReferenceObject.h>
 #include <Common/Enum.h>
+#include <Common/Allocators.h>
 
 // Std
 #include <atomic>
@@ -31,7 +32,7 @@ BIT_SET(PipelineType);
 
 struct PipelineState : public ReferenceObject {
     /// Reference counted destructor
-    virtual ~PipelineState() = default;
+    virtual ~PipelineState();
 
     /// Add an instrument to this module
     /// \param featureBitSet the enabled feature set
@@ -56,6 +57,9 @@ struct PipelineState : public ReferenceObject {
 
     /// Parent state
     DeviceState* parent{};
+
+    /// Owning allocator
+    Allocators allocators;
 
     /// User pipeline
     ///  ! May be nullptr if the top pipeline has been destroyed

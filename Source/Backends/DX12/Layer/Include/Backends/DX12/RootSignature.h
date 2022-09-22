@@ -5,4 +5,3 @@
 
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreateRootSignature(ID3D12Device*, UINT, const void*, SIZE_T, const IID&, void**);
-ULONG WINAPI HookID3D12RootSignatureRelease(ID3D12RootSignature* signature);

@@ -24,6 +24,7 @@ HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COM
 
     // Create state
     auto *state = new CommandQueueState();
+    state->allocators = table.state->allocators;
     state->parent = table.state;
     state->desc = *desc;
     state->object = commandQueue;
@@ -92,6 +93,7 @@ HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMA
 
     // Create state
     auto *state = new CommandAllocatorState();
+    state->allocators = table.state->allocators;
     state->parent = table.state;
 
     // Create detours
@@ -142,6 +144,7 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
 
     // Create state
     auto *state = new CommandListState();
+    state->allocators = table.state->allocators;
     state->parent = table.state;
     state->object = static_cast<ID3D12GraphicsCommandList*>(commandList);
 
@@ -377,71 +380,20 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     device->exportStreamer->Enqueue(table.state, segment);
 }
 
-ULONG WINAPI HookID3D12CommandQueueRelease(ID3D12CommandQueue *queue) {
-    auto table = GetTable(queue);
-
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
+CommandQueueState::~CommandQueueState() {
+    // Clean the streaming state for this queue
+    parent->exportStreamer->Process(this);
 
     // Remove state
-    table.state->parent->states_Queues.Remove(table.state);
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
+    parent->states_Queues.Remove(this);
 }
 
-ULONG WINAPI HookID3D12CommandAllocatorRelease(ID3D12CommandAllocator *allocator) {
-    auto table = GetTable(allocator);
+CommandAllocatorState::~CommandAllocatorState() {
 
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
 }
 
-ULONG HookID3D12CommandListRelease(ID3D12CommandList *list) {
-    auto table = GetTable(list);
+CommandListState::~CommandListState() {
 
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
-}
-
-ULONG HookID3D12GraphicsCommandListRelease(ID3D12GraphicsCommandList *list) {
-    auto table = GetTable(list);
-
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
 }
 
 ID3D12GraphicsCommandList *CommandQueueState::PopCommandList() {

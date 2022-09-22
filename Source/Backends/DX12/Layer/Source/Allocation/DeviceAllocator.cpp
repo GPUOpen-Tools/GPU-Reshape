@@ -1,6 +1,10 @@
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 
 DeviceAllocator::~DeviceAllocator() {
+    if (wcHostPool) {
+        wcHostPool->Release();
+    }
+
     if (allocator) {
         allocator->Release();
     }
@@ -87,8 +91,8 @@ MirrorAllocation DeviceAllocator::AllocateMirror(const D3D12_RESOURCE_DESC& desc
 }
 
 void DeviceAllocator::Free(const Allocation& allocation) {
-    allocation.resource->Release();
     allocation.allocation->Release();
+    allocation.resource->Release();
 }
 
 void DeviceAllocator::Free(const MirrorAllocation& mirrorAllocation) {

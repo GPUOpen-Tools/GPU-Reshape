@@ -173,6 +173,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
 
     // Create state
     auto* state = new RootSignatureState();
+    state->allocators = table.state->allocators;
     state->parent = table.state;
     state->rootBindingInfo = bindingInfo;
     state->userRootCount = userRootCount;
@@ -195,18 +196,6 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     return S_OK;
 }
 
-ULONG WINAPI HookID3D12RootSignatureRelease(ID3D12RootSignature* signature) {
-    auto table = GetTable(signature);
+RootSignatureState::~RootSignatureState() {
 
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
 }

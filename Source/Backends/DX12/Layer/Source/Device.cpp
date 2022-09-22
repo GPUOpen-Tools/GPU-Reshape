@@ -78,6 +78,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 ) {
     // Create state
     auto *state = new DeviceState();
+    state->allocators = {};
     state->object = device;
 
     // Create detours
@@ -269,20 +270,21 @@ AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCre
     return AGS_SUCCESS;
 }
 
-ULONG HookID3D12DeviceRelease(ID3D12Device* device) {
-    auto table = GetTable(device);
-
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
+DeviceState::~DeviceState() {
+    // May not be created
+    if (!exportStreamer) {
+        return;
     }
 
-    // Cleanup
-    delete table.state;
+    // Process all remaining work
+    exportStreamer->Process();
 
-    // OK
-    return 0;
+    // Manual uninstalls
+    metadataController->Uninstall();
+    instrumentationController->Uninstall();
+
+    // Release all features
+    features.clear();
 }
 
 bool GlobalDeviceDetour::Install() {

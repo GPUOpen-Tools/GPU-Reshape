@@ -18,6 +18,7 @@ HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory)
 
     // Create state
     auto *state = new DXGIFactoryState();
+    state->allocators = {};
 
     // Create detours
     factory = CreateDetour(Allocators{}, factory, state);
@@ -49,6 +50,7 @@ HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory
 
     // Create state
     auto *state = new DXGIFactoryState();
+    state->allocators = {};
 
     // Create detours
     factory = CreateDetour(Allocators{}, factory, state);
@@ -80,6 +82,7 @@ HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void
 
     // Create state
     auto *state = new DXGIFactoryState();
+    state->allocators = {};
 
     // Create detours
     factory = CreateDetour(Allocators{}, factory, state);
@@ -99,20 +102,8 @@ HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void
     return S_OK;
 }
 
-ULONG HookIDXGIFactoryRelease(IDXGIFactory* factory) {
-    auto table = GetTable(factory);
+DXGIFactoryState::~DXGIFactoryState() {
 
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
 }
 
 bool GlobalDXGIFactoryDetour::Install() {

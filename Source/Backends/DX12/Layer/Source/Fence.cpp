@@ -17,6 +17,7 @@ HRESULT HookID3D12DeviceCreateFence(ID3D12Device* device, UINT64 nodeMask, D3D12
 
     // Create state
     auto* state = new FenceState();
+    state->allocators = table.state->allocators;
     state->parent = table.state;
 
     // Create detours
@@ -37,20 +38,8 @@ HRESULT HookID3D12DeviceCreateFence(ID3D12Device* device, UINT64 nodeMask, D3D12
     return S_OK;
 }
 
-ULONG WINAPI HookID3D12FenceRelease(ID3D12Fence* fence) {
-    auto table = GetTable(fence);
+FenceState::~FenceState() {
 
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
 }
 
 uint64_t FenceState::GetLatestCommit() {

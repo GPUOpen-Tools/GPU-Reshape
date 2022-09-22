@@ -3,6 +3,10 @@
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
 
+// Common
+#include <Common/Allocators.h>
+
+// Std
 #include <vector>
 
 // Forward declarations
@@ -11,6 +15,8 @@ struct ShaderExportQueueState;
 struct IncrementalFence;
 
 struct CommandQueueState {
+    ~CommandQueueState();
+
     /// Pop a new command list
     /// \return nullptr if failed
     ID3D12GraphicsCommandList* PopCommandList();
@@ -21,6 +27,9 @@ struct CommandQueueState {
 
     /// Parent state
     DeviceState* parent{nullptr};
+
+    /// Owning allocator
+    Allocators allocators;
 
     /// Object
     ID3D12CommandQueue* object{nullptr};

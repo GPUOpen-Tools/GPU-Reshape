@@ -60,6 +60,9 @@ bool DXILSigner::Install() {
 }
 
 DXILSigner::~DXILSigner() {
+    validator.Reset();
+    library.Reset();
+
     if (dxilModule) {
         FreeLibrary(dxilModule);
     }

@@ -66,6 +66,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
 
     // Create state
     auto *state = new PipelineState();
+    state->allocators = table.state->allocators;
     state->parent = table.state;
 
     // Create detours
@@ -97,6 +98,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
 
     // Create state
     auto *state = new GraphicsPipelineState();
+    state->allocators = table.state->allocators;
     state->parent = table.state;
     state->type = PipelineType::Graphics;
     state->object = pipeline;
@@ -190,6 +192,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
 
     // Create state
     auto *state = new ComputePipelineState();
+    state->allocators = table.state->allocators;
     state->parent = table.state;
     state->type = PipelineType::Compute;
     state->object = pipeline;
@@ -240,18 +243,6 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     return S_OK;
 }
 
-ULONG WINAPI HookID3D12PipelineStateRelease(ID3D12PipelineState *pipeline) {
-    auto table = GetTable(pipeline);
+PipelineState::~PipelineState() {
 
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
 }

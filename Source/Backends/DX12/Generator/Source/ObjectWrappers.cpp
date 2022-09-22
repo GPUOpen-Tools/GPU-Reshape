@@ -24,8 +24,8 @@ static void WrapClassBaseQuery(const GeneratorInfo &info, ObjectWrappersState& s
 
     // Query check
     state.hooks << "if (riid == __uuidof(" << key << ")) {\n";
-    state.hooks << "\t\t\tnext->AddRef();\n";
-    state.hooks << "\t\t\t*ppvObject = reinterpret_cast<" << key << "*>(this);\n";
+    state.hooks << "\t\t\tAddRef();\n";
+    state.hooks << "\t\t\t*ppvObject = static_cast<" << key << "*>(this);\n";
     state.hooks << "\t\t\treturn S_OK;\n";
     state.hooks << "\t\t}";
 
@@ -121,8 +121,25 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
             for (size_t i = 0; i < parameters.size(); i++) {
                 state.hooks << ", " << parameters[i]["name"].get<std::string>();
             }
+
+            // If structural, append the output value
+            if (isStructRet) {
+                state.hooks << ", ";
+                state.hooks << "&out";
+            }
+
+            // End call
+            state.hooks << ");\n";
+
+            // If structural, return the value!
+            if (isStructRet) {
+                state.hooks << "\t\treturn out;\n";
+            }
+
+            // End function
+            state.hooks << "\t}\n\n";
         } else {
-            // Special generator for interface querying
+            // Interface querying
             if (methodName == "QueryInterface") {
                 // If unwrapping, simply proxy down the next object
                 state.hooks << "\t\tif (riid == IID_Unwrap) {\n";
@@ -136,10 +153,34 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
                 WrapClassBaseQuery(info, state, outerRevision);
 
                 // Unknown interface, pass down to next object
-                state.hooks << "\n\n\t\treturn next->" << methodName << "(";
-            } else {
+                // TODO: This is not safe at all, ignores reference counting mechanics!
+                state.hooks << "\n\n\t\treturn next->" << methodName << "(riid, ppvObject);\n";
+                state.hooks << "\t}\n\n";
+            }
+
+            // Add a refernece to this object
+            else if (methodName == "AddRef") {
+                state.hooks << "\t\treturn static_cast<ULONG>(++users);\n";
+                state.hooks << "\t}\n\n";
+            }
+
+            // Release a reference to this object
+            else if (methodName == "Release") {
+                state.hooks << "\t\tint64_t references = --users;\n";
+                state.hooks << "\t\tif (references == 0) {\n";
+                state.hooks << "\t\t\tdestroy(state, state->allocators);\n\n";
+                state.hooks << "\t\t\t/* Release the bottom reference */\n";
+                state.hooks << "\t\t\tULONG bottom = next->Release();\n";
+                state.hooks << "\t\t\t(void)bottom;\n";
+                state.hooks << "\t\t}\n\n";
+                state.hooks << "\t\treturn static_cast<ULONG>(references);\n";
+                state.hooks << "\t}\n\n";
+            }
+
+            // Regular hook
+            else {
                 // Print return if needed
-                if (isStructRet || method["returnType"]["type"] == "void") {
+                if (method["returnType"]["type"] == "void") {
                     state.hooks << "\t\t";
                 } else {
                     state.hooks << "\t\treturn ";
@@ -147,37 +188,23 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
 
                 // Pass down to next object
                 state.hooks << "next->" << methodName << "(";
-            }
 
-            // Unwrap arguments
-            for (size_t i = 0; i < parameters.size(); i++) {
-                if (i != 0) {
-                    state.hooks << ", ";
+                // Unwrap arguments
+                for (size_t i = 0; i < parameters.size(); i++) {
+                    if (i != 0) {
+                        state.hooks << ", ";
+                    }
+
+                    state.hooks << "Unwrap(" << parameters[i]["name"].get<std::string>() << ")";
                 }
 
-                state.hooks << "Unwrap(" << parameters[i]["name"].get<std::string>() << ")";
+                // End call
+                state.hooks << ");\n";
+
+                // End function
+                state.hooks << "\t}\n\n";
             }
         }
-
-        // If structural, append the output value
-        if (isStructRet) {
-            if (isHooked || !parameters.empty()) {
-                state.hooks << ", ";
-            }
-
-            state.hooks << "&out";
-        }
-
-        // End call
-        state.hooks << ");\n";
-
-        // If structural, return the value!
-        if (isStructRet) {
-            state.hooks << "\t\treturn out;\n";
-        }
-
-        // End function
-        state.hooks << "\t}\n\n";
     }
 
     // OK
@@ -203,16 +230,28 @@ static bool WrapClass(const GeneratorInfo &info, ObjectWrappersState &state, con
     // Requested key may differ
     std::string consumerKey = obj.contains("type") ? obj["type"].get<std::string>() : key;
 
-    state.hooks << "class " << key << "Wrapper : public " << outerRevision << " {\n";
+    // Begin class
+    state.hooks << "class " << key << "Wrapper final : public " << outerRevision << " {\n";
     state.hooks << "public:\n";
+
+    // Member chain
+    state.hooks << "\t/* Next object on this chain */\n";
     state.hooks << "\t" << outerRevision << "* next;\n\n";
+
+    // State
+    state.hooks << "\t/* Internal state of this object */\n";
     state.hooks << "\t" << obj["state"].get<std::string>() << "* state;\n\n";
+
+    // User counter
+    state.hooks << "\t/* Internal user count */\n";
+    state.hooks << "\tstd::atomic<int64_t> users{1};\n\n";
 
     // Generate methods
     if (!WrapClassMethods(info, state, key, consumerKey, hooks, objInterface)) {
         return false;
     }
 
+    // End class
     state.hooks << "};\n\n";
 
     // Generate wrapper detouring
@@ -220,13 +259,13 @@ static bool WrapClass(const GeneratorInfo &info, ObjectWrappersState &state, con
     state.detours << "\tauto* wrapper = new (allocators) " << key << "Wrapper();\n";
     state.detours << "\twrapper->next = static_cast<" << outerRevision << "*>(object);\n";
     state.detours << "\twrapper->state = state;\n";
-    state.detours << "\treturn reinterpret_cast<" << consumerKey << "*>(wrapper);\n";
+    state.detours << "\treturn static_cast<" << consumerKey << "*>(wrapper);\n";
     state.detours << "}\n\n";
 
     // Generate table getter
     state.getters << name << "Table GetTable(" << consumerKey << "* object) {\n";
     state.getters << "\t" << name << "Table table;\n\n";
-    state.getters << "\tauto wrapper = reinterpret_cast<" << key << "Wrapper*>(object);\n";
+    state.getters << "\tauto wrapper = static_cast<" << key << "Wrapper*>(object);\n";
     state.getters << "\ttable.next = wrapper->next;\n";
     state.getters << "\ttable.bottom = GetVTableRaw<" << key << "TopDetourVTable>(wrapper->next);\n";
     state.getters << "\ttable.state = wrapper->state;\n";

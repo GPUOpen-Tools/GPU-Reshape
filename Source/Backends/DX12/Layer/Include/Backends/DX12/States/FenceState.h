@@ -3,10 +3,15 @@
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
 
+// Common
+#include <Common/Allocators.h>
+
 // Forward declarations
 struct DeviceState;
 
 struct FenceState {
+    ~FenceState();
+
     /// Check if a commit has been completed
     /// \param commit the commit to check for
     /// \return true if completed
@@ -32,6 +37,9 @@ struct FenceState {
 
     /// Parent state
     DeviceState* parent{nullptr};
+
+    /// Owning allocator
+    Allocators allocators;
 
     /// Fence object
     ID3D12Fence* object{nullptr};

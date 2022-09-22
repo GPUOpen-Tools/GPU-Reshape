@@ -18,6 +18,7 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
 
         // Create state
         auto* bufferState = new ResourceState();
+        state->allocators = state->allocators;
         bufferState->parent = state->parent;
 
         // Create detours
@@ -29,6 +30,7 @@ template<typename T, typename U>
 static T* CreateSwapChainState(const DXGIFactoryTable& table, DeviceState* device, T* swapChain, U* desc) {
     // Create state
     auto* state = new SwapChainState();
+    state->allocators = table.state->allocators;
     state->parent = device;
     state->object = swapChain;
     state->buffers.resize(desc->BufferCount);
@@ -296,18 +298,6 @@ HRESULT WINAPI HookIDXGISwapChainPresent1(IDXGISwapChain1* swapchain, UINT SyncI
     return S_OK;
 }
 
-ULONG WINAPI HookIDXGISwapChainRelease(IDXGISwapChain* swapChain) {
-    auto table = GetTable(swapChain);
+SwapChainState::~SwapChainState() {
 
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
 }

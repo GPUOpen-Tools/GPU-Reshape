@@ -19,6 +19,7 @@ HRESULT HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const 
 static ID3D12Resource* CreateResourceState(const DeviceTable& table, ID3D12Resource* resource) {
     // Create state
     auto* state = new ResourceState();
+    state->allocators = table.state->allocators;
     state->parent = table.state;
 
     // Create detours
@@ -115,18 +116,6 @@ HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12
     return S_OK;
 }
 
-ULONG HookID3D12ResourceRelease(ID3D12Resource* resource) {
-    auto table = GetTable(resource);
+ResourceState::~ResourceState() {
 
-    // Pass down callchain
-    LONG users = table.bottom->next_Release(table.next);
-    if (users) {
-        return users;
-    }
-
-    // Cleanup
-    delete table.state;
-
-    // OK
-    return 0;
 }

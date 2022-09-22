@@ -16,6 +16,7 @@
 #include <Common/ComRef.h>
 #include <Common/Registry.h>
 #include <Common/Containers/SlotArray.h>
+#include <Common/Allocators.h>
 
 // Forward declarations
 class ShaderSet;
@@ -31,6 +32,8 @@ class ShaderExportStreamer;
 class ShaderSGUIDHost;
 
 struct DeviceState {
+    ~DeviceState();
+
     /// Owned object
     ID3D12Device* object{nullptr};
 
