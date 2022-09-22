@@ -70,7 +70,7 @@ int main(int32_t argc, const char *const *argv) {
     std::cout << "OK." << std::endl;
 
     // Host all sessions under intermediate
-    std::filesystem::path sessionDir = GetIntermediatePath("Bootstrapper/Sessions");
+    std::filesystem::path sessionDir = GetIntermediatePath("Bootstrapper\\Sessions");
 
     // Clean up all old sessions
     for (std::filesystem::path file: std::filesystem::directory_iterator(sessionDir)) {
@@ -85,7 +85,7 @@ int main(int32_t argc, const char *const *argv) {
     std::filesystem::path sessionPath = sessionDir / sessionName;
 
     // Copy current bootstrapper
-    std::filesystem::copy("Backends.DX12.Bootstrapper.dll", sessionPath);
+    std::filesystem::copy(GetCurrentModuleDirectory() / "Backends.DX12.Bootstrapper.dll", sessionPath);
 
     // Load the boostrapper
     HMODULE bootstrapperModule = LoadLibraryW(sessionPath.wstring().c_str());

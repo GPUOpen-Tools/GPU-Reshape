@@ -13,9 +13,9 @@
 #include <dxgi1_6.h>
 
 // Std
+#include <cstring>
 #include <mutex>
 #include <fstream>
-#include <cstring>
 #include <cwchar>
 
 // Detour
@@ -23,7 +23,7 @@
 
 /// Enables naive debugging
 #ifndef NDEBUG
-#define ENABLE_LOGGING 1
+#define ENABLE_LOGGING 0
 #else // NDEBUG
 #define ENABLE_LOGGING 0
 #endif // NDEBUG

@@ -308,7 +308,7 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
         auto* stream = static_cast<uint8_t*>(deviceAllocator->Map(streamInfo.allocation.host));
 
         // Size of the stream
-        size_t size = elementCount * sizeof(uint32_t);
+        size_t size = std::min<uint64_t>(elementCount * sizeof(uint32_t), streamInfo.allocation.host.allocation->GetSize());
 
         // Copy into stream
         MessageStream messageStream;
