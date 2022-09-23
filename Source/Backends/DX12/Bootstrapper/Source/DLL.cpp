@@ -64,6 +64,9 @@ HANDLE InitializationEvent;
 /// Has the layer attempted initialization prior?
 bool HasInitializedOrFailed;
 
+/// Is this handle the owning instance?
+bool IsOwningBootstrapper;
+
 /// Bootstrapped layer
 HMODULE LayerModule;
 HMODULE D3D12Module;
@@ -72,6 +75,9 @@ HMODULE AMDAGSModule;
 
 /// Layer function table
 D3D12GPUOpenFunctionTable LayerFunctionTable;
+
+/// Well documented image base
+extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 /// Prototypes
 void DetourInitialAMDAGS(HMODULE, bool);
@@ -106,6 +112,20 @@ struct LogContext {
 };
 #endif // ENABLE_LOGGING
 
+void BootstrapCheckLibrary(HMODULE& handle, const wchar_t* name, bool native) {
+    // Early out if already loaded
+    if (handle) {
+        return;
+    }
+
+    // Get actual module handle
+    if (native) {
+        handle = LoadLibraryExW(name, nullptr, 0x0);
+    } else {
+        handle = Kernel32LoadLibraryExWOriginal(name, nullptr, 0x0);
+    }
+}
+
 void BootstrapLayer(const char* invoker, bool native) {
     // No re-entry if an attempt has already been made
     if (HasInitializedOrFailed) {
@@ -139,19 +159,10 @@ void BootstrapLayer(const char* invoker, bool native) {
     // Copy current bootstrapper
     std::filesystem::copy(path, sessionPath);
 
-    // Flag that the bootstrapper is active
-    _putenv_s("GPUOPEN_DX12_BOOTSTRAPPER", "1");
-
     // Get actual module handles
-    if (native) {
-        D3D12Module = LoadLibraryExW(kD3D12ModuleNameW, nullptr, 0x0);
-        DXGIModule = LoadLibraryExW(kDXGIModuleNameW, nullptr, 0x0);
-        AMDAGSModule = LoadLibraryExW(kAMDAGSModuleNameW, nullptr, 0x0);
-    } else {
-        D3D12Module = Kernel32LoadLibraryExWOriginal(kD3D12ModuleNameW, nullptr, 0x0);
-        DXGIModule = Kernel32LoadLibraryExWOriginal(kDXGIModuleNameW, nullptr, 0x0);
-        AMDAGSModule = Kernel32LoadLibraryExWOriginal(kAMDAGSModuleNameW, nullptr, 0x0);
-    }
+    BootstrapCheckLibrary(D3D12Module, kD3D12ModuleNameW, native);
+    BootstrapCheckLibrary(DXGIModule, kDXGIModuleNameW, native);
+    BootstrapCheckLibrary(AMDAGSModule, kAMDAGSModuleNameW, native);
 
     // Failed?
     // Note: AMDAGSModule is optional, extension service
@@ -163,31 +174,31 @@ void BootstrapLayer(const char* invoker, bool native) {
 
     // Get device creation if not hooked
     if (!DetourFunctionTable.next_D3D12CreateDeviceOriginal) {
-        DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(D3D12Module, "D3D12CreateDevice"));
+        DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12CreateDevice"));
     }
 
     // Get factory creation 0 if not hooked
     if (!DetourFunctionTable.next_CreateDXGIFactoryOriginal) {
-        DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(GetProcAddress(DXGIModule, "CreateDXGIFactory"));
+        DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory"));
     }
 
     // Get factory creation 1 if not hooked
     if (!DetourFunctionTable.next_CreateDXGIFactory1Original) {
-        DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(GetProcAddress(DXGIModule, "CreateDXGIFactory1"));
+        DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory1"));
     }
 
     // Get factory creation 2 if not hooked
     if (!DetourFunctionTable.next_CreateDXGIFactory2Original) {
-        DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(DXGIModule, "CreateDXGIFactory2"));
+        DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory2"));
     }
 
     // Get amd ags if not hooked
     if (!DetourFunctionTable.next_AMDAGSCreateDevice) {
-        DetourFunctionTable.next_AMDAGSCreateDevice  = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(GetProcAddress(AMDAGSModule, "agsDriverExtensionsDX12_CreateDevice"));
-        DetourFunctionTable.next_AMDAGSDestroyDevice = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(GetProcAddress(AMDAGSModule, "agsDriverExtensionsDX12_DestroyDevice"));
-        DetourFunctionTable.next_AMDAGSPushMarker    = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(GetProcAddress(AMDAGSModule, "agsDriverExtensionsDX12_PushMarker"));
-        DetourFunctionTable.next_AMDAGSPopMarker     = reinterpret_cast<PFN_AMD_AGS_POP_MARKER>(GetProcAddress(AMDAGSModule, "agsDriverExtensionsDX12_PopMarker"));
-        DetourFunctionTable.next_AMDAGSSetMarker     = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(GetProcAddress(AMDAGSModule, "agsDriverExtensionsDX12_SetMarker"));
+        DetourFunctionTable.next_AMDAGSCreateDevice  = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_CreateDevice"));
+        DetourFunctionTable.next_AMDAGSDestroyDevice = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_DestroyDevice"));
+        DetourFunctionTable.next_AMDAGSPushMarker    = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_PushMarker"));
+        DetourFunctionTable.next_AMDAGSPopMarker     = reinterpret_cast<PFN_AMD_AGS_POP_MARKER>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_PopMarker"));
+        DetourFunctionTable.next_AMDAGSSetMarker     = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_SetMarker"));
     }
 
     // User attempting to load d3d12.dll, warranting bootstrapping of the layer
@@ -307,7 +318,7 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
 }
 
 void TryLoadEmbeddedAMDAGS(HMODULE handle) {
-    if (!DetourFunctionTable.next_AMDAGSCreateDevice && GetProcAddress(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr) {
+    if (!DetourFunctionTable.next_AMDAGSCreateDevice && Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr) {
         DetourInitialAMDAGS(handle, false);
     }
 }
@@ -409,6 +420,7 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
 }
 
 DWORD DeferredInitialization(void*) {
+    // Logging initialization
 #if ENABLE_LOGGING
     // Get executable filename
     char filename[2048];
@@ -422,13 +434,18 @@ DWORD DeferredInitialization(void*) {
 
     // Open at path
     LoggingFile.open(logPath);
+
+    LogContext{} << "Function table:\n" << std::hex
+                 << "LoadLibraryA: 0x" << reinterpret_cast<void *>(HookLoadLibraryA) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryAOriginal) << "\n"
+                 << "LoadLibraryW: 0x" << reinterpret_cast<void *>(HookLoadLibraryW) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryWOriginal) << "\n"
+                 << "LoadLibraryExA: 0x" << reinterpret_cast<void *>(HookLoadLibraryExA) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryExAOriginal) << "\n"
+                 << "LoadLibraryExW: 0x" << reinterpret_cast<void *>(HookLoadLibraryExW) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryExWOriginal) << "\n"
+                 << "GetProcAddress: 0x" << reinterpret_cast<void *>(HookGetProcAddress) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32GetProcAddressOriginal) << "\n";
 #endif // ENABLE_LOGGING
 
     // Attempt to find module, directly load the layer if available
     //  i.e. Already loaded or scheduled to be
-    HMODULE module{nullptr};
-    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, kD3D12ModuleNameW, &module)
-        || GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, kDXGIModuleNameW, &module)) {
+    if (DXGIModule || D3D12Module) {
         // ! Call native LoadLibraryW, not detoured
         BootstrapLayer("Entry detected mounted d3d12 module", false);
         return 0;
@@ -510,23 +527,23 @@ void DetourInitialAMDAGS(HMODULE handle, bool insideTransaction) {
     }
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSCreateDevice = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(GetProcAddress(handle, "agsDriverExtensionsDX12_CreateDevice"));
+    DetourFunctionTable.next_AMDAGSCreateDevice = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSCreateDevice), reinterpret_cast<void*>(HookAMDAGSCreateDevice));
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSDestroyDevice = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(GetProcAddress(handle, "agsDriverExtensionsDX12_DestroyDevice"));
+    DetourFunctionTable.next_AMDAGSDestroyDevice = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_DestroyDevice"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDestroyDevice), reinterpret_cast<void*>(HookAMDAGSDestroyDevice));
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSPushMarker = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(GetProcAddress(handle, "agsDriverExtensionsDX12_PushMarker"));
+    DetourFunctionTable.next_AMDAGSPushMarker = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_PushMarker"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPushMarker), reinterpret_cast<void*>(HookAMDAGSPushMarker));
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSPopMarker = reinterpret_cast<PFN_AMD_AGS_POP_MARKER>(GetProcAddress(handle, "agsDriverExtensionsDX12_PopMarker"));
+    DetourFunctionTable.next_AMDAGSPopMarker = reinterpret_cast<PFN_AMD_AGS_POP_MARKER>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_PopMarker"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPopMarker), reinterpret_cast<void*>(HookAMDAGSPopMarker));
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSSetMarker = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(GetProcAddress(handle, "agsDriverExtensionsDX12_SetMarker"));
+    DetourFunctionTable.next_AMDAGSSetMarker = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_SetMarker"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSSetMarker), reinterpret_cast<void*>(HookAMDAGSSetMarker));
 
     // Commit if needed
@@ -548,37 +565,35 @@ void DetourInitialAMDAGS(HMODULE handle, bool insideTransaction) {
 }
 
 void DetourInitialCreation() {
-    HMODULE handle = nullptr;
-
     // Attempt to find d3d12 module
-    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, kD3D12ModuleNameW, &handle)) {
+    if (GetModuleHandleExW(0x0, kD3D12ModuleNameW, &D3D12Module)) {
         // Attach against original address
-        DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(handle, "D3D12CreateDevice"));
+        DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(D3D12Module, "D3D12CreateDevice"));
         DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
     }
 
     // Attempt to find dxgi module
-    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, kDXGIModuleNameW, &handle)) {
+    if (GetModuleHandleExW(0x0, kDXGIModuleNameW, &DXGIModule)) {
         // Attach against original address
-        DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(GetProcAddress(handle, "CreateDXGIFactory"));
+        DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(GetProcAddress(DXGIModule, "CreateDXGIFactory"));
         DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
 
         // Attach against original address
-        DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(GetProcAddress(handle, "CreateDXGIFactory1"));
+        DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(GetProcAddress(DXGIModule, "CreateDXGIFactory1"));
         if (DetourFunctionTable.next_CreateDXGIFactory1Original) {
             DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
         }
 
         // Attach against original address
-        DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(handle, "CreateDXGIFactory2"));
+        DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(DXGIModule, "CreateDXGIFactory2"));
         if (DetourFunctionTable.next_CreateDXGIFactory2Original) {
             DetourAttach(&reinterpret_cast<void *&>(DetourFunctionTable.next_CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
         }
     }
 
     // Attempt to find amd ags module
-    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, kAMDAGSModuleNameW, &handle)) {
-        DetourInitialAMDAGS(handle, true);
+    if (GetModuleHandleExW(0x0, kAMDAGSModuleNameW, &AMDAGSModule)) {
+        DetourInitialAMDAGS(AMDAGSModule, true);
     }
 }
 
@@ -623,17 +638,47 @@ void DetachInitialCreation() {
     }
 }
 
+/// Check if the process is already bootstrapped
+static bool IsBootstrapped() {
+    char buffer[32];
+
+    // Load the bootstrapper env flag
+    size_t length;
+    getenv_s(&length, buffer, "GPUOPEN_DX12_BOOTSTRAPPER");
+
+    // If set to "1", the bootstrapper attached this layer
+    return !std::strcmp(buffer, "1");
+}
+
+/// Pin this module
+static void PinBootstrapper() {
+    wchar_t buffer[FILENAME_MAX]{0};
+
+    // Get module name of current image
+    GetModuleFileNameW((HINSTANCE)&__ImageBase, buffer, FILENAME_MAX);
+
+    // Failure is realistically fatal, but let it continue
+    if (!buffer[0]) {
+        return;
+    }
+
+    // Pin module
+    HMODULE ignore;
+    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, buffer, &ignore);
+}
+
 /// DLL entrypoint
 BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     if (DetourIsHelperProcess()) {
         return TRUE;
     }
 
-#if ENABLE_WHITELIST
-    // Get executable filename
-    char filename[2048];
-    GetModuleFileName(nullptr, filename, sizeof(filename));
+    // If this is not the owning bootstrapper, and it is currently bootstrapped elsewhere, report OK
+    if (!IsOwningBootstrapper && IsBootstrapped()) {
+        return TRUE;
+    }
 
+#if ENABLE_WHITELIST
     // Whitelist executable
     if (!std::ends_with(filename, "Backends.DX12.Service.exe") && !std::ends_with(filename, "ModelViewer.exe")) {
         // Note: This is a terrible idea, hook will attempt to load over and over
@@ -643,6 +688,15 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
 
     // Attach?
     if (dwReason == DLL_PROCESS_ATTACH) {
+        // Flag that the bootstrapper is active
+        _putenv_s("GPUOPEN_DX12_BOOTSTRAPPER", "1");
+
+        // This dll is now the effective owner
+        IsOwningBootstrapper = true;
+
+        // Ensure the bootstrapper stays pinned in the process, re-entrant bootstrapping is a mess
+        PinBootstrapper();
+
         // Create deferred initialization event
         InitializationEvent = CreateEvent(nullptr, true, false, nullptr);
 
@@ -686,12 +740,12 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         Kernel32LoadLibraryExWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_W>(GetProcAddress(kernel32Module, "LoadLibraryExW"));
         DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
 
-        // Attempt to create initial detours
-        DetourInitialCreation();
-
         // Attach against original address
         Kernel32GetProcAddressOriginal = reinterpret_cast<PFN_GET_PROC_ADDRESS>(GetProcAddress(kernel32Module, "GetProcAddress"));
-        DetourAttach(&reinterpret_cast<void*&>(Kernel32GetProcAddressOriginal), reinterpret_cast<void*>(HookGetProcAddress));
+        DetourAttach(&reinterpret_cast<void *&>(Kernel32GetProcAddressOriginal), reinterpret_cast<void *>(HookGetProcAddress));
+
+        // Attempt to create initial detours
+        DetourInitialCreation();
 
         // Commit all transactions
         if (FAILED(DetourTransactionCommit())) {
@@ -732,6 +786,20 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
             if (FAILED(DetourTransactionCommit())) {
                 return FALSE;
             }
+
+            // Unload if attached
+            if (D3D12Module) {
+                FreeLibrary(D3D12Module);
+            }
+            if (DXGIModule) {
+                FreeLibrary(DXGIModule);
+            }
+            if (AMDAGSModule) {
+                FreeLibrary(AMDAGSModule);
+            }
+
+            // Flag that the bootstrapper is inactive
+            _putenv_s("GPUOPEN_DX12_BOOTSTRAPPER", "0");
         }
     }
 
