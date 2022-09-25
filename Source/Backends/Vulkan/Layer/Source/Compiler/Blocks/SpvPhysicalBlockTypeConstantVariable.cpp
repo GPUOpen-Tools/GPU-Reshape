@@ -21,6 +21,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
         switch (ctx->GetOp()) {
             default:
                 break;
+
             case SpvOpTypeInt: {
                 Backend::IL::IntType type;
                 type.bitWidth = ctx++;
@@ -84,6 +85,28 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 type.count = ctx++;
 
                 typeMap.AddType(ctx.GetResult(), type);
+                break;
+            }
+
+            case SpvOpTypeRuntimeArray: {
+                Backend::IL::ArrayType type;
+                type.elementType = typeMap.GetTypeFromId(ctx++);
+                type.count = 0;
+
+                typeMap.AddType(ctx.GetResult(), type);
+                break;
+            }
+
+            case SpvOpTypeSampler: {
+                typeMap.AddType(ctx.GetResult(), Backend::IL::SamplerType{});
+            }
+
+            case SpvOpTypeSampledImage: {
+                // Underlying image
+                const Backend::IL::Type *imageType = typeMap.GetTypeFromId(ctx++);
+
+                // Set to image
+                typeMap.AddMapping(ctx.GetResult(), imageType);
                 break;
             }
 
@@ -167,6 +190,28 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 }
 
                 typeMap.AddType(ctx.GetResult(), function);
+                break;
+            }
+
+            case SpvOpTypeStruct: {
+                Backend::IL::StructType _struct;
+
+                while (ctx.HasPendingWords()) {
+                    _struct.memberTypes.push_back(typeMap.GetTypeFromId(ctx++));
+                }
+
+                typeMap.AddType(ctx.GetResult(), _struct);
+                break;
+            }
+
+            case SpvOpTypeEvent:
+            case SpvOpTypeDeviceEvent:
+            case SpvOpTypeReserveId:
+            case SpvOpTypeQueue:
+            case SpvOpTypePipe:
+            case SpvOpTypeForwardPointer:
+            case SpvOpTypeOpaque: {
+                typeMap.AddType(ctx.GetResult(), Backend::IL::UnexposedType{});
                 break;
             }
         }

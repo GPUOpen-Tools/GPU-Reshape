@@ -71,6 +71,14 @@ struct SpvTypeMap {
         return it->second;
     }
 
+    /// Add a mapping
+    /// \param id destination id
+    /// \param type type to be mapped
+    void AddMapping(SpvId id, const Backend::IL::Type* type) {
+        spvMap[type] = id;
+        idMap[id] = type;
+    }
+
 private:
     SpvId EmitSpvType(const Backend::IL::Type* type) {
         switch (type->kind) {
@@ -100,11 +108,6 @@ private:
             case Backend::IL::TypeKind::Function:
                 return EmitSpvType(static_cast<const Backend::IL::FunctionType*>(type));
         }
-    }
-
-    void AddMapping(SpvId id, const Backend::IL::Type* type) {
-        spvMap[type] = id;
-        idMap[id] = type;
     }
 
     SpvId EmitSpvType(const Backend::IL::IntType* type) {
