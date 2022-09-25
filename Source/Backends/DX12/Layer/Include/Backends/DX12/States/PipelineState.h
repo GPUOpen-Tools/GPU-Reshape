@@ -17,7 +17,6 @@
 #include <map>
 
 // Forward declarations
-struct DeviceState;
 struct RootSignatureState;
 struct ShaderState;
 
@@ -56,7 +55,7 @@ struct PipelineState : public ReferenceObject {
     }
 
     /// Parent state
-    DeviceState* parent{};
+    ID3D12Device* parent{};
 
     /// Owning allocator
     Allocators allocators;

@@ -6,9 +6,6 @@
 // Common
 #include <Common/Allocators.h>
 
-// Forward declarations
-struct DeviceState;
-
 struct FenceState {
     ~FenceState();
 
@@ -36,7 +33,7 @@ struct FenceState {
     }
 
     /// Parent state
-    DeviceState* parent{nullptr};
+    ID3D12Device* parent{nullptr};
 
     /// Owning allocator
     Allocators allocators;

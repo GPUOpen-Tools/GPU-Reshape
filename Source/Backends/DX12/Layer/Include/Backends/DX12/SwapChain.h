@@ -13,3 +13,4 @@ HRESULT WINAPI HookIDXGISwapChainResizeBuffers(IDXGISwapChain1* _this, UINT Buff
 HRESULT WINAPI HookIDXGISwapChainPresent(IDXGISwapChain1* swapchain, UINT SyncInterval, UINT PresentFlags);
 HRESULT WINAPI HookIDXGISwapChainPresent1(IDXGISwapChain1* swapchain, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters);
 HRESULT WINAPI HookIDXGISwapChainResizeBuffers1(IDXGISwapChain1* _this, UINT BufferCount, UINT Width, UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags, const UINT* pCreationNodeMask, IUnknown* const* ppPresentQueue);
+HRESULT WINAPI HookIDXGISwapChainGetDevice(IDXGISwapChain* _this, REFIID riid, void **ppDevice);

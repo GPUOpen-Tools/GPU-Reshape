@@ -4,9 +4,7 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 #include <Backends/DX12/Compiler/DXStream.h>
 #include <Backends/DX12/Compiler/DXJob.h>
-
-/// Dump byte stream to file?
-#define DXBC_DUMP_STREAM 1
+#include <Backends/DX12/Config.h>
 
 // Special includes
 #if DXBC_DUMP_STREAM

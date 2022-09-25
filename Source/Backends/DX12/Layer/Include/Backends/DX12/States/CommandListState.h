@@ -14,7 +14,7 @@ struct CommandListState {
     ~CommandListState();
 
     /// Parent state
-    DeviceState* parent{nullptr};
+    ID3D12Device* parent{nullptr};
 
     /// Owning allocator
     Allocators allocators;

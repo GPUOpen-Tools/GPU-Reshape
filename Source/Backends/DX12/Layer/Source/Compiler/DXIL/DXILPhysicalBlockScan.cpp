@@ -10,10 +10,6 @@
 // Common
 #include <Common/Allocators.h>
 
-/// Dump bit stream to file?
-///   Useful with llvm-bcanalyzer
-#define DXIL_DUMP_BITSTREAM 1
-
 // Special includes
 #if DXIL_DUMP_BITSTREAM
 // Layer
@@ -25,9 +21,6 @@
 // Std
 #   include <fstream>
 #endif // DXIL_DUMP_BITSTREAM
-
-// Validation mode for 1:1 read / writes
-#define DXIL_VALIDATE_MIRROR 1
 
 /*
  * The LLVM bit-stream specification is easy to understand, that is once you've already implemented it.

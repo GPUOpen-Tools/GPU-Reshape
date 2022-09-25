@@ -340,8 +340,8 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     table->parent->logBuffer.Add("Vulkan", Format(
         "Instrumented {} shaders ({} ms) and {} pipelines ({} ms), total {} ms",
         batch->dirtyShaderModules.size(),
-        batch->dirtyPipelines.size(),
         msShaders,
+        batch->dirtyPipelines.size(),
         msPipelines,
         msTotal
     ));

@@ -337,8 +337,8 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     device->logBuffer.Add("DX12", Format(
         "Instrumented {} shaders ({} ms) and {} pipelines ({} ms), total {} ms",
         batch->dirtyShaders.size(),
-        batch->dirtyPipelines.size(),
         msShaders,
+        batch->dirtyPipelines.size(),
         msPipelines,
         msTotal
     ));

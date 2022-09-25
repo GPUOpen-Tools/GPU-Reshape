@@ -16,11 +16,11 @@ HRESULT HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const 
     return S_OK;
 }
 
-static ID3D12Resource* CreateResourceState(const DeviceTable& table, ID3D12Resource* resource) {
+static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTable& table, ID3D12Resource* resource) {
     // Create state
     auto* state = new ResourceState();
     state->allocators = table.state->allocators;
-    state->parent = table.state;
+    state->parent = parent;
 
     // Create detours
     return CreateDetour(Allocators{}, resource, state);
@@ -39,7 +39,7 @@ HRESULT HookID3D12DeviceCreateCommittedResource(ID3D12Device* device, const D3D1
     }
 
     // Create state
-    resource = CreateResourceState(table, resource);
+    resource = CreateResourceState(device, table, resource);
 
     // Query to external object if requested
     if (pResource) {
@@ -69,7 +69,7 @@ HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * 
     }
 
     // Create state
-    resource = CreateResourceState(table, resource);
+    resource = CreateResourceState(device, table, resource);
 
     // Query to external object if requested
     if (pResource) {
@@ -99,7 +99,7 @@ HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12
     }
 
     // Create state
-    resource = CreateResourceState(table, resource);
+    resource = CreateResourceState(device, table, resource);
 
     // Query to external object if requested
     if (pResource) {
@@ -114,6 +114,13 @@ HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12
 
     // OK
     return S_OK;
+}
+
+HRESULT WINAPI HookID3D12ResourceGetDevice(ID3D12Resource* _this, REFIID riid, void **ppDevie) {
+    auto table = GetTable(_this);
+
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppDevie);
 }
 
 ResourceState::~ResourceState() {

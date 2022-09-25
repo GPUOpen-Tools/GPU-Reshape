@@ -3,6 +3,7 @@
 // Layer
 #include <Backends/DX12/DX12.h>
 #include <Backends/DX12/States/PipelineState.h>
+#include <Backends/DX12/States/ImmediateCommandList.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorInfo.h>
 
 // Common
@@ -56,7 +57,7 @@ struct ShaderExportStreamSegment {
     ShaderExportSegmentInfo* allocation{nullptr};
 
     /// The patch command list, optional
-    ID3D12GraphicsCommandList* patchCommandList{nullptr};
+    ImmediateCommandList immediatePatch;
 
     /// Patch descriptors
     ShaderExportSegmentDescriptorInfo patchDeviceCPUDescriptor;

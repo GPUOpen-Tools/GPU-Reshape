@@ -74,6 +74,9 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Create the module on demand
     if (!job.state->module) {
+        // Instrumented pipelines are unique, however, originating modules may not be
+        std::lock_guard moduleGuad(job.state->mutex);
+
         // Get type
         uint32_t type = *static_cast<const uint64_t *>(job.state->key.byteCode.pShaderBytecode);
 

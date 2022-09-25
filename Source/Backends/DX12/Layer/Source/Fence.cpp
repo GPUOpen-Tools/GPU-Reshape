@@ -18,7 +18,7 @@ HRESULT HookID3D12DeviceCreateFence(ID3D12Device* device, UINT64 nodeMask, D3D12
     // Create state
     auto* state = new FenceState();
     state->allocators = table.state->allocators;
-    state->parent = table.state;
+    state->parent = device;
 
     // Create detours
     fence = CreateDetour(Allocators{}, fence, state);
@@ -36,6 +36,13 @@ HRESULT HookID3D12DeviceCreateFence(ID3D12Device* device, UINT64 nodeMask, D3D12
 
     // OK
     return S_OK;
+}
+
+HRESULT HookID3D12FenceGetDevice(ID3D12Fence *_this, const IID &riid, void **ppDevie) {
+    auto table = GetTable(_this);
+
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppDevie);
 }
 
 FenceState::~FenceState() {

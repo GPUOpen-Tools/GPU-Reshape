@@ -8,9 +8,6 @@
 // Common
 #include <Common/CRC.h>
 
-/// Pretty print pipeline?
-#define DXIL_PRETTY_PRINT 1
-
 // Special includes
 #if DXIL_PRETTY_PRINT
 // Backend
@@ -32,6 +29,7 @@ static ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHAD
     // Attempt existing state
     ShaderState* shaderState = device->shaderSet.Get(key);
     if (shaderState) {
+        shaderState->AddUser();
         return shaderState;
     }
 
@@ -44,6 +42,9 @@ static ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHAD
     auto shader = new (device->allocators) uint8_t[key.byteCode.BytecodeLength];
     std::memcpy(shader, key.byteCode.pShaderBytecode, key.byteCode.BytecodeLength);
     shaderState->key.byteCode.pShaderBytecode = shader;
+
+    // Add owning user
+    shaderState->AddUser();
 
     // Add to state
     device->states_Shaders.AddNoLock(shaderState);
@@ -67,7 +68,10 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
     // Create state
     auto *state = new PipelineState();
     state->allocators = table.state->allocators;
-    state->parent = table.state;
+    state->parent = device;
+
+    // Add owning user
+    state->AddUser();
 
     // Create detours
     pipeline = CreateDetour(Allocators{}, pipeline, state);
@@ -99,7 +103,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     // Create state
     auto *state = new GraphicsPipelineState();
     state->allocators = table.state->allocators;
-    state->parent = table.state;
+    state->parent = device;
     state->type = PipelineType::Graphics;
     state->object = pipeline;
 
@@ -193,7 +197,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     // Create state
     auto *state = new ComputePipelineState();
     state->allocators = table.state->allocators;
-    state->parent = table.state;
+    state->parent = device;
     state->type = PipelineType::Compute;
     state->object = pipeline;
 
@@ -243,6 +247,30 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     return S_OK;
 }
 
-PipelineState::~PipelineState() {
+HRESULT HookID3D12PipelineStateGetDevice(ID3D12PipelineState *_this, const IID &riid, void **ppDevice) {
+    auto table = GetTable(_this);
 
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppDevice);
+}
+
+PipelineState::~PipelineState() {
+    auto device = GetTable(parent);
+
+    // Remove state lookup
+    device.state->states_Pipelines.Remove(this);
+
+    // Release all instrumented objects
+    for (auto&& kv : instrumentObjects) {
+        kv.second->Release();
+    }
+
+    // Release all references to the shader modules
+    for (ShaderState* shader : shaders) {
+        // Release dependency
+        device.state->dependencies_shaderPipelines.Remove(shader, this);
+
+        // Release ref
+        destroyRef(shader, allocators);
+    }
 }

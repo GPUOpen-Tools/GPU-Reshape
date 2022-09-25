@@ -6,7 +6,9 @@
 
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreateCommandQueue(ID3D12Device*, const D3D12_COMMAND_QUEUE_DESC*, const IID&, void**);
+HRESULT WINAPI HookID3D12CommandQueueGetDevice(ID3D12CommandQueue* _this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12DeviceCreateCommandAllocator(ID3D12Device*, D3D12_COMMAND_LIST_TYPE, const IID&, void**);
+HRESULT WINAPI HookID3D12CommandAllocatorGetDevice(ID3D12CommandAllocator* _this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12DeviceCreateCommandList(ID3D12Device*, UINT, D3D12_COMMAND_LIST_TYPE, ID3D12CommandAllocator*, ID3D12PipelineState*, const IID&, void**);
 void WINAPI HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue*, UINT, ID3D12CommandList* const*);
 HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* _this, ID3D12Fence* pFence, UINT64 Value);
@@ -20,6 +22,7 @@ void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UIN
 void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UINT NumDescriptorHeaps, ID3D12DescriptorHeap *const *ppDescriptorHeaps);
 void WINAPI HookID3D12CommandListCopyTextureRegion(ID3D12CommandList* list, const D3D12_TEXTURE_COPY_LOCATION* pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION* pSrc, const D3D12_BOX* pSrcBox);
 void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT NumBarriers, const D3D12_RESOURCE_BARRIER* pBarriers);
+HRESULT WINAPI HookID3D12CommandListGetDevice(ID3D12CommandList* _this, REFIID riid, void **ppDevice);
 
 /// Extension hooks
 DX12_C_LINKAGE AGSReturnCode HookAMDAGSDestroyDevice(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences);

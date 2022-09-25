@@ -174,7 +174,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     // Create state
     auto* state = new RootSignatureState();
     state->allocators = table.state->allocators;
-    state->parent = table.state;
+    state->parent = device;
     state->rootBindingInfo = bindingInfo;
     state->userRootCount = userRootCount;
 
@@ -194,6 +194,13 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
 
     // OK
     return S_OK;
+}
+
+HRESULT HookID3D12RootSignatureGetDevice(ID3D12RootSignature *_this, const IID &riid, void **ppDevice) {
+    auto table = GetTable(_this);
+
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppDevice);
 }
 
 RootSignatureState::~RootSignatureState() {

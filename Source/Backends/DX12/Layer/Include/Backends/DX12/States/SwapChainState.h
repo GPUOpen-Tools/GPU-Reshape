@@ -9,14 +9,11 @@
 // Std
 #include <vector>
 
-// Forward declarations
-struct DeviceState;
-
 struct SwapChainState {
     ~SwapChainState();
 
     /// Parent state
-    DeviceState* parent{};
+    ID3D12Device* parent{};
 
     /// Owning allocator
     Allocators allocators;

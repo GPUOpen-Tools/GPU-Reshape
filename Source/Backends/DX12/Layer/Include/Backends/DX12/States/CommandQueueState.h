@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
+#include "ImmediateCommandList.h"
 
 // Common
 #include <Common/Allocators.h>
@@ -10,7 +11,6 @@
 #include <vector>
 
 // Forward declarations
-struct DeviceState;
 struct ShaderExportQueueState;
 struct IncrementalFence;
 
@@ -19,14 +19,14 @@ struct CommandQueueState {
 
     /// Pop a new command list
     /// \return nullptr if failed
-    ID3D12GraphicsCommandList* PopCommandList();
+    ImmediateCommandList PopCommandList();
 
     /// Push a completed command list
     /// \param list must be created from this queue
-    void PushCommandList(ID3D12GraphicsCommandList* list);
+    void PushCommandList(const ImmediateCommandList& list);
 
     /// Parent state
-    DeviceState* parent{nullptr};
+    ID3D12Device* parent{nullptr};
 
     /// Owning allocator
     Allocators allocators;
@@ -40,11 +40,8 @@ struct CommandQueueState {
     /// Queue export state
     ShaderExportQueueState* exportState{nullptr};
 
-    /// Shared command allocator
-    ID3D12CommandAllocator* commandAllocator{nullptr};
-
     /// On demand command lists
-    std::vector<ID3D12GraphicsCommandList*> commandLists;
+    std::vector<ImmediateCommandList> commandLists;
 
     /// Shared fence
     IncrementalFence* sharedFence{nullptr};

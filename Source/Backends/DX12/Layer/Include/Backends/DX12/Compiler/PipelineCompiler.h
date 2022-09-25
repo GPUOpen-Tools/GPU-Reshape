@@ -12,6 +12,7 @@
 #include <mutex>
 
 // Forward declarations
+struct DeviceState;
 class Dispatcher;
 struct DispatcherBucket;
 

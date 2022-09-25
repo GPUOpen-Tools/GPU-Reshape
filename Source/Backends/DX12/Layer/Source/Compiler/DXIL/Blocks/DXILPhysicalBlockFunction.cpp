@@ -1104,15 +1104,17 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             // Resource class
             auto _class = static_cast<DXILShaderResourceClass>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value);
 
-            // Binding
-            uint64_t id = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
-            uint64_t rangeIndex = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            // Handle ids are always stored as constants
+            uint32_t handleId = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+
+            // Range indices may be dynamic
+            IL::ID rangeIndex = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
 
             // Divergent?
             auto isNonUniform = program.GetConstants().GetConstant<IL::BoolConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
 
             // Get the actual handle type
-            auto type = table.metadata.GetHandleType(_class, id);
+            auto type = table.metadata.GetHandleType(_class, handleId);
 
             // Set as pointee type
             ilTypeMap.SetType(result, type);

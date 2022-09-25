@@ -10,7 +10,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     // Create state
     auto* state = new DescriptorHeapState();
     state->allocators = table.state->allocators;
-    state->parent = table.state;
+    state->parent = device;
     state->type = desc->Type;
     state->exhausted = false;
 
@@ -89,6 +89,13 @@ void WINAPI HookID3D12DescriptorHeapGetGPUDescriptorHandleForHeapStart(ID3D12Des
     }
 
     *out = reg;
+}
+
+HRESULT HookID3D12DescriptorHeapGetDevice(ID3D12DescriptorHeap*_this, const IID &riid, void **ppDevice) {
+    auto table = GetTable(_this);
+
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppDevice);
 }
 
 DescriptorHeapState::~DescriptorHeapState() {

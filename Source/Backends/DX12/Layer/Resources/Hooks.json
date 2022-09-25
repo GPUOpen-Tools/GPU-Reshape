@@ -66,13 +66,15 @@
       "hooks": [
         "ExecuteCommandLists",
         "Signal",
-        "Wait"
+        "Wait",
+        "GetDevice"
       ]
     },
     "ID3D12CommandAllocator": {
       "name": "CommandAllocator",
       "state": "CommandAllocatorState",
       "hooks": [
+      "GetDevice"
       ]
     },
     "ID3D12GraphicsCommandList": {
@@ -87,32 +89,37 @@
         "SetGraphicsRootSignature",
         "SetComputeRootSignature",
         "CopyTextureRegion",
-        "ResourceBarrier"
+        "ResourceBarrier",
+        "GetDevice"
       ]
     },
     "ID3D12Fence": {
       "name": "Fence",
       "state": "FenceState",
       "hooks": [
+      "GetDevice"
       ]
     },
     "ID3D12PipelineState": {
       "name": "Pipeline",
       "state": "PipelineState",
       "hooks": [
+      "GetDevice"
       ]
     },
     "ID3D12Resource": {
       "name": "Resource",
       "state": "ResourceState",
       "hooks": [
-        "Map"
+        "Map",
+        "GetDevice"
       ]
     },
     "ID3D12RootSignature": {
       "name": "RootSignature",
       "state": "RootSignatureState",
       "hooks": [
+      "GetDevice"
       ]
     },
     "ID3D12DescriptorHeap": {
@@ -120,7 +127,8 @@
       "state": "DescriptorHeapState",
       "hooks": [
         "GetCPUDescriptorHandleForHeapStart",
-        "GetGPUDescriptorHandleForHeapStart"
+        "GetGPUDescriptorHandleForHeapStart",
+        "GetDevice"
       ]
     },
     "IDXGISwapChain": {
@@ -131,7 +139,8 @@
         "ResizeBuffers",
         "ResizeBuffers1",
         "Present",
-        "Present1"
+        "Present1",
+        "GetDevice"
       ]
     }
   }

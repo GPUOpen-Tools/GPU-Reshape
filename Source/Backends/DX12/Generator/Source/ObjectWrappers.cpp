@@ -168,10 +168,17 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
             else if (methodName == "Release") {
                 state.hooks << "\t\tint64_t references = --users;\n";
                 state.hooks << "\t\tif (references == 0) {\n";
+
+                state.hooks << "\t\t\tif constexpr(IsReferenceObject<decltype(state)>) {\n";
+                state.hooks << "\t\t\tdestroyRef(state, state->allocators);\n\n";
+                state.hooks << "\t\t\t} else {\n";
                 state.hooks << "\t\t\tdestroy(state, state->allocators);\n\n";
+                state.hooks << "\t\t\t}\n";
+
                 state.hooks << "\t\t\t/* Release the bottom reference */\n";
                 state.hooks << "\t\t\tULONG bottom = next->Release();\n";
                 state.hooks << "\t\t\t(void)bottom;\n";
+
                 state.hooks << "\t\t}\n\n";
                 state.hooks << "\t\treturn static_cast<ULONG>(references);\n";
                 state.hooks << "\t}\n\n";

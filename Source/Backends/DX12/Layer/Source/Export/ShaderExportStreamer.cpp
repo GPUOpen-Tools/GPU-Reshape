@@ -339,15 +339,18 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
         allocation.allocator->Free(allocation.info);
     }
 
-    // Cleanup
-    segment->segmentDescriptors.clear();
-
     // Release patch descriptors
     sharedCPUHeapAllocator->Free(segment->patchDeviceCPUDescriptor);
     sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
 
     // Release command list
-    queue->PushCommandList(segment->patchCommandList);
+    queue->PushCommandList(segment->immediatePatch);
+
+    // Cleanup
+    segment->segmentDescriptors.clear();
+    segment->immediatePatch = {};
+    segment->patchDeviceCPUDescriptor = {};
+    segment->patchDeviceGPUDescriptor = {};
 
     // Add back to pool
     segmentPool.Push(segment);
@@ -375,10 +378,13 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandList(CommandQ
     );
 
     // Pop a new command list
-    segment->patchCommandList = queueState->PopCommandList();
+    segment->immediatePatch = queueState->PopCommandList();
+    
+    // Ease of use
+    ID3D12GraphicsCommandList* patchList = segment->immediatePatch.commandList;
 
     // Set heap
-    segment->patchCommandList->SetDescriptorHeaps(1u, &sharedGPUHeap);
+    patchList->SetDescriptorHeaps(1u, &sharedGPUHeap);
 
     // Flush all pending work and transition to src
     D3D12_RESOURCE_BARRIER barrier{};
@@ -387,10 +393,10 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandList(CommandQ
     barrier.Transition.pResource = counter.allocation.device.resource;
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-    segment->patchCommandList->ResourceBarrier(1u, &barrier);
+    patchList->ResourceBarrier(1u, &barrier);
 
     // Copy the counter from device to host
-    segment->patchCommandList->CopyBufferRegion(
+    patchList->CopyBufferRegion(
         counter.allocation.host.resource, 0u,
         counter.allocation.device.resource, 0u,
         sizeof(ShaderExportCounter) * segment->allocation->streams.size()
@@ -402,12 +408,12 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandList(CommandQ
     barrier.Transition.pResource = counter.allocation.device.resource;
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    segment->patchCommandList->ResourceBarrier(1u, &barrier);
+    patchList->ResourceBarrier(1u, &barrier);
 
     uint32_t clearValue[4] = { 0x0, 0x0, 0x0, 0x0 };
 
     // Clear device counters
-    segment->patchCommandList->ClearUnorderedAccessViewUint(
+    patchList->ClearUnorderedAccessViewUint(
         segment->patchDeviceGPUDescriptor.gpuHandle, segment->patchDeviceCPUDescriptor.cpuHandle,
         counter.allocation.device.resource,
         clearValue,
@@ -416,11 +422,11 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandList(CommandQ
     );
 
     // Done
-    HRESULT hr = segment->patchCommandList->Close();
+    HRESULT hr = patchList->Close();
     if (FAILED(hr)) {
         return nullptr;
     }
 
     // OK
-    return segment->patchCommandList;
+    return patchList;
 }

@@ -27,7 +27,7 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
 }
 
 template<typename T, typename U>
-static T* CreateSwapChainState(const DXGIFactoryTable& table, DeviceState* device, T* swapChain, U* desc) {
+static T* CreateSwapChainState(const DXGIFactoryTable& table, ID3D12Device* device, T* swapChain, U* desc) {
     // Create state
     auto* state = new SwapChainState();
     state->allocators = table.state->allocators;
@@ -44,7 +44,7 @@ static T* CreateSwapChainState(const DXGIFactoryTable& table, DeviceState* devic
 
 struct OpaqueDeviceInfo {
     IUnknown* next{nullptr};
-    DeviceState* state{nullptr};
+    ID3D12Device* device{nullptr};
 };
 
 static OpaqueDeviceInfo QueryDeviceFromOpaque(IUnknown* pDevice) {
@@ -59,7 +59,7 @@ static OpaqueDeviceInfo QueryDeviceFromOpaque(IUnknown* pDevice) {
         // Fill
         auto table = GetTable(queue);
         out.next = table.next;
-        out.state = table.state->parent;
+        out.device = table.state->parent;
         return out;
     }
 
@@ -72,7 +72,7 @@ static OpaqueDeviceInfo QueryDeviceFromOpaque(IUnknown* pDevice) {
         // Fill
         auto table = GetTable(device);
         out.next = table.next;
-        out.state = table.state;
+        out.device = device;
         return out;
     }
 
@@ -96,7 +96,7 @@ HRESULT WINAPI HookIDXGIFactoryCreateSwapChain(IDXGIFactory* factory, IUnknown *
     }
 
     // Create state
-    swapChain = CreateSwapChainState(table, device.state, swapChain, pDesc);
+    swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
 
     // Query to external object if requested
     if (ppSwapChain) {
@@ -125,7 +125,7 @@ HRESULT WINAPI HookIDXGIFactoryCreateSwapChainForHwnd(IDXGIFactory* factory, IUn
     }
 
     // Create state
-    swapChain = CreateSwapChainState(table, device.state, swapChain, pDesc);
+    swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
 
     // Query to external object if requested
     if (ppSwapChain) {
@@ -154,7 +154,7 @@ HRESULT WINAPI HookIDXGIFactoryCreateSwapChainForCoreWindow(IDXGIFactory* factor
     }
 
     // Create state
-    swapChain = CreateSwapChainState(table, device.state, swapChain, pDesc);
+    swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
 
     // Query to external object if requested
     if (ppSwapChain) {
@@ -183,7 +183,7 @@ HRESULT WINAPI HookIDXGIFactoryCreateSwapChainForComposition(IDXGIFactory* facto
     }
 
     // Create state
-    swapChain = CreateSwapChainState(table, device.state, swapChain, pDesc);
+    swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
 
     // Query to external object if requested
     if (ppSwapChain) {
@@ -276,7 +276,7 @@ HRESULT WINAPI HookIDXGISwapChainPresent(IDXGISwapChain1* swapchain, UINT SyncIn
     }
 
     // Add bridge sync
-    BridgeDeviceSyncPoint(table.state->parent);
+    BridgeDeviceSyncPoint(GetTable(table.state->parent).state);
 
     // OK
     return S_OK;
@@ -292,10 +292,17 @@ HRESULT WINAPI HookIDXGISwapChainPresent1(IDXGISwapChain1* swapchain, UINT SyncI
     }
 
     // Add bridge sync
-    BridgeDeviceSyncPoint(table.state->parent);
+    BridgeDeviceSyncPoint(GetTable(table.state->parent).state);
 
     // OK
     return S_OK;
+}
+
+HRESULT HookIDXGISwapChainGetDevice(IDXGISwapChain *_this, const IID &riid, void **ppDevice) {
+    auto table = GetTable(_this);
+
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppDevice);
 }
 
 SwapChainState::~SwapChainState() {

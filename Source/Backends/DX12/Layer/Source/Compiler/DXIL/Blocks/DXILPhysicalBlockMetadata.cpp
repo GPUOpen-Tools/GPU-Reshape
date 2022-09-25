@@ -222,12 +222,35 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         // Get pointer
         auto* constantPointerType = constantPointer->type->As<Backend::IL::PointerType>();
 
-        // Must be struct of
-        auto* constantStruct = constantPointerType->pointee->As<Backend::IL::StructType>();
+        // Contained texel type
+        const Backend::IL::Type* containedType{nullptr};
 
-        // Get resource types
-        ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
-        auto* containedType = constantStruct->memberTypes[0];
+        // Handle contained
+        switch (constantPointerType->pointee->kind) {
+            default: {
+                ASSERT(false, "Unexpected resource constant pointer type");
+                break;
+            }
+            case Backend::IL::TypeKind::Struct: {
+                auto* constantStruct = constantPointerType->pointee->As<Backend::IL::StructType>();
+
+                // Get resource types
+                ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
+                containedType = constantStruct->memberTypes[0];
+                break;
+            }
+            case Backend::IL::TypeKind::Array: {
+                // Must be array of struct of
+                auto* constantArray = constantPointerType->pointee->As<Backend::IL::ArrayType>();
+                auto* constantStruct = constantArray->elementType->As<Backend::IL::StructType>();
+
+                // Get resource types
+                ASSERT(constantStruct->memberTypes.size() >= 1, "Unexpected metadata constant size for resource node");
+                containedType = constantStruct->memberTypes[0];
+                break;
+            }
+        }
+
 
         // TODO: How on earth are the names stored?
         // uint64_t name = GetOperandU32Constant(resource.Op(2))->value;

@@ -6,14 +6,11 @@
 // Common
 #include <Common/Allocators.h>
 
-// Forward declarations
-struct DeviceState;
-
 struct ResourceState {
     ~ResourceState();
 
     /// Parent state
-    DeviceState* parent{};
+    ID3D12Device* parent{};
 
     /// Owning allocator
     Allocators allocators;

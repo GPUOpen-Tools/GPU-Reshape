@@ -16,6 +16,19 @@
 /// Log allocations
 #define LOG_ALLOCATION (DX12_DIAGNOSTIC && 0)
 
+/// Validates LLVM bit-stream 1:1 read / writes
+#define DXIL_VALIDATE_MIRROR (DX12_DIAGNOSTIC && 1)
+
+/// Dump DXIL bit stream to file?
+///   Useful with llvm-bcanalyzer
+#define DXIL_DUMP_BITSTREAM (DX12_DIAGNOSTIC && 1)
+
+/// Dump DXBC byte stream to file?
+#define DXBC_DUMP_STREAM (DX12_DIAGNOSTIC && 1)
+
+/// Pretty print pipeline IL?
+#define DXIL_PRETTY_PRINT (DX12_DIAGNOSTIC && 1)
+
 /// Log instrumentation information
 #define LOG_INSTRUMENTATION (1)
 

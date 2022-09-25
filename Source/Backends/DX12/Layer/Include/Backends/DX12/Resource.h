@@ -8,3 +8,4 @@ HRESULT WINAPI HookID3D12DeviceCreateCommittedResource(ID3D12Device* device, con
 HRESULT WINAPI HookID3D12DeviceCreatePlacedResource(ID3D12Device*, ID3D12Heap*, UINT64, const D3D12_RESOURCE_DESC*, D3D12_RESOURCE_STATES, const D3D12_CLEAR_VALUE*, const IID&, void**);
 HRESULT WINAPI HookID3D12DeviceCreateReservedResource(ID3D12Device*, const D3D12_RESOURCE_DESC*, D3D12_RESOURCE_STATES, const D3D12_CLEAR_VALUE*, const IID&, void**);
 HRESULT WINAPI HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const D3D12_RANGE* readRange, void** blob);
+HRESULT WINAPI HookID3D12ResourceGetDevice(ID3D12Resource* _this, REFIID riid, void **ppDevice);
