@@ -64,6 +64,10 @@ HANDLE InitializationEvent;
 /// Has the layer attempted initialization prior?
 bool HasInitializedOrFailed;
 
+#pragma data_seg (".GOD3D12LB")
+bool IsBootstrappedAcrossProcess = false;
+#pragma data_seg()
+
 /// Is this handle the owning instance?
 bool IsOwningBootstrapper;
 
@@ -638,18 +642,6 @@ void DetachInitialCreation() {
     }
 }
 
-/// Check if the process is already bootstrapped
-static bool IsBootstrapped() {
-    char buffer[32];
-
-    // Load the bootstrapper env flag
-    size_t length;
-    getenv_s(&length, buffer, "GPUOPEN_DX12_BOOTSTRAPPER");
-
-    // If set to "1", the bootstrapper attached this layer
-    return !std::strcmp(buffer, "1");
-}
-
 /// Pin this module
 static void PinBootstrapper() {
     wchar_t buffer[FILENAME_MAX]{0};
@@ -674,7 +666,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     }
 
     // If this is not the owning bootstrapper, and it is currently bootstrapped elsewhere, report OK
-    if (!IsOwningBootstrapper && IsBootstrapped()) {
+    if (!IsOwningBootstrapper && IsBootstrappedAcrossProcess) {
         return TRUE;
     }
 
@@ -689,7 +681,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     // Attach?
     if (dwReason == DLL_PROCESS_ATTACH) {
         // Flag that the bootstrapper is active
-        _putenv_s("GPUOPEN_DX12_BOOTSTRAPPER", "1");
+        IsBootstrappedAcrossProcess = true;
 
         // This dll is now the effective owner
         IsOwningBootstrapper = true;
@@ -799,7 +791,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
             }
 
             // Flag that the bootstrapper is inactive
-            _putenv_s("GPUOPEN_DX12_BOOTSTRAPPER", "0");
+            IsBootstrappedAcrossProcess = false;
         }
     }
 
