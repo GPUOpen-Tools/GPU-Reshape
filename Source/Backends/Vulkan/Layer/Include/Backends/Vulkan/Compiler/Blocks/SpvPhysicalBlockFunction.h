@@ -72,7 +72,7 @@ private:
 
 private:
     struct LoopContinueBlock {
-        IL::InstructionRef<IL::BranchConditionalInstruction> branchConditional;
+        IL::InstructionRef<> instruction;
         IL::ID block;
     };
 

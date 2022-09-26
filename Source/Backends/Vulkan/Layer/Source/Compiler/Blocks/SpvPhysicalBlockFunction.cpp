@@ -421,7 +421,21 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 instr.result = IL::InvalidID;
                 instr.source = source;
                 instr.branch = ctx++;
-                basicBlock->Append(instr);
+
+                // Consume control flow
+                instr.controlFlow = controlFlow;
+                controlFlow = {};
+
+                // Append
+                IL::InstructionRef<IL::BranchInstruction> ref = basicBlock->Append(instr);
+
+                // Loop?
+                if (instr.controlFlow._continue != IL::InvalidID) {
+                    LoopContinueBlock loopContinueBlock;
+                    loopContinueBlock.instruction = ref;
+                    loopContinueBlock.block = instr.controlFlow._continue;
+                    loopContinueBlocks.push_back(loopContinueBlock);
+                }
                 break;
             }
 
@@ -457,7 +471,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 // Loop?
                 if (instr.controlFlow._continue != IL::InvalidID) {
                     LoopContinueBlock loopContinueBlock;
-                    loopContinueBlock.branchConditional = ref;
+                    loopContinueBlock.instruction = ref;
                     loopContinueBlock.block = instr.controlFlow._continue;
                     loopContinueBlocks.push_back(loopContinueBlock);
                 }
@@ -983,7 +997,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
             case IL::OpCode::Select: {
                 auto *select = instr.As<IL::SelectInstruction>();
 
-                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpIsNan, 6, select->source);
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpSelect, 6, select->source);
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                 spv[2] = select->result;
                 spv[3] = idMap.Get(select->condition);
@@ -1077,7 +1091,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
             case IL::OpCode::BitOr: {
                 auto *bitOr = instr.As<IL::BitOrInstruction>();
 
-                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpBitwiseOr, 5, bitOr->source);
+                SpvOp op;
+                if (ilTypeMap.GetType(bitOr->lhs)->Is<Backend::IL::BoolType>()) {
+                    op = SpvOpLogicalOr;
+                } else {
+                    op = SpvOpBitwiseOr;
+                }
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, bitOr->source);
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                 spv[2] = bitOr->result;
                 spv[3] = idMap.Get(bitOr->lhs);
@@ -1087,7 +1108,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
             case IL::OpCode::BitAnd: {
                 auto *bitAnd = instr.As<IL::BitAndInstruction>();
 
-                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpBitwiseAnd, 5, bitAnd->source);
+                SpvOp op;
+                if (ilTypeMap.GetType(bitAnd->lhs)->Is<Backend::IL::BoolType>()) {
+                    op = SpvOpLogicalAnd;
+                } else {
+                    op = SpvOpBitwiseAnd;
+                }
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, bitAnd->source);
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                 spv[2] = bitAnd->result;
                 spv[3] = idMap.Get(bitAnd->lhs);
@@ -1330,7 +1358,7 @@ void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
             // Get the terminator
             auto it = originalContinueBlock->GetTerminator();
             ASSERT(it->Is<IL::BranchInstruction>(), "Unexpected terminator");
-            ASSERT(it->As<IL::BranchInstruction>()->branch == block.branchConditional.basicBlock->GetID(), "Unexpected loop terminator block");
+            ASSERT(it->As<IL::BranchInstruction>()->branch == block.instruction.basicBlock->GetID(), "Unexpected loop terminator block");
 
             // Remove the original branch instruction (back to the header)
             originalContinueBlock->Remove(it);
@@ -1347,13 +1375,14 @@ void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
 
             // Branch back to the loop header
             IL::Emitter<> emitter(program, *postContinueBlock);
-            emitter.Branch(block.branchConditional.basicBlock);
+            emitter.Branch(block.instruction.basicBlock);
         }
     }
 
     // Empty out
     loopContinueBlocks.clear();
 }
+
 void SpvPhysicalBlockFunction::CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockFunction &out) {
     out.block = remote.scan.GetPhysicalBlock(SpvPhysicalBlockType::Function);
 }

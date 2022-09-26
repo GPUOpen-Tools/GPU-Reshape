@@ -99,6 +99,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
 
             case SpvOpTypeSampler: {
                 typeMap.AddType(ctx.GetResult(), Backend::IL::SamplerType{});
+                break;
             }
 
             case SpvOpTypeSampledImage: {

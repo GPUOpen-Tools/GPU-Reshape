@@ -358,15 +358,17 @@ namespace IL {
         ID fail;
     };
 
-    struct BranchInstruction : public Instruction {
-        static constexpr OpCode kOpCode = OpCode::Branch;
-
-        ID branch;
-    };
-
     struct BranchControlFlow {
         ID merge{InvalidID};
         ID _continue{InvalidID};
+    };
+
+    struct BranchInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Branch;
+
+        BranchControlFlow controlFlow;
+
+        ID branch;
     };
 
     struct BranchConditionalInstruction : public Instruction {

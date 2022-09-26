@@ -57,7 +57,7 @@ static void GetLeastDependent(TraversalState &state, IL::BasicBlockList &basicBl
     }
 
     // Get block, may not be submitted to the function chain yet
-    IL::BasicBlock* block = basicBlocks.GetBlock(blockID);
+    IL::BasicBlock *block = basicBlocks.GetBlock(blockID);
     if (!block) {
         return;
     }
@@ -100,6 +100,9 @@ static void AddSuccessor(TraversalState &state, IL::BasicBlockList &basicBlocks,
         switch (terminator.GetOpCode()) {
             default:
                 break;
+            case IL::OpCode::Branch:
+                controlFlow = terminator.As<IL::BranchInstruction>()->controlFlow;
+                break;
             case IL::OpCode::BranchConditional:
                 controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
                 break;
@@ -130,6 +133,9 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
         IL::BranchControlFlow controlFlow;
         switch (terminator.GetOpCode()) {
             default:
+                break;
+            case IL::OpCode::Branch:
+                controlFlow = terminator.As<IL::BranchInstruction>()->controlFlow;
                 break;
             case IL::OpCode::BranchConditional:
                 controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
