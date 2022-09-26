@@ -155,6 +155,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *comm
     // Reset the context
     commandBuffer->context = {};
 
+    // End the streaming state
+    commandBuffer->table->exportStreamer->EndCommandBuffer(commandBuffer->streamState, commandBuffer);
+
     // Pass down callchain
     return commandBuffer->table->next_vkEndCommandBuffer(commandBuffer->object);
 }
@@ -189,6 +192,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkFreeCommandBuffers(VkDevice device, VkCommandP
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyCommandPool(VkDevice device, VkCommandPool commandPool, const VkAllocationCallbacks *pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Null destruction is allowed by the standard
+    if (!commandPool) {
+        return;
+    }
 
     // Get state
     CommandPoolState *state = table->states_commandPool.Get(commandPool);

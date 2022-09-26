@@ -51,6 +51,9 @@ struct FenceState : public ReferenceObject {
     /// Current signalling state
     bool signallingState{false};
 
+    /// Is immediate object?
+    bool isImmediate{false};
+
     /// Unique identifier, unique for the type
     uint64_t uid;
 };

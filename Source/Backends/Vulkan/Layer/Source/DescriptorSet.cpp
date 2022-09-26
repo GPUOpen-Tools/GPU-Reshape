@@ -54,6 +54,11 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, 
 VKAPI_ATTR void VKAPI_PTR Hook_vkDestroyDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Null destruction is allowed by the standard
+    if (!descriptorSetLayout) {
+        return;
+    }
+
     // Remove the state
     table->states_descriptorSetLayout.Remove(descriptorSetLayout);
 
@@ -142,6 +147,11 @@ VKAPI_ATTR void VKAPI_PTR Hook_vkCmdBindDescriptorSets(CommandBufferObject* comm
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout, const VkAllocationCallbacks *pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Null destruction is allowed by the standard
+    if (!pipelineLayout) {
+        return;
+    }
 
     // Get the state
     PipelineLayoutState *state = table->states_pipelineLayout.Get(pipelineLayout);

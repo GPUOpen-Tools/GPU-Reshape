@@ -38,6 +38,7 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkCreateComputePipelines = reinterpret_cast<PFN_vkCreateComputePipelines>(getDeviceProcAddr(object, "vkCreateComputePipelines"));
     next_vkDestroyPipeline = reinterpret_cast<PFN_vkDestroyPipeline>(getDeviceProcAddr(object, "vkDestroyPipeline"));
     next_vkGetFenceStatus = reinterpret_cast<PFN_vkGetFenceStatus>(getDeviceProcAddr(object, "vkGetFenceStatus"));
+    next_vkWaitForFences = reinterpret_cast<PFN_vkWaitForFences>(getDeviceProcAddr(object, "vkWaitForFences"));
     next_vkCreateBuffer = reinterpret_cast<PFN_vkCreateBuffer>(getDeviceProcAddr(object, "vkCreateBuffer"));
     next_vkDestroyBuffer = reinterpret_cast<PFN_vkDestroyBuffer>(getDeviceProcAddr(object, "vkDestroyBuffer"));
     next_vkCreateBufferView = reinterpret_cast<PFN_vkCreateBufferView>(getDeviceProcAddr(object, "vkCreateBufferView"));
@@ -161,6 +162,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkGetFenceStatus"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetFenceStatus);
+
+    if (!std::strcmp(name, "vkWaitForFences"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkWaitForFences);
 
     if (!std::strcmp(name, "vkResetFences"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkResetFences);

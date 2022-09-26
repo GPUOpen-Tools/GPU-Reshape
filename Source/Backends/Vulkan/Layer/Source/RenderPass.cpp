@@ -28,6 +28,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass(VkDevice device, const Vk
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyRenderPass(VkDevice device, VkRenderPass renderPass, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Null destruction is allowed by the standard
+    if (!renderPass) {
+        return;
+    }
+
     // Get the state
     RenderPassState *state = table->states_renderPass.Get(renderPass);
 

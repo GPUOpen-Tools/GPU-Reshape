@@ -131,6 +131,7 @@ struct DeviceDispatchTable {
     PFN_vkCreateComputePipelines          next_vkCreateComputePipelines;
     PFN_vkDestroyPipeline                 next_vkDestroyPipeline;
     PFN_vkGetFenceStatus                  next_vkGetFenceStatus;
+    PFN_vkWaitForFences                   next_vkWaitForFences;
     PFN_vkCreateBuffer                    next_vkCreateBuffer;
     PFN_vkDestroyBuffer                   next_vkDestroyBuffer;
     PFN_vkCreateBufferView                next_vkCreateBufferView;

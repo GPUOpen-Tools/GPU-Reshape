@@ -104,6 +104,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pipeline, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Null destruction is allowed by the standard
+    if (!pipeline) {
+        return;
+    }
+
     // Destroy the state
     PipelineState* state = table->states_pipeline.Get(pipeline);
 

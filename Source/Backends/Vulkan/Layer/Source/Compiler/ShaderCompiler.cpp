@@ -70,7 +70,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Single file compile debugging
 #if SHADER_COMPILER_DEBUG_FILE
-    constexpr const char* kPath = "C:\\AMD\\GPUOpen-Tools\\gpu-validation\\Bin\\Debug\\Intermediate\\Debug\\UnrealEngine4.26\\GBV\\{EC9E76CD-F873-473E-A740-10F956D5C889}.source.spirv";
+    constexpr const char* kPath = "C:\\AMD\\GPUOpen-Tools\\gpu-validation\\Bin\\Clang\\Debug\\Intermediate\\Debug\\Cauldron v1.4\\SampleVK v1.4.1\\Vulkan\\{0C9E10E4-945A-4C72-AC8E-E436B28EEB75}.source.spirv";
 
     // Stream in the debug binary
     std::ifstream stream(kPath, std::ios::in | std::ios::binary);

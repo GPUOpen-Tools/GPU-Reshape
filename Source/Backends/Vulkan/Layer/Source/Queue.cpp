@@ -88,6 +88,9 @@ static FenceState* AcquireOrCreateFence(DeviceDispatchTable* table, QueueState* 
             return nullptr;
         }
 
+        // Next query increments head
+        state->signallingState = false;
+
         // OK
         return state;
     }
@@ -95,6 +98,7 @@ static FenceState* AcquireOrCreateFence(DeviceDispatchTable* table, QueueState* 
     // None available, create the new state
     auto state = new (table->allocators) FenceState;
     state->table = table;
+    state->isImmediate = true;
 
     // Default create info
     VkFenceCreateInfo createInfo{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};

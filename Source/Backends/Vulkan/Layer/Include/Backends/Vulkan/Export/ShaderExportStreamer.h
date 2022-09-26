@@ -80,6 +80,11 @@ public:
     /// \param commandBuffer the command buffer
     void ResetCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer);
 
+    /// Invoked during command buffer closing
+    /// \param state the stream state
+    /// \param commandBuffer the command buffer
+    void EndCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer);
+
     /// Invoked during pipeline binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound

@@ -45,6 +45,31 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkGetFenceStatus(VkDevice device, VkFence fen
     return result;
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkWaitForFences(VkDevice device, uint32_t fenceCount, const VkFence* pFences, VkBool32 waitAll, uint64_t timeout) {
+    DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Pass down callchain
+    VkResult result = table->next_vkWaitForFences(device, fenceCount, pFences, waitAll, timeout);
+
+    // Update states of all fences
+    for (uint32_t i = 0; i < fenceCount; i++) {
+        // Get the state
+        FenceState* state = table->states_fence.Get(pFences[i]);
+
+        // Check fence status
+        VkResult fenceStatus = table->next_vkGetFenceStatus(device, pFences[i]);
+
+        // If not signalled yet, and fence is done, advance the commit
+        if (!state->signallingState && fenceStatus == VK_SUCCESS) {
+            state->signallingState = true;
+            state->cpuSignalCommitId++;
+        }
+    }
+
+    // OK
+    return result;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetFences(VkDevice device, uint32_t fenceCount, const VkFence *pFences) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
@@ -63,6 +88,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetFences(VkDevice device, uint32_t fenc
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyFence(VkDevice device, VkFence Fence, const VkAllocationCallbacks *pAllocator) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Null destruction is allowed by the standard
+    if (!Fence) {
+        return;
+    }
 
     // Get the state
     FenceState* state = table->states_fence.Get(Fence);

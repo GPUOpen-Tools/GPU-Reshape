@@ -130,9 +130,29 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Co
 
 void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, CommandBufferObject* commandBuffer) {
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
+        for (ShaderExportDescriptorState& descriptorState : bindState.persistentDescriptorState) {
+            // Free all dynamic offsets
+            if (descriptorState.dynamicOffsets) {
+                std::lock_guard guard(mutex);
+                dynamicOffsetAllocator.Free(descriptorState.dynamicOffsets);
+            }
+        }
+
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
         bindState.deviceDescriptorOverwriteMask = 0x0;
+    }
+}
+
+void ShaderExportStreamer::EndCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer) {
+    for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
+        for (ShaderExportDescriptorState& descriptorState : bindState.persistentDescriptorState) {
+            // Free all dynamic offsets
+            if (descriptorState.dynamicOffsets) {
+                std::lock_guard guard(mutex);
+                dynamicOffsetAllocator.Free(descriptorState.dynamicOffsets);
+            }
+        }
     }
 }
 
@@ -327,7 +347,9 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
     QueueState* queueState = table->states_queue.GetNoLock(queue->queue);
 
     // Move ownership to queue (don't release the reference count, queue owns it now)
-    queueState->pools_fences.Push(segment->fence);
+    if (segment->fence->isImmediate) {
+        queueState->pools_fences.Push(segment->fence);
+    }
 
     // Remove fence reference
     segment->fence = nullptr;
@@ -414,6 +436,12 @@ void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, Vk
 
         // Clear the mask
         bindState.deviceDescriptorOverwriteMask &= ~(1u << slot);
+
+        // Push back to pool if needed
+        if (bindState.persistentDescriptorState[slot].dynamicOffsets) {
+            std::lock_guard guard(mutex);
+            dynamicOffsetAllocator.Free(bindState.persistentDescriptorState[slot].dynamicOffsets);
+        }
 
         // Prepare state
         ShaderExportDescriptorState setState;

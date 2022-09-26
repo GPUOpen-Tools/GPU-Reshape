@@ -30,6 +30,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateShaderModule(VkDevice device, const 
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyShaderModule(VkDevice device, VkShaderModule shaderModule, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Null destruction is allowed by the standard
+    if (!shaderModule) {
+        return;
+    }
+
     // Destroy the state
     ShaderModuleState* state = table->states_shaderModule.Get(shaderModule);
 
