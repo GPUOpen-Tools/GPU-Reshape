@@ -118,7 +118,7 @@ namespace Studio.Views.Editor
             }
             
             // Get line
-            DocumentLine line = Document!.Lines[validationObject.Segment.Location.Line + 1];
+            DocumentLine line = Document!.Lines[validationObject.Segment.Location.Line];
             
             // Create segment for bounds
             var segment = new ValidationTextSegment()
