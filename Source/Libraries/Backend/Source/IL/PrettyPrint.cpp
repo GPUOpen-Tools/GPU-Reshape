@@ -793,6 +793,9 @@ static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlo
     switch (terminator.GetOpCode()) {
         default:
             break;
+        case IL::OpCode::Branch:
+            controlFlow = terminator.As<IL::BranchInstruction>()->controlFlow;
+            break;
         case IL::OpCode::BranchConditional:
             controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
             break;
@@ -816,9 +819,15 @@ void IL::PrettyPrintBlockDotGraph(const Function &function, PrettyPrintContext o
         out.stream << " n" << (*it)->GetID();
 
         if (it == blocks.begin())
-            out.stream << " [label=\"Entry\"];\n";
+            out.stream << " [label=\"Entry\"";
         else
-            out.stream << " [label=\"Block " << (*it)->GetID() << "\"];\n";
+            out.stream << " [label=\"Block " << (*it)->GetID() << "\"";
+
+        if ((*it)->GetFlags() & BasicBlockFlag::NoInstrumentation) {
+            out.stream << ", style=filled, fillcolor=red";
+        }
+
+        out.stream << "];\n";
     }
 
     for (const IL::BasicBlock *bb: function.GetBasicBlocks()) {
@@ -830,6 +839,9 @@ void IL::PrettyPrintBlockDotGraph(const Function &function, PrettyPrintContext o
         IL::BranchControlFlow controlFlow;
         switch (terminator.GetOpCode()) {
             default:
+                break;
+            case IL::OpCode::Branch:
+                controlFlow = terminator.As<IL::BranchInstruction>()->controlFlow;
                 break;
             case IL::OpCode::BranchConditional:
                 controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
