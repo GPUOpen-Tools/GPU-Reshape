@@ -7,8 +7,11 @@
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo *pCreateInfos, const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Delay writeout
+    auto pipelines = ALLOCA_ARRAY(VkPipeline, createInfoCount);
+
     // Pass down callchain
-    VkResult result = table->next_vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+    VkResult result = table->next_vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pipelines);
     if (result != VK_SUCCESS) {
         return result;
     }
@@ -18,7 +21,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
         auto state = new (table->allocators) GraphicsPipelineState;
         state->type = PipelineType::Graphics;
         state->table = table;
-        state->object = pPipelines[i];
+        state->object = pipelines[i];
         state->createInfoDeepCopy.DeepCopy(table->allocators, pCreateInfos[i]);
 
         // External user
@@ -52,17 +55,24 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
         // TODO: Register with instrumentation controller, in case there is already instrumentation
 
         // Store lookup
-        table->states_pipeline.Add(pPipelines[i], state);
+        table->states_pipeline.Add(pipelines[i], state);
     }
 
+    // Writeout
+    std::memcpy(pPipelines, pipelines, sizeof(VkPipeline) * createInfoCount);
+
+    // OK
     return VK_SUCCESS;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkComputePipelineCreateInfo *pCreateInfos, const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Delay writeout
+    auto pipelines = ALLOCA_ARRAY(VkPipeline, createInfoCount);
+
     // Pass down callchain
-    VkResult result = table->next_vkCreateComputePipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+    VkResult result = table->next_vkCreateComputePipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pipelines);
     if (result != VK_SUCCESS) {
         return result;
     }
@@ -72,7 +82,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
         auto state = new (table->allocators) ComputePipelineState;
         state->type = PipelineType::Compute;
         state->table = table;
-        state->object = pPipelines[i];
+        state->object = pipelines[i];
         state->createInfoDeepCopy.DeepCopy(table->allocators, pCreateInfos[i]);
 
         // External user
@@ -95,9 +105,13 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
         // TODO: Register with instrumentation controller, in case there is already instrumentation
 
         // Store lookup
-        table->states_pipeline.Add(pPipelines[i], state);
+        table->states_pipeline.Add(pipelines[i], state);
     }
 
+    // Writeout
+    std::memcpy(pPipelines, pipelines, sizeof(VkPipeline) * createInfoCount);
+
+    // OK
     return VK_SUCCESS;
 }
 

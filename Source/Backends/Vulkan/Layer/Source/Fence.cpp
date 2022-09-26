@@ -16,6 +16,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateFence(VkDevice device, const VkFence
     state->table = table;
     state->object = *pFence;
 
+    // Already signalled?
+    if (pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT) {
+        state->signallingState = true;
+    }
+
     // External user
     state->AddUser();
 
