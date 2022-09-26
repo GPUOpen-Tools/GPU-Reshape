@@ -269,6 +269,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
     // Total size
     uint64_t cxxSizeType = 0;
+    uint64_t cxxBitFieldSizeOffset = 0;
 
     // Current bit field type
     TypeInfo bitFieldType;
@@ -317,6 +318,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
         } else {
             bitFieldType = {};
             bitFieldOffset = 0;
+            cxxBitFieldSizeOffset = 0;
         }
 
         // Primitive?
@@ -326,6 +328,8 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
                 const uint32_t bitSize = static_cast<uint32_t>(bitFieldType.size) * 8;
 
+                size_t cxxSizeTypeBase = cxxSizeType - cxxBitFieldSizeOffset;
+
                 // Mutable setter
                 out.functions << "\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
                 out.functions << "\t\tpublic void Set" << field.name << "(" << it->second.csType << " value)\n";
@@ -333,7 +337,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
                 out.functions << "\t\t\t" << bitFieldType.csType << " fieldValue = 0;\n";
                 out.functions << "\t\t\tfieldValue |= ((value & ((1u << " << bitCount << ") - 1)) << " << bitFieldOffset << ");\n";
                 out.functions << "\t\t\tfieldValue |= " << field.name << " & " << "~((~0u >> " << (32 - bitCount) << ") << " << bitFieldOffset << ");\n\n";
-                out.functions << "\t\t\tMemoryMarshal.Write<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref fieldValue);\n";
+                out.functions << "\t\t\tMemoryMarshal.Write<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeTypeBase << ", " << (cxxSizeTypeBase + it->second.size) << ").AsRefSpan(), ref fieldValue);\n";
                 out.functions << "\t\t}\n\n";
 
                 // Getter and setter
@@ -342,7 +346,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
                 out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
                 out.members << "\t\t\tget\n";
                 out.members << "\t\t\t{\n";
-                out.members << "\t\t\t\tvar field = MemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + bitFieldType.size) << ").AsRefSpan());\n";
+                out.members << "\t\t\t\tvar field = MemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << cxxSizeTypeBase << ", " << (cxxSizeTypeBase + bitFieldType.size) << ").AsRefSpan());\n";
                 out.members << "\t\t\t\treturn (" << it->second.csType << ")((field >> " << bitFieldOffset << ") & ((1u << " << bitCount << ") - 1));\n";
                 out.members << "\t\t\t}\n\n";
                 out.members << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
@@ -351,6 +355,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
                 if (!bitFieldOffset || bitFieldOffset % bitSize == 0) {
                     cxxSizeType += bitFieldType.size;
+                    cxxBitFieldSizeOffset = bitFieldType.size;
                     byteSize << "\t\t\t\t\tsize += " << bitFieldType.size << ";\n";
                 }
 
