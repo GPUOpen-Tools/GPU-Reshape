@@ -416,10 +416,11 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
             case SpvOpBranch: {
                 // Append
+                // NOTE: Always marked as modified, to re-emit the CFG
                 IL::BranchInstruction instr{};
                 instr.opCode = IL::OpCode::Branch;
                 instr.result = IL::InvalidID;
-                instr.source = source;
+                instr.source = source.Modify();
                 instr.branch = ctx++;
 
                 // Consume control flow
@@ -453,6 +454,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
             case SpvOpBranchConditional: {
                 // Append
+                // NOTE: Always marked as modified, to re-emit the CFG
                 IL::BranchConditionalInstruction instr{};
                 instr.opCode = IL::OpCode::BranchConditional;
                 instr.result = IL::InvalidID;
@@ -1007,6 +1009,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
             }
             case IL::OpCode::Branch: {
                 auto *branch = instr.As<IL::BranchInstruction>();
+
+                // Write cfg
+                if (branch->controlFlow._continue != IL::InvalidID) {
+                    SpvInstruction& cfg = stream.Allocate(SpvOpLoopMerge, 4);
+                    cfg[1] = branch->controlFlow.merge;
+                    cfg[2] = branch->controlFlow._continue;
+                    cfg[3] = SpvSelectionControlMaskNone;
+                }
 
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpBranch, 2, branch->source);
                 spv[1] = branch->branch;
