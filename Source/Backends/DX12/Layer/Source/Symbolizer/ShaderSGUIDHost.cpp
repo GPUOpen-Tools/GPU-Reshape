@@ -143,7 +143,7 @@ std::string_view ShaderSGUIDHost::GetSource(ShaderSGUID sguid) {
 
 std::string_view ShaderSGUIDHost::GetSource(const ShaderSourceMapping &mapping) {
     // Get shader state
-    ShaderState* shaderState = device->states_Shaders.GetFromUID(mapping.sguid);
+    ShaderState* shaderState = device->states_Shaders.GetFromUID(mapping.shaderGUID);
     if (!shaderState || !shaderState->module) {
         return {};
     }

@@ -132,6 +132,10 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 sourceAssociation.fileUID = table.debugStringSource.sourceMap.GetFileIndex(ctx++);
                 sourceAssociation.line = (ctx++) - 1;
                 sourceAssociation.column = (ctx++) - 1;
+
+                if (sourceAssociation.column == UINT16_MAX) {
+                    sourceAssociation.column = 0;
+                }
                 break;
             }
 

@@ -220,7 +220,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
             case LLVMFunctionRecord::DebugLOC2: {
                 metadata.sourceAssociation.fileUID = 0;
                 metadata.sourceAssociation.line = record.OpAs<uint32_t>(0) - 1;
-                metadata.sourceAssociation.column = record.OpAs<uint32_t>(1);
+                metadata.sourceAssociation.column = record.OpAs<uint32_t>(1) - 1;
 
                 if (instructionMetadata.size()) {
                     instructionMetadata.back() = metadata;
