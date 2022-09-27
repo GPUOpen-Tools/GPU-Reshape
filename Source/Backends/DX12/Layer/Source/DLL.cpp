@@ -12,17 +12,23 @@
 GlobalDXGIFactoryDetour dxgiFactoryDetour;
 GlobalDeviceDetour deviceDetour;
 
+/// Well documented image base
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+
 /// Check if the process is already bootstrapped, the boostrapper performs its own detouring of calls
 /// \return true if bootstrapped
 static bool IsBootstrapped() {
-    char buffer[32];
+    auto* gpaBootstrapperInfo = reinterpret_cast<PFN_D3D12_GET_GPUOPEN_BOOTSTRAPPER_INFO>(GetProcAddress((HINSTANCE)&__ImageBase, "D3D12GetGPUOpenBootstrapperInfo"));
+    if (!gpaBootstrapperInfo) {
+        return false;
+    }
 
-    // Load the bootstrapper env flag
-    size_t length;
-    getenv_s(&length, buffer, "GPUOPEN_DX12_BOOTSTRAPPER");
+    // Get info
+    D3D12GPUOpenBootstrapperInfo info{};
+    gpaBootstrapperInfo(&info);
 
-    // If set to "1", the bootstrapper attached this layer
-    return !std::strcmp(buffer, "1");
+    // Version check
+    return info.version >= 1;
 }
 
 /// DLL entrypoint

@@ -34,6 +34,7 @@ using PFN_CREATE_DXGI_FACTORY2 = HRESULT(WINAPI*)(UINT flags, REFIID riid, _COM_
 using PFN_D3D12_SET_DEVICE_GPUOPEN_GPU_VALIDATION_INFO = HRESULT (WINAPI *)(const struct D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info);
 using PFN_D3D12_CREATE_DEVICE_GPUOPEN = HRESULT (WINAPI *)(IUnknown *pAdapter, D3D_FEATURE_LEVEL minimumFeatureLevel, REFIID riid, void **ppDevice, const struct D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info);
 using PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN = HRESULT(WINAPI *)(const struct D3D12GPUOpenFunctionTable* table);
+using PFN_D3D12_GET_GPUOPEN_BOOTSTRAPPER_INFO = void(WINAPI *)(const struct D3D12GPUOpenBootstrapperInfo* out);
 
 /// Extension pointer types
 using PFN_AMD_AGS_CREATE_DEVICE = AGSReturnCode(__stdcall *)(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams);
@@ -61,6 +62,11 @@ struct D3D12GPUOpenFunctionTable {
     PFN_AMD_AGS_PUSH_MARKER    next_AMDAGSPushMarker{nullptr};
     PFN_AMD_AGS_POP_MARKER     next_AMDAGSPopMarker{nullptr};
     PFN_AMD_AGS_SET_MARKER     next_AMDAGSSetMarker{nullptr};
+};
+
+/// Bootstrapper info
+struct D3D12GPUOpenBootstrapperInfo {
+    uint32_t version;
 };
 
 /// Shared validation info

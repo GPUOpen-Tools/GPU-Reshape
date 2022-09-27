@@ -64,9 +64,13 @@ HANDLE InitializationEvent;
 /// Has the layer attempted initialization prior?
 bool HasInitializedOrFailed;
 
+/// Shared data segment
 #pragma data_seg (".GOD3D12LB")
 bool IsBootstrappedAcrossProcess = false;
 #pragma data_seg()
+
+/// Linking
+#pragma comment(linker, "/Section:.GOD3D12LB,RW")
 
 /// Is this handle the owning instance?
 bool IsOwningBootstrapper;
@@ -263,7 +267,16 @@ void BootstrapLayer(const char* invoker, bool native) {
     }
 }
 
+void D3D12GetGPUOpenBootstrapperInfo(D3D12GPUOpenBootstrapperInfo* out) {
+    out->version = 1;
+}
+
 FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
+    // Special name
+    if (HIWORD(lpProcName) && !std::strcmp(lpProcName, "D3D12GetGPUOpenBootstrapperInfo")) {
+        return reinterpret_cast<FARPROC>(&D3D12GetGPUOpenBootstrapperInfo);
+    }
+
     // Query against layer?
     if (LayerModule) {
         // Non-ordinal?
@@ -572,24 +585,24 @@ void DetourInitialCreation() {
     // Attempt to find d3d12 module
     if (GetModuleHandleExW(0x0, kD3D12ModuleNameW, &D3D12Module)) {
         // Attach against original address
-        DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(D3D12Module, "D3D12CreateDevice"));
+        DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12CreateDevice"));
         DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
     }
 
     // Attempt to find dxgi module
     if (GetModuleHandleExW(0x0, kDXGIModuleNameW, &DXGIModule)) {
         // Attach against original address
-        DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(GetProcAddress(DXGIModule, "CreateDXGIFactory"));
+        DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory"));
         DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
 
         // Attach against original address
-        DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(GetProcAddress(DXGIModule, "CreateDXGIFactory1"));
+        DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory1"));
         if (DetourFunctionTable.next_CreateDXGIFactory1Original) {
             DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
         }
 
         // Attach against original address
-        DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(GetProcAddress(DXGIModule, "CreateDXGIFactory2"));
+        DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory2"));
         if (DetourFunctionTable.next_CreateDXGIFactory2Original) {
             DetourAttach(&reinterpret_cast<void *&>(DetourFunctionTable.next_CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
         }
