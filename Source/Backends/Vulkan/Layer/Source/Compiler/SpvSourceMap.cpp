@@ -23,11 +23,15 @@ void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
     fragment->source = code;
     fragment->lineOffsets.push_back(0);
     fragment->lineStart = 0;
+    fragment->fragmentInlineOffset = 0;
 
     // Summarize the line offsets
     for (uint32_t i = 0; i < code.length(); i++) {
         if (code[i] == '#') {
             constexpr const char *kLineDirective = "#line";
+
+            // Start of directive
+            uint32_t directiveStart = i;
 
             // Is line directive?
             if (std::strncmp(&code[i], kLineDirective, std::strlen(kLineDirective))) {
@@ -64,22 +68,25 @@ void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
                 i++;
             }
 
-            // Next line
-            i++;
+            // Close off previous fragment
+            fragment->source = code.substr(fragment->fragmentInlineOffset, directiveStart - fragment->fragmentInlineOffset);
 
+            // Get file
             PhysicalSource &extendedSource = GetOrAllocate(file);
-            source.filename = file;
-            source.version = version;
-            source.language = language;
+            extendedSource.filename = file;
+            extendedSource.version = version;
+            extendedSource.language = language;
 
+            // Extend fragments
             fragment = &extendedSource.fragments.emplace_back();
-            fragment->source = code;
-            fragment->lineOffsets.push_back(i);
+            fragment->fragmentInlineOffset = i + 1;
+            fragment->source = code.substr(fragment->fragmentInlineOffset);
+            fragment->lineOffsets.push_back(0);
             fragment->lineStart = offset - 1;
         }
 
-        if (code[i] == '\n') {
-            fragment->lineOffsets.push_back(i + 1);
+        else if (code[i] == '\n') {
+            fragment->lineOffsets.push_back((i - fragment->fragmentInlineOffset) + 1);
         }
     }
 }
@@ -125,6 +132,11 @@ std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const 
 
     // Find appropriate fragment
     for (const Fragment &fragment: source.fragments) {
+        // Empty fragment?
+        if (!fragment.source.length()) {
+            continue;
+        }
+
         // Within bounds?
         if (line >= fragment.lineStart && line < fragment.lineStart + fragment.lineOffsets.size()) {
             uint32_t offset = fragment.lineOffsets.at(line - fragment.lineStart);
@@ -171,9 +183,24 @@ uint64_t SpvSourceMap::GetCombinedSourceLength(uint32_t fileUID) const {
     // Not null terminated
     uint64_t length = 0;
 
+    // Current line
+    uint32_t line = 0;
+
     // Sum length
     for (const Fragment &fragment: source.fragments) {
+        // Account for empty lines between fragments (required for 1:1 lineup)
+        if (line < fragment.lineStart) {
+            uint32_t missing = fragment.lineStart - line;
+            length += missing;
+            line += missing;
+        }
+
         length += fragment.source.length();
+
+        // Advance line count if not empty
+        if (fragment.source.length()) {
+            line += fragment.lineOffsets.size();
+        }
     }
 
     return length;
@@ -182,9 +209,25 @@ uint64_t SpvSourceMap::GetCombinedSourceLength(uint32_t fileUID) const {
 void SpvSourceMap::FillCombinedSource(uint32_t fileUID, char *buffer) const {
     const PhysicalSource &source = physicalSources[fileUID];
 
+    // Current line
+    uint32_t line = 0;
+
     // Copy memory
     for (const Fragment &fragment: source.fragments) {
+        // Account for empty lines between fragments (required for 1:1 lineup)
+        if (line < fragment.lineStart) {
+            uint32_t missing = fragment.lineStart - line;
+            std::fill_n(buffer, missing, '\n');
+            buffer += missing;
+            line += missing;
+        }
+
         std::memcpy(buffer, fragment.source.data(), fragment.source.length() * sizeof(char));
         buffer += fragment.source.length();
+
+        // Advance line count if not empty
+        if (fragment.source.length()) {
+            line += fragment.lineOffsets.size();
+        }
     }
 }

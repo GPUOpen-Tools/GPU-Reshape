@@ -67,9 +67,16 @@ struct SpvSourceMap {
 private:
     /// Fragment of source code
     struct Fragment {
+        /// Source view of this fragment
         std::string_view source;
 
+        /// Starting line
         uint32_t lineStart{0};
+
+        /// Starting offset within the parent fragment
+        uint32_t fragmentInlineOffset{0};
+
+        /// All line offsets
         std::vector<uint32_t> lineOffsets;
     };
 
