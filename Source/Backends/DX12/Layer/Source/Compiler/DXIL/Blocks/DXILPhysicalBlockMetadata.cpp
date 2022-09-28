@@ -699,12 +699,14 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
                     break;
                 }
 
-                case LLVMMetadataRecord::Node: {
+                case LLVMMetadataRecord::Node:
+                case LLVMMetadataRecord::DistinctNode: {
                     bool resolved = true;
 
                     // Ensure all operands are resolved
                     for (uint32_t opId = 0; opId < record.opCount; opId++) {
-                        if (record.ops[opId] != 0) {
+                        // Distinct nodes may refer to themselves
+                        if (record.ops[opId] != 0 && record.ops[opId] - 1 != i) {
                             resolved &= metadataBlock->sourceMappings.at(record.ops[opId] - 1) != ~0u;
                         }
                     }
