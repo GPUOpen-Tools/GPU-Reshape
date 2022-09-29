@@ -1,6 +1,7 @@
 
 # Libraries
 add_subdirectory(Backend)
+add_subdirectory(Frontend)
 
 # Proxy object
 add_custom_target(Features.ExportStability)

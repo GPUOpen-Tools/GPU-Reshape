@@ -8,7 +8,7 @@ add_custom_target(Features.ResourceBounds)
 add_dependencies(
     Features.ResourceBounds
     Features.ResourceBounds.Backend
-    Features.ResourceBounds.Frontend
+    Features.ResourceBounds.Frontend.Hub
 )
 
 # Copy xml

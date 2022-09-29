@@ -7,7 +7,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class ShaderCollectionViewModel : ReactiveObject, IPropertyViewModel
+    public class ShaderCollectionViewModel : ReactiveObject, IShaderCollectionViewModel
     {
         /// <summary>
         /// Name of this property
@@ -28,6 +28,11 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Child properties
         /// </summary>
         public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
+
+        /// <summary>
+        /// All services
+        /// </summary>
+        public ISourceList<IPropertyService> Services { get; set; } = new SourceList<IPropertyService>();
 
         /// <summary>
         /// All shaders within this collection
@@ -57,7 +62,7 @@ namespace Studio.ViewModels.Workspace.Properties
             // Submit request if not already
             if (shaderViewModel.Contents == string.Empty)
             {
-                _shaderCodeListener.EnqueueShader(shaderViewModel);
+                _shaderCodeService.EnqueueShader(shaderViewModel);
             }
             
             // Flat view
@@ -109,10 +114,10 @@ namespace Studio.ViewModels.Workspace.Properties
         private void OnConnectionChanged()
         {
             // Set connection
-            _shaderCodeListener.ConnectionViewModel = ConnectionViewModel;
+            _shaderCodeService.ConnectionViewModel = ConnectionViewModel;
             
             // Register internal listeners
-            _connectionViewModel?.Bridge?.Register(_shaderCodeListener);
+            _connectionViewModel?.Bridge?.Register(_shaderCodeService);
             
             // Create all properties
             CreateProperties();
@@ -139,7 +144,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Code listener
         /// </summary>
-        private Listeners.ShaderCodeListener _shaderCodeListener = new();
+        private Listeners.ShaderCodeService _shaderCodeService = new();
         
         /// <summary>
         /// Internal connection

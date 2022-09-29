@@ -29,6 +29,11 @@ namespace Studio.ViewModels.Workspace.Properties
         public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
 
         /// <summary>
+        /// All services
+        /// </summary>
+        public ISourceList<IPropertyService> Services { get; set; } = new SourceList<IPropertyService>();
+
+        /// <summary>
         /// View model associated with this property
         /// </summary>
         public IConnectionViewModel? ConnectionViewModel

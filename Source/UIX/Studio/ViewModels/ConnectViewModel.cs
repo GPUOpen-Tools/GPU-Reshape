@@ -102,35 +102,30 @@ namespace Studio.ViewModels
         /// <param name="count">number of streams</param>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            // On main thread
-            // TODO: This is ugly, ugly! Add some policy for threading or something
-            Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                var schema = new OrderedMessageView(streams);
+            var schema = new OrderedMessageView(streams);
 
-                // Visit typed
-                foreach (OrderedMessage message in schema)
+            // Visit typed
+            foreach (OrderedMessage message in schema)
+            {
+                switch (message.ID)
                 {
-                    switch (message.ID)
+                    case HostDiscoveryMessage.ID:
                     {
-                        case HostDiscoveryMessage.ID:
-                        {
-                            Handle(message.Get<HostDiscoveryMessage>());
-                            break;
-                        }
-                        case HostConnectedMessage.ID:
-                        {
-                            Handle(message.Get<HostConnectedMessage>());
-                            break;
-                        }
-                        case HostResolvedMessage.ID:
-                        {
-                            Handle(message.Get<HostResolvedMessage>());
-                            break;
-                        }
+                        Handle(message.Get<HostDiscoveryMessage>());
+                        break;
+                    }
+                    case HostConnectedMessage.ID:
+                    {
+                        Handle(message.Get<HostConnectedMessage>());
+                        break;
+                    }
+                    case HostResolvedMessage.ID:
+                    {
+                        Handle(message.Get<HostResolvedMessage>());
+                        break;
                     }
                 }
-            });
+            }
         }
 
         /// <summary>
@@ -139,29 +134,34 @@ namespace Studio.ViewModels
         /// <param name="connected">message</param>
         private async void Handle(HostConnectedMessage connected)
         {
-            // Set status
-            if (connected.accepted == 0)
-            {
-                ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationRejected;
-            }
-            else
-            {
-                ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationAccepted;
-            }
-            
-            // Confirm with view
-            if (!await AcceptClient.Handle(this))
-            {
-                return;
-            }
-            
-            // Get provider
-            var provider = App.Locator.GetService<Services.IWorkspaceService>();
+            var flat = connected.Flat;
 
-            // Create workspace
-            provider?.Add(new ViewModels.Workspace.WorkspaceViewModel()
+            Dispatcher.UIThread.InvokeAsync(async () => 
             {
-                Connection = _connectionViewModel
+                // Set status
+                if (flat.accepted == 0)
+                {
+                    ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationRejected;
+                }
+                else
+                {
+                    ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationAccepted;
+                }
+            
+                // Confirm with view
+                if (!await AcceptClient.Handle(this))
+                {
+                    return;
+                }
+                
+                // Get provider
+                var provider = App.Locator.GetService<Services.IWorkspaceService>();
+
+                // Create workspace
+                provider?.Add(new ViewModels.Workspace.WorkspaceViewModel()
+                {
+                    Connection = _connectionViewModel
+                });
             });
         }
 
@@ -171,15 +171,20 @@ namespace Studio.ViewModels
         /// <param name="resolved">message</param>
         private async void Handle(HostResolvedMessage resolved)
         {
-            // Set status
-            if (resolved.accepted == 0)
+            var flat = resolved.Flat;
+
+            Dispatcher.UIThread.InvokeAsync(() =>
             {
-                ConnectionStatus = Models.Workspace.ConnectionStatus.ResolveRejected;
-            }
-            else
-            {
-                ConnectionStatus = Models.Workspace.ConnectionStatus.ResolveAccepted;
-            }
+                // Set status
+                if (flat.accepted == 0)
+                {
+                    ConnectionStatus = Models.Workspace.ConnectionStatus.ResolveRejected;
+                }
+                else
+                {
+                    ConnectionStatus = Models.Workspace.ConnectionStatus.ResolveAccepted;
+                }
+            });
         }
 
         /// <summary>

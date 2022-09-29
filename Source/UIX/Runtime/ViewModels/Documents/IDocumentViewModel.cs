@@ -1,5 +1,4 @@
 ﻿using Avalonia.Media;
-using Dock.Model.ReactiveUI.Controls;
 
 namespace Studio.ViewModels.Documents
 {

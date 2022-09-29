@@ -34,7 +34,7 @@ namespace Studio.ViewModels
 
         public MainWindowViewModel()
         {
-            _factory = new DockFactory(new DemoData());
+            _factory = new DockFactory(new object());
 
             Layout = _factory?.CreateLayout();
             if (Layout is { })

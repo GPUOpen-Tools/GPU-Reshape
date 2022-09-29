@@ -1,11 +1,15 @@
 
-# Add external library
+# Add external projects
+include_external_msproject(UIX.Runtime ${CMAKE_CURRENT_SOURCE_DIR}/Runtime/Runtime.csproj)
 include_external_msproject(UIX.Studio ${CMAKE_CURRENT_SOURCE_DIR}/Studio/Studio.csproj)
 
-# Add dependencies
+# IDE discovery
+set_target_properties(UIX.Runtime PROPERTIES FOLDER Source/UIX/Runtime)
+set_target_properties(UIX.Studio PROPERTIES FOLDER Source/UIX/Studio)
+
+# Add runtime dependencies
 add_dependencies(
-    UIX.Studio
-    Features.ResourceBounds.Backend.DotNet
+    UIX.Runtime
     Libraries.Bridge.DotNet
     Libraries.Message.DotNet
     Services.HostResolver.DotNet
@@ -14,5 +18,8 @@ add_dependencies(
     Libraries.Backend.Schema.DotNet
 )
 
-# IDE discovery
-set_target_properties(UIX.Studio PROPERTIES FOLDER UIX/Studio)
+# Add studio dependencies
+add_dependencies(
+    UIX.Studio
+    UIX.Runtime
+)

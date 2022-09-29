@@ -5,7 +5,7 @@
     <frontend>
         <plugin name="Features.ResourceBounds.Frontend"/>
     </frontend>
-    <!--<uix>
-        <plugin name="ResourceBounds.UIX"/>
-    </uix>-->
+    <uix>
+        <plugin name="Features.ResourceBounds.UIX"/>
+    </uix>
 </spec>

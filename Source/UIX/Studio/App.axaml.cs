@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
+using Studio.Plugin;
 using Studio.ViewModels;
 using Studio.Views;
 
@@ -50,6 +51,19 @@ namespace Studio
 
             // Hosts all live workspaces
             locator.BindToSelf<Services.IWorkspaceService>(new Services.WorkspaceService());
+        }
+
+        private void InstallPlugins()
+        {
+            PluginResolver resolver = new();
+
+            // Attempt to find all plugins of relevance
+            PluginList? list = resolver.FindPlugins("uix", PluginResolveFlag.ContinueOnFailure);
+            if (list == null)
+                return;
+
+            // Install all plugins
+            resolver.InstallPlugins(list, PluginResolveFlag.ContinueOnFailure);
         }
         
         public override void OnFrameworkInitializationCompleted()
@@ -98,6 +112,9 @@ namespace Studio
                     break;
                 }
             }
+            
+            // Install all user plugins
+            InstallPlugins();
 
             base.OnFrameworkInitializationCompleted();
         }

@@ -6,7 +6,7 @@
              xmlns:vm="using:Studio.ViewModels.Tools"
              mc:Ignorable="d"
              xmlns:i="clr-namespace:Projektanker.Icons.Avalonia;assembly=Projektanker.Icons.Avalonia"
-             xmlns:logging="clr-namespace:Studio.Models.Logging"
+             xmlns:logging="clr-namespace:Studio.Models.Logging;assembly=UIX.Studio.Runtime"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:LogViewModel" x:CompileBindings="True">

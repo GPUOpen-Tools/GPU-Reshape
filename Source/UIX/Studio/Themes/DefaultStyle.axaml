@@ -3,7 +3,7 @@
         xmlns:idc="using:Dock.Avalonia.Controls"
         xmlns:controls="clr-namespace:Studio.Views.Controls"
         xmlns:core="clr-namespace:Dock.Model.Core;assembly=Dock.Model"
-        xmlns:documents="clr-namespace:Studio.ViewModels.Documents">
+        xmlns:documents="clr-namespace:Studio.ViewModels.Documents;assembly=UIX.Studio.Runtime">
     <Styles.Resources>
         <!-- Custom dark style for GBV Studio -->
 

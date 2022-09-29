@@ -9,7 +9,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Listeners
 {
-    public class ShaderMappingListener : Bridge.CLR.IBridgeListener
+    public class ShaderMappingService : IPropertyService, IShaderMappingService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
         /// Connection for this listener

@@ -116,7 +116,11 @@
       <UpToDateCheckInput Remove="Views\Resources\ContextMenuView.axaml" />
     </ItemGroup>
     <ItemGroup>
-      <Folder Include="Models\Workspace\Properties" />
+      <Folder Include="ViewModels\Controls" />
+      <Folder Include="ViewModels\Instrumentation" />
       <Folder Include="Views\Themes" />
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\Runtime\Runtime.csproj" />
     </ItemGroup>
 </Project>

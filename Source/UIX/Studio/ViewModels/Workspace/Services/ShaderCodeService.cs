@@ -4,7 +4,7 @@ using Message.CLR;
 
 namespace Studio.ViewModels.Workspace.Listeners
 {
-    public class ShaderCodeListener : Bridge.CLR.IBridgeListener
+    public class ShaderCodeService : IPropertyService, IShaderCodeService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
         /// Connection for this listener

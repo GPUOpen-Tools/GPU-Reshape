@@ -5,7 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="using:Studio.ViewModels.Documents"
              xmlns:controls="clr-namespace:Studio.Views.Controls"
-             xmlns:properties="clr-namespace:Studio.ViewModels.Workspace.Properties"
+             xmlns:properties="clr-namespace:Studio.ViewModels.Workspace.Properties;assembly=UIX.Studio.Runtime"
              mc:Ignorable="d"
              d:DesignWidth="700" d:DesignHeight="400"
              x:DataType="vm:WorkspaceOverviewViewModel" x:CompileBindings="True">

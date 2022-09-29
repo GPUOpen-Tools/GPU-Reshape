@@ -106,8 +106,10 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
                 -opath ${SCHEMA_OUT_PATH}
         )
 
-        # Write dummy generated file
-        file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${OutputPath} "Generated file")
+        # Write dummy generated file, do not overwrite if it already exists to preserve the build cache
+        if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${OutputPath})
+            file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${OutputPath} "Generated file")
+        endif()
 
         # Set output
         list(APPEND ${OUT_GENERATED}CS ${OutputPath})

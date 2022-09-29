@@ -13,7 +13,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class MessageCollectionViewModel : ReactiveObject, IPropertyViewModel, Bridge.CLR.IBridgeListener
+    public class MessageCollectionViewModel : ReactiveObject, IPropertyViewModel, IMessageCollectionViewModel
     {
         /// <summary>
         /// Name of this property
@@ -34,6 +34,11 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Child properties
         /// </summary>
         public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
+
+        /// <summary>
+        /// All services
+        /// </summary>
+        public ISourceList<IPropertyService> Services { get; set; } = new SourceList<IPropertyService>();
 
         /// <summary>
         /// All condensed messages
@@ -94,13 +99,13 @@ namespace Studio.ViewModels.Workspace.Properties
         private void OnConnectionChanged()
         {
             // Set connection
-            _shaderMappingListener.ConnectionViewModel = ConnectionViewModel;
+            _shaderMappingService.ConnectionViewModel = ConnectionViewModel;
+            
+            // Make visible
+            Parent?.Services.Add(_shaderMappingService);
             
             // Register internal listeners
-            _connectionViewModel?.Bridge?.Register(ShaderSourceMappingMessage.ID, _shaderMappingListener);
-
-            // HARDCODED LISTENER, WILL BE MOVED TO MODULAR CODE
-            _connectionViewModel?.Bridge?.Register(ResourceIndexOutOfBoundsMessage.ID, this);
+            _connectionViewModel?.Bridge?.Register(ShaderSourceMappingMessage.ID, _shaderMappingService);
 
             // Create all properties
             CreateProperties();
@@ -120,91 +125,9 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
-        /// Bridge handler
-        /// </summary>
-        /// <param name="streams"></param>
-        /// <param name="count"></param>
-        /// <exception cref="NotImplementedException"></exception>
-        public void Handle(ReadOnlyMessageStream streams, uint count)
-        {
-            // HARDCODED READER, WILL BE MOVED TO MODULAR CODE
-            if (streams.GetSchema().IsStatic(ResourceIndexOutOfBoundsMessage.ID))
-            {
-                var view = new StaticMessageView<ResourceIndexOutOfBoundsMessage>(streams);
-
-                // Latent update set
-                var lookup = new Dictionary<uint, ResourceIndexOutOfBoundsMessage>();
-                var enqueued = new Dictionary<uint, uint>();
-
-                // Consume all messages
-                foreach (ResourceIndexOutOfBoundsMessage message in view)
-                {
-                    if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
-                    {
-                        enqueued[message.Key] = enqueuedCount + 1;
-                    }
-                    else
-                    {
-                        lookup.Add(message.Key, message);
-                        enqueued.Add(message.Key, 1);
-                    }
-                }
-
-                foreach (var kv in enqueued)
-                {
-                    // Add to reduced set
-                    if (_reducedMessages.ContainsKey(kv.Key))
-                    {
-                        _reducedMessages[kv.Key].Count += kv.Value;
-                    }
-                    else
-                    {
-                        // Get from key
-                        var message = lookup[kv.Key];
-
-                        // Create object
-                        var validationObject = new Objects.ValidationObject()
-                        {
-                            Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds"
-                        };
-
-                        // Shader view model injection
-                        validationObject.WhenAnyValue(x => x.Segment).WhereNotNull().Subscribe(x =>
-                        {
-                            // Try to get shader collection
-                            var shaderCollectionViewModel = Parent?.GetProperty<ShaderCollectionViewModel>();
-                            if (shaderCollectionViewModel != null)
-                            {
-                                // Get the respective shader
-                                Objects.ShaderViewModel shaderViewModel = shaderCollectionViewModel.GetOrAddShader(x.Location.SGUID);
-
-                                // Append validation object to target shader
-                                shaderViewModel.ValidationObjects.Add(validationObject);
-                            }
-                        });
-
-                        // Enqueue segment binding
-                        _shaderMappingListener.EnqueueMessage(validationObject, message.sguid);
-
-                        // Insert lookup
-                        _reducedMessages.Add(kv.Key, validationObject);
-
-                        // Add to UI visible collection
-                        Dispatcher.UIThread.InvokeAsync(() => { ValidationObjects.Add(validationObject); });
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// All reduced resource messages
-        /// </summary>
-        private Dictionary<uint, Objects.ValidationObject> _reducedMessages = new();
-
-        /// <summary>
         /// Shader mapping bridge listener
         /// </summary>
-        private ShaderMappingListener _shaderMappingListener = new();
+        private ShaderMappingService _shaderMappingService = new();
 
         /// <summary>
         /// Internal view model
