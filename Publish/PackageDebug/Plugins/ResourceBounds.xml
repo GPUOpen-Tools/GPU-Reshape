@@ -1,0 +1,11 @@
+<spec>
+    <backend>
+        <plugin name="Features.ResourceBounds.Backend"/>
+    </backend>
+    <frontend>
+        <plugin name="Features.ResourceBounds.Frontend"/>
+    </frontend>
+    <uix>
+        <plugin name="Features.ResourceBounds.UIX"/>
+    </uix>
+</spec>

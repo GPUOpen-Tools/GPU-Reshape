@@ -1,0 +1,8 @@
+<spec>
+    <backend>
+        <plugin name="Features.ExportStability.Backend"/>
+    </backend>
+    <uix>
+        <plugin name="Features.ExportStability.UIX"/>
+    </uix>
+</spec>

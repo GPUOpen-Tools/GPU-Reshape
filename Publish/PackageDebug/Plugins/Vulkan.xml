@@ -1,0 +1,5 @@
+<spec>
+    <discovery>
+        <plugin name="Backends.Vulkan.Discovery"/>
+    </discovery>
+</spec>
