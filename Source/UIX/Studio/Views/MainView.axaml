@@ -9,56 +9,88 @@
              xmlns:vm="using:Studio.ViewModels"
              xmlns:r="using:Studio.Resources"
              xmlns:collections="clr-namespace:System.Collections;assembly=System.Runtime"
+             xmlns:status="clr-namespace:Studio.ViewModels.Status;assembly=UIX.Studio.Runtime"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
              mc:Ignorable="d"
              d:DesignWidth="1000" d:DesignHeight="550"
              x:DataType="vm:MainWindowViewModel" x:CompileBindings="True">
-  <Design.DataContext>
-    <vm:MainWindowViewModel />
-  </Design.DataContext>
-  <Grid RowDefinitions="30,*,25" ColumnDefinitions="Auto,*" Name="MainGrid">
-    <Menu Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"  Height="30">
-      <Image Source="/Resources/Icons/AppBlack.png" Width="20"/>
-      
-      <MenuItem Header="_File" Height="30">
-        <MenuItem Header="_New Layout" Command="{Binding ResetLayout}" />
-        <Separator/>
-        <MenuItem Header="_Settings" Command="{Binding OpenSettings}" />
-      </MenuItem>
-      <MenuItem Header="_Window" DataContext="{Binding Layout}">
-        <MenuItem Header="_Exit Windows" Command="{Binding ExitWindows}" />
-        <Separator />
-        <MenuItem Header="_Show Windows" Command="{Binding ShowWindows}" />
-      </MenuItem>
-      <MenuItem Header="_Options">
-        <MenuItem x:Name="OptionsIsDragEnabled" Header="Enable Drag">
-          <MenuItem.Icon>
-            <CheckBox IsChecked="{Binding $parent[Window].(id:DockProperties.IsDragEnabled)}"
-                      BorderThickness="0"
-                      IsHitTestVisible="False"
-                      x:CompileBindings="False" />
-          </MenuItem.Icon>
-        </MenuItem>
-        <Separator />
-        <MenuItem x:Name="OptionsIsDropEnabled" Header="Enable Drop">
-          <MenuItem.Icon>
-            <CheckBox IsChecked="{Binding $parent[Window].(id:DockProperties.IsDropEnabled)}"
-                      BorderThickness="0"
-                      IsHitTestVisible="False"
-                      x:CompileBindings="False" />
-          </MenuItem.Icon>
-        </MenuItem>
-      </MenuItem>
-    </Menu>
-   
-    <DockControl x:Name="DockControl" Layout="{Binding Layout}" Margin="0"
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+    <Grid RowDefinitions="30,*,25" ColumnDefinitions="Auto,*" Name="MainGrid">
+        <Menu Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Height="30">
+            <Image Source="/Resources/Icons/AppBlack.png" Width="20" />
+
+            <MenuItem Header="_File" Height="30">
+                <MenuItem Header="_New Layout" Command="{Binding ResetLayout}" />
+                <Separator />
+                <MenuItem Header="_Settings" Command="{Binding OpenSettings}" />
+            </MenuItem>
+            <MenuItem Header="_Window" DataContext="{Binding Layout}">
+                <MenuItem Header="_Exit Windows" Command="{Binding ExitWindows}" />
+                <Separator />
+                <MenuItem Header="_Show Windows" Command="{Binding ShowWindows}" />
+            </MenuItem>
+            <MenuItem Header="_Options">
+                <MenuItem x:Name="OptionsIsDragEnabled" Header="Enable Drag">
+                    <MenuItem.Icon>
+                        <CheckBox IsChecked="{Binding $parent[Window].(id:DockProperties.IsDragEnabled)}"
+                                  BorderThickness="0"
+                                  IsHitTestVisible="False"
+                                  x:CompileBindings="False" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem x:Name="OptionsIsDropEnabled" Header="Enable Drop">
+                    <MenuItem.Icon>
+                        <CheckBox IsChecked="{Binding $parent[Window].(id:DockProperties.IsDropEnabled)}"
+                                  BorderThickness="0"
+                                  IsHitTestVisible="False"
+                                  x:CompileBindings="False" />
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+        </Menu>
+
+        <DockControl x:Name="DockControl" Layout="{Binding Layout}" Margin="0"
                      Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" />
-    
-    <Panel DataContext="{Binding Layout.ActiveDockable}"
-           Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2">
-      <TextBlock Text="{Binding FocusedDockable, FallbackValue={}}"
-                 Margin="4"
-                 x:DataType="dm:IDock"
-                 x:CompileBindings="True" />
-    </Panel>
-  </Grid>
+
+        <Panel
+            Grid.Row="2" 
+            Grid.Column="0" 
+            Grid.ColumnSpan="2">
+            
+            <ItemsControl
+                VerticalAlignment="Stretch"
+                HorizontalAlignment="Left"
+                Items="{Binding StatusLeft}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="status:IStatusViewModel">
+                        <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+            
+            <ItemsControl
+                VerticalAlignment="Stretch"
+                HorizontalAlignment="Right"
+                Items="{Binding StatusRight}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="status:IStatusViewModel">
+                        <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </Panel>
+    </Grid>
 </UserControl>

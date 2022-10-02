@@ -46,11 +46,14 @@ namespace Studio
             // Logging host
             locator.BindToSelf<Services.ILoggingService>(new Services.LoggingService());
 
-            // Initiates the host resolver if not already up and running
-            locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
-
             // Hosts all live workspaces
             locator.BindToSelf<Services.IWorkspaceService>(new Services.WorkspaceService());
+
+            // Hosts all status objects
+            locator.BindToSelf<Services.IStatusService>(new Services.StatusService());
+
+            // Initiates the host resolver if not already up and running
+            locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
         }
 
         private void InstallPlugins()

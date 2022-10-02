@@ -13,8 +13,9 @@
         <StartupObject>Studio.Program</StartupObject>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DebugType>none</DebugType>
+      <DebugType>portable</DebugType>
       <OutputPath>..\..\..\Bin\MSVC\Release\</OutputPath>
+      <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
       <OutputPath>..\..\..\Bin\MSVC\Debug\</OutputPath>
@@ -78,6 +79,14 @@
       <AvaloniaResource Include="Resources\Icons\AppBlack.png" />
       <Compile Update="Views\SettingsWindow.axaml.cs">
         <DependentUpon>SettingWindow.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Status\InstrumentationStatusView.axaml.cs">
+        <DependentUpon>WorkspaceTreeItemView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Status\LogStatusViewModel.axaml.cs">
+        <DependentUpon>LogStatusViewModel.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
     </ItemGroup>

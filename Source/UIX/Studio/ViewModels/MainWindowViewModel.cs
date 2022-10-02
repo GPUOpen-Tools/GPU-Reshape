@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -8,8 +11,10 @@ using Studio.Models;
 using Dock.Model.Controls;
 using Dock.Model.Core;
 using DynamicData;
+using DynamicData.Binding;
 using ReactiveUI;
 using Studio.Services;
+using Studio.ViewModels.Status;
 using Studio.Views;
 
 namespace Studio.ViewModels
@@ -32,6 +37,21 @@ namespace Studio.ViewModels
         /// </summary>
         public ICommand OpenSettings { get; }
 
+        /// <summary>
+        /// Status view models
+        /// </summary>
+        public ObservableCollection<IStatusViewModel>? Status => AvaloniaLocator.Current.GetService<IStatusService>()?.ViewModels;
+
+        /// <summary>
+        /// Filtered lhs status
+        /// </summary>
+        public IEnumerable<IStatusViewModel>? StatusLeft => Status?.Where(s => s.Orientation == StatusOrientation.Left);
+
+        /// <summary>
+        /// Filtered rhs status
+        /// </summary>
+        public IEnumerable<IStatusViewModel>? StatusRight => Status?.Where(s => s.Orientation == StatusOrientation.Right);
+
         public MainWindowViewModel()
         {
             _factory = new DockFactory(new object());
@@ -52,6 +72,13 @@ namespace Studio.ViewModels
             // Create commands
             ResetLayout = ReactiveCommand.Create(OnResetLayout);
             OpenSettings = ReactiveCommand.Create(OnOpenSettings);
+
+            // Bind filters
+            Status.WhenAnyValue(x => x).Subscribe(x =>
+            {
+                this.RaisePropertyChanged(nameof(StatusLeft));
+                this.RaisePropertyChanged(nameof(StatusRight));
+            });
         }
 
         public void CloseLayout()
