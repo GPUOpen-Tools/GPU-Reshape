@@ -11,3 +11,5 @@ cmake^
     -B "cmake-build-vs2019"^
     -DENABLE_UIX=ON^
     %*
+
+cmake -P Build/Utils/CSProjPatch.cmake

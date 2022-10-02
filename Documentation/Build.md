@@ -10,7 +10,7 @@ A minimum version of **CMake 3.17** is required to configure and build the proje
 
 Building experimental UIX requires the following dependencies to be installed on the system:
 
-- **.NET Framework 4.8.1 (.NET 5.0)**
+- **.NET Framework 4.8 (.NET 5.0)**
 
 ### Windows
 

@@ -46,6 +46,11 @@ if (${ENABLE_UIX})
 
     # Enable additional languages
     enable_language(CSharp)
+
+    # Set standard C# properties
+    SET(CMAKE_DOTNET_TARGET_FRAMEWORK_VERSION "v4.8")
+    SET(CMAKE_CSharp_FLAGS "/langversion:6")
+    SET(CMAKE_CSharp_FLAGS "/platform:x64")
 endif()
 
 # Release configuration
