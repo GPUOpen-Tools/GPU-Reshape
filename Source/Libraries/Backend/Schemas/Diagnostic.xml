@@ -1,0 +1,7 @@
+<schema>
+    <message name="JobDiagnostic">
+        <field name="remaining" type="uint32">
+            Number of remaining jobs, opaque in nature
+        </field>
+    </message>
+</schema>

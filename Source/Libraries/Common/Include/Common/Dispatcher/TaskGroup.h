@@ -40,6 +40,11 @@ public:
         controller->Commit();
     }
 
+    /// Get the current bucket, must be disposed of before the last chain finishes
+    DispatcherBucket* GetBucket() {
+        return &controller->bucket;
+    }
+
 private:
     struct Controller {
         struct LinkData {
@@ -50,7 +55,7 @@ private:
 
         Controller(Dispatcher* dispatcher) : dispatcher(dispatcher) {
             bucket.userData = nullptr;
-            bucket.functor = BindDelegate(this, Controller::OnLinkCompleted);
+            bucket.completionFunctor = BindDelegate(this, Controller::OnLinkCompleted);
         }
 
         /// Invoked once a link has been completed

@@ -13,7 +13,7 @@ struct DispatcherBucket {
         counter = count;
     }
 
-    /// Increment the counter by a vlaue
+    /// Increment the counter by a value
     void AddCounter(uint32_t count) {
         counter += count;
     }
@@ -30,16 +30,21 @@ struct DispatcherBucket {
         }
     }
 
+    /// Get the current counter
+    uint32_t GetCounter() const {
+        return counter;
+    }
+
     /// Signal the submitter
     void Signal() {
-        functor.Invoke(userData);
+        completionFunctor.Invoke(userData);
     }
 
     /// User data for the functor
     void* userData{nullptr};
 
     /// User functor upon completion
-    Delegate<void(void* userData)> functor;
+    Delegate<void(void* userData)> completionFunctor;
 
 private:
     std::atomic<uint32_t> counter{0};

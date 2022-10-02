@@ -2,6 +2,7 @@
 Project_AddDotNetEx(
     NAME Libraries.Message.DotNet
     LANG CS
+    UNSAFE
     GENERATED
         GeneratedSchemaCS
     SOURCE
@@ -14,8 +15,6 @@ Project_AddDotNetEx(
         System
         System.Runtime
         System.Memory
-    FLAGS
-        /unsafe
 )
 
 # Quick message project

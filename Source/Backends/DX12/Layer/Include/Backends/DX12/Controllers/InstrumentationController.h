@@ -51,8 +51,14 @@ public:
     /// Invoked once a command list has begun recording
     void BeginCommandList();
 
-    /// Commit all changes
+    /// Commit all instrumentation changes
+    void CommitInstrumentation();
+
+    /// Commit all bridges
     void Commit();
+
+    /// Get the number of jobs
+    uint32_t GetJobCount();
 
 protected:
     void CommitShaders(DispatcherBucket* bucket, void *data);
@@ -99,6 +105,19 @@ private:
 
     /// Compilation event
     EventCounter compilationEvent;
+
+private:
+    /// Shared lock
+    std::mutex mutex;
+
+    /// Current compilation bucket, not thread safe
+    DispatcherBucket* compilationBucket{nullptr};
+
+    /// Shared bridge stream
+    MessageStream commitStream;
+
+    /// Last pooled job counter
+    uint32_t lastPooledCount{0};
 
 private:
     bool synchronousRecording{false};

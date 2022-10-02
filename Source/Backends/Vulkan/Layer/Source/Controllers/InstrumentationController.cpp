@@ -12,6 +12,9 @@
 // Bridge
 #include <Bridge/IBridge.h>
 
+// Message
+#include <Message/IMessageStorage.h>
+
 // Bridge
 #include <Common/Format.h>
 
@@ -23,6 +26,7 @@
 #include <Schemas/Pipeline.h>
 #include <Schemas/Config.h>
 #include <Schemas/ShaderMetadata.h>
+#include <Schemas/Diagnostic.h>
 
 // Std
 #include <sstream>
@@ -47,6 +51,11 @@ void InstrumentationController::Uninstall() {
     bridge->Deregister(this);
 }
 
+uint32_t InstrumentationController::GetJobCount() {
+    std::lock_guard guard(mutex);
+    return compilationBucket ? compilationBucket->GetCounter() : 0;
+}
+
 void InstrumentationController::Handle(const MessageStream *streams, uint32_t count) {
     for (uint32_t i = 0; i < count; i++) {
         ConstMessageStreamView view(streams[i]);
@@ -58,7 +67,7 @@ void InstrumentationController::Handle(const MessageStream *streams, uint32_t co
     }
 
     if (!immediateBatch.dirtyObjects.empty()) {
-        Commit();
+        CommitInstrumentation();
     }
 }
 
@@ -170,7 +179,7 @@ void InstrumentationController::SetInstrumentationInfo(InstrumentationInfo &info
     stream.Transfer(info.specialization);
 }
 
-void InstrumentationController::Commit() {
+void InstrumentationController::CommitInstrumentation() {
     compilationEvent.IncrementHead();
 
     // Diagnostic
@@ -199,10 +208,31 @@ void InstrumentationController::Commit() {
     // Start the group
     group.Commit();
 
+    // Get the current bucket
+    compilationBucket = group.GetBucket();
+
     // Clean current batch
     immediateBatch.dirtyObjects.clear();
     immediateBatch.dirtyShaderModules.clear();
     immediateBatch.dirtyPipelines.clear();
+}
+
+void InstrumentationController::Commit() {
+    uint32_t count = GetJobCount();
+
+    // Any since last?
+    if (lastPooledCount == count) {
+        return;
+    }
+
+    // Add diagnostic message
+    auto message = MessageStreamView(commitStream).Add<JobDiagnosticMessage>();
+    message->remaining = count;
+    
+    table->bridge->GetOutput()->AddStreamAndSwap(commitStream);
+
+    // OK
+    lastPooledCount = count;
 }
 
 void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *data) {
@@ -352,6 +382,10 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Release batch
     destroy(batch, allocators);
+
+    // Release the bucket handle, destructed after this call 
+    std::lock_guard guard(mutex);
+    bucket = nullptr;
 }
 
 uint64_t InstrumentationController::SummarizeFeatureBitSet() {
