@@ -1,13 +1,13 @@
 ﻿using System.Collections.ObjectModel;
-using System.Reactive;
 using System.Windows.Input;
 using Message.CLR;
 using ReactiveUI;
+using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Studio.ViewModels.Contexts
+namespace Features.ResourceBounds.UIX.Contexts
 {
-    public class InstrumentContextViewModel : ReactiveObject, IInstrumentContextViewModel
+    public class ResourceBoundsContextMenuItemViewModel : ReactiveObject, IContextMenuItemViewModel
     {
         /// <summary>
         /// Target view model of the context
@@ -25,7 +25,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Display header of this context model
         /// </summary>
-        public string Header { get; set; } = "Instrument";
+        public string Header { get; set; } = "Resource Bounds";
         
         /// <summary>
         /// All items within this context model
@@ -33,7 +33,7 @@ namespace Studio.ViewModels.Contexts
         public ObservableCollection<IContextMenuItemViewModel> Items { get; } = new();
 
         /// <summary>
-        /// Target command
+        /// Context command
         /// </summary>
         public ICommand Command { get; }
 
@@ -46,7 +46,7 @@ namespace Studio.ViewModels.Contexts
             set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
         }
 
-        public InstrumentContextViewModel()
+        public ResourceBoundsContextMenuItemViewModel()
         {
             Command = ReactiveCommand.Create(OnInvoked);
         }

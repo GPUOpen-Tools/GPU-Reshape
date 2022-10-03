@@ -1,16 +1,13 @@
 ﻿using System.Collections.ObjectModel;
-using System.Reactive;
 using System.Windows.Input;
 using Message.CLR;
 using ReactiveUI;
+using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Studio.ViewModels.Contexts.Instrument
+namespace Features.ResourceBounds.UIX.Contexts
 {
-    /// <summary>
-    /// WILL BE MOVED TO MODULAR APPROACH
-    /// </summary>
-    public class ResourceBoundsContextViewModel : ReactiveObject, IContextMenuItem
+    public class ExportStabilityContextMenuItemViewModel : ReactiveObject, IContextMenuItemViewModel
     {
         /// <summary>
         /// Target view model of the context
@@ -28,12 +25,12 @@ namespace Studio.ViewModels.Contexts.Instrument
         /// <summary>
         /// Display header of this context model
         /// </summary>
-        public string Header { get; set; } = "Resource Bounds";
+        public string Header { get; set; } = "Export Stability";
         
         /// <summary>
         /// All items within this context model
         /// </summary>
-        public ObservableCollection<IContextMenuItem> Items { get; } = new();
+        public ObservableCollection<IContextMenuItemViewModel> Items { get; } = new();
 
         /// <summary>
         /// Context command
@@ -49,7 +46,7 @@ namespace Studio.ViewModels.Contexts.Instrument
             set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
         }
 
-        public ResourceBoundsContextViewModel()
+        public ExportStabilityContextMenuItemViewModel()
         {
             Command = ReactiveCommand.Create(OnInvoked);
         }

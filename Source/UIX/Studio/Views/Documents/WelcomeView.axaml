@@ -10,20 +10,23 @@
              mc:Ignorable="d"
              d:DesignWidth="600" d:DesignHeight="600"
              x:DataType="vm:WelcomeViewModel" x:CompileBindings="True">
-  <Grid Focusable="True" Background="{StaticResource MarkdownBackground}">
-    <md:MarkdownScrollViewer Markdown="{markupExtensions:File 'Resources/Documentation/Welcome.md'}" MarkdownStyleName="Standard">
+  <Grid Focusable="True" Background="{StaticResource InfoMediumBackground}">
+    <md:MarkdownScrollViewer
+        Margin="10 0 0 0"
+        Markdown="{markupExtensions:File 'Resources/Documentation/Welcome.md'}"
+        MarkdownStyleName="Standard">
         <md:MarkdownScrollViewer.Styles>
             <Style Selector="ctxt|CTextBlock.Heading1">
-                <Setter Property="Foreground" Value="{StaticResource MarkdownForeground}"/>
+                <Setter Property="Foreground" Value="{StaticResource InfoMediumForeground}"/>
             </Style>
             <Style Selector="ctxt|CTextBlock.Heading2">
-                <Setter Property="Foreground" Value="{StaticResource MarkdownForeground}"/>
+                <Setter Property="Foreground" Value="{StaticResource InfoMediumForeground}"/>
             </Style>
             <Style Selector="ctxt|CTextBlock.Heading3">
-                <Setter Property="Foreground" Value="{StaticResource MarkdownForeground}"/>
+                <Setter Property="Foreground" Value="{StaticResource InfoMediumForeground}"/>
             </Style>
             <Style Selector="ctxt|CTextBlock">
-                <Setter Property="Foreground" Value="{StaticResource MarkdownForeground}"/>
+                <Setter Property="Foreground" Value="{StaticResource InfoMediumForeground}"/>
             </Style>
         </md:MarkdownScrollViewer.Styles>
     </md:MarkdownScrollViewer>

@@ -3,10 +3,10 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:context="using:Studio.ViewModels.Contexts"
     x:Class="Studio.Views.Controls.ContextMenuView"
-    x:DataType="context:ContextViewModel"
+    x:DataType="context:ContextMenuItemViewModel"
     Items="{Binding Items}">
     <ContextMenu.Styles>
-        <Style Selector="MenuItem" x:DataType="context:IContextMenuItem">
+        <Style Selector="MenuItem" x:DataType="context:IContextMenuItemViewModel">
             <Setter Property="Header" Value="{Binding Header}"/>
             <Setter Property="Items" Value="{Binding Items}"/>
             <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>

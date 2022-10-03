@@ -35,6 +35,9 @@ namespace Studio
             // Set culture
             Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en");
 
+            // Install global services
+            InstallServices();
+            
             // Load app
             AvaloniaXamlLoader.Load(this);
         }
@@ -51,6 +54,9 @@ namespace Studio
 
             // Hosts all status objects
             locator.BindToSelf<Services.IStatusService>(new Services.StatusService());
+
+            // Hosts all context objects
+            locator.BindToSelf<Services.IContextMenuService>(new Services.ContextMenuService());
 
             // Initiates the host resolver if not already up and running
             locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
@@ -71,9 +77,6 @@ namespace Studio
         
         public override void OnFrameworkInitializationCompleted()
         {
-            // Install global services
-            InstallServices();
-
             // Create view model
             var vm = new MainWindowViewModel();
 

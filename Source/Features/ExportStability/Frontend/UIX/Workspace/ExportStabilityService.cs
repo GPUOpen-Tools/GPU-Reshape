@@ -9,21 +9,21 @@ using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Features.ResourceBounds.UIX.Extensions
+namespace Features.ResourceBounds.UIX.Workspace
 {
-    public class ResourceBoundsService : IPropertyService, Bridge.CLR.IBridgeListener
+    public class ExportStabilityService : IPropertyService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
-        /// Parent view model
+        /// Assigned workspace
         /// </summary>
         public IWorkspaceViewModel ViewModel { get; }
         
-        public ResourceBoundsService(IWorkspaceViewModel viewModel)
+        public ExportStabilityService(IWorkspaceViewModel viewModel)
         {
             ViewModel = viewModel;
             
             // Add listener to bridge
-            viewModel.Connection?.Bridge?.Register(ResourceIndexOutOfBoundsMessage.ID, this);
+            viewModel.Connection?.Bridge?.Register(UnstableExportMessage.ID, this);
             
             // Get properties
             _messageCollectionViewModel = viewModel.PropertyCollection.GetProperty<IMessageCollectionViewModel>();
@@ -40,17 +40,17 @@ namespace Features.ResourceBounds.UIX.Extensions
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsStatic(ResourceIndexOutOfBoundsMessage.ID)) 
+            if (!streams.GetSchema().IsStatic(UnstableExportMessage.ID)) 
                 return;
-            
-            var view = new StaticMessageView<ResourceIndexOutOfBoundsMessage>(streams);
+
+            var view = new StaticMessageView<UnstableExportMessage>(streams);
 
             // Latent update set
-            var lookup = new Dictionary<uint, ResourceIndexOutOfBoundsMessage>();
+            var lookup = new Dictionary<uint, UnstableExportMessage>();
             var enqueued = new Dictionary<uint, uint>();
 
             // Consume all messages
-            foreach (ResourceIndexOutOfBoundsMessage message in view)
+            foreach (UnstableExportMessage message in view)
             {
                 if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
                 {
@@ -78,7 +78,7 @@ namespace Features.ResourceBounds.UIX.Extensions
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds"
+                        Content = $"Exporting {(message.Flat.isNaN == 1 ? "NaN" : "Inf")}"
                     };
 
                     // Shader view model injection
@@ -114,7 +114,7 @@ namespace Features.ResourceBounds.UIX.Extensions
         private Dictionary<uint, ValidationObject> _reducedMessages = new();
 
         /// <summary>
-        /// Shader segment mapper
+        /// Segment mapping
         /// </summary>
         private IShaderMappingService? _shaderMappingService;
 

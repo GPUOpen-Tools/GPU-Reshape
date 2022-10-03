@@ -1,9 +1,11 @@
 ﻿using System;
 using Avalonia;
 using DynamicData;
-using Features.ResourceBounds.UIX.Extensions;
+using Features.ResourceBounds.UIX.Contexts;
+using Features.ResourceBounds.UIX.Workspace;
 using Studio.Plugin;
 using Studio.Services;
+using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Workspace;
 
 namespace Features.ResourceBounds.UIX
@@ -26,16 +28,16 @@ namespace Features.ResourceBounds.UIX
         /// <returns></returns>
         public bool Install()
         {
-            // Get workspace service
-            var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
-            if (workspaceService == null)
-                return false;
-
+            // Add to context menus
+            AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel
+                .GetItem<IInstrumentContextViewModel>()?
+                .Items.Add(new ExportStabilityContextMenuItemViewModel());
+            
             // Connect to workspaces
-            workspaceService.Workspaces.Connect()
+            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Workspaces.Connect()
                 .OnItemAdded(OnWorkspaceAdded)
                 .Subscribe();
-            
+
             // OK
             return true;
         }

@@ -1,9 +1,9 @@
 ﻿using System.Collections.ObjectModel;
-using System.Windows.Input;
+using Studio.ViewModels.Contexts;
 
-namespace Studio.ViewModels.Contexts
+namespace Studio.Services
 {
-    public interface IContextViewModel
+    public interface IContextMenuService
     {
         /// <summary>
         /// Target view model of the context
@@ -11,8 +11,8 @@ namespace Studio.ViewModels.Contexts
         public object? TargetViewModel { get; set; }
         
         /// <summary>
-        /// Items within this context
+        /// Root view model
         /// </summary>
-        public ObservableCollection<IContextMenuItem> Items { get; }
+        public IContextMenuItemViewModel ViewModel { get; }
     }
 }

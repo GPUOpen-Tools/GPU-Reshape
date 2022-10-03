@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Metadata;
 using ReactiveUI;
+using Studio.Services;
 
 namespace Studio.Views.Controls
 {
@@ -15,12 +17,12 @@ namespace Studio.Views.Controls
             InitializeComponent();
 
             // Set context
-            DataContext = new ViewModels.Contexts.ContextViewModel();
+            DataContext = App.Locator.GetService<IContextMenuService>()?.ViewModel;
 
             // On placement changed
             this.WhenAnyValue(x => x.PlacementTarget).Subscribe(x =>
             {
-                if (DataContext is ViewModels.Contexts.IContextViewModel vm)
+                if (DataContext is ViewModels.Contexts.IContextMenuItemViewModel vm)
                 {
                     object? dataViewModel = PlacementTarget?.DataContext;
 
@@ -81,7 +83,7 @@ namespace Studio.Views.Controls
             }
         }
 
-        private static void SetViewModels(IEnumerable<ViewModels.Contexts.IContextMenuItem> items, object? viewModel)
+        private static void SetViewModels(IEnumerable<ViewModels.Contexts.IContextMenuItemViewModel> items, object? viewModel)
         {
             // Set on children
             foreach (var item in items)

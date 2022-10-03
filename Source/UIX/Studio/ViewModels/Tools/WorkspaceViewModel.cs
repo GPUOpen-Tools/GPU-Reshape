@@ -25,6 +25,15 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         public ObservableCollection<Controls.IObservableTreeItem> Workspaces { get; } = new();
 
+        /// <summary>
+        /// Is the help message visible?
+        /// </summary>
+        public bool IsHelpVisible
+        {
+            get => _isHelpVisible;
+            set => this.RaiseAndSetIfChanged(ref _isHelpVisible, value);
+        }
+
         public WorkspaceViewModel()
         {
             Connect = ReactiveCommand.Create(OnConnect);
@@ -49,6 +58,8 @@ namespace Studio.ViewModels.Tools
             {
                 ViewModel = workspaceViewModel.PropertyCollection
             });
+
+            IsHelpVisible = false;
         }
 
         /// <summary>
@@ -64,6 +75,7 @@ namespace Studio.ViewModels.Tools
             if (item != null)
             {
                 Workspaces.Remove(item);
+                IsHelpVisible = Workspaces.Count == 0;
             }
         }
 
@@ -92,5 +104,7 @@ namespace Studio.ViewModels.Tools
         /// Internal service
         /// </summary>
         private Services.IWorkspaceService _workspaceService;
+
+        private bool _isHelpVisible = true;
     }
 }

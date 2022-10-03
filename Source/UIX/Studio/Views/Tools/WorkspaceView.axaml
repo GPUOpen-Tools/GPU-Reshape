@@ -55,5 +55,20 @@
                 </TreeDataTemplate>
             </TreeView.ItemTemplate>
         </TreeView>
+        
+        <Grid Grid.Row="1" IsVisible="{Binding IsHelpVisible}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <PathIcon 
+                    Data="{StaticResource InfoHollow}"
+                    VerticalAlignment="Center"
+                    Margin="0 0 0 0"
+                    Width="10" />
+                <TextBlock
+                    Margin="5 0 0 0"
+                    Foreground="{StaticResource InfoMediumForeground}"
+                    VerticalAlignment="Center"
+                    Text=" No workspaces"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

@@ -41,6 +41,9 @@
         <Reference Include="Libraries.Message.DotNet">
             <HintPath>$(OutputPath)\Libraries.Message.DotNet.dll</HintPath>
         </Reference>
+        <Reference Include="Libraries.Backend.Schema.DotNet">
+            <HintPath>$(OutputPath)\Libraries.Backend.Schema.DotNet.dll</HintPath>
+        </Reference>
     </ItemGroup>
 
     <ItemGroup>

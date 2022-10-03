@@ -7,8 +7,23 @@
              mc:Ignorable="d"
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:PropertyViewModel" x:CompileBindings="True">
-  <Grid Focusable="True">
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-    </StackPanel>
-  </Grid>
+    <Grid Focusable="True">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+        </StackPanel>
+
+        <Grid Grid.Row="1" IsVisible="true">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <PathIcon
+                    Data="{StaticResource InfoHollow}"
+                    VerticalAlignment="Center"
+                    Margin="0 0 0 0"
+                    Width="10" />
+                <TextBlock
+                    Margin="5 0 0 0"
+                    Foreground="{StaticResource InfoMediumForeground}"
+                    VerticalAlignment="Center"
+                    Text=" No selected object" />
+            </StackPanel>
+        </Grid>
+    </Grid>
 </UserControl>
