@@ -35,6 +35,10 @@
         <SolidColorBrush x:Key="DockThemeAccentBrush" Color="{DynamicResource SystemAccentColor}" />
         <SolidColorBrush x:Key="DockThemeForegroundBrush" Color="{DynamicResource SystemBaseHighColor}" />
         <SolidColorBrush x:Key="DockThemeControlBackgroundBrush" Color="{DynamicResource SystemAltHighColor}" />
+        
+        <!-- Markdown -->
+        <SolidColorBrush x:Key="MarkdownBackground">#2F3033</SolidColorBrush>
+        <SolidColorBrush x:Key="MarkdownForeground">#B1B3B5</SolidColorBrush>
 
         <!-- Special brushes -->
         <SolidColorBrush x:Key="TabSelectedBrush">#4A4D51</SolidColorBrush>

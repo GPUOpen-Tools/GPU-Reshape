@@ -8,13 +8,12 @@
              VerticalAlignment="Stretch"
              mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="20"
              x:Class="Studio.Views.Status.InstrumentationStatusView"
-             x:DataType="vm:InstrumentationStatusViewModel"
-             IsVisible="{Binding AnyJobs}">
+             x:DataType="vm:InstrumentationStatusViewModel">
     <UserControl.DataContext>
         <vm:InstrumentationStatusViewModel />
     </UserControl.DataContext>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 0 5 0">
-        <TextBlock Text="Compiling... " VerticalAlignment="Center"/>
+        <TextBlock Text="Compiling... " VerticalAlignment="Center" IsVisible="{Binding AnyJobs}"/>
         <controls:BlockProgressBar x:Name="BlockBar" Width="100" Height="15"/>
     </StackPanel>
 </UserControl>

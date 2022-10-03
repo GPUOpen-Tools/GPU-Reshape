@@ -35,6 +35,7 @@
         <PackageReference Include="AvaloniaEdit.TextMate" Version="0.10.12.2" />
         <PackageReference Include="Dock.Avalonia" Version="0.10.14" />
         <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.10" />
+        <PackageReference Include="Markdown.Avalonia" Version="0.10.4" />
         <PackageReference Include="MessageBox.Avalonia" Version="1.5.5" />
         <PackageReference Include="Microsoft.CodeAnalysis" Version="3.9.0" />
         <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="3.9.0" />
@@ -131,5 +132,9 @@
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\Runtime\Runtime.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Remove="Resources\Documentation\Welcome.md" />
+      <AvaloniaResource Include="Resources\Documentation\Welcome.md" />
     </ItemGroup>
 </Project>
