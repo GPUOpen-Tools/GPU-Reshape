@@ -296,6 +296,7 @@ add_library(
     Layer/Source/Compiler/DXIL/DXILDebugModule.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Controllers/MetadataController.cpp
+    Layer/Source/Controllers/FeatureController.cpp
     Layer/Source/Export/ExportHost.cpp
     Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
     Layer/Source/Export/ShaderExportStreamer.cpp

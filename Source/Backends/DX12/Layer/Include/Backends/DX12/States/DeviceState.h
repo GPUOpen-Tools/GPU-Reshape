@@ -25,6 +25,7 @@ struct ShaderState;
 struct CommandQueueState;
 struct PipelineState;
 class InstrumentationController;
+class FeatureController;
 class MetadataController;
 class IBridge;
 class ShaderExportHost;
@@ -68,6 +69,7 @@ struct DeviceState {
 
     /// Controllers
     ComRef<InstrumentationController> instrumentationController{nullptr};
+    ComRef<FeatureController> featureController{nullptr};
     ComRef<MetadataController> metadataController{nullptr};
 
     /// Shared logging buffer

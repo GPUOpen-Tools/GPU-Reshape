@@ -22,6 +22,7 @@ public:
 
     /// IFeature
     bool Install() override;
+    FeatureInfo GetInfo() override;
     FeatureHookTable GetHookTable() override;
     void CollectMessages(IMessageStorage *storage) override;
 

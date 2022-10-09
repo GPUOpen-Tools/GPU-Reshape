@@ -2,6 +2,7 @@
 
 // Backend
 #include "FeatureHookTable.h"
+#include "FeatureInfo.h"
 
 // Common
 #include <Common/IComponent.h>
@@ -16,6 +17,10 @@ public:
     /// Install this feature
     /// \return success code
     virtual bool Install() = 0;
+
+    /// Get general information about this feature
+    /// \return feature info
+    virtual FeatureInfo GetInfo() = 0;
 
     /// Get the hook table of this feature
     /// \return constructed hook table

@@ -26,7 +26,7 @@ Bridge::CLR::RemoteClientBridge::RemoteClientBridge() {
 }
 
 Bridge::CLR::RemoteClientBridge::~RemoteClientBridge() {
-    // Release private, relases all hosted objects
+    // Release private, releases all hosted objects
     delete _private;
 }
 

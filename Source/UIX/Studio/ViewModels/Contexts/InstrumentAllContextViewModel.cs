@@ -7,7 +7,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
-    public class InstrumentContextViewModel : ReactiveObject, IInstrumentContextViewModel
+    public class InstrumentAllContextViewModel : ReactiveObject, IInstrumentContextViewModel
     {
         /// <summary>
         /// Target view model of the context
@@ -25,7 +25,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Display header of this context model
         /// </summary>
-        public string Header { get; set; } = "Instrument";
+        public string Header { get; set; } = "All";
         
         /// <summary>
         /// All items within this context model
@@ -37,12 +37,6 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         public ICommand Command { get; }
 
-        public InstrumentContextViewModel()
-        {
-            // Standard objects
-            Items.Add(new InstrumentAllContextViewModel());
-        }
-
         /// <summary>
         /// Is this context enabled?
         /// </summary>
@@ -50,6 +44,39 @@ namespace Studio.ViewModels.Contexts
         {
             get => _isEnabled;
             set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
+        }
+
+        public InstrumentAllContextViewModel()
+        {
+            Command = ReactiveCommand.Create(OnInvoked);
+        }
+
+        /// <summary>
+        /// Command implementation
+        /// </summary>
+        private void OnInvoked()
+        {
+            if (_targetViewModel is not IPropertyViewModel property)
+            {
+                return;
+            }
+
+            Bridge.CLR.IBridge? bridge = property.ConnectionViewModel?.Bridge;
+            if (bridge == null)
+            {
+                return;
+            }
+
+            // Allocate ordered
+            var view = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream());
+
+            // Start all instrumentation features
+            var instrument = view.Add<SetGlobalInstrumentationMessage>();
+            instrument.featureBitSet = ~0ul;
+            
+            // Submit!
+            bridge.GetOutput().AddStream(view.Storage);
+            bridge.Commit();
         }
 
         /// <summary>

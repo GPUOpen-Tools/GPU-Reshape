@@ -122,4 +122,11 @@ void ExportStabilityFeature::Inject(IL::Program &program) {
     });
 }
 
+FeatureInfo ExportStabilityFeature::GetInfo() {
+    FeatureInfo info;
+    info.name = "Export Stability";
+    info.description = "Instrumentation and validation of exporting operations";
+    return info;
+}
+
 

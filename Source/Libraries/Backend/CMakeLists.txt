@@ -6,6 +6,7 @@ Project_AddSchema(GeneratedLibSchema Schemas/ShaderMetadata.xml Include/Schemas)
 Project_AddSchema(GeneratedLibSchema Schemas/Config.xml Include/Schemas)
 Project_AddSchema(GeneratedLibSchema Schemas/SGUID.xml Include/Schemas)
 Project_AddSchema(GeneratedLibSchema Schemas/Diagnostic.xml Include/Schemas)
+Project_AddSchema(GeneratedLibSchema Schemas/Feature.xml Include/Schemas)
 
 add_library(
     Libraries.Backend STATIC

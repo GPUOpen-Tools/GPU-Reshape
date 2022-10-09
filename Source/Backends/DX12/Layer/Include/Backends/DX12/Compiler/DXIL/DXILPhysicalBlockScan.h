@@ -10,6 +10,7 @@
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
+#include <Common/Containers/LinearBlockAllocator.h>
 
 // Std
 #include <vector>
@@ -187,6 +188,9 @@ private:
 
     /// Lookup for out-of-place BLOCKINFO association
     std::map<uint32_t, LLVMBlockMetadata*> metadataLookup;
+    
+    /// Shared allocator for records
+    LinearBlockAllocator<sizeof(uint64_t) * 1024u> recordAllocator;
 
 private:
     Allocators allocators;

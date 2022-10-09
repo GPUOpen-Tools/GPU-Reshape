@@ -2,6 +2,8 @@
 using System.Windows.Input;
 using Message.CLR;
 using ReactiveUI;
+using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Workspace;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -18,7 +20,10 @@ namespace Features.ResourceBounds.UIX.Contexts
             set
             {
                 this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsEnabled = _targetViewModel is IPropertyViewModel;
+                
+                // Enabled if resource bounds is available
+                _featureInfo = (_targetViewModel as IPropertyViewModel)?.GetProperty<IFeatureCollectionViewModel>()?.GetFeature("Export Stability");
+                IsEnabled = _featureInfo.HasValue;
             }
         }
 
@@ -72,12 +77,17 @@ namespace Features.ResourceBounds.UIX.Contexts
 
             // Start all instrumentation features
             var instrument = view.Add<SetGlobalInstrumentationMessage>();
-            instrument.featureBitSet = ~0ul;
+            instrument.featureBitSet = _featureInfo?.FeatureBit ?? 0;
             
             // Submit!
             bridge.GetOutput().AddStream(view.Storage);
             bridge.Commit();
         }
+
+        /// <summary>
+        /// Queried feature information
+        /// </summary>
+        private FeatureInfo? _featureInfo;
 
         /// <summary>
         /// Internal enabled state

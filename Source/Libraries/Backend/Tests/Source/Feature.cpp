@@ -13,6 +13,10 @@
 
 class TestFeatureHook final : public IFeature {
 public:
+    FeatureInfo GetInfo() override {
+        return FeatureInfo();
+    }
+
     FeatureHookTable GetHookTable() final {
         FeatureHookTable table{};
         table.drawIndexed = BindDelegate(this, TestFeatureHook::OnDrawIndexed);
@@ -46,6 +50,10 @@ TEST_CASE("Backend.FeatureHook") {
 
 class TestFeatureMessage final : public IFeature {
 public:
+    FeatureInfo GetInfo() override {
+        return FeatureInfo();
+    }
+
     FeatureHookTable GetHookTable() final {
         FeatureHookTable table{};
         table.drawIndexed = BindDelegate(this, TestFeatureMessage::OnDrawIndexed);
@@ -111,6 +119,10 @@ TEST_CASE("Backend.FeatureMessage") {
 
 class TestFeatureDynamicMixed final : public IFeature {
 public:
+    FeatureInfo GetInfo() override {
+        return FeatureInfo();
+    }
+
     FeatureHookTable GetHookTable() final {
         FeatureHookTable table{};
         table.drawIndexed = BindDelegate(this, TestFeatureDynamicMixed::OnDrawIndexed);

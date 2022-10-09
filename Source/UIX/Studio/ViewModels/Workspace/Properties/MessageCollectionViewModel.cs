@@ -13,7 +13,7 @@ using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class MessageCollectionViewModel : ReactiveObject, IPropertyViewModel, IMessageCollectionViewModel
+    public class MessageCollectionViewModel : ReactiveObject, IMessageCollectionViewModel
     {
         /// <summary>
         /// Name of this property

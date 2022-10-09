@@ -1,0 +1,17 @@
+<schema>
+    <message name="GetFeatures">
+        <field name="featureBitSet" type="uint64">
+            Feature to be queried
+        </field>
+    </message>
+
+    <message name="FeatureDescriptor">
+        <field name="name" type="string"/>
+        <field name="description" type="string"/>
+        <field name="featureBit" type="uint64"/>
+    </message>
+
+    <message name="FeatureList">
+        <field name="descriptors" type="stream"/>
+    </message>
+</schema>

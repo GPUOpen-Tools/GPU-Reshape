@@ -75,6 +75,12 @@ namespace Studio.ViewModels.Workspace.Properties
                     ConnectionViewModel = _connectionViewModel
                 },
                 
+                new FeatureCollectionViewModel()
+                {
+                    Parent = this,
+                    ConnectionViewModel = _connectionViewModel
+                },
+                
                 new MessageCollectionViewModel()
                 {
                     Parent = this,

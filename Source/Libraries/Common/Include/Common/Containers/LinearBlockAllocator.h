@@ -31,7 +31,7 @@ struct LinearBlockAllocator {
         for (auto it = blocks.rbegin(); it != blocks.rend(); it++) {
             Block* block = *it;
 
-            if (BLOCK_SIZE - block->head <= sizeof(T)) {
+            if (sizeof(T) + block->head <= BLOCK_SIZE) {
                 size_t offset = block->head;
                 block->head += sizeof(T);
 
@@ -64,7 +64,7 @@ struct LinearBlockAllocator {
         for (auto it = blocks.rbegin(); it != blocks.rend(); it++) {
             Block* block = *it;
 
-            if (BLOCK_SIZE - block->head <= size) {
+            if (size + block->head <= BLOCK_SIZE) {
                 size_t offset = block->head;
                 block->head += size;
 
@@ -74,7 +74,7 @@ struct LinearBlockAllocator {
 
         // Push new block
         Block* block = new (allocators) Block();
-        block->head = sizeof(T);
+        block->head = size;
         blocks.push_back(block);
 
         return reinterpret_cast<T*>(&block->data[0]);

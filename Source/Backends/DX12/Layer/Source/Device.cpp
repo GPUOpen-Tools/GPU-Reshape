@@ -13,6 +13,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
+#include <Backends/DX12/Controllers/FeatureController.h>
 #include <Backends/DX12/Controllers/MetadataController.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
@@ -145,6 +146,10 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Install the instrumentation controller
         state->instrumentationController = state->registry.AddNew<InstrumentationController>(state);
         ENSURE(state->instrumentationController->Install(), "Failed to install instrumentation controller");
+
+        // Install the feature controller
+        state->featureController = state->registry.AddNew<FeatureController>(state);
+        ENSURE(state->featureController->Install(), "Failed to install feature controller");
 
         // Install the instrumentation controller
         state->metadataController = state->registry.AddNew<MetadataController>(state);
@@ -312,6 +317,7 @@ void GlobalDeviceDetour::Uninstall() {
 void BridgeDeviceSyncPoint(DeviceState *device) {
     // Commit controllers
     device->instrumentationController->Commit();
+    device->featureController->Commit();
     device->metadataController->Commit();
 
     // Commit all logging to bridge

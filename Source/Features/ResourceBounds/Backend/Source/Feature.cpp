@@ -153,4 +153,11 @@ void ResourceBoundsFeature::Inject(IL::Program &program) {
     });
 }
 
+FeatureInfo ResourceBoundsFeature::GetInfo() {
+    FeatureInfo info;
+    info.name = "Resource Bounds";
+    info.description = "Instrumentation and validation of resource indexing operations";
+    return info;
+}
+
 

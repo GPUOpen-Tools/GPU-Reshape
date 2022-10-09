@@ -36,6 +36,10 @@ public:
         return true;
     }
 
+    FeatureInfo GetInfo() override {
+        return FeatureInfo();
+    }
+
     FeatureHookTable GetHookTable() override {
         return FeatureHookTable{};
     }

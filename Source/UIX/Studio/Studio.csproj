@@ -90,6 +90,10 @@
         <DependentUpon>LogStatusViewModel.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Workspace\Properties\FeatureCollectionView.axaml.cs">
+        <DependentUpon>FeatureCollectionView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

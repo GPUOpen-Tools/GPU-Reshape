@@ -29,7 +29,7 @@
  *   https://llvm.org/docs/BitCodeFormat.html#module-code-version-record
  * */
 
-DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : allocators(allocators) {
+DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : allocators(allocators), recordAllocator(allocators) {
 
 }
 
@@ -346,7 +346,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedInfoRe
     record.opCount = stream.VBR<uint32_t>(6);
 
     // Allocate
-    record.ops = new(Allocators{}) uint64_t[record.opCount];
+    record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
 
     // Scan all ops
     for (uint32_t i = 0; i < record.opCount; i++) {
@@ -528,7 +528,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
     record.opCount = recordOperandCache.size();
 
     // Allocate final records
-    record.ops = new(Allocators{}) uint64_t[recordOperandCache.size()];
+    record.ops = recordAllocator.AllocateArray<uint64_t>(recordOperandCache.size());
     std::memcpy(record.ops, recordOperandCache.data(), sizeof(uint64_t) * recordOperandCache.size());
 
     // OK
@@ -713,11 +713,25 @@ void DXILPhysicalBlockScan::CopyBlock(const LLVMBlock *block, LLVMBlock &out) {
     out.abbreviationSize = block->abbreviationSize;
     out.blockLength = block->blockLength;
     out.metadata = block->metadata;
-    out.records = block->records;
     out.abbreviations = block->abbreviations;
     out.elements = block->elements;
 
-    // Mutable data
+    // Copy records
+    out.records = block->records;
+
+    // Reallocate operands
+    for (LLVMRecord& record : out.records) {
+        if (!record.opCount) {
+            continue;
+        }
+
+        // Copy operands
+        auto* ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
+        std::memcpy(ops, record.ops, sizeof(uint64_t) * record.opCount);
+        record.ops = ops;
+    }
+    
+    // Mutable blocks
     for (const LLVMBlock *child: block->blocks) {
         auto copy = new(Allocators{}) LLVMBlock;
         CopyBlock(child, *copy);
