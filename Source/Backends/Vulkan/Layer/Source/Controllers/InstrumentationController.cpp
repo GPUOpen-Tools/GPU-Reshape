@@ -23,7 +23,7 @@
 #include <Common/Dispatcher/TaskGroup.h>
 
 // Schemas
-#include <Schemas/Pipeline.h>
+#include <Schemas/Instrumentation.h>
 #include <Schemas/Config.h>
 #include <Schemas/ShaderMetadata.h>
 #include <Schemas/Diagnostic.h>

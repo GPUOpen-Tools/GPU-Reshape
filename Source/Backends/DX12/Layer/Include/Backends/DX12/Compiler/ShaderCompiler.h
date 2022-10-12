@@ -35,6 +35,10 @@ public:
     /// \param bucket optional, the dispatcher bucket
     void Add(ShaderState* state, const ShaderInstrumentationKey& instrumentationKey, DispatcherBucket *bucket = nullptr);
 
+    /// Ensure a module is initialized
+    /// \param state shader state
+    void InitializeModule(ShaderState* state);
+
 protected:
     struct ShaderJob {
         ShaderState *state;

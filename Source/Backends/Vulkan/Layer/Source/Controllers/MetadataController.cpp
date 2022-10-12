@@ -17,6 +17,7 @@
 // Schemas
 #include <Schemas/SGUID.h>
 #include <Schemas/ShaderMetadata.h>
+#include <Schemas/Object.h>
 
 // Std
 #include <sstream>
@@ -57,8 +58,8 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<GetShaderCodeMessage>());
                     break;
                 }
-                case GetShaderGUIDSMessage::kID: {
-                    OnMessage(*it.Get<GetShaderGUIDSMessage>());
+                case GetShaderUIDRangeMessage::kID: {
+                    OnMessage(*it.Get<GetShaderUIDRangeMessage>());
                     break;
                 }
                 case GetShaderSourceMappingMessage::kID: {
@@ -135,7 +136,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     }
 }
 
-void MetadataController::OnMessage(const struct GetShaderGUIDSMessage& message) {
+void MetadataController::OnMessage(const struct GetShaderUIDRangeMessage& message) {
     MessageStreamView view(stream);
 
     // Get linear (locked) view
@@ -145,7 +146,7 @@ void MetadataController::OnMessage(const struct GetShaderGUIDSMessage& message) 
     const uint32_t count = std::min(message.limit, static_cast<uint32_t>(linear.object.size()));
 
     // Add response
-    auto&& response = view.Add<ShaderGUIDSMessage>(ShaderGUIDSMessage::AllocationInfo { .shaderUIDCount = count });
+    auto&& response = view.Add<ShaderUIDRangeMessage>(ShaderUIDRangeMessage::AllocationInfo { .shaderUIDCount = count });
 
     // Fill uids
     for (size_t i = 0; i < count; i++) {

@@ -274,3 +274,8 @@ PipelineState::~PipelineState() {
         destroyRef(shader, allocators);
     }
 }
+
+ShaderState::~ShaderState() {
+    // Remove tracked object
+    parent->states_Shaders.Remove(this);
+}

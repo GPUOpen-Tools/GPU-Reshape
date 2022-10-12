@@ -1,12 +1,4 @@
 <schema>
-    <message name="GetShaderGUIDS">
-        <field name="limit" type="uint32"/>
-    </message>
-
-    <message name="ShaderGUIDS">
-        <field name="shaderUID" type="array" element="uint64"/>
-    </message>
-
     <struct name="ShaderLocation">
         <field name="offset" type="uint32"/>
         <field name="line"   type="uint32"/>
@@ -14,6 +6,7 @@
     </struct>
 
     <message name="GetShaderCode">
+        <field name="poolCode" type="bool"/>
         <field name="shaderUID" type="uint64"/>
     </message>
 

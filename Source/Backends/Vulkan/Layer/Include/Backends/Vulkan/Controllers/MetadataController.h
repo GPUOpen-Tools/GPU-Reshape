@@ -42,7 +42,7 @@ public:
 protected:
     /// Message handlers
     void OnMessage(const struct GetShaderCodeMessage& message);
-    void OnMessage(const struct GetShaderGUIDSMessage& message);
+    void OnMessage(const struct GetShaderUIDRangeMessage& message);
     void OnMessage(const struct GetShaderSourceMappingMessage& message);
 
 private:

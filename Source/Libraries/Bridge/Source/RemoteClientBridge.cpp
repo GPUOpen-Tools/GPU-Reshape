@@ -99,6 +99,7 @@ void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequ
             info->guid.Set(guid);
             info->process.Set(entry.info.processName);
             info->application.Set(entry.info.applicationName);
+            info->processId = entry.info.processId;
         }
     }
 

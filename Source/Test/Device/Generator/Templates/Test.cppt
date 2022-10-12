@@ -27,7 +27,7 @@
 
 // Shared schemas
 #include <Schemas/Config.h>
-#include <Schemas/Pipeline.h>
+#include <Schemas/Instrumentation.h>
 #include <Schemas/SGUID.h>
 
 // Test includes

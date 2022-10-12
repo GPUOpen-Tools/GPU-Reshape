@@ -19,7 +19,7 @@ struct DXModule;
 
 struct ShaderState : public ReferenceObject {
     /// Reference counted destructor
-    virtual ~ShaderState() = default;
+    virtual ~ShaderState();
 
     /// Add an instrument to this shader
     /// \param featureBitSet the enabled feature set

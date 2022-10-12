@@ -1,0 +1,30 @@
+<schema>
+    <message name="GetObjectStates">
+        <field name="ignore" type="uint32"/>
+    </message>
+
+    <message name="ObjectStates">
+        <field name="shaderCount" type="uint32"/>
+        <field name="pipelineCount" type="uint32"/>
+    </message>
+
+    <message name="GetShaderUIDRange">
+        <field name="start" type="uint32"/>
+        <field name="limit" type="uint32"/>
+    </message>
+
+    <message name="ShaderUIDRange">
+        <field name="start" type="uint32"/>
+        <field name="shaderUID" type="array" element="uint64"/>
+    </message>
+
+    <message name="GetPipelineUIDRange">
+        <field name="start" type="uint32"/>
+        <field name="limit" type="uint32"/>
+    </message>
+
+    <message name="PipelineUIDRange">
+        <field name="start" type="uint32"/>
+        <field name="pipelineUID" type="array" element="uint64"/>
+    </message>
+</schema>

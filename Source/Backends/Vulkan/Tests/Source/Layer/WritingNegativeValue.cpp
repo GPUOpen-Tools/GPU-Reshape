@@ -6,7 +6,7 @@
 #include <Message/MessageStream.h>
 
 // Schemas
-#include <Schemas/Pipeline.h>
+#include <Schemas/Instrumentation.h>
 #include <Schemas/Config.h>
 #include <Schemas/WritingNegativeValue.h>
 #include <Schemas/SGUID.h>

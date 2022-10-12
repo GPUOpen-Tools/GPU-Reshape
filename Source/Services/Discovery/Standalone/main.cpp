@@ -5,7 +5,7 @@
 #include <Schemas/Log.h>
 #include <Schemas/PingPong.h>
 #include <Schemas/HostResolve.h>
-#include <Schemas/Pipeline.h>
+#include <Schemas/Instrumentation.h>
 #include <Schemas/SGUID.h>
 
 // Common

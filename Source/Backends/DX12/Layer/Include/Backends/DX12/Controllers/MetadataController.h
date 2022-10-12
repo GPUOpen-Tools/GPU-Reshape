@@ -20,6 +20,7 @@
 class Registry;
 class Dispatcher;
 class IBridge;
+class ShaderCompiler;
 struct DeviceState;
 struct ReferenceObject;
 
@@ -44,7 +45,9 @@ public:
 protected:
     /// Message handlers
     void OnMessage(const struct GetShaderCodeMessage& message);
-    void OnMessage(const struct GetShaderGUIDSMessage& message);
+    void OnMessage(const struct GetObjectStatesMessage& message);
+    void OnMessage(const struct GetShaderUIDRangeMessage& message);
+    void OnMessage(const struct GetPipelineUIDRangeMessage& message);
     void OnMessage(const struct GetShaderSourceMappingMessage& message);
 
 private:
@@ -52,6 +55,9 @@ private:
 
     /// Owning bridge, stored as naked pointer for referencing reasons
     IBridge* bridge{nullptr};
+
+    /// Components
+    ComRef<ShaderCompiler> shaderCompiler;
 
     /// Pending response stream
     MessageStream stream;

@@ -66,19 +66,14 @@ void ShaderCompiler::Worker(void *data) {
     destroy(job, allocators);
 }
 
-void ShaderCompiler::CompileShader(const ShaderJob &job) {
-#if SHADER_COMPILER_SERIAL
-    static std::mutex mutex;
-    std::lock_guard guard(mutex);
-#endif
+void ShaderCompiler::InitializeModule(ShaderState *state) {
+    // Instrumented pipelines are unique, however, originating modules may not be
+    std::lock_guard moduleGuad(state->mutex);
 
     // Create the module on demand
-    if (!job.state->module) {
-        // Instrumented pipelines are unique, however, originating modules may not be
-        std::lock_guard moduleGuad(job.state->mutex);
-
+    if (!state->module) {
         // Get type
-        uint32_t type = *static_cast<const uint64_t *>(job.state->key.byteCode.pShaderBytecode);
+        uint32_t type = *static_cast<const uint64_t *>(state->key.byteCode.pShaderBytecode);
 
         // Create the module
         switch (type) {
@@ -87,16 +82,26 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
                 return;
             }
             case 'CBXD': {
-                job.state->module = new (allocators) DXBCModule(allocators, job.state->uid, GlobalUID::New());
+                state->module = new (allocators) DXBCModule(allocators, state->uid, GlobalUID::New());
                 break;
             }
         }
 
         // Try to parse the bytecode
-        if (!job.state->module->Parse(job.state->key.byteCode.pShaderBytecode, job.state->key.byteCode.BytecodeLength)) {
+        if (!state->module->Parse(state->key.byteCode.pShaderBytecode, state->key.byteCode.BytecodeLength)) {
             return;
         }
     }
+}
+
+void ShaderCompiler::CompileShader(const ShaderJob &job) {
+#if SHADER_COMPILER_SERIAL
+    static std::mutex mutex;
+    std::lock_guard guard(mutex);
+#endif
+
+    // Initialize module
+    InitializeModule(job.state);
 
     // Create a copy of the module, don't modify the source
     DXModule *module = job.state->module->Copy();
