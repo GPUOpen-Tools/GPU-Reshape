@@ -13,7 +13,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         public string Name
         {
-            get => ConnectionViewModel?.Application?.Name ?? "Invalid";
+            get => ConnectionViewModel?.Application?.DecoratedName ?? "Invalid";
         }
 
         /// <summary>
