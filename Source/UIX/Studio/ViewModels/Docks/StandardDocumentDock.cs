@@ -42,7 +42,7 @@ namespace Studio.ViewModels.Docks
                     document = new WorkspaceOverviewViewModel
                     {
                         Id = $"WorkspaceOverview{index}", 
-                        Title = $"{vm.Connection?.Application?.Name}",
+                        Title = $"{vm.Connection?.Application?.DecoratedName}",
                         Workspace = vm
                     };
                     break;

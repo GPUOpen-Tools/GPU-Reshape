@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Avalonia;
+using Avalonia.Threading;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
@@ -89,17 +90,26 @@ namespace Studio.ViewModels.Workspace.Properties
                 return;
             }
 
-            var view = new DynamicMessageView<LogMessage>(streams);
+            List<string> messages = new();
 
             // Enumerate all messages
-            foreach (LogMessage message in view)
+            foreach (LogMessage message in new DynamicMessageView<LogMessage>(streams))
             {
-                _loggingViewModel?.Events.Add(new LogEvent()
-                {
-                    Severity = LogSeverity.Info,
-                    Message = $"{_connectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}"
-                });
+                messages.Add($"{_connectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}");
             }
+
+            // Append messages on UI thread
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                foreach (var message in messages)
+                {
+                    _loggingViewModel?.Events.Add(new LogEvent()
+                    {
+                        Severity = LogSeverity.Info,
+                        Message = message
+                    });
+                }
+            });
         }
 
         /// <summary>

@@ -5,15 +5,26 @@ using System.Collections.ObjectModel;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Binding;
+using ReactiveUI;
+using Studio.ViewModels.Workspace;
 
 namespace Studio.Services
 {
-    public class WorkspaceService : IWorkspaceService
+    public class WorkspaceService : ReactiveObject, IWorkspaceService
     {
         /// <summary>
         /// Active workspaces
         /// </summary>
         public IObservableList<ViewModels.Workspace.IWorkspaceViewModel> Workspaces => _workspaces;
+
+        /// <summary>
+        /// Current workspace
+        /// </summary>
+        public IWorkspaceViewModel? SelectedWorkspace
+        {
+            get => _selectedWorkspace;
+            set => this.RaiseAndSetIfChanged(ref _selectedWorkspace, value);
+        }
 
         public WorkspaceService()
         {
@@ -33,6 +44,9 @@ namespace Studio.Services
             
             // Diagnostic
             Logging.Info($"Workspace created for {workspaceViewModel.Connection?.Application?.Name} {{{workspaceViewModel.Connection?.Application?.Guid}}}");
+            
+            // Assign as selected
+            SelectedWorkspace = workspaceViewModel;
         }
 
         /// <summary>
@@ -53,6 +67,11 @@ namespace Studio.Services
         /// Internal active workspaces
         /// </summary>
         private SourceList<ViewModels.Workspace.IWorkspaceViewModel> _workspaces = new();
-        
+
+        /// <summary>
+        /// Internal active workspace
+        /// </summary>
+        private IWorkspaceViewModel? _selectedWorkspace;
+
     }
 }

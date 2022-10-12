@@ -58,15 +58,15 @@ namespace Studio.Views.Documents
             {
                 if (x is ShaderViewModel vm)
                 {
-                    vm.WhenAnyValue(x => x.Object).WhereNotNull().Subscribe(o =>
+                    vm.Object.WhenAnyValue(x => x.Contents).WhereNotNull().Subscribe(contents =>
                     {
-                        Editor.Text = o.Contents;
+                        Editor.Text = contents;
 
                         // Set objects
-                        _validationBackgroundRenderer.ValidationObjects = o.ValidationObjects;
+                        _validationBackgroundRenderer.ValidationObjects = vm.Object.ValidationObjects;
 
                         // Bind objects
-                        o.ValidationObjects.ToObservableChangeSet()
+                        vm.Object.ValidationObjects.ToObservableChangeSet()
                             .AsObservableList()
                             .Connect()
                             .OnItemAdded(OnValidationObjectAdded)

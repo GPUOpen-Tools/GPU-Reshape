@@ -1,4 +1,4 @@
-<UserControl x:Class="Studio.Views.Tools.WorkspaceView"
+<UserControl x:Class="Studio.Views.Tools.ShaderTreeView"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -12,50 +12,39 @@
              xmlns:reactui="http://reactiveui.net"
              mc:Ignorable="d"
              d:DesignWidth="300" d:DesignHeight="400"
-             x:DataType="vm:WorkspaceViewModel" x:CompileBindings="True">
+             x:DataType="vm:ShaderTreeViewModel" x:CompileBindings="True">
     <Grid Focusable="True" RowDefinitions="Auto,*">
         <StackPanel Orientation="Vertical" Background="{DynamicResource DockApplicationAccentBrushLow}">
             <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
 
             <Grid Margin="5,0,5,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Workspace_Refresh_Tooltip}">
+                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Workspace_Refresh_Tooltip}" Command="{Binding Refresh}">
                         <PathIcon Data="{StaticResource Refresh}" Width="13" />
-                    </Button>
-
-                    <Border Width="1" Height="18" Margin="3,0,3,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
-
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Expand_Tooltip}">
-                        <PathIcon Data="{StaticResource Expand}" Width="13" />
-                    </Button>
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}">
-                        <PathIcon Data="{StaticResource Collapse}" Width="13" />
                     </Button>
                 </StackPanel>
                 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Workspace_Connect}" Command="{Binding Connect}">
-                        <PathIcon Data="{StaticResource Connect}" Width="13" />
-                    </Button>
+                    <TextBlock VerticalAlignment="Center" x:Name="CountBlock" Text="{Binding ShaderIdentifiers.Count, FallbackValue=0}"/>
+                    <TextBlock VerticalAlignment="Center" Text="shaders" Margin="5 0 0 0"/>
                 </StackPanel>
             </Grid>
 
             <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
         </StackPanel>
 
-        <TreeView 
+        <ListBox 
             Grid.Row="1" 
-            x:Name="WorkspaceTree" 
+            x:Name="ShaderList" 
             ContextMenu="{StaticResource ReactiveContextMenu}" 
-            SelectionChanged="OnItemSelected"
             Tag="{Binding}"
-            Items="{Binding Workspaces}" >
-            <TreeView.ItemTemplate>
-                <TreeDataTemplate ItemsSource="{Binding Items}">
-                    <controls:UniformViewHost ContextMenu="{StaticResource ReactiveContextMenu}" DataContext="{Binding $self.DataContext}"/>
-                </TreeDataTemplate>
-            </TreeView.ItemTemplate>
-        </TreeView>
+            Items="{Binding ShaderIdentifiers}" >
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Height="20" Text="{Binding Descriptor}" LayoutUpdated="OnShaderIdentifierLayoutUpdated"/>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
         
         <Grid Grid.Row="1" IsVisible="{Binding IsHelpVisible}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -68,7 +57,7 @@
                     Margin="5 0 0 0"
                     Foreground="{StaticResource InfoMediumForeground}"
                     VerticalAlignment="Center"
-                    Text=" No workspaces"/>
+                    Text=" No shader objects"/>
             </StackPanel>
         </Grid>
     </Grid>

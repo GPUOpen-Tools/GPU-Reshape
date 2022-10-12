@@ -34,6 +34,11 @@ namespace Studio.ViewModels.Controls
                 OnPropertyChanged();
             }
         }
+        
+        /// <summary>
+        /// Object which owns this tree item
+        /// </summary>
+        public object? OwningContext { get; set; }
 
         /// <summary>
         /// All child items

@@ -2,9 +2,11 @@
 using System.Windows.Input;
 using Message.CLR;
 using ReactiveUI;
+using Runtime.Models.Objects;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.ViewModels.Contexts;
+using Studio.ViewModels.Instrumentation;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Features.ResourceBounds.UIX.Contexts
@@ -22,7 +24,11 @@ namespace Features.ResourceBounds.UIX.Contexts
                 this.RaiseAndSetIfChanged(ref _targetViewModel, value);
                 
                 // Enabled if resource bounds is available
-                _featureInfo = (_targetViewModel as IPropertyViewModel)?.GetProperty<IFeatureCollectionViewModel>()?.GetFeature("Export Stability");
+                _featureInfo = (_targetViewModel as IInstrumentableObject)?
+                    .GetWorkspace()?
+                    .GetProperty<IFeatureCollectionViewModel>()?
+                    .GetFeature("Export Stability");
+                
                 IsEnabled = _featureInfo.HasValue;
             }
         }
@@ -61,27 +67,16 @@ namespace Features.ResourceBounds.UIX.Contexts
         /// </summary>
         private void OnInvoked()
         {
-            if (_targetViewModel is not IPropertyViewModel property)
+            if (_targetViewModel is not IInstrumentableObject instrumentable)
             {
                 return;
             }
 
-            Bridge.CLR.IBridge? bridge = property.ConnectionViewModel?.Bridge;
-            if (bridge == null)
+            // Request instrumentation
+            instrumentable.SetInstrumentation(new InstrumentationState()
             {
-                return;
-            }
-
-            // Allocate ordered
-            var view = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream());
-
-            // Start all instrumentation features
-            var instrument = view.Add<SetGlobalInstrumentationMessage>();
-            instrument.featureBitSet = _featureInfo?.FeatureBit ?? 0;
-            
-            // Submit!
-            bridge.GetOutput().AddStream(view.Storage);
-            bridge.Commit();
+                FeatureBitMask = _featureInfo?.FeatureBit ?? 0
+            });
         }
 
         /// <summary>

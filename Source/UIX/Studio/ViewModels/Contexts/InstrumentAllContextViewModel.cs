@@ -3,6 +3,8 @@ using System.Reactive;
 using System.Windows.Input;
 using Message.CLR;
 using ReactiveUI;
+using Runtime.Models.Objects;
+using Studio.ViewModels.Instrumentation;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
@@ -18,7 +20,7 @@ namespace Studio.ViewModels.Contexts
             set
             {
                 this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsEnabled = _targetViewModel is IPropertyViewModel;
+                IsEnabled = _targetViewModel is IInstrumentableObject;
             }
         }
 
@@ -56,27 +58,16 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         private void OnInvoked()
         {
-            if (_targetViewModel is not IPropertyViewModel property)
+            if (_targetViewModel is not IInstrumentableObject instrumentable)
             {
                 return;
             }
 
-            Bridge.CLR.IBridge? bridge = property.ConnectionViewModel?.Bridge;
-            if (bridge == null)
+            // Request instrumentation
+            instrumentable.SetInstrumentation(new InstrumentationState()
             {
-                return;
-            }
-
-            // Allocate ordered
-            var view = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream());
-
-            // Start all instrumentation features
-            var instrument = view.Add<SetGlobalInstrumentationMessage>();
-            instrument.featureBitSet = ~0ul;
-            
-            // Submit!
-            bridge.GetOutput().AddStream(view.Storage);
-            bridge.Commit();
+                FeatureBitMask = ~0u
+            });
         }
 
         /// <summary>

@@ -7,6 +7,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Metadata;
 using ReactiveUI;
 using Studio.Services;
+using Studio.ViewModels.Contexts;
 
 namespace Studio.Views.Controls
 {
@@ -18,27 +19,6 @@ namespace Studio.Views.Controls
 
             // Set context
             DataContext = App.Locator.GetService<IContextMenuService>()?.ViewModel;
-
-            // On placement changed
-            this.WhenAnyValue(x => x.PlacementTarget).Subscribe(x =>
-            {
-                if (DataContext is ViewModels.Contexts.IContextMenuItemViewModel vm)
-                {
-                    object? dataViewModel = PlacementTarget?.DataContext;
-
-                    // Expand contained models
-                    if (dataViewModel is ViewModels.Controls.IContainedViewModel containedViewModel)
-                    {
-                        dataViewModel = containedViewModel.ViewModel;
-                    }
-
-                    // Set on context menu
-                    vm.TargetViewModel = dataViewModel;
-
-                    // Set on children
-                    SetViewModels(vm.Items, dataViewModel);
-                }
-            });
         }
 
         static ContextMenuView()
@@ -77,6 +57,33 @@ namespace Studio.Views.Controls
 
                 // Set placement
                 control.ContextMenu.PlacementTarget = control;
+
+                // Get service
+                if (App.Locator.GetService<IContextMenuService>()?.ViewModel is { } contextMenuItemViewModel)
+                {
+                    // Determine appropriate view model
+                    object? dataViewModel;
+                    if (control is ListBox listbox)
+                    {
+                        dataViewModel = listbox.SelectedItem;
+                    }
+                    else
+                    {
+                        dataViewModel = control.DataContext;
+                    }
+
+                    // Expand contained models
+                    if (dataViewModel is ViewModels.Controls.IContainedViewModel containedViewModel)
+                    {
+                        dataViewModel = containedViewModel.ViewModel;
+                    }
+
+                    // Set on context menu
+                    contextMenuItemViewModel.TargetViewModel = dataViewModel;
+
+                    // Set on children
+                    SetViewModels(contextMenuItemViewModel.Items, dataViewModel);
+                }
 
                 // Cleanup
                 e.RoutedEvent?.RouteFinished.Subscribe(_ => _requestedArgs = null);

@@ -94,6 +94,14 @@
         <DependentUpon>FeatureCollectionView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Tools\ShaderTreeView.axaml.cs">
+        <DependentUpon>ShaderView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Tools\PipelineTreeView.axaml.cs">
+        <DependentUpon>PipelineTreeView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

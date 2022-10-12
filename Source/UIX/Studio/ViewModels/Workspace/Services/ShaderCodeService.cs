@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Avalonia.Threading;
 using Message.CLR;
 
 namespace Studio.ViewModels.Workspace.Listeners
@@ -46,7 +47,12 @@ namespace Studio.ViewModels.Workspace.Listeners
                             // Failed to find?
                             if (shaderCode.found == 0)
                             {
-                                shaderViewModel.Contents = $"Shader {{{shaderCode.shaderUID}}} not found";
+                                ShaderCodeMessage.FlatInfo flat = shaderCode.Flat;
+
+                                Dispatcher.UIThread.InvokeAsync(() =>
+                                {
+                                    shaderViewModel.Contents = $"Shader {{{flat.shaderUID}}} not found";
+                                });
                             }
                             break;
                         }
@@ -60,9 +66,16 @@ namespace Studio.ViewModels.Workspace.Listeners
                                 continue;
                             }
 
+                            // Flatten dynamics
+                            string code = shaderCode.code.String;
+                            string filename = shaderCode.filename.String;
+
                             // Copy contents
-                            shaderViewModel.Contents = shaderCode.code.String;
-                            shaderViewModel.Filename = shaderCode.filename.String;
+                            Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                shaderViewModel.Contents = code;
+                                shaderViewModel.Filename = filename;
+                            });
                             
                             // Remove from future lookups
                             _pendingShaderViewModels.Remove(shaderCode.shaderUID);
@@ -98,6 +111,7 @@ namespace Studio.ViewModels.Workspace.Listeners
                 
                 // Add request
                 var request = ConnectionViewModel.GetSharedBus().Add<GetShaderCodeMessage>();
+                request.poolCode = 1;
                 request.shaderUID = shaderViewModel.GUID;
             }
         }

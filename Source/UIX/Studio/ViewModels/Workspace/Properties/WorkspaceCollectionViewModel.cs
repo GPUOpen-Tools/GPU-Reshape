@@ -1,9 +1,12 @@
 ﻿using DynamicData;
+using Message.CLR;
 using ReactiveUI;
+using Runtime.Models.Objects;
+using Studio.ViewModels.Instrumentation;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel
+    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel, IInstrumentableObject
     {
         /// <summary>
         /// Name of this property
@@ -99,6 +102,31 @@ namespace Studio.ViewModels.Workspace.Properties
                     ConnectionViewModel = _connectionViewModel
                 }
             });
+        }
+
+        /// <summary>
+        /// Get the workspace
+        /// </summary>
+        /// <returns></returns>
+        public IPropertyViewModel? GetWorkspace()
+        {
+            return this;
+        }
+
+        /// <summary>
+        /// Set the instrumentation info
+        /// </summary>
+        /// <param name="state"></param>
+        public void SetInstrumentation(InstrumentationState state)
+        {
+            // Get bus
+            var bus = ConnectionViewModel?.GetSharedBus();
+            if (bus == null)
+                return;
+
+            // Submit request
+            var request = bus.Add<SetGlobalInstrumentationMessage>();
+            request.featureBitSet = state.FeatureBitMask;
         }
 
         /// <summary>

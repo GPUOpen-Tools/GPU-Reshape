@@ -56,6 +56,7 @@ namespace Studio.ViewModels.Tools
         {
             Workspaces.Add(new Controls.WorkspaceTreeItemViewModel()
             {
+                OwningContext = workspaceViewModel,
                 ViewModel = workspaceViewModel.PropertyCollection
             });
 

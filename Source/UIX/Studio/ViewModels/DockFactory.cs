@@ -32,6 +32,8 @@ namespace Studio.ViewModels
             var connections = new ConnectionViewModel {Id = "ConnectionTool", Title = "Connections"};
             var log = new LogViewModel {Id = "LogTool", Title = "Log"};
             var properties = new PropertyViewModel {Id = "PropertiesTool", Title = "Properties"};
+            var shaders = new ShaderTreeViewModel() {Id = "ShadersTool", Title = "Shaders"};
+            var pipelines = new PipelineTreeViewModel() {Id = "PipelinesTool", Title = "Pipelines"};
 
             var leftDock = new ProportionalDock
             {
@@ -62,8 +64,8 @@ namespace Studio.ViewModels
                 (
                     new ToolDock
                     {
-                        ActiveDockable = properties,
-                        VisibleDockables = CreateList<IDockable>(properties),
+                        ActiveDockable = shaders,
+                        VisibleDockables = CreateList<IDockable>(properties, shaders, pipelines),
                         Alignment = Alignment.Right,
                         GripMode = GripMode.Visible
                     }

@@ -3,6 +3,7 @@ using System.Reactive;
 using System.Windows.Input;
 using Message.CLR;
 using ReactiveUI;
+using Studio.ViewModels.Instrumentation;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
@@ -18,7 +19,7 @@ namespace Studio.ViewModels.Contexts
             set
             {
                 this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsEnabled = _targetViewModel is IPropertyViewModel;
+                IsEnabled = _targetViewModel is IInstrumentableObject;
             }
         }
 
