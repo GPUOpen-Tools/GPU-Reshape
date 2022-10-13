@@ -133,6 +133,10 @@ namespace Studio.ViewModels.Tools
             
             // Subscribe
             _workspaceViewModel.Connection.Bridge?.Register(this);
+            
+            // Clear states
+            ShaderIdentifiers.Clear();
+            _lookup.Clear();
 
             // Start pooling timer
             _poolTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, OnPoolEvent);
