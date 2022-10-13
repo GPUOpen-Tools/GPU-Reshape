@@ -307,6 +307,7 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
 void BridgeDeviceSyncPoint(DeviceDispatchTable *table) {
     // Commit controllers
     table->instrumentationController->Commit();
+    table->featureController->Commit();
     table->metadataController->Commit();
 
     // Commit instance
