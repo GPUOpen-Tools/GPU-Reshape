@@ -56,6 +56,24 @@ void ShaderCompiler::Add(DeviceDispatchTable *table, ShaderModuleState *state, c
     dispatcher->Add(BindDelegate(this, ShaderCompiler::Worker), data, bucket);
 }
 
+void ShaderCompiler::InitializeModule(ShaderModuleState *state) {
+    // Create the module on demand
+    if (!state->spirvModule) {
+        state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators, state->uid);
+
+        // Parse the module
+        bool result = state->spirvModule->ParseModule(
+            state->createInfoDeepCopy.createInfo.pCode,
+            static_cast<uint32_t>(state->createInfoDeepCopy.createInfo.codeSize / 4u)
+        );
+
+        // Failed?
+        if (!result) {
+            return;
+        }
+    }
+}
+
 void ShaderCompiler::Worker(void *data) {
     auto *job = static_cast<ShaderJob *>(data);
     CompileShader(*job);
@@ -81,21 +99,8 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     job.state->createInfoDeepCopy.createInfo.codeSize = debugBinary.size();
 #endif
 
-    // Create the module on demand
-    if (!job.state->spirvModule) {
-        job.state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators, job.state->uid);
-
-        // Parse the module
-        bool result = job.state->spirvModule->ParseModule(
-            job.state->createInfoDeepCopy.createInfo.pCode,
-            static_cast<uint32_t>(job.state->createInfoDeepCopy.createInfo.codeSize / 4u)
-        );
-
-        // Failed?
-        if (!result) {
-            return;
-        }
-    }
+    // Ensure state is initialized
+    InitializeModule(job.state);
 
     // Passed initial check?
     bool validSource{true};

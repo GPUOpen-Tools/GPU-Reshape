@@ -1,8 +1,10 @@
 #include <Backends/Vulkan/Controllers/MetadataController.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/States/ShaderModuleState.h>
+#include <Backends/Vulkan/States/PipelineState.h>
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/Compiler/SpvSourceMap.h>
+#include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Symbolizer/ShaderSGUIDHost.h>
 
 // Bridge
@@ -36,6 +38,9 @@ bool MetadataController::Install() {
     // Install this listener
     bridge->Register(this);
 
+    // Get components
+    shaderCompiler = registry->Get<ShaderCompiler>();
+
     // OK
     return true;
 }
@@ -62,6 +67,14 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<GetShaderUIDRangeMessage>());
                     break;
                 }
+                case GetPipelineUIDRangeMessage::kID: {
+                    OnMessage(*it.Get<GetPipelineUIDRangeMessage>());
+                    break;
+                }
+                case GetObjectStatesMessage::kID: {
+                    OnMessage(*it.Get<GetObjectStatesMessage>());
+                    break;
+                }
                 case GetShaderSourceMappingMessage::kID: {
                     OnMessage(*it.Get<GetShaderSourceMappingMessage>());
                     break;
@@ -76,6 +89,11 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
 
     // Attempt to find shader with given UID
     ShaderModuleState* shader = table->states_shaderModule.GetFromUID(message.shaderUID);
+
+    // Create module if not present
+    if (shaderCompiler && !shader->spirvModule) {
+        shaderCompiler->InitializeModule(shader);
+    }
 
     // Failed?
     if (!shader || !shader->spirvModule) {
@@ -97,15 +115,18 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         response->native = true;
         response->fileCount = 1;
 
-        // Pretty print to stream
-        std::stringstream ilStream;
-        IL::PrettyPrint(*shader->spirvModule->GetProgram(), ilStream);
+        // Pool code?
+        if (message.poolCode) {
+            // Pretty print to stream
+            std::stringstream ilStream;
+            IL::PrettyPrint(*shader->spirvModule->GetProgram(), ilStream);
 
-        // Add native file
-        auto&& file = view.Add<ShaderCodeFileMessage>(ShaderCodeFileMessage::AllocationInfo { .codeLength = static_cast<size_t>(ilStream.tellp()) });
-        file->shaderUID = message.shaderUID;
-        file->fileUID = 0;
-        file->code.Set(ilStream.str());
+            // Add native file
+            auto&& file = view.Add<ShaderCodeFileMessage>(ShaderCodeFileMessage::AllocationInfo { .codeLength = static_cast<size_t>(ilStream.tellp()) });
+            file->shaderUID = message.shaderUID;
+            file->fileUID = 0;
+            file->code.Set(ilStream.str());
+        }
         return;
     }
 
@@ -123,7 +144,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     for (uint32_t i = 0; i < fileCount; i++) {
         auto&& file = view.Add<ShaderCodeFileMessage>(ShaderCodeFileMessage::AllocationInfo { 
             .filenameLength = sourceMap->GetFilename().length(),
-            .codeLength = sourceMap->GetCombinedSourceLength(i)
+            .codeLength = message.poolCode ? sourceMap->GetCombinedSourceLength(i) : 0
         });
         file->shaderUID = message.shaderUID;
         file->fileUID = i;
@@ -132,8 +153,19 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         file->filename.Set(sourceMap->GetFilename());
 
         // Fill discontinuous fragments into buffer
-        sourceMap->FillCombinedSource(i, file->code.data.Get());
+        if (message.poolCode) {
+            sourceMap->FillCombinedSource(i, file->code.data.Get());
+        }
     }
+}
+
+void MetadataController::OnMessage(const struct GetObjectStatesMessage& message) {
+    MessageStreamView view(stream);
+
+    // Add response (linear locks)
+    auto&& response = view.Add<ObjectStatesMessage>();
+    response->shaderCount = table->states_shaderModule.GetLinear().object.size();
+    response->pipelineCount = table->states_shaderModule.GetLinear().object.size();
 }
 
 void MetadataController::OnMessage(const struct GetShaderUIDRangeMessage& message) {
@@ -142,15 +174,47 @@ void MetadataController::OnMessage(const struct GetShaderUIDRangeMessage& messag
     // Get linear (locked) view
     auto&& linear = table->states_shaderModule.GetLinear();
 
+    // Out of range?
+    if (message.start >= linear.object.size()) {
+        view.Add<ShaderUIDRangeMessage>(ShaderUIDRangeMessage::AllocationInfo { .shaderUIDCount = 0 });
+        return;
+    }
+
     // Throttle count
-    const uint32_t count = std::min(message.limit, static_cast<uint32_t>(linear.object.size()));
+    const uint32_t count = std::min(message.limit, static_cast<uint32_t>(linear.object.size() - message.start));
 
     // Add response
     auto&& response = view.Add<ShaderUIDRangeMessage>(ShaderUIDRangeMessage::AllocationInfo { .shaderUIDCount = count });
+    response->start = message.start;
 
     // Fill uids
     for (size_t i = 0; i < count; i++) {
-        response->shaderUID[i] = linear[i]->uid;
+        response->shaderUID[i] = linear[message.start + i]->uid;
+    }
+}
+
+void MetadataController::OnMessage(const struct GetPipelineUIDRangeMessage& message) {
+    MessageStreamView view(stream);
+
+    // Get linear (locked) view
+    auto&& linear = table->states_pipeline.GetLinear();
+
+    // Out of range?
+    if (message.start >= linear.object.size()) {
+        view.Add<PipelineUIDRangeMessage>(PipelineUIDRangeMessage::AllocationInfo { .pipelineUIDCount = 0 });
+        return;
+    }
+
+    // Throttle count
+    const uint32_t count = std::min(message.limit, static_cast<uint32_t>(linear.object.size() - message.start));
+
+    // Add response
+    auto&& response = view.Add<PipelineUIDRangeMessage>(PipelineUIDRangeMessage::AllocationInfo { .pipelineUIDCount = count });
+    response->start = message.start;
+
+    // Fill uids
+    for (size_t i = 0; i < count; i++) {
+        response->pipelineUID[i] = linear[message.start + i]->uid;
     }
 }
 

@@ -5,6 +5,7 @@
 #include <Backends/Vulkan/CommandBuffer.h>
 #include <Backends/Vulkan/Queue.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
+#include <Backends/Vulkan/Controllers/FeatureController.h>
 #include <Backends/Vulkan/Controllers/MetadataController.h>
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
@@ -243,6 +244,10 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Install the instrumentation controller
     table->instrumentationController = table->registry.New<InstrumentationController>(table);
     ENSURE(table->instrumentationController->Install(), "Failed to install instrumentation controller");
+
+    // Install the feature controller
+    table->featureController = table->registry.AddNew<FeatureController>(table);
+    ENSURE(table->featureController->Install(), "Failed to install feature controller");
 
     // Install the metadata controller
     table->metadataController = table->registry.New<MetadataController>(table);

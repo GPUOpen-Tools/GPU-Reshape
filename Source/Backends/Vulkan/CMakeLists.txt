@@ -141,6 +141,7 @@ add_library(
     Layer/Source/Compiler/ShaderCompilerDebug.cpp
     Layer/Source/Compiler/PipelineCompiler.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
+    Layer/Source/Controllers/FeatureController.cpp
     Layer/Source/Controllers/MetadataController.cpp
     Layer/Source/Export/ShaderExportHost.cpp
     Layer/Source/Export/ShaderExportStreamAllocator.cpp

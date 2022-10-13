@@ -31,6 +31,10 @@ public:
     /// \param bucket optional, the dispatcher bucket
     void Add(DeviceDispatchTable* table, ShaderModuleState *state, const ShaderModuleInstrumentationKey& instrumentationKey, DispatcherBucket *bucket = nullptr);
 
+    /// Ensure a module is initialized
+    /// \param state shader state
+    void InitializeModule(ShaderModuleState* state);
+
 protected:
     struct ShaderJob {
         DeviceDispatchTable *table;

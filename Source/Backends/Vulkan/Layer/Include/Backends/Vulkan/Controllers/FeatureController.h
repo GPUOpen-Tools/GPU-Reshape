@@ -6,6 +6,9 @@
 // Message
 #include <Message/MessageStream.h>
 
+// Backend
+#include <Backend/FeatureInfo.h>
+
 // Bridge
 #include <Bridge/IBridgeListener.h>
 
@@ -17,16 +20,14 @@
 #include <mutex>
 
 // Forward declarations
-class Registry;
-class Dispatcher;
 class IBridge;
-class ShaderCompiler;
 struct DeviceDispatchTable;
-struct ReferenceObject;
 
-class MetadataController final : public IController, public IBridgeListener {
+class FeatureController final : public IController, public IBridgeListener {
 public:
-    MetadataController(DeviceDispatchTable* table);
+    COMPONENT(FeatureController);
+
+    FeatureController(DeviceDispatchTable* table);
 
     /// Install the controller
     bool Install();
@@ -42,11 +43,7 @@ public:
 
 protected:
     /// Message handlers
-    void OnMessage(const struct GetShaderCodeMessage& message);
-    void OnMessage(const struct GetObjectStatesMessage& message);
-    void OnMessage(const struct GetShaderUIDRangeMessage& message);
-    void OnMessage(const struct GetPipelineUIDRangeMessage& message);
-    void OnMessage(const struct GetShaderSourceMappingMessage& message);
+    void OnMessage(const struct GetFeaturesMessage& message);
 
 private:
     DeviceDispatchTable* table;
@@ -54,14 +51,11 @@ private:
     /// Owning bridge, stored as naked pointer for referencing reasons
     IBridge* bridge{nullptr};
 
-    /// Components
-    ComRef<ShaderCompiler> shaderCompiler;
-
     /// Pending response stream
     MessageStream stream;
 
-    /// Pending segment mapping stream
-    MessageStream segmentMappingStream;
+    /// Pooled info
+    std::vector<FeatureInfo> featureInfos;
 
     /// Shared lock
     std::mutex mutex;
