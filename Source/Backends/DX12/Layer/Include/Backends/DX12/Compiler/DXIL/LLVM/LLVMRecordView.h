@@ -4,7 +4,7 @@
 #include "LLVMBlock.h"
 
 struct LLVMRecordView {
-    LLVMRecordView(LLVMBlock* block, uint32_t offset) : block(block), offset(offset) {
+    LLVMRecordView(LLVMBlock* block = nullptr, uint32_t offset = 0) : block(block), offset(offset) {
 
     }
 

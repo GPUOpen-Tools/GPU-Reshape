@@ -1,5 +1,8 @@
 // Generated File
 
+// Test defines
+$DEFINES
+
 // Test
 #include <Test/Device/IDevice.h>
 #include <Test/Device/Catch2.h>
@@ -19,8 +22,12 @@
 #include <Message/IMessageStorage.h>
 
 // Devices
+#ifdef ENABLE_BACKEND_VULKAN
 #include <Test/Device/Vulkan/Device.h>
+#endif // ENABLE_BACKEND_VULKAN
+#ifdef ENABLE_BACKEND_DX12
 #include <Test/Device/DX12/Device.h>
+#endif // ENABLE_BACKEND_DX12
 
 // Common
 #include <Common/Registry.h>
@@ -32,9 +39,6 @@
 
 // Test includes
 $INCLUDES
-
-// Test defines
-$DEFINES
 
 using namespace Test;
 
@@ -187,7 +191,7 @@ TEST_CASE("Features.$FEATURE_NAME.$TEST_NAME") {
             .size = sizeof(kShaderCodeVulkan)
         });
     }
-#endif // ENABLE_VULKAN
+#endif // ENABLE_BACKEND_VULKAN
 
 #ifdef ENABLE_BACKEND_DX12
     SECTION("DX12") {
@@ -196,6 +200,6 @@ TEST_CASE("Features.$FEATURE_NAME.$TEST_NAME") {
             .size = sizeof(kShaderCodeD3D12)
         });
     }
-#endif // ENABLE_DX12
+#endif // ENABLE_BACKEND_DX12
 }
 

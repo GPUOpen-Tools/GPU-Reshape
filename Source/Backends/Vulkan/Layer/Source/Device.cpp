@@ -284,6 +284,7 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
     // Manual uninstalls
     table->metadataController->Uninstall();
     table->instrumentationController->Uninstall();
+    table->featureController->Uninstall();
 
     // Release all features
     table->features.clear();

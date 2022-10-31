@@ -11,6 +11,7 @@
 
 // Std
 #include <vector>
+#include <Backends/DX12/Resource/DescriptorDataSegment.h>
 
 // Forward declarations
 struct RootSignatureState;
@@ -19,7 +20,8 @@ struct IncrementalFence;
 struct ShaderExportDescriptorAllocator;
 struct FenceState;
 struct PipelineState;
-struct PipelineState;
+struct DescriptorDataAppendAllocator;
+struct DescriptorHeapState;
 
 /// Tracked descriptor allocation
 struct ShaderExportSegmentDescriptorAllocation {
@@ -38,6 +40,9 @@ struct ShaderExportStreamState {
     /// Currently bound pipeline
     const PipelineState* pipeline{nullptr};
 
+    /// Currently bound (SRV, UAV, CBV) heap
+    const DescriptorHeapState* heap{nullptr};
+
     /// Is the current pipeline instrumented?
     bool isInstrumented{false};
 
@@ -46,6 +51,9 @@ struct ShaderExportStreamState {
 
     /// The descriptor info, may not be mapped
     ShaderExportSegmentDescriptorInfo currentSegment{};
+
+    /// Descriptor data allocator tied to this segment
+    DescriptorDataAppendAllocator* descriptorDataAllocator[static_cast<uint32_t>(PipelineType::Count)];
 
     /// All segment descriptors, lifetime bound to deferred segment
     std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
@@ -65,6 +73,9 @@ struct ShaderExportStreamSegment {
 
     /// Combined segment descriptors, lifetime bound to this segment
     std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
+
+    /// Combined descriptor data segments, lifetime bound to this segment
+    std::vector<DescriptorDataSegment> descriptorDataSegments;
 
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{UINT64_MAX};

@@ -20,27 +20,55 @@ namespace {
 /// Translate a given RST type into spec type
 /// \param type RST type
 /// \return empty if failed
-static std::string TranslateType(const std::string_view& type) {
+static std::string TranslateType(const std::string_view& type, std::string_view prefix = "") {
+    if (prefix.starts_with("DXILIntrinsicTypeSpec::ResRet")) {
+        if (type[0] == 'i') {
+            return "DXILIntrinsicTypeSpec::ResRetI32";
+        } else {
+            return "DXILIntrinsicTypeSpec::ResRetF32";
+        }
+    }
+
+    if (prefix.starts_with("DXILIntrinsicTypeSpec::CBufRet")) {
+        if (type[0] == 'i') {
+            return "DXILIntrinsicTypeSpec::CBufRetI32";
+        } else {
+            return "DXILIntrinsicTypeSpec::CBufRetF32";
+        }
+    }
+
+    if (prefix.empty()) {
+        prefix = "DXILIntrinsicTypeSpec::";
+    }
+    
     if (type == "void") {
-        return "DXILIntrinsicTypeSpec::Void";
+        return std::string(prefix) + "Void";
     } else if (type == "i64") {
-        return "DXILIntrinsicTypeSpec::I64";
+        return std::string(prefix) + "I64";
     } else if (type == "i32") {
-        return "DXILIntrinsicTypeSpec::I32";
+        return std::string(prefix) + "I32";
     } else if (type == "f64") {
-        return "DXILIntrinsicTypeSpec::F64";
+        return std::string(prefix) + "F64";
     } else if (type == "float" || type == "f32") {
-        return "DXILIntrinsicTypeSpec::F32";
+        return std::string(prefix) + "F32";
     } else if (type == "f16") {
-        return "DXILIntrinsicTypeSpec::F16";
+        return std::string(prefix) + "F16";
     } else if (type == "i8") {
-        return "DXILIntrinsicTypeSpec::I8";
+        return std::string(prefix) + "I8";
     } else if (type == "i1") {
-        return "DXILIntrinsicTypeSpec::I1";
+        return std::string(prefix) + "I1";
     } else if (type == "%dx.types.Handle") {
-        return "DXILIntrinsicTypeSpec::Handle";
+        return std::string(prefix) + "Handle";
     } else if (type == "%dx.types.Dimensions") {
-        return "DXILIntrinsicTypeSpec::Dimensions";
+        return std::string(prefix) + "Dimensions";
+    } else if (type == "%dx.types.ResRet.f32") {
+        return std::string(prefix) + "ResRetF32";
+    } else if (type == "%dx.types.ResRet.i32") {
+        return std::string(prefix) + "ResRetI32";
+    } else if (type == "%dx.types.CBufRet.f32") {
+        return std::string(prefix) + "CBufRetF32";
+    } else if (type == "%dx.types.CBufRet.i32") {
+        return std::string(prefix) + "CBufRetI32";
     }
 
     // Unknown
@@ -125,16 +153,27 @@ bool Generators::DXILIntrinsics(const GeneratorInfo &info, TemplateEngine &templ
 
             // Translate overload
             if (!overload.empty()) {
+                size_t start = 0;
+
+                if (returnType != "DXILIntrinsicTypeSpec::Void") {
+                    start = returnType.size() - 1;
+
+                    while (isdigit(returnType[start])) {
+                        start--;
+                    }
+                }
+
                 // Translate overload type
-                overloadType = TranslateType(overload);
+                overloadType = TranslateType(overload, returnType.substr(0, start));
                 if (overloadType.empty()) {
                     continue;
                 }
             }
 
             // Override return type if need be
+            std::string candidateType = returnType;
             if (!overload.empty() && returnType != "DXILIntrinsicTypeSpec::Void") {
-                returnType = overloadType;
+                candidateType = overloadType;
             }
 
             // All parameters
@@ -178,7 +217,7 @@ bool Generators::DXILIntrinsics(const GeneratorInfo &info, TemplateEngine &templ
             intrinsics << "\tstatic DXILIntrinsicSpec " << keyName << " {\n";
             intrinsics << "\t\t.uid = kInbuiltCount + " << (uid++) << ",\n";
             intrinsics << "\t\t.name = \"" << name << "\",\n";
-            intrinsics << "\t\t.returnType = " << returnType << ",\n";
+            intrinsics << "\t\t.returnType = " << candidateType << ",\n";
             intrinsics << "\t\t.parameterTypes = {\n";
 
             // Emit parameters

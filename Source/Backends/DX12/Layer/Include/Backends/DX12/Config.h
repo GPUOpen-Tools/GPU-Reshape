@@ -1,5 +1,8 @@
 #pragma once
 
+// Std
+#include <cstdint>
+
 /// Diagnostic logging on/off?
 #ifndef NDEBUG
 #   define DX12_DIAGNOSTIC 1
@@ -39,3 +42,6 @@
 ///  ? Instrumentation of large applications can be difficult to debug and even harder to reproduce under the same conditions.
 ///    When such a fault occurs, it is very useful to simply be able to iterate on a binary file.
 #define SHADER_COMPILER_DEBUG_FILE (DX12_DIAGNOSTIC && 0)
+
+/// Maximum number of dwords in a root signature
+static constexpr uint32_t MaxRootSignatureDWord = 64;

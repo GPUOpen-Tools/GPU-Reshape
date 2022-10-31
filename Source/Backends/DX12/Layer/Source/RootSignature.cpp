@@ -2,10 +2,14 @@
 #include <Backends/DX12/Table.Gen.h>
 #include <Backends/DX12/States/RootSignatureState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/States/RootSignaturePhysicalMapping.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 
+// Common
+#include <Common/Hash.h>
+
 template<typename T>
-RootRegisterBindingInfo GetBindingInfo(const T& source) {
+RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
     uint32_t userRegisterSpaceBound = 0;
 
     // Get the user bound
@@ -38,37 +42,213 @@ RootRegisterBindingInfo GetBindingInfo(const T& source) {
     // Prepare space
     RootRegisterBindingInfo bindingInfo;
     bindingInfo.space = userRegisterSpaceBound;
-    bindingInfo._register = 0;
+
+    // Current register offset
+    uint32_t registerOffset = 0;
+
+    // Set base register for shader exports
+    bindingInfo.shaderExportBaseRegister = registerOffset;
+    bindingInfo.shaderExportCount = state->features.size() + 1u;
+    registerOffset += bindingInfo.shaderExportCount;
+
+    // Set base register for prmt data
+    bindingInfo.prmtBaseRegister = registerOffset;
+    registerOffset += 1u;
+
+    // Set base register for descriptor constants
+    bindingInfo.descriptorConstantBaseRegister = registerOffset;
+    registerOffset += 1u;
+
+    // Set base register for event constants
+    bindingInfo.eventConstantBaseRegister = registerOffset;
+    registerOffset += 1u;
+
     return bindingInfo;
 }
 
+RootSignatureUserMapping& GetRootMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserClassType type, uint32_t space, uint32_t offset) {
+    RootSignatureUserClass& _class = mapping->spaces[static_cast<uint32_t>(type)];
+
+    if (_class.spaces.Size() <= space) {
+        _class.spaces.Resize(space + 1);
+    }
+
+    RootSignatureUserSpace& userSpace = _class.spaces[space];
+
+    if (userSpace.mappings.Size() <= offset) {
+        userSpace.mappings.Resize(offset + 1);
+    }
+
+    return userSpace.mappings[offset];
+}
+
 template<typename T>
-HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION version, const T& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, ID3DBlob** error) {
-    *outRoot = GetBindingInfo(source);
+static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount) {
+    auto* mapping = new (state->allocators) RootSignaturePhysicalMapping();
+
+    // TODO: Could do a pre-pass
+
+    // Create hash and mappings
+    for (uint32_t i = 0; i < parameterCount; i++) {
+        const T& parameter = parameters[i];
+
+        // Hash common data
+        CombineHash(mapping->signatureHash, parameter.ShaderVisibility);
+
+        // Hash parameter data
+        switch (parameter.ParameterType) {
+            case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
+                // Add to hash
+                CombineHash(mapping->signatureHash, parameter.DescriptorTable.NumDescriptorRanges);
+                CombineHash(mapping->signatureHash, BufferCRC64(parameter.DescriptorTable.pDescriptorRanges, sizeof(D3D12_DESCRIPTOR_RANGE1) * parameter.DescriptorTable.NumDescriptorRanges));
+
+                // Current descriptor offset
+                uint32_t descriptorOffset = 0;
+
+                // Handle all ranges
+                for (uint32_t rangeIdx = 0; rangeIdx < parameter.DescriptorTable.NumDescriptorRanges; rangeIdx++) {
+                    const auto& range = parameter.DescriptorTable.pDescriptorRanges[rangeIdx];
+
+                    // To class type
+                    RootSignatureUserClassType classType;
+                    switch (range.RangeType) {
+                        case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
+                            classType = RootSignatureUserClassType::SRV;
+                            break;
+                        case D3D12_DESCRIPTOR_RANGE_TYPE_UAV:
+                            classType = RootSignatureUserClassType::UAV;
+                            break;
+                        case D3D12_DESCRIPTOR_RANGE_TYPE_CBV:
+                            classType = RootSignatureUserClassType::CBV;
+                            break;
+                        case D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER:
+                            classType = RootSignatureUserClassType::Sampler;
+                            break;
+                    }
+
+                    // Create a mapping per internal register
+                    for (uint32_t registerIdx = 0; registerIdx < range.NumDescriptors; registerIdx++) {
+                        // Create at space[base + idx]
+                        RootSignatureUserMapping& user = GetRootMapping(mapping, classType, range.RegisterSpace, range.BaseShaderRegister + registerIdx);
+                        user.rootParameter = i;
+                        user.offset = descriptorOffset;
+                    }
+
+                    // Next!
+                    descriptorOffset += range.NumDescriptors;
+                }
+
+                break;
+            }
+            case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
+                // Add to hash
+                CombineHash(mapping->signatureHash, BufferCRC64(&parameter.Constants, sizeof(parameter.Constants)));
+
+                // Create mapping
+                RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.Constants.RegisterSpace, parameter.Constants.ShaderRegister);
+                user.rootParameter = i;
+                user.offset = 0;
+                break;
+            }
+            case D3D12_ROOT_PARAMETER_TYPE_CBV: {
+                // Add to hash
+                CombineHash(mapping->signatureHash, BufferCRC64(&parameter.Descriptor, sizeof(parameter.Descriptor)));
+
+                // Create mapping
+                RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
+                user.rootParameter = i;
+                user.offset = 0;
+                break;
+            }
+            case D3D12_ROOT_PARAMETER_TYPE_SRV: {
+                // Add to hash
+                CombineHash(mapping->signatureHash, BufferCRC64(&parameter.Descriptor, sizeof(parameter.Descriptor)));
+
+                // Create mapping
+                RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::SRV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
+                user.rootParameter = i;
+                user.offset = 0;
+                break;
+            }
+            case D3D12_ROOT_PARAMETER_TYPE_UAV: {
+                // Add to hash
+                CombineHash(mapping->signatureHash, BufferCRC64(&parameter.Descriptor, sizeof(parameter.Descriptor)));
+
+                // Create mapping
+                RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::UAV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
+                user.rootParameter = i;
+                user.offset = 0;
+                break;
+            }
+        }
+    }
+
+    return mapping;
+}
+
+template<typename T>
+HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION version, const T& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, RootSignaturePhysicalMapping** outMapping, ID3DBlob** outError) {
+    *outRoot = GetBindingInfo(state, source);
 
     // Types
     using Parameter = std::remove_const_t<std::remove_pointer_t<decltype(T::pParameters)>>;
     using DescriptorTable = decltype(Parameter::DescriptorTable);
     using Range = std::remove_const_t<std::remove_pointer_t<decltype(DescriptorTable::pDescriptorRanges)>>;
 
+    // Number of parameters
+    uint32_t parameterCount = source.NumParameters + 3u;
+
     // Copy parameters
-    auto* parameters = ALLOCA_ARRAY(Parameter, source.NumParameters + 1);
+    auto* parameters = ALLOCA_ARRAY(Parameter, parameterCount);
     std::memcpy(parameters, source.pParameters, sizeof(Parameter) * source.NumParameters);
 
-    // Shader export range
-    Range exportRange{};
-    exportRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    exportRange.OffsetInDescriptorsFromTableStart = 0;
-    exportRange.RegisterSpace = outRoot->space;
-    exportRange.BaseShaderRegister = outRoot->_register;
-    exportRange.NumDescriptors = 1 + state->exportHost->GetBound();
+    // TODO: Root signatures need to be recompiled on the fly as well, to avoid needless worst-case cost
+
+    // Base ranges
+    Range ranges[] = {
+        // Shader export range
+        {
+            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+            .NumDescriptors = 1u + state->exportHost->GetBound(),
+            .BaseShaderRegister = outRoot->shaderExportBaseRegister,
+            .RegisterSpace = outRoot->space,
+            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+        },
+
+        // PRMT range
+        {
+            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            .NumDescriptors = 1u,
+            .BaseShaderRegister = outRoot->prmtBaseRegister,
+            .RegisterSpace = outRoot->space,
+            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+        }
+    };
 
     // Shader export parameter
-    Parameter& exportParameter = parameters[source.NumParameters];
+    Parameter& exportParameter = parameters[source.NumParameters + 0u];
     exportParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     exportParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    exportParameter.DescriptorTable.NumDescriptorRanges = 1;
-    exportParameter.DescriptorTable.pDescriptorRanges = &exportRange;
+    exportParameter.DescriptorTable.NumDescriptorRanges = 2u;
+    exportParameter.DescriptorTable.pDescriptorRanges = ranges;
+
+    // Descriptor constant parameter
+    Parameter& descriptorParameter = parameters[source.NumParameters + 1u];
+    descriptorParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    descriptorParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    descriptorParameter.Descriptor.ShaderRegister = outRoot->descriptorConstantBaseRegister;
+    descriptorParameter.Descriptor.RegisterSpace = outRoot->space;
+
+    // Event constant parameter
+    Parameter& eventParameter = parameters[source.NumParameters + 2u];
+    eventParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    eventParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    eventParameter.Constants.ShaderRegister = outRoot->eventConstantBaseRegister;
+    eventParameter.Constants.RegisterSpace = outRoot->space;
+    eventParameter.Constants.Num32BitValues = 1u;
+
+    // Create mappings
+    *outMapping = CreateRootPhysicalMappings(state, parameters, parameterCount);
 
     // Versioned creation info
     D3D12_VERSIONED_ROOT_SIGNATURE_DESC versioned;
@@ -78,18 +258,18 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     if constexpr(std::is_same_v<T, D3D12_ROOT_SIGNATURE_DESC1>) {
         versioned.Desc_1_1 = source;
         versioned.Desc_1_1.pParameters = parameters;
-        versioned.Desc_1_1.NumParameters = source.NumParameters + 1;
+        versioned.Desc_1_1.NumParameters = parameterCount;
     } else {
         versioned.Desc_1_0 = source;
         versioned.Desc_1_0.pParameters = parameters;
-        versioned.Desc_1_0.NumParameters = source.NumParameters + 1;
+        versioned.Desc_1_0.NumParameters = parameterCount;
     }
 
     // Create it
     return D3D12SerializeVersionedRootSignature(
         &versioned,
         out,
-        error
+        outError
     );
 }
 
@@ -116,7 +296,10 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     RootRegisterBindingInfo bindingInfo;
 
     // Number of user parameters
-    uint32_t userRootCount = 0;
+    uint32_t userRootCount{0};
+
+    // Mapping
+    RootSignaturePhysicalMapping* mapping{nullptr};
 
     // Attempt to re-serialize
     ID3DBlob* serialized{nullptr};
@@ -128,9 +311,9 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
             userRootCount = unconverted->Desc_1_0.NumParameters;
 
 #ifndef NDEBUG
-            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &error);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &mapping, &error);
 #else // NDEBUG
-            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, nullptr);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &mapping, nullptr);
 #endif // NDEBUG
             break;
         }
@@ -138,9 +321,9 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
             userRootCount = unconverted->Desc_1_1.NumParameters;
 
 #ifndef NDEBUG
-            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &error);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &mapping, &error);
 #else // NDEBUG
-            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, nullptr);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &mapping, nullptr);
 #endif // NDEBUG
             break;
         }
@@ -177,6 +360,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     state->parent = device;
     state->rootBindingInfo = bindingInfo;
     state->userRootCount = userRootCount;
+    state->physicalMapping = mapping;
 
     // Create detours
     rootSignature = CreateDetour(Allocators{}, rootSignature, state);

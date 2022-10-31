@@ -252,6 +252,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             // Create the instrumentation key
             ShaderInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
+            instrumentationKey.physicalMapping = dependentObject->signature->physicalMapping;
             instrumentationKey.bindingInfo = signatureBindingInfo;
 
             // Attempt to reserve
@@ -306,6 +307,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             // Create the instrumentation key
             ShaderInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
+            instrumentationKey.physicalMapping = state->signature->physicalMapping;
             instrumentationKey.bindingInfo = signatureBindingInfo;
 
             // Assign key
@@ -335,7 +337,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
         // Compose keys
         for (auto&& kv : rejectedKeys) {
-            keyMessage << "\tShader " << kv.first->uid << " [" << kv.second.featureBitSet << "] with {s" << kv.second.bindingInfo.space << ", r" << kv.second.bindingInfo._register << "} root binding\n";
+            keyMessage << "\tShader " << kv.first->uid << " [" << kv.second.featureBitSet << "] with {s" << kv.second.bindingInfo.space << "} root binding\n";
         }
 
         // Submit

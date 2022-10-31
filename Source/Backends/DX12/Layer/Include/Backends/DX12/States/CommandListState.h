@@ -9,6 +9,7 @@
 // Forward declarations
 struct DeviceState;
 struct ShaderExportStreamState;
+struct DescriptorDataAppendAllocator;
 
 struct CommandListState {
     ~CommandListState();
@@ -21,6 +22,9 @@ struct CommandListState {
 
     /// Current streaming state
     ShaderExportStreamState* streamState{nullptr};
+
+    /// Current descriptor state
+    DescriptorDataAppendAllocator* descriptorAllocator{nullptr};
 
     /// Object
     ID3D12GraphicsCommandList* object{nullptr};

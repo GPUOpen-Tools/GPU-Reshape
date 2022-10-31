@@ -3,6 +3,7 @@
 #include <Backends/DX12/States/DescriptorHeapState.h>
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorAllocator.h>
+#include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 
 HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const D3D12_DESCRIPTOR_HEAP_DESC *desc, REFIID riid, void **pHeap) {
     auto table = GetTable(device);
@@ -29,8 +30,27 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
         // Pass down callchain
         HRESULT hr = table.bottom->next_CreateDescriptorHeap(table.next, &expandedHeap, __uuidof(ID3D12DescriptorHeap), reinterpret_cast<void**>(&heap));
         if (SUCCEEDED(hr)) {
+            // Set base
+            state->cpuDescriptorBase = heap->GetCPUDescriptorHandleForHeapStart();
+            state->gpuDescriptorBase = heap->GetGPUDescriptorHandleForHeapStart();
+            state->stride = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
             // Create unique allocator
             state->allocator = new (table.state->allocators) ShaderExportDescriptorAllocator(table.next, heap, bound);
+
+            // Create prm
+            state->prmTable = new (table.state->allocators) PhysicalResourceMappingTable(table.state->deviceAllocator);
+
+            // Initialize table with count
+            state->prmTable->Install(desc->NumDescriptors);
+
+            // Register heap in shared table
+            table.state->heapTable.Add(
+                state,
+                state->cpuDescriptorBase.ptr,
+                state->stride,
+                desc->NumDescriptors
+            );
         }
     }
 
@@ -89,6 +109,40 @@ void WINAPI HookID3D12DescriptorHeapGetGPUDescriptorHandleForHeapStart(ID3D12Des
     }
 
     *out = reg;
+}
+
+void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
+    auto table = GetTable(_this);
+    auto resource = GetTable(pResource);
+
+    // Associated heap?
+    if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
+        uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
+        ASSERT(offset % heap->stride == 0, "Invalid heap offset");
+
+        // TODO: SRB masking
+        heap->prmTable->WriteMapping(offset / heap->stride, resource.state->virtualMapping);
+    }
+
+    // Pass down callchain
+    table.next->CreateShaderResourceView(resource.next, pDesc, DestDescriptor);
+}
+
+void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D12Resource* pResource, ID3D12Resource* pCounterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
+    auto table = GetTable(_this);
+    auto resource = GetTable(pResource);
+
+    // Associated heap?
+    if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
+        uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
+        ASSERT(offset % heap->stride == 0, "Invalid heap offset");
+
+        // TODO: SRB masking
+        heap->prmTable->WriteMapping(offset / heap->stride, resource.state->virtualMapping);
+    }
+
+    // Pass down callchain
+    table.next->CreateUnorderedAccessView(resource.next, Next(pCounterResource), pDesc, DestDescriptor);
 }
 
 HRESULT HookID3D12DescriptorHeapGetDevice(ID3D12DescriptorHeap*_this, const IID &riid, void **ppDevice) {

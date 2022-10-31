@@ -4,6 +4,7 @@
 #include <Backends/DX12/Detour.Gen.h>
 #include <Backends/DX12/DeepCopy.Gen.h>
 #include <Backends/DX12/InstrumentationInfo.h>
+#include "PipelineType.h"
 
 // Common
 #include <Common/Containers/ReferenceObject.h>
@@ -19,15 +20,6 @@
 // Forward declarations
 struct RootSignatureState;
 struct ShaderState;
-
-enum class PipelineType {
-    None = 0,
-    Graphics = BIT(1),
-    Compute = BIT(2),
-    Count = 2
-};
-
-BIT_SET(PipelineType);
 
 struct PipelineState : public ReferenceObject {
     /// Reference counted destructor

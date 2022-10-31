@@ -129,13 +129,53 @@ public:
 private:
     /// Shared counter handle
     uint32_t exportCounterHandle;
+    uint32_t prmtHandle;
+    uint32_t descriptorHandle;
+    uint32_t eventHandle;
 
     /// All stream handles
     TrivialStackVector<uint32_t, 64> exportStreamHandles;
 
     /// Create an export handle
     /// \param block appended block
+    void CreateHandles(const DXJob &job, struct LLVMBlock* block);
+
+    /// Create an export handle
+    /// \param block appended block
     void CreateExportHandle(const DXJob &job, struct LLVMBlock* block);
+
+    /// Create the PRMT handle
+    /// \param block appended block
+    void CreatePRMTHandle(const DXJob &job, struct LLVMBlock* block);
+
+    /// Create the descriptor handle
+    /// \param block appended block
+    void CreateDescriptorHandle(const DXJob &job, struct LLVMBlock* block);
+
+    /// Create the event handle
+    /// \param block appended block
+    void CreateEventHandle(const DXJob &job, struct LLVMBlock* block);
+
+private:
+    /// Get the mapping of a resource
+    /// \param job parent job
+    /// \param source source records
+    /// \param resource resource to be fetched
+    /// \return nullptr if not found
+    const struct RootSignatureUserMapping* GetResourceUserMapping(const DXJob& job, const TrivialStackVector<LLVMRecord, 32>& source, IL::ID resource);
+
+private:
+    /// Compile an export instruction
+    /// \param block destination block
+    /// \param _instr instruction to be compiled
+    void CompileExportInstruction(LLVMBlock* block, const IL::ExportInstruction* _instr);
+
+    /// Compile a resource token instruction
+    /// \param job source job
+    /// \param block destination block
+    /// \param source all source instructions
+    /// \param _instr instruction to be compiled
+    void CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const TrivialStackVector<LLVMRecord, 32>& source , const IL::ResourceTokenInstruction* _instr);
 
 private:
     /// Does the record have a result?

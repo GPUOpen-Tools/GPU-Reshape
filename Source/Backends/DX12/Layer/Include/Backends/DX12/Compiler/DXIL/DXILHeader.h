@@ -117,6 +117,10 @@ enum class DXILUAVTag {
     ByteStride = 1
 };
 
+enum class DXILCBVTag {
+
+};
+
 enum class ComponentType : uint32_t {
     None = 0,
     Int1 = 1,

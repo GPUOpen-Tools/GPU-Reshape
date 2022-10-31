@@ -2,6 +2,7 @@
 
 // Layer
 #include "RootRegisterBindingInfo.h"
+#include "RootSignaturePhysicalMapping.h"
 
 // Std
 #include <cstdint>
@@ -9,7 +10,7 @@
 
 struct ShaderInstrumentationKey {
     auto AsTuple() const {
-        return std::make_tuple(featureBitSet, bindingInfo.space, bindingInfo._register);
+        return std::make_tuple(featureBitSet, physicalMapping->signatureHash);
     }
 
     bool operator<(const ShaderInstrumentationKey& key) const {
@@ -18,6 +19,9 @@ struct ShaderInstrumentationKey {
 
     /// Feature bit set
     uint64_t featureBitSet{0};
+
+    /// Root signature mapping
+    RootSignaturePhysicalMapping* physicalMapping{nullptr};
 
     /// Signature root binding info
     RootRegisterBindingInfo bindingInfo{};

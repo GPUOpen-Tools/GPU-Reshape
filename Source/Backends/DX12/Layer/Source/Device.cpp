@@ -173,8 +173,8 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         }
 
         // Install the streamer
-        auto deviceAllocator = state->registry.AddNew<DeviceAllocator>();
-        ENSURE(deviceAllocator->Install(state->object, dxgiAdapter), "Failed to install device allocator");
+        state->deviceAllocator = state->registry.AddNew<DeviceAllocator>();
+        ENSURE(state->deviceAllocator->Install(state->object, dxgiAdapter), "Failed to install device allocator");
 
         // Install the streamer
         auto streamAllocator = state->registry.AddNew<ShaderExportStreamAllocator>();

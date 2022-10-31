@@ -3,6 +3,7 @@
 // Layer
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBlock.h>
+#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordView.h>
 #include "DXILPhysicalBlockSection.h"
 
 // Std
@@ -14,9 +15,9 @@ struct DXJob;
 
 /// Type block
 struct DXILPhysicalBlockMetadata : public DXILPhysicalBlockSection {
-    using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
-
 public:
+    DXILPhysicalBlockMetadata(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
+
     /// Copy this block
     /// \param out destination block
     void CopyTo(DXILPhysicalBlockMetadata& out);
@@ -39,7 +40,7 @@ public:
     void CompileMetadata(struct LLVMBlock *block);
 
     /// Compile global metadata
-    void CompileMetadata();
+    void CompileMetadata(const DXJob& job);
 
     /// Stitch all records
     void StitchMetadata(struct LLVMBlock *block);
@@ -48,14 +49,15 @@ public:
     void StitchMetadataAttachments(struct LLVMBlock *block, const TrivialStackVector<uint32_t, 512>& recordRelocation);
 
 public:
-    /// Compile the export resource metadata
-    void CompileShaderExportResources(const DXJob& job);
-
     /// Ensure this program supports UAV operations
     void EnsureUAVCapability();
 
     /// Add a new program shader flag
     void AddProgramFlag(DXILProgramShaderFlagSet flags);
+
+    /// Create all resource handles
+    /// \param job job to be compiled against
+    void CreateResourceHandles(const DXJob& job);
 
 private:
     void CompileProgramEntryPoints();
@@ -199,15 +201,11 @@ public:
         uint32_t program = ~0u;
     } entryPoint;
 
-private:
     /// All resource entries
     struct Resources {
         uint32_t uid = ~0u;
         uint32_t source = ~0u;
-        uint64_t srvs = ~0;
-        uint64_t uavs = ~0;
-        uint64_t cbvs = ~0;
-        uint64_t samplers = ~0;
+        uint64_t lists[static_cast<uint32_t>(DXILShaderResourceClass::Count)];
     } resources;
 
     /// Represents a handle within a space
@@ -222,6 +220,22 @@ private:
         uint32_t registerBase{~0u};
         uint32_t registerRange{~0u};
         uint32_t bindSpace{~0u};
+
+        /// Metadata name
+        const char* name{""};
+
+        /// Class specific data
+        union {
+            struct {
+                ComponentType componentType;
+                DXILShaderResourceShape shape;
+            } uav;
+
+            struct {
+                ComponentType componentType;
+                DXILShaderResourceShape shape;
+            } srv;
+        };
     };
 
     /// A mapped register class
@@ -248,6 +262,12 @@ private:
         uint32_t registerBound{0};
     };
 
+    /// Get the medata handle type
+    /// \param handleID the unique handle id
+    /// \return nullptr if not found
+    const HandleEntry* GetHandle(DXILShaderResourceClass _class, uint32_t handleID);
+
+private:
     /// All handles
     std::vector<MappedRegisterClass> registerClasses;
 
@@ -274,6 +294,34 @@ private:
     /// \return register space
     UserRegisterSpace& FindOrAddRegisterSpace(uint32_t space);
 
+public:
+    /// Compile the export resource metadata
+    void EnsureProgramResourceClassList(const DXJob& job);
+
+    /// Compile the shader export handles
+    void CreateShaderExportHandle(const DXJob& job);
+
+    /// Compile the PRMT handles
+    void CreatePRMTHandle(const DXJob& job);
+
+    /// Compile the descriptor data handles
+    void CreateDescriptorHandle(const DXJob& job);
+
+    /// Compile the event handles
+    void CreateEventHandle(const DXJob& job);
+
+    /// Compile class record metadata
+    LLVMRecordView CompileResourceClassRecord(const MappedRegisterClass& mapped);
+
+    /// Compile UAV metadata
+    void CompileUAVResourceClass(const DXJob& job);
+
+    /// Compile SRV metadata
+    void CompileSRVResourceClass(const DXJob& job);
+
+    /// Compile CBV metadata
+    void CompileCBVResourceClass(const DXJob& job);
+
 private:
     struct ShadingModel {
         DXILShadingModelClass _class;
@@ -286,10 +334,6 @@ private:
         /// Internal shader flags
         DXILProgramShaderFlagSet internalShaderFlags{ 0 };
     } programMetadata;
-
-private:
-    /// Internal handle id
-    uint32_t exportHandleId{ 0 };
 
 private:
     /// Declaration blocks

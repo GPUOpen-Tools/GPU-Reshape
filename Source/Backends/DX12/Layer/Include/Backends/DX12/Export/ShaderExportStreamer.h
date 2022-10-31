@@ -94,6 +94,16 @@ public:
     /// \param commandList the command list
     void SetRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, CommandListState* commandList);
 
+    /// Commit all compute data
+    /// \param state given state
+    /// \param commandList current command list
+    void CommitCompute(ShaderExportStreamState* state, CommandListState* commandList);
+
+    /// Commit all graphics data
+    /// \param state given state
+    /// \param commandList current command list
+    void CommitGraphics(ShaderExportStreamState* state, CommandListState* commandList);
+
     /// Invoked during pipeline binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
@@ -105,6 +115,46 @@ public:
     /// \param state the stream state
     /// \param segment the segment to be mapped to
     void MapSegment(ShaderExportStreamState* state, ShaderExportStreamSegment* segment);
+
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
+    /// \param baseDescriptor data to be bound
+    void SetComputeRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor);
+
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
+    /// \param baseDescriptor data to be bound
+    void SetGraphicsRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor);
+
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
+    /// \param baseDescriptor data to be bound
+    void SetComputeRootShaderResourceView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation);
+
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
+    /// \param baseDescriptor data to be bound
+    void SetGraphicsRootShaderResourceView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation);
+
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
+    /// \param baseDescriptor data to be bound
+    void SetComputeRootUnorderedAccessView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation);
+
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
+    /// \param baseDescriptor data to be bound
+    void SetGraphicsRootUnorderedAccessView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation);
+
+    /// Close a command list
+    /// \param state parent stream state
+    void CloseCommandList(ShaderExportStreamState* state);
 
 public:
     /// Whole device sync point
@@ -120,6 +170,11 @@ private:
     /// \param pipeline the pipeline to bind for
     /// \param commandList the command list
     void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, CommandListState* commandList);
+
+    /// Map all segment agnostic data
+    /// \param descriptors descriptors to be bound
+    /// \param heap heap to bind against
+    void MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* heap);
 
     /// Process all segments within a queue
     /// \param queue the queue state
@@ -137,6 +192,9 @@ private:
     /// Internal mutex
     std::mutex mutex;
 
+    /// Number of descriptors per segment table
+    uint32_t segmentTableDescriptorCount{0};
+
     /// Shared offset allocator
     BucketPoolAllocator<uint32_t> dynamicOffsetAllocator;
 
@@ -152,6 +210,9 @@ private:
     ObjectPool<ShaderExportStreamState> streamStatePool;
     ObjectPool<ShaderExportStreamSegment> segmentPool;
     ObjectPool<ShaderExportQueueState> queuePool;
+
+    /// All free descriptor segments
+    std::vector<DescriptorDataSegmentEntry> freeDescriptorDataSegmentEntries;
 
     /// Components
     ComRef<DeviceAllocator> deviceAllocator{nullptr};

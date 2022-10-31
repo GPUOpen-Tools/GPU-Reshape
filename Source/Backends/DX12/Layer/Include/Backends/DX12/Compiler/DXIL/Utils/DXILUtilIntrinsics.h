@@ -43,4 +43,8 @@ private:
     const Backend::IL::Type *f32Type{nullptr};
     const Backend::IL::Type *handleType{nullptr};
     const Backend::IL::Type *dimensionsType{nullptr};
+    const Backend::IL::Type *resRetI32{nullptr};
+    const Backend::IL::Type *resRetF32{nullptr};
+    const Backend::IL::Type *cbufRetI32{nullptr};
+    const Backend::IL::Type *cbufRetF32{nullptr};
 };

@@ -8,6 +8,7 @@
 
 // Forward declarations
 class ShaderExportDescriptorAllocator;
+class PhysicalResourceMappingTable;
 
 struct DescriptorHeapState {
     ~DescriptorHeapState();
@@ -24,6 +25,16 @@ struct DescriptorHeapState {
     /// Type of this heap
     D3D12_DESCRIPTOR_HEAP_TYPE type;
 
+    /// Base addresses
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuDescriptorBase{};
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuDescriptorBase{};
+
+    /// Stride of this heap
+    uint64_t stride{0};
+
     /// Internal allocator
     ShaderExportDescriptorAllocator* allocator{nullptr};
+
+    /// Mapping table
+    PhysicalResourceMappingTable* prmTable{nullptr};
 };

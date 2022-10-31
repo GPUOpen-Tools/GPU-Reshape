@@ -2,6 +2,7 @@
 
 // Layer
 #include "DXILHeader.h"
+#include <Backends/DX12/States/RootRegisterBindingInfo.h>
 
 // Std
 #include <cstdint>
@@ -10,14 +11,20 @@ struct DXILBindingInfo {
     /// Target register space
     uint32_t space{};
 
-    /// Underlying handle id
-    uint32_t handleId{};
+    /// Handle for shader export data
+    uint32_t shaderExportHandleId{};
 
-    /// Base register
-    uint32_t _register{};
+    /// Handle for PRMT relocation
+    uint32_t prmtHandleId{};
 
-    /// Number of registers
-    uint32_t count{};
+    /// Handle for descriptor data
+    uint32_t descriptorConstantsHandleId{};
+
+    /// Handle for event data
+    uint32_t eventConstantsHandleId{};
+
+    /// Pipeline binding info
+    RootRegisterBindingInfo bindingInfo{};
 
     /// Added features
     DXILProgramShaderFlagSet shaderFlags{};

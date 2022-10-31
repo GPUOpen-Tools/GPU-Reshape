@@ -76,6 +76,7 @@ namespace IL {
         LoadTexture,
         StoreBuffer,
         LoadBuffer,
+        ResourceToken,
         ResourceSize
     };
 }

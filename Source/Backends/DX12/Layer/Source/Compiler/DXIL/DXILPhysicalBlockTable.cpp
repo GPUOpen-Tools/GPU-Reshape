@@ -1,5 +1,6 @@
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h>
+#include <Backends/DX12/Compiler/DXJob.h>
 
 DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL::Program &program) :
     scan(allocators),
@@ -135,6 +136,9 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
     LLVMBlock &root = scan.GetRoot();
 
+    // Set table binding info
+    bindingInfo.bindingInfo = job.instrumentationKey.bindingInfo;
+
     // Set the remap bound
     idRemapper.SetBound(idMap.GetBound(), program.GetIdentifierMap().GetMaxID());
 
@@ -147,8 +151,8 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
     // Compile utilities
     intrinsics.Compile();
 
-    // Insert all SE metadata
-    metadata.CompileShaderExportResources(job);
+    // Create all handles
+    metadata.CreateResourceHandles(job);
 
     // Pre-parse all types for local fetching
     for (LLVMBlock *block: root.blocks) {
@@ -248,7 +252,7 @@ bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
     }
 
     // Compile dynamic global metadata
-    metadata.CompileMetadata();
+    metadata.CompileMetadata(job);
 
     // OK
     return true;

@@ -5,6 +5,8 @@
 #include <Backends/DX12/TrackedObject.h>
 #include <Backends/DX12/DependentObject.h>
 #include <Backends/DX12/Compiler/ShaderSet.h>
+#include <Backends/DX12/Resource/HeapTable.h>
+#include <Backends/DX12/Resource/PhysicalResourceIdentifierMap.h>
 
 // Backend
 #include <Backend/Environment.h>
@@ -31,6 +33,7 @@ class IBridge;
 class ShaderExportHost;
 class ShaderExportStreamer;
 class ShaderSGUIDHost;
+class DeviceAllocator;
 
 struct DeviceState {
     ~DeviceState();
@@ -56,6 +59,9 @@ struct DeviceState {
     /// Shared export streamer
     ComRef<ShaderExportStreamer> exportStreamer;
 
+    /// Shared device allocator
+    ComRef<DeviceAllocator> deviceAllocator;
+
     /// Shared SGUID host
     ComRef<ShaderSGUIDHost> sguidHost{nullptr};
 
@@ -63,6 +69,12 @@ struct DeviceState {
     TrackedObject<ShaderState> states_Shaders;
     TrackedObject<PipelineState> states_Pipelines;
     TrackedObject<CommandQueueState> states_Queues;
+
+    /// Sorted heap table
+    HeapTable heapTable;
+
+    /// Physical identifier map
+    PhysicalResourceIdentifierMap physicalResourceIdentifierMap;
 
     /// Dependency objects
     DependentObject<ShaderState, PipelineState> dependencies_shaderPipelines;

@@ -7,6 +7,7 @@
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/DescriptorHeapState.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
+#include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/IncrementalFence.h>
 
@@ -212,10 +213,15 @@ void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UIN
 
     // Allocate unwrapped
     auto *unwrapped = ALLOCA_ARRAY(ID3D12DescriptorHeap*, NumDescriptorHeaps);
-
-    // Unwrap
     for (uint32_t i = 0; i < NumDescriptorHeaps; i++) {
         auto heapTable = GetTable(ppDescriptorHeaps[i]);
+
+        // Update any potential mappings
+        if (heapTable.state->prmTable) {
+            heapTable.state->prmTable->Update(table.next);
+        }
+
+        // Unwrap
         unwrapped[i] = heapTable.next;
     }
 
@@ -229,6 +235,83 @@ void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UIN
     }
 }
 
+void WINAPI HookID3D12CommandListSetComputeRootDescriptorTable(ID3D12CommandList* list, UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetComputeRootDescriptorTable(table.state->streamState, RootParameterIndex, BaseDescriptor);
+
+    // Pass down call chain
+    table.next->SetComputeRootDescriptorTable(RootParameterIndex, BaseDescriptor);
+}
+
+void WINAPI HookID3D12CommandListSetGraphicsRootDescriptorTable(ID3D12CommandList* list, UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetGraphicsRootDescriptorTable(table.state->streamState, RootParameterIndex, BaseDescriptor);
+
+    // Pass down call chain
+    table.next->SetGraphicsRootDescriptorTable(RootParameterIndex, BaseDescriptor);
+}
+
+void WINAPI HookID3D12CommandListSetComputeRootShaderResourceView(ID3D12CommandList* list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetComputeRootShaderResourceView(table.state->streamState, RootParameterIndex, BufferLocation);
+
+    // Pass down call chain
+    table.next->SetComputeRootShaderResourceView(RootParameterIndex, BufferLocation);
+}
+
+void WINAPI HookID3D12CommandListSetGraphicsRootShaderResourceView(ID3D12CommandList* list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetGraphicsRootShaderResourceView(table.state->streamState, RootParameterIndex, BufferLocation);
+
+    // Pass down call chain
+    table.next->SetGraphicsRootShaderResourceView(RootParameterIndex, BufferLocation);
+}
+
+void WINAPI HookID3D12CommandListSetComputeRootUnorderedAccessView(ID3D12CommandList* list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetComputeRootUnorderedAccessView(table.state->streamState, RootParameterIndex, BufferLocation);
+
+    // Pass down call chain
+    table.next->SetComputeRootUnorderedAccessView(RootParameterIndex, BufferLocation);
+}
+
+void WINAPI HookID3D12CommandListSetGraphicsRootUnorderedAccessView(ID3D12CommandList* list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetGraphicsRootUnorderedAccessView(table.state->streamState, RootParameterIndex, BufferLocation);
+
+    // Pass down call chain
+    table.next->SetGraphicsRootUnorderedAccessView(RootParameterIndex, BufferLocation);
+}
 
 void WINAPI HookID3D12CommandListCopyTextureRegion(ID3D12CommandList* list, const D3D12_TEXTURE_COPY_LOCATION* pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION* pSrc, const D3D12_BOX* pSrcBox) {
     auto table = GetTable(list);
@@ -281,6 +364,59 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
     table.bottom->next_ResourceBarrier(table.next, NumBarriers, barriers);
 }
 
+void WINAPI HookID3D12CommandListDrawInstanced(ID3D12CommandList* list, UINT VertexCountPerInstance, UINT InstanceCount, UINT StartVertexLocation, UINT StartInstanceLocation) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state);
+
+    // Pass down callchain
+    table.next->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
+}
+
+void WINAPI HookID3D12CommandListDrawIndexedInstanced(ID3D12CommandList* list, UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state);
+
+    // Pass down callchain
+    table.next->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
+}
+
+void WINAPI HookID3D12CommandListDispatch(ID3D12CommandList* list, UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->CommitCompute(table.state->streamState, table.state);
+
+    // Pass down callchain
+    table.next->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+}
+
+void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12CommandSignature *pCommandSignature, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset, ID3D12Resource *pCountBuffer, UINT64 CountBufferOffset) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->CommitCompute(table.state->streamState, table.state);
+    device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state);
+
+    // Pass down callchain
+    table.next->ExecuteIndirect(pCommandSignature, MaxCommandCount, pArgumentBuffer, ArgumentBufferOffset, pCountBuffer, CountBufferOffset);
+}
+
 void WINAPI HookID3D12CommandListSetGraphicsRootSignature(ID3D12CommandList* list, ID3D12RootSignature* rootSignature) {
     auto table = GetTable(list);
     auto rsTable = GetTable(rootSignature);
@@ -311,6 +447,12 @@ void WINAPI HookID3D12CommandListSetComputeRootSignature(ID3D12CommandList* list
 
 HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList *list) {
     auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->CloseCommandList(table.state->streamState);
 
     // Pass down callchain
     return table.bottom->next_Close(table.next);

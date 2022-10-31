@@ -7,6 +7,9 @@
 // Common
 #include <Common/Allocators.h>
 
+// Forward declarations
+struct RootSignaturePhysicalMapping;
+
 struct RootSignatureState {
     ~RootSignatureState();
 
@@ -21,4 +24,7 @@ struct RootSignatureState {
 
     /// Number of user parameters
     uint32_t userRootCount;
+
+    /// Contained physical mappings
+    RootSignaturePhysicalMapping* physicalMapping{nullptr};
 };

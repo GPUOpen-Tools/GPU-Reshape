@@ -24,5 +24,16 @@ namespace Intrinsics {
         }
     };
 
-    static uint32_t kInbuiltCount = 2;
+    static DXILIntrinsicSpec DxOpCBufferLoadLegacyI32 {
+        .uid = 2,
+        .name = "dx.op.cbufferLoadLegacy.i32",
+        .returnType = DXILIntrinsicTypeSpec::CBufRetI32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::Handle, // resource handle
+            DXILIntrinsicTypeSpec::I32 // 0-based row index (row = 16-byte DXBC register)
+        }
+    };
+
+    static uint32_t kInbuiltCount = 3;
 }

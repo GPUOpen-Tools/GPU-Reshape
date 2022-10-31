@@ -82,21 +82,54 @@ void DXBCPhysicalBlockRootSignature::Parse() {
 void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
     // Get compiled binding info
     ASSERT(table.dxilModule, "RS not supported for native DXBC");
-    const DXILBindingInfo& bindingInfo = table.dxilModule->GetBindingInfo();
+    const RootRegisterBindingInfo& bindingInfo = table.dxilModule->GetBindingInfo().bindingInfo;
 
-    // Create parameter
-    RootParameter& parameter = parameters.emplace_back();
-    parameter.type = DXBCRootSignatureParameterType::DescriptorTable;
-    parameter.visibility = DXBCRootSignatureVisibility::All;
+    // Shader export
+    {
+        // Create parameter
+        RootParameter& parameter = parameters.emplace_back();
+        parameter.type = DXBCRootSignatureParameterType::DescriptorTable;
+        parameter.visibility = DXBCRootSignatureVisibility::All;
 
-    // Create range
-    DXBCRootSignatureDescriptorRange1& range = parameter.descriptorTable.ranges.emplace_back();
-    range.type = DXBCRootSignatureRangeType::UAV;
-    range.space = bindingInfo.space;
-    range._register = bindingInfo._register;
-    range.descriptorCount = bindingInfo.count;
-    range.flags = 0x0;
-    range.offsetFromTableStart = 0;
+        // Create range
+        DXBCRootSignatureDescriptorRange1& exportRange = parameter.descriptorTable.ranges.emplace_back();
+        exportRange.type = DXBCRootSignatureRangeType::UAV;
+        exportRange.space = bindingInfo.space;
+        exportRange._register = bindingInfo.shaderExportBaseRegister;
+        exportRange.descriptorCount = bindingInfo.shaderExportCount;
+        exportRange.flags = 0x0;
+        exportRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        // Create range
+        DXBCRootSignatureDescriptorRange1& prmtRange = parameter.descriptorTable.ranges.emplace_back();
+        prmtRange.type = DXBCRootSignatureRangeType::SRV;
+        prmtRange.space = bindingInfo.space;
+        prmtRange._register = bindingInfo.prmtBaseRegister;
+        prmtRange.descriptorCount = 1u;
+        prmtRange.flags = 0x0;
+        prmtRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    }
+
+    // Descriptor data
+    {
+        // Create parameter
+        RootParameter& parameter = parameters.emplace_back();
+        parameter.type = DXBCRootSignatureParameterType::CBV;
+        parameter.visibility = DXBCRootSignatureVisibility::All;
+        parameter.parameter1.space = bindingInfo.space;
+        parameter.parameter1._register = bindingInfo.descriptorConstantBaseRegister;
+    }
+
+    // Event data
+    {
+        // Create parameter
+        RootParameter& parameter = parameters.emplace_back();
+        parameter.type = DXBCRootSignatureParameterType::Constant32;
+        parameter.visibility = DXBCRootSignatureVisibility::All;
+        parameter.constant.space = bindingInfo.space;
+        parameter.constant._register = bindingInfo.eventConstantBaseRegister;
+        parameter.constant.dwordCount = 1u;
+    }
 }
 
 void DXBCPhysicalBlockRootSignature::Compile() {

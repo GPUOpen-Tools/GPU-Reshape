@@ -317,8 +317,7 @@ struct DXILIDRemapper {
             }
 
 #ifndef NDEBUG
-            if (absoluteRemap == ~0u)
-            {
+            if (absoluteRemap == ~0u) {
                 *entry.source = ~0u;
                 continue;
             }

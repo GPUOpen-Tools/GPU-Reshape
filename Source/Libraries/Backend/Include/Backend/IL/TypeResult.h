@@ -200,6 +200,10 @@ namespace Backend::IL {
         return program.GetTypeMap().FindTypeOrAdd(BoolType{});
     }
 
+    inline const Type* ResultOf(Program& program, const ResourceTokenInstruction* instr) {
+        return program.GetTypeMap().FindTypeOrAdd(IntType{ .bitWidth=32, .signedness=false });
+    }
+
     inline const Type* ResultOf(Program& program, const ResourceSizeInstruction* instr) {
         const Type* resource = program.GetTypeMap().GetType(instr->resource);
         if (!resource) {

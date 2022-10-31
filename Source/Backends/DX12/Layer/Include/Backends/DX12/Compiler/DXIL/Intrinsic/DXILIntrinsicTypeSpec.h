@@ -17,4 +17,6 @@ enum class DXILIntrinsicTypeSpec {
     Dimensions,
     ResRetF32,
     ResRetI32,
+    CBufRetF32,
+    CBufRetI32,
 };

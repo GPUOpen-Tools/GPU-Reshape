@@ -3,6 +3,9 @@
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/States/DeviceState.h>
 
+// Backend
+#include <Backend/IL/ResourceTokenType.h>
+
 HRESULT HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const D3D12_RANGE* readRange, void** blob) {
     auto table = GetTable(resource);
 
@@ -16,11 +19,32 @@ HRESULT HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const 
     return S_OK;
 }
 
-static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTable& table, ID3D12Resource* resource) {
+static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTable& table, ID3D12Resource* resource, const D3D12_RESOURCE_DESC* desc) {
     // Create state
     auto* state = new ResourceState();
     state->allocators = table.state->allocators;
     state->parent = parent;
+
+    // Allocate PUID
+    state->virtualMapping.puid = table.state->physicalResourceIdentifierMap.AllocatePUID();
+
+    // Translate dimension
+    switch (desc->Dimension) {
+        default:
+            ASSERT(false, "Unsupported dimension");
+            break;
+        case D3D12_RESOURCE_DIMENSION_BUFFER:
+            state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
+            break;
+        case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
+        case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+        case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+            state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+            break;
+    }
+
+    // Entire SRB is visible from the resource
+    state->virtualMapping.srb = ~0u;
 
     // Create detours
     return CreateDetour(Allocators{}, resource, state);
@@ -39,7 +63,7 @@ HRESULT HookID3D12DeviceCreateCommittedResource(ID3D12Device* device, const D3D1
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource);
+    resource = CreateResourceState(device, table, resource, desc);
 
     // Query to external object if requested
     if (pResource) {
@@ -69,7 +93,7 @@ HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * 
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource);
+    resource = CreateResourceState(device, table, resource, desc);
 
     // Query to external object if requested
     if (pResource) {
@@ -99,7 +123,7 @@ HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource);
+    resource = CreateResourceState(device, table, resource, desc);
 
     // Query to external object if requested
     if (pResource) {

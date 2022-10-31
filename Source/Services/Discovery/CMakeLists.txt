@@ -29,9 +29,14 @@ SetSourceDiscovery(Services.Discovery.Standalone CXX Standalone)
 target_link_libraries(Services.Discovery.Standalone PUBLIC Services.Discovery)
 
 # Create dependencies on existing listeners, for convenience
-add_dependencies(Services.Discovery.Standalone Backends.Vulkan.Discovery)
+if (${ENABLE_BACKEND_VULKAN})
+    add_dependencies(Services.Discovery.Standalone Backends.Vulkan.Discovery)
+endif()
+if (${ENABLE_BACKEND_DX12})
+    add_dependencies(Services.Discovery.Standalone Backends.DX12.Discovery)
+endif()
 
-# Pull in all features, for convinience
+# Pull in all features, for convenience
 add_dependencies(Services.Discovery.Standalone Features)
 
 #----- .Net bindings -----#

@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
+#include <Backends/DX12/Resource/VirtualResourceMapping.h>
 
 // Common
 #include <Common/Allocators.h>
@@ -14,4 +15,7 @@ struct ResourceState {
 
     /// Owning allocator
     Allocators allocators;
+
+    /// Resource mapping
+    VirtualResourceMapping virtualMapping;
 };

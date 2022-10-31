@@ -98,16 +98,20 @@ target_include_directories(Test.Device PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR
 target_link_libraries(
     Test.Device PUBLIC
 
-    # Vulkan
-    Backends.Vulkan.Layer Backends.Vulkan.TestDevice
-
-    # DX12
-    Backends.DX12.Layer Backends.DX12.TestDevice
-
     # Libraries
     Libraries.Common
     Libraries.Backend
 )
+
+# Enable vulkan?
+if (${ENABLE_BACKEND_VULKAN})
+    target_link_libraries(Test.Device PUBLIC Backends.Vulkan.Layer Backends.Vulkan.TestDevice)
+endif()
+
+# Enable dx12?
+if (${ENABLE_BACKEND_DX12})
+    target_link_libraries(Test.Device PUBLIC Backends.DX12.Layer Backends.DX12.TestDevice)
+endif()
 
 # Setup additional dependencies
 ExternalProject_Link(Test.Device Catch2)

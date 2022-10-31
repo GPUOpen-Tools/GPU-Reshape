@@ -303,6 +303,7 @@ add_library(
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
     Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
+    Layer/Source/Resource/PhysicalResourceMappingTable.cpp
     Layer/Source/IncrementalFence.cpp
 
     # Generated source dependencies

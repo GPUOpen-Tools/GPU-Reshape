@@ -234,6 +234,7 @@ private:
     uint32_t CompileType(const Backend::IL::VectorType* type) {
         LLVMRecord record(LLVMTypeRecord::Vector);
         record.ops = recordAllocator.AllocateArray<uint64_t>(2);
+        record.opCount = 2;
         record.ops[0] = type->dimension;
         record.ops[1] = GetType(type->containedType);
         return Emit(type, record);

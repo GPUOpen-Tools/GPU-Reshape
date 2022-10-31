@@ -26,6 +26,15 @@ struct DXBCParseContext {
         return *value;
     }
 
+    /// Get the current offset as a type and consume the respective bytes
+    template<typename T>
+    T ConsumePartial(size_t size) {
+        T partial{};
+        std::memcpy(&partial, reinterpret_cast<const T *>(ptr), size);
+        ptr += size;
+        return partial;
+    }
+
     /// Get the absolute offset as a type
     template<typename T>
     const T* ReadAt(uint32_t offset) {

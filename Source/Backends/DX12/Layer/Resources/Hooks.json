@@ -57,7 +57,9 @@
         "CreateRootSignature",
         "CreatePipelineState",
         "CreateGraphicsPipelineState",
-        "CreateComputePipelineState"
+        "CreateComputePipelineState",
+        "CreateShaderResourceView",
+        "CreateUnorderedAccessView"
       ]
     },
     "ID3D12CommandQueue": {
@@ -88,8 +90,18 @@
         "SetDescriptorHeaps",
         "SetGraphicsRootSignature",
         "SetComputeRootSignature",
+        "SetComputeRootDescriptorTable",
+        "SetGraphicsRootDescriptorTable",
+        "SetComputeRootShaderResourceView",
+        "SetGraphicsRootShaderResourceView",
+        "SetComputeRootUnorderedAccessView",
+        "SetGraphicsRootUnorderedAccessView",
         "CopyTextureRegion",
         "ResourceBarrier",
+        "DrawInstanced",
+        "DrawIndexedInstanced",
+        "Dispatch",
+        "ExecuteIndirect",
         "GetDevice"
       ]
     },

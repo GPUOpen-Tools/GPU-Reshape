@@ -277,6 +277,20 @@ namespace IL {
             return Op(instr);
         }
 
+        /// Get the identifier of a resource
+        /// \param resource the resource to be queried
+        /// \return instruction reference
+        InstructionRef <ResourceTokenInstruction> ResourceToken(ID resource) {
+            ASSERT(IsMapped(resource), "Unmapped identifier");
+
+            ResourceTokenInstruction instr{};
+            instr.opCode = OpCode::ResourceToken;
+            instr.source = Source::Invalid();
+            instr.resource = resource;
+            instr.result = map->AllocID();
+            return Op(instr);
+        }
+
         /// Binary add two values
         /// \param lhs lhs operand
         /// \param rhs rhs operand
