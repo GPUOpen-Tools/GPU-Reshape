@@ -6,6 +6,7 @@
 #include "TypeMap.h"
 #include "ConstantMap.h"
 #include "FunctionList.h"
+#include "UserResourceMap.h"
 #include "CapabilityTable.h"
 
 // Std
@@ -20,6 +21,7 @@ namespace IL {
             constants(allocators, identifierMap, typeMap),
             functions(allocators, identifierMap),
             variables(allocators, identifierMap),
+            userResourceMap(identifierMap, typeMap),
             shaderGUID(shaderGUID) {
             /* */
         }
@@ -65,9 +67,14 @@ namespace IL {
             return identifierMap;
         }
 
-        /// Get the identifier map
+        /// Get the type map
         Backend::IL::TypeMap &GetTypeMap() {
             return typeMap;
+        }
+
+        /// Get the user resource map
+        UserResourceMap &GetUserResourceMap() {
+            return userResourceMap;
         }
 
         /// Get the identifier map
@@ -105,6 +112,11 @@ namespace IL {
             return typeMap;
         }
 
+        /// Get the user resource map
+        const UserResourceMap &GetUserResourceMap() const {
+            return userResourceMap;
+        }
+
         /// Get the identifier map
         const IdentifierMap &GetIdentifierMap() const {
             return identifierMap;
@@ -137,6 +149,9 @@ namespace IL {
 
         /// The type map
         Backend::IL::TypeMap typeMap;
+
+        /// User generated resources
+        UserResourceMap userResourceMap;
 
         /// The capability table
         CapabilityTable capabilityTable;

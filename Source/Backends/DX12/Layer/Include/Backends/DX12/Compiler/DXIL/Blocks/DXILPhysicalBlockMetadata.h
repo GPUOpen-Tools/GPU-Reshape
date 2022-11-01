@@ -118,6 +118,11 @@ private:
     /// \return format, optionally unexposed
     Backend::IL::Format GetComponentFormat(ComponentType type);
 
+    /// Get the component type
+    /// \param format the IL format
+    /// \return component type
+    ComponentType GetFormatComponent(Backend::IL::Format format);
+
     /// Get an operand constant
     const IL::Constant* GetOperandConstant(MetadataBlock& block, uint32_t id) {
         ASSERT(id != 0, "Null metadata operand");
@@ -303,6 +308,9 @@ public:
 
     /// Compile the PRMT handles
     void CreatePRMTHandle(const DXJob& job);
+
+    /// Compile the user resource handles
+    void CreateUserResourceHandles(const DXJob& job);
 
     /// Compile the descriptor data handles
     void CreateDescriptorHandle(const DXJob& job);

@@ -143,6 +143,19 @@ enum class ComponentType : uint32_t {
     PackedU8x32 = 18
 };
 
+enum class DXILAtomicBinOp {
+    Add = 0,
+    And = 1,
+    Or = 2,
+    XOr = 3,
+    IMin = 4,
+    IMax = 5,
+    UMin = 6,
+    UMax = 7,
+    Exchange = 8,
+    Invalid = 9
+};
+
 inline bool IsBuffer(DXILShaderResourceShape shape) {
     switch (shape) {
         default:

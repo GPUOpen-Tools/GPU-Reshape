@@ -45,6 +45,16 @@ namespace IL {
         Phi,
         Return,
 
+        /// Atomic
+        AtomicOr,
+        AtomicXOr,
+        AtomicAnd,
+        AtomicAdd,
+        AtomicMin,
+        AtomicMax,
+        AtomicExchange,
+        AtomicCompareExchange,
+
         /// Bit manipulation
         BitOr,
         BitXOr,

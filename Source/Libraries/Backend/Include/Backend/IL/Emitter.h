@@ -313,13 +313,14 @@ namespace IL {
         InstructionRef <AddressChainInstruction> AddressOf(ID composite, ID index) {
             ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
 
-            auto *instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(1));
-            instr->opCode = OpCode::Extract;
+            auto instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(1));
+            instr->opCode = OpCode::AddressChain;
             instr->source = Source::Invalid();
             instr->result = map->AllocID();
             instr->composite = composite;
+            instr->chains.count = 1;
             instr->chains[0].index = index;
-            return Op(instr);
+            return Op(*instr);
         }
 
         /// Extract a value from a composite
@@ -717,6 +718,136 @@ namespace IL {
             instr.pass = pass->GetID();
             instr.fail = fail->GetID();
             instr.controlFlow = controlFlow;
+            return Op(instr);
+        }
+
+        /// Perform an atomic / interlocked or
+        /// \param address base address
+        /// \param value value
+        /// \return original value
+        InstructionRef<AtomicOrInstruction> AtomicOr(ID address, ID value) {
+            ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
+
+            AtomicOrInstruction instr{};
+            instr.opCode = OpCode::AtomicOr;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.address = address;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Perform an atomic / interlocked exclusive or
+        /// \param address base address
+        /// \param value value
+        /// \return original value
+        InstructionRef<AtomicXOrInstruction> AtomicXOr(ID address, ID value) {
+            ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
+
+            AtomicXOrInstruction instr{};
+            instr.opCode = OpCode::AtomicXOr;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.address = address;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Perform an atomic / interlocked and
+        /// \param address base address
+        /// \param value value
+        /// \return original value
+        InstructionRef<AtomicAndInstruction> AtomicAnd(ID address, ID value) {
+            ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
+
+            AtomicAndInstruction instr{};
+            instr.opCode = OpCode::AtomicAnd;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.address = address;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Perform an atomic / interlocked add
+        /// \param address base address
+        /// \param value value
+        /// \return original value
+        InstructionRef<AtomicAddInstruction> AtomicAdd(ID address, ID value) {
+            ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
+
+            AtomicAddInstruction instr{};
+            instr.opCode = OpCode::AtomicAdd;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.address = address;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Perform an atomic / interlocked min
+        /// \param address base address
+        /// \param value value
+        /// \return original value
+        InstructionRef<AtomicMinInstruction> AtomicMin(ID address, ID value) {
+            ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
+
+            AtomicMinInstruction instr{};
+            instr.opCode = OpCode::AtomicMin;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.address = address;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Perform an atomic / interlocked max
+        /// \param address base address
+        /// \param value value
+        /// \return original value
+        InstructionRef<AtomicMaxInstruction> AtomicMax(ID address, ID value) {
+            ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
+
+            AtomicMaxInstruction instr{};
+            instr.opCode = OpCode::AtomicMax;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.address = address;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Perform an atomic / interlocked exchange
+        /// \param address base address
+        /// \param value value
+        /// \return original value
+        InstructionRef<AtomicExchangeInstruction> AtomicExchange(ID address, ID value) {
+            ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
+
+            AtomicExchangeInstruction instr{};
+            instr.opCode = OpCode::AtomicExchange;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.address = address;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Perform an atomic / interlocked compare exchange
+        /// \param address base address
+        /// \param comparator base value to be compared against for successful exchange
+        /// \param value value
+        /// \return original value
+        InstructionRef<AtomicCompareExchangeInstruction> AtomicCompareExchange(ID address, ID comparator, ID value) {
+            ASSERT(IsMapped(address) && IsMapped(comparator) && IsMapped(value), "Unmapped identifier");
+
+            AtomicCompareExchangeInstruction instr{};
+            instr.opCode = OpCode::AtomicCompareExchange;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.address = address;
+            instr.comparator = comparator;
+            instr.value = value;
             return Op(instr);
         }
 

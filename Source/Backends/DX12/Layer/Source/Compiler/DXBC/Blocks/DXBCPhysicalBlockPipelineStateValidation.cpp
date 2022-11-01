@@ -21,12 +21,12 @@ void DXBCPhysicalBlockPipelineStateValidation::Parse() {
         runtimeInfo.info0 = ctx.Consume<DXBCPSVRuntimeInfo0>();
     }
 
-    // Read version 0
+    // Read version 1
     if (runtimeInfoSize >= sizeof(DXBCPSVRuntimeInfoRevision1)) {
         runtimeInfo.info1 = ctx.Consume<DXBCPSVRuntimeInfo1>();
     }
 
-    // Read version 0
+    // Read version 2
     if (runtimeInfoSize >= sizeof(DXBCPSVRuntimeInfoRevision2)) {
         runtimeInfo.info2 = ctx.Consume<DXBCPSVRuntimeInfo2>();
     }
@@ -120,7 +120,7 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
         }
     });
 
-    // Shader export
+    // Descriptor data
     cbvs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{
             .type = DXBCPSVBindInfoType::CBuffer,
@@ -134,7 +134,7 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
         }
     });
 
-    // Shader export
+    // Event data
     cbvs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{
             .type = DXBCPSVBindInfoType::CBuffer,
@@ -147,6 +147,27 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
             .flags = 0
         }
     });
+
+    // Get resources
+    IL::UserResourceMap& userResourceMap = table.dxilModule->GetProgram()->GetUserResourceMap();
+
+    // Create bind info per resource
+    for (auto it = userResourceMap.begin(); it != userResourceMap.end(); it++) {
+        uint32_t registerOffset = it - userResourceMap.begin();
+
+        uavs.Add(DXBCPSVBindInfoRevision1 {
+            .info0 = DXBCPSVBindInfo0{
+                .type = DXBCPSVBindInfoType::UnorderedAccessView,
+                .space = bindingInfo.space,
+                .low = bindingInfo.shaderResourceBaseRegister + registerOffset,
+                .high = bindingInfo.shaderResourceBaseRegister + registerOffset
+            },
+            .info1 = DXBCPSVBindInfo1{
+                .kind = DXBCPSVBindInfoKind::TypedBuffer,
+                .flags = 0
+            }
+        });
+    }
 
     // Emit runtime info with the original size
     block->stream.Append(runtimeInfoSize);

@@ -636,6 +636,98 @@ Backend::IL::Format DXILPhysicalBlockMetadata::GetComponentFormat(ComponentType 
     }
 }
 
+ComponentType DXILPhysicalBlockMetadata::GetFormatComponent(Backend::IL::Format format) {
+    switch (format) {
+        default:
+            ASSERT(false, "Invalid value");
+            break;
+        case Backend::IL::Format::RGBA32Float:
+            return ComponentType::FP32;
+        case Backend::IL::Format::RGBA16Float:
+            return ComponentType::FP16;
+        case Backend::IL::Format::R32Float:
+            return ComponentType::FP32;
+        case Backend::IL::Format::R32Snorm:
+            return ComponentType::SNormFP32;
+        case Backend::IL::Format::R32Unorm:
+            return ComponentType::UNormFP32;
+        case Backend::IL::Format::RGBA8:
+            return ComponentType::FP32;
+        case Backend::IL::Format::RGBA8Snorm:
+            return ComponentType::SNormFP32;
+        case Backend::IL::Format::RG32Float:
+            return ComponentType::FP32;
+        case Backend::IL::Format::RG16Float:
+            return ComponentType::FP16;
+        case Backend::IL::Format::R11G11B10Float:
+            return ComponentType::FP32;
+        case Backend::IL::Format::R16Float:
+            return ComponentType::FP16;
+        case Backend::IL::Format::RGBA16:
+            return ComponentType::FP16;
+        case Backend::IL::Format::RGB10A2:
+            return ComponentType::FP32;
+        case Backend::IL::Format::RG16:
+            return ComponentType::FP16;
+        case Backend::IL::Format::RG8:
+            return ComponentType::FP32;
+        case Backend::IL::Format::R16:
+            return ComponentType::FP16;
+        case Backend::IL::Format::R8:
+            return ComponentType::FP32;
+        case Backend::IL::Format::RGBA16Snorm:
+            return ComponentType::SNormFP16;
+        case Backend::IL::Format::RG16Snorm:
+            return ComponentType::SNormFP16;
+        case Backend::IL::Format::RG8Snorm:
+            return ComponentType::SNormFP32;
+        case Backend::IL::Format::R16Snorm:
+            return ComponentType::SNormFP16;
+        case Backend::IL::Format::R16Unorm:
+            return ComponentType::UNormFP16;
+        case Backend::IL::Format::R8Snorm:
+            return ComponentType::SNormFP16;
+        case Backend::IL::Format::RGBA32Int:
+            return ComponentType::Int32;
+        case Backend::IL::Format::RGBA16Int:
+            return ComponentType::Int16;
+        case Backend::IL::Format::RGBA8Int:
+            return ComponentType::Int32;
+        case Backend::IL::Format::R32Int:
+            return ComponentType::Int32;
+        case Backend::IL::Format::RG32Int:
+            return ComponentType::Int32;
+        case Backend::IL::Format::RG16Int:
+            return ComponentType::Int16;
+        case Backend::IL::Format::RG8Int:
+            return ComponentType::Int32;
+        case Backend::IL::Format::R16Int:
+            return ComponentType::Int16;
+        case Backend::IL::Format::R8Int:
+            return ComponentType::Int32;
+        case Backend::IL::Format::RGBA32UInt:
+            return ComponentType::UInt32;
+        case Backend::IL::Format::RGBA16UInt:
+            return ComponentType::UInt16;
+        case Backend::IL::Format::RGBA8UInt:
+            return ComponentType::UInt32;
+        case Backend::IL::Format::R32UInt:
+            return ComponentType::UInt32;
+        case Backend::IL::Format::RGB10a2UInt:
+            return ComponentType::UInt32;
+        case Backend::IL::Format::RG32UInt:
+            return ComponentType::UInt32;
+        case Backend::IL::Format::RG16UInt:
+            return ComponentType::UInt16;
+        case Backend::IL::Format::RG8UInt:
+            return ComponentType::UInt32;
+        case Backend::IL::Format::R16UInt:
+            return ComponentType::UInt16;
+        case Backend::IL::Format::R8UInt:
+            return ComponentType::UInt32;
+    }
+}
+
 void DXILPhysicalBlockMetadata::CompileMetadata(struct LLVMBlock *block) {
 }
 
@@ -956,6 +1048,7 @@ void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXJob& job) {
     CreatePRMTHandle(job);
     CreateDescriptorHandle(job);
     CreateEventHandle(job);
+    CreateUserResourceHandles(job);
 }
 
 void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXJob& job) {
@@ -1034,7 +1127,6 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXJob &job) {
 
     // Set binding info
     table.bindingInfo.prmtHandleId = _class.handles.size() - 1;
-
 }
 
 void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXJob &job) {
@@ -1112,6 +1204,59 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXJob &job) {
 
     // Set binding info
     table.bindingInfo.eventConstantsHandleId = _class.handles.size() - 1;
+}
+
+void DXILPhysicalBlockMetadata::CreateUserResourceHandles(const DXJob& job) {
+    IL::UserResourceMap& userResourceMap = table.program.GetUserResourceMap();
+
+    // All user resources are UAVs
+    MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::UAVs);
+
+    // Set binding info
+    // Handles are allocated linearly after the current index
+    table.bindingInfo.userResourceHandleId = _class.handles.size();
+
+    // Current register offset
+    uint32_t registerOffset{0};
+
+    for (const ShaderResourceInfo& info : userResourceMap) {
+        // Only buffers supported for now
+        ASSERT(info.type == ShaderResourceType::Buffer, "Only buffers are implemented for now");
+
+        // Get mapped id
+        const Backend::IL::Variable* variable = userResourceMap.Get(info.id);
+        ASSERT(variable, "Failed to match variable to user resource");
+
+        // {format}
+        const Backend::IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
+            .memberTypes = { variable->type->As<Backend::IL::BufferType>()->elementType }
+        });
+
+        // Compile as named
+        table.type.typeMap.CompileNamedType(retTy, "class.Buffer<Format>");
+
+        // {format}*
+        const Backend::IL::Type* retTyPtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
+            .pointee = retTy,
+            .addressSpace = Backend::IL::AddressSpace::Function
+        });
+
+        // Create handle
+        HandleEntry& handle = handles.emplace_back();
+        handle.name = "ShaderResource";
+        handle.type = retTyPtr;
+        handle.bindSpace = job.instrumentationKey.bindingInfo.space;
+        handle.registerBase = job.instrumentationKey.bindingInfo.shaderResourceBaseRegister + registerOffset;
+        handle.registerRange = 1u;
+        handle.uav.componentType = GetFormatComponent(info.buffer.format);
+        handle.uav.shape = DXILShaderResourceShape::TypedBuffer;
+
+        // Append handle to class
+        _class.handles.push_back(handles.size() - 1);
+
+        // Next
+        registerOffset++;
+    }
 }
 
 LLVMRecordView DXILPhysicalBlockMetadata::CompileResourceClassRecord(const MappedRegisterClass& mapped) {

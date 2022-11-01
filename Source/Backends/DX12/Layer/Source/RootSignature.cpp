@@ -4,6 +4,7 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/States/RootSignaturePhysicalMapping.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
+#include <Backends/DX12/Resource/ShaderResourceHost.h>
 
 // Common
 #include <Common/Hash.h>
@@ -62,6 +63,15 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
     // Set base register for event constants
     bindingInfo.eventConstantBaseRegister = registerOffset;
     registerOffset += 1u;
+
+    // Get number of resources
+    uint32_t resourceCount{0};
+    state->resourceHost->Enumerate(&resourceCount, nullptr);
+
+    // Set base register for shader exports
+    bindingInfo.shaderResourceBaseRegister = registerOffset;
+    bindingInfo.shaderResourceCount = std::max(1u, resourceCount);
+    registerOffset += bindingInfo.shaderResourceCount;
 
     return bindingInfo;
 }
@@ -222,6 +232,15 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
             .BaseShaderRegister = outRoot->prmtBaseRegister,
             .RegisterSpace = outRoot->space,
             .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+        },
+
+        // User resource range
+        {
+            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+            .NumDescriptors = outRoot->shaderResourceCount,
+            .BaseShaderRegister = outRoot->shaderResourceBaseRegister,
+            .RegisterSpace = outRoot->space,
+            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
         }
     };
 
@@ -229,7 +248,7 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     Parameter& exportParameter = parameters[source.NumParameters + 0u];
     exportParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     exportParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    exportParameter.DescriptorTable.NumDescriptorRanges = 2u;
+    exportParameter.DescriptorTable.NumDescriptorRanges = 3u;
     exportParameter.DescriptorTable.pDescriptorRanges = ranges;
 
     // Descriptor constant parameter

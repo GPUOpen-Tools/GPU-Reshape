@@ -31,6 +31,7 @@ class FeatureController;
 class MetadataController;
 class IBridge;
 class ShaderExportHost;
+class ShaderResourceHost;
 class ShaderExportStreamer;
 class ShaderSGUIDHost;
 class DeviceAllocator;
@@ -53,8 +54,9 @@ struct DeviceState {
     /// Message bridge
     ComRef<IBridge> bridge;
 
-    /// Shared export host
+    /// Shared hosts
     ComRef<ShaderExportHost> exportHost;
+    ComRef<ShaderResourceHost> resourceHost;
 
     /// Shared export streamer
     ComRef<ShaderExportStreamer> exportStreamer;

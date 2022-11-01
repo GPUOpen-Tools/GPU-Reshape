@@ -85,6 +85,34 @@ namespace Backend::IL {
         return program.GetTypeMap().FindTypeOrAdd(BoolType{});
     }
 
+    inline const Type* ResultOf(Program& program, const AtomicOrInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const AtomicXOrInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const AtomicAddInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const AtomicMinInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const AtomicMaxInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const AtomicExchangeInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
+    inline const Type* ResultOf(Program& program, const AtomicCompareExchangeInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
     inline const Type* ResultOf(Program& program, const IsNaNInstruction* instr) {
         return SplatToValue(program, program.GetTypeMap().FindTypeOrAdd(BoolType{}), instr->value);
     }
@@ -231,5 +259,61 @@ namespace Backend::IL {
                 return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
             }
         }
+    }
+
+    inline const Type* ResultOf(Program& program, const AddressChainInstruction* instr) {
+        const Type* type = program.GetTypeMap().GetType(instr->composite);
+        if (!type) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
+        // Walk the chain
+        for (uint32_t i = 0; i < instr->chains.count; i++) {
+            switch (type->kind) {
+                default:
+                ASSERT(false, "Unexpected GEP chain type");
+                    break;
+                case Backend::IL::TypeKind::None:
+                    break;
+                case Backend::IL::TypeKind::Buffer: {
+                    type = type->As<Backend::IL::BufferType>()->elementType;
+                    break;
+                }
+                case Backend::IL::TypeKind::Texture: {
+                    type = type->As<Backend::IL::TextureType>()->sampledType;
+                    break;
+                }
+                case Backend::IL::TypeKind::Vector: {
+                    type = type->As<Backend::IL::VectorType>()->containedType;
+                    break;
+                }
+                case Backend::IL::TypeKind::Matrix: {
+                    type = type->As<Backend::IL::MatrixType>()->containedType;
+                    break;
+                }
+                case Backend::IL::TypeKind::Pointer:{
+                    type = type->As<Backend::IL::PointerType>()->pointee;
+                    break;
+                }
+                case Backend::IL::TypeKind::Array:{
+                    type = type->As<Backend::IL::ArrayType>()->elementType;
+                    break;
+                }
+                case Backend::IL::TypeKind::Struct: {
+                    const Backend::IL::Constant* constant = program.GetConstants().GetConstant(instr->chains[i].index);
+                    ASSERT(constant, "Struct chains must be constant");
+
+                    uint32_t memberIdx = constant->As<Backend::IL::IntConstant>()->value;
+                    type = type->As<Backend::IL::StructType>()->memberTypes[memberIdx];
+                    break;
+                }
+            }
+
+            // TODO: Is function address space really right? Maybe derive from the source composite
+            return program.GetTypeMap().FindTypeOrAdd(PointerType { .pointee = type, .addressSpace = AddressSpace::Function });
+        }
+
+        return type;
     }
 }

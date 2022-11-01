@@ -148,6 +148,10 @@ private:
     /// \param block appended block
     void CreatePRMTHandle(const DXJob &job, struct LLVMBlock* block);
 
+    /// Create the user resource handles
+    /// \param block appended block
+    void CreateUserResourceHandle(const DXJob &job, struct LLVMBlock* block);
+
     /// Create the descriptor handle
     /// \param block appended block
     void CreateDescriptorHandle(const DXJob &job, struct LLVMBlock* block);

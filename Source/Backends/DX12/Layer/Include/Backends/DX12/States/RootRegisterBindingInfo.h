@@ -19,4 +19,8 @@ struct RootRegisterBindingInfo {
 
     /// Event constant register
     uint32_t eventConstantBaseRegister;
+
+    /// Shader resource register
+    uint32_t shaderResourceBaseRegister;
+    uint32_t shaderResourceCount;
 };

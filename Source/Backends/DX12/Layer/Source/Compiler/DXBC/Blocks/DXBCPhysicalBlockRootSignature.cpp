@@ -91,7 +91,7 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         parameter.type = DXBCRootSignatureParameterType::DescriptorTable;
         parameter.visibility = DXBCRootSignatureVisibility::All;
 
-        // Create range
+        // Create export range
         DXBCRootSignatureDescriptorRange1& exportRange = parameter.descriptorTable.ranges.emplace_back();
         exportRange.type = DXBCRootSignatureRangeType::UAV;
         exportRange.space = bindingInfo.space;
@@ -100,7 +100,7 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         exportRange.flags = 0x0;
         exportRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-        // Create range
+        // Create PRMT range
         DXBCRootSignatureDescriptorRange1& prmtRange = parameter.descriptorTable.ranges.emplace_back();
         prmtRange.type = DXBCRootSignatureRangeType::SRV;
         prmtRange.space = bindingInfo.space;
@@ -108,6 +108,18 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         prmtRange.descriptorCount = 1u;
         prmtRange.flags = 0x0;
         prmtRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        // Get resources
+        IL::UserResourceMap& userResourceMap = table.dxilModule->GetProgram()->GetUserResourceMap();
+
+        // Create user range
+        DXBCRootSignatureDescriptorRange1& userRange = parameter.descriptorTable.ranges.emplace_back();
+        userRange.type = DXBCRootSignatureRangeType::UAV;
+        userRange.space = bindingInfo.space;
+        userRange._register = bindingInfo.shaderResourceBaseRegister;
+        userRange.descriptorCount = bindingInfo.shaderResourceCount;
+        userRange.flags = 0x0;
+        userRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
     }
 
     // Descriptor data

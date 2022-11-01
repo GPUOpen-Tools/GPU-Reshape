@@ -301,9 +301,11 @@ add_library(
     Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
     Layer/Source/Export/ShaderExportStreamer.cpp
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
+    Layer/Source/Export/ShaderExportDescriptorLayout.cpp
     Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
+    Layer/Source/Resource/ShaderResourceHost.cpp
     Layer/Source/IncrementalFence.cpp
 
     # Generated source dependencies

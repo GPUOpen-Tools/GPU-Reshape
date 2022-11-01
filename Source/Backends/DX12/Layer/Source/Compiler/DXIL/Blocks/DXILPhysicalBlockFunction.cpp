@@ -1793,6 +1793,202 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     break;
                 }
 
+                    /* Atomic binary ops */
+                case IL::OpCode::AtomicOr:
+                case IL::OpCode::AtomicXOr:
+                case IL::OpCode::AtomicAnd:
+                case IL::OpCode::AtomicAdd:
+                case IL::OpCode::AtomicMin:
+                case IL::OpCode::AtomicMax:
+                case IL::OpCode::AtomicExchange:
+                case IL::OpCode::AtomicCompareExchange: {
+                    // Resulting binary operation
+                    DXILAtomicBinOp binOp;
+
+                    // Identifiers
+                    IL::ID valueID;
+                    IL::ID addressID;
+
+                    // Get operands and determine appropriate op
+                    switch (instr->opCode) {
+                        default:
+                            ASSERT(false, "Invalid opcode");
+                            break;
+                        case IL::OpCode::AtomicOr:
+                            addressID = instr->As<IL::AtomicOrInstruction>()->address;
+                            valueID = instr->As<IL::AtomicOrInstruction>()->value;
+                            binOp = DXILAtomicBinOp::Or;
+                            break;
+                        case IL::OpCode::AtomicXOr:
+                            addressID = instr->As<IL::AtomicXOrInstruction>()->address;
+                            valueID = instr->As<IL::AtomicXOrInstruction>()->value;
+                            binOp = DXILAtomicBinOp::XOr;
+                            break;
+                        case IL::OpCode::AtomicAnd:
+                            addressID = instr->As<IL::AtomicAndInstruction>()->address;
+                            valueID = instr->As<IL::AtomicAndInstruction>()->value;
+                            binOp = DXILAtomicBinOp::And;
+                            break;
+                        case IL::OpCode::AtomicAdd:
+                            addressID = instr->As<IL::AtomicAddInstruction>()->address;
+                            valueID = instr->As<IL::AtomicAddInstruction>()->value;
+                            binOp = DXILAtomicBinOp::Add;
+                            break;
+                        case IL::OpCode::AtomicMin: {
+                            auto* _instr = instr->As<IL::AtomicMinInstruction>();
+                            addressID = _instr->address;
+                            valueID = _instr->value;
+
+                            const Backend::IL::Type* valueType = program.GetTypeMap().GetType(_instr->value);
+                            ASSERT(valueType->Is<Backend::IL::IntType>(), "Atomic operation on non-integer type");
+
+                            binOp = valueType->As<Backend::IL::IntType>()->signedness ? DXILAtomicBinOp::IMin : DXILAtomicBinOp::UMin;
+                            break;
+                        }
+                        case IL::OpCode::AtomicMax: {
+                            auto* _instr = instr->As<IL::AtomicMaxInstruction>();
+                            addressID = _instr->address;
+                            valueID = _instr->value;
+
+                            const Backend::IL::Type* valueType = program.GetTypeMap().GetType(_instr->value);
+                            ASSERT(valueType->Is<Backend::IL::IntType>(), "Atomic operation on non-integer type");
+
+                            binOp = valueType->As<Backend::IL::IntType>()->signedness ? DXILAtomicBinOp::IMax : DXILAtomicBinOp::UMax;
+                            break;
+                        }
+                        case IL::OpCode::AtomicExchange:
+                            addressID = instr->As<IL::AtomicExchangeInstruction>()->address;
+                            valueID = instr->As<IL::AtomicExchangeInstruction>()->value;
+                            binOp = DXILAtomicBinOp::Exchange;
+                            break;
+                        case IL::OpCode::AtomicCompareExchange:
+                            addressID = instr->As<IL::AtomicCompareExchangeInstruction>()->address;
+                            valueID = instr->As<IL::AtomicCompareExchangeInstruction>()->value;
+                            binOp = DXILAtomicBinOp::Invalid;
+                            break;
+                    }
+
+                    // Get source address
+                    IL::InstructionRef<> addressInstr = program.GetIdentifierMap().Get(addressID);
+
+                    // Different atomic intrinsics depending on the source
+                    switch (addressInstr->opCode) {
+                        default:
+                            ASSERT(false, "Unsupported atomic operation");
+                            break;
+                        case IL::OpCode::AddressChain: {
+                            auto* chainInstr = addressInstr->As<Backend::IL::AddressChainInstruction>();
+                            ASSERT(chainInstr->chains.count == 1, "Multi-chain on atomic operations not supported");
+
+                            // Get handle of address base
+                            const Backend::IL::Type* handleType = program.GetTypeMap().GetType(chainInstr->composite);
+
+                            // Handle based atomic?
+                            if (handleType->Is<Backend::IL::BufferType>() || handleType->Is<Backend::IL::TextureType>()) {
+                                if (instr->opCode == Backend::IL::OpCode::AtomicCompareExchange) {
+                                    auto _instr = instr->As<Backend::IL::AtomicCompareExchangeInstruction>();
+
+                                    // Get intrinsic
+                                    const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpAtomicCompareExchangeI32);
+
+                                    /*
+                                     * ; overloads: SM5.1: i32,  SM6.0: i32
+                                     * ; returns: original value in memory before the operation
+                                     * declare i32 @dx.op.atomicCompareExchange.i32(
+                                     *     i32,                  ; opcode
+                                     *     %dx.types.Handle,     ; resource handle
+                                     *     i32,                  ; coordinate c0
+                                     *     i32,                  ; coordinate c1
+                                     *     i32,                  ; coordinate c2
+                                     *     i32,                  ; comparison value
+                                     *     i32)                  ; new value
+                                     */
+
+                                    uint64_t ops[7];
+
+                                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AtomicCompareExchange)}
+                                    )->id);
+
+                                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(chainInstr->composite);
+
+                                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(chainInstr->chains[0].index);
+
+                                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                                        Backend::IL::UndefConstant{}
+                                    )->id);
+
+                                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                                        Backend::IL::UndefConstant{}
+                                    )->id);
+
+                                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(_instr->comparator);
+
+                                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+
+                                    // Invoke
+                                    block->AddRecord(CompileIntrinsicCall(instr->result, intrinsic, 7, ops));
+                                } else {
+                                    // Get intrinsic
+                                    const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpAtomicBinOpI32);
+
+                                    /*
+                                     * ; overloads: SM5.1: i32,  SM6.0: i32
+                                     * ; returns: original value in memory before the operation
+                                     * declare i32 @dx.op.atomicBinOp.i32(
+                                     *     i32,                  ; opcode
+                                     *     %dx.types.Handle,     ; resource handle
+                                     *     i32,                  ; binary operation code: EXCHANGE, IADD, AND, OR, XOR, IMIN, IMAX, UMIN, UMAX
+                                     *     i32,                  ; coordinate c0
+                                     *     i32,                  ; coordinate c1
+                                     *     i32,                  ; coordinate c2
+                                     *     i32)                  ; new value
+                                     */
+
+                                    uint64_t ops[7];
+
+                                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::AtomicBinOp)}
+                                    )->id);
+
+                                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(chainInstr->composite);
+
+                                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(binOp)}
+                                    )->id);
+
+                                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(chainInstr->chains[0].index);
+
+                                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                                        Backend::IL::UndefConstant{}
+                                    )->id);
+
+                                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                                        Backend::IL::UndefConstant{}
+                                    )->id);
+
+                                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(valueID);
+
+                                    // Invoke
+                                    block->AddRecord(CompileIntrinsicCall(instr->result, intrinsic, 7, ops));
+                                }
+                            } else {
+                                ASSERT(false, "Non-handle atomic compilation not supported");
+                            }
+                            break;
+                        }
+                    }
+
+                    break;
+                }
+
                     /* Binary ops */
                 case IL::OpCode::Add:
                 case IL::OpCode::Sub:
@@ -2530,6 +2726,34 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     break;
                 }
 
+                case IL::OpCode::AddressChain: {
+                    auto _instr = instr->As<IL::AddressChainInstruction>();
+
+                    // Get type of the composite
+                    const Backend::IL::Type* compositeType = program.GetTypeMap().GetType(_instr->composite);
+
+                    // Resource indexing is handled in the using instruction
+                    if (compositeType->Is<Backend::IL::BufferType>() || compositeType->Is<Backend::IL::TextureType>()) {
+                        break;
+                    }
+
+                    // Create record
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstGEP);
+                    record.opCount = 3 + _instr->chains.count;
+                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+                    record.ops[0] = false;
+                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(compositeType));
+                    record.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->composite);
+
+                    // Set chains
+                    for (uint32_t i = 0; i < _instr->chains.count; i++) {
+                        record.ops[3 + i] = table.idRemapper.EncodeRedirectedUserOperand(_instr->chains[i].index);
+                    }
+
+                    block->AddRecord(record);
+                    break;
+                }
+
                     // To be implemented
 #if 0
                     case IL::OpCode::Alloca:
@@ -2855,6 +3079,7 @@ void DXILPhysicalBlockFunction::CreateHandles(const DXJob &job, struct LLVMBlock
     CreatePRMTHandle(job, block);
     CreateDescriptorHandle(job, block);
     CreateEventHandle(job, block);
+    CreateUserResourceHandle(job, block);
 }
 
 void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXJob &job, struct LLVMBlock *block) {
@@ -2999,6 +3224,64 @@ void DXILPhysicalBlockFunction::CreateEventHandle(const DXJob &job, struct LLVMB
 
     // Create shared counter handle
     block->AddRecord(CompileIntrinsicCall(eventHandle, intrinsic, 5, ops));
+}
+
+void DXILPhysicalBlockFunction::CreateUserResourceHandle(const DXJob &job, struct LLVMBlock *block) {
+    IL::UserResourceMap& userResourceMap = table.program.GetUserResourceMap();
+
+    // Get intrinsic
+    const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCreateHandle);
+
+    /*
+     * DXIL Specification
+     *   declare %dx.types.Handle @dx.op.createHandle(
+     *       i32,                  ; opcode
+     *       i8,                   ; resource class: SRV=0, UAV=1, CBV=2, Sampler=3
+     *       i32,                  ; resource range ID (constant)
+     *       i32,                  ; index into the range
+     *       i1)                   ; non-uniform resource index: false or true
+     */
+
+    uint64_t ops[5];
+
+    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CreateHandle)}
+    )->id);
+
+    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
+        Backend::IL::IntConstant{.value = 1}
+    )->id);
+
+    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
+        Backend::IL::BoolConstant{.value = false}
+    )->id);
+
+    // Current offset
+    uint32_t registerOffset = 0;
+
+    // Create a handle per resource
+    for (const ShaderResourceInfo& info : userResourceMap) {
+        const Backend::IL::Variable* variable = userResourceMap.Get(info.id);
+
+        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = table.bindingInfo.userResourceHandleId + registerOffset}
+        )->id);
+
+        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = table.bindingInfo.bindingInfo.shaderResourceBaseRegister + registerOffset}
+        )->id);
+
+        // Compile and map handle to the existing id
+        block->AddRecord(CompileIntrinsicCall(variable->id, intrinsic, 5, ops));
+
+        // Next
+        registerOffset++;
+    }
 }
 
 const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUserMapping(const DXJob& job, const TrivialStackVector<LLVMRecord, 32>& source, IL::ID resource) {

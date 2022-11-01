@@ -19,6 +19,7 @@
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
+#include <Backends/DX12/Resource/ShaderResourceHost.h>
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 #include <Backends/DX12/Layer.h>
 
@@ -115,9 +116,34 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Install the shader export host
         state->exportHost = state->registry.AddNew<ShaderExportHost>();
 
+        // Specifying an adapter is optional
+        IDXGIAdapter* dxgiAdapter{nullptr};
+        if (pAdapter) {
+            // Query underlying adapter
+            ENSURE(SUCCEEDED(pAdapter->QueryInterface(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter))), "Failed to cast adapter");
+        } else {
+            // Attempt to create a factory
+            IDXGIFactory1* factory;
+            ENSURE(SUCCEEDED(CreateDXGIFactory1(__uuidof(IDXGIFactory1) , reinterpret_cast<void**>(&factory))), "Failed to create default factory");
+
+            // Query base adapter
+            ENSURE(SUCCEEDED(factory->EnumAdapters(0, &dxgiAdapter)), "Failed to query default adapter");
+
+            // Cleanup
+            factory->Release();
+        }
+
+        // Install the streamer
+        state->deviceAllocator = state->registry.AddNew<DeviceAllocator>();
+        ENSURE(state->deviceAllocator->Install(state->object, dxgiAdapter), "Failed to install device allocator");
+
         // Install the shader sguid host
         state->sguidHost = state->registry.AddNew<ShaderSGUIDHost>(state);
         ENSURE(state->sguidHost->Install(), "Failed to install shader sguid host");
+
+        // Install the shader resource host
+        state->resourceHost = state->registry.AddNew<ShaderResourceHost>(state);
+        ENSURE(state->resourceHost->Install(), "Failed to install shader resource host");
 
         // Install all features
         ENSURE(PoolAndInstallFeatures(state), "Failed to install features");
@@ -154,27 +180,6 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Install the instrumentation controller
         state->metadataController = state->registry.AddNew<MetadataController>(state);
         ENSURE(state->metadataController->Install(), "Failed to install metadata controller");
-
-        // Specifying an adapter is optional
-        IDXGIAdapter* dxgiAdapter{nullptr};
-        if (pAdapter) {
-            // Query underlying adapter
-            ENSURE(SUCCEEDED(pAdapter->QueryInterface(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter))), "Failed to cast adapter");
-        } else {
-            // Attempt to create a factory
-            IDXGIFactory1* factory;
-            ENSURE(SUCCEEDED(CreateDXGIFactory1(__uuidof(IDXGIFactory1) , reinterpret_cast<void**>(&factory))), "Failed to create default factory");
-
-            // Query base adapter
-            ENSURE(SUCCEEDED(factory->EnumAdapters(0, &dxgiAdapter)), "Failed to query default adapter");
-
-            // Cleanup
-            factory->Release();
-        }
-
-        // Install the streamer
-        state->deviceAllocator = state->registry.AddNew<DeviceAllocator>();
-        ENSURE(state->deviceAllocator->Install(state->object, dxgiAdapter), "Failed to install device allocator");
 
         // Install the streamer
         auto streamAllocator = state->registry.AddNew<ShaderExportStreamAllocator>();

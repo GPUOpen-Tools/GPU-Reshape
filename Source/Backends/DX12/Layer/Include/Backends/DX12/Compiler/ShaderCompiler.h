@@ -3,6 +3,9 @@
 // Layer
 #include <Backends/DX12/States/ShaderState.h>
 
+// Backend
+#include <Backend/Resource/ShaderResourceInfo.h>
+
 // Common
 #include <Common/IComponent.h>
 #include <Common/ComRef.h>
@@ -66,6 +69,9 @@ private:
 
     /// All features
     std::vector<ComRef<IShaderFeature>> shaderFeatures;
+
+    /// All resources
+    std::vector<ShaderResourceInfo> resources;
 
     /// Number of exports
     uint32_t exportCount{0};

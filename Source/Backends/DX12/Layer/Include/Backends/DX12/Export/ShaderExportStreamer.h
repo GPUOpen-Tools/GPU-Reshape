@@ -1,12 +1,13 @@
 #pragma once
 
-// Common
-#include <Common/IComponent.h>
-#include <Common/ComRef.h>
-
 // Layer
 #include <Backends/DX12/DX12.h>
 #include <Backends/DX12/Export/ShaderExportStreamState.h>
+#include <Backends/DX12/Export/ShaderExportDescriptorLayout.h>
+
+// Common
+#include <Common/IComponent.h>
+#include <Common/ComRef.h>
 
 // Common
 #include <Common/Containers/ObjectPool.h>
@@ -23,11 +24,9 @@ struct DeviceDispatchTable;
 struct PipelineState;
 struct FenceState;
 struct CommandQueueState;
-struct FenceTable;
 struct DeviceState;
 struct CommandListState;
 struct DescriptorHeapState;
-struct CommandQueueTable;
 class IBridge;
 
 class ShaderExportStreamer : public TComponent<ShaderExportStreamer> {
@@ -192,9 +191,6 @@ private:
     /// Internal mutex
     std::mutex mutex;
 
-    /// Number of descriptors per segment table
-    uint32_t segmentTableDescriptorCount{0};
-
     /// Shared offset allocator
     BucketPoolAllocator<uint32_t> dynamicOffsetAllocator;
 
@@ -210,6 +206,9 @@ private:
     ObjectPool<ShaderExportStreamState> streamStatePool;
     ObjectPool<ShaderExportStreamSegment> segmentPool;
     ObjectPool<ShaderExportQueueState> queuePool;
+
+    /// Layout helper
+    ShaderExportDescriptorLayout descriptorLayout;
 
     /// All free descriptor segments
     std::vector<DescriptorDataSegmentEntry> freeDescriptorDataSegmentEntries;

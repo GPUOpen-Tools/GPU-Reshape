@@ -7,6 +7,7 @@
 #include <Backends/DX12/Compiler/DXStream.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
+#include <Backends/DX12/Resource/ShaderResourceHost.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
@@ -42,6 +43,17 @@ bool ShaderCompiler::Install() {
     // Get the export host
     auto exportHost = registry->Get<IShaderExportHost>();
     exportHost->Enumerate(&exportCount, nullptr);
+
+    // Get the export host
+    auto resourceHost = registry->Get<ShaderResourceHost>();
+
+    // Get number of resources
+    uint32_t resourceCount;
+    resourceHost->Enumerate(&resourceCount, nullptr);
+
+    // Fill resources
+    resources.resize(resourceCount);
+    resourceHost->Enumerate(&resourceCount, resources.data());
 
     // Get the dxil signer
     dxilSigner = registry->Get<DXILSigner>();
@@ -114,6 +126,14 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
         // Add source module
         debug->Add(debugPath, "source", module);
+    }
+
+    // Get user map
+    IL::UserResourceMap& userResourceMap = module->GetProgram()->GetUserResourceMap();
+
+    // Add resources
+    for (const ShaderResourceInfo& info : resources) {
+        userResourceMap.Add(info);
     }
 
     // Pass through all features

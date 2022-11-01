@@ -11,6 +11,7 @@
 #include <Backends/DX12/States/CommandListState.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Resource/DescriptorDataAppendAllocator.h>
+#include <Backends/DX12/Resource/ShaderResourceHost.h>
 #include <Backends/DX12/Table.Gen.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 #include <Backends/DX12/IncrementalFence.h>
@@ -63,12 +64,8 @@ bool ShaderExportStreamer::Install() {
     sharedCPUHeapAllocator = new (device->allocators) ShaderExportDescriptorAllocator(device->object, sharedCPUHeap, kSharedHeapBound);
     sharedGPUHeapAllocator = new (device->allocators) ShaderExportDescriptorAllocator(device->object, sharedGPUHeap, kSharedHeapBound);
 
-    // Number of exports
-    uint32_t exportCount;
-    device->exportHost->Enumerate(&exportCount, nullptr);
-
-    // TODO: Move the table layout to something else, doesn't fit here
-    segmentTableDescriptorCount = 2u + exportCount;
+    // Create the shared layout
+    descriptorLayout.Install(device, sharedCPUHeapAllocator->GetAdvance());
 
     // OK
     return true;
@@ -168,7 +165,7 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
 
     // Allocate initial segment from shared allocator
     ShaderExportSegmentDescriptorAllocation allocation;
-    allocation.info = sharedGPUHeapAllocator->Allocate(segmentTableDescriptorCount);
+    allocation.info = sharedGPUHeapAllocator->Allocate(descriptorLayout.Count());
     allocation.allocator = sharedGPUHeapAllocator;
     state->segmentDescriptors.push_back(allocation);
 
@@ -201,7 +198,7 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, Des
 
     // Allocate initial segment from shared allocator
     ShaderExportSegmentDescriptorAllocation allocation;
-    allocation.info = heap->allocator->Allocate(segmentTableDescriptorCount);
+    allocation.info = heap->allocator->Allocate(descriptorLayout.Count());
     allocation.allocator = heap->allocator;
     state->segmentDescriptors.push_back(allocation);
 
@@ -308,6 +305,23 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
     state->pipelineSegmentMask |= pipeline->type;
 }
 
+void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* heap) {
+    if (!heap) {
+        // TODO: Bind dummy? Is it needed?
+        return;
+    }
+
+    // Create view to PRMT buffer
+    device->object->CreateShaderResourceView(
+        heap->prmTable->GetResource(),
+        &heap->prmTable->GetView(),
+        descriptorLayout.GetPRMT(descriptors.info.cpuHandle)
+    );
+
+    // Create views to shader resources
+    device->resourceHost->CreateDescriptors(descriptorLayout.GetUserResource(descriptors.info.cpuHandle, 0), sharedCPUHeapAllocator->GetAdvance());
+}
+
 void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {
     // Map the command state to shared segment
     for (const ShaderExportSegmentDescriptorAllocation& allocation : state->segmentDescriptors) {
@@ -315,7 +329,7 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
         device->object->CreateUnorderedAccessView(
             segment->allocation->counter.allocation.device.resource, nullptr,
             &segment->allocation->counter.view,
-            allocation.info.cpuHandle
+            descriptorLayout.GetExportCounter(allocation.info.cpuHandle)
         );
 
         // Update the segment streams
@@ -323,7 +337,7 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
             device->object->CreateUnorderedAccessView(
                 segment->allocation->streams[i].allocation.device.resource, nullptr,
                 &segment->allocation->streams[i].view,
-                D3D12_CPU_DESCRIPTOR_HANDLE {.ptr = allocation.info.cpuHandle.ptr + sharedCPUHeapAllocator->GetAdvance() * (i + 1)}
+                descriptorLayout.GetExportStream(allocation.info.cpuHandle, i)
             );
         }
     }
@@ -376,20 +390,6 @@ void ShaderExportStreamer::SetComputeRootUnorderedAccessView(ShaderExportStreamS
 
 void ShaderExportStreamer::SetGraphicsRootUnorderedAccessView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
 
-}
-
-void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* heap) {
-    if (!heap) {
-        // TODO: Bind dummy? Is it needed?
-        return;
-    }
-
-    // Create view to PRMT buffer
-    device->object->CreateShaderResourceView(
-        heap->prmTable->GetResource(),
-        &heap->prmTable->GetView(),
-        D3D12_CPU_DESCRIPTOR_HANDLE {.ptr = descriptors.info.cpuHandle.ptr + sharedCPUHeapAllocator->GetAdvance() * (segmentTableDescriptorCount - 1)}
-    );
 }
 
 void ShaderExportStreamer::ProcessSegmentsNoQueueLock(CommandQueueState* queue) {

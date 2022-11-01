@@ -449,6 +449,63 @@ namespace IL {
         ID value;
     };
 
+    struct AtomicOrInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::AtomicOr;
+
+        ID address;
+        ID value;
+    };
+
+    struct AtomicXOrInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::AtomicXOr;
+
+        ID address;
+        ID value;
+    };
+
+    struct AtomicAndInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::AtomicAnd;
+
+        ID address;
+        ID value;
+    };
+
+    struct AtomicAddInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::AtomicAdd;
+
+        ID address;
+        ID value;
+    };
+
+    struct AtomicMinInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::AtomicMin;
+
+        ID address;
+        ID value;
+    };
+
+    struct AtomicMaxInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::AtomicMax;
+
+        ID address;
+        ID value;
+    };
+
+    struct AtomicExchangeInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::AtomicExchange;
+
+        ID address;
+        ID value;
+    };
+
+    struct AtomicCompareExchangeInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::AtomicCompareExchange;
+
+        ID address;
+        ID comparator;
+        ID value;
+    };
+
     struct ExportInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Export;
 
@@ -580,6 +637,22 @@ namespace IL {
                 return sizeof(IsInfInstruction);
             case OpCode::IsNaN:
                 return sizeof(IsNaNInstruction);
+            case OpCode::AtomicOr:
+                return sizeof(AtomicOrInstruction);
+            case OpCode::AtomicXOr:
+                return sizeof(AtomicXOrInstruction);
+            case OpCode::AtomicAnd:
+                return sizeof(AtomicAndInstruction);
+            case OpCode::AtomicAdd:
+                return sizeof(AtomicAddInstruction);
+            case OpCode::AtomicMin:
+                return sizeof(AtomicMinInstruction);
+            case OpCode::AtomicMax:
+                return sizeof(AtomicMaxInstruction);
+            case OpCode::AtomicExchange:
+                return sizeof(AtomicExchangeInstruction);
+            case OpCode::AtomicCompareExchange:
+                return sizeof(AtomicCompareExchangeInstruction);
         }
     }
 }
