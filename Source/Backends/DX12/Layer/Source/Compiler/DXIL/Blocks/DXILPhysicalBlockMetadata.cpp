@@ -1048,7 +1048,7 @@ void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXJob& job) {
     CreatePRMTHandle(job);
     CreateDescriptorHandle(job);
     CreateEventHandle(job);
-    CreateUserResourceHandles(job);
+    CreateShaderDataHandles(job);
 }
 
 void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXJob& job) {
@@ -1171,20 +1171,56 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXJob &job) {
 }
 
 void DXILPhysicalBlockMetadata::CreateEventHandle(const DXJob &job) {
-    // i32
-    const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});
+    IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
 
-    // {i32}
-    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
-        .memberTypes = {
-            i32
+    // Requested dword count
+    uint32_t dwordCount = 0;
+
+    // Aggregate dword count
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (info.type == ShaderDataType::Event) {
+            dwordCount++;
         }
-    });
+    }
+
+    // i32
+    const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=false});
+
+    // Determine number of dwords
+    uint32_t alignedDWords = dwordCount / 4;
+
+    // Emit aligned data
+    Backend::IL::StructType eventStruct;
+    for (uint32_t i = 0; i < alignedDWords; i++) {
+        eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+            .containedType = i32,
+            .dimension = 4
+        }));
+    }
+
+    // Number of unaligned dwords
+    uint32_t unalignedDWords = dwordCount % 4;
+
+    // Emit final unaligned (to the end offset) data
+    if (unalignedDWords) {
+        // Naked single?
+        if (unalignedDWords == 1) {
+            eventStruct.memberTypes.push_back(i32);
+        } else {
+            eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+                .containedType = i32,
+                .dimension = static_cast<uint8_t>(unalignedDWords)
+            }));
+        }
+    }
+
+    // {[4xN] N-1}
+    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(eventStruct);
 
     // Compile as named
     table.type.typeMap.CompileNamedType(cbufferType, "CBufferEventData");
 
-    // {[i32 x 4]}*
+    // {...}*
     const Backend::IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
         .pointee = cbufferType,
         .addressSpace = Backend::IL::AddressSpace::Function
@@ -1206,26 +1242,30 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXJob &job) {
     table.bindingInfo.eventConstantsHandleId = _class.handles.size() - 1;
 }
 
-void DXILPhysicalBlockMetadata::CreateUserResourceHandles(const DXJob& job) {
-    IL::UserResourceMap& userResourceMap = table.program.GetUserResourceMap();
+void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXJob& job) {
+    IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
 
-    // All user resources are UAVs
+    // All shader Datas are UAVs
     MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::UAVs);
 
     // Set binding info
     // Handles are allocated linearly after the current index
-    table.bindingInfo.userResourceHandleId = _class.handles.size();
+    table.bindingInfo.shaderDataHandleId = _class.handles.size();
 
     // Current register offset
     uint32_t registerOffset{0};
 
-    for (const ShaderResourceInfo& info : userResourceMap) {
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (!(info.type & ShaderDataType::DescriptorMask)) {
+            continue;
+        }
+
         // Only buffers supported for now
-        ASSERT(info.type == ShaderResourceType::Buffer, "Only buffers are implemented for now");
+        ASSERT(info.type == ShaderDataType::Buffer, "Only buffers are implemented for now");
 
         // Get mapped id
-        const Backend::IL::Variable* variable = userResourceMap.Get(info.id);
-        ASSERT(variable, "Failed to match variable to user resource");
+        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+        ASSERT(variable, "Failed to match variable to shader Data");
 
         // {format}
         const Backend::IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {

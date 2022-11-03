@@ -11,7 +11,7 @@
 #include <Backends/DX12/States/CommandListState.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Resource/DescriptorDataAppendAllocator.h>
-#include <Backends/DX12/Resource/ShaderResourceHost.h>
+#include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Table.Gen.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 #include <Backends/DX12/IncrementalFence.h>
@@ -319,7 +319,7 @@ void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDesc
     );
 
     // Create views to shader resources
-    device->resourceHost->CreateDescriptors(descriptorLayout.GetUserResource(descriptors.info.cpuHandle, 0), sharedCPUHeapAllocator->GetAdvance());
+    device->shaderDataHost->CreateDescriptors(descriptorLayout.GetShaderData(descriptors.info.cpuHandle, 0), sharedCPUHeapAllocator->GetAdvance());
 }
 
 void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {

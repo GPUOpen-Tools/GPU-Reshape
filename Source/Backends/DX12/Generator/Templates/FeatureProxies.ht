@@ -1,0 +1,11 @@
+#pragma once
+
+/**
+ * Feature proxies generation template
+ */
+
+// Layer
+#include <Backends/DX12/DX12.h>
+#include <Backends/DX12/FeatureProxies.h>
+
+$PROXIES

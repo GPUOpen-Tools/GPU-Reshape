@@ -103,6 +103,11 @@
         "Dispatch",
         "ExecuteIndirect",
         "GetDevice"
+      ],
+      "proxies": [
+        "DrawInstanced",
+        "DrawIndexedInstanced",
+        "Dispatch"
       ]
     },
     "ID3D12Fence": {

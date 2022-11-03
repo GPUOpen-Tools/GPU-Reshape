@@ -221,7 +221,9 @@ bool Parser::ParseSchema(Parser::Context &context) {
 }
 
 bool Parser::ParseDispatch(Parser::Context &context) {
-    if (!ParseInt(context, &program.invocation.groupCountX)) {
+    ProgramInvocation& invocation = program.invocations.emplace_back();
+
+    if (!ParseInt(context, &invocation.groupCountX)) {
         return false;
     }
 
@@ -230,7 +232,7 @@ bool Parser::ParseDispatch(Parser::Context &context) {
         return false;
     }
 
-    if (!ParseInt(context, &program.invocation.groupCountY)) {
+    if (!ParseInt(context, &invocation.groupCountY)) {
         return false;
     }
 
@@ -239,7 +241,7 @@ bool Parser::ParseDispatch(Parser::Context &context) {
         return false;
     }
 
-    if (!ParseInt(context, &program.invocation.groupCountZ)) {
+    if (!ParseInt(context, &invocation.groupCountZ)) {
         return false;
     }
 
@@ -339,7 +341,22 @@ bool Parser::ParseMessage(Parser::Context &context) {
         return false;
     }
 
-    if (!ParseInt(context, &message.count)) {
+    // Optional comparison mode
+    if (context.TryNext("==")) {
+        message.checkMode = MessageCheckMode::Equal;
+    } else if (context.TryNext("!=")) {
+        message.checkMode = MessageCheckMode::NotEqual;
+    } else if (context.TryNext(">")) {
+        message.checkMode = MessageCheckMode::Greater;
+    } else if (context.TryNext(">=")) {
+        message.checkMode = MessageCheckMode::GreaterEqual;
+    } else if (context.TryNext("<")) {
+        message.checkMode = MessageCheckMode::Less;
+    } else if (context.TryNext("<=")) {
+        message.checkMode = MessageCheckMode::LessEqual;
+    }
+
+    if (!ParseInt(context, &message.checkLiteral)) {
         return false;
     }
 

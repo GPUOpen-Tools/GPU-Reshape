@@ -7,7 +7,7 @@
 #include <Backends/DX12/Compiler/DXStream.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
-#include <Backends/DX12/Resource/ShaderResourceHost.h>
+#include <Backends/DX12/ShaderData/ShaderDataHost.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
@@ -45,15 +45,15 @@ bool ShaderCompiler::Install() {
     exportHost->Enumerate(&exportCount, nullptr);
 
     // Get the export host
-    auto resourceHost = registry->Get<ShaderResourceHost>();
+    auto shaderDataHost = registry->Get<ShaderDataHost>();
 
     // Get number of resources
     uint32_t resourceCount;
-    resourceHost->Enumerate(&resourceCount, nullptr);
+    shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::All);
 
     // Fill resources
-    resources.resize(resourceCount);
-    resourceHost->Enumerate(&resourceCount, resources.data());
+    shaderData.resize(resourceCount);
+    shaderDataHost->Enumerate(&resourceCount, shaderData.data(), ShaderDataType::All);
 
     // Get the dxil signer
     dxilSigner = registry->Get<DXILSigner>();
@@ -129,11 +129,11 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     }
 
     // Get user map
-    IL::UserResourceMap& userResourceMap = module->GetProgram()->GetUserResourceMap();
+    IL::ShaderDataMap& shaderDataMap = module->GetProgram()->GetShaderDataMap();
 
     // Add resources
-    for (const ShaderResourceInfo& info : resources) {
-        userResourceMap.Add(info);
+    for (const ShaderDataInfo& info : shaderData) {
+        shaderDataMap.Add(info);
     }
 
     // Pass through all features

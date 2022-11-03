@@ -1,19 +1,19 @@
-#include <Backends/DX12/Resource/ShaderResourceHost.h>
+#include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Translation.h>
 
-ShaderResourceHost::ShaderResourceHost(DeviceState *device) : device(device) {
+ShaderDataHost::ShaderDataHost(DeviceState *device) : device(device) {
 
 }
 
-bool ShaderResourceHost::Install() {
+bool ShaderDataHost::Install() {
     return true;
 }
 
-ShaderResourceID ShaderResourceHost::CreateBuffer(const ShaderBufferInfo &info) {
+ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     // Determine index
-    ShaderResourceID rid;
+    ShaderDataID rid;
     if (freeIndices.empty()) {
         // Allocate at end
         rid = indices.size();
@@ -45,14 +45,41 @@ ShaderResourceID ShaderResourceHost::CreateBuffer(const ShaderBufferInfo &info) 
     ResourceEntry &entry = resources.emplace_back();
     entry.allocation = device->deviceAllocator->Allocate(desc);
     entry.info.id = rid;
-    entry.info.type = ShaderResourceType::Buffer;
+    entry.info.type = ShaderDataType::Buffer;
     entry.info.buffer = info;
 
     // OK
     return rid;
 }
 
-void ShaderResourceHost::DestroyBuffer(ShaderResourceID rid) {
+ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
+    // Determine index
+    ShaderDataID rid;
+    if (freeIndices.empty()) {
+        // Allocate at end
+        rid = indices.size();
+        indices.emplace_back();
+    } else {
+        // Consume free index
+        rid = freeIndices.back();
+        freeIndices.pop_back();
+    }
+
+    // Set index
+    indices[rid] = resources.size();
+
+    // Create allocation
+    ResourceEntry &entry = resources.emplace_back();
+    entry.allocation = {};
+    entry.info.id = rid;
+    entry.info.type = ShaderDataType::Event;
+    entry.info.event = info;
+
+    // OK
+    return rid;
+}
+
+void ShaderDataHost::Destroy(ShaderDataID rid) {
     uint32_t index = indices[rid];
 
     // Release entry
@@ -78,27 +105,44 @@ void ShaderResourceHost::DestroyBuffer(ShaderResourceID rid) {
     freeIndices.push_back(rid);
 }
 
-void ShaderResourceHost::Enumerate(uint32_t *count, ShaderResourceInfo *out) {
+void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
     if (out) {
-        for (uint32_t i = 0; i < *count; i++) {
-            out[i] = resources[i].info;
-            i++;
+        uint32_t offset = 0;
+
+        for (uint32_t i = 0; i < resources.size(); i++) {
+            if (mask & resources[i].info.type) {
+                out[offset++] = resources[i].info;
+            }
         }
     } else {
-        *count = resources.size();
+        uint32_t value = 0;
+
+        for (uint32_t i = 0; i < resources.size(); i++) {
+            if (mask & resources[i].info.type) {
+                value++;
+            }
+        }
+
+        *count = value;
     }
 }
 
-void ShaderResourceHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescriptorHandle, uint32_t stride) {
+void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescriptorHandle, uint32_t stride) {
+    uint32_t offset = 0;
+
     for (uint32_t i = 0; i < resources.size(); i++) {
         const ResourceEntry &entry = resources[i];
+
+        if (!(ShaderDataType::DescriptorMask & entry.info.type)) {
+            continue;
+        }
 
         switch (entry.info.type) {
             default: {
                 ASSERT(false, "Invalid resource");
                 break;
             }
-            case ShaderResourceType::Buffer: {
+            case ShaderDataType::Buffer: {
                 // Setup view
                 D3D12_UNORDERED_ACCESS_VIEW_DESC view{};
                 view.Format = Translate(entry.info.buffer.format);
@@ -112,14 +156,17 @@ void ShaderResourceHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescr
                 device->object->CreateUnorderedAccessView(
                     entry.allocation.resource, nullptr,
                     &view,
-                    D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = baseDescriptorHandle.ptr + stride * i}
+                    D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = baseDescriptorHandle.ptr + stride * offset}
                 );
                 break;
             }
-            case ShaderResourceType::Texture: {
+            case ShaderDataType::Texture: {
                 ASSERT(false, "Not implemented");
                 break;
             }
         }
+
+        // Next!
+        offset++;
     }
 }

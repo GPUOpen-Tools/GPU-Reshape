@@ -3,6 +3,9 @@
 // Backend
 #include <Common/Delegate.h>
 
+// Forward declarations
+struct CommandContext;
+
 /// Feature hook, derived type must implement operator()
 template<typename T>
 struct TFeatureHook {
@@ -27,7 +30,7 @@ struct TFeatureHook<R(A...)> {
 /// \param featureHooks the feature hooks registered
 /// \param args all hook arguments
 template<typename T, typename... A>
-inline void ApplyFeatureHook(uint64_t featureBitSet, typename T::Hook featureHooks[64], A... args) {
+inline void ApplyFeatureHook(CommandContext* context, uint64_t featureBitSet, typename T::Hook featureHooks[64], A... args) {
     // Early out if empty
     if (!featureBitSet)
         return;
@@ -39,7 +42,7 @@ inline void ApplyFeatureHook(uint64_t featureBitSet, typename T::Hook featureHoo
     unsigned long index;
     while (_BitScanReverse64(&index, bitMask)) {
         // Forward the hook to the appropriate handler
-        T{featureHooks[index]}(args...);
+        T{featureHooks[index]}(context, args...);
 
         // Next!
         bitMask &= ~(1ull << index);

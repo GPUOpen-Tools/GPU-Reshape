@@ -95,4 +95,10 @@ namespace Generators {
     /// \param templateEngine template destination
     /// \return success
     bool DXILIntrinsics(const GeneratorInfo& info, TemplateEngine& templateEngine);
+
+    /// Generate the feature proxies
+    /// \param info generation info
+    /// \param templateEngine template destination
+    /// \return success
+    bool FeatureProxies(const GeneratorInfo& info, TemplateEngine& templateEngine);
 }

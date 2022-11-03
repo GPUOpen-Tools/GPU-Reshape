@@ -6,7 +6,7 @@
 // Std
 #include <cstdint>
 
-struct ShaderBufferInfo {
+struct ShaderDataBufferInfo {
     /// Number of elements within this buffer
     size_t elementCount{0};
 

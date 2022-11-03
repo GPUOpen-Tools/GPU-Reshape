@@ -6,6 +6,7 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/States/RootSignatureState.h>
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
+#include <Backends/DX12/CommandList.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -362,7 +363,7 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     device->sguidHost->Commit(bridge.GetUnsafe());
 
     // Set the enabled feature bit set
-    // SetDeviceCommandFeatureSetAndCommit(table, batch->featureBitSet);
+    SetDeviceCommandFeatureSetAndCommit(device, batch->featureBitSet);
 
     // Diagnostic
 #if LOG_INSTRUMENTATION

@@ -309,8 +309,8 @@ public:
     /// Compile the PRMT handles
     void CreatePRMTHandle(const DXJob& job);
 
-    /// Compile the user resource handles
-    void CreateUserResourceHandles(const DXJob& job);
+    /// Compile the shader data handles
+    void CreateShaderDataHandles(const DXJob& job);
 
     /// Compile the descriptor data handles
     void CreateDescriptorHandle(const DXJob& job);

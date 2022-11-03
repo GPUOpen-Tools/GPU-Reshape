@@ -4,7 +4,7 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/States/RootSignaturePhysicalMapping.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
-#include <Backends/DX12/Resource/ShaderResourceHost.h>
+#include <Backends/DX12/ShaderData/ShaderDataHost.h>
 
 // Common
 #include <Common/Hash.h>
@@ -66,7 +66,7 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
 
     // Get number of resources
     uint32_t resourceCount{0};
-    state->resourceHost->Enumerate(&resourceCount, nullptr);
+    state->shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
 
     // Set base register for shader exports
     bindingInfo.shaderResourceBaseRegister = registerOffset;
@@ -234,7 +234,7 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
             .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
         },
 
-        // User resource range
+        // Shader Data range
         {
             .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
             .NumDescriptors = outRoot->shaderResourceCount,

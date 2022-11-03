@@ -4,6 +4,18 @@
 #include <Backends/DX12/DX12.h>
 #include <Backends/DX12/Layer.h>
 
+// Forward declarations
+struct DeviceState;
+
+/// Create all device command proxies
+/// \param state
+void CreateDeviceCommandProxies(DeviceState* state);
+
+/// Set the feature set
+/// \param state
+/// \param featureSet
+void SetDeviceCommandFeatureSetAndCommit(DeviceState* state, uint64_t featureSet);
+
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreateCommandQueue(ID3D12Device*, const D3D12_COMMAND_QUEUE_DESC*, const IID&, void**);
 HRESULT WINAPI HookID3D12CommandQueueGetDevice(ID3D12CommandQueue* _this, REFIID riid, void **ppDevice);

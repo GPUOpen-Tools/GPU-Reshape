@@ -19,7 +19,7 @@ public:
 
     FeatureHookTable GetHookTable() final {
         FeatureHookTable table{};
-        table.drawIndexed = BindDelegate(this, TestFeatureHook::OnDrawIndexed);
+        table.drawIndexedInstanced = BindDelegate(this, TestFeatureHook::OnDrawIndexed);
         return table;
     }
 
@@ -34,7 +34,7 @@ public:
     uint32_t testIndexCount = 0;
 
 protected:
-    void OnDrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
+    void OnDrawIndexed(CommandContext* context, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
         testIndexCount = indexCount;
     }
 };
@@ -44,7 +44,7 @@ TEST_CASE("Backend.FeatureHook") {
 
     FeatureHookTable table = feature.GetHookTable();
 
-    table.drawIndexed.Invoke(5, 0, 0, 0, 0);
+    table.drawIndexedInstanced.Invoke(nullptr, 5, 0, 0, 0, 0);
     REQUIRE(feature.testIndexCount == 5);
 }
 
@@ -56,7 +56,7 @@ public:
 
     FeatureHookTable GetHookTable() final {
         FeatureHookTable table{};
-        table.drawIndexed = BindDelegate(this, TestFeatureMessage::OnDrawIndexed);
+        table.drawIndexedInstanced = BindDelegate(this, TestFeatureMessage::OnDrawIndexed);
         return table;
     }
 
@@ -71,7 +71,7 @@ public:
     MessageStream messages;
 
 protected:
-    void OnDrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
+    void OnDrawIndexed(CommandContext* context, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
         if (!indexCount || !instanceCount) {
             MessageStreamView<EmptyDrawCommandMessage> view(messages);
 
@@ -86,10 +86,10 @@ TEST_CASE("Backend.FeatureMessage") {
     TestFeatureMessage feature;
 
     FeatureHookTable table = feature.GetHookTable();
-    table.drawIndexed.Invoke(5, 1, 0, 0, 0);
-    table.drawIndexed.Invoke(5, 0, 0, 0, 0);
-    table.drawIndexed.Invoke(0, 1, 0, 0, 0);
-    table.drawIndexed.Invoke(5, 1, 0, 0, 0);
+    table.drawIndexedInstanced.Invoke(nullptr, 5, 1, 0, 0, 0);
+    table.drawIndexedInstanced.Invoke(nullptr, 5, 0, 0, 0, 0);
+    table.drawIndexedInstanced.Invoke(nullptr, 0, 1, 0, 0, 0);
+    table.drawIndexedInstanced.Invoke(nullptr, 5, 1, 0, 0, 0);
 
     OrderedMessageStorage storage;
     feature.CollectMessages(&storage);
@@ -125,7 +125,7 @@ public:
 
     FeatureHookTable GetHookTable() final {
         FeatureHookTable table{};
-        table.drawIndexed = BindDelegate(this, TestFeatureDynamicMixed::OnDrawIndexed);
+        table.drawIndexedInstanced = BindDelegate(this, TestFeatureDynamicMixed::OnDrawIndexed);
         return table;
     }
 
@@ -142,7 +142,7 @@ public:
     MessageStream complexMessages;
 
 protected:
-    void OnDrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
+    void OnDrawIndexed(CommandContext* context, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
         if (!indexCount || !instanceCount) {
             MessageStreamView<EmptyDrawCommandMessage> view(emptyDrawMessages);
 
@@ -164,10 +164,10 @@ TEST_CASE("Backend.FeatureMessageDynamicMixed") {
     TestFeatureDynamicMixed feature;
 
     FeatureHookTable table = feature.GetHookTable();
-    table.drawIndexed.Invoke(5, 1, 0, 0, 0);
-    table.drawIndexed.Invoke(5, 0, 0, 0, 0);
-    table.drawIndexed.Invoke(0, 1, 0, 0, 0);
-    table.drawIndexed.Invoke(5, 1, 0, 0, 0);
+    table.drawIndexedInstanced.Invoke(nullptr, 5, 1, 0, 0, 0);
+    table.drawIndexedInstanced.Invoke(nullptr, 5, 0, 0, 0, 0);
+    table.drawIndexedInstanced.Invoke(nullptr, 0, 1, 0, 0, 0);
+    table.drawIndexedInstanced.Invoke(nullptr, 5, 1, 0, 0, 0);
 
     OrderedMessageStorage storage;
     feature.CollectMessages(&storage);

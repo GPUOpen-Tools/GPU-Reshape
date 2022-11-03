@@ -4,7 +4,7 @@
 #include <Backends/DX12/States/ShaderState.h>
 
 // Backend
-#include <Backend/Resource/ShaderResourceInfo.h>
+#include <Backend/ShaderData/ShaderDataInfo.h>
 
 // Common
 #include <Common/IComponent.h>
@@ -70,8 +70,8 @@ private:
     /// All features
     std::vector<ComRef<IShaderFeature>> shaderFeatures;
 
-    /// All resources
-    std::vector<ShaderResourceInfo> resources;
+    /// All data
+    std::vector<ShaderDataInfo> shaderData;
 
     /// Number of exports
     uint32_t exportCount{0};

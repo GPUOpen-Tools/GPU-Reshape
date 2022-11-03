@@ -19,7 +19,7 @@
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
-#include <Backends/DX12/Resource/ShaderResourceHost.h>
+#include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 #include <Backends/DX12/Layer.h>
 
@@ -69,6 +69,31 @@ static bool PoolAndInstallFeatures(DeviceState* state) {
     }
 
     return true;
+}
+
+static void CreateEventRemappingTable(DeviceState* state) {
+    // All data
+    std::vector<ShaderDataInfo> data;
+
+    // Pool feature count
+    uint32_t dataCount;
+    state->shaderDataHost->Enumerate(&dataCount, nullptr, ShaderDataType::Event);
+
+    // Pool features
+    data.resize(dataCount);
+    state->shaderDataHost->Enumerate(&dataCount, data.data(), ShaderDataType::Event);
+
+    // Current offset
+    uint32_t offset = 0;
+
+    // Populate table
+    for (const ShaderDataInfo& info : data) {
+        if (info.id >= state->eventRemappingTable.Size()) {
+            state->eventRemappingTable.Resize(info.id + 1);
+        }
+
+        state->eventRemappingTable[info.id] = offset;
+    }
 }
 
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
@@ -141,12 +166,18 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         state->sguidHost = state->registry.AddNew<ShaderSGUIDHost>(state);
         ENSURE(state->sguidHost->Install(), "Failed to install shader sguid host");
 
-        // Install the shader resource host
-        state->resourceHost = state->registry.AddNew<ShaderResourceHost>(state);
-        ENSURE(state->resourceHost->Install(), "Failed to install shader resource host");
+        // Install the shader data host
+        state->shaderDataHost = state->registry.AddNew<ShaderDataHost>(state);
+        ENSURE(state->shaderDataHost->Install(), "Failed to install shader data host");
 
         // Install all features
         ENSURE(PoolAndInstallFeatures(state), "Failed to install features");
+
+        // Create remapping table
+        CreateEventRemappingTable(state);
+
+        // Create the proxies / associations between the backend DX12 commands and the features
+        CreateDeviceCommandProxies(state);
 
         // Install shader debug
 #if SHADER_COMPILER_DEBUG

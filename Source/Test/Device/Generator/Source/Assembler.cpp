@@ -88,10 +88,35 @@ void Assembler::AssembleConstraints() {
             inits << "\t\t{\n";
             inits << "\t\t\t" << assembleInfo.program << "MessageInfo& msg = messages.emplace_back();\n";
             inits << "\t\t\tmsg.line = " << message.line << ";\n";
-            inits << "\t\t\tmsg.count = " << message.count << ";\n";
+            inits << "\t\t\tmsg.literal = " << message.checkLiteral << ";\n";
+
+            switch (message.checkMode) {
+                default:
+                    ASSERT(false, "Invalid check mode");
+                case MessageCheckMode::Equal:
+                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a == b; };\n";
+                    break;
+                case MessageCheckMode::NotEqual:
+                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a != b; };\n";
+                    break;
+                case MessageCheckMode::Greater:
+                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a > b; };\n";
+                    break;
+                case MessageCheckMode::GreaterEqual:
+                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a >= b; };\n";
+                    break;
+                case MessageCheckMode::Less:
+                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a < b; };\n";
+                    break;
+                case MessageCheckMode::LessEqual:
+                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a <= b; };\n";
+                    break;
+            }
+
             for (const ProgramMessageAttribute &attr: message.attributes) {
                 inits << "\t\t\tmsg." << attr.name << " = " << attr.value << ";\n";
             }
+
             inits << "\t\t}\n";
         }
 
@@ -125,12 +150,14 @@ void Assembler::AssembleConstraints() {
         validate << "\t\t" << kv.first << "Constraint->Validate();\n";
     }
 
-    // Generate command
-    commands << "\t\tdevice->Dispatch(commandBuffer, ";
-    commands << program.invocation.groupCountX << ", ";
-    commands << program.invocation.groupCountY << ", ";
-    commands << program.invocation.groupCountZ;
-    commands << ");\n";
+    // Generate commands
+    for (const ProgramInvocation& invocation : program.invocations) {
+        commands << "\t\tdevice->Dispatch(commandBuffer, ";
+        commands << invocation.groupCountX << ", ";
+        commands << invocation.groupCountY << ", ";
+        commands << invocation.groupCountZ;
+        commands << ");\n";
+    }
 
     // Replace
     testTemplate.Substitute("$CONSTRAINT_INSTALL", install.str().c_str());

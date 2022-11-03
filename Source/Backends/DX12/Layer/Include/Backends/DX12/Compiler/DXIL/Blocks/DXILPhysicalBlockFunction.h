@@ -148,9 +148,9 @@ private:
     /// \param block appended block
     void CreatePRMTHandle(const DXJob &job, struct LLVMBlock* block);
 
-    /// Create the user resource handles
+    /// Create the shader data handles
     /// \param block appended block
-    void CreateUserResourceHandle(const DXJob &job, struct LLVMBlock* block);
+    void CreateShaderDataHandle(const DXJob &job, struct LLVMBlock* block);
 
     /// Create the descriptor handle
     /// \param block appended block

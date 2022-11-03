@@ -19,6 +19,7 @@ add_executable(
     Generator/Source/DeepCopyImpl.cpp
     Generator/Source/DXILTables.cpp
     Generator/Source/DXILIntrinsics.cpp
+    Generator/Source/FeatureProxies.cpp
 )
 
 # IDE source discovery
@@ -59,6 +60,7 @@ set(TableTemplate                      ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(VTableTemplate                     ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/VTable.cppt)
 set(DXILTemplate                       ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DXIL.ht)
 set(DXILIntrinsicsTemplate             ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DXILIntrinsics.ht)
+set(FeatureProxiesTemplate             ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/FeatureProxies.ht)
 
 # Resource Paths
 set(HooksSpec    ${CMAKE_CURRENT_SOURCE_DIR}/Layer/Resources/Hooks.json)
@@ -108,6 +110,23 @@ add_custom_command(
         -hooksjson ${HooksSpec}
         -d3d12h ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Resources/D3D12Specification.h
         -o ${Specification}
+)
+
+# Generate the feature proxies
+add_custom_command(
+    OUTPUT Layer/Include/Backends/DX12/FeatureProxies.Gen.h
+    DEPENDS Backends.DX12.Generator
+    DEPENDS
+        ${FeatureProxiesTemplate}
+        ${Specification}
+        ${DXILRST}
+    COMMAND Backends.DX12.Generator
+        -template ${FeatureProxiesTemplate}
+        -dxilrst ${DXILRST}
+        -specjson ${Specification}
+        -hooksjson ${HooksSpec}
+        -gentype featureproxies
+        -o Layer/Include/Backends/DX12/FeatureProxies.Gen.h
 )
 
 # Generate the detour header
@@ -305,7 +324,7 @@ add_library(
     Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
-    Layer/Source/Resource/ShaderResourceHost.cpp
+    Layer/Source/ShaderData/ShaderDataHost.cpp
     Layer/Source/IncrementalFence.cpp
 
     # Generated source dependencies
@@ -315,6 +334,7 @@ add_library(
     # Generated header dependencies
     Layer/Include/Backends/DX12/Compiler/DXIL/DXIL.Gen.h
     Layer/Include/Backends/DX12/Compiler/DXIL/Intrinsic/DXILIntrinsics.Gen.h
+    Layer/Include/Backends/DX12/FeatureProxies.Gen.h
     Layer/Include/Backends/DX12/Detour.Gen.h
     Layer/Include/Backends/DX12/Table.Gen.h
     Layer/Include/Backends/DX12/DeepCopy.Gen.h

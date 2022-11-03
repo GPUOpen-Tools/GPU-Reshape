@@ -4,8 +4,8 @@
 #include <Backends/DX12/Allocation/Allocation.h>
 
 // Backend
-#include <Backend/Resource/IShaderResourceHost.h>
-#include <Backend/Resource/ShaderResourceInfo.h>
+#include <Backend/ShaderData/IShaderDataHost.h>
+#include <Backend/ShaderData/ShaderDataInfo.h>
 
 // Std
 #include <vector>
@@ -14,9 +14,9 @@
 // Forward declarations
 struct DeviceState;
 
-class ShaderResourceHost final : public IShaderResourceHost {
+class ShaderDataHost final : public IShaderDataHost {
 public:
-    explicit ShaderResourceHost(DeviceState* table);
+    explicit ShaderDataHost(DeviceState* table);
 
     /// Install this host
     /// \return success state
@@ -28,14 +28,15 @@ public:
     void CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescriptorHandle, uint32_t stride);
 
     /// Overrides
-    ShaderResourceID CreateBuffer(const ShaderBufferInfo &info) override;
-    void DestroyBuffer(ShaderResourceID rid) override;
-    void Enumerate(uint32_t *count, ShaderResourceInfo *out) override;
+    ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info) override;
+    ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;
+    void Destroy(ShaderDataID rid) override;
+    void Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
 
 private:
     struct ResourceEntry {
         Allocation allocation;
-        ShaderResourceInfo info;
+        ShaderDataInfo info;
     };
 
 private:
@@ -46,7 +47,7 @@ private:
     std::mutex mutex;
 
     /// Free indices to be used immediately
-    std::vector<ShaderResourceID> freeIndices;
+    std::vector<ShaderDataID> freeIndices;
 
     /// All indices, sparsely populated
     std::vector<uint32_t> indices;

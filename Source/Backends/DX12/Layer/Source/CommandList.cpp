@@ -9,7 +9,27 @@
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
+#include <Backend/IFeature.h>
 #include <Backends/DX12/IncrementalFence.h>
+
+void CreateDeviceCommandProxies(DeviceState *state) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(state->features.size()); i++) {
+        const ComRef<IFeature>& feature = state->features[i];
+
+        // Get the hook table
+        FeatureHookTable hookTable = feature->GetHookTable();
+
+        // Create all relevant proxies
+        if (hookTable.dispatch.IsValid()) {
+            state->commandListProxies.featureHooks_Dispatch[i] = hookTable.dispatch;
+            state->commandListProxies.featureBitSetMask_Dispatch |= (1ull << i);
+        }
+    }
+}
+
+void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet) {
+    state->commandListProxies.featureBitSet_Dispatch = state->commandListProxies.featureBitSetMask_Dispatch & featureSet;
+}
 
 HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COMMAND_QUEUE_DESC *desc, const IID &riid, void **pCommandQueue) {
     auto table = GetTable(device);
@@ -122,6 +142,27 @@ static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState
     return nullptr;
 }
 
+static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D12PipelineState* initialState, bool isHotSwap) {
+    // Inform the streamer
+    device->exportStreamer->BeginCommandList(state->streamState, state);
+
+    // Inform the streamer of a new pipeline
+    if (initialState) {
+        device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), isHotSwap, state);
+    }
+
+    // Copy proxy table
+    state->proxies = device->commandListProxies;
+    state->proxies.context = &state->userContext;
+
+    // Pass down the controller
+    device->instrumentationController->BeginCommandList();
+
+    // Cleanup user context
+    state->userContext.eventStack.Flush();
+    state->userContext.eventStack.SetRemapping(device->eventRemappingTable);
+}
+
 HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *allocator, ID3D12PipelineState *initialState, const IID &riid, void **pCommandList) {
     auto table = GetTable(device);
 
@@ -156,16 +197,8 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
         // Create export state
         state->streamState = table.state->exportStreamer->AllocateStreamState();
 
-        // Inform the streamer
-        table.state->exportStreamer->BeginCommandList(state->streamState, state);
-
-        // Inform the streamer of a new pipeline
-        if (initialState) {
-            table.state->exportStreamer->BindPipeline(state->streamState, GetState(initialState), hotSwap != nullptr, state);
-        }
-
-        // Pass down the controller
-        table.state->instrumentationController->BeginCommandList();
+        // Handle sub-systems
+        BeginCommandList(table.state, state, initialState, hotSwap != nullptr);
     }
 
     // Cleanup
@@ -193,13 +226,8 @@ HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12Command
         return result;
     }
 
-    // Inform the streamer
-    device.state->exportStreamer->BeginCommandList(table.state->streamState, table.state);
-
-    // Inform the streamer
-    if (state) {
-        device.state->exportStreamer->BindPipeline(table.state->streamState, GetState(state), hotSwap != nullptr, table.state);
-    }
+    // Handle sub-systems
+    BeginCommandList(device.state, table.state, state, hotSwap != nullptr);
 
     // OK
     return S_OK;
@@ -364,14 +392,60 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
     table.bottom->next_ResourceBarrier(table.next, NumBarriers, barriers);
 }
 
+static void CommitGraphics(DeviceState* device, CommandListState* list) {
+    // Inform the streamer
+    device->exportStreamer->CommitGraphics(list->streamState, list);
+
+    // TODO: Update the event data in batches
+    if (uint64_t bitMask = list->userContext.eventStack.GetGraphicsDirtyMask()) {
+        unsigned long index;
+        while (_BitScanReverse64(&index, bitMask)) {
+            list->object->SetGraphicsRoot32BitConstant(
+                list->streamState->pipeline->signature->userRootCount + 2u,
+                list->userContext.eventStack.GetData()[index],
+                index
+            );
+
+            // Next!
+            bitMask &= ~(1ull << index);
+        }
+
+        // Cleanup
+        list->userContext.eventStack.FlushGraphics();
+    }
+}
+
+static void CommitCompute(DeviceState* device, CommandListState* list) {
+    // Inform the streamer
+    device->exportStreamer->CommitCompute(list->streamState, list);
+
+    // TODO: Update the event data in batches
+    if (uint64_t bitMask = list->userContext.eventStack.GetComputeDirtyMask()) {
+        unsigned long index;
+        while (_BitScanReverse64(&index, bitMask)) {
+            list->object->SetComputeRoot32BitConstant(
+                list->streamState->pipeline->signature->userRootCount + 2u,
+                list->userContext.eventStack.GetData()[index],
+                index
+            );
+
+            // Next!
+            bitMask &= ~(1ull << index);
+        }
+
+        // Cleanup
+        list->userContext.eventStack.FlushCompute();
+    }
+}
+
 void WINAPI HookID3D12CommandListDrawInstanced(ID3D12CommandList* list, UINT VertexCountPerInstance, UINT InstanceCount, UINT StartVertexLocation, UINT StartInstanceLocation) {
     auto table = GetTable(list);
 
     // Get device
     auto device = GetTable(table.state->parent);
 
-    // Inform the streamer
-    device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state);
+    // Commit all pending graphics
+    CommitGraphics(device.state, table.state);
 
     // Pass down callchain
     table.next->DrawInstanced(VertexCountPerInstance, InstanceCount, StartVertexLocation, StartInstanceLocation);
@@ -383,8 +457,8 @@ void WINAPI HookID3D12CommandListDrawIndexedInstanced(ID3D12CommandList* list, U
     // Get device
     auto device = GetTable(table.state->parent);
 
-    // Inform the streamer
-    device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state);
+    // Commit all pending graphics
+    CommitGraphics(device.state, table.state);
 
     // Pass down callchain
     table.next->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
@@ -396,8 +470,8 @@ void WINAPI HookID3D12CommandListDispatch(ID3D12CommandList* list, UINT ThreadGr
     // Get device
     auto device = GetTable(table.state->parent);
 
-    // Inform the streamer
-    device.state->exportStreamer->CommitCompute(table.state->streamState, table.state);
+    // Commit all pending compute
+    CommitCompute(device.state, table.state);
 
     // Pass down callchain
     table.next->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);

@@ -1,5 +1,5 @@
 #include <Backends/DX12/Export/ShaderExportDescriptorLayout.h>
-#include <Backends/DX12/Resource/ShaderResourceHost.h>
+#include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/States/DeviceState.h>
 
@@ -24,9 +24,9 @@ void ShaderExportDescriptorLayout::Install(DeviceState *device, uint32_t stride)
 
     // Number of resources
     uint32_t resourceCount;
-    device->resourceHost->Enumerate(&resourceCount, nullptr);
+    device->shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::DescriptorMask);
 
-    // User resources, each take a slot
-    userResourceOffset = descriptorOffset;
+    // Shader Datas, each take a slot
+    shaderDataOffset = descriptorOffset;
     descriptorOffset += descriptorStride * resourceCount;
 }

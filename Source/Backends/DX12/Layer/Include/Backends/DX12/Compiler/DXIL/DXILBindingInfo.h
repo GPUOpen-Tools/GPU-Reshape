@@ -23,8 +23,8 @@ struct DXILBindingInfo {
     /// Handle for event data
     uint32_t eventConstantsHandleId{};
 
-    /// Handle for user resources
-    uint32_t userResourceHandleId{};
+    /// Handle for shader datas
+    uint32_t shaderDataHandleId{};
 
     /// Pipeline binding info
     RootRegisterBindingInfo bindingInfo{};

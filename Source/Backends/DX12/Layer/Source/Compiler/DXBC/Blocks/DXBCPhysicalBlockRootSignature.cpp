@@ -109,9 +109,6 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         prmtRange.flags = 0x0;
         prmtRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-        // Get resources
-        IL::UserResourceMap& userResourceMap = table.dxilModule->GetProgram()->GetUserResourceMap();
-
         // Create user range
         DXBCRootSignatureDescriptorRange1& userRange = parameter.descriptorTable.ranges.emplace_back();
         userRange.type = DXBCRootSignatureRangeType::UAV;

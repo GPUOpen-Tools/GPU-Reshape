@@ -2,6 +2,10 @@
 
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
+#include <Backends/DX12/FeatureProxies.Gen.h>
+
+// Backend
+#include <Backend/CommandContext.h>
 
 // Common
 #include <Common/Allocators.h>
@@ -25,6 +29,12 @@ struct CommandListState {
 
     /// Current descriptor state
     DescriptorDataAppendAllocator* descriptorAllocator{nullptr};
+
+    /// All contained proxies
+    ID3D12GraphicsCommandListFeatureProxies proxies;
+
+    /// User context
+    CommandContext userContext;
 
     /// Object
     ID3D12GraphicsCommandList* object{nullptr};

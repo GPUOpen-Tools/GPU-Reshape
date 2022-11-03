@@ -11,6 +11,15 @@ struct ProgramInvocation {
     int64_t groupCountZ{0};
 };
 
+enum class MessageCheckMode {
+    Equal,
+    NotEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual
+};
+
 struct ProgramCheck {
     std::string_view str;
 };
@@ -27,8 +36,11 @@ struct ProgramMessage {
     /// Schema type of the message
     std::string_view type;
 
-    /// Expected number of messages
-    int64_t count{1};
+    /// Message check literal
+    int64_t checkLiteral{1};
+
+    /// Message check mode
+    MessageCheckMode checkMode{MessageCheckMode::Equal};
 
     /// Line in which it occurs
     int64_t line{0};
@@ -41,8 +53,8 @@ struct Program {
     /// Kernel info
     Kernel kernel;
 
-    /// Expected invocation
-    ProgramInvocation invocation;
+    /// Expected invocations
+    std::vector<ProgramInvocation> invocations;
 
     /// All schemas to include
     std::vector<std::string_view> schemas;

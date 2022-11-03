@@ -164,13 +164,17 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         // Hooked?
         if (info.hooks.count(prototypeName->GetText())) {
             hooks << "\tApplyFeatureHook<FeatureHook_" << prototypeName->GetText() << ">(\n";
+            hooks << "\t\tnullptr,\n";
             hooks << "\t\t" << wrappedObject << "->dispatchTable.featureBitSet_" << prototypeName->GetText() << ",\n";
             hooks << "\t\t" << wrappedObject << "->dispatchTable.featureHooks_" << prototypeName->GetText() << ",\n";
             hooks << "\t\t";
 
+            // Skip first parameter
+            tinyxml2::XMLElement* firstProxyParam = firstParam->NextSiblingElement("param");
+
             // Generate arguments
             parameterIndex = 0;
-            for (tinyxml2::XMLElement *paramNode = firstParam; paramNode; paramNode = paramNode->NextSiblingElement("param"), parameterIndex++) {
+            for (tinyxml2::XMLElement *paramNode = firstProxyParam; paramNode; paramNode = paramNode->NextSiblingElement("param"), parameterIndex++) {
                 // Get the name
                 tinyxml2::XMLElement *paramName = paramNode->FirstChildElement("name");
                 if (!paramName) {
@@ -179,15 +183,12 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
                 }
 
                 // Comma
-                if (paramNode != firstParam) {
+                if (paramNode != firstProxyParam) {
                     hooks << ", ";
                 }
 
-                // Generate argument, unwrap if needed
-                if (unwrappingStates[parameterIndex])
-                    hooks << paramName->GetText() << "->object";
-                else
-                    hooks << paramName->GetText();
+                // Generate argument
+                hooks << paramName->GetText();
             }
 
             hooks << "\n\t);\n\n";

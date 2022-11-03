@@ -7,9 +7,11 @@
 #include <Backends/DX12/Compiler/ShaderSet.h>
 #include <Backends/DX12/Resource/HeapTable.h>
 #include <Backends/DX12/Resource/PhysicalResourceIdentifierMap.h>
+#include <Backends/DX12/FeatureProxies.Gen.h>
 
 // Backend
 #include <Backend/Environment.h>
+#include <Backend/EventDataStack.h>
 
 // Bridge
 #include <Bridge/Log/LogBuffer.h>
@@ -31,7 +33,7 @@ class FeatureController;
 class MetadataController;
 class IBridge;
 class ShaderExportHost;
-class ShaderResourceHost;
+class ShaderDataHost;
 class ShaderExportStreamer;
 class ShaderSGUIDHost;
 class DeviceAllocator;
@@ -56,7 +58,7 @@ struct DeviceState {
 
     /// Shared hosts
     ComRef<ShaderExportHost> exportHost;
-    ComRef<ShaderResourceHost> resourceHost;
+    ComRef<ShaderDataHost> shaderDataHost;
 
     /// Shared export streamer
     ComRef<ShaderExportStreamer> exportStreamer;
@@ -85,6 +87,12 @@ struct DeviceState {
     ComRef<InstrumentationController> instrumentationController{nullptr};
     ComRef<FeatureController> featureController{nullptr};
     ComRef<MetadataController> metadataController{nullptr};
+
+    /// Shared remapping table
+    EventDataStack::RemappingTable eventRemappingTable;
+
+    /// Pre-populated proxies
+    ID3D12GraphicsCommandListFeatureProxies commandListProxies;
 
     /// Shared logging buffer
     LogBuffer logBuffer;

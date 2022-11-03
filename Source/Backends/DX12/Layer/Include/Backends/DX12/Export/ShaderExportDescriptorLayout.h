@@ -32,10 +32,10 @@ public:
         return D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = base.ptr + prmtOffset};
     }
 
-    /// Get the user resource handle
+    /// Get the shader data handle
     /// \param base base address
-    D3D12_CPU_DESCRIPTOR_HANDLE GetUserResource(D3D12_CPU_DESCRIPTOR_HANDLE base, uint32_t index) {
-        return D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = base.ptr + userResourceOffset + descriptorStride * index};
+    D3D12_CPU_DESCRIPTOR_HANDLE GetShaderData(D3D12_CPU_DESCRIPTOR_HANDLE base, uint32_t index) {
+        return D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = base.ptr + shaderDataOffset + descriptorStride * index};
     }
 
     /// Get the number of descriptors
@@ -59,6 +59,6 @@ private:
     /// Offset to the PRMT data
     uint32_t prmtOffset{0};
 
-    /// Offset to the user resources
-    uint32_t userResourceOffset{0};
+    /// Offset to the shader datas
+    uint32_t shaderDataOffset{0};
 };

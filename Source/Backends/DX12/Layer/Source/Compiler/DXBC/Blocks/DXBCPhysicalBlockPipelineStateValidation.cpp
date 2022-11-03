@@ -148,25 +148,33 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
         }
     });
 
-    // Get resources
-    IL::UserResourceMap& userResourceMap = table.dxilModule->GetProgram()->GetUserResourceMap();
+    // Get shader data
+    IL::ShaderDataMap& shaderDataMap = table.dxilModule->GetProgram()->GetShaderDataMap();
+
+    // Current data offset
+    uint32_t dataOffset{0};
 
     // Create bind info per resource
-    for (auto it = userResourceMap.begin(); it != userResourceMap.end(); it++) {
-        uint32_t registerOffset = it - userResourceMap.begin();
+    for (auto it = shaderDataMap.begin(); it != shaderDataMap.end(); it++) {
+        if (!(it->type & ShaderDataType::DescriptorMask)) {
+            continue;
+        }
 
         uavs.Add(DXBCPSVBindInfoRevision1 {
             .info0 = DXBCPSVBindInfo0{
                 .type = DXBCPSVBindInfoType::UnorderedAccessView,
                 .space = bindingInfo.space,
-                .low = bindingInfo.shaderResourceBaseRegister + registerOffset,
-                .high = bindingInfo.shaderResourceBaseRegister + registerOffset
+                .low = bindingInfo.shaderResourceBaseRegister + dataOffset,
+                .high = bindingInfo.shaderResourceBaseRegister + dataOffset
             },
             .info1 = DXBCPSVBindInfo1{
                 .kind = DXBCPSVBindInfoKind::TypedBuffer,
                 .flags = 0
             }
         });
+
+        // Next
+        dataOffset++;
     }
 
     // Emit runtime info with the original size

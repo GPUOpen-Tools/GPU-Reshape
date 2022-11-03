@@ -36,13 +36,13 @@ static void WrapClassBaseQuery(const GeneratorInfo &info, ObjectWrappersState& s
 }
 
 /// Wrap all class methods
-static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &state, const std::string &key, const std::string& consumerKey, const nlohmann::json &hooks, const nlohmann::json &obj) {
+static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &state, const std::string &key, const std::string& consumerKey, const nlohmann::json &objDecl, const nlohmann::json &obj) {
     // For all bases
     for (auto&& base : obj["bases"]) {
         auto&& baseInterface = info.specification["interfaces"][base.get<std::string>()];
 
         // Wrap base image
-        WrapClassMethods(info, state, key, consumerKey, hooks, baseInterface);
+        WrapClassMethods(info, state, key, consumerKey, objDecl, baseInterface);
     }
 
     // Get the outer revision
@@ -86,7 +86,7 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
 
         // Check if this wrapper is hooked
         bool isHooked{false};
-        for (auto hook: hooks) {
+        for (auto hook: objDecl["hooks"]) {
             isHooked |= hook.get<std::string>() == methodName;
         }
 
@@ -107,6 +107,37 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
 
         // Hooked?
         if (isHooked) {
+            if (objDecl.contains("proxies")) {
+                bool isProxied{false};
+
+                // Check if it exists in the shared list
+                for (auto proxy : objDecl["proxies"]) {
+                    isProxied |= proxy.get<std::string>() == methodName;
+                }
+
+                // Proxied hook?
+                if (isProxied) {
+                    // Pass down to next object
+                    state.hooks << "\t\tApplyFeatureHook<FeatureHook_" << methodName << ">(\n";
+                    state.hooks << "\t\t\tstate->proxies.context,\n";
+                    state.hooks << "\t\t\tstate->proxies.featureBitSet_" << methodName << ",\n";
+                    state.hooks << "\t\t\tstate->proxies.featureHooks_" << methodName << ",\n";
+                    state.hooks << "\t\t\t";
+
+                    // Unwrap arguments
+                    for (size_t i = 0; i < parameters.size(); i++) {
+                        if (i != 0) {
+                            state.hooks << ", ";
+                        }
+
+                        state.hooks << "Unwrap(" << parameters[i]["name"].get<std::string>() << ")";
+                    }
+
+                    // End call
+                    state.hooks << "\n\t\t);\n\n";
+                }
+            }
+
             // Print return if needed
             if (isStructRet || method["returnType"]["type"] == "void") {
                 state.hooks << "\t";
@@ -224,7 +255,6 @@ static bool WrapClass(const GeneratorInfo &info, ObjectWrappersState &state, con
     std::string outerRevision = GetOuterRevision(info, key);
 
     // Common
-    auto&& hooks = obj["hooks"];
     auto &&interfaces = info.specification["interfaces"];
 
     // Get vtable
@@ -254,7 +284,7 @@ static bool WrapClass(const GeneratorInfo &info, ObjectWrappersState &state, con
     state.hooks << "\tstd::atomic<int64_t> users{1};\n\n";
 
     // Generate methods
-    if (!WrapClassMethods(info, state, key, consumerKey, hooks, objInterface)) {
+    if (!WrapClassMethods(info, state, key, consumerKey, obj, objInterface)) {
         return false;
     }
 

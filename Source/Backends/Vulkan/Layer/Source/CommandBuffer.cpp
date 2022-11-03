@@ -17,8 +17,8 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
         FeatureHookTable hookTable = feature->GetHookTable();
 
         // Create all relevant proxies
-        if (hookTable.drawIndexed.IsValid()) {
-            table->commandBufferDispatchTable.featureHooks_vkCmdDrawIndexed[i] = hookTable.drawIndexed;
+        if (hookTable.drawIndexedInstanced.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdDrawIndexed[i] = hookTable.drawIndexedInstanced;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexed |= (1ull << i);
         }
     }

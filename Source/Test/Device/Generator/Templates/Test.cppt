@@ -32,6 +32,9 @@ $DEFINES
 // Common
 #include <Common/Registry.h>
 
+// Std
+#include <functional>
+
 // Shared schemas
 #include <Schemas/Config.h>
 #include <Schemas/Instrumentation.h>
