@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <TargetCulture>en</TargetCulture>
+        <Nullable>enable</Nullable>
+        <Configurations>Debug;Release</Configurations>
+        <Platforms>x64</Platforms>
+        <PublishTrimmed>true</PublishTrimmed>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AssemblyName>Features.Concurrency.UIX</AssemblyName>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <DebugType>none</DebugType>
+        <OutputPath>..\..\..\..\..\Bin\MSVC\Release\</OutputPath>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <OutputPath>..\..\..\..\..\Bin\MSVC\Debug\</OutputPath>
+    </PropertyGroup>
+    <ItemGroup>
+        <None Remove=".gitignore" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Avalonia" Version="0.10.14" />
+      <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.14" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="UIX.Studio.Runtime">
+            <HintPath>$(OutputPath)\UIX.Studio.Runtime.dll</HintPath>
+        </Reference>
+        <Reference Include="Features.Concurrency.Backend.DotNet">
+            <HintPath>$(OutputPath)\Features.Concurrency.Backend.DotNet.dll</HintPath>
+        </Reference>
+        <Reference Include="Libraries.Bridge.DotNet">
+            <HintPath>$(OutputPath)\Libraries.Bridge.DotNet.dll</HintPath>
+        </Reference>
+        <Reference Include="Libraries.Message.DotNet">
+            <HintPath>$(OutputPath)\Libraries.Message.DotNet.dll</HintPath>
+        </Reference>
+        <Reference Include="Libraries.Backend.Schema.DotNet">
+            <HintPath>$(OutputPath)\Libraries.Backend.Schema.DotNet.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <UpToDateCheckInput Remove="Themes\DefaultStyle.axaml" />
+      <UpToDateCheckInput Remove="Themes\WorkspacePropertyView.axaml" />
+      <UpToDateCheckInput Remove="Views\ConnectWindow.axaml" />
+      <UpToDateCheckInput Remove="Views\Controls\ContextMenuView.axaml" />
+      <UpToDateCheckInput Remove="Views\Controls\UniformViewHost.axaml" />
+      <UpToDateCheckInput Remove="Views\Controls\WorkspaceTreeItemView.axaml" />
+      <UpToDateCheckInput Remove="Views\Documents\ShaderView.axaml" />
+      <UpToDateCheckInput Remove="Views\Documents\WelcomeView.axaml" />
+      <UpToDateCheckInput Remove="Views\Documents\WorkspaceOverviewView.axaml" />
+      <UpToDateCheckInput Remove="Views\MainView.axaml" />
+      <UpToDateCheckInput Remove="Views\MainWindow.axaml" />
+      <UpToDateCheckInput Remove="Views\ProportionalStackPanelView.axaml" />
+      <UpToDateCheckInput Remove="Views\SettingsWindow.axaml" />
+      <UpToDateCheckInput Remove="Views\Tools\ConnectionView.axaml" />
+      <UpToDateCheckInput Remove="Views\Tools\LogView.axaml" />
+      <UpToDateCheckInput Remove="Views\Tools\PropertyView.axaml" />
+      <UpToDateCheckInput Remove="Views\Tools\WorkspaceView.axaml" />
+      <UpToDateCheckInput Remove="Views\Views\DashboardView.axaml" />
+      <UpToDateCheckInput Remove="Views\Views\HomeView.axaml" />
+      <UpToDateCheckInput Remove="Views\Workspace\Properties\MessageCollectionView.axaml" />
+    </ItemGroup>
+
+</Project>

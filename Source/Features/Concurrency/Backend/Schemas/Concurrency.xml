@@ -1,0 +1,5 @@
+<schema>
+    <shader-export name="ResourceRaceCondition">
+        <field name="LUID" type="uint32" bits="16"/>
+    </shader-export>
+</schema>
