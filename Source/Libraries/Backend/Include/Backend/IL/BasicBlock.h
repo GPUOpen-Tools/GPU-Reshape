@@ -437,7 +437,7 @@ namespace IL {
         /// \return inserted reference
         template<typename T, typename = std::enable_if_t<!std::is_pointer_v<T>>>
         TypedIterator<T> Append(const T &instruction) {
-            return Append(static_cast<const Instruction*>(&instruction), sizeof(T));
+            return Append(static_cast<const Instruction*>(&instruction), IL::GetSize(&instruction));
         }
 
         /// Append an instruction at a given point
@@ -453,7 +453,7 @@ namespace IL {
             size_t offset = insertion.relocationOffset->offset;
 
             auto *newPtr = reinterpret_cast<const uint8_t *>(&instr);
-            data.insert(data.begin() + offset, newPtr, newPtr + sizeof(T));
+            data.insert(data.begin() + offset, newPtr, newPtr + IL::GetSize(&instr));
 
             InstructionRef<T> ref;
             ref.basicBlock = this;

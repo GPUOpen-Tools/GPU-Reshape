@@ -624,7 +624,7 @@ namespace IL {
             case OpCode::BitCast:
                 return sizeof(BitCastInstruction);
             case OpCode::AddressChain:
-                return sizeof(AddressChainInstruction);
+                return static_cast<const AddressChainInstruction*>(instruction)->GetSize();
             case OpCode::Extract:
                 return sizeof(ExtractInstruction);
             case OpCode::Insert:
