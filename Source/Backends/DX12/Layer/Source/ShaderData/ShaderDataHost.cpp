@@ -82,10 +82,14 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
 void ShaderDataHost::Destroy(ShaderDataID rid) {
     uint32_t index = indices[rid];
 
-    // Release entry
+    // Entry to release
     ResourceEntry &entry = resources[index];
-    entry.allocation.allocation->Release();
-    entry.allocation.resource->Release();
+
+    // Release optional resource
+    if (entry.allocation.resource) {
+        entry.allocation.allocation->Release();
+        entry.allocation.resource->Release();
+    }
 
     // Not last element?
     if (index != resources.size() - 1) {

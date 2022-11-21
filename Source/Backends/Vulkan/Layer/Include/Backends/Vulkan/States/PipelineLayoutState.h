@@ -2,6 +2,7 @@
 
 // Layer
 #include "Backends/Vulkan/Vulkan.h"
+#include "PipelineLayoutBindingInfo.h"
 
 // Common
 #include "Common/Containers/ReferenceObject.h"
@@ -37,6 +38,9 @@ struct PipelineLayoutState : public ReferenceObject {
 
     /// Number of descriptor sets for the user
     uint32_t boundUserDescriptorStates{0};
+
+    /// Instrumentation binding info
+    PipelineLayoutBindingInfo bindingInfo;
 
     /// Unique identifier, unique for the type
     uint64_t uid;

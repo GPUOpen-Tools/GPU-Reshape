@@ -1,17 +1,15 @@
-#include <Backends/Vulkan/Compiler/Utils/SpvUtilShaderExport.h>
+#include <Backends/Vulkan/Compiler/Utils/SpvUtilShaderPRMT.h>
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvJob.h>
 
-SpvUtilShaderExport::SpvUtilShaderExport(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
+SpvUtilShaderPRMT::SpvUtilShaderPRMT(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
     allocators(allocators),
     program(program),
     table(table) {
 
 }
 
-void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
-    // Note: This is quite ugly, will be changed
-
+void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
     // Capability set
     table.capability.Add(SpvCapabilityImageBuffer);
 
@@ -39,7 +37,7 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
     // RWBuffer<uint>[N]
     const Backend::IL::Type *buffer32UIWWArray = ilTypeMap.FindTypeOrAdd(Backend::IL::ArrayType{
         .elementType = buffer32UIRW,
-        .count = std::max(1u, job.bindingInfo.streamDescriptorCount)
+        .count = std::max(1u, 0u)
     });
 
     // RWBuffer<uint>[N]*
@@ -78,7 +76,7 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
     SpvInstruction &spvCounterBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
     spvCounterBinding[1] = counterId;
     spvCounterBinding[2] = SpvDecorationBinding;
-    spvCounterBinding[3] = job.bindingInfo.counterDescriptorOffset;
+    spvCounterBinding[3] = 0;
 
     // Descriptor set
     SpvInstruction &spvStreamSet = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
@@ -90,10 +88,10 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
     SpvInstruction &spvStreamBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
     spvStreamBinding[1] = streamId;
     spvStreamBinding[2] = SpvDecorationBinding;
-    spvStreamBinding[3] = job.bindingInfo.streamDescriptorOffset;
+    spvStreamBinding[3] = 1;
 }
 
-void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, IL::ID value) {
+void SpvUtilShaderPRMT::Export(SpvStream &stream, uint32_t exportID, IL::ID value) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Note: This is quite ugly, will be changed
@@ -196,7 +194,7 @@ void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, IL::ID va
     write[4] = SpvImageOperandsMaskNone;
 }
 
-void SpvUtilShaderExport::CopyTo(SpvPhysicalBlockTable &remote, SpvUtilShaderExport &out) {
+void SpvUtilShaderPRMT::CopyTo(SpvPhysicalBlockTable &remote, SpvUtilShaderPRMT &out) {
     out.counterId = counterId;
     out.streamId = streamId;
     out.buffer32UIRWArrayPtr = buffer32UIRWArrayPtr;

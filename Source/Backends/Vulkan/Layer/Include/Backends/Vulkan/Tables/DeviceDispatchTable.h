@@ -1,11 +1,12 @@
 #pragma once
 
 // Layer
-#include "Backends/Vulkan/Vulkan.h"
-#include "Backends/Vulkan/VMA.h"
-#include "Backends/Vulkan/TrackedObject.h"
-#include "Backends/Vulkan/DependentObject.h"
-#include "Backends/Vulkan/DeepCopyObjects.Gen.h"
+#include <Backends/Vulkan/Vulkan.h>
+#include <Backends/Vulkan/VMA.h>
+#include <Backends/Vulkan/TrackedObject.h>
+#include <Backends/Vulkan/DependentObject.h>
+#include <Backends/Vulkan/DeepCopyObjects.Gen.h>
+#include <Backends/Vulkan/Resource/PhysicalResourceIdentifierMap.h>
 
 // Common
 #include "Common/Allocators.h"
@@ -25,6 +26,13 @@ struct InstanceDispatchTable;
 struct CommandPoolState;
 struct ShaderModuleState;
 struct DescriptorSetLayoutState;
+struct DescriptorSetState;
+struct SamplerState;
+struct BufferState;
+struct BufferViewState;
+struct ImageState;
+struct ImageViewState;
+struct SamplerState;
 struct PipelineState;
 struct PipelineLayoutState;
 struct RenderPassState;
@@ -38,6 +46,8 @@ class MetadataController;
 class ShaderExportStreamer;
 class ShaderExportDescriptorAllocator;
 class ShaderSGUIDHost;
+class ShaderDataHost;
+class PhysicalResourceMappingTable;
 
 struct DeviceDispatchTable {
     /// Add a new table
@@ -93,6 +103,12 @@ struct DeviceDispatchTable {
     TrackedObject<VkCommandPool, CommandPoolState>                 states_commandPool;
     TrackedObject<VkShaderModule, ShaderModuleState>               states_shaderModule;
     TrackedObject<VkDescriptorSetLayout, DescriptorSetLayoutState> states_descriptorSetLayout;
+    TrackedObject<VkDescriptorSet, DescriptorSetState>             states_descriptorSet;
+    TrackedObject<VkSampler, SamplerState>                         states_sampler;
+    TrackedObject<VkBuffer, BufferState>                           states_buffer;
+    TrackedObject<VkBufferView, BufferViewState>                   states_bufferView;
+    TrackedObject<VkImage, ImageState>                             states_image;
+    TrackedObject<VkImageView, ImageViewState>                     states_imageView;
     TrackedObject<VkPipelineLayout, PipelineLayoutState>           states_pipelineLayout;
     TrackedObject<VkRenderPass, RenderPassState>                   states_renderPass;
     TrackedObject<VkFence, FenceState>                             states_fence;
@@ -102,13 +118,20 @@ struct DeviceDispatchTable {
     /// Dependency objects
     DependentObject<ShaderModuleState, PipelineState> dependencies_shaderModulesPipelines;
 
+    /// Physical identifier map
+    PhysicalResourceIdentifierMap physicalResourceIdentifierMap;
+
+    /// Virtual to physical resource mapping table
+    ComRef<PhysicalResourceMappingTable> prmTable{nullptr};
+
     /// Controllers
     ComRef<InstrumentationController> instrumentationController{nullptr};
     ComRef<FeatureController> featureController{nullptr};
     ComRef<MetadataController> metadataController{nullptr};
 
-    /// SGUID
+    /// User controllers
     ComRef<ShaderSGUIDHost> sguidHost{nullptr};
+    ComRef<ShaderDataHost> dataHost{nullptr};
 
     /// Export streamer
     ComRef<ShaderExportStreamer> exportStreamer{nullptr};
@@ -158,7 +181,11 @@ struct DeviceDispatchTable {
     PFN_vkBindBufferMemory                next_vkBindBufferMemory;
     PFN_vkGetDeviceQueue                  next_vkGetDeviceQueue;
     PFN_vkCreateImage                     next_vkCreateImage;
+    PFN_vkCreateImageView                 next_vkCreateImageView;
     PFN_vkDestroyImage                    next_vkDestroyImage;
+    PFN_vkDestroyImageView                next_vkDestroyImageView;
+    PFN_vkCreateSampler                   next_vkCreateSampler;
+    PFN_vkDestroySampler                  next_vkDestroySampler;
     PFN_vkAllocateMemory                  next_vkAllocateMemory;
     PFN_vkFreeMemory                      next_vkFreeMemory;
     PFN_vkBindBufferMemory2KHR            next_vkBindBufferMemory2KHR;

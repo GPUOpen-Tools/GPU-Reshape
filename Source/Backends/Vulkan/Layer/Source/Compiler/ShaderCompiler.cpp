@@ -2,6 +2,7 @@
 #include <Backends/Vulkan/Compiler/ShaderCompilerDebug.h>
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Export/ShaderExportDescriptorAllocator.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
@@ -26,6 +27,8 @@ bool ShaderCompiler::Install() {
     if (!dispatcher) {
         return false;
     }
+
+    shaderExportDescriptorAllocator = registry->Get<ShaderExportDescriptorAllocator>();
 
     // Optional debug
     debug = registry->Get<ShaderCompilerDebug>();
@@ -134,7 +137,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Spv job
     SpvJob spvJob;
     spvJob.instrumentationKey = job.instrumentationKey;
-    spvJob.streamCount = exportCount;
+    spvJob.bindingInfo = shaderExportDescriptorAllocator->GetBindingInfo();
 
     // Recompile the program
     if (!module->Recompile(

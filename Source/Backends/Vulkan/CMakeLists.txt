@@ -155,8 +155,12 @@ add_library(
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockFunction.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockTypeConstantVariable.cpp
     Layer/Source/Compiler/Utils/SpvUtilShaderExport.cpp
+    Layer/Source/Compiler/Utils/SpvUtilShaderPRMT.cpp
     Layer/Source/Compiler/SpvPhysicalBlockScan.cpp
     Layer/Source/Compiler/SpvPhysicalBlockTable.cpp
+    Layer/Source/ShaderData/ShaderDataHost.cpp
+    Layer/Source/Resource/PhysicalResourceMappingTable.cpp
+    Layer/Source/Resource.cpp
 
     # VMA implementation
     Layer/Source/VMA.cpp

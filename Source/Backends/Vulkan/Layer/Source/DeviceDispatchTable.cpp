@@ -7,6 +7,7 @@
 #include <Backends/Vulkan/ShaderModule.h>
 #include <Backends/Vulkan/Fence.h>
 #include <Backends/Vulkan/RenderPass.h>
+#include <Backends/Vulkan/Resource.h>
 
 // Std
 #include <cstring>
@@ -64,6 +65,10 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkGetDeviceQueue = reinterpret_cast<PFN_vkGetDeviceQueue>(getDeviceProcAddr(object, "vkGetDeviceQueue"));
     next_vkCreateImage = reinterpret_cast<PFN_vkCreateImage>(getDeviceProcAddr(object, "vkCreateImage"));
     next_vkDestroyImage = reinterpret_cast<PFN_vkDestroyImage>(getDeviceProcAddr(object, "vkDestroyImage"));
+    next_vkCreateImageView = reinterpret_cast<PFN_vkCreateImageView>(getDeviceProcAddr(object, "vkCreateImageView"));
+    next_vkDestroyImageView = reinterpret_cast<PFN_vkDestroyImageView>(getDeviceProcAddr(object, "vkDestroyImageView"));
+    next_vkCreateSampler = reinterpret_cast<PFN_vkCreateSampler>(getDeviceProcAddr(object, "vkCreateSampler"));
+    next_vkDestroySampler = reinterpret_cast<PFN_vkDestroySampler>(getDeviceProcAddr(object, "vkDestroySampler"));
     next_vkAllocateMemory = reinterpret_cast<PFN_vkAllocateMemory>(getDeviceProcAddr(object, "vkAllocateMemory"));
     next_vkFreeMemory = reinterpret_cast<PFN_vkFreeMemory>(getDeviceProcAddr(object, "vkFreeMemory"));
     next_vkBindBufferMemory2KHR = reinterpret_cast<PFN_vkBindBufferMemory2KHR>(getDeviceProcAddr(object, "vkBindBufferMemory2KHR"));
@@ -171,6 +176,45 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkCreateRenderPass"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateRenderPass);
+
+    if (!std::strcmp(name, "vkAllocateDescriptorSets"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkAllocateDescriptorSets);
+
+    if (!std::strcmp(name, "vkFreeDescriptorSets"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkFreeDescriptorSets);
+
+    if (!std::strcmp(name, "vkUpdateDescriptorSets"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkUpdateDescriptorSets);
+
+    if (!std::strcmp(name, "vkCreateBuffer"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateBuffer);
+
+    if (!std::strcmp(name, "vkCreateBufferView"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateBufferView);
+
+    if (!std::strcmp(name, "vkCreateImage"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateImage);
+
+    if (!std::strcmp(name, "vkCreateImageView"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateImageView);
+
+    if (!std::strcmp(name, "vkCreateSampler"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateSampler);
+
+    if (!std::strcmp(name, "vkDestroyBuffer"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyBuffer);
+
+    if (!std::strcmp(name, "vkDestroyBufferView"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyBufferView);
+
+    if (!std::strcmp(name, "vkDestroyImage"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyImage);
+
+    if (!std::strcmp(name, "vkDestroyImageView"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyImageView);
+
+    if (!std::strcmp(name, "vkDestroySampler"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroySampler);
 
     // Check command hooks
     if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(name)) {

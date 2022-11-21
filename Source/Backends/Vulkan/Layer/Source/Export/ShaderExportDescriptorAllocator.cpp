@@ -3,8 +3,10 @@
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Export/SegmentInfo.h>
+#include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 
 // Common
+#include <Common/Containers/TrivialStackVector.h>
 #include <Common/Registry.h>
 
 // Backend
@@ -17,42 +19,82 @@ ShaderExportDescriptorAllocator::ShaderExportDescriptorAllocator(DeviceDispatchT
 }
 
 bool ShaderExportDescriptorAllocator::Install() {
-    auto host = registry->Get<IShaderExportHost>();
-    host->Enumerate(&exportBound, nullptr);
+    // Get export host
+    auto exportHost = registry->Get<IShaderExportHost>();
+    if (!exportHost) {
+        return false;
+    }
+
+    // Get number of exports
+    exportHost->Enumerate(&exportBound, nullptr);
+
+    // Get data host
+    auto dataHost = registry->Get<IShaderDataHost>();
+    if (!dataHost) {
+        return false;
+    }
+
+    // Get the number of resources
+    uint32_t dataResourceBound;
+    dataHost->Enumerate(&dataResourceBound, nullptr, ShaderDataType::DescriptorMask);
+
+    // Get all resources
+    dataResources.resize(dataResourceBound);
+    dataHost->Enumerate(&dataResourceBound, dataResources.data(), ShaderDataType::DescriptorMask);
+
+    // Descriptors for writing
+    TrivialStackVector<VkDescriptorSetLayoutBinding, 16u> bindings;
+
+    // Create the binding layout
+    CreateBindingLayout();
 
     // Binding for counter data
-    VkDescriptorSetLayoutBinding counterLayout{};
+    VkDescriptorSetLayoutBinding& counterLayout = bindings.Add({});
     counterLayout.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
     counterLayout.stageFlags = VK_SHADER_STAGE_ALL;
     counterLayout.descriptorCount = 1;
-    counterLayout.binding = 0;
+    counterLayout.binding = bindingInfo.counterDescriptorOffset;
 
     // Binding for stream data
-    VkDescriptorSetLayoutBinding streamLayout{};
+    VkDescriptorSetLayoutBinding& streamLayout = bindings.Add({});
     streamLayout.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
     streamLayout.stageFlags = VK_SHADER_STAGE_ALL;
-    streamLayout.descriptorCount = exportBound;
-    streamLayout.binding = 1;
+    streamLayout.descriptorCount = bindingInfo.streamDescriptorCount;
+    streamLayout.binding = bindingInfo.streamDescriptorOffset;
 
-    // All bindings
-    VkDescriptorSetLayoutBinding bindings[] = {counterLayout, streamLayout};
+    // Binding for PRMT data
+    VkDescriptorSetLayoutBinding& prmtLayout = bindings.Add({});
+    prmtLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    prmtLayout.stageFlags = VK_SHADER_STAGE_ALL;
+    prmtLayout.descriptorCount = 1;
+    prmtLayout.binding = bindingInfo.prmtDescriptorOffset;
+
+    // Create data bindings
+    for (uint32_t i = 0; i < dataResourceBound; i++) {
+        VkDescriptorSetLayoutBinding& dataLayout = bindings.Add({});
+        dataLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        dataLayout.stageFlags = VK_SHADER_STAGE_ALL;
+        dataLayout.descriptorCount = 1;
+        dataLayout.binding = bindingInfo.shaderDataDescriptorOffset + i;
+    }
 
     // Binding flags
     //  ? Descriptors are updated latent, during recording we do not know what segment
     //    is appropriate until submission.
-    VkDescriptorBindingFlags bindingFlags[] = { VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT, VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT };
+    auto bindingFlags = ALLOCA_ARRAY(VkDescriptorBindingFlags, bindings.Size());
+    std::fill_n(bindingFlags, bindings.Size(), VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
 
     // Binding create info
     VkDescriptorSetLayoutBindingFlagsCreateInfo bindingCreateInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
-    bindingCreateInfo.bindingCount = 2;
+    bindingCreateInfo.bindingCount = bindings.Size();
     bindingCreateInfo.pBindingFlags = bindingFlags;
 
     // Set layout create info
     VkDescriptorSetLayoutCreateInfo setInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
     setInfo.pNext = &bindingCreateInfo;
     setInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-    setInfo.bindingCount = 2; /* Counters + Streams */
-    setInfo.pBindings = bindings;
+    setInfo.bindingCount = bindings.Size();
+    setInfo.pBindings = bindings.Data();
     if (table->next_vkCreateDescriptorSetLayout(table->object, &setInfo, nullptr, &layout) != VK_SUCCESS) {
         return false;
     }
@@ -62,6 +104,29 @@ bool ShaderExportDescriptorAllocator::Install() {
 
     // OK
     return true;
+}
+
+void ShaderExportDescriptorAllocator::CreateBindingLayout() {
+    // Current offset
+    uint32_t offset{0};
+
+    // Counter info
+    bindingInfo.counterDescriptorOffset = offset;
+    offset++;
+
+    // Streams
+    bindingInfo.streamDescriptorOffset = offset;
+    bindingInfo.streamDescriptorCount = exportBound;
+    offset += exportBound;
+
+    // PRM table
+    bindingInfo.prmtDescriptorOffset = offset;
+    offset++;
+
+    // Data resources
+    bindingInfo.shaderDataDescriptorOffset = offset;
+    bindingInfo.shaderDataDescriptorCount = dataResources.size();
+    offset += dataResources.size();
 }
 
 void ShaderExportDescriptorAllocator::CreateDummyBuffer() {
@@ -159,8 +224,8 @@ ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate() {
 
     // Combined writes
     VkWriteDescriptorSet writes[] = {
-    counterWrite,
-    streamWrite
+        counterWrite,
+        streamWrite
     };
 
     // Update the descriptor set
@@ -183,9 +248,10 @@ ShaderExportDescriptorAllocator::PoolInfo &ShaderExportDescriptorAllocator::Find
     }
 
     // Pool size, both the counter and stream are uniform texel buffers, one of each (hence x2)
+    // TODO: I don't think the above is right... is it?
     VkDescriptorPoolSize poolSize{};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-    poolSize.descriptorCount = std::max(1u, exportBound * 2) * setsPerPool;
+    poolSize.descriptorCount = std::max(1ull, exportBound * 2 + dataResources.size()) * setsPerPool;
 
     // Descriptor pool create info
     VkDescriptorPoolCreateInfo createInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
@@ -222,15 +288,10 @@ void ShaderExportDescriptorAllocator::Free(const ShaderExportSegmentDescriptorIn
 }
 
 void ShaderExportDescriptorAllocator::Update(const ShaderExportSegmentDescriptorInfo &info, const ShaderExportSegmentInfo *segment) {
-    auto *streamWrites = ALLOCA_ARRAY(VkBufferView, segment->streams.size());
-
-    // Copy views
-    for (size_t i = 0; i < segment->streams.size(); i++) {
-        streamWrites[i] = segment->streams[i].view;
-    }
+    TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites;
 
     // Single counter
-    VkWriteDescriptorSet counterWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    VkWriteDescriptorSet& counterWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
     counterWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
     counterWrite.descriptorCount = 1u;
     counterWrite.pTexelBufferView = &segment->counter.view;
@@ -238,28 +299,27 @@ void ShaderExportDescriptorAllocator::Update(const ShaderExportSegmentDescriptor
     counterWrite.dstSet = info.set;
     counterWrite.dstBinding = 0;
 
-    // Skip stream writing if empty
-    if (segment->streams.empty()) {
-        // Update the descriptor set
-        table->next_vkUpdateDescriptorSets(table->object, 1u, &counterWrite, 0, nullptr);
-    } else {
+    // Any streams?
+    if (!segment->streams.empty()) {
+        auto *streamWrites = ALLOCA_ARRAY(VkBufferView, segment->streams.size());
+
+        // Copy views
+        for (size_t i = 0; i < segment->streams.size(); i++) {
+            streamWrites[i] = segment->streams[i].view;
+        }
+
         // All streams
-        VkWriteDescriptorSet streamWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        VkWriteDescriptorSet& streamWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
         streamWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
         streamWrite.descriptorCount = static_cast<uint32_t>(segment->streams.size());
         streamWrite.pTexelBufferView = streamWrites;
         streamWrite.dstArrayElement = 0;
         streamWrite.dstSet = info.set;
         streamWrite.dstBinding = 1;
-
-        // Combined writes
-        VkWriteDescriptorSet writes[] = {
-        counterWrite,
-        streamWrite
-        };
-
-        // Update the descriptor set
-        table->next_vkUpdateDescriptorSets(table->object, 2u, writes, 0, nullptr);
     }
+
+
+    // Update the descriptor set
+    table->next_vkUpdateDescriptorSets(table->object, descriptorWrites.Size(), descriptorWrites.Data(), 0, nullptr);
 }
 

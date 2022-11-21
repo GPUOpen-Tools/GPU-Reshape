@@ -15,6 +15,7 @@ struct DispatcherBucket;
 class IFeature;
 class IShaderFeature;
 class ShaderCompilerDebug;
+class ShaderExportDescriptorAllocator;
 
 class ShaderCompiler : public TComponent<ShaderCompiler> {
 public:
@@ -51,9 +52,10 @@ protected:
 private:
     DeviceDispatchTable* table{nullptr};
 
-    /// Async dispatcher
+    /// Components
     ComRef<Dispatcher> dispatcher;
     ComRef<ShaderCompilerDebug> debug;
+    ComRef<ShaderExportDescriptorAllocator> shaderExportDescriptorAllocator;
 
     /// All features
     std::vector<ComRef<IShaderFeature>> shaderFeatures;

@@ -5,12 +5,16 @@
 #include <Backends/Vulkan/Allocation/Allocation.h>
 #include <Backends/Vulkan/Export/DescriptorInfo.h>
 
+// Backend
+#include <Backend/ShaderData/ShaderDataInfo.h>
+
 // Common
 #include <Common/IComponent.h>
 #include <Common/ComRef.h>
 
 // Std
 #include <vector>
+#include <Backends/Vulkan/States/PipelineLayoutBindingInfo.h>
 
 // Forward declarations
 struct DeviceDispatchTable;
@@ -45,9 +49,17 @@ public:
         return layout;
     }
 
+    /// Get the shared binding info
+    PipelineLayoutBindingInfo GetBindingInfo() const {
+        return bindingInfo;
+    }
+
 private:
     /// Create all dummy buffers
     void CreateDummyBuffer();
+
+    /// Create the shared binding info
+    void CreateBindingLayout();
 
 private:
     struct PoolInfo {
@@ -67,6 +79,9 @@ private:
     /// Export record layout
     VkDescriptorSetLayout layout{nullptr};
 
+    /// Shared binding info
+    PipelineLayoutBindingInfo bindingInfo;
+
     /// Dummy buffer
     VkBuffer dummyBuffer;
     VkBufferView dummyBufferView;
@@ -78,8 +93,12 @@ private:
     /// The indexed bound for shader exports
     uint32_t exportBound{0};
 
+    /// The indexed bound for data resources
+    std::vector<ShaderDataInfo> dataResources;
+
 private:
     DeviceDispatchTable* table;
 
+    /// Components
     ComRef<DeviceAllocator> deviceAllocator;
 };

@@ -13,10 +13,12 @@
 #include <Backends/Vulkan/Export/ShaderExportStreamAllocator.h>
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
 #include <Backends/Vulkan/Symbolizer/ShaderSGUIDHost.h>
+#include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 #include <Backends/Vulkan/Export/ShaderExportHost.h>
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Compiler/PipelineCompiler.h>
 #include <Backends/Vulkan/States/QueueState.h>
+#include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 
 // Common
 #include <Common/Registry.h>
@@ -180,6 +182,7 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Enable update after bind
     indexingFeatures->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
+    indexingFeatures->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
 
     // Set new layers and extensions
     table->createInfo->ppEnabledLayerNames = layers.data();
@@ -214,6 +217,10 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Install the shader sguid host
     table->sguidHost = table->registry.AddNew<ShaderSGUIDHost>(table);
     ENSURE(table->sguidHost->Install(), "Failed to install shader sguid host");
+
+    // Install the stream descriptor allocator
+    table->dataHost = table->registry.AddNew<ShaderDataHost>(table);
+    ENSURE(table->dataHost->Install(), "Failed to install data host");
 
     // Install all features
     ENSURE(PoolAndInstallFeatures(table), "Failed to install features");
@@ -252,6 +259,10 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Install the metadata controller
     table->metadataController = table->registry.New<MetadataController>(table);
     ENSURE(table->metadataController->Install(), "Failed to install metadata controller");
+
+    // Create the physical resource table
+    table->prmTable = table->registry.New<PhysicalResourceMappingTable>(table);
+    ENSURE(table->prmTable->Install(), "Failed to install PRM table");
 
     // Create queue states
     for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {

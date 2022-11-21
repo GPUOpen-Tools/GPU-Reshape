@@ -1,12 +1,13 @@
 #pragma once
 
 #include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
+#include <Backends/Vulkan/States/PipelineLayoutBindingInfo.h>
 
 /// Job description
 struct SpvJob {
     /// The instrumentation key
     ShaderModuleInstrumentationKey instrumentationKey{};
 
-    /// The number of streams
-    uint32_t streamCount{0};
+    /// Layout information
+    PipelineLayoutBindingInfo bindingInfo{};
 };

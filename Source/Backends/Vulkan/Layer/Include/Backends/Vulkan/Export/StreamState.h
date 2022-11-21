@@ -14,6 +14,7 @@
 // Forward declarations
 struct ShaderExportSegmentInfo;
 struct FenceState;
+struct DescriptorDataAppendAllocator;
 
 /// Descriptor state for re-binding
 struct ShaderExportDescriptorState {
@@ -31,6 +32,9 @@ struct ShaderExportDescriptorState {
 struct ShaderExportPipelineBindState {
     /// Current descriptor sets
     std::vector<ShaderExportDescriptorState> persistentDescriptorState;
+
+    /// Descriptor data allocator tied to the segment
+    DescriptorDataAppendAllocator* descriptorDataAllocator{nullptr};
 
     /// The instrumentation overwrite mask
     uint32_t deviceDescriptorOverwriteMask{0x0};

@@ -16,6 +16,9 @@ struct DescriptorSetLayoutState {
     /// Dynamic offsets
     uint32_t dynamicOffsets{0};
 
+    /// Number of descriptors
+    uint32_t descriptorCount{0};
+
     /// Unique identifier, unique for the type
     uint64_t uid;
 };
