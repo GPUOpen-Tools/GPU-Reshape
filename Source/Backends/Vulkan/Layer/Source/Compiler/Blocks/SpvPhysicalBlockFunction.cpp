@@ -1289,6 +1289,161 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::BasicBlock
 
                 break;
             }
+            case IL::OpCode::AtomicOr:
+            case IL::OpCode::AtomicXOr:
+            case IL::OpCode::AtomicAnd:
+            case IL::OpCode::AtomicAdd:
+            case IL::OpCode::AtomicMin:
+            case IL::OpCode::AtomicMax:
+            case IL::OpCode::AtomicExchange:
+            case IL::OpCode::AtomicCompareExchange: {
+                // uint32_t
+                const Backend::IL::Type* uintType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness=false});
+
+                // Identifiers
+                uint32_t scopeId = table.scan.header.bound++;
+                uint32_t memSemanticId = table.scan.header.bound++;
+
+                // Device scope
+                SpvInstruction &spvScope = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+                spvScope[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+                spvScope[2] = scopeId;
+                spvScope[3] = SpvScopeDevice;
+
+                // No memory mask
+                SpvInstruction &spvMemSem = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+                spvMemSem[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+                spvMemSem[2] = memSemanticId;
+                spvMemSem[3] = SpvMemorySemanticsMaskNone;
+
+                // Handle op code
+                switch (instr->opCode) {
+                    default:
+                        ASSERT(false, "Invalid op code");
+                        break;
+                    case IL::OpCode::AtomicOr: {
+                        auto *_instr = instr.As<IL::AtomicOrInstruction>();
+
+                        SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(SpvOpAtomicOr, 7, _instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = _instr->result;
+                        spv[3] = idMap.Get(_instr->address);
+                        spv[4] = idMap.Get(scopeId);
+                        spv[5] = idMap.Get(memSemanticId);
+                        spv[6] = idMap.Get(_instr->value);
+                        break;
+                    }
+                    case IL::OpCode::AtomicXOr: {
+                        auto *_instr = instr.As<IL::AtomicXOrInstruction>();
+
+                        SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(SpvOpAtomicXor, 7, _instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = _instr->result;
+                        spv[3] = idMap.Get(_instr->address);
+                        spv[4] = idMap.Get(scopeId);
+                        spv[5] = idMap.Get(memSemanticId);
+                        spv[6] = idMap.Get(_instr->value);
+                        break;
+                    }
+                    case IL::OpCode::AtomicAnd: {
+                        auto *_instr = instr.As<IL::AtomicAndInstruction>();
+
+                        SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(SpvOpAtomicAnd, 7, _instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = _instr->result;
+                        spv[3] = idMap.Get(_instr->address);
+                        spv[4] = idMap.Get(scopeId);
+                        spv[5] = idMap.Get(memSemanticId);
+                        spv[6] = idMap.Get(_instr->value);
+                        break;
+                    }
+                    case IL::OpCode::AtomicAdd: {
+                        auto *_instr = instr.As<IL::AtomicAddInstruction>();
+
+                        ASSERT(resultType->kind == Backend::IL::TypeKind::Int, "Only integral atomics are supported for recompilation");
+
+                        SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(SpvOpAtomicIAdd, 7, _instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = _instr->result;
+                        spv[3] = idMap.Get(_instr->address);
+                        spv[4] = idMap.Get(scopeId);
+                        spv[5] = idMap.Get(memSemanticId);
+                        spv[6] = idMap.Get(_instr->value);
+                        break;
+                    }
+                    case IL::OpCode::AtomicMin: {
+                        auto *_instr = instr.As<IL::AtomicMinInstruction>();
+
+                        ASSERT(resultType->kind == Backend::IL::TypeKind::Int, "Only integral atomics are supported for recompilation");
+                        SpvOp op = resultType->As<Backend::IL::IntType>()->signedness ? SpvOpAtomicSMin : SpvOpAtomicUMin;
+
+                        SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(op, 7, _instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = _instr->result;
+                        spv[3] = idMap.Get(_instr->address);
+                        spv[4] = idMap.Get(scopeId);
+                        spv[5] = idMap.Get(memSemanticId);
+                        spv[6] = idMap.Get(_instr->value);
+                        break;
+                    }
+                    case IL::OpCode::AtomicMax: {
+                        auto *_instr = instr.As<IL::AtomicMaxInstruction>();
+
+                        ASSERT(resultType->kind == Backend::IL::TypeKind::Int, "Only integral atomics are supported for recompilation");
+                        SpvOp op = resultType->As<Backend::IL::IntType>()->signedness ? SpvOpAtomicSMax : SpvOpAtomicUMax;
+
+                        SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(op, 7, _instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = _instr->result;
+                        spv[3] = idMap.Get(_instr->address);
+                        spv[4] = idMap.Get(scopeId);
+                        spv[5] = idMap.Get(memSemanticId);
+                        spv[6] = idMap.Get(_instr->value);
+                        break;
+                    }
+                    case IL::OpCode::AtomicExchange: {
+                        auto *_instr = instr.As<IL::AtomicExchangeInstruction>();
+
+                        SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(SpvOpAtomicExchange, 7, _instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = _instr->result;
+                        spv[3] = idMap.Get(_instr->address);
+                        spv[4] = idMap.Get(scopeId);
+                        spv[5] = idMap.Get(memSemanticId);
+                        spv[6] = idMap.Get(_instr->value);
+                        break;
+                    }
+                    case IL::OpCode::AtomicCompareExchange: {
+                        auto *_instr = instr.As<IL::AtomicCompareExchangeInstruction>();
+
+                        SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(SpvOpAtomicCompareExchange, 9, _instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = _instr->result;
+                        spv[3] = idMap.Get(_instr->address);
+                        spv[4] = idMap.Get(scopeId);
+                        spv[5] = idMap.Get(memSemanticId);
+                        spv[6] = idMap.Get(memSemanticId);
+                        spv[7] = idMap.Get(_instr->value);
+                        spv[8] = idMap.Get(_instr->comparator);
+                        break;
+                    }
+                }
+                break;
+            }
+            case IL::OpCode::AddressChain: {
+                auto *_instr = instr.As<IL::AddressChainInstruction>();
+
+                SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(SpvOpAccessChain, 4 + _instr->chains.count, _instr->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = _instr->result;
+                spv[3] = idMap.Get(_instr->composite);
+
+                // Write chains (accessors from base composite value)
+                for (uint32_t i = 0; i < _instr->chains.count; i++) {
+                    spv[4 + i] = idMap.Get(_instr->chains[i].index);
+                }
+                break;
+            }
         }
     }
 
