@@ -126,6 +126,9 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Co
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
         bindState.deviceDescriptorOverwriteMask = 0x0;
     }
+
+    // Update all immutable descriptors
+    descriptorAllocator->UpdateImmutable(state->segmentDescriptorInfo);
 }
 
 void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, CommandBufferObject* commandBuffer) {

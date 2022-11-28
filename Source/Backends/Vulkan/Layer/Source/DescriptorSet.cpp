@@ -11,6 +11,7 @@
 #include "Backends/Vulkan/Export/ShaderExportStreamer.h"
 #include <Backends/Vulkan/Translation.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
+#include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 
 // Common
 #include <Common/Hash.h>
@@ -180,6 +181,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, const VkPipelineLayoutCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkPipelineLayout *pPipelineLayout) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // User push constant offset
+    uint32_t userPushConstantOffset = 0;
+
     // If we have exhausted all the sets, we can't add further records
     bool exhausted = pCreateInfo->setLayoutCount >= table->physicalDeviceProperties.limits.maxBoundDescriptorSets;
     if (exhausted) {
@@ -196,10 +200,32 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
         // Last set is export data
         setLayouts[pCreateInfo->setLayoutCount] = table->exportDescriptorAllocator->GetLayout();
 
+        // Copy previous ranges
+        auto *ranges = ALLOCA_ARRAY(VkPushConstantRange, pCreateInfo->pushConstantRangeCount + 1);
+        std::memcpy(setLayouts, pCreateInfo->pSetLayouts, sizeof(VkPushConstantRange) * pCreateInfo->pushConstantRangeCount);
+
+        // Get number of events
+        uint32_t eventCount{0};
+        table->dataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
+
+        // Append after all user PCs
+        for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
+            const VkPushConstantRange& userRange = pCreateInfo->pPushConstantRanges[i];
+            userPushConstantOffset = std::max(userPushConstantOffset, userRange.offset + userRange.size);
+        }
+
+        // Append internal PC range
+        VkPushConstantRange& range = ranges[pCreateInfo->pushConstantRangeCount];
+        range.offset = userPushConstantOffset;
+        range.size = eventCount * sizeof(uint32_t);
+        range.stageFlags = VK_SHADER_STAGE_ALL;
+
         // Mirror creation info
         VkPipelineLayoutCreateInfo createInfo = *pCreateInfo;
         createInfo.setLayoutCount = pCreateInfo->setLayoutCount + 1;
         createInfo.pSetLayouts = setLayouts;
+        createInfo.pushConstantRangeCount = pCreateInfo->pushConstantRangeCount + 1;
+        createInfo.pPushConstantRanges = ranges;
 
         // Pass down callchain
         VkResult result = table->next_vkCreatePipelineLayout(device, &createInfo, pAllocator, pPipelineLayout);
@@ -231,8 +257,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
     // External user
     state->AddUser();
 
-    // Number of bound descriptor sets
+    // Binding info
     state->boundUserDescriptorStates = pCreateInfo->setLayoutCount;
+    state->userPushConstantOffset = userPushConstantOffset;
 
     // Store lookup
     table->states_pipelineLayout.Add(*pPipelineLayout, state);

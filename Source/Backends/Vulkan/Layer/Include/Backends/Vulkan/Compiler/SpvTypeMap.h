@@ -11,6 +11,9 @@
 #include <Backend/IL/Type.h>
 #include <Backend/IL/TypeMap.h>
 
+// Common
+#include <Common/Alloca.h>
+
 // Std
 #include <map>
 
@@ -105,6 +108,8 @@ private:
                 return EmitSpvType(static_cast<const Backend::IL::TextureType*>(type));
             case Backend::IL::TypeKind::Buffer:
                 return EmitSpvType(static_cast<const Backend::IL::BufferType*>(type));
+            case Backend::IL::TypeKind::Struct:
+                return EmitSpvType(static_cast<const Backend::IL::StructType*>(type));
             case Backend::IL::TypeKind::Function:
                 return EmitSpvType(static_cast<const Backend::IL::FunctionType*>(type));
         }
@@ -270,6 +275,26 @@ private:
         return id;
     }
 
+    SpvId EmitSpvType(const Backend::IL::StructType* type) {
+        SpvId id = map->Allocate();
+
+        // Get member uids
+        auto* members = ALLOCA_ARRAY(uint32_t, type->memberTypes.size());
+        for (uint64_t i = 0; i < type->memberTypes.size(); i++) {
+            members[i] = GetSpvTypeId(type->memberTypes[i]);
+        }
+
+        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeStruct, 2 + type->memberTypes.size());
+        spv[1] = id;
+
+        for (uint32_t i = 0; i < type->memberTypes.size(); i++) {
+            spv[2 + i] = members[i];
+        }
+
+        AddMapping(id, type);
+        return id;
+    }
+
     SpvId EmitSpvType(const Backend::IL::BufferType* type) {
         SpvId id = map->Allocate();
 
@@ -284,7 +309,19 @@ private:
             spv[4] = 0;
             spv[5] = false;
             spv[6] = 0;
-            spv[7] = 2;
+
+            switch (type->samplerMode) {
+                case Backend::IL::ResourceSamplerMode::RuntimeOnly:
+                    spv[7] = 0;
+                    break;
+                case Backend::IL::ResourceSamplerMode::Compatible:
+                    spv[7] = 1;
+                    break;
+                case Backend::IL::ResourceSamplerMode::Writable:
+                    spv[7] = 2;
+                    break;
+            }
+
             spv[8] = Translate(type->texelType);
         } else {
             ASSERT(false, "Structured buffers not implemented");
@@ -298,12 +335,21 @@ private:
     SpvId EmitSpvType(const Backend::IL::FunctionType* type) {
         SpvId id = map->Allocate();
 
+        // Get return uid
+        IL::ID returnId = GetSpvTypeId(type->returnType);
+
+        // Get parameter uids
+        auto* parameters = ALLOCA_ARRAY(uint32_t, type->parameterTypes.size());
+        for (uint64_t i = 0; i < type->parameterTypes.size(); i++) {
+            parameters[i] = GetSpvTypeId(type->parameterTypes[i]);
+        }
+
         SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeFunction, 3 + type->parameterTypes.size());
         spv[1] = id;
-        spv[2] = GetSpvTypeId(type->returnType);
+        spv[2] = returnId;
 
         for (uint64_t i = 0; i < type->parameterTypes.size(); i++) {
-            spv[3 + i] = GetSpvTypeId(type->parameterTypes[i]);
+            spv[3 + i] = parameters[i];
         }
 
         AddMapping(id, type);

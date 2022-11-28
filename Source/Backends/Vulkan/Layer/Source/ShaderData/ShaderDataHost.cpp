@@ -7,6 +7,17 @@ ShaderDataHost::ShaderDataHost(DeviceDispatchTable *table) : table(table) {
 
 }
 
+ShaderDataHost::~ShaderDataHost() {
+    for (const ResourceEntry& entry : resources) {
+        // Destroy handles
+        table->next_vkDestroyBufferView(table->object, entry.view, nullptr);
+        table->next_vkDestroyBuffer(table->object, entry.buffer, nullptr);
+
+        // Free associated allocation
+        deviceAllocator->Free(entry.allocation);
+    }
+}
+
 bool ShaderDataHost::Install() {
     // Must have device allocator
     deviceAllocator = registry->Get<DeviceAllocator>();
@@ -132,7 +143,6 @@ void ShaderDataHost::Destroy(ShaderDataID rid) {
     // Add as free index
     freeIndices.push_back(rid);
 }
-
 void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
     if (out) {
         uint32_t offset = 0;

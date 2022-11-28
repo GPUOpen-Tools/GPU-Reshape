@@ -21,6 +21,7 @@ struct DeviceAllocator;
 class ShaderDataHost final : public IShaderDataHost {
 public:
     explicit ShaderDataHost(DeviceDispatchTable* table);
+    ~ShaderDataHost();
 
     /// Install this host
     /// \return success state

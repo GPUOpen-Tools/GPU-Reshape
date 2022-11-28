@@ -251,10 +251,14 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             // Number of slots used by the pipeline
             uint32_t pipelineLayoutUserSlots = dependentObject->layout->boundUserDescriptorStates;
 
+            // User push constant offset
+            uint32_t pipelineLayoutPCOffset = dependentObject->layout->userPushConstantOffset;
+
             // Create the instrumentation key
             ShaderModuleInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
             instrumentationKey.pipelineLayoutUserSlots = pipelineLayoutUserSlots;
+            instrumentationKey.pipelineLayoutUserPCOffset = pipelineLayoutPCOffset;
 
             // Attempt to reserve
             if (!state->Reserve(instrumentationKey)) {
@@ -306,10 +310,14 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             uint32_t pipelineLayoutUserSlots = state->layout->boundUserDescriptorStates;
             ASSERT(pipelineLayoutUserSlots <= table->physicalDeviceProperties.limits.maxBoundDescriptorSets, "Pipeline layout user slots sanity check failed (corrupt)");
 
+            // User push constant offset
+            uint32_t pipelineLayoutPCOffset = state->layout->userPushConstantOffset;
+
             // Create the instrumentation key
             ShaderModuleInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
             instrumentationKey.pipelineLayoutUserSlots = pipelineLayoutUserSlots;
+            instrumentationKey.pipelineLayoutUserPCOffset = pipelineLayoutPCOffset;
 
             // Assign key
             job.shaderModuleInstrumentationKeys[shaderIndex] = instrumentationKey;

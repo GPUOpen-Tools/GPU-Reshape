@@ -26,14 +26,19 @@ public:
     COMPONENT(ShaderExportDescriptorAllocator);
 
     ShaderExportDescriptorAllocator(DeviceDispatchTable* table);
-
     ~ShaderExportDescriptorAllocator();
 
+    /// Install this allocator
+    /// \return success state
     bool Install();
 
     /// Alloate a new segment
     /// \return the descriptor info
     ShaderExportSegmentDescriptorInfo Allocate();
+
+    /// Update a segment
+    /// \param info the descriptor segment to be updated
+    void UpdateImmutable(const ShaderExportSegmentDescriptorInfo& info);
 
     /// Update a segment
     /// \param info the descriptor segment to be updated

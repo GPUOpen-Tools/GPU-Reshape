@@ -22,82 +22,82 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
         .signedness = false
     });
 
-    // RWBuffer<uint>
-    buffer32UIRW = ilTypeMap.FindTypeOrAdd(Backend::IL::BufferType{
+    // Buffer<uint>
+    buffer32UI = ilTypeMap.FindTypeOrAdd(Backend::IL::BufferType{
         .elementType = intType,
+        .samplerMode = Backend::IL::ResourceSamplerMode::Compatible,
         .texelType = Backend::IL::Format::R32UInt
     });
 
-    // RWBuffer<uint>*
-    buffer32UIRWPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
-        .pointee = buffer32UIRW,
-        .addressSpace = Backend::IL::AddressSpace::Resource,
-    });
-
-    // RWBuffer<uint>[N]
-    const Backend::IL::Type *buffer32UIWWArray = ilTypeMap.FindTypeOrAdd(Backend::IL::ArrayType{
-        .elementType = buffer32UIRW,
-        .count = std::max(1u, 0u)
-    });
-
-    // RWBuffer<uint>[N]*
-    buffer32UIRWArrayPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
-        .pointee = buffer32UIWWArray,
+    // Buffer<uint>*
+    buffer32UIPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
+        .pointee = buffer32UI,
         .addressSpace = Backend::IL::AddressSpace::Resource,
     });
 
     // Id allocations
-    counterId = table.scan.header.bound++;
-    streamId = table.scan.header.bound++;
+    prmTableId = table.scan.header.bound++;
 
     // SpvIds
-    SpvId buffer32UIRWPtrId = table.typeConstantVariable.typeMap.GetSpvTypeId(buffer32UIRWPtr);
-    SpvId buffer32UIRWArrayPtrId = table.typeConstantVariable.typeMap.GetSpvTypeId(buffer32UIRWArrayPtr);
+    SpvId buffer32UIPtrId = table.typeConstantVariable.typeMap.GetSpvTypeId(buffer32UIPtr);
 
-    // Counter
+    // PRMT
     SpvInstruction &spvCounterVar = table.typeConstantVariable.block->stream.Allocate(SpvOpVariable, 4);
-    spvCounterVar[1] = buffer32UIRWPtrId;
-    spvCounterVar[2] = counterId;
+    spvCounterVar[1] = buffer32UIPtrId;
+    spvCounterVar[2] = prmTableId;
     spvCounterVar[3] = SpvStorageClassUniformConstant;
-
-    // Streams
-    SpvInstruction &spvStreamVar = table.typeConstantVariable.block->stream.Allocate(SpvOpVariable, 4);
-    spvStreamVar[1] = buffer32UIRWArrayPtrId;
-    spvStreamVar[2] = streamId;
-    spvStreamVar[3] = SpvStorageClassUniformConstant;
 
     // Descriptor set
     SpvInstruction &spvCounterSet = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
-    spvCounterSet[1] = counterId;
+    spvCounterSet[1] = prmTableId;
     spvCounterSet[2] = SpvDecorationDescriptorSet;
     spvCounterSet[3] = job.instrumentationKey.pipelineLayoutUserSlots;
 
     // Binding
     SpvInstruction &spvCounterBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
-    spvCounterBinding[1] = counterId;
+    spvCounterBinding[1] = prmTableId;
     spvCounterBinding[2] = SpvDecorationBinding;
-    spvCounterBinding[3] = 0;
-
-    // Descriptor set
-    SpvInstruction &spvStreamSet = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
-    spvStreamSet[1] = streamId;
-    spvStreamSet[2] = SpvDecorationDescriptorSet;
-    spvStreamSet[3] = job.instrumentationKey.pipelineLayoutUserSlots;
-
-    // Binding
-    SpvInstruction &spvStreamBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
-    spvStreamBinding[1] = streamId;
-    spvStreamBinding[2] = SpvDecorationBinding;
-    spvStreamBinding[3] = 1;
+    spvCounterBinding[3] = job.bindingInfo.prmtDescriptorOffset;
 }
 
-void SpvUtilShaderPRMT::Export(SpvStream &stream, uint32_t exportID, IL::ID value) {
+IL::ID SpvUtilShaderPRMT::GetResourcePRMTOffset(SpvStream &stream, IL::ID resource) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
-    // Note: This is quite ugly, will be changed
+    // Identifiers
+    uint32_t prmtOffsetId = table.scan.header.bound++;
+    uint32_t offsetId = table.scan.header.bound++;
 
-    // Identifiable header
-    SpvInstruction& spvNop = stream.Allocate(SpvOpNop, 1);
+    // UInt32
+    const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType {
+        .bitWidth = 32,
+        .signedness = false
+    });
+
+    // Get decoration
+    SpvValueDecoration valueDecoration = GetSourceResourceDecoration(resource);
+
+    // Get the descriptor fed offset into the PRM table
+    IL::ID baseOffsetId = table.shaderDescriptorConstantData.GetDescriptorOffset(stream, valueDecoration.descriptorSet);
+
+    // Offset
+    SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+    spvZero[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+    spvZero[2] = offsetId;
+    spvZero[3] = valueDecoration.offset;
+
+    // Final PRM index, DescriptorSetOffset + BindingOffset
+    SpvInstruction& spv = stream.Allocate(SpvOpIAdd, 5);
+    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+    spv[2] = prmtOffsetId;
+    spv[3] = baseOffsetId;
+    spv[4] = offsetId;
+
+    // OK
+    return prmtOffsetId;
+}
+
+void SpvUtilShaderPRMT::GetToken(SpvStream &stream, IL::ID resource, IL::ID result) {
+    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // UInt32
     Backend::IL::IntType typeInt;
@@ -105,99 +105,68 @@ void SpvUtilShaderPRMT::Export(SpvStream &stream, uint32_t exportID, IL::ID valu
     typeInt.signedness = false;
     const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(typeInt);
 
-    // Uint32*
-    Backend::IL::PointerType typeUintImagePtr;
-    typeUintImagePtr.pointee = uintType;
-    typeUintImagePtr.addressSpace = Backend::IL::AddressSpace::Texture;
-    const Backend::IL::Type *uintImagePtrType = ilTypeMap.FindTypeOrAdd(typeUintImagePtr);
+    // <UInt32, 4>
+    const Backend::IL::Type *uint4Type = ilTypeMap.FindTypeOrAdd(Backend::IL::VectorType{
+        .containedType = uintType,
+        .dimension = 4
+    });
 
-    // Constant identifiers
-    uint32_t zeroUintId = table.scan.header.bound++;
-    uint32_t streamOffsetId = table.scan.header.bound++;
-    uint32_t scopeId = table.scan.header.bound++;
-    uint32_t memSemanticId = table.scan.header.bound++;
-    uint32_t offsetAdditionId = table.scan.header.bound++;
+    // Identifiers
+    uint32_t bufferId = table.scan.header.bound++;
+    uint32_t texelId = table.scan.header.bound++;
 
-    // 0
-    SpvInstruction &spv = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    spv[2] = zeroUintId;
-    spv[3] = 0;
+    // Get offset
+    IL::ID mappingOffset = GetResourcePRMTOffset(stream, resource);
 
-    // Index of the stream
-    SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    spvOffset[2] = streamOffsetId;
-    spvOffset[3] = exportID;
+    // SpvIds
+    uint32_t buffer32UIId = table.typeConstantVariable.typeMap.GetSpvTypeId(buffer32UI);
+    uint32_t uintTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+    uint32_t uint4TypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(uint4Type);
 
-    // Device scope
-    SpvInstruction &spvScope = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvScope[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    spvScope[2] = scopeId;
-    spvScope[3] = SpvScopeDevice;
+    // Load buffer
+    SpvInstruction& spvLoad = stream.Allocate(SpvOpLoad, 4);
+    spvLoad[1] = buffer32UIId;
+    spvLoad[2] = bufferId;
+    spvLoad[3] = prmTableId;
 
-    // No memory mask
-    SpvInstruction &spvMemSem = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvMemSem[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    spvMemSem[2] = memSemanticId;
-    spvMemSem[3] = SpvMemorySemanticsMaskNone;
+    // Fetch texel
+    SpvInstruction& spvTexel = stream.Allocate(SpvOpImageFetch, 5);
+    spvTexel[1] = uint4TypeId;
+    spvTexel[2] = texelId;
+    spvTexel[3] = bufferId;
+    spvTexel[4] = mappingOffset;
 
-    // The offset addition (will change for dynamic types in the future)
-    SpvInstruction &spvSize = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvSize[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    spvSize[2] = offsetAdditionId;
-    spvSize[3] = 1u;
+    // Fetch texel
+    SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
+    spvExtract[1] = uintTypeId;
+    spvExtract[2] = result;
+    spvExtract[3] = texelId;
+    spvExtract[4] = 0;
+}
 
-    uint32_t texelPtrId = table.scan.header.bound++;
+SpvValueDecoration SpvUtilShaderPRMT::GetSourceResourceDecoration(IL::ID resource) {
+    if (table.annotation.IsDecoratedBinding(resource)) {
+        return table.annotation.GetDecoration(resource);
+    }
 
-    // Get the address of the texel to be atomically incremented
-    SpvInstruction &texelPtr = stream.Allocate(SpvOpImageTexelPointer, 6);
-    texelPtr[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintImagePtrType);
-    texelPtr[2] = texelPtrId;
-    texelPtr[3] = counterId;
-    texelPtr[4] = streamOffsetId;
-    texelPtr[5] = zeroUintId;
+    // Get the identifier map
+    IL::IdentifierMap& idMap = table.program.GetIdentifierMap();
 
-    uint32_t atomicPositionId = table.scan.header.bound++;
+    // Get originating instruction
+    const IL::Instruction* ref = IL::InstructionRef<>(idMap.Get(resource)).Get();
 
-    // Atomically increment the texel
-    SpvInstruction &atom = stream.Allocate(SpvOpAtomicIAdd, 7);
-    atom[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    atom[2] = atomicPositionId;
-    atom[3] = texelPtrId;
-    atom[4] = scopeId;
-    atom[5] = memSemanticId;
-    atom[6] = offsetAdditionId;
-
-    uint32_t accessId = table.scan.header.bound++;
-
-    // Get the destination stream
-    SpvInstruction &chain = stream.Allocate(SpvOpAccessChain, 5);
-    chain[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(buffer32UIRWPtr);
-    chain[2] = accessId;
-    chain[3] = streamId;
-    chain[4] = streamOffsetId;
-
-    uint32_t accessLoadId = table.scan.header.bound++;
-
-    // Load the stream
-    SpvInstruction &load = stream.Allocate(SpvOpLoad, 4);
-    load[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(buffer32UIRW);
-    load[2] = accessLoadId;
-    load[3] = accessId;
-
-    // Write to the stream
-    SpvInstruction &write = stream.Allocate(SpvOpImageWrite, 5);
-    write[1] = accessLoadId;
-    write[2] = atomicPositionId;
-    write[3] = value;
-    write[4] = SpvImageOperandsMaskNone;
+    // Handle type
+    switch (ref->opCode) {
+        default:
+            ASSERT(false, "Backtracking not implemented for op-code");
+            return {};
+        case IL::OpCode::Load:
+            return GetSourceResourceDecoration(ref->As<IL::LoadInstruction>()->address);
+    }
 }
 
 void SpvUtilShaderPRMT::CopyTo(SpvPhysicalBlockTable &remote, SpvUtilShaderPRMT &out) {
-    out.counterId = counterId;
-    out.streamId = streamId;
-    out.buffer32UIRWArrayPtr = buffer32UIRWArrayPtr;
-    out.buffer32UIRWPtr = buffer32UIRWPtr;
-    out.buffer32UIRW = buffer32UIRW;
+    out.prmTableId = prmTableId;
+    out.buffer32UI = buffer32UI;
+    out.buffer32UIPtr = buffer32UIPtr;
 }

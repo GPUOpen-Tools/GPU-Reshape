@@ -157,7 +157,7 @@ namespace Backend::IL {
 
         bool multisampled{false};
 
-        ResourceSamplerMode samplerMode{ResourceSamplerMode::RuntimeOnly};
+        ResourceSamplerMode samplerMode{ResourceSamplerMode::Compatible};
 
         Format format{Format::R32UInt};
     };
@@ -171,7 +171,7 @@ namespace Backend::IL {
 
         const Type* elementType{nullptr};
 
-        ResourceSamplerMode samplerMode{ResourceSamplerMode::RuntimeOnly};
+        ResourceSamplerMode samplerMode{ResourceSamplerMode::Compatible};
 
         Format texelType{Format::None};
     };

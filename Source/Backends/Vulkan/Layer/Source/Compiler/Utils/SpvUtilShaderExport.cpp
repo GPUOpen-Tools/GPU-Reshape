@@ -27,6 +27,7 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
     // RWBuffer<uint>
     buffer32UIRW = ilTypeMap.FindTypeOrAdd(Backend::IL::BufferType{
         .elementType = intType,
+        .samplerMode = Backend::IL::ResourceSamplerMode::Writable,
         .texelType = Backend::IL::Format::R32UInt
     });
 

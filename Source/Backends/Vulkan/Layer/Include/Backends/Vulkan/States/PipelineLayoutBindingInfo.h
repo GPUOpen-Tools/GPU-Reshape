@@ -14,10 +14,10 @@ struct PipelineLayoutBindingInfo {
     /// PRMT descriptors
     uint32_t prmtDescriptorOffset{0};
 
+    /// Descriptor data descriptors
+    uint32_t descriptorDataDescriptorOffset{0};
+
     /// Shader data descriptors
     uint32_t shaderDataDescriptorOffset{0};
     uint32_t shaderDataDescriptorCount{0};
-
-    /// Export push constants
-    uint32_t exportPushConstantOffset{0};
 };

@@ -7,6 +7,8 @@ SpvPhysicalBlockTable::SpvPhysicalBlockTable(const Allocators &allocators, IL::P
     typeConstantVariable(allocators, program, *this),
     function(allocators, program, *this),
     shaderExport(allocators, program, *this),
+    shaderPRMT(allocators, program, *this),
+    shaderDescriptorConstantData(allocators, program, *this),
     program(program),
     scan(program) {
     /* */
@@ -42,9 +44,11 @@ bool SpvPhysicalBlockTable::Compile(const SpvJob &job) {
 
     // Compile the shader export record
     shaderExport.CompileRecords(job);
+    shaderDescriptorConstantData.CompileRecords(job);
+    shaderPRMT.CompileRecords(job);
 
     // Compile all functions
-    if (!function.Compile(idMap)) {
+    if (!function.Compile(job, idMap)) {
         return false;
     }
 
@@ -65,4 +69,6 @@ void SpvPhysicalBlockTable::CopyTo(SpvPhysicalBlockTable &out) {
     typeConstantVariable.CopyTo(out, out.typeConstantVariable);
     function.CopyTo(out, out.function);
     shaderExport.CopyTo(out, out.shaderExport);
+    shaderDescriptorConstantData.CopyTo(out, out.shaderDescriptorConstantData);
+    shaderPRMT.CopyTo(out, out.shaderPRMT);
 }

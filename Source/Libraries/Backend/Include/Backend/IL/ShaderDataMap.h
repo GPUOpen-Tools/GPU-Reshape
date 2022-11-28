@@ -32,6 +32,7 @@ namespace IL {
                 case ShaderDataType::Buffer:
                     Add(info.id, typeMap.FindTypeOrAdd(Backend::IL::BufferType {
                         .elementType = Backend::IL::GetSampledFormatType(typeMap, info.buffer.format),
+                        .samplerMode = Backend::IL::ResourceSamplerMode::Writable,
                         .texelType = info.buffer.format
                     }));
                     break;

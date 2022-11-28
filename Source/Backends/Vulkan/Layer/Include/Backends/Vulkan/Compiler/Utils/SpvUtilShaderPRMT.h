@@ -1,6 +1,7 @@
 #pragma once
 
 // Layer
+#include <Backends/Vulkan/Compiler/Blocks/SpvValueDecoration.h>
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockScan.h>
 
 // Backend
@@ -20,16 +21,27 @@ struct SpvUtilShaderPRMT {
     /// \param job source job being compiled against
     void CompileRecords(const SpvJob &job);
 
+    /// Get the PRMT offset for a given resource
+    /// \param stream current stream
+    /// \param resource resource to be tracked
+    /// \return allocated identifier
+    IL::ID GetResourcePRMTOffset(SpvStream& stream, IL::ID resource);
+
     /// Export a given value
     /// \param stream the current spirv stream
-    /// \param exportID the <compile time> identifier
-    /// \param value the value to be exported
-    void Export(SpvStream& stream, uint32_t exportID, IL::ID value);
+    /// \param value the resource id
+    void GetToken(SpvStream& stream, IL::ID resource, IL::ID result);
 
     /// Copy to a new block
     /// \param remote the new block table
     /// \param out the destination shader export
     void CopyTo(SpvPhysicalBlockTable& remote, SpvUtilShaderPRMT& out);
+
+private:
+    /// Find the originating resource decoration
+    /// \param resource resource to be traced
+    /// \return found decoration
+     SpvValueDecoration GetSourceResourceDecoration(IL::ID resource);
 
 private:
     /// Backend program
@@ -42,11 +54,9 @@ private:
     SpvPhysicalBlockTable& table;
 
     /// Spv identifiers
-    uint32_t counterId{0};
-    uint32_t streamId{0};
+    uint32_t prmTableId{0};
 
     /// Type map
-    const Backend::IL::Type *buffer32UIRWArrayPtr{nullptr};
-    const Backend::IL::Type *buffer32UIRWPtr{nullptr};
-    const Backend::IL::Type *buffer32UIRW{nullptr};
+    const Backend::IL::Type *buffer32UIPtr{nullptr};
+    const Backend::IL::Type *buffer32UI{nullptr};
 };

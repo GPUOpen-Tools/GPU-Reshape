@@ -8,6 +8,7 @@ namespace Backend::IL {
         Function,
         Resource,
         GroupShared,
+        RootConstant,
         Unexposed
     };
 }

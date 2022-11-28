@@ -331,6 +331,11 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "ResourceSize %" << load->resource;
             break;
         }
+        case OpCode::ResourceToken: {
+            auto load = instr->As<IL::ResourceTokenInstruction>();
+            line << "ResourceToken %" << load->resource;
+            break;
+        }
         case OpCode::Rem: {
             auto rem = instr->As<IL::RemInstruction>();
             line << "Rem %" << rem->lhs << " %" << rem->rhs;
@@ -369,6 +374,46 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         case OpCode::BitCast: {
             auto cast = instr->As<IL::BitCastInstruction>();
             line << "BitCast %" << cast->value;
+            break;
+        }
+        case OpCode::AtomicOr: {
+            auto atomic = instr->As<IL::AtomicOrInstruction>();
+            line << "AtomicOr address:%" << atomic->address << " value:%" << atomic->value;
+            break;
+        }
+        case OpCode::AtomicXOr: {
+            auto atomic = instr->As<IL::AtomicXOrInstruction>();
+            line << "AtomicXOr address:%" << atomic->address << " value:%" << atomic->value;
+            break;
+        }
+        case OpCode::AtomicAnd: {
+            auto atomic = instr->As<IL::AtomicAndInstruction>();
+            line << "AtomicAnd address:%" << atomic->address << " value:%" << atomic->value;
+            break;
+        }
+        case OpCode::AtomicAdd: {
+            auto atomic = instr->As<IL::AtomicAddInstruction>();
+            line << "AtomicAdd address:%" << atomic->address << " value:%" << atomic->value;
+            break;
+        }
+        case OpCode::AtomicMin: {
+            auto atomic = instr->As<IL::AtomicMinInstruction>();
+            line << "AtomicMin address:%" << atomic->address << " value:%" << atomic->value;
+            break;
+        }
+        case OpCode::AtomicMax: {
+            auto atomic = instr->As<IL::AtomicMinInstruction>();
+            line << "AtomicMax address:%" << atomic->address << " value:%" << atomic->value;
+            break;
+        }
+        case OpCode::AtomicExchange: {
+            auto atomic = instr->As<IL::AtomicExchangeInstruction>();
+            line << "AtomicExchange address:%" << atomic->address << " value:%" << atomic->value;
+            break;
+        }
+        case OpCode::AtomicCompareExchange: {
+            auto atomic = instr->As<IL::AtomicCompareExchangeInstruction>();
+            line << "AtomicCompareExchange address:%" << atomic->address << " value:%" << atomic->value << " comparator:%" << atomic->comparator;
             break;
         }
     }

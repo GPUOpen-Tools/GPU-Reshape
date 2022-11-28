@@ -17,6 +17,8 @@ struct SpvPhysicalBlock;
 struct SpvPhysicalBlockTable;
 struct SpvParseContext;
 struct SpvIdMap;
+struct SpvJob;
+struct SpvStream;
 
 /// Function definition and declaration physical block
 struct SpvPhysicalBlockFunction : public SpvPhysicalBlockSection {
@@ -38,7 +40,7 @@ struct SpvPhysicalBlockFunction : public SpvPhysicalBlockSection {
     /// Compile the physical block
     /// \param idMap
     /// \return success state
-    bool Compile(SpvIdMap& idMap);
+    bool Compile(const SpvJob& job, SpvIdMap& idMap);
 
     /// Compile a function
     /// \param idMap the shared identifier map for proxies
@@ -51,7 +53,7 @@ struct SpvPhysicalBlockFunction : public SpvPhysicalBlockSection {
     /// \param idMap the shared identifier map for proxies
     /// \param bb the basic block to be recompiled
     /// \return success state
-    bool CompileBasicBlock(SpvIdMap& idMap, IL::BasicBlock* bb);
+    bool CompileBasicBlock(SpvIdMap& idMap, IL::Function& fn, IL::BasicBlock* bb, bool isModifiedScope);
 
     /// Copy to a new block
     /// \param remote the remote table
@@ -70,6 +72,19 @@ private:
     /// \return false if not applicable
     bool PostPatchLoopContinueInstruction(IL::Instruction* instruction, IL::ID original, IL::ID redirect);
 
+    /// Create the user fed data map
+    /// \param job parent job
+    void CreateDataResourceMap(const SpvJob& job);
+
+    /// Create the user fed PC map
+    /// \param job parent job
+    void CreateDataPCMap(const SpvJob& job);
+
+    /// Create the data lookups
+    /// \param stream function scope
+    /// \param idMap identifier map to be used for the current scope
+    void CreateDataLookups(SpvStream& stream, SpvIdMap& idMap);
+
 private:
     struct LoopContinueBlock {
         IL::InstructionRef<> instruction;
@@ -78,4 +93,11 @@ private:
 
     /// All continue blocks
     std::vector<LoopContinueBlock> loopContinueBlocks;
+
+private:
+    /// Type of the PC block
+    const Backend::IL::Type* pcBlockType{nullptr};
+
+    /// Identifier of the PC data
+    IL::ID pcBlockId{IL::InvalidID};
 };

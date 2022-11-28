@@ -20,7 +20,8 @@ namespace IL {
         Function(const Allocators &allocators, IdentifierMap &map, ID id) :
             allocators(allocators), map(map), id(id),
             basicBlocks(allocators, map),
-            parameters(allocators, map) {
+            parameters(allocators, map),
+            variables(allocators, map) {
             /* */
         }
 
@@ -44,6 +45,7 @@ namespace IL {
             // Copy all lists
             basicBlocks.CopyTo(out->basicBlocks);
             parameters.CopyTo(out->parameters);
+            variables.CopyTo(out->variables);
         }
 
         /// Reindex all users
@@ -101,6 +103,16 @@ namespace IL {
             return parameters;
         }
 
+        /// Get the number of blocks
+        VariableList &GetVariables() {
+            return variables;
+        }
+
+        /// Get the number of blocks
+        const VariableList &GetVariables() const {
+            return variables;
+        }
+
         /// Get the id of this function
         ID GetID() const {
             return id;
@@ -148,6 +160,9 @@ namespace IL {
 
         /// All parameters
         VariableList parameters;
+
+        /// All function local variables
+        VariableList variables;
 
         /// Function type
         const Backend::IL::FunctionType* functionType{nullptr};

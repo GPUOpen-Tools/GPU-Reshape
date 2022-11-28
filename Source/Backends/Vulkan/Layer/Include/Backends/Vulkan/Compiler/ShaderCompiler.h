@@ -3,6 +3,9 @@
 // Layer
 #include <Backends/Vulkan/States/ShaderModuleState.h>
 
+// Backend
+#include <Backend/ShaderData/ShaderDataInfo.h>
+
 // Common
 #include <Common/IComponent.h>
 #include <Common/ComRef.h>
@@ -59,6 +62,9 @@ private:
 
     /// All features
     std::vector<ComRef<IShaderFeature>> shaderFeatures;
+
+    /// All data
+    std::vector<ShaderDataInfo> shaderData;
 
     /// Number of exports
     uint32_t exportCount{0};

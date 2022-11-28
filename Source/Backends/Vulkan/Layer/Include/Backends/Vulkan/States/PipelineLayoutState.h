@@ -39,8 +39,8 @@ struct PipelineLayoutState : public ReferenceObject {
     /// Number of descriptor sets for the user
     uint32_t boundUserDescriptorStates{0};
 
-    /// Instrumentation binding info
-    PipelineLayoutBindingInfo bindingInfo;
+    /// Push constant offset
+    uint32_t userPushConstantOffset{0};
 
     /// Unique identifier, unique for the type
     uint64_t uid;

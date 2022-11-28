@@ -3,6 +3,7 @@
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Export/ShaderExportDescriptorAllocator.h>
+#include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
@@ -44,6 +45,17 @@ bool ShaderCompiler::Install() {
     // Get the export host
     auto exportHost = registry->Get<IShaderExportHost>();
     exportHost->Enumerate(&exportCount, nullptr);
+
+    // Get the export host
+    auto shaderDataHost = registry->Get<ShaderDataHost>();
+
+    // Get number of resources
+    uint32_t resourceCount;
+    shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::All);
+
+    // Fill resources
+    shaderData.resize(resourceCount);
+    shaderDataHost->Enumerate(&resourceCount, shaderData.data(), ShaderDataType::All);
 
     // OK
     return true;
@@ -123,6 +135,14 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Create a copy of the module, don't modify the source
     SpvModule *module = job.state->spirvModule->Copy();
+
+    // Get user map
+    IL::ShaderDataMap& shaderDataMap = module->GetProgram()->GetShaderDataMap();
+
+    // Add resources
+    for (const ShaderDataInfo& info : shaderData) {
+        shaderDataMap.Add(info);
+    }
 
     // Pass through all features
     for (size_t i = 0; i < shaderFeatures.size(); i++) {

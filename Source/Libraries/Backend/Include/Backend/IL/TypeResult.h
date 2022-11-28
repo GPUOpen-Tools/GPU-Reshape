@@ -268,6 +268,8 @@ namespace Backend::IL {
             return nullptr;
         }
 
+        IL::AddressSpace space = IL::AddressSpace::Function;
+
         // Walk the chain
         for (uint32_t i = 0; i < instr->chains.count; i++) {
             switch (type->kind) {
@@ -278,10 +280,12 @@ namespace Backend::IL {
                     break;
                 case Backend::IL::TypeKind::Buffer: {
                     type = type->As<Backend::IL::BufferType>()->elementType;
+                    space = AddressSpace::Buffer;
                     break;
                 }
                 case Backend::IL::TypeKind::Texture: {
                     type = type->As<Backend::IL::TextureType>()->sampledType;
+                    space = AddressSpace::Texture;
                     break;
                 }
                 case Backend::IL::TypeKind::Vector: {
@@ -293,10 +297,14 @@ namespace Backend::IL {
                     break;
                 }
                 case Backend::IL::TypeKind::Pointer:{
-                    type = type->As<Backend::IL::PointerType>()->pointee;
+                    auto* pointer = type->As<Backend::IL::PointerType>();
+                    type = pointer->pointee;
+
+                    ASSERT(space == AddressSpace::Unexposed || space == pointer->addressSpace, "Mismatched address space in address chain");
+                    space = pointer->addressSpace;
                     break;
                 }
-                case Backend::IL::TypeKind::Array:{
+                case Backend::IL::TypeKind::Array: {
                     type = type->As<Backend::IL::ArrayType>()->elementType;
                     break;
                 }
@@ -309,11 +317,8 @@ namespace Backend::IL {
                     break;
                 }
             }
-
-            // TODO: Is function address space really right? Maybe derive from the source composite
-            return program.GetTypeMap().FindTypeOrAdd(PointerType { .pointee = type, .addressSpace = AddressSpace::Function });
         }
 
-        return type;
+        return program.GetTypeMap().FindTypeOrAdd(PointerType { .pointee = type, .addressSpace = space });
     }
 }
