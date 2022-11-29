@@ -1,0 +1,6 @@
+<schema>
+    <shader-export name="ResourceRaceCondition">
+        <field name="compileType" type="uint32" bits="2"/>
+        <field name="runtimeType" type="uint32" bits="2"/>
+    </shader-export>
+</schema>

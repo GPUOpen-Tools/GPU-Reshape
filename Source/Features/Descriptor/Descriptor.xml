@@ -1,0 +1,8 @@
+<spec>
+    <backend>
+        <plugin name="Features.Descriptor.Backend"/>
+    </backend>
+    <uix>
+        <plugin name="Features.Descriptor.UIX"/>
+    </uix>
+</spec>

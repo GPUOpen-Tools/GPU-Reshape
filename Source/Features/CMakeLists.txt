@@ -6,6 +6,12 @@ add_subdirectory(Common)
 add_subdirectory(ResourceBounds)
 add_subdirectory(ExportStability)
 add_subdirectory(Concurrency)
+add_subdirectory(Descriptor)
+
+# Experimental plugins
+if (${ENABLE_EXPERIMENTAL})
+    # ... Lonely day for experimental plugins
+endif()
 
 # Proxy object
 add_custom_target(Features)
