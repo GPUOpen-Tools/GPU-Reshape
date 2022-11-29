@@ -39,7 +39,12 @@ set(DeepCopyTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(SpvTemplate                        ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Spv.ht)
 
 # Generated hooks
-set(VkHooks vkCmdDrawIndexed)
+set(
+    VkHooks
+    vkCmdDispatch
+    vkCmdDraw
+    vkCmdDrawIndexed
+)
 
 # White list
 set(
@@ -63,7 +68,8 @@ set(
     vkCmdDrawIndirectCount
 )
 
-# Combine list
+# Join lists
+list(JOIN VkHooks "," VkHooksJoin)
 list(JOIN VkWhitelist "," VkWhitelistJoin)
 
 # Object list
@@ -108,7 +114,7 @@ add_custom_command(
         -template ${CommandBufferDispatchTableTemplate}
         -gentype commandbufferdispatchtable
         -o Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
-        -hook ${VkHooks}
+        -hook ${VkHooksJoin}
         -whitelist ${VkWhitelistJoin}
 )
 
@@ -123,7 +129,7 @@ add_custom_command(
         -template ${CommandBufferTemplate}
         -gentype commandbuffer
         -o Layer/Source/CommandBuffer.Gen.cpp
-        -hook ${VkHooks}
+        -hook ${VkHooksJoin}
         -whitelist ${VkWhitelistJoin}
 )
 

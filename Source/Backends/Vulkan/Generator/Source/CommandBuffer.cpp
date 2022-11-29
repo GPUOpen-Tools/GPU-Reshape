@@ -1,5 +1,6 @@
 #include "GenTypes.h"
 
+// Std
 #include <iostream>
 #include <array>
 
@@ -87,17 +88,31 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         populate << "getProcAddr(device, \"" << prototypeName->GetText() << "\")";
         populate << ");\n";
 
-        // Whitelisted?
-        if (info.whitelist.count(prototypeName->GetText())) {
-            continue;
+        // Prefix for the next call
+        std::string namePrefix;
+
+        // Check name
+        const bool isHooked = info.hooks.count(prototypeName->GetText());
+        const bool isWhitelisted = info.whitelist.count(prototypeName->GetText());
+
+        // Determine name prefix
+        if (isHooked) {
+            namePrefix = "ProxyHook_";
+        } else {
+            namePrefix = "Hook_";
         }
 
         // Add get hook address, must be done after white listing
         gethookaddress << "\tif (!std::strcmp(\"" << prototypeName->GetText() << "\", name))\n";
-        gethookaddress << "\t\treturn reinterpret_cast<PFN_vkVoidFunction>(Hook_" << prototypeName->GetText() << ");\n";
+        gethookaddress << "\t\treturn reinterpret_cast<PFN_vkVoidFunction>(" << namePrefix << prototypeName->GetText() << ");\n";
+
+        // If whitelisted and not hooked, don't generate anything
+        if (!isHooked && isWhitelisted) {
+            continue;
+        }
 
         // Generate prototype
-        hooks << prototypeResult->GetText() << " " << "Hook_" << prototypeName->GetText() << "(";
+        hooks << prototypeResult->GetText() << " " << namePrefix << prototypeName->GetText() << "(";
 
         // A wrapped object to inspect
         const char* wrappedObject{nullptr};
@@ -209,7 +224,11 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Pass down the call chain
-        hooks << wrappedObject << "->dispatchTable.next_" << prototypeName->GetText() << "(";
+        if (info.hooks.count(prototypeName->GetText())) {
+            hooks << "Hook_" << prototypeName->GetText() << "(";
+        } else {
+            hooks << wrappedObject << "->dispatchTable.next_" << prototypeName->GetText() << "(";
+        }
 
         // Generate arguments
         parameterIndex = 0;
@@ -234,7 +253,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
             }
 
             // Generate argument, unwrap if needed
-            if (unwrappingStates[parameterIndex])
+            if (unwrappingStates[parameterIndex] && !isHooked)
                 hooks << paramName->GetText() << "->object";
             else
                 hooks << paramName->GetText();

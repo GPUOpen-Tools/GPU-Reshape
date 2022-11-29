@@ -17,10 +17,21 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
         // Get the hook table
         FeatureHookTable hookTable = feature->GetHookTable();
 
-        // Create all relevant proxies
+        /** Create all relevant proxies */
+
+        if (hookTable.drawInstanced.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdDraw[i] = hookTable.drawInstanced;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDraw |= (1ull << i);
+        }
+
         if (hookTable.drawIndexedInstanced.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdDrawIndexed[i] = hookTable.drawIndexedInstanced;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexed |= (1ull << i);
+        }
+
+        if (hookTable.dispatch.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdDispatch[i] = hookTable.dispatch;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatch |= (1ull << i);
         }
     }
 }
@@ -28,7 +39,9 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
 void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t featureSet) {
     std::lock_guard lock(table->commandBufferMutex);
 
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDraw = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDraw & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdDrawIndexed = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexed & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDispatch = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatch & featureSet;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkCommandPool *pCommandPool) {
@@ -87,14 +100,14 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, co
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *commandBuffer, const VkCommandBufferBeginInfo *pBeginInfo) {
+    // Pass down the controller
+    commandBuffer->table->instrumentationController->BeginCommandList();
+
     // Acquire the device command table
     {
         std::lock_guard lock(commandBuffer->table->commandBufferMutex);
         commandBuffer->dispatchTable = commandBuffer->table->commandBufferDispatchTable;
     }
-
-    // Pass down the controller
-    commandBuffer->table->instrumentationController->BeginCommandList();
 
     // Pass down callchain
     VkResult result = commandBuffer->table->next_vkBeginCommandBuffer(commandBuffer->object, pBeginInfo);
@@ -135,6 +148,18 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetCommandBuffer(CommandBufferObject *co
     return VK_SUCCESS;
 }
 
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdExecuteCommands(CommandBufferObject *commandBuffer, uint32_t commandBufferCount, const CommandBufferObject **pCommandBuffers) {
+    auto* unwrapped = ALLOCA_ARRAY(VkCommandBuffer, commandBufferCount);
+
+    // Unwrap
+    for (uint32_t i = 0; i < commandBufferCount; i++) {
+        unwrapped[i] = pCommandBuffers[i]->object;
+    }
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdExecuteCommands(commandBuffer->object, commandBufferCount, unwrapped);
+}
+
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) {
     // Get state
     PipelineState *state = commandBuffer->table->states_pipeline.Get(pipeline);
@@ -170,7 +195,7 @@ static void CommitCompute(CommandBufferObject* commandBuffer) {
             commandBuffer->dispatchTable.next_vkCmdPushConstants(
                 commandBuffer->object,
                 commandBuffer->context.pipeline->layout->object,
-                VK_SHADER_STAGE_COMPUTE_BIT,
+                VK_SHADER_STAGE_ALL,
                 commandBuffer->context.pipeline->layout->userPushConstantOffset + index,
                 sizeof(uint32_t),
                 commandBuffer->userContext.eventStack.GetData() + index
@@ -199,7 +224,7 @@ static void CommitGraphics(CommandBufferObject* commandBuffer) {
             commandBuffer->dispatchTable.next_vkCmdPushConstants(
                 commandBuffer->object,
                 commandBuffer->context.pipeline->layout->object,
-                VK_SHADER_STAGE_ALL_GRAPHICS,
+                VK_SHADER_STAGE_ALL,
                 commandBuffer->context.pipeline->layout->userPushConstantOffset + index,
                 sizeof(uint32_t),
                 commandBuffer->userContext.eventStack.GetData() + index
