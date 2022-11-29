@@ -118,6 +118,31 @@ static bool PoolAndInstallFeatures(DeviceDispatchTable* table) {
     return true;
 }
 
+static void CreateEventRemappingTable(DeviceDispatchTable* table) {
+    // All data
+    std::vector<ShaderDataInfo> data;
+
+    // Pool feature count
+    uint32_t dataCount;
+    table->dataHost->Enumerate(&dataCount, nullptr, ShaderDataType::Event);
+
+    // Pool features
+    data.resize(dataCount);
+    table->dataHost->Enumerate(&dataCount, data.data(), ShaderDataType::Event);
+
+    // Current offset
+    uint32_t offset = 0;
+
+    // Populate table
+    for (const ShaderDataInfo& info : data) {
+        if (info.id >= table->eventRemappingTable.Size()) {
+            table->eventRemappingTable.Resize(info.id + 1);
+        }
+
+        table->eventRemappingTable[info.id] = offset;
+    }
+}
+
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     auto chainInfo = static_cast<VkLayerDeviceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
@@ -224,6 +249,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Install all features
     ENSURE(PoolAndInstallFeatures(table), "Failed to install features");
+
+    // Create remapping table
+    CreateEventRemappingTable(table);
 
     // Create the proxies / associations between the backend vulkan commands and the features
     CreateDeviceCommandProxies(table);

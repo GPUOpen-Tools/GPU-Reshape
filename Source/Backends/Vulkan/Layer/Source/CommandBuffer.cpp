@@ -3,6 +3,7 @@
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/States/CommandPoolState.h>
 #include <Backends/Vulkan/States/PipelineState.h>
+#include <Backends/Vulkan/States/PipelineLayoutState.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
 
@@ -107,6 +108,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     // Sanity (redundant), reset the context
     commandBuffer->context = {};
 
+    // Cleanup user context
+    commandBuffer->userContext.eventStack.Flush();
+    commandBuffer->userContext.eventStack.SetRemapping(commandBuffer->table->eventRemappingTable);
+
     // OK
     return VK_SUCCESS;
 }
@@ -149,6 +154,136 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
 
     // Update context
     commandBuffer->context.pipeline = state;
+}
+
+static void CommitCompute(CommandBufferObject* commandBuffer) {
+    DeviceDispatchTable* table = commandBuffer->table;
+
+    // Inform the streamer
+    table->exportStreamer->Commit(commandBuffer->streamState, VK_PIPELINE_BIND_POINT_COMPUTE, commandBuffer);
+
+    // TODO: Update the event data in batches
+    if (uint64_t bitMask = commandBuffer->userContext.eventStack.GetGraphicsDirtyMask()) {
+        unsigned long index;
+        while (_BitScanReverse64(&index, bitMask)) {
+            // Push the event data
+            commandBuffer->dispatchTable.next_vkCmdPushConstants(
+                commandBuffer->object,
+                commandBuffer->context.pipeline->layout->object,
+                VK_SHADER_STAGE_COMPUTE_BIT,
+                commandBuffer->context.pipeline->layout->userPushConstantOffset + index,
+                sizeof(uint32_t),
+                commandBuffer->userContext.eventStack.GetData() + index
+            );
+
+            // Next!
+            bitMask &= ~(1ull << index);
+        }
+
+        // Cleanup
+        commandBuffer->userContext.eventStack.FlushGraphics();
+    }
+}
+
+static void CommitGraphics(CommandBufferObject* commandBuffer) {
+    DeviceDispatchTable* table = commandBuffer->table;
+
+    // Inform the streamer
+    table->exportStreamer->Commit(commandBuffer->streamState, VK_PIPELINE_BIND_POINT_GRAPHICS, commandBuffer);
+
+    // TODO: Update the event data in batches
+    if (uint64_t bitMask = commandBuffer->userContext.eventStack.GetGraphicsDirtyMask()) {
+        unsigned long index;
+        while (_BitScanReverse64(&index, bitMask)) {
+            // Push the event data
+            commandBuffer->dispatchTable.next_vkCmdPushConstants(
+                commandBuffer->object,
+                commandBuffer->context.pipeline->layout->object,
+                VK_SHADER_STAGE_ALL_GRAPHICS,
+                commandBuffer->context.pipeline->layout->userPushConstantOffset + index,
+                sizeof(uint32_t),
+                commandBuffer->userContext.eventStack.GetData() + index
+            );
+
+            // Next!
+            bitMask &= ~(1ull << index);
+        }
+
+        // Cleanup
+        commandBuffer->userContext.eventStack.FlushGraphics();
+    }
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDraw(CommandBufferObject *commandBuffer, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDraw(commandBuffer->object, vertexCount, instanceCount, firstVertex, firstInstance);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexed(CommandBufferObject *commandBuffer, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawIndexed(commandBuffer->object, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndirect(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawIndirect(commandBuffer->object, buffer, offset, drawCount, stride);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexedIndirect(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawIndexedIndirect(commandBuffer->object, buffer, offset, drawCount, stride);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatch(CommandBufferObject *commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+    // Commit all pending compute
+    CommitCompute(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDispatch(commandBuffer->object, groupCountX, groupCountY, groupCountZ);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchBase(CommandBufferObject *commandBuffer, uint32_t baseCountX, uint32_t baseCountY, uint32_t baseCountZ, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+    // Commit all pending compute
+    CommitCompute(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDispatchBase(commandBuffer->object, baseCountX, baseCountY, baseCountZ, groupCountX, groupCountY, groupCountZ);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchIndirect(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset) {
+    // Commit all pending compute
+    CommitCompute(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDispatchIndirect(commandBuffer->object, buffer, offset);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndirectCount(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawIndirectCount(commandBuffer->object, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexedIndirectCount(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawIndexedIndirectCount(commandBuffer->object, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {

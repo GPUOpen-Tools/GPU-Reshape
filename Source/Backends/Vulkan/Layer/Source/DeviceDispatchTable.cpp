@@ -141,6 +141,33 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
     if (!std::strcmp(name, "vkCmdBindDescriptorSets"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdBindDescriptorSets);
 
+    if (!std::strcmp(name, "vkCmdDispatch"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdDispatch);
+
+    if (!std::strcmp(name, "vkCmdDispatchBase"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdDispatchBase);
+
+    if (!std::strcmp(name, "vkCmdDispatchIndirect"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdDispatchIndirect);
+
+    if (!std::strcmp(name, "vkCmdDraw"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdDraw);
+
+    if (!std::strcmp(name, "vkCmdDrawIndexed"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdDrawIndexed);
+
+    if (!std::strcmp(name, "vkCmdDrawIndexedIndirect"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdDrawIndexedIndirect);
+
+    if (!std::strcmp(name, "vkCmdDrawIndexedIndirectCount"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdDrawIndexedIndirectCount);
+
+    if (!std::strcmp(name, "vkCmdDrawIndirect"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdDrawIndirect);
+
+    if (!std::strcmp(name, "vkCmdDrawIndirectCount"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCmdDrawIndirectCount);
+
     if (!std::strcmp(name, "vkCreatePipelineLayout"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreatePipelineLayout);
 

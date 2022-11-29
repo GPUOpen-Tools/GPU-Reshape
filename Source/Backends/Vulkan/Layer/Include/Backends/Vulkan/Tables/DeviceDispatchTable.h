@@ -17,6 +17,9 @@
 // Generated
 #include "Backends/Vulkan/CommandBufferDispatchTable.Gen.h"
 
+// Backend
+#include <Backend/EventDataStack.h>
+
 // Std
 #include <mutex>
 #include <map>
@@ -207,6 +210,9 @@ struct DeviceDispatchTable {
     /// Command buffer dispatch table
     std::mutex                 commandBufferMutex;
     CommandBufferDispatchTable commandBufferDispatchTable;
+
+    /// Shared remapping table
+    EventDataStack::RemappingTable eventRemappingTable;
 
     /// All features
     std::vector<ComRef<IFeature>> features;

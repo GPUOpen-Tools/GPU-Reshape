@@ -27,6 +27,11 @@ public:
     /// \return success state
     bool Install();
 
+    /// Create all descriptors
+    /// \param set set to be bound
+    /// \param bindingOffset offset to the binding data, filled linearly from there
+    void CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffset);
+
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info) override;
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;

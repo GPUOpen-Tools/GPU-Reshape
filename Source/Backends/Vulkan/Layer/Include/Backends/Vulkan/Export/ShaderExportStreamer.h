@@ -7,6 +7,7 @@
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/Export/StreamState.h>
+#include <Backends/Vulkan/Resource/DescriptorDataSegment.h>
 
 // Common
 #include <Common/Containers/ObjectPool.h>
@@ -24,6 +25,7 @@ struct PipelineState;
 struct FenceState;
 struct QueueState;
 struct CommandBufferObject;
+struct DescriptorSetState;
 class IBridge;
 
 class ShaderExportStreamer : public TComponent<ShaderExportStreamer> {
@@ -105,6 +107,12 @@ public:
     /// \param segment the segment to be mapped to
     void MapSegment(ShaderExportStreamState* state, ShaderExportStreamSegment* segment);
 
+    /// Commit all data
+    /// \param state state to be committed to
+    /// \param bindPoint destination binding point
+    /// \param commandBufferObject object committing from
+    void Commit(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, CommandBufferObject* commandBufferObject);
+
 public:
     /// Whole device sync point
     void Process();
@@ -146,6 +154,9 @@ private:
     ObjectPool<ShaderExportStreamState> streamStatePool;
     ObjectPool<ShaderExportStreamSegment> segmentPool;
     ObjectPool<ShaderExportQueueState> queuePool;
+
+    /// All free descriptor segments
+    std::vector<DescriptorDataSegmentEntry> freeDescriptorDataSegmentEntries;
 
     ComRef<DeviceAllocator> deviceAllocator{nullptr};
     ComRef<ShaderExportDescriptorAllocator> descriptorAllocator{nullptr};

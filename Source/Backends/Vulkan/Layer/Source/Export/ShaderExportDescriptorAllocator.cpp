@@ -80,7 +80,7 @@ bool ShaderExportDescriptorAllocator::Install() {
 
     // Binding for descriptor data
     VkDescriptorSetLayoutBinding& descriptorDataLayout = bindings.Add({});
-    descriptorDataLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorDataLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     descriptorDataLayout.stageFlags = VK_SHADER_STAGE_ALL;
     descriptorDataLayout.descriptorCount = 1;
     descriptorDataLayout.binding = bindingInfo.descriptorDataDescriptorOffset;
@@ -266,18 +266,33 @@ ShaderExportDescriptorAllocator::PoolInfo &ShaderExportDescriptorAllocator::Find
         }
     }
 
-    // Pool size, both the counter and stream are uniform texel buffers, one of each (hence x2)
-    // TODO: I don't think the above is right... is it?
-    VkDescriptorPoolSize poolSize{};
-    poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-    poolSize.descriptorCount = std::max(1ull, exportBound * 2 + dataResources.size()) * setsPerPool;
+    // Pool size
+    VkDescriptorPoolSize poolSizes[] = {
+        // Counter + Stream + Data
+        {
+            .type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+            .descriptorCount = static_cast<uint32_t>(1u + exportBound + dataResources.size()) * setsPerPool
+        },
+
+        // PRMT
+        {
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+            .descriptorCount = 1u * setsPerPool
+        },
+
+        // Descriptor
+        {
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            .descriptorCount = 1u * setsPerPool
+        },
+    };
 
     // Descriptor pool create info
     VkDescriptorPoolCreateInfo createInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     createInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     createInfo.maxSets = setsPerPool;
-    createInfo.poolSizeCount = 1;
-    createInfo.pPoolSizes = &poolSize;
+    createInfo.poolSizeCount = 3u;
+    createInfo.pPoolSizes = poolSizes;
 
     // Create new info
     PoolInfo &info = pools.emplace_back();
@@ -306,22 +321,44 @@ void ShaderExportDescriptorAllocator::Free(const ShaderExportSegmentDescriptorIn
     }
 }
 
-void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentDescriptorInfo &info) {
+void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentDescriptorInfo &info, VkBuffer descriptorChunk) {
     TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites;
 
+    // Get prmt view
     VkBufferView prmtBufferView = table->prmTable->GetDeviceView();
 
     // PRMT buffer
-    VkWriteDescriptorSet& counterWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
-    counterWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-    counterWrite.descriptorCount = 1u;
-    counterWrite.pTexelBufferView = &prmtBufferView;
-    counterWrite.dstArrayElement = 0;
-    counterWrite.dstSet = info.set;
-    counterWrite.dstBinding = bindingInfo.prmtDescriptorOffset;
+    VkWriteDescriptorSet& prmtWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
+    prmtWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    prmtWrite.descriptorCount = 1u;
+    prmtWrite.pTexelBufferView = &prmtBufferView;
+    prmtWrite.dstArrayElement = 0;
+    prmtWrite.dstSet = info.set;
+    prmtWrite.dstBinding = bindingInfo.prmtDescriptorOffset;
+
+    // Has descriptor data?
+    if (descriptorChunk) {
+        // Chunk info
+        VkDescriptorBufferInfo bufferInfo;
+        bufferInfo.buffer = descriptorChunk;
+        bufferInfo.offset = 0;
+        bufferInfo.range = VK_WHOLE_SIZE;
+
+        // Write descriptor
+        VkWriteDescriptorSet& descriptorWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        descriptorWrite.descriptorCount = 1u;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.dstSet = info.set;
+        descriptorWrite.dstBinding = bindingInfo.descriptorDataDescriptorOffset;
+    }
 
     // Update the descriptor set
     table->next_vkUpdateDescriptorSets(table->object, descriptorWrites.Size(), descriptorWrites.Data(), 0, nullptr);
+
+    // Create views to shader resources
+    table->dataHost->CreateDescriptors(info.set, bindingInfo.shaderDataDescriptorOffset);
 }
 
 void ShaderExportDescriptorAllocator::Update(const ShaderExportSegmentDescriptorInfo &info, const ShaderExportSegmentInfo *segment) {

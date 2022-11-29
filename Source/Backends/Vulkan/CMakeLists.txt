@@ -42,7 +42,29 @@ set(SpvTemplate                        ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(VkHooks vkCmdDrawIndexed)
 
 # White list
-set(VkWhitelist vkAllocateCommandBuffers,vkFreeCommandBuffers,vkCmdExecuteCommands,vkBeginCommandBuffer,vkResetCommandBuffer,vkEndCommandBuffer,vkCmdBindPipeline,vkCmdBindDescriptorSets)
+set(
+    VkWhitelist
+    vkAllocateCommandBuffers
+    vkFreeCommandBuffers
+    vkCmdExecuteCommands
+    vkBeginCommandBuffer
+    vkResetCommandBuffer
+    vkEndCommandBuffer
+    vkCmdBindPipeline
+    vkCmdBindDescriptorSets
+    vkCmdDispatch
+    vkCmdDispatchBase
+    vkCmdDispatchIndirect
+    vkCmdDraw
+    vkCmdDrawIndexed
+    vkCmdDrawIndexedIndirect
+    vkCmdDrawIndexedIndirectCount
+    vkCmdDrawIndirect
+    vkCmdDrawIndirectCount
+)
+
+# Combine list
+list(JOIN VkWhitelist "," VkWhitelistJoin)
 
 # Object list
 set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkDeviceCreateInfo)
@@ -87,7 +109,7 @@ add_custom_command(
         -gentype commandbufferdispatchtable
         -o Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
         -hook ${VkHooks}
-        -whitelist ${VkWhitelist}
+        -whitelist ${VkWhitelistJoin}
 )
 
 # Generate the command buffer hooks
@@ -102,7 +124,7 @@ add_custom_command(
         -gentype commandbuffer
         -o Layer/Source/CommandBuffer.Gen.cpp
         -hook ${VkHooks}
-        -whitelist ${VkWhitelist}
+        -whitelist ${VkWhitelistJoin}
 )
 
 # Generate the spv utilities

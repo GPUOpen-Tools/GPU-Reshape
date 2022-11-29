@@ -38,7 +38,7 @@ public:
 
     /// Update a segment
     /// \param info the descriptor segment to be updated
-    void UpdateImmutable(const ShaderExportSegmentDescriptorInfo& info);
+    void UpdateImmutable(const ShaderExportSegmentDescriptorInfo& info, VkBuffer descriptorChunk);
 
     /// Update a segment
     /// \param info the descriptor segment to be updated

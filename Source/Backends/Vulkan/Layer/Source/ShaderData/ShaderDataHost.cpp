@@ -29,6 +29,45 @@ bool ShaderDataHost::Install() {
     return true;
 }
 
+void ShaderDataHost::CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffset) {
+    TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites;
+
+    // Add all relevant resources
+    for (uint32_t i = 0; i < resources.size(); i++) {
+        const ResourceEntry &entry = resources[i];
+
+        // Skip non-descriptor types
+        if (!(ShaderDataType::DescriptorMask & entry.info.type)) {
+            continue;
+        }
+
+        // Handle type
+        switch (entry.info.type) {
+            default: {
+                ASSERT(false, "Invalid resource");
+                break;
+            }
+            case ShaderDataType::Buffer: {
+                VkWriteDescriptorSet& descriptorWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
+                descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+                descriptorWrite.descriptorCount = 1u;
+                descriptorWrite.pTexelBufferView = &entry.view;
+                descriptorWrite.dstArrayElement = 0;
+                descriptorWrite.dstSet = set;
+                descriptorWrite.dstBinding = bindingOffset + (descriptorWrites.Size() - 1u);
+                break;
+            }
+            case ShaderDataType::Texture: {
+                ASSERT(false, "Not implemented");
+                break;
+            }
+        }
+    }
+
+    // Update the descriptor set
+    table->next_vkUpdateDescriptorSets(table->object, descriptorWrites.Size(), descriptorWrites.Data(), 0, nullptr);
+}
+
 ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     // Determine index
     ShaderDataID rid;
@@ -54,7 +93,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     // Buffer info
     VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bufferInfo.size = Backend::IL::GetSize(info.format) * info.elementCount;
 
     // Attempt to create the buffer
@@ -143,6 +182,7 @@ void ShaderDataHost::Destroy(ShaderDataID rid) {
     // Add as free index
     freeIndices.push_back(rid);
 }
+
 void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) {
     if (out) {
         uint32_t offset = 0;

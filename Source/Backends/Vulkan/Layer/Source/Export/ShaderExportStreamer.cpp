@@ -6,6 +6,9 @@
 #include <Backends/Vulkan/States/PipelineLayoutState.h>
 #include <Backends/Vulkan/States/FenceState.h>
 #include <Backends/Vulkan/States/QueueState.h>
+#include <Backends/Vulkan/States/DescriptorSetState.h>
+#include <Backends/Vulkan/Resource/DescriptorDataAppendAllocator.h>
+#include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
@@ -47,11 +50,6 @@ ShaderExportStreamer::~ShaderExportStreamer() {
     for (ShaderExportStreamSegment* segment : segmentPool) {
         streamAllocator->FreeSegment(segment->allocation);
     }
-
-    // Free all states
-    for (ShaderExportStreamState* state : streamStatePool) {
-        descriptorAllocator->Free(state->segmentDescriptorInfo);
-    }
 }
 
 ShaderExportQueueState *ShaderExportStreamer::AllocateQueueState(QueueState* queue) {
@@ -75,8 +73,10 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
     // Create a new state
     auto* state = new (allocators) ShaderExportStreamState();
 
-    // Allocate a new descriptor set
-    state->segmentDescriptorInfo = descriptorAllocator->Allocate();
+    // Create descriptor data allocator
+    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+        state->pipelineBindPoints[i].descriptorDataAllocator = new (allocators) DescriptorDataAppendAllocator(table, deviceAllocator);
+    }
 
     // OK
     return state;
@@ -124,11 +124,34 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Co
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
+
+        // Reset state
         bindState.deviceDescriptorOverwriteMask = 0x0;
+        bindState.pipeline = nullptr;
+        bindState.isInstrumented = false;
     }
 
-    // Update all immutable descriptors
-    descriptorAllocator->UpdateImmutable(state->segmentDescriptorInfo);
+    // Initialize descriptor binders
+    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+        ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[i];
+
+        // Recycle free data segments if available
+        if (!freeDescriptorDataSegmentEntries.empty()) {
+            bindState.descriptorDataAllocator->SetChunk(freeDescriptorDataSegmentEntries.back());
+            freeDescriptorDataSegmentEntries.pop_back();
+        }
+
+        // Allocate a new descriptor set
+        ShaderExportSegmentDescriptorAllocation allocation;
+        allocation.info = descriptorAllocator->Allocate();
+        state->segmentDescriptors.push_back(allocation);
+
+        // Update all immutable descriptors, no descriptor data yet
+        descriptorAllocator->UpdateImmutable(allocation.info, nullptr);
+
+        // Set current for successive binds
+        bindState.currentSegment = allocation;
+    }
 }
 
 void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, CommandBufferObject* commandBuffer) {
@@ -141,6 +164,10 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, Co
             }
         }
 
+        // Commit dangling data
+        bindState.descriptorDataAllocator->Commit(nullptr);
+
+        // Reset descriptor state
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
         bindState.deviceDescriptorOverwriteMask = 0x0;
@@ -156,15 +183,29 @@ void ShaderExportStreamer::EndCommandBuffer(ShaderExportStreamState* state, Comm
                 dynamicOffsetAllocator.Free(descriptorState.dynamicOffsets);
             }
         }
+
+        // Commit all host data to device
+        bindState.descriptorDataAllocator->Commit(commandBuffer);
     }
 }
 
 void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, bool instrumented, CommandBufferObject* commandBuffer) {
+    // Get bind state
+    ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipeline->type)];
+
     // Restore the expected environment
     MigrateDescriptorEnvironment(state, pipeline, commandBuffer);
 
+    // State tracking
+    bindState.pipeline = pipeline;
+    bindState.isInstrumented = instrumented;
+
     // Ensure the shader export states are bound
     if (instrumented) {
+        // Create initial descriptor segment
+        bindState.descriptorDataAllocator->BeginSegment(pipeline->layout->boundUserDescriptorStates);
+
+        // Set export set
         BindShaderExport(state, pipeline, commandBuffer);
     }
 }
@@ -179,6 +220,48 @@ void ShaderExportStreamer::Process() {
 void ShaderExportStreamer::Process(ShaderExportQueueState* queueState) {
     std::lock_guard guard(table->states_queue.GetLock());
     ProcessSegmentsNoQueueLock(queueState);
+}
+
+void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBindPoint bindPoint, CommandBufferObject *commandBuffer) {
+    // Translate the bind point
+    PipelineType pipelineType = Translate(bindPoint);
+
+    // Get bind state
+    ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipelineType)];
+
+    // If the allocator has rolled, a new segment is pending binding
+    if (bindState.descriptorDataAllocator->HasRolled()) {
+        // The underlying chunk may have changed, recreate the export data if needed
+        if (!bindState.currentSegment.descriptorRollChunk || bindState.currentSegment.descriptorRollChunk != bindState.descriptorDataAllocator->GetSegmentBuffer()) {
+            // Set current view
+            bindState.currentSegment.descriptorRollChunk = bindState.descriptorDataAllocator->GetSegmentBuffer();
+
+            // Allocate a new descriptor set
+            ShaderExportSegmentDescriptorAllocation allocation;
+            allocation.info = descriptorAllocator->Allocate();
+            state->segmentDescriptors.push_back(allocation);
+
+            // Update all immutable descriptors
+            descriptorAllocator->UpdateImmutable(allocation.info, bindState.currentSegment.descriptorRollChunk);
+
+            // Set current for successive binds
+            bindState.currentSegment = allocation;
+        }
+
+        // Descriptor dynamic offset
+        uint32_t dynamicOffset = bindState.descriptorDataAllocator->GetSegmentDynamicOffset();
+
+        // Bind the export
+        table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
+            commandBuffer->object,
+            bindPoint, bindState.pipeline->layout->object,
+            bindState.pipeline->layout->boundUserDescriptorStates, 1u, &bindState.currentSegment.info.set,
+            1u, &dynamicOffset
+        );
+    }
+
+    // Begin new segment
+    bindState.descriptorDataAllocator->BeginSegment(bindState.pipeline->layout->boundUserDescriptorStates);
 }
 
 void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState *state, const PipelineState *pipeline, CommandBufferObject* commandBuffer) {
@@ -266,12 +349,15 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
     commandBuffer->context.descriptorSets[static_cast<uint32_t>(pipeline->type)][pipeline->layout->boundUserDescriptorStates] = state->segmentDescriptorInfo.set;
 #endif
 
+    // Descriptor dynamic offset
+    uint32_t dynamicOffset = bindState.descriptorDataAllocator->GetSegmentDynamicOffset();
+
     // Bind the export
     table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
         commandBuffer->object,
         vkBindPoint, pipeline->layout->object,
-        pipeline->layout->boundUserDescriptorStates, 1u, &state->segmentDescriptorInfo.set,
-        0u, nullptr
+        pipeline->layout->boundUserDescriptorStates, 1u, &bindState.currentSegment.info.set,
+        1u, &dynamicOffset
     );
 
     // Mark as bound
@@ -279,7 +365,23 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
 }
 
 void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {
-    descriptorAllocator->Update(state->segmentDescriptorInfo, segment->allocation);
+    for (const ShaderExportSegmentDescriptorAllocation &allocation: state->segmentDescriptors) {
+        descriptorAllocator->Update(allocation.info, segment->allocation);
+    }
+
+    // Cleanup data segments
+    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+        ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[i];
+
+        // Move descriptor data ownership to segment
+        segment->descriptorDataSegments.push_back(bindState.descriptorDataAllocator->ReleaseSegment());
+    }
+
+    // Move ownership to the segment
+    segment->segmentDescriptors.insert(segment->segmentDescriptors.end(), state->segmentDescriptors.begin(), state->segmentDescriptors.end());
+
+    // Empty out
+    state->segmentDescriptors.clear();
 }
 
 void ShaderExportStreamer::ProcessSegmentsNoQueueLock(ShaderExportQueueState* queue) {
@@ -353,6 +455,30 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
     if (segment->fence->isImmediate) {
         queueState->pools_fences.Push(segment->fence);
     }
+
+    // Release all descriptors
+    for (const ShaderExportSegmentDescriptorAllocation& allocation : segment->segmentDescriptors) {
+        descriptorAllocator->Free(allocation.info);
+    }
+
+    // Release all descriptor data
+    for (const DescriptorDataSegment& dataSegment : segment->descriptorDataSegments) {
+        if (dataSegment.entries.empty()) {
+            continue;
+        }
+
+        // Free all re-chunked allocations
+        for (size_t i = 0; i < dataSegment.entries.size() - 1; i++) {
+            deviceAllocator->Free(dataSegment.entries[i].allocation);
+        }
+
+        // Mark the last, and largest, chunk as free
+        freeDescriptorDataSegmentEntries.push_back(dataSegment.entries.back());
+    }
+
+    // Cleanup
+    segment->segmentDescriptors.clear();
+    segment->descriptorDataSegments.clear();
 
     // Remove fence reference
     segment->fence = nullptr;
@@ -433,6 +559,12 @@ void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, Vk
     // Handle each set
     for (uint32_t i = 0; i < count; i++) {
         uint32_t slot = start + i;
+
+        // Get the state
+        DescriptorSetState* persistentState = table->states_descriptorSet.Get(sets[i]);
+
+        // Set the shader PRMT offset
+        bindState.descriptorDataAllocator->Set(slot, table->prmTable->GetSegmentShaderOffset(persistentState->segmentID));
 
         // Number of dynamic counts for this slot
         uint32_t slotDynamicCount = layoutState->descriptorDynamicOffsets.at(slot);

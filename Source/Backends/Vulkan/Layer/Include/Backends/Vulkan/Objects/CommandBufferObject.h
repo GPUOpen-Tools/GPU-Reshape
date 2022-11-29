@@ -2,13 +2,14 @@
 
 // Layer
 #include "Backends/Vulkan/CommandBufferDispatchTable.Gen.h"
+#include "Backends/Vulkan/Vulkan.h"
+#include "Backends/Vulkan/States/PipelineType.h"
 
 // Common
 #include "Common/Containers/ReferenceObject.h"
 
-// Vulkan
-#include "Backends/Vulkan/Vulkan.h"
-#include "Backends/Vulkan/States/PipelineType.h"
+// Backend
+#include <Backend/CommandContext.h>
 
 // Std
 #include <vector>
@@ -51,6 +52,9 @@ struct CommandBufferObject {
 
     /// Current streaming state
     ShaderExportStreamState* streamState;
+
+    /// User context
+    CommandContext userContext;
 
     /// GPU lifetime references
     std::vector<ReferenceObject*> gpuReferences;
