@@ -5,11 +5,7 @@ add_subdirectory(Common)
 # Plugins
 add_subdirectory(ResourceBounds)
 add_subdirectory(ExportStability)
-
-# Experimental plugins
-if (${ENABLE_EXPERIMENTAL})
-    add_subdirectory(Concurrency)
-endif()
+add_subdirectory(Concurrency)
 
 # Proxy object
 add_custom_target(Features)
