@@ -1,5 +1,5 @@
 <schema>
-    <shader-export name="ResourceRaceCondition">
+    <shader-export name="DescriptorMismatch">
         <field name="compileType" type="uint32" bits="2"/>
         <field name="runtimeType" type="uint32" bits="2"/>
     </shader-export>

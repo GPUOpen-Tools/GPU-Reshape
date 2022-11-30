@@ -26,7 +26,7 @@ bool DescriptorFeature::Install() {
     }
 
     // Allocate the shared export
-    exportID = exportHost->Allocate<ResourceRaceConditionMessage>();
+    exportID = exportHost->Allocate<DescriptorMismatchMessage>();
 
     // Optional SGUID host
     sguidHost = registry->Get<IShaderSGUIDHost>();
@@ -111,7 +111,7 @@ void DescriptorFeature::Inject(IL::Program &program) {
         pre.BranchConditional(cond, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
 
         // Export the message
-        ResourceRaceConditionMessage::ShaderExport msg;
+        DescriptorMismatchMessage::ShaderExport msg;
         msg.sguid = mismatch.UInt32(sguid);
         msg.compileType = compileType;
         msg.runtimeType = runtimeType;

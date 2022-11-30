@@ -23,7 +23,7 @@ namespace Features.Descriptor.UIX.Workspace
             ViewModel = viewModel;
             
             // Add listener to bridge
-            viewModel.Connection?.Bridge?.Register(ResourceRaceConditionMessage.ID, this);
+            viewModel.Connection?.Bridge?.Register(DescriptorMismatchMessage.ID, this);
             
             // Get properties
             _messageCollectionViewModel = viewModel.PropertyCollection.GetProperty<IMessageCollectionViewModel>();
@@ -40,17 +40,17 @@ namespace Features.Descriptor.UIX.Workspace
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsStatic(ResourceRaceConditionMessage.ID)) 
+            if (!streams.GetSchema().IsStatic(DescriptorMismatchMessage.ID)) 
                 return;
 
-            var view = new StaticMessageView<ResourceRaceConditionMessage>(streams);
+            var view = new StaticMessageView<DescriptorMismatchMessage>(streams);
 
             // Latent update set
-            var lookup = new Dictionary<uint, ResourceRaceConditionMessage>();
+            var lookup = new Dictionary<uint, DescriptorMismatchMessage>();
             var enqueued = new Dictionary<uint, uint>();
 
             // Consume all messages
-            foreach (ResourceRaceConditionMessage message in view)
+            foreach (DescriptorMismatchMessage message in view)
             {
                 if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
                 {
