@@ -10,7 +10,7 @@ add_subdirectory(Descriptor)
 
 # Experimental plugins
 if (${ENABLE_EXPERIMENTAL})
-    # ... Lonely day for experimental plugins
+    add_subdirectory(Initialization)
 endif()
 
 # Proxy object

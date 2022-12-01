@@ -1,7 +1,7 @@
 //! KERNEL   Compute "main"
 //! DISPATCH 1, 1, 1
 
-//! SCHEMA "Schemas/Features/Descriptor.h"
+//! SCHEMA "Schemas/Features/Initialization.h"
 
 //! RESOURCE RWBuffer<R32Float> size:64
 [[vk::binding(0)]] RWBuffer<float> bufferRW : register(u0, space0);
@@ -16,12 +16,12 @@
 void main(uint dtid : SV_DispatchThreadID) {
     float data = 1.0f;
 
-    //! MESSAGE DescriptorMismatch[0]
+    //! MESSAGE UninitializedResource[0]
     data += bufferRW[dtid.x];
 
-    //! MESSAGE DescriptorMismatch[0]
+    //! MESSAGE UninitializedResource[0]
     data += textureRO.Load(dtid.x);
 
-    //! MESSAGE DescriptorMismatch[0]
+    //! MESSAGE UninitializedResource[0]
 	bufferRW2[dtid.x] = data;
 }
