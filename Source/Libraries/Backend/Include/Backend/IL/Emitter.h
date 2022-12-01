@@ -310,16 +310,25 @@ namespace IL {
         /// \param composite the base composite address
         /// \param index the uniform index
         /// \return instruction reference
-        InstructionRef <AddressChainInstruction> AddressOf(ID composite, ID index) {
-            ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
+        template<typename... IX>
+        InstructionRef <AddressChainInstruction> AddressOf(ID composite, IX... ix) {
+            ASSERT(IsMapped(composite), "Unmapped identifier");
+
+            // Fold it down
+            IL::ID chains[] = {ix...};
 
             auto instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(1));
             instr->opCode = OpCode::AddressChain;
             instr->source = Source::Invalid();
             instr->result = map->AllocID();
             instr->composite = composite;
-            instr->chains.count = 1;
-            instr->chains[0].index = index;
+            instr->chains.count = sizeof...(IX);
+
+            // Write all chains
+            for (uint32_t i = 0; i < static_cast<uint32_t>(instr->chains.count); i++) {
+                instr->chains[i].index = chains[i];
+            }
+
             return Op(*instr);
         }
 
@@ -327,7 +336,7 @@ namespace IL {
         /// \param composite the base composite
         /// \param index the index
         /// \return instruction reference
-        InstructionRef <ExtractInstruction> Extract(ID composite, ID index) {
+        InstructionRef <ExtractInstruction> Extract(ID composite, uint32_t index) {
             ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
 
             ExtractInstruction instr{};

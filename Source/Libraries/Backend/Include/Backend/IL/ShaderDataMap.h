@@ -30,10 +30,13 @@ namespace IL {
                     ASSERT(false, "Invalid data");
                     break;
                 case ShaderDataType::Buffer:
-                    Add(info.id, typeMap.FindTypeOrAdd(Backend::IL::BufferType {
-                        .elementType = Backend::IL::GetSampledFormatType(typeMap, info.buffer.format),
-                        .samplerMode = Backend::IL::ResourceSamplerMode::Writable,
-                        .texelType = info.buffer.format
+                    Add(info.id, typeMap.FindTypeOrAdd(Backend::IL::PointerType{
+                        .pointee = typeMap.FindTypeOrAdd(Backend::IL::BufferType{
+                            .elementType = Backend::IL::GetSampledFormatType(typeMap, info.buffer.format),
+                            .samplerMode = Backend::IL::ResourceSamplerMode::Writable,
+                            .texelType = info.buffer.format
+                        }),
+                        .addressSpace = Backend::IL::AddressSpace::Resource
                     }));
                     break;
                 case ShaderDataType::Texture:

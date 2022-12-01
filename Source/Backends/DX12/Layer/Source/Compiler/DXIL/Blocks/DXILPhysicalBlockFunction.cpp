@@ -1881,10 +1881,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                             ASSERT(chainInstr->chains.count == 1, "Multi-chain on atomic operations not supported");
 
                             // Get handle of address base
-                            const Backend::IL::Type* handleType = program.GetTypeMap().GetType(chainInstr->composite);
+                            const auto* addressType = program.GetTypeMap().GetType(chainInstr->result)->As<Backend::IL::PointerType>();;
 
                             // Handle based atomic?
-                            if (handleType->Is<Backend::IL::BufferType>() || handleType->Is<Backend::IL::TextureType>()) {
+                            if (addressType->addressSpace == Backend::IL::AddressSpace::Texture || addressType->addressSpace == Backend::IL::AddressSpace::Buffer) {
                                 if (instr->opCode == Backend::IL::OpCode::AtomicCompareExchange) {
                                     auto _instr = instr->As<Backend::IL::AtomicCompareExchangeInstruction>();
 
@@ -2729,11 +2729,14 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                 case IL::OpCode::AddressChain: {
                     auto _instr = instr->As<IL::AddressChainInstruction>();
 
+                    // Get resulting type
+                    const auto* pointerType = typeMap.GetType(_instr->result)->As<Backend::IL::PointerType>();
+
                     // Get type of the composite
                     const Backend::IL::Type* compositeType = program.GetTypeMap().GetType(_instr->composite);
 
                     // Resource indexing is handled in the using instruction
-                    if (compositeType->Is<Backend::IL::BufferType>() || compositeType->Is<Backend::IL::TextureType>()) {
+                    if (pointerType->addressSpace == Backend::IL::AddressSpace::Texture || pointerType->addressSpace == Backend::IL::AddressSpace::Buffer) {
                         break;
                     }
 
@@ -2754,7 +2757,90 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     break;
                 }
 
-                    // To be implemented
+                case IL::OpCode::Load: {
+                    auto _instr = instr->As<IL::LoadInstruction>();
+
+                    // Get type
+                    const auto* pointerType = typeMap.GetType(_instr->address)->As<Backend::IL::PointerType>();
+
+                    switch (pointerType->pointee->kind) {
+                        default: {
+                            ASSERT(false, "Not implemented");
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Buffer:
+                        case Backend::IL::TypeKind::Texture: {
+                            // The IL abstraction exposes resource handles as "pointers" for inclusive conformity,
+                            // however, DXIL handles have no such concept. Just "assume" they were loaded, and let
+                            // the succeeding instruction deal with the assumption.
+                            table.idRemapper.SetUserRedirect(instr->result, _instr->address);
+                            break;
+                        }
+                    }
+
+                    break;
+                }
+
+                case IL::OpCode::LoadBuffer: {
+                    auto _instr = instr->As<IL::LoadBufferInstruction>();
+
+                    // Get type
+                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+
+                    // Get intrinsic
+                    const DXILFunctionDeclaration *intrinsic;
+                    switch (Backend::IL::GetComponentType(bufferType->elementType)->kind) {
+                        default:
+                            ASSERT(false, "Invalid buffer element type");
+                            return;
+                        case Backend::IL::TypeKind::Int:
+                            intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferLoadI32);
+                            break;
+                        case Backend::IL::TypeKind::FP:
+                            intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferLoadF32);
+                            break;
+                    }
+
+                    uint64_t ops[4];
+
+                    // Opcode
+                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferLoad)}
+                    )->id);
+
+                    // Handle
+                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->buffer);
+
+                    // C0
+                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->index);
+
+                    // C1
+                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::UndefConstant{}
+                    )->id);
+
+                    // Invoke into result
+                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 4, ops));
+
+                    // Set as VOS
+                    table.idRemapper.AllocSourceUserMapping(_instr->result, DXILIDUserType::VectorOnStruct, 0);
+                    break;
+                }
+
+                case IL::OpCode::Extract: {
+                    auto _instr = instr->As<IL::ExtractInstruction>();
+
+                    // Source data may be SVOX
+                    SVOXElement element = ExtractSVOXElement(block, _instr->composite, _instr->index);
+
+                    // Point to the extracted element
+                    table.idRemapper.SetUserRedirect(instr->result, element.value);
+                    break;
+                }
+
+                // To be implemented
 #if 0
                     case IL::OpCode::Alloca:
                         break;

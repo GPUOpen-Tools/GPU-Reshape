@@ -330,6 +330,9 @@ public:
     /// Compile CBV metadata
     void CompileCBVResourceClass(const DXJob& job);
 
+    /// Compile all flags
+    void CompileProgramFlags(const DXJob& job);
+
 private:
     struct ShadingModel {
         DXILShadingModelClass _class;

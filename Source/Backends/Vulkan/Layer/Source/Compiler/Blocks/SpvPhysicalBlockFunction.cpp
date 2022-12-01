@@ -1274,17 +1274,27 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
                 auto *load = instr.As<IL::LoadInstruction>();
 
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpLoad, 4, load->source);
-                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType->As<Backend::IL::PointerType>()->pointee);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                 spv[2] = load->result;
                 spv[3] = idMap.Get(load->address);
                 break;
             }
             case IL::OpCode::Store: {
-                auto *load = instr.As<IL::StoreInstruction>();
+                auto *store = instr.As<IL::StoreInstruction>();
 
-                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpStore, 3, load->source);
-                spv[1] = idMap.Get(load->address);
-                spv[2] = idMap.Get(load->value);
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpStore, 3, store->source);
+                spv[1] = idMap.Get(store->address);
+                spv[2] = idMap.Get(store->value);
+                break;
+            }
+            case IL::OpCode::Extract: {
+                auto *extract = instr.As<IL::ExtractInstruction>();
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpCompositeExtract, 5, extract->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = idMap.Get(extract->result);
+                spv[3] = idMap.Get(extract->composite);
+                spv[4] = extract->index;
                 break;
             }
             case IL::OpCode::LoadBuffer: {
@@ -1295,12 +1305,20 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
 
                 // Texel buffer?
                 if (bufferType->texelType != Backend::IL::Format::None) {
-                    // Load image
-                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageRead, 5, instr->source);
-                    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(bufferType->elementType);
-                    spv[2] = loadBuffer->result;
-                    spv[3] = idMap.Get(loadBuffer->buffer);
-                    spv[4] = idMap.Get(loadBuffer->index);
+                    // Load image with appropriate instruction
+                    if (bufferType->samplerMode == Backend::IL::ResourceSamplerMode::Writable) {
+                        SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageRead, 5, instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = loadBuffer->result;
+                        spv[3] = idMap.Get(loadBuffer->buffer);
+                        spv[4] = idMap.Get(loadBuffer->index);
+                    } else {
+                        SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageFetch, 5, instr->source);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = loadBuffer->result;
+                        spv[3] = idMap.Get(loadBuffer->buffer);
+                        spv[4] = idMap.Get(loadBuffer->index);
+                    }
                 } else {
                     ASSERT(false, "Not implemented");
                 }
@@ -1533,11 +1551,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
             case IL::OpCode::AddressChain: {
                 auto *_instr = instr.As<IL::AddressChainInstruction>();
 
+                // Get resulting type
+                const auto* pointerType = resultType->As<Backend::IL::PointerType>();
+
                 // Get the composite type
                 const auto* compositeType = ilTypeMap.GetType(_instr->composite);
 
                 // Texel addresses must be handled separately
-                if (auto buffer = compositeType->Cast<Backend::IL::BufferType>()) {
+                if (pointerType->addressSpace == Backend::IL::AddressSpace::Texture || pointerType->addressSpace == Backend::IL::AddressSpace::Buffer) {
                     ASSERT(_instr->chains.count == 1, "Resource address chains do not support a depth greater than 1");
 
                     // Id allocations
@@ -1701,12 +1722,15 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
         // Get variable
         const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
 
+        // Variables always pointer to
+        const auto* pointerType = variable->type->As<Backend::IL::PointerType>();
+
         // Only buffers supported for now
         ASSERT(info.type == ShaderDataType::Buffer, "Only buffers are implemented for now");
 
         // RWBuffer<uint>*
         auto* bufferPtrType = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
-            .pointee =  variable->type->As<Backend::IL::BufferType>(),
+            .pointee =  pointerType->pointee->As<Backend::IL::BufferType>(),
             .addressSpace = Backend::IL::AddressSpace::Resource,
         });
 

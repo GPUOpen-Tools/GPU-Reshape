@@ -36,7 +36,7 @@ bool ConcurrencyFeature::Install() {
     // Allocate lock buffer
     //   ? Each respective PUID takes one lock integer, representing the current event id
     lockBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-        .elementCount = 1u << 22u,
+        .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
         .format = Backend::IL::Format::R32UInt
     });
 

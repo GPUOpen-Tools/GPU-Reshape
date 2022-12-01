@@ -198,7 +198,7 @@ namespace Backend::IL {
             return nullptr;
         }
 
-        return buffer->As<BufferType>()->elementType;
+        return Splat(program, buffer->As<BufferType>()->elementType, 4u);
     }
 
     inline const Type* ResultOf(Program& program, const LiteralInstruction* instr) {
@@ -268,7 +268,7 @@ namespace Backend::IL {
             return nullptr;
         }
 
-        IL::AddressSpace space = IL::AddressSpace::Function;
+        IL::AddressSpace space = IL::AddressSpace::Unexposed;
 
         // Walk the chain
         for (uint32_t i = 0; i < instr->chains.count; i++) {
@@ -276,18 +276,6 @@ namespace Backend::IL {
                 default:
                 ASSERT(false, "Unexpected GEP chain type");
                     break;
-                case Backend::IL::TypeKind::None:
-                    break;
-                case Backend::IL::TypeKind::Buffer: {
-                    type = type->As<Backend::IL::BufferType>()->elementType;
-                    space = AddressSpace::Buffer;
-                    break;
-                }
-                case Backend::IL::TypeKind::Texture: {
-                    type = type->As<Backend::IL::TextureType>()->sampledType;
-                    space = AddressSpace::Texture;
-                    break;
-                }
                 case Backend::IL::TypeKind::Vector: {
                     type = type->As<Backend::IL::VectorType>()->containedType;
                     break;
@@ -298,10 +286,25 @@ namespace Backend::IL {
                 }
                 case Backend::IL::TypeKind::Pointer:{
                     auto* pointer = type->As<Backend::IL::PointerType>();
-                    type = pointer->pointee;
 
-                    ASSERT(space == AddressSpace::Unexposed || space == pointer->addressSpace, "Mismatched address space in address chain");
-                    space = pointer->addressSpace;
+                    // Texel pointers handled separately
+                    switch (pointer->pointee->kind) {
+                        default: {
+                            ASSERT(space == AddressSpace::Unexposed || space == pointer->addressSpace, "Mismatched address space in address chain");
+                            type = pointer->pointee;
+                            space = pointer->addressSpace;
+                        }
+                        case Backend::IL::TypeKind::Buffer: {
+                            type = pointer->pointee->As<Backend::IL::BufferType>()->elementType;
+                            space = AddressSpace::Buffer;
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Texture: {
+                            type = pointer->pointee->As<Backend::IL::TextureType>()->sampledType;
+                            space = AddressSpace::Texture;
+                            break;
+                        }
+                    }
                     break;
                 }
                 case Backend::IL::TypeKind::Array: {
@@ -319,6 +322,37 @@ namespace Backend::IL {
             }
         }
 
+        ASSERT(space != IL::AddressSpace::Unexposed, "No AddressOf chain supplied a relevant address space, invalid");
         return program.GetTypeMap().FindTypeOrAdd(PointerType { .pointee = type, .addressSpace = space });
+    }
+
+    inline const Type* ResultOf(Program& program, const ExtractInstruction* instr) {
+        const Type* type = program.GetTypeMap().GetType(instr->composite);
+        if (!type) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
+        switch (type->kind) {
+            default:
+            ASSERT(false, "Unexpected GEP chain type");
+                return nullptr;
+            case Backend::IL::TypeKind::None:
+                return nullptr;
+            case Backend::IL::TypeKind::Buffer:
+                return type->As<Backend::IL::BufferType>()->elementType;
+            case Backend::IL::TypeKind::Texture:
+                return type->As<Backend::IL::TextureType>()->sampledType;
+            case Backend::IL::TypeKind::Vector:
+                return type->As<Backend::IL::VectorType>()->containedType;
+            case Backend::IL::TypeKind::Matrix:
+                return type->As<Backend::IL::MatrixType>()->containedType;
+            case Backend::IL::TypeKind::Pointer:
+                return type->As<Backend::IL::PointerType>()->pointee;
+            case Backend::IL::TypeKind::Array:
+                return type->As<Backend::IL::ArrayType>()->elementType;
+            case Backend::IL::TypeKind::Struct:
+                return type->As<Backend::IL::StructType>()->memberTypes[instr->index];
+        }
     }
 }

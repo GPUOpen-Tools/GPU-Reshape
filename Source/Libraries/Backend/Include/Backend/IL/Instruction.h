@@ -346,7 +346,7 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::Extract;
 
         ID composite;
-        ID index;
+        uint32_t index;
     };
 
     struct InsertInstruction : public Instruction {

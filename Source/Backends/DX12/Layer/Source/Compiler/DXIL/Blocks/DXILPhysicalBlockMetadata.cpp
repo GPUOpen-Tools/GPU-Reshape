@@ -732,6 +732,9 @@ void DXILPhysicalBlockMetadata::CompileMetadata(struct LLVMBlock *block) {
 }
 
 void DXILPhysicalBlockMetadata::CompileMetadata(const DXJob& job) {
+    // Compile all flags
+    CompileProgramFlags(job);
+
     // Compile entry point definitions
     CompileProgramEntryPoints();
 
@@ -1267,9 +1270,12 @@ void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXJob& job) {
         const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
         ASSERT(variable, "Failed to match variable to shader Data");
 
+        // Variables always pointer to
+        const auto* pointerType = variable->type->As<Backend::IL::PointerType>();
+
         // {format}
         const Backend::IL::Type* retTy = program.GetTypeMap().FindTypeOrAdd(Backend::IL::StructType {
-            .memberTypes = { variable->type->As<Backend::IL::BufferType>()->elementType }
+            .memberTypes = { pointerType->pointee->As<Backend::IL::BufferType>()->elementType }
         });
 
         // Compile as named
@@ -1414,6 +1420,26 @@ void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXJob &job) {
 
         // Insert handle
         classRecord->ops[i] = metadataBlock->metadata.size();
+    }
+}
+
+
+void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXJob &job) {
+    // Get mapped
+    MappedRegisterClass& mapped = FindOrAddRegisterClass(DXILShaderResourceClass::UAVs);
+
+    // Total number of UAVs
+    uint32_t count = 0;
+
+    // Accumulate all handles
+    for (size_t i = 0; i < mapped.handles.size(); i++) {
+        const HandleEntry &handle = handles[mapped.handles[i]];
+        count += handle.registerRange;
+    }
+
+    // Exceeded 8?
+    if (count > 8) {
+        AddProgramFlag(DXILProgramShaderFlag::Use64UAVs);
     }
 }
 
