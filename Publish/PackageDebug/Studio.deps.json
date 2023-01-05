@@ -18,6 +18,7 @@
           "AvaloniaEdit.TextMate": "0.10.12.2",
           "Dock.Avalonia": "0.10.14",
           "Dock.Model.ReactiveUI": "0.10.10",
+          "Markdown.Avalonia": "0.10.4",
           "MessageBox.Avalonia": "1.5.5",
           "Microsoft.CodeAnalysis": "3.9.0",
           "Microsoft.CodeAnalysis.CSharp": "3.9.0",
@@ -480,6 +481,22 @@
           "lib/netstandard1.0/JetBrains.Annotations.dll": {
             "assemblyVersion": "10.3.0.0",
             "fileVersion": "10.3.0.0"
+          }
+        }
+      },
+      "Markdown.Avalonia/0.10.4": {
+        "dependencies": {
+          "Avalonia": "0.10.14",
+          "Avalonia.AvaloniaEdit": "0.10.12.2"
+        },
+        "runtime": {
+          "lib/netcoreapp2.0/ColorTextBlock.Avalonia.dll": {
+            "assemblyVersion": "0.10.4.0",
+            "fileVersion": "0.10.4.0"
+          },
+          "lib/netcoreapp2.0/Markdown.Avalonia.dll": {
+            "assemblyVersion": "0.10.4.0",
+            "fileVersion": "0.10.4.0"
           }
         }
       },
@@ -1960,6 +1977,13 @@
       "sha512": "sha512-0GLU9lwGVXjUNlr9ZIdAgjqLI2Zm/XFGJFaqJ1T1sU+kwfeMLhm68+rblUrNUP9psRl4i8yM7Ghb4ia4oI2E5g==",
       "path": "jetbrains.annotations/10.3.0",
       "hashPath": "jetbrains.annotations.10.3.0.nupkg.sha512"
+    },
+    "Markdown.Avalonia/0.10.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-1jFmTlJhk5ppSBVbWdewbH81WndxxhXMnw5Q3vCLxQQhY1R/SS2ehWZBpfD8/pLNmOv/DwfjDupizGVJZJT4Cw==",
+      "path": "markdown.avalonia/0.10.4",
+      "hashPath": "markdown.avalonia.0.10.4.nupkg.sha512"
     },
     "MessageBox.Avalonia/1.5.5": {
       "type": "package",

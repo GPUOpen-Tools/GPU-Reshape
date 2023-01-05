@@ -11,6 +11,7 @@
           "Avalonia": "0.10.14",
           "Avalonia.ReactiveUI": "0.10.14",
           "Features.ExportStability.Backend.DotNet": "0.0.0.0",
+          "Libraries.Backend.Schema.DotNet": "0.0.0.0",
           "Libraries.Bridge.DotNet": "0.0.0.0",
           "Libraries.Message.DotNet": "0.0.0.0",
           "UIX.Studio.Runtime": "1.0.0.0"
@@ -258,6 +259,14 @@
           }
         }
       },
+      "Libraries.Backend.Schema.DotNet/0.0.0.0": {
+        "runtime": {
+          "Libraries.Backend.Schema.DotNet.dll": {
+            "assemblyVersion": "0.0.0.0",
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
       "Libraries.Bridge.DotNet/0.0.0.0": {
         "runtime": {
           "Libraries.Bridge.DotNet.dll": {
@@ -452,6 +461,11 @@
       "hashPath": "system.valuetuple.4.5.0.nupkg.sha512"
     },
     "Features.ExportStability.Backend.DotNet/0.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Libraries.Backend.Schema.DotNet/0.0.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
