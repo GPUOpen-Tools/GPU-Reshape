@@ -23,17 +23,35 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
         // Get desired bound
         uint32_t bound = ShaderExportDescriptorAllocator::GetDescriptorBound(table.state->exportHost.GetUnsafe());
 
-        // Copy description
-        D3D12_DESCRIPTOR_HEAP_DESC expandedHeap = *desc;
-        expandedHeap.NumDescriptors += bound;
+        // There is little to no insight for the internal driver limits, so, attempt various sizes
+        for (uint32_t divisor = 0; divisor < 4; divisor++) {
+            // Copy description
+            D3D12_DESCRIPTOR_HEAP_DESC expandedHeap = *desc;
+            expandedHeap.NumDescriptors += bound;
 
-        // Pass down callchain
-        HRESULT hr = table.bottom->next_CreateDescriptorHeap(table.next, &expandedHeap, __uuidof(ID3D12DescriptorHeap), reinterpret_cast<void**>(&heap));
-        if (SUCCEEDED(hr)) {
+            // Pass down callchain
+            HRESULT hr = table.next->CreateDescriptorHeap(&expandedHeap, __uuidof(ID3D12DescriptorHeap), reinterpret_cast<void**>(&heap));
+            if (SUCCEEDED(hr)) {
+                break;
+            }
+
+            // Attempt next count
+            bound /= 2;
+
+            // Invalidate
+            heap = nullptr;
+        }
+
+        // Succeeded?
+        if (heap) {
             // Set base
             state->cpuDescriptorBase = heap->GetCPUDescriptorHandleForHeapStart();
-            state->gpuDescriptorBase = heap->GetGPUDescriptorHandleForHeapStart();
             state->stride = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+            // GPU base if heap supports
+            if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
+                state->gpuDescriptorBase = heap->GetGPUDescriptorHandleForHeapStart();
+            }
 
             // Create unique allocator
             state->allocator = new (table.state->allocators) ShaderExportDescriptorAllocator(table.next, heap, bound);

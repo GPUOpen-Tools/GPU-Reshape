@@ -159,7 +159,7 @@ QueueID Device::GetQueue(QueueType type) {
     return QueueID::Invalid();
 }
 
-BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, void *data) {
+BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, const void *data, uint64_t dataSize) {
     ResourceInfo &resource = resources.emplace_back();
     resource.type = type;
     resource.format = format;
@@ -189,23 +189,33 @@ BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format
         nullptr,
         IID_PPV_ARGS(&resource.resource))));
 
-    // TODO: Staging!
-    if (data != nullptr) {
+    // Any data to upload?
+    if (data && dataSize) {
+        UploadBuffer& uploadBuffer = CreateUploadBuffer(dataSize);
+
         UINT8* mapped;
 
         // Map range
         D3D12_RANGE readRange{ 0, 0 };
-        REQUIRE(SUCCEEDED(resource.resource->Map(0, &readRange, reinterpret_cast<void**>(&mapped))));
+        REQUIRE(SUCCEEDED(uploadBuffer.resource->Map(0, &readRange, reinterpret_cast<void**>(&mapped))));
 
         // Write data
-        memcpy(mapped, data, sizeof(size));
-        resource.resource->Unmap(0, nullptr);
+        memcpy(mapped, data, sizeof(dataSize));
+        uploadBuffer.resource->Unmap(0, nullptr);
+
+        // Enqueue command
+        UpdateCommand command;
+        command.copyBuffer.type = UpdateCommandType::CopyBuffer;
+        command.copyBuffer.source = uploadBuffer.resource.Get();
+        command.copyBuffer.dest = resource.resource.Get();
+        command.copyBuffer.dataSize = dataSize;
+        updateCommands.push_back(command);
     }
 
     return BufferID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
 }
 
-TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, void *data) {
+TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) {
     ResourceInfo &resource = resources.emplace_back();
     resource.type = type;
     resource.format = format;
@@ -571,7 +581,23 @@ void Device::Submit(QueueID queueID, CommandBufferID commandBuffer) {
 }
 
 void Device::InitializeResources(CommandBufferID commandBuffer) {
-    /* poof */
+    CommandBufferInfo& info = commandBuffers.at(commandBuffer);
+
+    // Handle commands
+    for (const UpdateCommand& cmd : updateCommands) {
+        switch (cmd.type) {
+            case UpdateCommandType::CopyBuffer: {
+                info.commandList->CopyBufferRegion(
+                    cmd.copyBuffer.dest,
+                    0u,
+                    cmd.copyBuffer.source,
+                    0u,
+                    cmd.copyBuffer.dataSize
+                );
+                break;
+            }
+        }
+    }
 }
 
 void Device::Flush() {
@@ -627,7 +653,7 @@ Device::HeapInfo &Device::GetHeapForType(ResourceType type) {
     }
 }
 
-CBufferID Device::CreateCBuffer(uint32_t byteSize, void *data) {
+CBufferID Device::CreateCBuffer(uint32_t byteSize, const void *data, uint64_t dataSize) {
     ResourceInfo &resource = resources.emplace_back();
     resource.type = ResourceType::CBuffer;
 
@@ -655,18 +681,59 @@ CBufferID Device::CreateCBuffer(uint32_t byteSize, void *data) {
         nullptr,
         IID_PPV_ARGS(&resource.resource))));
 
-    // TODO: Staging!
-    if (data != nullptr) {
+    // Any data to upload?
+    if (data) {
+        UploadBuffer& uploadBuffer = CreateUploadBuffer(dataSize);
+
         UINT8* mapped;
 
         // Map range
         D3D12_RANGE readRange{ 0, 0 };
-        REQUIRE(SUCCEEDED(resource.resource->Map(0, &readRange, reinterpret_cast<void**>(&mapped))));
+        REQUIRE(SUCCEEDED(uploadBuffer.resource->Map(0, &readRange, reinterpret_cast<void**>(&mapped))));
 
         // Write data
-        memcpy(mapped, data, sizeof(byteSize));
-        resource.resource->Unmap(0, nullptr);
+        memcpy(mapped, data, sizeof(dataSize));
+        uploadBuffer.resource->Unmap(0, nullptr);
+
+        // Enqueue command
+        UpdateCommand command;
+        command.copyBuffer.type = UpdateCommandType::CopyBuffer;
+        command.copyBuffer.source = uploadBuffer.resource.Get();
+        command.copyBuffer.dest = resource.resource.Get();
+
+        command.copyBuffer.dataSize = dataSize;
+        updateCommands.push_back(command);
     }
 
     return CBufferID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
+}
+
+Device::UploadBuffer &Device::CreateUploadBuffer(uint64_t size) {
+    UploadBuffer& uploadBuffer = uploadBuffers.emplace_back();
+
+    // Destination heap
+    D3D12_HEAP_PROPERTIES heapProperties{};
+    heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    // Description
+    D3D12_RESOURCE_DESC resourceDesc{};
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+    resourceDesc.Width = std::max(256ull, size);
+    resourceDesc.Height = 1;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.MipLevels = 1;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    // Create resource
+    REQUIRE(SUCCEEDED(device->CreateCommittedResource(
+        &heapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&uploadBuffer.resource))));
+
+    return uploadBuffer;
 }

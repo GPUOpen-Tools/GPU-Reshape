@@ -32,8 +32,9 @@ namespace Test {
         /// \param format texel format
         /// \param size resource byte size
         /// \param data initial data
+        /// \param dataSize byte size of the initial data
         /// \return resource identifier
-        virtual BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, void *data) = 0;
+        virtual BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, const void *data, uint64_t dataSize) = 0;
 
         /// Create a new texture
         /// \param type resource type
@@ -42,8 +43,9 @@ namespace Test {
         /// \param height height of the texture
         /// \param depth depth of the texture
         /// \param data initial data
+        /// \param dataSize byte size of the initial data
         /// \return resource identifier
-        virtual TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, void *data) = 0;
+        virtual TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) = 0;
 
         /// Create a new sampler
         /// \return resource identifier
@@ -52,8 +54,9 @@ namespace Test {
         /// Create a new constant buffer
         /// \param byteSize size of data
         /// \param data optional, initial data
+        /// \param dataSize byte size of the initial data
         /// \return resource identifier
-        virtual CBufferID CreateCBuffer(uint32_t byteSize, void* data) = 0;
+        virtual CBufferID CreateCBuffer(uint32_t byteSize, const void* data, uint64_t dataSize) = 0;
 
         /// Create a resource layout
         /// \param types all types of the layout

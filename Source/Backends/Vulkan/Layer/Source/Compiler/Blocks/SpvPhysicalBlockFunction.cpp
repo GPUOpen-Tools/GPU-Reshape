@@ -635,6 +635,26 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 break;
             }
 
+            case SpvOpReturn: {
+                IL::ReturnInstruction instr{};
+                instr.opCode = IL::OpCode::Return;
+                instr.result = IL::InvalidID;
+                instr.source = source;
+                instr.value = IL::InvalidID;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpReturnValue: {
+                IL::ReturnInstruction instr{};
+                instr.opCode = IL::OpCode::Return;
+                instr.result = IL::InvalidID;
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
             default: {
                 if (basicBlock) {
                     // Emit as unexposed
@@ -1824,11 +1844,15 @@ void SpvPhysicalBlockFunction::CreateDataPCMap(const SpvJob &job) {
         pcBlockMember[1] = pcBlockTypeId;
         pcBlockMember[2] = i;
         pcBlockMember[3] = SpvDecorationOffset;
-        pcBlockMember[4] = 0;
+        pcBlockMember[4] = sizeof(uint32_t) * i;
     }
 }
 
 void SpvPhysicalBlockFunction::CreateDataLookups(SpvStream& stream, SpvIdMap& idMap) {
+    if (!pcBlockType) {
+        return;
+    }
+
     // Get data map
     IL::ShaderDataMap& shaderDataMap = program.GetShaderDataMap();
 

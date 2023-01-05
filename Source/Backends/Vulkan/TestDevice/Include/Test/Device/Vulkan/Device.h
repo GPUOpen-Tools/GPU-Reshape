@@ -18,8 +18,8 @@ namespace Test::Vulkan {
         /// Overrides
         void Install(const DeviceInfo &info) override;
         QueueID GetQueue(QueueType type) override;
-        BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, void *data) override;
-        TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, void *data) override;
+        BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, const void *data, uint64_t dataSize) override;
+        TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) override;
         SamplerID CreateSampler() override;
         ResourceLayoutID CreateResourceLayout(const ResourceType *types, uint32_t count) override;
         ResourceSetID CreateResourceSet(ResourceLayoutID layout, const ResourceID *resources, uint32_t count) override;
@@ -33,7 +33,7 @@ namespace Test::Vulkan {
         void Submit(QueueID queue, CommandBufferID commandBuffer) override;
         void Flush() override;
         void InitializeResources(CommandBufferID commandBuffer) override;
-        CBufferID CreateCBuffer(uint32_t byteSize, void *data) override;
+        CBufferID CreateCBuffer(uint32_t byteSize, const void *data, uint64_t dataSize) override;
 
     private:
         /// Creation utilities
@@ -160,25 +160,60 @@ namespace Test::Vulkan {
         std::vector<PipelineInfo> pipelines;
 
     private:
+        /// Resource update types
         enum class UpdateCommandType {
-            TransitionTexture
+            TransitionTexture,
+            CopyBuffer,
+            CopyTexture
         };
 
+        /// Command payloads
         union UpdateCommand {
             UpdateCommand() {
 
             }
 
+            /// Expected type
             UpdateCommandType type;
 
+            /// Texture data
             struct {
                 UpdateCommandType type;
                 TextureID id;
             } texture;
+
+            /// Copy buffer to buffer
+            struct {
+                UpdateCommandType type;
+                VkBuffer dest;
+                VkBuffer source;
+                uint64_t dataSize;
+            } copyBuffer;
+
+            /// Copy buffer to texture
+            struct {
+                UpdateCommandType type;
+                TextureID id;
+                VkBuffer source;
+                uint64_t dataSize;
+            } copyTexture;
         };
 
         /// Queued initialization commands
         std::vector<UpdateCommand> updateCommands;
+
+    private:
+        struct UploadBuffer {
+            VkBuffer buffer;
+            VmaAllocation allocation;
+        };
+
+        /// Create an upload buffer
+        /// \param size byte size
+        UploadBuffer& CreateUploadBuffer(uint64_t size);
+
+        /// Lazy pool of buffers
+        std::vector<UploadBuffer> uploadBuffers;
 
     private:
         /// Shared descriptor pool

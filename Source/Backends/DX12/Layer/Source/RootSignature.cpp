@@ -245,26 +245,35 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     };
 
     // Shader export parameter
-    Parameter& exportParameter = parameters[source.NumParameters + 0u];
+    Parameter& exportParameter = parameters[source.NumParameters + 0u] = {};
     exportParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     exportParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     exportParameter.DescriptorTable.NumDescriptorRanges = 3u;
     exportParameter.DescriptorTable.pDescriptorRanges = ranges;
 
+    // Range version 1.1 assumes STATIC registers, explicitly say otherwise
+    if constexpr(std::is_same_v<T, D3D12_ROOT_SIGNATURE_DESC1>) {
+        ranges[0].Flags |= D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
+    }
+
     // Descriptor constant parameter
-    Parameter& descriptorParameter = parameters[source.NumParameters + 1u];
+    Parameter& descriptorParameter = parameters[source.NumParameters + 1u] = {};
     descriptorParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     descriptorParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     descriptorParameter.Descriptor.ShaderRegister = outRoot->descriptorConstantBaseRegister;
     descriptorParameter.Descriptor.RegisterSpace = outRoot->space;
 
+    // Get number of events
+    uint32_t eventCount{0};
+    state->shaderDataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
+
     // Event constant parameter
-    Parameter& eventParameter = parameters[source.NumParameters + 2u];
+    Parameter& eventParameter = parameters[source.NumParameters + 2u] = {};
     eventParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     eventParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     eventParameter.Constants.ShaderRegister = outRoot->eventConstantBaseRegister;
     eventParameter.Constants.RegisterSpace = outRoot->space;
-    eventParameter.Constants.Num32BitValues = 1u;
+    eventParameter.Constants.Num32BitValues = eventCount;
 
     // Create mappings
     *outMapping = CreateRootPhysicalMappings(state, parameters, parameterCount);
@@ -380,6 +389,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     state->rootBindingInfo = bindingInfo;
     state->userRootCount = userRootCount;
     state->physicalMapping = mapping;
+    state->object = rootSignature;
 
     // Create detours
     rootSignature = CreateDetour(Allocators{}, rootSignature, state);

@@ -2,8 +2,15 @@
 #include <Backends/DX12/Export/ShaderExportHost.h>
 
 ShaderExportDescriptorAllocator::ShaderExportDescriptorAllocator(ID3D12Device* device, ID3D12DescriptorHeap *heap, uint32_t bound) : heap(heap), bound(bound) {
+    D3D12_DESCRIPTOR_HEAP_DESC desc = heap->GetDesc();
+
+    // CPU base
     cpuHandle = heap->GetCPUDescriptorHandleForHeapStart();
-    gpuHandle = heap->GetGPUDescriptorHandleForHeapStart();
+
+    // GPU base
+    if (desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
+        gpuHandle = heap->GetGPUDescriptorHandleForHeapStart();
+    }
 
     descriptorAdvance = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 }

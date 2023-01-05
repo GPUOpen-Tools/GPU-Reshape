@@ -108,9 +108,12 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
     // Create a new state
     auto* state = new (allocators) ShaderExportStreamState();
 
-    // Create descriptor data allocator
+    // Setup bind states
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        state->descriptorDataAllocator[i] = new (allocators) DescriptorDataAppendAllocator(deviceAllocator);
+        ShaderExportStreamBindState& bindState = state->bindStates[i];
+
+        // Create descriptor data allocator
+        bindState.descriptorDataAllocator = new (allocators) DescriptorDataAppendAllocator(deviceAllocator);
     }
 
     // OK
@@ -177,14 +180,25 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
 
     // Recycle free data segments if available
     for (uint32_t i = 0; !freeDescriptorDataSegmentEntries.empty() && i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        state->descriptorDataAllocator[i]->SetChunk(freeDescriptorDataSegmentEntries.back());
+        state->bindStates[i].descriptorDataAllocator->SetChunk(freeDescriptorDataSegmentEntries.back());
         freeDescriptorDataSegmentEntries.pop_back();
+    }
+
+    // Reset bind states
+    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+        ShaderExportStreamBindState& bindState = state->bindStates[i];
+
+        // Free all allocations, but keep the blocks themselves alive
+        bindState.rootConstantAllocator.ClearSubAllocations();
+
+        // Clear all persistent parameters
+        std::fill_n(bindState.persistentRootParameters, MaxRootSignatureDWord, ShaderExportRootParameterValue {});
     }
 }
 
 void ShaderExportStreamer::CloseCommandList(ShaderExportStreamState *state) {
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        state->descriptorDataAllocator[i]->Commit();
+        state->bindStates[i].descriptorDataAllocator->Commit();
     }
 }
 
@@ -228,7 +242,7 @@ void ShaderExportStreamer::SetRootSignature(ShaderExportStreamState *state, cons
 
     // Create initial descriptor segments
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        state->descriptorDataAllocator[i]->BeginSegment(rootSignature->userRootCount);
+        state->bindStates[i].descriptorDataAllocator->BeginSegment(rootSignature->userRootCount);
     }
 
     // Ensure the shader export states are bound
@@ -238,7 +252,7 @@ void ShaderExportStreamer::SetRootSignature(ShaderExportStreamState *state, cons
 }
 
 void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, CommandListState* commandList) {
-    DescriptorDataAppendAllocator* dataAllocator = state->descriptorDataAllocator[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+    DescriptorDataAppendAllocator* dataAllocator = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)].descriptorDataAllocator;
 
     // If the allocator has rolled, a new segment is pending binding
     if (dataAllocator->HasRolled()) {
@@ -250,7 +264,7 @@ void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, Command
 }
 
 void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, CommandListState* commandList) {
-    DescriptorDataAppendAllocator* dataAllocator = state->descriptorDataAllocator[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
+    DescriptorDataAppendAllocator* dataAllocator = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)].descriptorDataAllocator;
 
     // If the allocator has rolled, a new segment is pending binding
     if (dataAllocator->HasRolled()) {
@@ -261,8 +275,9 @@ void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, Comman
     dataAllocator->BeginSegment(state->rootSignature->userRootCount);
 }
 
-void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, bool instrumented, CommandListState* commandList) {
+void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, ID3D12PipelineState* pipelineObject, bool instrumented, CommandListState* commandList) {
     state->pipeline = pipeline;
+    state->pipelineObject = pipelineObject;
     state->isInstrumented = instrumented;
 
     // Ensure the shader export states are bound
@@ -283,23 +298,27 @@ void ShaderExportStreamer::Process(CommandQueueState* queueState) {
     ProcessSegmentsNoQueueLock(queueState);
 }
 
+void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, uint32_t slot, PipelineType type, CommandListState *commandList) {
+    switch (type) {
+        case PipelineType::None:
+            ASSERT(false, "Invalid pipeline");
+            break;
+        case PipelineType::Graphics:
+            commandList->object->SetGraphicsRootDescriptorTable(slot, state->currentSegment.gpuHandle);
+            break;
+        case PipelineType::Compute:
+            commandList->object->SetComputeRootDescriptorTable(slot, state->currentSegment.gpuHandle);
+            break;
+    }
+}
+
 void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, const PipelineState *pipeline, CommandListState* commandList) {
     // Skip if already mapped
     if (state->pipelineSegmentMask & pipeline->type) {
         return;
     }
 
-    switch (pipeline->type) {
-        case PipelineType::None:
-            ASSERT(false, "Invalid pipeline");
-            break;
-        case PipelineType::Graphics:
-            commandList->object->SetGraphicsRootDescriptorTable(state->rootSignature->userRootCount, state->currentSegment.gpuHandle);
-            break;
-        case PipelineType::Compute:
-            commandList->object->SetComputeRootDescriptorTable(state->rootSignature->userRootCount, state->currentSegment.gpuHandle);
-            break;
-    }
+    BindShaderExport(state, state->rootSignature->userRootCount, pipeline->type, commandList);
 
     // Mark as bound
     state->pipelineSegmentMask |= pipeline->type;
@@ -344,7 +363,7 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
 
     // Move descriptor data ownership to segment
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        segment->descriptorDataSegments.push_back(state->descriptorDataAllocator[i]->ReleaseSegment());
+        segment->descriptorDataSegments.push_back(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
     }
 
     // Move ownership to the segment
@@ -361,8 +380,14 @@ void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState
     uint64_t offset = baseDescriptor.ptr - state->heap->gpuDescriptorBase.ptr;
     ASSERT(offset % state->heap->stride == 0, "Mismatched heap stride");
 
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+
+    // Store persistent
+    bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::Descriptor(baseDescriptor);
+
     // Set the root PRMT offset
-    state->descriptorDataAllocator[static_cast<uint32_t>(PipelineType::ComputeSlot)]->Set(rootParameterIndex, offset / state->heap->stride);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, offset / state->heap->stride);
 }
 
 void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
@@ -372,8 +397,14 @@ void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamStat
     uint64_t offset = baseDescriptor.ptr - state->heap->gpuDescriptorBase.ptr;
     ASSERT(offset % state->heap->stride == 0, "Mismatched heap stride");
 
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
+
+    // Store persistent
+    bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::Descriptor(baseDescriptor);
+
     // Set the root PRMT offset
-    state->descriptorDataAllocator[static_cast<uint32_t>(PipelineType::GraphicsSlot)]->Set(rootParameterIndex, offset / state->heap->stride);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, offset / state->heap->stride);
 }
 
 void ShaderExportStreamer::SetComputeRootShaderResourceView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
@@ -389,7 +420,49 @@ void ShaderExportStreamer::SetComputeRootUnorderedAccessView(ShaderExportStreamS
 }
 
 void ShaderExportStreamer::SetGraphicsRootUnorderedAccessView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
+    // TODO: Add method for determining what VRM it came from?
+}
 
+void ShaderExportStreamer::SetGraphicsRootConstants(ShaderExportStreamState* state, UINT rootParameterIndex, const void* data, uint64_t size, uint64_t offset) {
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
+
+    // Root parameter
+    ShaderExportRootParameterValue& value = bindState.persistentRootParameters[rootParameterIndex];
+    value.type = ShaderExportRootParameterValueType::Constant;
+
+    // End offset
+    uint64_t end = size + offset;
+
+    // Reallocate if out of space
+    if (value.payload.constant.dataByteCount < end) {
+        value.payload.constant.dataByteCount = end;
+        value.payload.constant.data = bindState.rootConstantAllocator.AllocateArray<uint8_t>(end);
+    }
+
+    // Copy data
+    std::memcpy(static_cast<uint8_t*>(value.payload.constant.data) + offset, data, size);
+}
+
+void ShaderExportStreamer::SetComputeRootConstants(ShaderExportStreamState* state, UINT rootParameterIndex, const void* data, uint64_t size, uint64_t offset) {
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+
+    // Root parameter
+    ShaderExportRootParameterValue& value = bindState.persistentRootParameters[rootParameterIndex];
+    value.type = ShaderExportRootParameterValueType::Constant;
+
+    // End offset
+    uint64_t end = size + offset;
+
+    // Reallocate if out of space
+    if (value.payload.constant.dataByteCount < end) {
+        value.payload.constant.dataByteCount = end;
+        value.payload.constant.data = bindState.rootConstantAllocator.AllocateArray<uint8_t>(end);
+    }
+
+    // Copy data
+    std::memcpy(static_cast<uint8_t*>(value.payload.constant.data) + offset, data, size);
 }
 
 void ShaderExportStreamer::ProcessSegmentsNoQueueLock(CommandQueueState* queue) {
@@ -421,7 +494,7 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
     IMessageStorage* output = bridge->GetOutput();
 
     // Map the counters
-    const MirrorAllocation& counterMirror = segment->allocation->counter.allocation;;
+    const MirrorAllocation& counterMirror = segment->allocation->counter.allocation;
     auto* counters = static_cast<uint32_t*>(deviceAllocator->Map(counterMirror.host));
 
     // Process all streams
@@ -430,6 +503,9 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
 
         // Get the written counter
         uint32_t elementCount = counters[i];
+
+        // Limit the counter by the physical size of the buffer (may exceed)
+        elementCount = std::min(elementCount, static_cast<uint32_t>(streamInfo.byteSize / streamInfo.typeInfo.typeSize));
 
         // Map the stream
         auto* stream = static_cast<uint8_t*>(deviceAllocator->Map(streamInfo.allocation.host));

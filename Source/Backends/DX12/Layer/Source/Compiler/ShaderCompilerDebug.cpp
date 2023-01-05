@@ -48,6 +48,18 @@ std::filesystem::path ShaderCompilerDebug::AllocatePath(DXModule *module) {
     return shaderPath;
 }
 
+std::filesystem::path ShaderCompilerDebug::AllocatePath(const std::string_view& name) {
+    std::filesystem::path shaderPath = path;
+
+    // New guid for shader
+    std::string guid = GlobalUID::New().ToString();
+
+    shaderPath /= name;
+    shaderPath /= guid;
+
+    return shaderPath;
+}
+
 void ShaderCompilerDebug::Add(const std::filesystem::path& basePath, const std::string_view &category, DXModule *module) {
     std::string categoryPath = basePath.string();
     categoryPath.append(".");

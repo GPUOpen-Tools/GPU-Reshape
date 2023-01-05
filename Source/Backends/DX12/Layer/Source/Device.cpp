@@ -21,6 +21,7 @@
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
+#include <Backends/DX12/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/DX12/Layer.h>
 
 // Backend
@@ -92,7 +93,7 @@ static void CreateEventRemappingTable(DeviceState* state) {
             state->eventRemappingTable.Resize(info.id + 1);
         }
 
-        state->eventRemappingTable[info.id] = offset;
+        state->eventRemappingTable[info.id] = offset++;
     }
 }
 
@@ -170,6 +171,10 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         state->shaderDataHost = state->registry.AddNew<ShaderDataHost>(state);
         ENSURE(state->shaderDataHost->Install(), "Failed to install shader data host");
 
+        // Create the program host
+        state->shaderProgramHost = state->registry.AddNew<ShaderProgramHost>(state);
+        ENSURE(state->shaderProgramHost->Install(), "Failed to install shader program host");
+
         // Install all features
         ENSURE(PoolAndInstallFeatures(state), "Failed to install features");
 
@@ -211,6 +216,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Install the instrumentation controller
         state->metadataController = state->registry.AddNew<MetadataController>(state);
         ENSURE(state->metadataController->Install(), "Failed to install metadata controller");
+
+        // Install all user programs, done after feature creation for data pooling
+        ENSURE(state->shaderProgramHost->InstallPrograms(), "Failed to install shader program host programs");
 
         // Install the streamer
         auto streamAllocator = state->registry.AddNew<ShaderExportStreamAllocator>();

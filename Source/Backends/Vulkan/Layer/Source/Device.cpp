@@ -19,6 +19,7 @@
 #include <Backends/Vulkan/Compiler/PipelineCompiler.h>
 #include <Backends/Vulkan/States/QueueState.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
+#include <Backends/Vulkan/ShaderProgram/ShaderProgramHost.h>
 
 // Common
 #include <Common/Registry.h>
@@ -140,6 +141,9 @@ static void CreateEventRemappingTable(DeviceDispatchTable* table) {
         }
 
         table->eventRemappingTable[info.id] = offset;
+
+        // Next dword
+        offset += sizeof(uint32_t);
     }
 }
 
@@ -247,6 +251,10 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->dataHost = table->registry.AddNew<ShaderDataHost>(table);
     ENSURE(table->dataHost->Install(), "Failed to install data host");
 
+    // Create the program host
+    table->shaderProgramHost = table->registry.AddNew<ShaderProgramHost>(table);
+    ENSURE(table->shaderProgramHost->Install(), "Failed to install shader program host");
+
     // Install all features
     ENSURE(PoolAndInstallFeatures(table), "Failed to install features");
 
@@ -291,6 +299,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Create the physical resource table
     table->prmTable = table->registry.New<PhysicalResourceMappingTable>(table);
     ENSURE(table->prmTable->Install(), "Failed to install PRM table");
+
+    // Install all user programs, done after feature creation for data pooling
+    ENSURE(table->shaderProgramHost->InstallPrograms(), "Failed to install shader program host programs");
 
     // Create queue states
     for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {

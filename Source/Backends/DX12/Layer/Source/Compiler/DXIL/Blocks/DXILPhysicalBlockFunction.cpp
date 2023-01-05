@@ -37,6 +37,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     // Create function
     IL::Function *fn = program.GetFunctionList().AllocFunction();
 
+    // Set program metadata
+    program.SetEntryPoint(fn->GetID());
+
     // Set the type
     fn->SetFunctionType(declaration->type);
 
@@ -2826,6 +2829,67 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
 
                     // Set as VOS
                     table.idRemapper.AllocSourceUserMapping(_instr->result, DXILIDUserType::VectorOnStruct, 0);
+                    break;
+                }
+
+                case IL::OpCode::StoreBuffer: {
+                    auto _instr = instr->As<IL::StoreBufferInstruction>();
+
+                    // Get type
+                    const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
+
+                    // Get intrinsic
+                    const DXILFunctionDeclaration *intrinsic;
+                    switch (Backend::IL::GetComponentType(bufferType->elementType)->kind) {
+                        default:
+                            ASSERT(false, "Invalid buffer element type");
+                            return;
+                        case Backend::IL::TypeKind::Int:
+                            intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferStoreI32);
+                            break;
+                        case Backend::IL::TypeKind::FP:
+                            intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferStoreF32);
+                            break;
+                    }
+
+                    uint64_t ops[9];
+
+                    // Opcode
+                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferStore)}
+                    )->id);
+
+                    // Handle
+                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->buffer);
+
+                    // C0
+                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->index);
+
+                    // C1
+                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::UndefConstant{}
+                    )->id);
+
+                    // Get component count
+                    uint32_t count = GetSVOXCount(_instr->value);
+
+                    // Visit all cases
+                    for (uint32_t i = 0; i < 4u; i++) {
+                        // Repeat last SVOX element if none remain
+                        SVOXElement element = ExtractSVOXElement(block, _instr->value, std::min(i, count - 1));
+                        ops[4 + i] = table.idRemapper.EncodeRedirectedUserOperand(element.value);
+                    }
+
+                    // Write mask
+                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(IL::ComponentMask::All)}
+                    )->id);
+
+                    // Invoke into result
+                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 9, ops));
                     break;
                 }
 

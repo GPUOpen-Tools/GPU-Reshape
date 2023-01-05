@@ -51,6 +51,7 @@ class ShaderExportDescriptorAllocator;
 class ShaderSGUIDHost;
 class ShaderDataHost;
 class PhysicalResourceMappingTable;
+class ShaderProgramHost;
 
 struct DeviceDispatchTable {
     /// Add a new table
@@ -126,6 +127,9 @@ struct DeviceDispatchTable {
 
     /// Virtual to physical resource mapping table
     ComRef<PhysicalResourceMappingTable> prmTable{nullptr};
+
+    /// User programs
+    ComRef<ShaderProgramHost> shaderProgramHost{nullptr};
 
     /// Controllers
     ComRef<InstrumentationController> instrumentationController{nullptr};

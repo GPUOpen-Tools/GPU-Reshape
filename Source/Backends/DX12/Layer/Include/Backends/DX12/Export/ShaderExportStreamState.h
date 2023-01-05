@@ -8,6 +8,7 @@
 
 // Common
 #include <Common/Containers/BucketPoolAllocator.h>
+#include <Common/Containers/LinearBlockAllocator.h>
 
 // Std
 #include <vector>
@@ -32,6 +33,80 @@ struct ShaderExportSegmentDescriptorAllocation {
     ShaderExportSegmentDescriptorInfo info;
 };
 
+struct ShaderExportRootConstantParameterValue {
+    /// Bound constant data
+    void* data;
+
+    /// Bytes of mapped constant data
+    uint32_t dataByteCount;
+};
+
+enum class ShaderExportRootParameterValueType {
+    None,
+    Descriptor,
+    SRV,
+    UAV,
+    CBV,
+    Constant
+};
+
+union ShaderExportRootParameterValuePayload {
+    /// Valid for ShaderExportRootParameterValueType::Descriptor
+    D3D12_GPU_DESCRIPTOR_HANDLE descriptor;
+
+    /// Valid for ShaderExportRootParameterValueType::SRV, UAV, CBV
+    D3D12_GPU_VIRTUAL_ADDRESS virtualAddress;
+
+    /// Valid for ShaderExportRootParameterValueType::Constant
+    ShaderExportRootConstantParameterValue constant;
+};
+
+struct ShaderExportRootParameterValue {
+    /// Create an invalid parameter
+    static ShaderExportRootParameterValue None() {
+        return {
+            .type = ShaderExportRootParameterValueType::None
+        };
+    }
+
+    /// Create a descriptor parameter
+    static ShaderExportRootParameterValue Descriptor(D3D12_GPU_DESCRIPTOR_HANDLE descriptor) {
+        return {
+            .type = ShaderExportRootParameterValueType::Descriptor,
+            .payload = ShaderExportRootParameterValuePayload {
+                .descriptor = descriptor
+            }
+        };
+    }
+
+    /// Create a virutal address parameter
+    static ShaderExportRootParameterValue VirtualAddress(ShaderExportRootParameterValueType type, D3D12_GPU_VIRTUAL_ADDRESS address) {
+        return {
+            .type = type,
+            .payload = ShaderExportRootParameterValuePayload {
+                .virtualAddress = address
+            }
+        };
+    }
+
+    /// Parameter type
+    ShaderExportRootParameterValueType type{ShaderExportRootParameterValueType::None};
+
+    /// Parameter data
+    ShaderExportRootParameterValuePayload payload;
+};
+
+struct ShaderExportStreamBindState {
+    /// Descriptor data allocator tied to this segment
+    DescriptorDataAppendAllocator* descriptorDataAllocator{nullptr};
+
+    /// On-demand allocator for root data
+    LinearBlockAllocator<1024> rootConstantAllocator;
+
+    /// All currently bound root data
+    ShaderExportRootParameterValue persistentRootParameters[MaxRootSignatureDWord];
+};
+
 /// Single stream state
 struct ShaderExportStreamState {
     /// Currently bound root signature
@@ -39,6 +114,9 @@ struct ShaderExportStreamState {
 
     /// Currently bound pipeline
     const PipelineState* pipeline{nullptr};
+
+    /// Currently instrumented pipeline
+    ID3D12PipelineState* pipelineObject{nullptr};
 
     /// Currently bound (SRV, UAV, CBV) heap
     const DescriptorHeapState* heap{nullptr};
@@ -52,8 +130,8 @@ struct ShaderExportStreamState {
     /// The descriptor info, may not be mapped
     ShaderExportSegmentDescriptorInfo currentSegment{};
 
-    /// Descriptor data allocator tied to this segment
-    DescriptorDataAppendAllocator* descriptorDataAllocator[static_cast<uint32_t>(PipelineType::Count)];
+    /// Bind states
+    ShaderExportStreamBindState bindStates[static_cast<uint32_t>(PipelineType::Count)];
 
     /// All segment descriptors, lifetime bound to deferred segment
     std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;

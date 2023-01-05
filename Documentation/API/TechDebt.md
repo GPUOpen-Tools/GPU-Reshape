@@ -2,17 +2,15 @@
 
 _Keeping track of tech debt_
 
+## Systematic
 
-#### Namespaces
+- Unify resource identifiers for various systems, several systems refer to the same thing with different identifiers, confusing capabilities and adds needless redundancy.
+- Error handling is a mess, assertions on creation failures is not the way. Introduce proper error handling.
 
-- Pollution of global namespaces, will make it hard to integrate this library into existing codebases. Create a style guide for scoping
+## Improvements
 
-#### Containers
+- Crack down on micro allocations, particularly during instrumentation.
+- Add support for polymorphic allocators, own ALL allocations.
 
-- Add support for polymorphic allocators for the standard containers
-- Fall back to stack allocators when possible to avoid allocations
-
-#### Instrumentation
-
-- The job submission is a little allocation heavy, can be much more clever
-- Move instrumentation controller to shared code
+## Cleanliness
+- The current state of namespaces are a mess, settle on a guide that is friendly for integration.

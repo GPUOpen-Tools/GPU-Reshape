@@ -49,6 +49,9 @@ struct ShaderExportPipelineBindState {
     /// Currently bound pipeline
     const PipelineState* pipeline{nullptr};
 
+    /// Currently bound vk object
+    VkPipeline pipelineObject{VK_NULL_HANDLE};
+
     /// Is the current pipeline instrumented?
     bool isInstrumented{false};
 
@@ -66,6 +69,9 @@ struct ShaderExportStreamState {
 
     /// All segment descriptors, lifetime bound to deferred segment
     std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
+
+    /// Current push constant data
+    std::vector<uint8_t> persistentPushConstantData;
 };
 
 /// Single stream segment, i.e. submission

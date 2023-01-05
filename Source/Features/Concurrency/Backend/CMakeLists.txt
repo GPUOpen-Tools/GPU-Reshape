@@ -34,19 +34,11 @@ add_custom_command(
 Project_AddBackendTest_Common(GeneratedTest Concurrency)
 Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/SimpleTest.hlsl)
 
-# Create test app
-add_executable(
-    Features.Concurrency.Tests
-
-    # Generated
-    ${GeneratedTest}
+Project_AddTest(
+        NAME Features.Concurrency.Tests
+        SOURCE ${GeneratedTest}
+        LIBS Test.Device Features.Concurrency.Backend
 )
-
-# IDE source discovery
-SetSourceDiscovery(Features.Concurrency.Tests CXX Tests)
-
-# Links
-target_link_libraries(Features.Concurrency.Tests PUBLIC Test.Device Features.Concurrency.Backend)
 
 #----- .Net bindings -----#
 

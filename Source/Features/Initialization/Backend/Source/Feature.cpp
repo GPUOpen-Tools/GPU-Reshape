@@ -1,4 +1,5 @@
 #include <Features/Initialization/Feature.h>
+#include <Features/Initialization/SRBMaskingShaderProgram.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -8,6 +9,9 @@
 #include <Backend/IL/ResourceTokenEmitter.h>
 #include <Backend/IL/ResourceTokenType.h>
 #include <Backend/CommandContext.h>
+#include <Backend/Command/BufferDescriptor.h>
+#include <Backend/Command/CommandBuilder.h>
+#include <Backend/ShaderProgram/IShaderProgramHost.h>
 
 // Generated schema
 #include <Schemas/Features/Initialization.h>
@@ -41,12 +45,28 @@ bool InitializationFeature::Install() {
         .format = Backend::IL::Format::R32UInt
     });
 
+    // Must have program host
+    auto programHost = registry->Get<IShaderProgramHost>();
+    if (!programHost) {
+        return false;
+    }
+
+    // Create the SRB masking program
+    srbMaskingShaderProgram = registry->New<SRBMaskingShaderProgram>(initializationMaskBufferID);
+    if (!srbMaskingShaderProgram->Install()) {
+        return false;
+    }
+
+    // Register masker
+    srbMaskingShaderProgramID = programHost->Register(srbMaskingShaderProgram);
+
     // OK
     return true;
 }
 
 FeatureHookTable InitializationFeature::GetHookTable() {
     FeatureHookTable table{};
+    table.copyBuffer = BindDelegate(this, InitializationFeature::OnCopyBuffer);
     return table;
 }
 
@@ -130,9 +150,32 @@ void InitializationFeature::Inject(IL::Program &program) {
     });
 }
 
+void InitializationFeature::OnCopyBuffer(CommandContext* context, const BufferDescriptor& source, const BufferDescriptor& dest, uint64_t byteSize) {
+    MaskResourceSRB(context, dest.token.puid, ~0u);
+}
+
 FeatureInfo InitializationFeature::GetInfo() {
     FeatureInfo info;
     info.name = "Initialization";
     info.description = "Instrumentation and validation of resource initialization prior to reads";
     return info;
+}
+
+void InitializationFeature::MaskResourceSRB(CommandContext *context, uint64_t puid, uint32_t srb) {
+    uint32_t& initializedSRB = puidSRBInitializationMap[puid];
+
+    // May already be initialized
+    if ((initializedSRB & srb) == srb) {
+        return;
+    }
+
+    // Mark host side initialization
+    initializedSRB |= srb;
+
+    // Mask the entire resource as mapped
+    CommandBuilder builder(context->buffer);
+    builder.SetShaderProgram(srbMaskingShaderProgramID);
+    builder.SetEventData(srbMaskingShaderProgram->GetPUIDEventID(), puid);
+    builder.SetEventData(srbMaskingShaderProgram->GetMaskEventID(), ~0u);
+    builder.Dispatch(1, 1, 1);
 }

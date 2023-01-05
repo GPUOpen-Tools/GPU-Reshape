@@ -3,7 +3,7 @@
 
 //! SCHEMA "Schemas/Features/Initialization.h"
 
-//! RESOURCE RWBuffer<R32Float> size:64
+//! RESOURCE RWBuffer<R32Float> size:64 data:0
 [[vk::binding(0)]] RWBuffer<float> bufferRW : register(u0, space0);
 
 //! RESOURCE RWBuffer<R32Float> size:64
@@ -16,12 +16,12 @@
 void main(uint dtid : SV_DispatchThreadID) {
     float data = 1.0f;
 
-    //! MESSAGE UninitializedResource[0]
+    //! MESSAGE UninitializedResource[0] LUID:0
     data += bufferRW[dtid.x];
 
-    //! MESSAGE UninitializedResource[0]
+    //! MESSAGE UninitializedResource[64] LUID:3
     data += textureRO.Load(dtid.x);
 
-    //! MESSAGE UninitializedResource[0]
+    //! MESSAGE UninitializedResource[64] LUID:2
 	bufferRW2[dtid.x] = data;
 }

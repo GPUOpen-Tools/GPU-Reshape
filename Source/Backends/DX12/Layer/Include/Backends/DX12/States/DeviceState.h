@@ -37,6 +37,7 @@ class ShaderDataHost;
 class ShaderExportStreamer;
 class ShaderSGUIDHost;
 class DeviceAllocator;
+class ShaderProgramHost;
 
 struct DeviceState {
     ~DeviceState();
@@ -87,6 +88,9 @@ struct DeviceState {
     ComRef<InstrumentationController> instrumentationController{nullptr};
     ComRef<FeatureController> featureController{nullptr};
     ComRef<MetadataController> metadataController{nullptr};
+
+    /// User programs
+    ComRef<ShaderProgramHost> shaderProgramHost{nullptr};
 
     /// Shared remapping table
     EventDataStack::RemappingTable eventRemappingTable;

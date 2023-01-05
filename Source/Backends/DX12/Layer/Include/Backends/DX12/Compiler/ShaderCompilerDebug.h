@@ -17,10 +17,15 @@ public:
 
     ShaderCompilerDebug();
 
-    /// Allocate
+    /// Allocate a path
     /// \param module module to be allocated for
     /// \return
     std::filesystem::path AllocatePath(DXModule *module);
+
+    /// Allocate a path
+    /// \param name decorative name
+    /// \return
+    std::filesystem::path AllocatePath(const std::string_view& name);
 
     /// Add a module
     /// \param basePath allocated base path

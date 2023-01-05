@@ -42,8 +42,9 @@ namespace IL {
             typeMap.CopyTo(program->typeMap);
             constants.CopyTo(program->constants);
 
-            // Copy capabilities
+            // Copy immutable
             program->capabilityTable = capabilityTable;
+            program->entryPoint = entryPoint;
 
             // Copy all functions and their basic blocks
             functions.CopyTo(program->functions);
@@ -55,6 +56,17 @@ namespace IL {
 
             // OK
             return program;
+        }
+
+        /// Set the new entry point
+        /// \param id must be valid function within the program
+        void SetEntryPoint(IL::ID id) {
+            entryPoint = id;
+        }
+
+        /// Get the entry point
+        IL::Function* GetEntryPoint() const {
+            return functions.GetFunction(entryPoint);
         }
 
         /// Get the shader guid
@@ -155,6 +167,9 @@ namespace IL {
 
         /// The capability table
         CapabilityTable capabilityTable;
+
+        /// Function entry point
+        IL::ID entryPoint{IL::InvalidID};
 
         /// Shader guid of this program
         uint64_t shaderGUID{~0ull};

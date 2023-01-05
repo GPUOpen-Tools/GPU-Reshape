@@ -96,6 +96,12 @@
         "SetGraphicsRootShaderResourceView",
         "SetComputeRootUnorderedAccessView",
         "SetGraphicsRootUnorderedAccessView",
+        "SetGraphicsRootUnorderedAccessView",
+        "SetComputeRoot32BitConstant",
+        "SetGraphicsRoot32BitConstant",
+        "SetComputeRoot32BitConstants",
+        "SetGraphicsRoot32BitConstants",
+        "CopyBufferRegion",
         "CopyTextureRegion",
         "ResourceBarrier",
         "DrawInstanced",
@@ -107,7 +113,8 @@
       "proxies": [
         "DrawInstanced",
         "DrawIndexedInstanced",
-        "Dispatch"
+        "Dispatch",
+        "CopyBufferRegion"
       ]
     },
     "ID3D12Fence": {

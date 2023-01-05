@@ -214,18 +214,23 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
             userPushConstantOffset = std::max(userPushConstantOffset, userRange.offset + userRange.size);
         }
 
-        // Append internal PC range
-        VkPushConstantRange& range = ranges[pCreateInfo->pushConstantRangeCount];
-        range.offset = userPushConstantOffset;
-        range.size = eventCount * sizeof(uint32_t);
-        range.stageFlags = VK_SHADER_STAGE_ALL;
-
         // Mirror creation info
         VkPipelineLayoutCreateInfo createInfo = *pCreateInfo;
         createInfo.setLayoutCount = pCreateInfo->setLayoutCount + 1;
         createInfo.pSetLayouts = setLayouts;
-        createInfo.pushConstantRangeCount = pCreateInfo->pushConstantRangeCount + 1;
         createInfo.pPushConstantRanges = ranges;
+
+        // Any data?
+        if (eventCount > 0) {
+            // Append internal PC range
+            VkPushConstantRange& range = ranges[pCreateInfo->pushConstantRangeCount];
+            range.offset = userPushConstantOffset;
+            range.size = eventCount * sizeof(uint32_t);
+            range.stageFlags = VK_SHADER_STAGE_ALL;
+
+            // Count
+            createInfo.pushConstantRangeCount = pCreateInfo->pushConstantRangeCount + 1;
+        }
 
         // Pass down callchain
         VkResult result = table->next_vkCreatePipelineLayout(device, &createInfo, pAllocator, pPipelineLayout);

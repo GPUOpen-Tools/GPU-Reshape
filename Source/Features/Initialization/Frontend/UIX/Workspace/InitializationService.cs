@@ -23,7 +23,7 @@ namespace Features.Initialization.UIX.Workspace
             ViewModel = viewModel;
             
             // Add listener to bridge
-            viewModel.Connection?.Bridge?.Register(InitializationMismatchMessage.ID, this);
+            viewModel.Connection?.Bridge?.Register(UninitializedResourceMessage.ID, this);
             
             // Get properties
             _messageCollectionViewModel = viewModel.PropertyCollection.GetProperty<IMessageCollectionViewModel>();
@@ -40,17 +40,17 @@ namespace Features.Initialization.UIX.Workspace
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsStatic(InitializationMismatchMessage.ID))
+            if (!streams.GetSchema().IsStatic(UninitializedResourceMessage.ID))
                 return;
 
-            var view = new StaticMessageView<InitializationMismatchMessage>(streams);
+            var view = new StaticMessageView<UninitializedResourceMessage>(streams);
 
             // Latent update set
-            var lookup = new Dictionary<uint, InitializationMismatchMessage>();
+            var lookup = new Dictionary<uint, UninitializedResourceMessage>();
             var enqueued = new Dictionary<uint, uint>();
 
             // Consume all messages
-            foreach (InitializationMismatchMessage message in view)
+            foreach (UninitializedResourceMessage message in view)
             {
                 if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
                 {
@@ -81,7 +81,7 @@ namespace Features.Initialization.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Initialization mismatch detected, shader expected {typeLookup[message.Flat.compileType]} but received {typeLookup[message.Flat.runtimeType]}"
+                        Content = $"Uninitialized resource read"
                     };
 
                     // Shader view model injection

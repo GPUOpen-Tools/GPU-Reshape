@@ -10,15 +10,18 @@
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/VisitContext.h>
 #include <Backend/ShaderData/IShaderDataHost.h>
+#include "Backend/ShaderProgram/ShaderProgram.h"
 
 // Message
 #include <Message/MessageStream.h>
 
 // Std
 #include <atomic>
+#include <unordered_map>
 
 // Forward declarations
 class IShaderSGUIDHost;
+class SRBMaskingShaderProgram;
 
 class InitializationFeature final : public IFeature, public IShaderFeature {
 public:
@@ -49,6 +52,17 @@ public:
     }
 
 private:
+    /// Invoked on buffer copies
+    void OnCopyBuffer(CommandContext* context, const BufferDescriptor& source, const BufferDescriptor& dest, uint64_t byteSize);
+
+private:
+    /// Mark a resource SRB
+    /// \param context destination context
+    /// \param puid physical resource uid
+    /// \param srb resource mask
+    void MaskResourceSRB(CommandContext* context, uint64_t puid, uint32_t srb);
+
+private:
     /// Hosts
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
     ComRef<IShaderDataHost> shaderDataHost{nullptr};
@@ -56,9 +70,19 @@ private:
     /// Shader data
     ShaderDataID initializationMaskBufferID{InvalidShaderDataID};
 
+    /// Masking program
+    ComRef<SRBMaskingShaderProgram> srbMaskingShaderProgram;
+
+    /// Allocated program ID
+    ShaderProgramID srbMaskingShaderProgramID{InvalidShaderProgramID};
+
     /// Export id for this feature
     ShaderExportID exportID{};
 
     /// Shared stream
     MessageStream stream;
+
+private:
+    /// Current initialization mask
+    std::unordered_map<uint64_t, uint32_t> puidSRBInitializationMap;
 };

@@ -16,6 +16,9 @@ struct RootSignatureState {
     /// Parent state
     ID3D12Device* parent{};
 
+    /// Device object
+    ID3D12RootSignature* object{};
+
     /// Owning allocator
     Allocators allocators;
 

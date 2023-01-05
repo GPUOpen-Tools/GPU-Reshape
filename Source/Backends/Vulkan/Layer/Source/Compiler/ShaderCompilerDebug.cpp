@@ -115,6 +115,23 @@ bool ShaderCompilerDebug::Validate(const uint32_t* spirvCode, uint32_t spirvSize
     return false;
 }
 
+std::filesystem::path ShaderCompilerDebug::AllocatePath(const std::string_view &view) {
+    std::filesystem::path shaderPath = path;
+
+    // Allocate path
+    std::string guid = GlobalUID::New().ToString();
+
+    // Compose base path
+    if (!view.empty()) {
+        shaderPath /= view;
+        shaderPath += "." + guid;
+    } else {
+        shaderPath /= guid;
+    }
+
+    return shaderPath;
+}
+
 std::filesystem::path ShaderCompilerDebug::AllocatePath(SpvModule *module) {
     std::filesystem::path shaderPath = path;
 

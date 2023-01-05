@@ -12,6 +12,7 @@ struct ProgramInvocation {
 };
 
 enum class MessageCheckMode {
+    Generator,
     Equal,
     NotEqual,
     Greater,
@@ -32,12 +33,16 @@ struct ProgramMessageAttribute {
     int64_t value;
 };
 
+struct Generator {
+    std::string contents;
+};
+
 struct ProgramMessage {
     /// Schema type of the message
     std::string_view type;
 
-    /// Message check literal
-    int64_t checkLiteral{1};
+    /// Message check generator
+    Generator checkGenerator{"1"};
 
     /// Message check mode
     MessageCheckMode checkMode{MessageCheckMode::Equal};

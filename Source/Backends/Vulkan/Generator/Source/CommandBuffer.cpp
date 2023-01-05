@@ -179,6 +179,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         // Hooked?
         if (info.hooks.count(prototypeName->GetText())) {
             hooks << "\tApplyFeatureHook<FeatureHook_" << prototypeName->GetText() << ">(\n";
+            hooks << "\t\t" << wrappedObject << ",\n";
             hooks << "\t\t&" << wrappedObject << "->userContext,\n";
             hooks << "\t\t" << wrappedObject  << "->dispatchTable.featureBitSet_" << prototypeName->GetText() << ",\n";
             hooks << "\t\t" << wrappedObject  << "->dispatchTable.featureHooks_" << prototypeName->GetText() << ",\n";
@@ -224,7 +225,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Pass down the call chain
-        if (info.hooks.count(prototypeName->GetText())) {
+        if (isWhitelisted) {
             hooks << "Hook_" << prototypeName->GetText() << "(";
         } else {
             hooks << wrappedObject << "->dispatchTable.next_" << prototypeName->GetText() << "(";
@@ -253,7 +254,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
             }
 
             // Generate argument, unwrap if needed
-            if (unwrappingStates[parameterIndex] && !isHooked)
+            if (unwrappingStates[parameterIndex] && !isWhitelisted)
                 hooks << paramName->GetText() << "->object";
             else
                 hooks << paramName->GetText();

@@ -119,6 +119,7 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
                 if (isProxied) {
                     // Pass down to next object
                     state.hooks << "\t\tApplyFeatureHook<FeatureHook_" << methodName << ">(\n";
+                    state.hooks << "\t\t\tstate,\n";
                     state.hooks << "\t\t\tstate->proxies.context,\n";
                     state.hooks << "\t\t\tstate->proxies.featureBitSet_" << methodName << ",\n";
                     state.hooks << "\t\t\tstate->proxies.featureHooks_" << methodName << ",\n";
@@ -130,7 +131,7 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
                             state.hooks << ", ";
                         }
 
-                        state.hooks << "Unwrap(" << parameters[i]["name"].get<std::string>() << ")";
+                        state.hooks << parameters[i]["name"].get<std::string>();
                     }
 
                     // End call

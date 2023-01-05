@@ -10,8 +10,13 @@
 //! RESOURCE RWBuffer<R32Float> size:64
 [[vk::binding(1)]] RWBuffer<float> bufferRW2 : register(u1, space0);
 
-[numthreads(64, 1, 1)]
+[numthreads(1, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
-    //! MESSAGE ResourceRaceCondition[>0]
+    if (dtid.x >= 128) {
+        //! MESSAGE ResourceRaceCondition[{x > 0 && x <= 128}] LUID:721
+    	bufferRW[dtid.x] = 1.0f;
+    }
+
+    //! MESSAGE ResourceRaceCondition[>0] LUID:721
 	bufferRW2[dtid.x] = 1.0f;
 }

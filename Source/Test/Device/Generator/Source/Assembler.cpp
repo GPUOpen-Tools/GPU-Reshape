@@ -88,30 +88,8 @@ void Assembler::AssembleConstraints() {
             inits << "\t\t{\n";
             inits << "\t\t\t" << assembleInfo.program << "MessageInfo& msg = messages.emplace_back();\n";
             inits << "\t\t\tmsg.line = " << message.line << ";\n";
-            inits << "\t\t\tmsg.literal = " << message.checkLiteral << ";\n";
-
-            switch (message.checkMode) {
-                default:
-                    ASSERT(false, "Invalid check mode");
-                case MessageCheckMode::Equal:
-                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a == b; };\n";
-                    break;
-                case MessageCheckMode::NotEqual:
-                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a != b; };\n";
-                    break;
-                case MessageCheckMode::Greater:
-                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a > b; };\n";
-                    break;
-                case MessageCheckMode::GreaterEqual:
-                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a >= b; };\n";
-                    break;
-                case MessageCheckMode::Less:
-                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a < b; };\n";
-                    break;
-                case MessageCheckMode::LessEqual:
-                    inits << "\t\t\tmsg.comparator = [](uint32_t a, uint32_t b) { return a <= b; };\n";
-                    break;
-            }
+            inits << "\t\t\tmsg.policy = \"" << message.checkGenerator.contents << "\";\n";
+            inits << "\t\t\tmsg.comparator = [](uint32_t x) { return " << message.checkGenerator.contents << "; };\n";
 
             for (const ProgramMessageAttribute &attr: message.attributes) {
                 inits << "\t\t\tmsg." << attr.name << " = " << attr.value << ";\n";
@@ -213,6 +191,17 @@ void Assembler::AssembleResources() {
         }
         types << ",\n";
 
+        create << "\t\tconst uint32_t data" << i << "[] = {";
+        for (uint64_t data : resource.initialization.data) {
+            create << data << ", ";
+        }
+
+        if (resource.initialization.data.empty()) {
+            create << "0";
+        }
+
+        create << "};\n";
+
         create << "\t\t";
         switch (resource.type) {
             default:
@@ -221,60 +210,60 @@ void Assembler::AssembleResources() {
             case ResourceType::Buffer:
                 create << "BufferID resource" << i << " = device->CreateTexelBuffer(ResourceType::TexelBuffer, Backend::IL::Format::" << resource.format << ", ";
                 create << resource.initialization.sizes.at(0);
-                create << ", nullptr);\n";
+                create << ", data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::RWBuffer:
                 create << "BufferID resource" << i << " = device->CreateTexelBuffer(ResourceType::RWTexelBuffer, Backend::IL::Format::" << resource.format << ", ";
                 create << resource.initialization.sizes.at(0);
-                create << ", nullptr);\n";
+                create << ", data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::Texture1D:
                 create << "TextureID resource" << i << " = device->CreateTexture(ResourceType::Texture1D, Backend::IL::Format::" << resource.format << ", ";
                 create << resource.initialization.sizes.at(0);
                 create << "1, ";
                 create << "1, ";
-                create << "nullptr);\n";
+                create << "data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::RWTexture1D:
                 create << "TextureID resource" << i << " = device->CreateTexture(ResourceType::RWTexture1D, Backend::IL::Format::" << resource.format << ", ";
                 create << resource.initialization.sizes.at(0);
                 create << "1, ";
                 create << "1, ";
-                create << "nullptr);\n";
+                create << "data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::Texture2D:
                 create << "TextureID resource" << i << " = device->CreateTexture(ResourceType::Texture2D, Backend::IL::Format::" << resource.format << ", ";
                 create << resource.initialization.sizes.at(0) << ", ";
                 create << resource.initialization.sizes.at(1) << ", ";
                 create << "1, ";
-                create << "nullptr);\n";
+                create << "data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::RWTexture2D:
                 create << "TextureID resource" << i << " = device->CreateTexture(ResourceType::RWTexture2D, Backend::IL::Format::" << resource.format << ", ";
                 create << resource.initialization.sizes.at(0) << ", ";
                 create << resource.initialization.sizes.at(1) << ", ";
                 create << "1, ";
-                create << "nullptr);\n";
+                create << "data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::Texture3D:
                 create << "TextureID resource" << i << " = device->CreateTexture(ResourceType::Texture3D, Backend::IL::Format::" << resource.format << ", ";
                 create << resource.initialization.sizes.at(0) << ", ";
                 create << resource.initialization.sizes.at(1) << ", ";
-                create << resource.initialization.sizes.at(2);
-                create << ", nullptr);\n";
+                create << resource.initialization.sizes.at(2) << ", ";
+                create << "data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::RWTexture3D:
                 create << "TextureID resource" << i << " = device->CreateTexture(ResourceType::RWTexture3D, Backend::IL::Format::" << resource.format << ", ";
                 create << resource.initialization.sizes.at(0) << ", ";
                 create << resource.initialization.sizes.at(1) << ", ";
-                create << resource.initialization.sizes.at(2);
-                create << ", nullptr);\n";
+                create << resource.initialization.sizes.at(2) << ", ";
+                create << "data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::SamplerState:
                 create << "SamplerID resource" << i << " = device->CreateSampler();\n";
                 break;
             case ResourceType::CBuffer:
-                create << "CBufferID resource" << i << " = device->CreateCBuffer(64, nullptr);\n";
+                create << "CBufferID resource" << i << " = device->CreateCBuffer(64, data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
         }
 

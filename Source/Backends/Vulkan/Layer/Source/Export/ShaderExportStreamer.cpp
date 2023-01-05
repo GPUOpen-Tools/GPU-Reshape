@@ -75,7 +75,11 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
 
     // Create descriptor data allocator
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        state->pipelineBindPoints[i].descriptorDataAllocator = new (allocators) DescriptorDataAppendAllocator(table, deviceAllocator);
+        state->pipelineBindPoints[i].descriptorDataAllocator = new (allocators) DescriptorDataAppendAllocator(
+            table,
+            deviceAllocator,
+            table->physicalDeviceProperties.limits.maxUniformBufferRange
+        );
     }
 
     // OK
@@ -131,6 +135,10 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Co
         bindState.isInstrumented = false;
     }
 
+    // Clear push data
+    state->persistentPushConstantData.resize(table->physicalDeviceProperties.limits.maxPushConstantsSize);
+    std::fill(state->persistentPushConstantData.begin(), state->persistentPushConstantData.end(), 0u);
+
     // Initialize descriptor binders
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
         ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[i];
@@ -172,6 +180,10 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, Co
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
         bindState.deviceDescriptorOverwriteMask = 0x0;
     }
+
+    // Clear push data
+    state->persistentPushConstantData.resize(table->physicalDeviceProperties.limits.maxPushConstantsSize);
+    std::fill(state->persistentPushConstantData.begin(), state->persistentPushConstantData.end(), 0u);
 }
 
 void ShaderExportStreamer::EndCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer) {
@@ -189,7 +201,7 @@ void ShaderExportStreamer::EndCommandBuffer(ShaderExportStreamState* state, Comm
     }
 }
 
-void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, bool instrumented, CommandBufferObject* commandBuffer) {
+void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, VkPipeline object, bool instrumented, CommandBufferObject* commandBuffer) {
     // Get bind state
     ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipeline->type)];
 
@@ -198,6 +210,7 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
 
     // State tracking
     bindState.pipeline = pipeline;
+    bindState.pipelineObject = object;
     bindState.isInstrumented = instrumented;
 
     // Ensure the shader export states are bound
@@ -316,6 +329,36 @@ void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState 
     }
 }
 
+void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, PipelineType type, VkPipelineLayout layout, VkPipeline pipeline, uint32_t slot, CommandBufferObject *commandBuffer) {
+    // Get the bind state
+    ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(type)];
+
+    // Translate the bind point
+    VkPipelineBindPoint vkBindPoint{};
+    switch (type) {
+        default:
+            ASSERT(false, "Invalid pipeline type");
+            break;
+        case PipelineType::Graphics:
+            vkBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            break;
+        case PipelineType::Compute:
+            vkBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+            break;
+    }
+
+    // Descriptor dynamic offset
+    uint32_t dynamicOffset = bindState.descriptorDataAllocator->GetSegmentDynamicOffset();
+
+    // Bind the export
+    table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
+        commandBuffer->object,
+        vkBindPoint, layout,
+        slot, 1u, &bindState.currentSegment.info.set,
+        1u, &dynamicOffset
+    );
+}
+
 void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, const PipelineState *pipeline, CommandBufferObject* commandBuffer) {
     // Get the bind state
     ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipeline->type)];
@@ -330,35 +373,12 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
     }
 #endif
 
-    // Translate the bind point
-    VkPipelineBindPoint vkBindPoint{};
-    switch (pipeline->type) {
-        default:
-            ASSERT(false, "Invalid pipeline type");
-            break;
-        case PipelineType::Graphics:
-            vkBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-            break;
-        case PipelineType::Compute:
-            vkBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
-            break;
-    }
-
     // Debugging
 #if TRACK_DESCRIPTOR_SETS
     commandBuffer->context.descriptorSets[static_cast<uint32_t>(pipeline->type)][pipeline->layout->boundUserDescriptorStates] = state->segmentDescriptorInfo.set;
 #endif
 
-    // Descriptor dynamic offset
-    uint32_t dynamicOffset = bindState.descriptorDataAllocator->GetSegmentDynamicOffset();
-
-    // Bind the export
-    table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
-        commandBuffer->object,
-        vkBindPoint, pipeline->layout->object,
-        pipeline->layout->boundUserDescriptorStates, 1u, &bindState.currentSegment.info.set,
-        1u, &dynamicOffset
-    );
+    BindShaderExport(state, pipeline->type, pipeline->layout->object, pipeline->object, pipeline->layout->boundUserDescriptorStates, commandBuffer);
 
     // Mark as bound
     bindState.deviceDescriptorOverwriteMask |= bindMask;
@@ -413,7 +433,7 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
     IMessageStorage* output = bridge->GetOutput();
 
     // Map the counters
-    const MirrorAllocation& counterMirror = segment->allocation->counter.allocation;;
+    const MirrorAllocation& counterMirror = segment->allocation->counter.allocation;
     auto* counters = static_cast<uint32_t*>(deviceAllocator->Map(counterMirror.host));
 
     // Process all streams
@@ -422,6 +442,9 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
 
         // Get the written counter
         uint32_t elementCount = counters[i];
+
+        // Limit the counter by the physical size of the buffer (may exceed)
+        elementCount = std::min(elementCount, static_cast<uint32_t>(streamInfo.byteSize / streamInfo.typeInfo.typeSize));
 
         // Map the stream
         auto* stream = static_cast<uint8_t*>(deviceAllocator->Map(streamInfo.allocation.host));

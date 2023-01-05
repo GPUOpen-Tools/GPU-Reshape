@@ -55,7 +55,7 @@ bool ShaderCompiler::Install() {
     shaderData.resize(resourceCount);
     shaderDataHost->Enumerate(&resourceCount, shaderData.data(), ShaderDataType::All);
 
-    // Get the dxil signer
+    // Get the signers
     dxilSigner = registry->Get<DXILSigner>();
     dxbcSigner = registry->Get<DXBCSigner>();
 

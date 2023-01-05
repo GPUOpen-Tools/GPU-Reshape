@@ -20,8 +20,8 @@ namespace Test::DX12 {
         /// Overrides
         void Install(const DeviceInfo &info) override;
         QueueID GetQueue(QueueType type) override;
-        BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, void *data) override;
-        TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, void *data) override;
+        BufferID CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, const void *data, uint64_t dataSize) override;
+        TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) override;
         ResourceLayoutID CreateResourceLayout(const ResourceType *types, uint32_t count) override;
         ResourceSetID CreateResourceSet(ResourceLayoutID layout, const ResourceID *resources, uint32_t count) override;
         PipelineID CreateComputePipeline(const ResourceLayoutID *layouts, uint32_t layoutCount, const void *shaderCode, uint32_t shaderSize) override;
@@ -35,7 +35,7 @@ namespace Test::DX12 {
         void InitializeResources(CommandBufferID commandBuffer) override;
         void Flush() override;
         SamplerID CreateSampler() override;
-        CBufferID CreateCBuffer(uint32_t byteSize, void *data) override;
+        CBufferID CreateCBuffer(uint32_t byteSize, const void *data, uint64_t dataSize) override;
 
     private:
         /// Creators
@@ -140,5 +140,45 @@ namespace Test::DX12 {
         std::vector<ResourceSetInfo> resourceSets;
         std::vector<CommandBufferInfo> commandBuffers;
         std::vector<PipelineInfo> pipelines;
+
+    private:
+        /// Type of update
+        enum class UpdateCommandType {
+            CopyBuffer
+        };
+
+        /// Update payload
+        union UpdateCommand {
+            UpdateCommand() {
+
+            }
+
+            /// Type of command
+            UpdateCommandType type;
+
+            /// Buffer copy command
+            struct {
+                UpdateCommandType type;
+                ID3D12Resource* dest;
+                ID3D12Resource* source;
+                uint64_t dataSize;
+            } copyBuffer;
+        };
+
+        /// Queued initialization commands
+        std::vector<UpdateCommand> updateCommands;
+
+    private:
+        struct UploadBuffer {
+            ComPtr<ID3D12Resource> resource;
+        };
+
+        /// Create an upload buffer
+        /// \param size expected size
+        /// \return buffer
+        UploadBuffer& CreateUploadBuffer(uint64_t size);
+
+        /// Lazy pool of buffers
+        std::vector<UploadBuffer> uploadBuffers;
     };
 }

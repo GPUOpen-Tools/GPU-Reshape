@@ -45,6 +45,8 @@ $INCLUDES
 
 using namespace Test;
 
+namespace {
+
 $CONSTRAINTS;
 
 struct ShaderCode {
@@ -206,3 +208,4 @@ TEST_CASE("Features.$FEATURE_NAME.$TEST_NAME") {
 #endif // ENABLE_BACKEND_DX12
 }
 
+}

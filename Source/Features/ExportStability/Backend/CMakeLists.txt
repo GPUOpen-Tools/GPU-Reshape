@@ -34,19 +34,11 @@ add_custom_command(
 Project_AddBackendTest_Common(GeneratedTest ExportStability)
 Project_AddBackendTest(GeneratedTest "-Od" ExportStability Tests/Data/SimpleTest.hlsl)
 
-# Create test app
-add_executable(
-    Features.ExportStability.Tests
-
-    # Generated
-    ${GeneratedTest}
+Project_AddTest(
+        NAME Features.ExportStability.Tests
+        SOURCE ${GeneratedTest}
+        LIBS Test.Device Features.ExportStability.Backend
 )
-
-# IDE source discovery
-SetSourceDiscovery(Features.ExportStability.Tests CXX Tests)
-
-# Links
-target_link_libraries(Features.ExportStability.Tests PUBLIC Test.Device Features.ExportStability.Backend)
 
 #----- .Net bindings -----#
 

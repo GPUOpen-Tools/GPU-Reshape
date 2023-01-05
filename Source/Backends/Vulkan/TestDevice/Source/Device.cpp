@@ -369,6 +369,11 @@ void Device::ReleaseResources() {
         vkDestroyDescriptorSetLayout(device, info.layout, nullptr);
     }
 
+    // Destroy upload buffers
+    for (UploadBuffer& upload : uploadBuffers) {
+        vmaDestroyBuffer(allocator, upload.buffer, upload.allocation);
+    }
+
     // Destroy resources
     for (ResourceInfo& info : resources) {
         switch (info.type) {
@@ -440,7 +445,7 @@ QueueID Device::GetQueue(QueueType type) {
     return QueueID::Invalid();
 }
 
-BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, void *data) {
+BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format, uint64_t size, const void *data, uint64_t dataSize) {
     ResourceInfo& resource = resources.emplace_back();
     resource.type = type;
 
@@ -453,10 +458,10 @@ BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format
             ASSERT(false, "Invalid type");
             break;
         case ResourceType::TexelBuffer:
-            bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+            bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             break;
         case ResourceType::RWTexelBuffer:
-            bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+            bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             break;
     }
 
@@ -477,10 +482,35 @@ BufferID Device::CreateTexelBuffer(ResourceType type, Backend::IL::Format format
     // Attempt to create buffer view
     REQUIRE(vkCreateBufferView(device, &bufferViewInfo, nullptr, &resource.texelBuffer.view) == VK_SUCCESS);
 
-    return BufferID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
+    BufferID id(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
+
+    // Any data to upload?
+    if (data && dataSize) {
+        UploadBuffer& uploadBuffer = CreateUploadBuffer(dataSize);
+
+        // Map the underlying data
+        void* mapData{nullptr};
+        vmaMapMemory(allocator, uploadBuffer.allocation, &mapData);
+
+        // Copy data to host buffer
+        std::memcpy(mapData, data, dataSize);
+
+        // Unmap
+        vmaUnmapMemory(allocator, uploadBuffer.allocation);
+
+        // Enqueue command
+        UpdateCommand command;
+        command.copyBuffer.type = UpdateCommandType::CopyBuffer;
+        command.copyBuffer.dest = resource.texelBuffer.buffer;
+        command.copyBuffer.dataSize = dataSize;
+        command.copyBuffer.source = uploadBuffer.buffer;
+        updateCommands.push_back(command);
+    }
+
+    return id;
 }
 
-TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, void *data) {
+TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) {
     ResourceInfo& resource = resources.emplace_back();
     resource.type = type;
 
@@ -573,6 +603,28 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
     command.texture.type = UpdateCommandType::TransitionTexture;
     command.texture.id = id;
     updateCommands.push_back(command);
+
+    // Any data to upload?
+    if (data && dataSize) {
+        UploadBuffer& uploadBuffer = CreateUploadBuffer(dataSize);
+
+        // Map the underlying data
+        void* mapData{nullptr};
+        vmaMapMemory(allocator, uploadBuffer.allocation, &mapData);
+
+        // Copy data to host buffer
+        std::memcpy(mapData, data, dataSize);
+
+        // Unmap
+        vmaUnmapMemory(allocator, uploadBuffer.allocation);
+
+        // Enqueue command
+        command.copyTexture.type = UpdateCommandType::CopyTexture;
+        command.copyTexture.id = id;
+        command.copyTexture.dataSize = dataSize;
+        command.copyTexture.source = uploadBuffer.buffer;
+        updateCommands.push_back(command);
+    }
 
     return id;
 }
@@ -929,8 +981,40 @@ void Device::InitializeResources(CommandBufferID commandBuffer) {
                 );
                 break;
             }
+            case UpdateCommandType::CopyBuffer: {
+                VkBufferCopy copy{};
+                copy.srcOffset = 0;
+                copy.dstOffset = 0;
+                copy.size = cmd.copyBuffer.dataSize;
+
+                vkCmdCopyBuffer(
+                    info.commandBuffer,
+                    cmd.copyBuffer.source,
+                    cmd.copyBuffer.dest,
+                    1, &copy
+                );
+                break;
+            }
+            case UpdateCommandType::CopyTexture: {
+                // TODO: Implement!
+                break;
+            }
         }
     }
+
+    // Transfer barrier
+    VkMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vkCmdPipelineBarrier(
+        info.commandBuffer,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        0x0,
+        1, &barrier,
+        0, nullptr,
+        0, nullptr
+    );
 }
 
 SamplerID Device::CreateSampler() {
@@ -953,7 +1037,7 @@ SamplerID Device::CreateSampler() {
     return SamplerID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
 }
 
-CBufferID Device::CreateCBuffer(uint32_t byteSize, void *data) {
+CBufferID Device::CreateCBuffer(uint32_t byteSize, const void *data, uint64_t dataSize) {
     ResourceInfo& resource = resources.emplace_back();
     resource.type = ResourceType::CBuffer;
 
@@ -969,5 +1053,46 @@ CBufferID Device::CreateCBuffer(uint32_t byteSize, void *data) {
     // Attempt to allocate and create buffer
     vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &resource.cbuffer.buffer, &resource.cbuffer.allocation, nullptr);
 
+    // Any data to upload?
+    if (data) {
+        UploadBuffer& uploadBuffer = CreateUploadBuffer(byteSize);
+
+        // Map the underlying data
+        void* mapData{nullptr};
+        vmaMapMemory(allocator, uploadBuffer.allocation, &mapData);
+
+        // Copy data to host buffer
+        std::memcpy(mapData, data, byteSize);
+
+        // Unmap
+        vmaUnmapMemory(allocator, uploadBuffer.allocation);
+
+        // Enqueue command
+        UpdateCommand command;
+        command.copyBuffer.type = UpdateCommandType::CopyBuffer;
+        command.copyBuffer.dest = resource.cbuffer.buffer;
+        command.copyBuffer.dataSize = byteSize;
+        command.copyBuffer.source = uploadBuffer.buffer;
+        updateCommands.push_back(command);
+    }
+
     return CBufferID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
+}
+
+Device::UploadBuffer &Device::CreateUploadBuffer(uint64_t size) {
+    UploadBuffer& uploadBuffer = uploadBuffers.emplace_back();
+
+    // Buffer info
+    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.size = size;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+    // Allocation info
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+    // Attempt to allocate and create buffer
+    vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &uploadBuffer.buffer, &uploadBuffer.allocation, nullptr);
+
+    return uploadBuffer;
 }

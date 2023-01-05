@@ -167,12 +167,12 @@ void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
     uint64_t fragmentedMappings = SummarizeFragmentation();
 
     // Defragment if needed
-    if (static_cast<double>(virtualMappingCount) / fragmentedMappings >= DefragmentationThreshold) {
+    if (fragmentedMappings && fragmentedMappings / static_cast<double>(virtualMappingCount) >= DefragmentationThreshold) {
         Defragment();
     }
 
     // Number of mappings to copy
-    size_t actualMappingCount = segments.end()->offset + segments.end()->length;
+    size_t actualMappingCount = segments.back().offset + segments.back().length;
 
     // Copy host to device
     VkBufferCopy copyRegion;

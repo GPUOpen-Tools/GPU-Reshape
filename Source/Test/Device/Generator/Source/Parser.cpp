@@ -1,5 +1,6 @@
 #include <Parser.h>
 #include <iostream>
+#include <string>
 
 Parser::Parser(Program &program) : program(program) {
 
@@ -95,6 +96,30 @@ bool Parser::Tokenize(const char *code) {
 
                     Token token;
                     token.type = TokenType::String;
+                    token.str = std::string_view (start, code - start - 1);
+                    token.line = line;
+                    bucket.tokens.push_back(token);
+                }
+
+                // Generator?
+                else if (*code == '{') {
+                    code++;
+
+                    // Read until end of string
+                    const char* start{code};
+                    while (*code && *code != '\n' && *code != '}')
+                        code++;
+
+                    // Must be end of string (could be EOS, EOL)
+                    if (*code != '}') {
+                        std::cerr << "Line " << line << ", expected end of string" << std::endl;
+                        return false;
+                    }
+
+                    code++;
+
+                    Token token;
+                    token.type = TokenType::Generator;
                     token.str = std::string_view (start, code - start - 1);
                     token.line = line;
                     bucket.tokens.push_back(token);
@@ -303,6 +328,21 @@ bool Parser::ParseResource(Parser::Context &context) {
 
                 context.Next();
             }
+        } else if (attribute == "data") {
+            while (context) {
+                int64_t value;
+                if (!ParseInt(context, &value)) {
+                    return false;
+                }
+
+                resource.initialization.data.push_back(value);
+
+                if (!context.Is(",")) {
+                    break;
+                }
+
+                context.Next();
+            }
         } else {
             context.Error("Unknown attribute type");
             return false;
@@ -356,9 +396,41 @@ bool Parser::ParseMessage(Parser::Context &context) {
         message.checkMode = MessageCheckMode::LessEqual;
     }
 
-    if (!ParseInt(context, &message.checkLiteral)) {
-        return false;
+    // Generator is pass through
+    if (context.Tok().type == TokenType::Generator) {
+        message.checkMode = MessageCheckMode::Generator;
+        message.checkGenerator.contents = context.Next().str;
+    } else {
+        // Parse as integer
+        int64_t value;
+        if (!ParseInt(context, &value)) {
+            return false;
+        }
+
+        switch (message.checkMode) {
+            default:
+                ASSERT(false, "Invalid check mode");
+            case MessageCheckMode::Equal:
+                message.checkGenerator.contents = "x == " + std::to_string(value);
+                break;
+            case MessageCheckMode::NotEqual:
+                message.checkGenerator.contents = "x != " + std::to_string(value);
+                break;
+            case MessageCheckMode::Greater:
+                message.checkGenerator.contents = "x > " + std::to_string(value);
+                break;
+            case MessageCheckMode::GreaterEqual:
+                message.checkGenerator.contents = "x >= " + std::to_string(value);
+                break;
+            case MessageCheckMode::Less:
+                message.checkGenerator.contents = "x < " + std::to_string(value);
+                break;
+            case MessageCheckMode::LessEqual:
+                message.checkGenerator.contents = "x <= " + std::to_string(value);
+                break;
+        }
     }
+
 
     if (!context.TryNext("]")) {
         context.Error("Expected start of count ]");
@@ -452,6 +524,24 @@ bool Parser::ParseResourceType(Parser::Context &context, ResourceType *out) {
     }
 
     // OK
+    return true;
+}
+
+bool Parser::ParseLiteralGenerator(Parser::Context &context, Generator *out) {
+    if (context.Tok().type != TokenType::Generator) {
+        // Parse as integer
+        int64_t value;
+        if (!ParseInt(context, &value)) {
+            return false;
+        }
+
+        // As generator
+        out->contents = std::to_string(value);
+        return true;
+    }
+
+    // OK
+    out->contents = context.Next().str;
     return true;
 }
 

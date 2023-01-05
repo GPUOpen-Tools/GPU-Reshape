@@ -106,9 +106,10 @@ public:
     /// Invoked during pipeline binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
+    /// \param pipelineObject active backend state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandList the command list
-    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, bool instrumented, CommandListState* list);
+    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, ID3D12PipelineState* pipelineObject, bool instrumented, CommandListState* list);
 
     /// Map a stream state pre submission
     /// \param state the stream state
@@ -151,9 +152,38 @@ public:
     /// \param baseDescriptor data to be bound
     void SetGraphicsRootUnorderedAccessView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation);
 
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
+    /// \param data data to be bound
+    /// \param size byte size in data
+    /// \param offset initial offset
+    void SetGraphicsRootConstants(ShaderExportStreamState* state, UINT rootParameterIndex, const void* data, uint64_t size, uint64_t offset);
+
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
+    /// \param data data to be bound
+    /// \param size byte size in data
+    /// \param offset initial offset
+    void SetComputeRootConstants(ShaderExportStreamState* state, UINT rootParameterIndex, const void* data, uint64_t size, uint64_t offset);
+
     /// Close a command list
     /// \param state parent stream state
     void CloseCommandList(ShaderExportStreamState* state);
+
+    /// Bind the shader export for a pipeline
+    /// \param state the stream state
+    /// \param slot destination slot
+    /// \param type destination pipeline type
+    /// \param commandList the command list
+    void BindShaderExport(ShaderExportStreamState* state, uint32_t slot, PipelineType type, CommandListState* commandList);
+
+    /// Bind the shader export for a pipeline
+    /// \param state the stream state
+    /// \param pipeline the pipeline to bind for
+    /// \param commandList the command list
+    void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, CommandListState* commandList);
 
 public:
     /// Whole device sync point
@@ -164,12 +194,6 @@ public:
     void Process(CommandQueueState* queueState);
 
 private:
-    /// Bind the shader export for a pipeline
-    /// \param state the stream state
-    /// \param pipeline the pipeline to bind for
-    /// \param commandList the command list
-    void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, CommandListState* commandList);
-
     /// Map all segment agnostic data
     /// \param descriptors descriptors to be bound
     /// \param heap heap to bind against

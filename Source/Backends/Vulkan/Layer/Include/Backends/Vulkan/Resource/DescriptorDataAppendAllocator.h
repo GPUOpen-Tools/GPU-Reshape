@@ -14,7 +14,7 @@
 
 class DescriptorDataAppendAllocator {
 public:
-    DescriptorDataAppendAllocator(DeviceDispatchTable* table, const ComRef<DeviceAllocator>& allocator) : table(table), allocator(allocator) {
+    DescriptorDataAppendAllocator(DeviceDispatchTable* table, const ComRef<DeviceAllocator>& allocator, size_t maxChunkSize) : table(table), allocator(allocator), maxChunkSize(maxChunkSize) {
 
     }
 
@@ -69,7 +69,7 @@ public:
         allocator->Unmap(entry.allocation.host);
 
         // Copy data to device if needed
-        if (commandBuffer) {
+        if (commandBuffer && entry.width) {
             VkBufferCopy copy;
             copy.srcOffset = 0;
             copy.dstOffset = 0;
@@ -113,6 +113,9 @@ private:
         if (mappedOffset + pendingRootCount >= chunkSize) {
             // Growth factor of 1.5
             chunkSize = std::max<size_t>(64'000, static_cast<size_t>(chunkSize * 1.5f));
+
+            // Account for device limits
+            chunkSize = std::min<size_t>(chunkSize, maxChunkSize / sizeof(uint32_t));
 
             // Create new chunk
             CreateChunk();
@@ -177,6 +180,9 @@ private:
 
     /// Total chunk size
     size_t chunkSize{0};
+
+    /// Device chunk size limit
+    size_t maxChunkSize{0};
 
     /// Root count requested for the next roll
     uint32_t pendingRootCount{0};

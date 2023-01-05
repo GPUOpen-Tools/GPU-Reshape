@@ -32,10 +32,15 @@ public:
     /// \return
     bool Validate(const uint32_t* spirvCode, uint32_t spirvSize);
 
-    /// Allocate
+    /// Allocate a path
     /// \param module module to be allocated for
     /// \return
     std::filesystem::path AllocatePath(SpvModule *module);
+
+    /// Allocate a path
+    /// \param view decorative name
+    /// \return
+    std::filesystem::path AllocatePath(const std::string_view& view);
 
     /// Add a module
     /// \param basePath allocated base path

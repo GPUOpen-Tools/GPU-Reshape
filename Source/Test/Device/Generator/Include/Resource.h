@@ -20,6 +20,9 @@ enum class ResourceType {
 struct ResourceInitialization {
     /// Resource sizes (x, [y, [z]])
     std::vector<int64_t> sizes;
+
+    /// Resource data (a, b, c, d...)
+    std::vector<int64_t> data;
 };
 
 struct Resource {

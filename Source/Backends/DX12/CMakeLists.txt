@@ -273,6 +273,9 @@ add_custom_command(
         -o Layer/Include/Backends/DX12/Table.Gen.h
 )
 
+# Inbuilt modules
+Project_AddHLSL(GeneratedInbuilt cs_6_0 "-Od" Layer/Modules/InbuiltTemplateModule.hlsl Layer/Include/Backends/DX12/Modules/InbuiltTemplateModule kSPIRVInbuiltTemplateModule)
+
 # Create layer
 add_library(
     Backends.DX12.Layer SHARED
@@ -326,6 +329,9 @@ add_library(
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
     Layer/Source/ShaderData/ShaderDataHost.cpp
     Layer/Source/IncrementalFence.cpp
+    Layer/Source/ShaderProgram/ShaderProgramHost.cpp
+    Layer/Source/Command/UserCommandBuffer.cpp
+    Layer/Source/FeatureProxies.cpp
 
     # Generated source dependencies
     Layer/Source/DeepCopy.Gen.cpp
@@ -338,6 +344,9 @@ add_library(
     Layer/Include/Backends/DX12/Detour.Gen.h
     Layer/Include/Backends/DX12/Table.Gen.h
     Layer/Include/Backends/DX12/DeepCopy.Gen.h
+
+    # Generated modules
+    ${GeneratedInbuilt}
 )
 
 if (${DX12TableType} STREQUAL WRAPPER)

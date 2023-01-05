@@ -26,6 +26,7 @@ private:
         None,
         ID,
         String,
+        Generator,
         Symbol,
         Int,
         Float
@@ -130,6 +131,9 @@ private:
     bool ParseResourceType(Context& context, ResourceType* out);
     bool ParseString(Context& context, std::string_view* out);
     bool ParseInt(Context& context, int64_t* out);
+
+    /// Generator helper
+    bool ParseLiteralGenerator(Context& context, Generator* out);
 
 private:
     Program& program;

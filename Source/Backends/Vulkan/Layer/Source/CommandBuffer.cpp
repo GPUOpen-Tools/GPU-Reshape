@@ -6,9 +6,14 @@
 #include <Backends/Vulkan/States/PipelineLayoutState.h>
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
+#include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 
 // Backend
+#include <Backends/Vulkan/Command/UserCommandBuffer.h>
 #include <Backend/IFeature.h>
+
+// Common
+#include "Common/Enum.h"
 
 void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
     for (uint32_t i = 0; i < static_cast<uint32_t>(table->features.size()); i++) {
@@ -33,6 +38,11 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
             table->commandBufferDispatchTable.featureHooks_vkCmdDispatch[i] = hookTable.dispatch;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatch |= (1ull << i);
         }
+
+        if (hookTable.copyBuffer.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyBuffer[i] = hookTable.copyBuffer;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer |= (1ull << i);
+        }
     }
 }
 
@@ -42,6 +52,7 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdDraw = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDraw & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdDrawIndexed = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexed & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdDispatch = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatch & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer & featureSet;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkCommandPool *pCommandPool) {
@@ -118,12 +129,16 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     // Begin the streaming state
     commandBuffer->table->exportStreamer->BeginCommandBuffer(commandBuffer->streamState, commandBuffer);
 
+    // Update the PRMT data
+    commandBuffer->table->prmTable->Update(commandBuffer->object);
+
     // Sanity (redundant), reset the context
     commandBuffer->context = {};
 
     // Cleanup user context
     commandBuffer->userContext.eventStack.Flush();
     commandBuffer->userContext.eventStack.SetRemapping(commandBuffer->table->eventRemappingTable);
+    commandBuffer->userContext.buffer.Clear();
 
     // OK
     return VK_SUCCESS;
@@ -175,7 +190,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
     commandBuffer->dispatchTable.next_vkCmdBindPipeline(commandBuffer->object, pipelineBindPoint, pipeline);
 
     // Migrate environments
-    commandBuffer->table->exportStreamer->BindPipeline(commandBuffer->streamState, state, hotSwapObject != nullptr, commandBuffer);
+    commandBuffer->table->exportStreamer->BindPipeline(commandBuffer->streamState, state, pipeline, hotSwapObject != nullptr, commandBuffer);
 
     // Update context
     commandBuffer->context.pipeline = state;
@@ -183,6 +198,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
 
 static void CommitCompute(CommandBufferObject* commandBuffer) {
     DeviceDispatchTable* table = commandBuffer->table;
+
+    // Commit all commands prior to binding
+    CommitCommands(commandBuffer);
 
     // Inform the streamer
     table->exportStreamer->Commit(commandBuffer->streamState, VK_PIPELINE_BIND_POINT_COMPUTE, commandBuffer);
@@ -206,12 +224,15 @@ static void CommitCompute(CommandBufferObject* commandBuffer) {
         }
 
         // Cleanup
-        commandBuffer->userContext.eventStack.FlushGraphics();
+        commandBuffer->userContext.eventStack.FlushCompute();
     }
 }
 
 static void CommitGraphics(CommandBufferObject* commandBuffer) {
     DeviceDispatchTable* table = commandBuffer->table;
+
+    // Commit all commands prior to binding
+    CommitCommands(commandBuffer);
 
     // Inform the streamer
     table->exportStreamer->Commit(commandBuffer->streamState, VK_PIPELINE_BIND_POINT_GRAPHICS, commandBuffer);
@@ -309,6 +330,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawIndexedIndirectCount(CommandBufferObjec
 
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdDrawIndexedIndirectCount(commandBuffer->object, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPushConstants(CommandBufferObject *commandBuffer, VkPipelineLayout layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void *pValues) {
+    // Copy internally
+    ASSERT(offset + size <= commandBuffer->streamState->persistentPushConstantData.size(), "Out of bounds push constant range");
+    std::memcpy(commandBuffer->streamState->persistentPushConstantData.data() + offset, pValues, size);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdPushConstants(commandBuffer->object, layout, stageFlags, offset, size, pValues);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {

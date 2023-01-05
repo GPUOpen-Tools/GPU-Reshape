@@ -6,6 +6,7 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/DescriptorHeapState.h>
+#include <Backends/DX12/Command/UserCommandBuffer.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
@@ -19,16 +20,23 @@ void CreateDeviceCommandProxies(DeviceState *state) {
         // Get the hook table
         FeatureHookTable hookTable = feature->GetHookTable();
 
-        // Create all relevant proxies
+        /* Create all relevant proxies */
+
         if (hookTable.dispatch.IsValid()) {
             state->commandListProxies.featureHooks_Dispatch[i] = hookTable.dispatch;
             state->commandListProxies.featureBitSetMask_Dispatch |= (1ull << i);
+        }
+
+        if (hookTable.copyBuffer.IsValid()) {
+            state->commandListProxies.featureHooks_CopyBufferRegion[i] = hookTable.copyBuffer;
+            state->commandListProxies.featureBitSetMask_CopyBufferRegion |= (1ull << i);
         }
     }
 }
 
 void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet) {
     state->commandListProxies.featureBitSet_Dispatch = state->commandListProxies.featureBitSetMask_Dispatch & featureSet;
+    state->commandListProxies.featureBitSet_CopyBufferRegion = state->commandListProxies.featureBitSetMask_CopyBufferRegion & featureSet;
 }
 
 HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COMMAND_QUEUE_DESC *desc, const IID &riid, void **pCommandQueue) {
@@ -148,7 +156,7 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
 
     // Inform the streamer of a new pipeline
     if (initialState) {
-        device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), isHotSwap, state);
+        device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), initialState, isHotSwap, state);
     }
 
     // Copy proxy table
@@ -341,6 +349,13 @@ void WINAPI HookID3D12CommandListSetGraphicsRootUnorderedAccessView(ID3D12Comman
     table.next->SetGraphicsRootUnorderedAccessView(RootParameterIndex, BufferLocation);
 }
 
+void WINAPI HookID3D12CommandListCopyBufferRegion(ID3D12CommandList *list, ID3D12Resource* pDstBuffer, UINT64 DstOffset, ID3D12Resource* pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes) {
+    auto table = GetTable(list);
+
+    // Pass down callchain
+    table.next->CopyBufferRegion(Next(pDstBuffer), DstOffset, Next(pSrcBuffer), SrcOffset, NumBytes);
+}
+
 void WINAPI HookID3D12CommandListCopyTextureRegion(ID3D12CommandList* list, const D3D12_TEXTURE_COPY_LOCATION* pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION* pSrc, const D3D12_BOX* pSrcBox) {
     auto table = GetTable(list);
 
@@ -393,6 +408,9 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
 }
 
 static void CommitGraphics(DeviceState* device, CommandListState* list) {
+    // Commit all commands prior to binding
+    CommitCommands(list);
+
     // Inform the streamer
     device->exportStreamer->CommitGraphics(list->streamState, list);
 
@@ -416,6 +434,9 @@ static void CommitGraphics(DeviceState* device, CommandListState* list) {
 }
 
 static void CommitCompute(DeviceState* device, CommandListState* list) {
+    // Commit all commands prior to binding
+    CommitCommands(list);
+
     // Inform the streamer
     device->exportStreamer->CommitCompute(list->streamState, list);
 
@@ -475,6 +496,58 @@ void WINAPI HookID3D12CommandListDispatch(ID3D12CommandList* list, UINT ThreadGr
 
     // Pass down callchain
     table.next->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+}
+
+void WINAPI HookID3D12CommandListSetComputeRoot32BitConstant(ID3D12CommandList *list, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetComputeRootConstants(table.state->streamState, RootParameterIndex, &SrcData, sizeof(UINT), DestOffsetIn32BitValues);
+
+    // Pass down call chain
+    table.next->SetComputeRoot32BitConstant(RootParameterIndex, SrcData, DestOffsetIn32BitValues);
+}
+
+void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstant(ID3D12CommandList *list, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetGraphicsRootConstants(table.state->streamState, RootParameterIndex, &SrcData, sizeof(UINT), DestOffsetIn32BitValues);
+
+    // Pass down call chain
+    table.next->SetGraphicsRoot32BitConstant(RootParameterIndex, SrcData, DestOffsetIn32BitValues);
+}
+
+void WINAPI HookID3D12CommandListSetComputeRoot32BitConstants(ID3D12CommandList *list, UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetComputeRootConstants(table.state->streamState, RootParameterIndex, &pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
+
+    // Pass down call chain
+    table.next->SetComputeRoot32BitConstants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
+}
+
+void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstants(ID3D12CommandList *list, UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetGraphicsRootConstants(table.state->streamState, RootParameterIndex, &pSrcData, sizeof(UINT) * Num32BitValuesToSet, DestOffsetIn32BitValues);
+
+    // Pass down call chain
+    table.next->SetGraphicsRoot32BitConstants(RootParameterIndex, Num32BitValuesToSet, pSrcData, DestOffsetIn32BitValues);
 }
 
 void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12CommandSignature *pCommandSignature, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset, ID3D12Resource *pCountBuffer, UINT64 CountBufferOffset) {
@@ -545,7 +618,7 @@ void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D1
     table.bottom->next_SetPipelineState(table.next, hotSwap ? hotSwap : Next(pipeline));
 
     // Inform the streamer of a new pipeline
-    device.state->exportStreamer->BindPipeline(table.state->streamState, GetState(pipeline), hotSwap != nullptr, table.state);
+    device.state->exportStreamer->BindPipeline(table.state->streamState, GetState(pipeline), hotSwap, hotSwap != nullptr, table.state);
 }
 
 AGSReturnCode HookAMDAGSDestroyDevice(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences) {

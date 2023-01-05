@@ -11,7 +11,7 @@
 template<size_t BLOCK_SIZE>
 struct LinearBlockAllocator {
     /// Constructor
-    LinearBlockAllocator(const Allocators& allocators) : allocators(allocators) {
+    LinearBlockAllocator(const Allocators& allocators = {}) : allocators(allocators) {
 
     }
 
@@ -91,6 +91,17 @@ struct LinearBlockAllocator {
         }
 
         blocks.clear();
+    }
+
+    /// Clear this allocator, keep blocks alive
+    void ClearSubAllocations() {
+        for (Block* block : blocks) {
+            block->head = 0;
+        }
+
+        for (void* _free : freeAllocations) {
+            allocators.free(_free);
+        }
     }
 
 private:

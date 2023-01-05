@@ -155,6 +155,9 @@ ShaderExportStreamInfo ShaderExportStreamAllocator::AllocateStreamInfo(const Sha
     // Create allocation
     info.allocation = deviceAllocator->AllocateMirror(bufferDesc, AllocationResidency::Host);
 
+    // Size for safe guarding
+    info.byteSize = exportInfo.dataSize;
+
     // Setup view
     info.view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
     info.view.Format = DXGI_FORMAT_R32_UINT;

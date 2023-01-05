@@ -6,6 +6,7 @@
 #include "Blocks/SpvPhysicalBlockAnnotation.h"
 #include "Blocks/SpvPhysicalBlockTypeConstantVariable.h"
 #include "Blocks/SpvPhysicalBlockFunction.h"
+#include "Blocks/SpvPhysicalBlockEntryPoint.h"
 #include "Utils/SpvUtilShaderExport.h"
 #include "Utils/SpvUtilShaderPRMT.h"
 #include "Utils/SpvUtilShaderDescriptorConstantData.h"
@@ -39,6 +40,7 @@ struct SpvPhysicalBlockTable {
     SpvPhysicalBlockScan scan;
 
     /// Physical blocks
+    SpvPhysicalBlockEntryPoint entryPoint;
     SpvPhysicalBlockCapability capability;
     SpvPhysicalBlockAnnotation annotation;
     SpvPhysicalBlockDebugStringSource debugStringSource;

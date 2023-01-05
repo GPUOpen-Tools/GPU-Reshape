@@ -7,6 +7,7 @@ Project_AddShaderSchema(Generated Schemas/Initialization.xml Include/Schemas/Fea
 add_library(
     Features.Initialization.Backend SHARED
     Source/Feature.cpp
+    Source/SRBMaskingShaderProgram.cpp
     Source/Plugin.cpp
 
     # Generated
@@ -34,19 +35,11 @@ add_custom_command(
 Project_AddBackendTest_Common(GeneratedTest Initialization)
 Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SimpleTest.hlsl)
 
-# Create test app
-add_executable(
-    Features.Initialization.Tests
-
-    # Generated
-    ${GeneratedTest}
+Project_AddTest(
+    NAME Features.Initialization.Tests
+    SOURCE ${GeneratedTest}
+    LIBS Test.Device Features.Initialization.Backend
 )
-
-# IDE source discovery
-SetSourceDiscovery(Features.Initialization.Tests CXX Tests)
-
-# Links
-target_link_libraries(Features.Initialization.Tests PUBLIC Test.Device Features.Initialization.Backend)
 
 #----- .Net bindings -----#
 

@@ -182,6 +182,9 @@ ShaderExportStreamInfo ShaderExportStreamAllocator::AllocateStreamInfo(const Sha
     VkMemoryRequirements requirements;
     table->next_vkGetBufferMemoryRequirements(table->object, info.buffer, &requirements);
 
+    // Size for safe guarding
+    info.byteSize = exportInfo.dataSize;
+
     // Create the allocation
     info.allocation = deviceAllocator->AllocateMirror(requirements, AllocationResidency::Host);
 

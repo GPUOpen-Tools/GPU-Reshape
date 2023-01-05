@@ -1,6 +1,7 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 
 SpvPhysicalBlockTable::SpvPhysicalBlockTable(const Allocators &allocators, IL::Program &program) :
+    entryPoint(allocators, program, *this),
     capability(allocators, program, *this),
     annotation(allocators, program, *this),
     debugStringSource(allocators, program, *this),
@@ -21,6 +22,7 @@ bool SpvPhysicalBlockTable::Parse(const uint32_t *code, uint32_t count) {
     }
 
     // Parse all blocks
+    entryPoint.Parse();
     capability.Parse();
     annotation.Parse();
     debugStringSource.Parse();

@@ -44,6 +44,8 @@ set(
     vkCmdDispatch
     vkCmdDraw
     vkCmdDrawIndexed
+    vkCmdDrawIndexed
+    vkCmdCopyBuffer
 )
 
 # White list
@@ -66,6 +68,7 @@ set(
     vkCmdDrawIndexedIndirectCount
     vkCmdDrawIndirect
     vkCmdDrawIndirectCount
+    vkCmdPushConstants
 )
 
 # Join lists
@@ -147,6 +150,9 @@ add_custom_command(
         -o Layer/Include/Backends/Vulkan/Compiler/Spv.Gen.h
 )
 
+# Inbuilt modules
+Project_AddHLSL(GeneratedInbuilt cs_6_0 "-Od" Layer/Modules/InbuiltTemplateModule.hlsl Layer/Include/Backends/Vulkan/Modules/InbuiltTemplateModule kSPIRVInbuiltTemplateModule)
+
 # Create layer
 add_library(
     Backends.Vulkan.Layer SHARED
@@ -163,6 +169,7 @@ add_library(
     Layer/Source/Fence.cpp
     Layer/Source/Queue.cpp
     Layer/Source/RenderPass.cpp
+    Layer/Source/FeatureProxies.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Compiler/SpvModule.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp
@@ -179,6 +186,7 @@ add_library(
     Layer/Source/Compiler/SpvSourceMap.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockAnnotation.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockCapability.cpp
+    Layer/Source/Compiler/Blocks/SpvPhysicalBlockEntryPoint.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockDebugStringSource.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockFunction.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockTypeConstantVariable.cpp
@@ -190,6 +198,8 @@ add_library(
     Layer/Source/ShaderData/ShaderDataHost.cpp
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
     Layer/Source/Resource.cpp
+    Layer/Source/ShaderProgram/ShaderProgramHost.cpp
+    Layer/Source/Command/UserCommandBuffer.cpp
 
     # VMA implementation
     Layer/Source/VMA.cpp
@@ -202,6 +212,9 @@ add_library(
     Layer/Include/Backends/Vulkan/DeepCopyObjects.Gen.h
     Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
     Layer/Include/Backends/Vulkan/Compiler/Spv.Gen.h
+
+    # Generated modules
+    ${GeneratedInbuilt}
 )
 
 # IDE source discovery

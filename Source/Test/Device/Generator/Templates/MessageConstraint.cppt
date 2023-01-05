@@ -1,8 +1,8 @@
 
 /// Message descriptor
 struct $TEST_NAMEMessageInfo {
-    uint32_t literal{0};
-    std::function<bool(uint32_t, uint32_t)> comparator;
+    std::string policy;
+    std::function<bool(uint32_t)> comparator;
 
     uint32_t visited{0};
     uint32_t line{0};
@@ -49,7 +49,7 @@ $TESTS
 
     void Validate() {
         for (auto&& message : messages) {
-            REQUIRE_FORMAT(message.comparator(message.visited, message.literal), "Comparison literal " << message.literal << " failed on $MESSAGE_TYPE (line " << (message.line + 1) << "), got " << message.visited);
+            REQUIRE_FORMAT(message.comparator(message.visited), "Comparison policy '" << message.policy << "' failed on $MESSAGE_TYPE (line " << (message.line + 1) << "), got " << message.visited);
         }
     }
 

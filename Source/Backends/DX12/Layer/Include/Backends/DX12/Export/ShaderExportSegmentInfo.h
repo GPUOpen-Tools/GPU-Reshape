@@ -25,6 +25,9 @@ struct ShaderExportStreamInfo {
 
     /// Data allocation
     MirrorAllocation allocation;
+
+    /// Actual byte size of the buffer (not allocation)
+    uint64_t byteSize{0};
 };
 
 /// A batch of counters (for each stream), used for a single allocation

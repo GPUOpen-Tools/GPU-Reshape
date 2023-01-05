@@ -34,19 +34,11 @@ add_custom_command(
 Project_AddBackendTest_Common(GeneratedTest Descriptor)
 Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/SimpleTest.hlsl)
 
-# Create test app
-add_executable(
-    Features.Descriptor.Tests
-
-    # Generated
-    ${GeneratedTest}
+Project_AddTest(
+        NAME Features.Descriptor.Tests
+        SOURCE ${GeneratedTest}
+        LIBS Test.Device Features.Descriptor.Backend
 )
-
-# IDE source discovery
-SetSourceDiscovery(Features.Descriptor.Tests CXX Tests)
-
-# Links
-target_link_libraries(Features.Descriptor.Tests PUBLIC Test.Device Features.Descriptor.Backend)
 
 #----- .Net bindings -----#
 

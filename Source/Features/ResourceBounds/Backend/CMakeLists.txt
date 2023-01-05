@@ -34,19 +34,11 @@ add_custom_command(
 Project_AddBackendTest_Common(GeneratedTest ResourceBounds)
 Project_AddBackendTest(GeneratedTest "-Od" ResourceBounds Tests/Data/SimpleTest.hlsl)
 
-# Create test app
-add_executable(
-    Features.ResourceBounds.Tests
-
-    # Generated
-    ${GeneratedTest}
+Project_AddTest(
+        NAME Features.ResourceBounds.Tests
+        SOURCE ${GeneratedTest}
+        LIBS Test.Device Features.ResourceBounds.Backend
 )
-
-# IDE source discovery
-SetSourceDiscovery(Features.ResourceBounds.Tests CXX Tests)
-
-# Links
-target_link_libraries(Features.ResourceBounds.Tests PUBLIC Test.Device Features.ResourceBounds.Backend)
 
 #----- .Net bindings -----#
 

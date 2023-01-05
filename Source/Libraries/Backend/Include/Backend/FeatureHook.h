@@ -29,8 +29,8 @@ struct TFeatureHook<R(A...)> {
 /// \param featureBitSet the active bit set
 /// \param featureHooks the feature hooks registered
 /// \param args all hook arguments
-template<typename T, typename... A>
-inline void ApplyFeatureHook(CommandContext* context, uint64_t featureBitSet, typename T::Hook featureHooks[64], A... args) {
+template<typename T, typename O, typename... A>
+inline void ApplyFeatureHook(O* object, CommandContext* context, uint64_t featureBitSet, typename T::Hook featureHooks[64], A... args) {
     // Early out if empty
     if (!featureBitSet)
         return;
@@ -42,7 +42,7 @@ inline void ApplyFeatureHook(CommandContext* context, uint64_t featureBitSet, ty
     unsigned long index;
     while (_BitScanReverse64(&index, bitMask)) {
         // Forward the hook to the appropriate handler
-        T{featureHooks[index]}(context, args...);
+        T{featureHooks[index]}(object, context, args...);
 
         // Next!
         bitMask &= ~(1ull << index);
