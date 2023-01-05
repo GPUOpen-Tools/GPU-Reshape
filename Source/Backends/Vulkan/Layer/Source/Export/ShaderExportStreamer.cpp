@@ -586,8 +586,8 @@ void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, Vk
         // Get the state
         DescriptorSetState* persistentState = table->states_descriptorSet.Get(sets[i]);
 
-        // Set the shader PRMT offset
-        bindState.descriptorDataAllocator->Set(slot, table->prmTable->GetSegmentShaderOffset(persistentState->segmentID));
+        // Set the shader PRMT offset, roll the chunk if needed
+        bindState.descriptorDataAllocator->SetOrAllocate(slot, layoutState->boundUserDescriptorStates, table->prmTable->GetSegmentShaderOffset(persistentState->segmentID));
 
         // Number of dynamic counts for this slot
         uint32_t slotDynamicCount = layoutState->descriptorDynamicOffsets.at(slot);

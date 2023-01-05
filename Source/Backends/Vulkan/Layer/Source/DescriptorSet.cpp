@@ -126,29 +126,52 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t
 
         // Create mappings for all descriptors written
         for (uint32_t descriptorIndex = 0; descriptorIndex < write.descriptorCount; descriptorIndex++) {
+            // Default invalid mapping
             VirtualResourceMapping mapping;
+            mapping.puid = IL::kResourceTokenPUIDMask;
+
             switch (write.descriptorType) {
-                default:
+                default: {
                     // Perhaps handled in the future
                     continue;
-                case VK_DESCRIPTOR_TYPE_SAMPLER:
-                    mapping = table->states_sampler.Get(write.pImageInfo[descriptorIndex].sampler)->virtualMapping;
+                }
+                case VK_DESCRIPTOR_TYPE_SAMPLER: {
+                    if (write.pImageInfo[descriptorIndex].sampler) {
+                        mapping = table->states_sampler.Get(write.pImageInfo[descriptorIndex].sampler)->virtualMapping;
+                    }
                     break;
-                case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+                }
+                case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+                    if (write.pImageInfo[descriptorIndex].imageView) {
+                        mapping = table->states_imageView.Get(write.pImageInfo[descriptorIndex].imageView)->virtualMapping;
+                    } else if (write.pImageInfo[descriptorIndex].sampler) {
+                        mapping = table->states_sampler.Get(write.pImageInfo[descriptorIndex].sampler)->virtualMapping;
+                    }
+                    break;
+                }
                 case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-                    mapping = table->states_imageView.Get(write.pImageInfo[descriptorIndex].imageView)->virtualMapping;
+                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+                    if (write.pImageInfo[descriptorIndex].imageView) {
+                        mapping = table->states_imageView.Get(write.pImageInfo[descriptorIndex].imageView)->virtualMapping;
+                    }
                     break;
+                }
                 case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-                case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-                    mapping = table->states_bufferView.Get(write.pTexelBufferView[descriptorIndex])->virtualMapping;
+                case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+                    if (write.pTexelBufferView[descriptorIndex]) {
+                        mapping = table->states_bufferView.Get(write.pTexelBufferView[descriptorIndex])->virtualMapping;
+                    }
                     break;
+                }
                 case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
                 case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
                 case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-                    mapping = table->states_buffer.Get(write.pBufferInfo[descriptorIndex].buffer)->virtualMapping;
+                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+                    if (write.pBufferInfo[descriptorIndex].buffer) {
+                        mapping = table->states_buffer.Get(write.pBufferInfo[descriptorIndex].buffer)->virtualMapping;
+                    }
                     break;
+                }
             }
 
             // Update the table

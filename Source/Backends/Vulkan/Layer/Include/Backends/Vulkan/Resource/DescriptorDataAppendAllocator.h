@@ -50,6 +50,25 @@ public:
         mapped[mappedOffset + offset] = value;
     }
 
+    /// Set a root value
+    /// \param offset current root offset
+    /// \param value value at root offset
+    void SetOrAllocate(uint32_t offset, uint32_t allocationSize, uint32_t value) {
+        // Begin a new segment if the previous does not suffice, may be allocated dynamically
+        if (offset <= mappedSegmentLength) {
+            ASSERT(allocationSize > offset, "Chunk allocation size must be larger than the expected offset");
+            BeginSegment(allocationSize);
+        }
+
+        // Roll! D2! (Never played DnD, sorry)
+        if (pendingRoll) {
+            RollChunk();
+        }
+
+        ASSERT(offset < mappedSegmentLength, "Chunk allocation failed");
+        mapped[mappedOffset + offset] = value;
+    }
+
     /// Has this allocator been rolled? i.e. a new segment has begun
     /// \return
     bool HasRolled() const {
@@ -139,6 +158,7 @@ private:
 
         // Next entry
         DescriptorDataSegmentEntry segmentEntry;
+        segmentEntry.width = sizeof(uint32_t) * chunkSize;
 
         // Buffer info
         VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
