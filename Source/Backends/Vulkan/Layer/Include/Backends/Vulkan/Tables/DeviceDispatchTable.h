@@ -32,6 +32,7 @@ struct DescriptorSetLayoutState;
 struct DescriptorSetState;
 struct SamplerState;
 struct BufferState;
+struct SwapchainState;
 struct BufferViewState;
 struct ImageState;
 struct ImageViewState;
@@ -110,6 +111,7 @@ struct DeviceDispatchTable {
     TrackedObject<VkDescriptorSet, DescriptorSetState>             states_descriptorSet;
     TrackedObject<VkSampler, SamplerState>                         states_sampler;
     TrackedObject<VkBuffer, BufferState>                           states_buffer;
+    TrackedObject<VkSwapchainKHR, SwapchainState>                  states_swapchain;
     TrackedObject<VkBufferView, BufferViewState>                   states_bufferView;
     TrackedObject<VkImage, ImageState>                             states_image;
     TrackedObject<VkImageView, ImageViewState>                     states_imageView;
@@ -205,6 +207,9 @@ struct DeviceDispatchTable {
     PFN_vkInvalidateMappedMemoryRanges    next_vkInvalidateMappedMemoryRanges;
     PFN_vkMapMemory                       next_vkMapMemory;
     PFN_vkUnmapMemory                     next_vkUnmapMemory;
+    PFN_vkCreateSwapchainKHR              next_vkCreateSwapchainKHR;
+    PFN_vkDestroySwapchainKHR             next_vkDestroySwapchainKHR;
+    PFN_vkGetSwapchainImagesKHR           next_vkGetSwapchainImagesKHR;
 
     /// Properties
     VkPhysicalDeviceProperties physicalDeviceProperties{};

@@ -8,6 +8,7 @@
 #include <Backends/Vulkan/Fence.h>
 #include <Backends/Vulkan/RenderPass.h>
 #include <Backends/Vulkan/Resource.h>
+#include <Backends/Vulkan/Swapchain.h>
 
 // Std
 #include <cstring>
@@ -81,6 +82,9 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkInvalidateMappedMemoryRanges = reinterpret_cast<PFN_vkInvalidateMappedMemoryRanges>(getDeviceProcAddr(object, "vkInvalidateMappedMemoryRanges"));
     next_vkMapMemory = reinterpret_cast<PFN_vkMapMemory>(getDeviceProcAddr(object, "vkMapMemory"));
     next_vkUnmapMemory = reinterpret_cast<PFN_vkUnmapMemory>(getDeviceProcAddr(object, "vkUnmapMemory"));
+    next_vkCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(getDeviceProcAddr(object, "vkCreateSwapchainKHR"));
+    next_vkDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(getDeviceProcAddr(object, "vkDestroySwapchainKHR"));
+    next_vkGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(getDeviceProcAddr(object, "vkGetSwapchainImagesKHR"));
 
     // Populate all generated commands
     commandBufferDispatchTable.Populate(object, getDeviceProcAddr);
@@ -182,6 +186,12 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkCreateBuffer"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateBuffer);
+
+    if (!std::strcmp(name, "vkCreateSwapchainKHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateSwapchainKHR);
+
+    if (!std::strcmp(name, "vkDestroySwapchainKHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroySwapchainKHR);
 
     if (!std::strcmp(name, "vkCreateBufferView"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateBufferView);

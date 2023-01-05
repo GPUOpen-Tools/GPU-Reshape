@@ -8,6 +8,9 @@ cmake-build-*/
 # Output
 /Bin/
 
+# Package ignore
+/Publish/PackageDebug/Intermediate
+
 # Pulled third party dependencies
 ThirdParty/Fmt/
 ThirdParty/Asio/

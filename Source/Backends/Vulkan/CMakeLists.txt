@@ -170,6 +170,7 @@ add_library(
     Layer/Source/Queue.cpp
     Layer/Source/RenderPass.cpp
     Layer/Source/FeatureProxies.cpp
+    Layer/Source/Swapchain.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Compiler/SpvModule.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp
