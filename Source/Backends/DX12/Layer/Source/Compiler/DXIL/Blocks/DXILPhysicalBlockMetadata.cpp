@@ -735,6 +735,9 @@ void DXILPhysicalBlockMetadata::CompileMetadata(const DXJob& job) {
     // Compile all flags
     CompileProgramFlags(job);
 
+    // Ensure capabilities
+    EnsureUAVCapability();
+    
     // Compile entry point definitions
     CompileProgramEntryPoints();
 
@@ -980,9 +983,6 @@ void DXILPhysicalBlockMetadata::AddProgramFlag(DXILProgramShaderFlagSet flags) {
 }
 
 void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job) {
-    // Ensure capabilities
-    table.metadata.EnsureUAVCapability();
-
     // Program may already have a list
     if (resources.uid != ~0u) {
         return;
