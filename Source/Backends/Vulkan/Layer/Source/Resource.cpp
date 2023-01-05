@@ -136,6 +136,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSampler(VkDevice device, const VkSam
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyBuffer(VkDevice device, VkBuffer buffer, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Specification allows null destruction
+    if (!buffer) {
+        return;
+    }
+
     // Remove the state
     table->states_buffer.Remove(buffer);
 
@@ -145,6 +150,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyBuffer(VkDevice device, VkBuffer buffer
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyBufferView(VkDevice device, VkBufferView view, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Specification allows null destruction
+    if (!view) {
+        return;
+    }
 
     // Remove the state
     table->states_bufferView.Remove(view);
@@ -156,6 +166,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyBufferView(VkDevice device, VkBufferVie
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyImage(VkDevice device, VkImage image, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Specification allows null destruction
+    if (!image) {
+        return;
+    }
+
     // Remove the state
     table->states_image.Remove(image);
 
@@ -166,6 +181,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyImage(VkDevice device, VkImage image, c
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyImageView(VkDevice device, VkImageView view, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Specification allows null destruction
+    if (!view) {
+        return;
+    }
+
     // Remove the state
     table->states_imageView.Remove(view);
 
@@ -175,6 +195,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyImageView(VkDevice device, VkImageView 
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroySampler(VkDevice device, VkSampler sampler, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Specification allows null destruction
+    if (!sampler) {
+        return;
+    }
 
     // Remove the state
     table->states_sampler.Remove(sampler);
