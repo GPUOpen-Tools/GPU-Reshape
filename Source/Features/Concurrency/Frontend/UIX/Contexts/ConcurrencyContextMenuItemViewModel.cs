@@ -27,7 +27,7 @@ namespace Features.Concurrency.UIX.Contexts
                 _featureInfo = (_targetViewModel as IInstrumentableObject)?
                     .GetWorkspace()?
                     .GetProperty<IFeatureCollectionViewModel>()?
-                    .GetFeature("Export Stability");
+                    .GetFeature("Concurrency");
                 
                 IsEnabled = _featureInfo.HasValue;
             }
@@ -36,7 +36,7 @@ namespace Features.Concurrency.UIX.Contexts
         /// <summary>
         /// Display header of this context model
         /// </summary>
-        public string Header { get; set; } = "Export Stability";
+        public string Header { get; set; } = "Concurrency";
         
         /// <summary>
         /// All items within this context model

@@ -79,7 +79,7 @@ namespace Studio.ViewModels.Workspace.Listeners
             {
                 if (_segments.TryGetValue(sguid, out ShaderSourceSegment? segment))
                 {
-                    validationObject.Segment = segment;
+                    Dispatcher.UIThread.InvokeAsync(() => { validationObject.Segment = segment; });
                     return;
                 }
 

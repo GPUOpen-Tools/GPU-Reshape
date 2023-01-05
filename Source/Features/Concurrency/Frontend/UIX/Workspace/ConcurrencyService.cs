@@ -52,14 +52,14 @@ namespace Features.Concurrency.UIX.Workspace
             // Consume all messages
             foreach (ResourceRaceConditionMessage message in view)
             {
-                if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
+                if (enqueued.TryGetValue(message.sguid, out uint enqueuedCount))
                 {
-                    enqueued[message.Key] = enqueuedCount + 1;
+                    enqueued[message.sguid] = enqueuedCount + 1;
                 }
                 else
                 {
-                    lookup.Add(message.Key, message);
-                    enqueued.Add(message.Key, 1);
+                    lookup.Add(message.sguid, message);
+                    enqueued.Add(message.sguid, 1);
                 }
             }
 

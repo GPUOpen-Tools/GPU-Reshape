@@ -7,11 +7,7 @@ add_subdirectory(ResourceBounds)
 add_subdirectory(ExportStability)
 add_subdirectory(Concurrency)
 add_subdirectory(Descriptor)
-
-# Experimental plugins
-if (${ENABLE_EXPERIMENTAL})
-    add_subdirectory(Initialization)
-endif()
+add_subdirectory(Initialization)
 
 # Proxy object
 add_custom_target(Features)
