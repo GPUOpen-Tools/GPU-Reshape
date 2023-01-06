@@ -76,7 +76,7 @@
       "name": "CommandAllocator",
       "state": "CommandAllocatorState",
       "hooks": [
-      "GetDevice"
+        "GetDevice"
       ]
     },
     "ID3D12GraphicsCommandList": {
@@ -121,14 +121,15 @@
       "name": "Fence",
       "state": "FenceState",
       "hooks": [
-      "GetDevice"
+        "GetDevice"
       ]
     },
     "ID3D12PipelineState": {
       "name": "Pipeline",
       "state": "PipelineState",
       "hooks": [
-      "GetDevice"
+        "GetDevice",
+        "SetName"
       ]
     },
     "ID3D12Resource": {
@@ -143,7 +144,7 @@
       "name": "RootSignature",
       "state": "RootSignatureState",
       "hooks": [
-      "GetDevice"
+        "GetDevice"
       ]
     },
     "ID3D12DescriptorHeap": {

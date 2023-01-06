@@ -19,6 +19,7 @@
 // Schemas
 #include <Schemas/SGUID.h>
 #include <Schemas/ShaderMetadata.h>
+#include <Schemas/PipelineMetadata.h>
 #include <Schemas/Object.h>
 
 // Std
@@ -59,6 +60,10 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
         // Visit all ordered messages
         for (ConstMessageStreamView<>::ConstIterator it = view.GetIterator(); it; ++it) {
             switch (it.GetID()) {
+                case GetPipelineNameMessage::kID: {
+                    OnMessage(*it.Get<GetPipelineNameMessage>());
+                    break;
+                }
                 case GetShaderCodeMessage::kID: {
                     OnMessage(*it.Get<GetShaderCodeMessage>());
                     break;
@@ -82,6 +87,21 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
             }
         }
     }
+}
+
+void MetadataController::OnMessage(const GetPipelineNameMessage& message) {
+    MessageStreamView view(stream);
+
+    // Attempt to find shader with given UID
+    PipelineState* pipeline = table->states_pipeline.GetFromUID(message.pipelineUID);
+
+    // Determine name
+    const char* name = pipeline->debugName ? pipeline->debugName : "Unknown";
+
+    // Push response
+    auto&& file = view.Add<PipelineNameMessage>(PipelineNameMessage::AllocationInfo { .nameLength = static_cast<size_t>(std::strlen(name)) });
+    file->pipelineUID = message.pipelineUID;
+    file->name.Set(name);
 }
 
 void MetadataController::OnMessage(const GetShaderCodeMessage& message) {

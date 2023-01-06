@@ -26,7 +26,7 @@ extern "C" {
         if (!std::strcmp(pName, "vkGetDeviceProcAddr")) {
             return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetDeviceProcAddr);
         }
-
+        
         // Device table
         if (PFN_vkVoidFunction hook = DeviceDispatchTable::GetHookAddress(pName)) {
             return hook;
@@ -49,7 +49,7 @@ extern "C" {
 
     [[maybe_unused]]
     EXPORT_C VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL Hook_vkGetInstanceProcAddr(VkInstance instance, const char *pName) {
-        if (!std::strcmp(pName, "vkGetDeviceProcAddr")) {
+        if (!std::strcmp(pName, "vkGetInstanceProcAddr")) {
             return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetInstanceProcAddr);
         }
 

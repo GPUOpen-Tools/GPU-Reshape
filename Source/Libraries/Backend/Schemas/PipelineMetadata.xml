@@ -1,0 +1,10 @@
+<schema>
+    <message name="GetPipelineName">
+        <field name="pipelineUID" type="uint64"/>
+    </message>
+
+    <message name="PipelineName">
+        <field name="pipelineUID" type="uint64"/>
+        <field name="name"  type="string"/>
+    </message>
+</schema>

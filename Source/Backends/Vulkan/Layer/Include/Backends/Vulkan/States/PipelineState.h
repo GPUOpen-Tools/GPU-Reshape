@@ -66,6 +66,9 @@ struct PipelineState : public ReferenceObject {
     ///Referenced shader modules
     std::vector<ShaderModuleState*> shaderModules;
 
+    /// Optional debug name
+    char* debugName{nullptr};
+
     /// Instrumentation info
     InstrumentationInfo instrumentationInfo;
 

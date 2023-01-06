@@ -68,6 +68,9 @@ struct PipelineState : public ReferenceObject {
     /// Referenced shaders
     std::vector<ShaderState*> shaders;
 
+    /// Optional debug name
+    char* debugName{nullptr};
+
     /// Instrumentation info
     InstrumentationInfo instrumentationInfo;
 

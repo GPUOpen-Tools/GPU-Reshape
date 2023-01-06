@@ -201,6 +201,7 @@ add_library(
     Layer/Source/Resource.cpp
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
     Layer/Source/Command/UserCommandBuffer.cpp
+    Layer/Source/Debug.cpp
 
     # VMA implementation
     Layer/Source/VMA.cpp

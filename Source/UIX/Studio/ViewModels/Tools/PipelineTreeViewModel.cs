@@ -162,6 +162,9 @@ namespace Studio.ViewModels.Tools
             {
                 switch (message.ID)
                 {
+                    case PipelineNameMessage.ID:
+                        Handle(message.Get<PipelineNameMessage>());
+                        break;
                     case ObjectStatesMessage.ID:
                         Handle(message.Get<ObjectStatesMessage>());
                         break;
@@ -170,6 +173,26 @@ namespace Studio.ViewModels.Tools
                         break;
                 }
             }
+        }
+
+        /// <summary>
+        /// Message handler
+        /// </summary>
+        /// <param name="message"></param>
+        private void Handle(PipelineNameMessage message)
+        {
+            // Flatten dynamics
+            UInt64 uid = message.pipelineUID;
+            string name = message.name.String;
+
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (!_lookup.ContainsKey(uid))
+                    return;
+
+                PipelineIdentifierViewModel pipelineIdentifierViewModel = _lookup[uid];
+                pipelineIdentifierViewModel.Descriptor = $"Pipeline {uid} - {name}";
+            });
         }
 
         /// <summary>
@@ -228,6 +251,8 @@ namespace Studio.ViewModels.Tools
 
             Dispatcher.UIThread.InvokeAsync(() =>
             {
+                var bus = _workspaceViewModel?.Connection?.GetSharedBus();
+
                 for (int i = 0; i < guids.Length; i++)
                 {
                     if (_lookup.ContainsKey(guids[i]))
@@ -242,6 +267,13 @@ namespace Studio.ViewModels.Tools
                         pipelineIdentifierViewModel.GUID = guids[i];
                         pipelineIdentifierViewModel.Descriptor = $"Pipeline {guids[i]}";
 
+                        // Submit request for debug name
+                        if (bus != null)
+                        {
+                            var request = bus.Add<GetPipelineNameMessage>();
+                            request.pipelineUID = guids[i];
+                        }
+                        
                         // Add association
                         _lookup.Add(guids[i], pipelineIdentifierViewModel);
                     }

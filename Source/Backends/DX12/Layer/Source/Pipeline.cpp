@@ -254,11 +254,31 @@ HRESULT HookID3D12PipelineStateGetDevice(ID3D12PipelineState *_this, const IID &
     return table.state->parent->QueryInterface(riid, ppDevice);
 }
 
+HRESULT WINAPI HookID3D12PipelineStateSetName(ID3D12PipelineState* _this, LPCWSTR name) {
+    auto table = GetTable(_this);
+    auto device = GetTable(table.state->parent);
+
+    // Get length
+    size_t length = std::wcslen(name) + 1;
+
+    // Copy string
+    table.state->debugName = new (device.state->allocators) char[length];
+    wcstombs_s(&length, table.state->debugName, length * sizeof(char), name, length * sizeof(wchar_t));
+
+    // Pass to down the call chain
+    return table.next->SetName(name);
+}
+
 PipelineState::~PipelineState() {
     auto device = GetTable(parent);
 
     // Remove state lookup
     device.state->states_Pipelines.Remove(this);
+
+    // Release debug name
+    if (debugName) {
+        destroy(debugName, device.state->allocators);
+    }
 
     // Release all instrumented objects
     for (auto&& kv : instrumentObjects) {

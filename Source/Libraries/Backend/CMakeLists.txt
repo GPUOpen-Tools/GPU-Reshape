@@ -3,6 +3,7 @@
 # Generate the schemas
 Project_AddSchema(GeneratedLibSchema Schemas/Instrumentation.xml Include/Schemas)
 Project_AddSchema(GeneratedLibSchema Schemas/ShaderMetadata.xml Include/Schemas)
+Project_AddSchema(GeneratedLibSchema Schemas/PipelineMetadata.xml Include/Schemas)
 Project_AddSchema(GeneratedLibSchema Schemas/Config.xml Include/Schemas)
 Project_AddSchema(GeneratedLibSchema Schemas/SGUID.xml Include/Schemas)
 Project_AddSchema(GeneratedLibSchema Schemas/Diagnostic.xml Include/Schemas)
