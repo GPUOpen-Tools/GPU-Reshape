@@ -1,4 +1,5 @@
-﻿using DynamicData;
+﻿using System;
+using DynamicData;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace

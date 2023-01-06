@@ -8,33 +8,69 @@
              xmlns:i="clr-namespace:Projektanker.Icons.Avalonia;assembly=Projektanker.Icons.Avalonia"
              xmlns:logging="clr-namespace:Studio.Models.Logging;assembly=UIX.Studio.Runtime"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
+             xmlns:search="https://github.com/avaloniaui/avaloniaedit"
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:LogViewModel" x:CompileBindings="True">
-  <UserControl.Resources>
-    <ResourceDictionary>
-      <valueConverters:LogSeverityToIconConverter x:Key="LogSeverityToIconConverter" />
-    </ResourceDictionary>
-  </UserControl.Resources>
-  
-  <Grid Focusable="True">
-    <StackPanel Orientation="Vertical" HorizontalAlignment="Left">
-      <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" >
-        <PathIcon Data="{StaticResource Filter}"  Width="15"/>
-      </Button>
-      <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" >
-        <PathIcon Data="{StaticResource FilterMultiple}"  Width="15"/>
-      </Button>
-    </StackPanel>
-    
-    <ListBox x:Name="LogListbox" Margin="20 0 0 0" Items="{Binding LoggingViewModel.Events}">
-      <ListBox.DataTemplates>
-        <DataTemplate DataType="logging:LogEvent">
-          <Grid ColumnDefinitions="25,*">
-            <PathIcon Data="{Binding Severity, Converter={StaticResource LogSeverityToIconConverter}}" Width="10" />
-            <TextBlock Grid.Column="1" Text="{Binding Message}" VerticalAlignment="Center" Height="20" Padding="0 2"/>
-          </Grid>
-        </DataTemplate>
-      </ListBox.DataTemplates>
-    </ListBox>
-  </Grid>
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <valueConverters:LogSeverityToIconConverter x:Key="LogSeverityToIconConverter" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Focusable="True">
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Left">
+            <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22">
+                <PathIcon Data="{StaticResource FilterMultiple}" Width="15" />
+
+                <Button.Flyout>
+                    <MenuFlyout Placement="Right">
+                        <MenuItem Command="{Binding ToggleInfo}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <PathIcon Data="{StaticResource Check}" Width="15" IsVisible="{Binding IsShowInfo}" />
+                                    <TextBlock Text="Show Info" Margin="5,0,0,0" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Command="{Binding ToggleWarning}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <PathIcon Data="{StaticResource Check}" Width="15" IsVisible="{Binding IsShowWarning}" />
+                                    <TextBlock Text="Show Warning" Margin="5,0,0,0" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                        <MenuItem Command="{Binding ToggleError}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <PathIcon Data="{StaticResource Check}" Width="15" IsVisible="{Binding IsShowError}" />
+                                    <TextBlock Text="Show Error" Margin="5,0,0,0" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+
+            <Separator
+                Margin="2,2,2,2"
+                Background="{StaticResource DockThemeBorderLowBrush}"
+                HorizontalAlignment="Stretch" Height="1" />
+
+            <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" Command="{Binding Clear}">
+                <PathIcon Data="{StaticResource Close}" Width="12" />
+            </Button>
+        </StackPanel>
+
+        <ListBox x:Name="LogListbox" Margin="20 0 0 0" Items="{Binding FilteredEvents}">
+            <ListBox.DataTemplates>
+                <DataTemplate DataType="logging:LogEvent">
+                    <Grid ColumnDefinitions="25,*">
+                        <PathIcon Data="{Binding Severity, Converter={StaticResource LogSeverityToIconConverter}}" Width="10" />
+                        <TextBlock Grid.Column="1" Text="{Binding Message}" VerticalAlignment="Center" Height="20" Padding="0 2" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.DataTemplates>
+        </ListBox>
+    </Grid>
 </UserControl>

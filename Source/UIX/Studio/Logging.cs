@@ -1,4 +1,5 @@
 ﻿using Avalonia;
+using DynamicData;
 using Studio.Models.Logging;
 using Studio.Services;
 using Studio.ViewModels.Logging;

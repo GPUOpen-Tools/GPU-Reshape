@@ -6,6 +6,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
+using ReactiveUI;
 using Studio.Plugin;
 using Studio.ViewModels;
 using Studio.Views;
@@ -37,7 +38,7 @@ namespace Studio
 
             // Install global services
             InstallServices();
-            
+
             // Load app
             AvaloniaXamlLoader.Load(this);
         }

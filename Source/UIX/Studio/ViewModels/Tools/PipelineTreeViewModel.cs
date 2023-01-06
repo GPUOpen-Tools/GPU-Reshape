@@ -255,7 +255,12 @@ namespace Studio.ViewModels.Tools
         /// <param name="message"></param>
         private void OnRefresh()
         {
-            // TODO: ...
+            // Clear states
+            PipelineIdentifiers.Clear();
+            _lookup.Clear();
+            
+            // Immediate repool
+            _workspaceViewModel?.Connection?.GetSharedBus().Add<GetObjectStatesMessage>();
         }
 
         /// <summary>

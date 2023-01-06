@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Studio.Models.Logging;
@@ -20,7 +21,7 @@ namespace Studio.ViewModels.Logging
         /// <summary>
         /// All events
         /// </summary>
-        public ObservableCollection<LogEvent> Events { get; } = new();
+        public SourceList<LogEvent> Events { get; } = new();
 
         /// <summary>
         /// Internal status string

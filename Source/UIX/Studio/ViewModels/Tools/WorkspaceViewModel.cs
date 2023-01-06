@@ -8,6 +8,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using ReactiveUI;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
 using Studio.Views;
 
@@ -19,6 +20,21 @@ namespace Studio.ViewModels.Tools
         /// Connect to new workspace
         /// </summary>
         public ICommand Connect { get; }
+        
+        /// <summary>
+        /// Connect to new workspace
+        /// </summary>
+        public ICommand Refresh { get; }
+        
+        /// <summary>
+        /// Connect to new workspace
+        /// </summary>
+        public ICommand Expand { get; }
+        
+        /// <summary>
+        /// Connect to new workspace
+        /// </summary>
+        public ICommand Collapse { get; }
 
         /// <summary>
         /// All workspaces
@@ -37,6 +53,9 @@ namespace Studio.ViewModels.Tools
         public WorkspaceViewModel()
         {
             Connect = ReactiveCommand.Create(OnConnect);
+            Refresh = ReactiveCommand.Create(OnRefresh);
+            Expand = ReactiveCommand.Create(OnExpand);
+            Collapse = ReactiveCommand.Create(OnCollapse);
 
             // Get service
             _workspaceService = App.Locator.GetService<Services.IWorkspaceService>() ?? throw new InvalidOperationException();
@@ -102,10 +121,57 @@ namespace Studio.ViewModels.Tools
         }
 
         /// <summary>
+        /// Invoked on refreshes 
+        /// </summary>
+        private void OnRefresh()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Invoked on expansion
+        /// </summary>
+        private void OnExpand()
+        {
+            foreach (IObservableTreeItem workspace in Workspaces)
+            {
+                ExpandWorkspace(workspace, true);
+            }
+        }
+
+        /// <summary>
+        /// Invoked on collapses
+        /// </summary>
+        private void OnCollapse()
+        {
+            foreach (IObservableTreeItem workspace in Workspaces)
+            {
+                ExpandWorkspace(workspace, false);
+            }
+        }
+
+        /// <summary>
+        /// Set the expansion state of an item
+        /// </summary>
+        private void ExpandWorkspace(IObservableTreeItem workspace, bool expanded)
+        {
+            workspace.IsExpanded = expanded;
+
+            // Handle children
+            foreach (IObservableTreeItem item in workspace.Items)
+            {
+                ExpandWorkspace(item, expanded);
+            }
+        }
+        
+        /// <summary>
         /// Internal service
         /// </summary>
         private Services.IWorkspaceService _workspaceService;
 
+        /// <summary>
+        /// Internal help state
+        /// </summary>
         private bool _isHelpVisible = true;
     }
 }

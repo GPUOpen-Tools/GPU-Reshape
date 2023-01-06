@@ -11,6 +11,7 @@
         <PublishTrimmed>true</PublishTrimmed>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <StartupObject>Studio.Program</StartupObject>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <DebugType>portable</DebugType>
@@ -24,16 +25,16 @@
         <None Remove=".gitignore" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="0.10.14" />
+        <PackageReference Include="Avalonia" Version="0.10.18" />
         <PackageReference Include="Avalonia.AvaloniaEdit" Version="0.10.12.2" />
         <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="0.10.10" />
-        <PackageReference Include="Avalonia.Desktop" Version="0.10.14" />
+        <PackageReference Include="Avalonia.Desktop" Version="0.10.18" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
-        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="0.10.14" />
-        <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.14" />
-        <PackageReference Include="Avalonia.ReactiveUI.Events" Version="0.10.14" />
+        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="0.10.18" />
+        <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.18" />
+        <PackageReference Include="Avalonia.ReactiveUI.Events" Version="0.10.18" />
         <PackageReference Include="AvaloniaEdit.TextMate" Version="0.10.12.2" />
-        <PackageReference Include="Dock.Avalonia" Version="0.10.14" />
+        <PackageReference Include="Dock.Avalonia" Version="0.10.18" />
         <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.10" />
         <PackageReference Include="Markdown.Avalonia" Version="0.10.4" />
         <PackageReference Include="MessageBox.Avalonia" Version="1.5.5" />

@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using DynamicData;
 
 namespace Studio.ViewModels.Logging
 {
@@ -12,6 +13,6 @@ namespace Studio.ViewModels.Logging
         /// <summary>
         /// All events
         /// </summary>
-        public ObservableCollection<Models.Logging.LogEvent> Events { get; }
+        public SourceList<Models.Logging.LogEvent> Events { get; }
     }
 }

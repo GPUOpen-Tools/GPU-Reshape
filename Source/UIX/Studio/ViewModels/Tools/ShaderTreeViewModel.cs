@@ -324,7 +324,12 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         private void OnRefresh()
         {
-            // TODO: ...
+            // Clear states
+            ShaderIdentifiers.Clear();
+            _lookup.Clear();
+            
+            // Immediate repool
+            _workspaceViewModel?.Connection?.GetSharedBus().Add<GetObjectStatesMessage>();
         }
 
         /// <summary>

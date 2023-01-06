@@ -31,7 +31,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Workspace within this overview
         /// </summary>
-        public Workspace.WorkspaceViewModel? Workspace
+        public WorkspaceCollectionViewModel? Workspace
         {
             get => _workspaceViewModel;
             set
@@ -52,7 +52,7 @@ namespace Studio.ViewModels.Documents
         public void OnWorkspaceChanged()
         {
             // Filter the owning collection properties
-            _workspaceViewModel?.PropertyCollection.Properties.Connect()
+            _workspaceViewModel?.Properties.Connect()
                 .OnItemAdded(x =>
                 {
                     if (x.Visibility.HasFlag(PropertyVisibility.WorkspaceOverview))
@@ -70,7 +70,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Underlying view model
         /// </summary>
-        private Workspace.WorkspaceViewModel? _workspaceViewModel;
+        private WorkspaceCollectionViewModel? _workspaceViewModel;
         
         /// <summary>
         /// Internal icon

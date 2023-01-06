@@ -19,16 +19,16 @@
 
             <Grid Margin="5,0,5,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Workspace_Refresh_Tooltip}">
+                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Workspace_Refresh_Tooltip}" Command="{Binding Refresh}">
                         <PathIcon Data="{StaticResource Refresh}" Width="13" />
                     </Button>
 
                     <Border Width="1" Height="18" Margin="3,0,3,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
 
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Expand_Tooltip}">
+                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Expand_Tooltip}" Command="{Binding Expand}">
                         <PathIcon Data="{StaticResource Expand}" Width="13" />
                     </Button>
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}">
+                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}" Command="{Binding Collapse}">
                         <PathIcon Data="{StaticResource Collapse}" Width="13" />
                     </Button>
                 </StackPanel>
@@ -49,7 +49,12 @@
             ContextMenu="{StaticResource ReactiveContextMenu}" 
             SelectionChanged="OnItemSelected"
             Tag="{Binding}"
-            Items="{Binding Workspaces}" >
+            Items="{Binding Workspaces}">
+            <TreeView.Styles>
+                <Style Selector="TreeViewItem">
+                    <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}"/>
+                </Style>
+            </TreeView.Styles>
             <TreeView.ItemTemplate>
                 <TreeDataTemplate ItemsSource="{Binding Items}">
                     <controls:UniformViewHost ContextMenu="{StaticResource ReactiveContextMenu}" DataContext="{Binding $self.DataContext}"/>

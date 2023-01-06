@@ -1,8 +1,10 @@
-﻿using DynamicData;
+﻿using System;
+using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
 using Studio.ViewModels.Instrumentation;
+using Studio.ViewModels.Workspace.Listeners;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
@@ -56,6 +58,25 @@ namespace Studio.ViewModels.Workspace.Properties
         private void OnConnectionChanged()
         {
             CreateProperties();
+            CreateServices();
+        }
+
+        /// <summary>
+        /// Create all services
+        /// </summary>
+        private void CreateServices()
+        {
+            // Create pulse
+            var pulseService = new PulseService()
+            {
+                ConnectionViewModel = ConnectionViewModel
+            };
+
+            // Bind to local time
+            pulseService.WhenAnyValue(x => x.LastPulseTime).Subscribe(x => ConnectionViewModel!.LocalTime = x);
+            
+            // Register pulse service
+            Services.Add(pulseService);
         }
 
         /// <summary>

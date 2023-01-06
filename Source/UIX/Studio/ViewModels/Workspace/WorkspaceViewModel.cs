@@ -1,7 +1,9 @@
-﻿using DynamicData;
+﻿using System;
+using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Studio.ViewModels.Workspace;
+using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace

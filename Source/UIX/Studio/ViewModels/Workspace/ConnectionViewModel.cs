@@ -26,6 +26,15 @@ namespace Studio.ViewModels.Workspace
         public ISubject<Unit> Refused { get; }
 
         /// <summary>
+        /// Local time on the remote endpoint
+        /// </summary>
+        public DateTime LocalTime
+        {
+            get => localTime;
+            set => this.RaiseAndSetIfChanged(ref localTime, value);
+        }
+
+        /// <summary>
         /// Underlying bridge of this connection
         /// </summary>
         public IBridge? Bridge
@@ -209,5 +218,10 @@ namespace Studio.ViewModels.Workspace
         /// Internal underlying bridge
         /// </summary>
         private Bridge.CLR.RemoteClientBridge? _remote;
+
+        /// <summary>
+        /// Internal local time
+        /// </summary>
+        private DateTime localTime;
     }
 }

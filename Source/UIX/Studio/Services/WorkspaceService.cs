@@ -40,7 +40,7 @@ namespace Studio.Services
             _workspaces.Add(workspaceViewModel);
             
             // Submit document
-            Interactions.DocumentInteractions.OpenDocument.OnNext(workspaceViewModel);
+            Interactions.DocumentInteractions.OpenDocument.OnNext(workspaceViewModel.PropertyCollection);
             
             // Diagnostic
             Logging.Info($"Workspace created for {workspaceViewModel.Connection?.Application?.Name} {{{workspaceViewModel.Connection?.Application?.Guid}}}");

@@ -3,6 +3,7 @@ using Dock.Model.Core;
 using Studio.ViewModels.Documents;
 using Dock.Model.ReactiveUI.Controls;
 using ReactiveUI;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Docks
 {
@@ -30,7 +31,7 @@ namespace Studio.ViewModels.Docks
             switch (viewModel)
             {
                 default:
-                    throw new NotSupportedException("Unexpected document view model");
+                    return;
                 case WelcomeViewModel vm:
                     document = new WelcomeViewModel
                     {
@@ -38,11 +39,11 @@ namespace Studio.ViewModels.Docks
                         Title = $"Document{index}"
                     };
                     break;
-                case Workspace.WorkspaceViewModel vm:
+                case WorkspaceCollectionViewModel vm:
                     document = new WorkspaceOverviewViewModel
                     {
                         Id = $"WorkspaceOverview{index}", 
-                        Title = $"{vm.Connection?.Application?.DecoratedName}",
+                        Title = $"{vm.ConnectionViewModel?.Application?.DecoratedName}",
                         Workspace = vm
                     };
                     break;

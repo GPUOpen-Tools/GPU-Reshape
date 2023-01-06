@@ -22,18 +22,23 @@ namespace Studio.ViewModels.Workspace
         /// <summary>
         /// Invoked during connection
         /// </summary>
-        ISubject<Unit> Connected { get; }
+        public ISubject<Unit> Connected { get; }
         
         /// <summary>
         /// Invoked during connection rejection
         /// </summary>
-        ISubject<Unit> Refused { get; }
+        public ISubject<Unit> Refused { get; }
         
         /// <summary>
         /// Bridge within this connection
         /// </summary>
-        Bridge.CLR.IBridge? Bridge { get; }
+        public Bridge.CLR.IBridge? Bridge { get; }
 
+        /// <summary>
+        /// Time on the remote endpoint
+        /// </summary>
+        public DateTime LocalTime { get; set; }
+        
         /// <summary>
         /// Get the shared bus
         /// </summary>

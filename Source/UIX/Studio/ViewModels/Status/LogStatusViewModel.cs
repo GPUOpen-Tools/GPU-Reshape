@@ -34,7 +34,7 @@ namespace Studio.ViewModels.Status
             ILoggingViewModel? logging = AvaloniaLocator.Current.GetService<ILoggingService>()?.ViewModel;
             
             // Connect to workspaces
-            logging?.Events.ToObservableChangeSet(x => x)
+            logging?.Events.Connect()
                 .OnItemAdded(OnLog)
                 .Subscribe();
         }
