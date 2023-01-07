@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Avalonia;
 using Avalonia.Threading;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Studio.Models.Workspace.Listeners;
 using Studio.Models.Workspace.Objects;
+using Studio.Services;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -84,13 +86,16 @@ namespace Studio.ViewModels.Workspace.Properties
             }
 
             // Create document
-            Interactions.DocumentInteractions.OpenDocument.OnNext(new Documents.ShaderViewModel()
+            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                Id = $"Shader{validationObject.Segment.Location.SGUID}",
-                Title = $"Shader (loading)",
-                PropertyCollection = Parent,
-                GUID = validationObject.Segment.Location.SGUID
-            });
+                layoutViewModel.OpenDocument?.Execute(new Documents.ShaderViewModel()
+                {
+                    Id = $"Shader{validationObject.Segment.Location.SGUID}",
+                    Title = $"Shader (loading)",
+                    PropertyCollection = Parent,
+                    GUID = validationObject.Segment.Location.SGUID
+                });
+            }
         }
 
         /// <summary>

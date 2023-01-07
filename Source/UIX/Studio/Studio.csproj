@@ -35,7 +35,7 @@
         <PackageReference Include="Avalonia.ReactiveUI.Events" Version="0.10.18" />
         <PackageReference Include="AvaloniaEdit.TextMate" Version="0.10.12.2" />
         <PackageReference Include="Dock.Avalonia" Version="0.10.18" />
-        <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.10" />
+        <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.18" />
         <PackageReference Include="Markdown.Avalonia" Version="0.10.4" />
         <PackageReference Include="MessageBox.Avalonia" Version="1.5.5" />
         <PackageReference Include="Microsoft.CodeAnalysis" Version="3.9.0" />
@@ -101,6 +101,10 @@
       </Compile>
       <Compile Update="Views\Tools\PipelineTreeView.axaml.cs">
         <DependentUpon>PipelineTreeView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\AboutWindow.axaml.cs">
+        <DependentUpon>AboutWindow.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
     </ItemGroup>

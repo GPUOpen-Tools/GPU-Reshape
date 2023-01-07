@@ -2,9 +2,11 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
+using Avalonia;
 using Avalonia.Media;
 using DynamicData;
 using ReactiveUI;
+using Studio.Services;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -84,9 +86,9 @@ namespace Studio.ViewModels.Controls
         /// </summary>
         private void OnOpenDocument()
         {
-            if (ViewModel != null)
+            if (ViewModel != null && App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                Interactions.DocumentInteractions.OpenDocument.OnNext(ViewModel);
+                layoutViewModel.OpenDocument?.Execute(ViewModel);
             }
         }
 

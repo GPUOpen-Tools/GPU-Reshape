@@ -24,23 +24,7 @@ namespace Studio.Views
 
         private void InitializeMenu()
         {
-            this.FindControl<MenuItem>("OptionsIsDragEnabled").Click += (_, _) =>
-            {
-                if (VisualRoot is Window window)
-                {
-                    var isEnabled = window.GetValue(DockProperties.IsDragEnabledProperty);
-                    window.SetValue(DockProperties.IsDragEnabledProperty, !isEnabled);
-                }
-            };
-
-            this.FindControl<MenuItem>("OptionsIsDropEnabled").Click += (_, _) =>
-            {
-                if (VisualRoot is Window window)
-                {
-                    var isEnabled = window.GetValue(DockProperties.IsDropEnabledProperty);
-                    window.SetValue(DockProperties.IsDropEnabledProperty, !isEnabled);
-                }
-            };
+            
         }
     }
 }

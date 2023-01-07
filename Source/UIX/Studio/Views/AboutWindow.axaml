@@ -1,0 +1,53 @@
+﻿<Window x:Class="Studio.Views.AboutWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:vm="using:Studio.ViewModels"
+        mc:Ignorable="d"
+        d:DesignWidth="425" d:DesignHeight="230"
+        Width="425" Height="230"
+        UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
+        WindowState="Normal" WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="None"
+        Foreground="{DynamicResource DockThemeForegroundBrush}"
+        BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
+        FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome">
+    <Window.DataContext>
+        <vm:AboutViewModel />
+    </Window.DataContext>
+
+    <Grid Margin="5">
+        <!-- Tool Header -->
+        <StackPanel VerticalAlignment="Top" Orientation="Horizontal">
+            <Image Source="/Resources/Icons/AppBlack.png" Width="17" />
+
+            <TextBlock Margin="7,0,0,0">About GPU Rebase</TextBlock>
+        </StackPanel>
+
+        <!-- Content -->
+        <Grid Margin="25,50,5,30" VerticalAlignment="Top" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal">
+                <Image Source="/Resources/Icons/AppBlack.png" VerticalAlignment="Top" Width="85" />
+
+                <StackPanel Orientation="Vertical" Margin="15,0,0,0">
+                    <TextBlock Margin="0" FontSize="15" FontWeight="Bold" Text="GPU Rebase a2023.0.0" />
+                    <TextBlock Margin="0,5,0,0" Text="Alpha release, subject to change." />
+
+                    <TextBlock Margin="0,25,0,0" Text="Copyright © 2023 Miguel Petersen" />
+                    <TextBlock Margin="0,0,0,0" Text="Copyright © 2023 Advanced Micro Devices" />
+                    <TextBlock Margin="0,0,0,0" Text="Copyright © 2023 Avalanche Studios Group" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- Tool Result -->
+        <Grid VerticalAlignment="Bottom">
+            <StackPanel Margin="0,0,5,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button HorizontalAlignment="Right" Content="Close"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

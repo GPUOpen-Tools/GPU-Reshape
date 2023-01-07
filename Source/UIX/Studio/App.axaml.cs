@@ -50,6 +50,9 @@ namespace Studio
             // Logging host
             locator.BindToSelf<Services.ILoggingService>(new Services.LoggingService());
 
+            // Hosts all menu objects
+            locator.BindToSelf<Services.IWindowService>(new Services.WindowService());
+
             // Hosts all live workspaces
             locator.BindToSelf<Services.IWorkspaceService>(new Services.WorkspaceService());
 
@@ -58,6 +61,9 @@ namespace Studio
 
             // Hosts all context objects
             locator.BindToSelf<Services.IContextMenuService>(new Services.ContextMenuService());
+
+            // Hosts all menu objects
+            locator.BindToSelf<Services.IMenuService>(new Services.MenuService());
 
             // Initiates the host resolver if not already up and running
             locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
@@ -94,7 +100,7 @@ namespace Studio
                     // Bind close
                     mainWindow.Closing += (_, _) =>
                     {
-                        vm.CloseLayout();
+                        vm.CloseLayout.Execute(null);
                     };
 
                     // Set lifetime
@@ -103,7 +109,7 @@ namespace Studio
                     // Bind exit
                     desktopLifetime.Exit += (_, _) =>
                     {
-                        vm.CloseLayout();
+                        vm.CloseLayout.Execute(null);
                     };
                     break;
                 }

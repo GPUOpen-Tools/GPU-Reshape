@@ -29,5 +29,10 @@ namespace Studio.Services
         /// <param name="workspaceViewModel">active connection</param>
         /// <returns>true if successfully removed</returns>
         bool Remove(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel);
+
+        /// <summary>
+        /// Clear all workspaces
+        /// </summary>
+        void Clear();
     }
 }

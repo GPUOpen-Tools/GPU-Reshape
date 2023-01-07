@@ -8,6 +8,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using ReactiveUI;
+using Studio.Services;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
 using Studio.Views;
@@ -102,22 +103,9 @@ namespace Studio.ViewModels.Tools
         /// <summary>
         /// Connect implementation
         /// </summary>
-        private async void OnConnect()
+        private void OnConnect()
         {
-            // Must have desktop lifetime
-            if (Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
-            {
-                return;
-            }
-
-            // Create dialog
-            var dialog = new ConnectWindow()
-            {
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-
-            // Blocking
-            await dialog.ShowDialog(desktop.MainWindow);
+            App.Locator.GetService<IWindowService>()?.OpenFor(new ConnectViewModel());
         }
 
         /// <summary>

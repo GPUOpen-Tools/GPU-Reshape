@@ -82,14 +82,16 @@ namespace Studio.ViewModels.Tools
             if (_workspaceViewModel == null)
                 return;
             
-            // Create document
-            Interactions.DocumentInteractions.OpenDocument.OnNext(new Documents.ShaderViewModel()
+            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                Id = $"Shader{shaderIdentifierViewModel.GUID}",
-                Title = $"Shader (loading)",
-                PropertyCollection = _workspaceViewModel?.PropertyCollection,
-                GUID = shaderIdentifierViewModel.GUID
-            });
+                layoutViewModel.OpenDocument?.Execute(new Documents.ShaderViewModel()
+                {
+                    Id = $"Shader{shaderIdentifierViewModel.GUID}",
+                    Title = $"Shader (loading)",
+                    PropertyCollection = _workspaceViewModel?.PropertyCollection,
+                    GUID = shaderIdentifierViewModel.GUID
+                });
+            }
         }
 
         /// <summary>
