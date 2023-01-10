@@ -23,6 +23,8 @@
 #include <Schemas/Object.h>
 
 // Std
+#include "Backend/IL/Program.h"
+
 #include <sstream>
 
 MetadataController::MetadataController(DeviceState* device) : device(device) {
@@ -66,6 +68,14 @@ void MetadataController::Handle(const MessageStream *streams, uint32_t count) {
                 }
                 case GetShaderCodeMessage::kID: {
                     OnMessage(*it.Get<GetShaderCodeMessage>());
+                    break;
+                }
+                case GetShaderILMessage::kID: {
+                    OnMessage(*it.Get<GetShaderILMessage>());
+                    break;
+                }
+                case GetShaderBlockGraphMessage::kID: {
+                    OnMessage(*it.Get<GetShaderBlockGraphMessage>());
                     break;
                 }
                 case GetShaderUIDRangeMessage::kID: {
@@ -133,20 +143,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         response->shaderUID = message.shaderUID;
         response->found = true;
         response->native = true;
-        response->fileCount = 1;
-
-        // Pool code?
-        if (message.poolCode) {
-            // Pretty print to stream
-            std::stringstream ilStream;
-            IL::PrettyPrint(*shader->module->GetProgram(), ilStream);
-
-            // Add native file
-            auto&& file = view.Add<ShaderCodeFileMessage>(ShaderCodeFileMessage::AllocationInfo { .codeLength = static_cast<size_t>(ilStream.tellp()) });
-            file->shaderUID = message.shaderUID;
-            file->fileUID = 0;
-            file->code.Set(ilStream.str());
-        }
+        response->fileCount = 0;
         return;
     }
 
@@ -163,20 +160,83 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     // Add file responses
     for (uint32_t i = 0; i < fileCount; i++) {
         auto&& file = view.Add<ShaderCodeFileMessage>(ShaderCodeFileMessage::AllocationInfo { 
-            .filenameLength = debugModule->GetFilename().length(),
+            .filenameLength = debugModule->GetSourceFilename(i).length(),
             .codeLength = message.poolCode ? debugModule->GetCombinedSourceLength(i) : 0
         });
         file->shaderUID = message.shaderUID;
         file->fileUID = i;
 
         // Fill filename
-        file->filename.Set(debugModule->GetFilename());
+        file->filename.Set(debugModule->GetSourceFilename(i));
 
         // Fill discontinuous fragments into buffer
         if (message.poolCode) {
             debugModule->FillCombinedSource(i, file->code.data.Get());
         }
     }
+}
+
+void MetadataController::OnMessage(const GetShaderILMessage& message) {
+    MessageStreamView view(stream);
+
+    // Attempt to find shader with given UID
+    ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderUID);
+
+    // Create module if not present
+    if (shaderCompiler && !shader->module) {
+        shaderCompiler->InitializeModule(shader);
+    }
+
+    // Failed?
+    if (!shader || !shader->module) {
+        auto&& response = view.Add<ShaderILMessage>();
+        response->shaderUID = message.shaderUID;
+        response->found = false;
+        return;
+    }
+
+    // Get debug module
+    IDXDebugModule* debugModule = shader->module->GetDebug();
+
+    // Pretty print to stream
+    std::stringstream ilStream;
+    IL::PrettyPrint(*shader->module->GetProgram(), ilStream);
+
+    // Add native file
+    auto&& file = view.Add<ShaderILMessage>(ShaderILMessage::AllocationInfo { .codeLength = static_cast<size_t>(ilStream.tellp()) });
+    file->shaderUID = message.shaderUID;
+    file->found = true;
+    file->code.Set(ilStream.str());
+}
+
+void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {
+    MessageStreamView view(stream);
+
+    // Attempt to find shader with given UID
+    ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderUID);
+
+    // Create module if not present
+    if (shaderCompiler && !shader->module) {
+        shaderCompiler->InitializeModule(shader);
+    }
+
+    // Failed?
+    if (!shader || !shader->module) {
+        auto&& response = view.Add<ShaderBlockGraphMessage>();
+        response->shaderUID = message.shaderUID;
+        response->found = false;
+        return;
+    }
+
+    // Pretty print to stream
+    std::stringstream blockStream;
+    IL::PrettyPrintBlockJsonGraph(*shader->module->GetProgram()->GetEntryPoint(), blockStream);
+
+    // Add graph file
+    auto&& file = view.Add<ShaderBlockGraphMessage>(ShaderBlockGraphMessage::AllocationInfo { .nodesLength = static_cast<size_t>(blockStream.tellp()) });
+    file->shaderUID = message.shaderUID;
+    file->found = true;
+    file->nodes.Set(blockStream.str());
 }
 
 void MetadataController::OnMessage(const struct GetObjectStatesMessage& message) {

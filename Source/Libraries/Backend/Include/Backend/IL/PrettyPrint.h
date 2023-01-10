@@ -68,4 +68,5 @@ namespace IL {
     void PrettyPrint(const Backend::IL::TypeMap& map, PrettyPrintContext out);
     void PrettyPrint(const Backend::IL::ConstantMap& map, PrettyPrintContext out);
     void PrettyPrintBlockDotGraph(const Function& function, PrettyPrintContext out);
+    void PrettyPrintBlockJsonGraph(const Function& function, PrettyPrintContext out);
 }

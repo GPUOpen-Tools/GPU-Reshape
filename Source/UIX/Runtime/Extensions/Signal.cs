@@ -4,7 +4,7 @@ using System.Reactive.Linq;
 
 namespace Studio.Extensions
 {
-    public static class Signal
+    public static class SignalExtensions
     {
         /// <summary>
         /// Convert an observable event to a parameter-less "signal"

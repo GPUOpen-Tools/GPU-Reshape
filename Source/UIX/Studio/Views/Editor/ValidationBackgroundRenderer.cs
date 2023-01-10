@@ -7,6 +7,8 @@ using Avalonia.Media;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using DynamicData;
+using Runtime.ViewModels.Shader;
+using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.Views.Editor
@@ -17,6 +19,11 @@ namespace Studio.Views.Editor
         /// Current document
         /// </summary>
         public TextDocument? Document { get; set; }
+        
+        /// <summary>
+        /// Current content view model
+        /// </summary>
+        public CodeShaderContentViewModel? ShaderContentViewModel { get; set; } 
 
         /// <summary>
         /// All validation objects
@@ -30,7 +37,11 @@ namespace Studio.Views.Editor
         /// <param name="drawingContext"></param>
         public void Draw(TextView textView, DrawingContext drawingContext)
         {
-            if (Document == null)
+            // Must have UID
+            uint? activeFile = ShaderContentViewModel?.SelectedShaderFileViewModel?.UID;
+            
+            // Valid?
+            if (Document == null || !activeFile.HasValue)
             {
                 return;
             }
@@ -41,7 +52,8 @@ namespace Studio.Views.Editor
             // Draw all objects
             foreach (ValidationObject validationObject in ValidationObjects ?? Enumerable.Empty<ValidationObject>())
             {
-                if (validationObject.Segment == null)
+                // Valid file?
+                if (validationObject.Segment?.Location.FileUID != activeFile)
                 {
                     continue;
                 }

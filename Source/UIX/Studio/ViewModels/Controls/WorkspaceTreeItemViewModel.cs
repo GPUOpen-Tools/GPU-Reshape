@@ -163,6 +163,6 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Internal expansion state
         /// </summary>
-        private bool _isExpanded = false;
+        private bool _isExpanded = true;
     }
 }

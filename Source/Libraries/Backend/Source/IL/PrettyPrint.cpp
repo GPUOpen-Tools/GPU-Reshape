@@ -935,3 +935,188 @@ void IL::PrettyPrintBlockDotGraph(const Function &function, PrettyPrintContext o
 
     out.stream << "}\n";
 }
+
+struct BlockJsonEdge {
+    IL::ID from;
+    IL::ID to;
+    std::string_view color = "";
+};
+
+static void PrettyPrintBlockJsonGraphSuccessor(const IL::BasicBlockList &basicBlocks, const IL::BasicBlock *block, IL::ID successor, std::vector<BlockJsonEdge> &edges) {
+    IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
+    ASSERT(successorBlock, "Successor block invalid");
+
+    // Must have terminator
+    auto terminator = successorBlock->GetTerminator();
+    ASSERT(terminator, "Must have terminator");
+
+    // Get control flow, if present
+    IL::BranchControlFlow controlFlow;
+    switch (terminator.GetOpCode()) {
+        default:
+            break;
+        case IL::OpCode::Branch:
+            controlFlow = terminator.As<IL::BranchInstruction>()->controlFlow;
+        break;
+        case IL::OpCode::BranchConditional:
+            controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
+        break;
+    }
+
+    // Skip loop back continue block for order resolving
+    if (controlFlow._continue == block->GetID()) {
+        edges.push_back(BlockJsonEdge {
+            .from = block->GetID(),
+            .to = successor,
+            .color = "gray"
+        });
+    } else {
+        edges.push_back(BlockJsonEdge {
+            .from = block->GetID(),
+            .to = successor,
+            .color = ""
+        });
+    }
+}
+
+void IL::PrettyPrintBlockJsonGraph(const Function &function, PrettyPrintContext out) {
+    const BasicBlockList &blocks = function.GetBasicBlocks();
+
+    // Begin document
+    out.stream << "{\n";
+
+    // Open blocks
+    out.stream << "\t\"blocks\":\n";
+    out.stream << "\t{\n";
+
+    // Print all blocks
+    for (auto it = blocks.begin(); it != blocks.end(); it++) {
+        // Open
+        out.stream << "\t\t\"" << (*it)->GetID() << "\" : {\n";
+
+        // Special names
+        if (it == blocks.begin()) {
+            out.stream << "\t\t\t\"name\": \"EntryPoint\",\n";
+        } else {
+            out.stream << "\t\t\t\"name\": \"Block " << (*it)->GetID() << "\",\n";
+        }
+
+        // Special colors
+        if ((*it)->GetFlags() & BasicBlockFlag::NoInstrumentation) {
+            out.stream << "\t\t\t\"color\": \"red\"\n";
+        } else {
+            out.stream << "\t\t\t\"color\": \"white\"\n";
+        }
+
+        // Close
+        out.stream << "\t\t}";
+
+        if (it != --blocks.end()) {
+            out.stream << ",";
+        }
+        
+        out.stream << "\n";
+    }
+
+    // Close blocks
+    out.stream << "\t},\n";
+
+    // All edges
+    std::vector<BlockJsonEdge> edges;
+
+    // Populate edges
+    for (const IL::BasicBlock *bb: function.GetBasicBlocks()) {
+        // Must have terminator
+        auto terminator = bb->GetTerminator();
+        ASSERT(terminator, "Must have terminator");
+
+        // Get control flow, if present
+        IL::BranchControlFlow controlFlow;
+        switch (terminator.GetOpCode()) {
+            default:
+                break;
+            case IL::OpCode::Branch:
+                controlFlow = terminator.As<IL::BranchInstruction>()->controlFlow;
+                break;
+            case IL::OpCode::BranchConditional:
+                controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
+                break;
+        }
+
+        for (auto &&instr: *bb) {
+            switch (instr->opCode) {
+                default:
+                    break;
+                case IL::OpCode::Branch: {
+                    PrettyPrintBlockJsonGraphSuccessor(function.GetBasicBlocks(), bb, instr->As<IL::BranchInstruction>()->branch, edges);
+                    break;
+                }
+                case IL::OpCode::BranchConditional: {
+                    PrettyPrintBlockJsonGraphSuccessor(function.GetBasicBlocks(), bb, instr->As<IL::BranchConditionalInstruction>()->pass, edges);
+                    PrettyPrintBlockJsonGraphSuccessor(function.GetBasicBlocks(), bb, instr->As<IL::BranchConditionalInstruction>()->fail, edges);
+                    break;
+                }
+                case IL::OpCode::Switch: {
+                    auto *_switch = instr->As<IL::SwitchInstruction>();
+                    edges.push_back(BlockJsonEdge {
+                        .from = bb->GetID(),
+                        .to = _switch->_default,
+                        .color = "orange"
+                    });
+
+                    // Add cases
+                    for (uint32_t i = 0; i < _switch->cases.count; i++) {
+                        edges.push_back(BlockJsonEdge {
+                            .from = bb->GetID(),
+                            .to = _switch->cases[i].branch,
+                            .color = "orange"
+                        });
+                    }
+                    break;
+                }
+                case IL::OpCode::Phi: {
+                    auto *phi = instr->As<IL::PhiInstruction>();
+
+                    // Add producers for values
+                    for (uint32_t i = 0; i < phi->values.count; i++) {
+                        if (controlFlow._continue == phi->values[i].branch) {
+                            continue;
+                        }
+
+                        edges.push_back(BlockJsonEdge {
+                            .from = phi->values[i].branch,
+                            .to = bb->GetID(),
+                            .color = "violet"
+                        });
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    // Open edge list
+    out.stream << "\t\"edges\":\n";
+    out.stream << "\t[\n";
+
+    // Print edges
+    for (auto it = edges.begin(); it != edges.end(); it++) {
+        out.stream << "\t\t{\n";
+        out.stream << "\t\t\t\"from\": " << it->from << ",\n";
+        out.stream << "\t\t\t\"to\": " << it->to << ",\n";
+        out.stream << "\t\t\t\"color\": \"" << it->color << "\"\n";
+        out.stream << "\t\t}";
+
+        if (it != --edges.end()) {
+            out.stream << ",";
+        }
+
+        out.stream << "\n";
+    }
+
+    // Close edges
+    out.stream << "\t]\n";
+
+    // Close document
+    out.stream << "}\n";
+}

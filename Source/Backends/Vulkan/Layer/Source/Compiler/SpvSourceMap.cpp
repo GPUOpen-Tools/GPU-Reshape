@@ -164,6 +164,10 @@ std::string_view SpvSourceMap::GetFilename() const {
     return physicalSources[0].filename;
 }
 
+std::string_view SpvSourceMap::GetSourceFilename(uint32_t fileUID) const {
+    return physicalSources.at(fileUID).filename;
+}
+
 void SpvSourceMap::AddSourceAssociation(uint32_t sourceOffset, const SpvSourceAssociation &association) {
     sourceAssociations[sourceOffset] = association;
 }

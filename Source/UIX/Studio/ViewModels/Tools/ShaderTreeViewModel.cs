@@ -196,6 +196,12 @@ namespace Studio.ViewModels.Tools
         /// <param name="message"></param>
         private void Handle(ShaderCodeFileMessage message)
         {
+            // Only care about first file
+            if (message.fileUID != 0)
+            {
+                return;
+            }
+            
             // Flatten dynamics
             UInt64 uid = message.shaderUID;
             string filename = message.filename.String;

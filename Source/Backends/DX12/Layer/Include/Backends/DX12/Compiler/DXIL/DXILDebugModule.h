@@ -23,6 +23,7 @@ struct DXILDebugModule final : public IDXDebugModule {
     DXSourceAssociation GetSourceAssociation(uint32_t codeOffset) override;
     std::string_view GetLine(uint32_t fileUID, uint32_t line) override;
     std::string_view GetFilename() override;
+    std::string_view GetSourceFilename(uint32_t fileUID) override;
     uint32_t GetFileCount() override;
     uint64_t GetCombinedSourceLength(uint32_t fileUID) const override;
     void FillCombinedSource(uint32_t fileUID, char *buffer) const override;

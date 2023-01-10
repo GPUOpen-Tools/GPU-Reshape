@@ -1,0 +1,43 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:avaloniaEdit="https://github.com/avaloniaui/avaloniaedit"
+             xmlns:r="using:Studio.Resources"
+             xmlns:documents="clr-namespace:Studio.ViewModels.Documents"
+             xmlns:shader="clr-namespace:Studio.ViewModels.Shader"
+             xmlns:avaloniaGraphControl="clr-namespace:AvaloniaGraphControl;assembly=AvaloniaGraphControl"
+             xmlns:graph="clr-namespace:Studio.Views.Shader.Graphing"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Studio.Views.Shader.BlockGraphShaderContentView"
+             x:DataType="shader:BlockGraphShaderContentViewModel"
+             x:CompileBindings="True">
+    <Grid>
+            <ZoomBorder
+                Name="ZoomBorder"
+                Stretch="None"
+                ZoomSpeed="1.2"
+                Background="{StaticResource InfoMediumBackground}"
+                ClipToBounds="True"
+                Focusable="True"
+                VerticalAlignment="Stretch"
+                HorizontalAlignment="Stretch">
+                <avaloniaGraphControl:GraphPanel
+                    x:Name="GraphControl"
+                    Zoom="1"
+                    LayoutMethod="SugiyamaScheme">
+                    <avaloniaGraphControl:GraphPanel.DataTemplates>
+                        <DataTemplate DataType="{x:Type graph:Block}">
+                            <avaloniaGraphControl:TextSticker Text="{Binding Name}"
+                                                              BorderForeground="{Binding Color}"
+                                                              Shape="Ellipse"
+                                                              Padding="30,10" />
+                        </DataTemplate>
+                        <DataTemplate DataType="{x:Type graph:Edge}">
+                            <avaloniaGraphControl:Connection Brush="{Binding Color}" />
+                        </DataTemplate>
+                    </avaloniaGraphControl:GraphPanel.DataTemplates>
+                </avaloniaGraphControl:GraphPanel>
+            </ZoomBorder>
+    </Grid>
+</UserControl>

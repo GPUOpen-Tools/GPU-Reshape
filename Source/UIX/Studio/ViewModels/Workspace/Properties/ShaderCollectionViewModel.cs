@@ -59,12 +59,6 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <param name="shaderViewModel"></param>
         public void AddShader(ShaderViewModel shaderViewModel)
         {
-            // Submit request if not already
-            if (shaderViewModel.Contents == string.Empty)
-            {
-                _shaderCodeService.EnqueueShader(shaderViewModel);
-            }
-            
             // Flat view
             Shaders.Add(shaderViewModel);
             
@@ -115,6 +109,9 @@ namespace Studio.ViewModels.Workspace.Properties
         {
             // Set connection
             _shaderCodeService.ConnectionViewModel = ConnectionViewModel;
+            
+            // Make visible
+            Parent?.Services.Add(_shaderCodeService);
             
             // Register internal listeners
             _connectionViewModel?.Bridge?.Register(_shaderCodeService);

@@ -46,6 +46,8 @@ protected:
     /// Message handlers
     void OnMessage(const struct GetPipelineNameMessage& message);
     void OnMessage(const struct GetShaderCodeMessage& message);
+    void OnMessage(const struct GetShaderILMessage& message);
+    void OnMessage(const struct GetShaderBlockGraphMessage& message);
     void OnMessage(const struct GetObjectStatesMessage& message);
     void OnMessage(const struct GetShaderUIDRangeMessage& message);
     void OnMessage(const struct GetPipelineUIDRangeMessage& message);

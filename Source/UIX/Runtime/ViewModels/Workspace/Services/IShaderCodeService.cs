@@ -10,6 +10,18 @@ namespace Studio.ViewModels.Workspace.Listeners
         /// Enqueue a shader for source code pooling
         /// </summary>
         /// <param name="shaderViewModel"></param>
-        public void EnqueueShader(Objects.ShaderViewModel shaderViewModel);
+        public void EnqueueShaderContents(Objects.ShaderViewModel shaderViewModel);
+        
+        /// <summary>
+        /// Enqueue a shader for source code pooling
+        /// </summary>
+        /// <param name="shaderViewModel"></param>
+        public void EnqueueShaderIL(Objects.ShaderViewModel shaderViewModel);
+        
+        /// <summary>
+        /// Enqueue a shader for source code pooling
+        /// </summary>
+        /// <param name="shaderViewModel"></param>
+        public void EnqueueShaderBlockGraph(Objects.ShaderViewModel shaderViewModel);
     }
 }

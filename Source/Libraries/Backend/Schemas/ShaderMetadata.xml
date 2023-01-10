@@ -6,7 +6,15 @@
     </struct>
 
     <message name="GetShaderCode">
+        <field name="shaderUID" type="uint64"/>
         <field name="poolCode" type="bool"/>
+    </message>
+
+    <message name="GetShaderIL">
+        <field name="shaderUID" type="uint64"/>
+    </message>
+
+    <message name="GetShaderBlockGraph">
         <field name="shaderUID" type="uint64"/>
     </message>
 
@@ -22,5 +30,17 @@
         <field name="fileUID"   type="uint32"/>
         <field name="filename"  type="string"/>
         <field name="code"      type="string"/>
+    </message>
+
+    <message name="ShaderIL">
+        <field name="shaderUID" type="uint64"/>
+        <field name="found"     type="bool"/>
+        <field name="code"      type="string"/>
+    </message>
+
+    <message name="ShaderBlockGraph">
+        <field name="shaderUID" type="uint64"/>
+        <field name="found"     type="bool"/>
+        <field name="nodes" type="string"/>
     </message>
 </schema>

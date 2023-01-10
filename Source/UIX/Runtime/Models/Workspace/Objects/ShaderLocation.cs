@@ -13,6 +13,11 @@ namespace Studio.Models.Workspace.Objects
         /// Line offset
         /// </summary>
         public int Line { get; set; }
+        
+        /// <summary>
+        /// File identifier
+        /// </summary>
+        public int FileUID { get; set; }
 
         /// <summary>
         /// Column offset

@@ -48,6 +48,7 @@ namespace Studio.ViewModels.Workspace.Listeners
                 {
                     SGUID = message.shaderGUID,
                     Line = (int)message.line,
+                    FileUID = (int)message.fileUID,
                     Column = (int)message.column
                 }
             };

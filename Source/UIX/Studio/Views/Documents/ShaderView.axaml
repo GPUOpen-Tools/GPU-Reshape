@@ -3,26 +3,56 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:avaloniaEdit="https://github.com/avaloniaui/avaloniaedit"
+             xmlns:r="using:Studio.Resources"
              xmlns:documents="clr-namespace:Studio.ViewModels.Documents"
+             xmlns:shader="clr-namespace:Studio.ViewModels.Shader"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Documents.ShaderView"
              x:DataType="documents:ShaderViewModel"
              x:CompileBindings="True">
     <Grid>
-        <avaloniaEdit:TextEditor
-            x:Name="Editor"
-            FontFamily="Consolas,Menlo,Monospace"
-            Foreground="#D4D4D4"
-            Background="{StaticResource TextBlockColor}"
-            HorizontalScrollBarVisibility="Auto"
-            VerticalScrollBarVisibility="Visible"
-            FontWeight="Light"
-            FontSize="14"
+        <StackPanel Orientation="Vertical" Background="{DynamicResource DockApplicationAccentBrushLow}">
+            <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
+
+            <Grid Margin="5,0,5,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" >
+                </StackPanel>
+                
+                <ItemsControl
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Left"
+                    Items="{Binding ShaderContentViewModels}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="shader:IShaderContentViewModel">
+                            <ToggleButton
+                                Margin="0,0,5,0" 
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Height="25"
+                                IsChecked="{Binding IsActive}">
+                                <PathIcon Data="{Binding Icon}" Width="15" />
+                            </ToggleButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                </StackPanel>
+            </Grid>
+
+            <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
+        </StackPanel>
+        
+        <controls:UniformViewHost 
+            Margin="0,27,0,0" 
             HorizontalAlignment="Stretch" 
-            VerticalAlignment="Stretch"
-            ShowLineNumbers="True"
-            IsReadOnly="True"
-            Text="...">
-        </avaloniaEdit:TextEditor>
+            VerticalAlignment="Stretch" 
+            DataContext="{Binding SelectedShaderContentViewModel}" />
     </Grid>
 </UserControl>

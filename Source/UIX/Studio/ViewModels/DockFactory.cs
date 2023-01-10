@@ -37,7 +37,7 @@ namespace Studio.ViewModels
 
             var leftDock = new ProportionalDock
             {
-                Proportion = 0.25,
+                Proportion = 0.20,
                 Orientation = Orientation.Vertical,
                 ActiveDockable = null,
                 IsCollapsable = false,
@@ -54,7 +54,7 @@ namespace Studio.ViewModels
 
             var rightDock = new ProportionalDock
             {
-                Proportion = 0.25,
+                Proportion = 0.20,
                 Orientation = Orientation.Vertical,
                 ActiveDockable = null,
                 IsCollapsable = true,

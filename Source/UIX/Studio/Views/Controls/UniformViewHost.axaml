@@ -5,5 +5,5 @@
              xmlns:reactui="http://reactiveui.net"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Controls.UniformViewHost">
-    <reactui:ViewModelViewHost VerticalAlignment="Stretch" ViewModel="{Binding $parent.DataContext}" x:Name="ViewHost"/>
+    <reactui:ViewModelViewHost PageTransition="{x:Null}" VerticalAlignment="Stretch" ViewModel="{Binding $parent.DataContext}" x:Name="ViewHost"/>
 </UserControl>

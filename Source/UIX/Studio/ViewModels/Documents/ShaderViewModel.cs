@@ -1,9 +1,15 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Linq;
+using System.Reactive.Linq;
+using System.Windows.Input;
 using Avalonia.Media;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
+using DynamicData.Binding;
 using ReactiveUI;
+using Studio.Extensions;
+using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Documents
@@ -20,14 +26,14 @@ namespace Studio.ViewModels.Documents
         }
 
         /// <summary>
-        /// Icon color
+        /// Current content view model
         /// </summary>
-        public Color? IconForeground
+        public IShaderContentViewModel SelectedShaderContentViewModel
         {
-            get => _iconForeground;
-            set => this.RaiseAndSetIfChanged(ref _iconForeground, value);
+            get => _selectedShaderContentViewModel;
+            set => this.RaiseAndSetIfChanged(ref _selectedShaderContentViewModel, value);
         }
-
+        
         /// <summary>
         /// Workspace within this overview
         /// </summary>
@@ -69,6 +75,71 @@ namespace Studio.ViewModels.Documents
         }
 
         /// <summary>
+        /// All view models
+        /// </summary>
+        public ObservableCollection<IShaderContentViewModel> ShaderContentViewModels { get; } = new();
+
+        /// <summary>
+        /// Icon color
+        /// </summary>
+        public Color? IconForeground
+        {
+            get => _iconForeground;
+            set => this.RaiseAndSetIfChanged(ref _iconForeground, value);
+        }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public ShaderViewModel()
+        {
+            // Binding
+            ShaderContentViewModels.ToObservableChangeSet(x => x)
+                .OnItemAdded(shaderContentViewModel =>
+                {
+                    // Bind properties
+                    this.BindProperty(x => x.PropertyCollection, x => shaderContentViewModel.PropertyCollection = x);
+                    this.BindProperty(x => x.Object, x => shaderContentViewModel.Object = x);
+
+                    // Bind active state change
+                    shaderContentViewModel
+                        .WhenAnyValue(x => x.IsActive)
+                        .Subscribe(x => OnSetContentViewModel(shaderContentViewModel, x));
+                })
+                .Subscribe();
+            
+            // Default view models
+            ShaderContentViewModels.AddRange(new IShaderContentViewModel[]
+            {
+                new CodeShaderContentViewModel(),
+                new ILShaderContentViewModel(),
+                new BlockGraphShaderContentViewModel()
+            });
+            
+            // Selected
+            ShaderContentViewModels[0].IsActive = true;
+        }
+
+        private void OnSetContentViewModel(IShaderContentViewModel shaderContentViewModel, bool state)
+        {
+            // Note: There's a binding bug somewhere with IsEnabled = !IsActive, so, this is a workaround
+            if (!state)
+            {
+                if (SelectedShaderContentViewModel == shaderContentViewModel)
+                {
+                    shaderContentViewModel.IsActive = true;
+                }
+                return;
+            }
+
+            // Update selected
+            SelectedShaderContentViewModel = shaderContentViewModel;
+            
+            // Disable rest
+            ShaderContentViewModels.Where(x => x != shaderContentViewModel).ForEach(x => x.IsActive = false);
+        }
+
+        /// <summary>
         /// Invoked when the shader has changed
         /// </summary>
         public void OnShaderChanged()
@@ -86,14 +157,19 @@ namespace Studio.ViewModels.Documents
         private UInt64 _guid;
 
         /// <summary>
-        /// Internal object
+        /// Internal selection state
         /// </summary>
-        private Workspace.Objects.ShaderViewModel? _object;
+        private IShaderContentViewModel _selectedShaderContentViewModel;
 
         /// <summary>
         /// Underlying view model
         /// </summary>
         private IPropertyViewModel? _propertyCollection;
+
+        /// <summary>
+        /// Internal object
+        /// </summary>
+        private Workspace.Objects.ShaderViewModel? _object;
         
         /// <summary>
         /// Internal icon

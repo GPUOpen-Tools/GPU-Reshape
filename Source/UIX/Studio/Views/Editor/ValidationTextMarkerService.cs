@@ -7,6 +7,8 @@ using Avalonia.Media;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using AvaloniaEdit.Utils;
+using Studio.Extensions;
+using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.Views.Editor
@@ -14,6 +16,11 @@ namespace Studio.Views.Editor
     public class ValidationTextMarkerService : DocumentColorizingTransformer, IBackgroundRenderer, ITextViewConnect
     {
         public TextDocument? Document { get; set; }
+        
+        /// <summary>
+        /// Current content view model
+        /// </summary>
+        public CodeShaderContentViewModel? ShaderContentViewModel { get; set; } 
 
         /// <summary>
         /// Invoked on line draws / colorization 
@@ -135,6 +142,19 @@ namespace Studio.Views.Editor
         }
 
         /// <summary>
+        /// Resummarize all validation objects
+        /// </summary>
+        public void ResumarizeValidationObjects()
+        {
+            // Remove lookups
+            _markers.Clear();
+            _segments.Clear();
+
+            // Add as new
+            ShaderContentViewModel?.Object?.ValidationObjects.ForEach(x => Add(x));
+        }
+
+        /// <summary>
         /// Remove a validation object
         /// </summary>
         /// <param name="validationObject"></param>
@@ -158,7 +178,7 @@ namespace Studio.Views.Editor
         /// Object to segment mapping
         /// </summary>
         private Dictionary<ValidationObject, ValidationTextSegment> _segments = new();
-
+        
         /// <summary>
         /// Underlying layer
         /// </summary>

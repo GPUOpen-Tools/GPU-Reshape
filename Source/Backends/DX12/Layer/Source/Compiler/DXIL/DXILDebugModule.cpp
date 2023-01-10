@@ -343,23 +343,19 @@ std::string_view DXILDebugModule::GetFilename() {
     return sourceFragments[0].filename;
 }
 
+std::string_view DXILDebugModule::GetSourceFilename(uint32_t fileUID) {
+    return sourceFragments.at(fileUID).filename;
+}
+
 uint32_t DXILDebugModule::GetFileCount() {
     return sourceFragments.size();
 }
 
 uint64_t DXILDebugModule::GetCombinedSourceLength(uint32_t fileUID) const {
-    uint64_t length = 0;
-
-    for (const SourceFragment& fragment : sourceFragments) {
-        length += fragment.contents.size();
-    }
-
-    return length;
+    return sourceFragments.at(fileUID).contents.length();
 }
 
 void DXILDebugModule::FillCombinedSource(uint32_t fileUID, char *buffer) const {
-    for (const SourceFragment& fragment : sourceFragments) {
-        std::memcpy(buffer, fragment.contents.data(), fragment.contents.length());
-        buffer += fragment.contents.length();
-    }
+    const SourceFragment& fragment = sourceFragments.at(fileUID);
+    std::memcpy(buffer, fragment.contents.data(), fragment.contents.length());
 }

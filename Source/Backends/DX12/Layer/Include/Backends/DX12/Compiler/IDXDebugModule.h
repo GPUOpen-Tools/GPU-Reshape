@@ -23,6 +23,10 @@ public:
     /// \return filename
     virtual std::string_view GetFilename() = 0;
 
+    /// Get the source filename
+    /// \return filename
+    virtual std::string_view GetSourceFilename(uint32_t fileUID) = 0;
+
     /// Get the number of files
     /// \return count
     virtual uint32_t GetFileCount() = 0;

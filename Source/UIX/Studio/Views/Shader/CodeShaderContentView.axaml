@@ -1,0 +1,52 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:avaloniaEdit="https://github.com/avaloniaui/avaloniaedit"
+             xmlns:r="using:Studio.Resources"
+             xmlns:documents="clr-namespace:Studio.ViewModels.Documents"
+             xmlns:shader="clr-namespace:Studio.ViewModels.Shader"
+             xmlns:svm="clr-namespace:Runtime.ViewModels.Shader;assembly=UIX.Studio.Runtime"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Studio.Views.Shader.CodeShaderContentView"
+             x:DataType="shader:CodeShaderContentViewModel"
+             x:CompileBindings="True">
+    <Grid ColumnDefinitions="150,4,*">
+        <Grid Grid.Column="0">
+            <TreeView 
+                x:Name="FileViewTree"
+                SelectedItem="{Binding SelectedShaderFileViewModel}"
+                Items="{Binding Object.FileViewModels}">
+                <TreeView.Styles>
+                    <Style Selector="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="True"/>
+                    </Style>
+                </TreeView.Styles>
+                <TreeView.ItemTemplate>
+                    <DataTemplate DataType="svm:ShaderFileViewModel">
+                        <TextBlock Text="{Binding Filename}"/>
+                    </DataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+        </Grid>
+
+        <GridSplitter Grid.Column="1" />
+
+        <Grid Grid.Column="2">
+            <avaloniaEdit:TextEditor
+                x:Name="Editor"
+                FontFamily="Consolas,Menlo,Monospace"
+                Foreground="#D4D4D4"
+                Background="{StaticResource TextBlockColor}"
+                HorizontalScrollBarVisibility="Auto"
+                VerticalScrollBarVisibility="Visible"
+                FontWeight="Light"
+                FontSize="14"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                ShowLineNumbers="True"
+                IsReadOnly="True"
+                Text="..." />
+        </Grid>
+    </Grid>
+</UserControl>
