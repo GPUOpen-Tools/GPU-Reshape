@@ -78,7 +78,8 @@ namespace Features.ResourceBounds.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds"
+                        Content = $"{(message.Flat.isTexture == 1 ? "Texture" : "Buffer")} {(message.Flat.isWrite == 1 ? "write" : "read")} out of bounds",
+                        Count = 1
                     };
 
                     // Shader view model injection

@@ -64,6 +64,9 @@ namespace Studio.ViewModels.Workspace.Objects
         /// </summary>
         private string _content = string.Empty;
 
+        /// <summary>
+        /// Internal segment
+        /// </summary>
         private ShaderSourceSegment? _segment;
 
         /// <summary>

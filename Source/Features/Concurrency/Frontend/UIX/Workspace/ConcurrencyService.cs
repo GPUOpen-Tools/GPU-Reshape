@@ -78,7 +78,8 @@ namespace Features.Concurrency.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Race condition detected"
+                        Content = $"Race condition detected",
+                        Count = 1
                     };
 
                     // Shader view model injection

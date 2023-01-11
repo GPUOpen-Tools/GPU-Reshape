@@ -81,7 +81,8 @@ namespace Features.Initialization.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Uninitialized resource read"
+                        Content = $"Uninitialized resource read",
+                        Count = 1
                     };
 
                     // Shader view model injection

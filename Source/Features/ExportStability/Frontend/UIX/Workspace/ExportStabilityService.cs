@@ -78,7 +78,8 @@ namespace Features.ResourceBounds.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Exporting {(message.Flat.isNaN == 1 ? "NaN" : "Inf")}"
+                        Content = $"Exporting {(message.Flat.isNaN == 1 ? "NaN" : "Inf")}",
+                        Count = 1
                     };
 
                     // Shader view model injection

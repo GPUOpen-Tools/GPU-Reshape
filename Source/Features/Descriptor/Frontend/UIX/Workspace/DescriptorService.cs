@@ -81,7 +81,8 @@ namespace Features.Descriptor.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Descriptor mismatch detected, shader expected {typeLookup[message.Flat.compileType]} but received {typeLookup[message.Flat.runtimeType]}"
+                        Content = $"Descriptor mismatch detected, shader expected {typeLookup[message.Flat.compileType]} but received {typeLookup[message.Flat.runtimeType]}",
+                        Count = 1
                     };
 
                     // Shader view model injection
