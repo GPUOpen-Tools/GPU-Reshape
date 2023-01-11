@@ -14,6 +14,7 @@ using Runtime.Models.Objects;
 using Runtime.ViewModels.Objects;
 using Studio.Models.Logging;
 using Studio.Services;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace;
 
 namespace Studio.ViewModels.Tools
@@ -84,10 +85,8 @@ namespace Studio.ViewModels.Tools
             
             if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                layoutViewModel.OpenDocument?.Execute(new Documents.ShaderViewModel()
+                layoutViewModel.OpenDocument?.Execute( new ShaderDescriptor()
                 {
-                    Id = $"Shader{shaderIdentifierViewModel.GUID}",
-                    Title = $"Shader (loading)",
                     PropertyCollection = _workspaceViewModel?.PropertyCollection,
                     GUID = shaderIdentifierViewModel.GUID
                 });

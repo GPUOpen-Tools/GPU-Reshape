@@ -10,6 +10,7 @@ using ReactiveUI;
 using Studio.Models.Workspace.Listeners;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -88,10 +89,8 @@ namespace Studio.ViewModels.Workspace.Properties
             // Create document
             if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                layoutViewModel.OpenDocument?.Execute(new Documents.ShaderViewModel()
+                layoutViewModel.OpenDocument?.Execute(new ShaderDescriptor()
                 {
-                    Id = $"Shader{validationObject.Segment.Location.SGUID}",
-                    Title = $"Shader (loading)",
                     PropertyCollection = Parent,
                     GUID = validationObject.Segment.Location.SGUID
                 });

@@ -3,12 +3,13 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Instrumentation;
 using Studio.ViewModels.Workspace.Listeners;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel, IInstrumentableObject
+    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel, IInstrumentableObject, IDescriptorObject
     {
         /// <summary>
         /// Name of this property
@@ -37,6 +38,11 @@ namespace Studio.ViewModels.Workspace.Properties
         /// All services
         /// </summary>
         public ISourceList<IPropertyService> Services { get; set; } = new SourceList<IPropertyService>();
+
+        /// <summary>
+        /// Document descriptor
+        /// </summary>
+        public IDescriptor Descriptor { get; set; }
 
         /// <summary>
         /// View model associated with this property

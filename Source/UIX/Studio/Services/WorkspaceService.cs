@@ -7,6 +7,7 @@ using Avalonia;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace;
 
 namespace Studio.Services
@@ -43,7 +44,10 @@ namespace Studio.Services
             // Submit document
             if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                layoutViewModel.OpenDocument?.Execute(workspaceViewModel.PropertyCollection);
+                layoutViewModel.OpenDocument?.Execute(new WorkspaceOverviewDescriptor()
+                {
+                    Workspace = workspaceViewModel 
+                });
             }
             
             // Diagnostic

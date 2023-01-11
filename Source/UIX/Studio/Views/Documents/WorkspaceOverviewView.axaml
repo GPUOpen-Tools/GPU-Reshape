@@ -22,11 +22,11 @@
                         <TextBlock Text="GUID"/>
                     </StackPanel>
                     <StackPanel Orientation="Vertical" Grid.Column="1">
-                        <TextBlock Text="{Binding Workspace.ConnectionViewModel.Application.Name, FallbackValue=[Application]}"/>
-                        <TextBlock Text="{Binding Workspace.ConnectionViewModel.Application.Process, FallbackValue=[Process]}"/>
-                        <TextBlock Text="{Binding Workspace.ConnectionViewModel.Application.Pid, FallbackValue=[Process ID]}"/>
-                        <TextBlock Text="{Binding Workspace.ConnectionViewModel.LocalTime, FallbackValue=[LocalTime]}"/>
-                        <TextBlock Text="{Binding Workspace.ConnectionViewModel.Application.Guid, FallbackValue=[GUID]}"/>
+                        <TextBlock Text="{Binding Workspace.Connection.Application.Name, FallbackValue=[Application]}"/>
+                        <TextBlock Text="{Binding Workspace.Connection.Application.Process, FallbackValue=[Process]}"/>
+                        <TextBlock Text="{Binding Workspace.Connection.Application.Pid, FallbackValue=[Process ID]}"/>
+                        <TextBlock Text="{Binding Workspace.Connection.LocalTime, FallbackValue=[LocalTime]}"/>
+                        <TextBlock Text="{Binding Workspace.Connection.Application.Guid, FallbackValue=[GUID]}"/>
                     </StackPanel>
                 </Grid>
             </controls:WorkspacePropertyView>

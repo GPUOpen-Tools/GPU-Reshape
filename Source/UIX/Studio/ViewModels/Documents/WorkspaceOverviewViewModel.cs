@@ -4,12 +4,33 @@ using Avalonia.Media;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using ReactiveUI;
+using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Documents
 {
     public class WorkspaceOverviewViewModel : Document, IDocumentViewModel
     {
+        /// <summary>
+        /// Descriptor setter, constructs the top document from given descriptor
+        /// </summary>
+        public IDescriptor? Descriptor
+        {
+            set
+            {
+                // Valid descriptor?
+                if (value is not WorkspaceOverviewDescriptor { } descriptor)
+                {
+                    return;
+                }
+                
+                // Construct from descriptor
+                Id = "Workspace";
+                Title = $"{descriptor.Workspace?.Connection?.Application?.DecoratedName ?? "Invalid"}";
+                Workspace = descriptor.Workspace;
+            }
+        }
+
         /// <summary>
         /// Document icon
         /// </summary>
@@ -31,7 +52,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Workspace within this overview
         /// </summary>
-        public WorkspaceCollectionViewModel? Workspace
+        public IWorkspaceViewModel? Workspace
         {
             get => _workspaceViewModel;
             set
@@ -52,7 +73,7 @@ namespace Studio.ViewModels.Documents
         public void OnWorkspaceChanged()
         {
             // Filter the owning collection properties
-            _workspaceViewModel?.Properties.Connect()
+            _workspaceViewModel?.PropertyCollection.Properties.Connect()
                 .OnItemAdded(x =>
                 {
                     if (x.Visibility.HasFlag(PropertyVisibility.WorkspaceOverview))
@@ -70,7 +91,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Underlying view model
         /// </summary>
-        private WorkspaceCollectionViewModel? _workspaceViewModel;
+        private IWorkspaceViewModel? _workspaceViewModel;
         
         /// <summary>
         /// Internal icon

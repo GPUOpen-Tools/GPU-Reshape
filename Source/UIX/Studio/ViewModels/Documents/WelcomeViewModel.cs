@@ -7,6 +7,17 @@ namespace Studio.ViewModels.Documents
     public class WelcomeViewModel : Document, IDocumentViewModel
     {
         /// <summary>
+        /// Descriptor setter, constructs the top document from given descriptor
+        /// </summary>
+        public IDescriptor? Descriptor
+        {
+            set
+            {
+                
+            }
+        }
+        
+        /// <summary>
         /// Document icon
         /// </summary>
         public StreamGeometry? Icon

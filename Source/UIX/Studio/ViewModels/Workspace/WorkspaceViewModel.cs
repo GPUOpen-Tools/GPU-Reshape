@@ -2,6 +2,7 @@
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Properties;
@@ -48,7 +49,12 @@ namespace Studio.ViewModels.Workspace
             // Create collection
             _properties = new WorkspaceCollectionViewModel()
             {
-                ConnectionViewModel = _connection
+                ConnectionViewModel = _connection,
+                
+                Descriptor = new WorkspaceOverviewDescriptor()
+                {
+                    Workspace = this
+                }
             };
         }
 

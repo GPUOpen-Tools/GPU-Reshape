@@ -7,6 +7,8 @@ using Avalonia.Media;
 using DynamicData;
 using ReactiveUI;
 using Studio.Services;
+using Studio.ViewModels.Documents;
+using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -86,9 +88,14 @@ namespace Studio.ViewModels.Controls
         /// </summary>
         private void OnOpenDocument()
         {
-            if (ViewModel != null && App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            if (ViewModel is not IDescriptorObject {} descriptorObject)
             {
-                layoutViewModel.OpenDocument?.Execute(ViewModel);
+                return;
+            }
+            
+            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            {
+                layoutViewModel.OpenDocument?.Execute(descriptorObject.Descriptor);
             }
         }
 

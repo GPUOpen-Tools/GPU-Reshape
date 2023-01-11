@@ -17,6 +17,26 @@ namespace Studio.ViewModels.Documents
     public class ShaderViewModel : Document, IDocumentViewModel
     {
         /// <summary>
+        /// Descriptor setter, constructs the top document from given descriptor
+        /// </summary>
+        public IDescriptor? Descriptor
+        {
+            set
+            {
+                // Valid descriptor?
+                if (value is not ShaderDescriptor { } descriptor)
+                {
+                    return;
+                }
+
+                Id = $"Shader{descriptor.GUID}";
+                Title = $"Loading ...";
+                PropertyCollection = descriptor.PropertyCollection;
+                GUID = descriptor.GUID;
+            }
+        }
+
+        /// <summary>
         /// Document icon
         /// </summary>
         public StreamGeometry? Icon
@@ -65,11 +85,10 @@ namespace Studio.ViewModels.Documents
             set
             {
                 this.RaiseAndSetIfChanged(ref _object, value);
-
-                // Set title
+                
                 if (_object != null)
                 {
-                    Title = _object.Filename;
+                    OnObjectChanged();
                 }
             }
         }
@@ -118,6 +137,17 @@ namespace Studio.ViewModels.Documents
             
             // Selected
             ShaderContentViewModels[0].IsActive = true;
+        }
+
+        /// <summary>
+        /// Invoked on object changes
+        /// </summary>
+        private void OnObjectChanged()
+        {
+            _object!.WhenAnyValue(x => x.Filename).Where(x => x != string.Empty).Subscribe(x =>
+            {
+                Title = $"{_object!.Filename} ({_object.GUID})";
+            });
         }
 
         private void OnSetContentViewModel(IShaderContentViewModel shaderContentViewModel, bool state)

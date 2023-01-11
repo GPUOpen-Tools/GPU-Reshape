@@ -47,6 +47,9 @@ namespace Studio
         {
             AvaloniaLocator locator = AvaloniaLocator.CurrentMutable;
             
+            // Locator
+            locator.BindToSelf<Services.ILocatorService>(new Services.LocatorService());
+            
             // Logging host
             locator.BindToSelf<Services.ILoggingService>(new Services.LoggingService());
 

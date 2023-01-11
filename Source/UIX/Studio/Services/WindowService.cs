@@ -26,12 +26,12 @@ namespace Studio.Services
             }
 
             // Attempt to resolve
-            Window? window = _locator.ResolveWindow(viewModel);
+            Window? window = _locator?.InstantiateDerived<Window>(viewModel);
             if (window == null)
             {
                 return;
             }
-            
+
             // Properties
             window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
@@ -51,8 +51,8 @@ namespace Studio.Services
         }
 
         /// <summary>
-        /// Internal locator
+        /// Locator service
         /// </summary>
-        private UniformWindowLocator _locator = new();
+        private ILocatorService? _locator = App.Locator.GetService<ILocatorService>();
     }
 }
