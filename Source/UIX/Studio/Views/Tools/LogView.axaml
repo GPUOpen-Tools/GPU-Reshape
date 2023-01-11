@@ -23,7 +23,7 @@
                 <PathIcon Data="{StaticResource FilterMultiple}" Width="15" />
 
                 <Button.Flyout>
-                    <MenuFlyout Placement="Right">
+                    <MenuFlyout Placement="RightEdgeAlignedTop">
                         <MenuItem Command="{Binding ToggleInfo}">
                             <MenuItem.Header>
                                 <StackPanel Orientation="Horizontal">
@@ -60,6 +60,12 @@
             <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" Command="{Binding Clear}">
                 <PathIcon Data="{StaticResource Close}" Width="12" />
             </Button>
+        </StackPanel>
+        
+        <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" HorizontalAlignment="Left">
+            <ToggleButton Background="Transparent" Padding="0" IsChecked="{Binding IsScrollLock}" BorderThickness="0" Width="20" Height="22">
+                <PathIcon Data="{StaticResource ArrowDown}" Width="12" />
+            </ToggleButton>
         </StackPanel>
 
         <ListBox x:Name="LogListbox" Margin="20 0 0 0" Items="{Binding FilteredEvents}">

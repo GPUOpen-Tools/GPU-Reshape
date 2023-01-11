@@ -17,7 +17,7 @@ namespace Studio.ViewModels.Tools
         /// Refresh all items
         /// </summary>
         public ICommand Clear { get; }
-
+        
         /// <summary>
         /// Toggle the info state
         /// </summary>
@@ -58,6 +58,15 @@ namespace Studio.ViewModels.Tools
         {
             get => _isShowError;
             set => this.RaiseAndSetIfChanged(ref _isShowError, value);
+        }
+
+        /// <summary>
+        /// Should error messages be shown
+        /// </summary>
+        public bool IsScrollLock
+        {
+            get => _isScrollLock;
+            set => this.RaiseAndSetIfChanged(ref _isScrollLock, value);
         }
 
         /// <summary>
@@ -169,5 +178,10 @@ namespace Studio.ViewModels.Tools
         /// Internal error state
         /// </summary>
         private bool _isShowError = true;
+
+        /// <summary>
+        /// Internal scroll state
+        /// </summary>
+        private bool _isScrollLock = true;
     }
 }

@@ -14,7 +14,7 @@
         <Color x:Key="SystemBaseMediumLowColor">#3B3B3B</Color>
         <Color x:Key="SystemAltHighColor">#323232</Color>
         <Color x:Key="SystemBaseHighColor">#D8D8D8</Color>
-
+        
         <!-- Info colors -->
         <Color x:Key="ErrorColor">#8f2424</Color>
 
@@ -44,6 +44,7 @@
         <SolidColorBrush x:Key="TabSelectedBrush">#4A4D51</SolidColorBrush>
         <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#3B3B3B" />
         <SolidColorBrush x:Key="TextBlockColor" Color="#262626" />
+        <SolidColorBrush x:Key="ToggleButtonCheckColorBrush">#2C2C2C</SolidColorBrush>
     </Styles.Resources>
 
     <!-- Base style -->
@@ -89,6 +90,14 @@
 
     <Style Selector="MenuItem /template/ ContentPresenter#PART_HeaderPresenter">
         <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    
+    <Style Selector="ToggleButton:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ToggleButtonCheckColorBrush}" />
+    </Style>
+    
+    <Style Selector="ToggleButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ToggleButtonCheckColorBrush}" />
     </Style>
 
     <Style Selector="controls|ContextMenuView">

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Reactive;
 using System.Reactive.Linq;
+using DynamicData;
+using ReactiveUI;
 
 namespace Studio.Extensions
 {
@@ -15,6 +17,17 @@ namespace Studio.Extensions
         public static IObservable<Unit> ToSignal<T>(this IObservable<T> source)
         {
             return source.Select(_ => Unit.Default);
+        }
+
+        /// <summary>
+        /// Cast a nullable observable
+        /// </summary>
+        /// <param name="source">source observable</param>
+        /// <typeparam name="T">target type</typeparam>
+        /// <returns>always valid</returns>
+        public static IObservable<T> CastNullable<T>(this IObservable<object?> source) where T : class
+        {
+            return source.WhereNotNull().Cast<T>().WhereNotNull();
         }
     }
 }
