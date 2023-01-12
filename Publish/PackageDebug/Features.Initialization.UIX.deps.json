@@ -8,8 +8,8 @@
     ".NETCoreApp,Version=v5.0": {
       "Features.Initialization.UIX/1.0.0": {
         "dependencies": {
-          "Avalonia": "0.10.14",
-          "Avalonia.ReactiveUI": "0.10.14",
+          "Avalonia": "0.10.18",
+          "Avalonia.ReactiveUI": "0.10.18",
           "Features.Initialization.Backend.DotNet": "0.0.0.0",
           "Libraries.Backend.Schema.DotNet": "0.0.0.0",
           "Libraries.Bridge.DotNet": "0.0.0.0",
@@ -20,9 +20,9 @@
           "Features.Initialization.UIX.dll": {}
         }
       },
-      "Avalonia/0.10.14": {
+      "Avalonia/0.10.18": {
         "dependencies": {
-          "Avalonia.Remote.Protocol": "0.10.14",
+          "Avalonia.Remote.Protocol": "0.10.18",
           "JetBrains.Annotations": "10.3.0",
           "System.ComponentModel.Annotations": "4.5.0",
           "System.Memory": "4.5.3",
@@ -32,97 +32,97 @@
         },
         "runtime": {
           "lib/netcoreapp2.0/Avalonia.Animation.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Base.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Controls.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.DesignerSupport.dll": {
             "assemblyVersion": "0.7.0.0",
             "fileVersion": "0.7.0.0"
           },
           "lib/netcoreapp2.0/Avalonia.DesktopRuntime.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Dialogs.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Input.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Interactivity.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Layout.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Markup.Xaml.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Markup.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.MicroCom.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.OpenGL.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Styling.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Themes.Default.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Themes.Fluent.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.Visuals.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           },
           "lib/netcoreapp2.0/Avalonia.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           }
         }
       },
-      "Avalonia.ReactiveUI/0.10.14": {
+      "Avalonia.ReactiveUI/0.10.18": {
         "dependencies": {
-          "Avalonia": "0.10.14",
+          "Avalonia": "0.10.18",
           "ReactiveUI": "13.2.10",
           "System.Reactive": "5.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/Avalonia.ReactiveUI.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           }
         }
       },
-      "Avalonia.Remote.Protocol/0.10.14": {
+      "Avalonia.Remote.Protocol/0.10.18": {
         "runtime": {
           "lib/netstandard2.0/Avalonia.Remote.Protocol.dll": {
-            "assemblyVersion": "0.10.14.0",
-            "fileVersion": "0.10.14.0"
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
           }
         }
       },
@@ -290,6 +290,14 @@
             "fileVersion": "1.0.0.0"
           }
         }
+      },
+      "Dock.Model/0.10.18.0": {
+        "runtime": {
+          "Dock.Model.dll": {
+            "assemblyVersion": "0.10.18.0",
+            "fileVersion": "0.10.18.0"
+          }
+        }
       }
     }
   },
@@ -299,26 +307,26 @@
       "serviceable": false,
       "sha512": ""
     },
-    "Avalonia/0.10.14": {
+    "Avalonia/0.10.18": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-/F6Shs6CfsKWiMavBvSCu6j9hVWWOH6aCpzPcQHP75gM08aDqQ93dityGxaAabmbZpCqnDILP9MPY9I/fYovGA==",
-      "path": "avalonia/0.10.14",
-      "hashPath": "avalonia.0.10.14.nupkg.sha512"
+      "sha512": "sha512-hA7US1I75f+ztOyqFWXdzkyJDU9FxcMktfmnmey2uPb+9Cn2GSTU+/7t08CMAyMxuCBpWjlOwkdCZh1cPFWHpg==",
+      "path": "avalonia/0.10.18",
+      "hashPath": "avalonia.0.10.18.nupkg.sha512"
     },
-    "Avalonia.ReactiveUI/0.10.14": {
+    "Avalonia.ReactiveUI/0.10.18": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-eB7rt9t+tDEeUTpoyEonlgbUEoQc212e1r0uwTMExfbOUt+3EDizZ9EwAdaSFRMlW1IaEgbjPg+ZL4LYXOxABA==",
-      "path": "avalonia.reactiveui/0.10.14",
-      "hashPath": "avalonia.reactiveui.0.10.14.nupkg.sha512"
+      "sha512": "sha512-1mAz+ll9/RLUEvkLLO20k196/gVmAHLwubIuy+fe07cS/LN9QkgsnODTFpsinUB0PLmIhwmmGWBsF5k+Mgnz2Q==",
+      "path": "avalonia.reactiveui/0.10.18",
+      "hashPath": "avalonia.reactiveui.0.10.18.nupkg.sha512"
     },
-    "Avalonia.Remote.Protocol/0.10.14": {
+    "Avalonia.Remote.Protocol/0.10.18": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-UPI5ZevjzImAQIf5DIOiukJndbxTKcDeEQ4FUkjVWGeXM/CBvM/wvhI77fqh5MUEDTMyAw2mtzKzEpTcaR8NoQ==",
-      "path": "avalonia.remote.protocol/0.10.14",
-      "hashPath": "avalonia.remote.protocol.0.10.14.nupkg.sha512"
+      "sha512": "sha512-YRymqWJWBDTM+o1CRs5ymAXQpd26erystkyavPgk10bWR4o3D657yFp0oCdfJek2Eba+agazcbZEmB8rdO8eiA==",
+      "path": "avalonia.remote.protocol/0.10.18",
+      "hashPath": "avalonia.remote.protocol.0.10.18.nupkg.sha512"
     },
     "DynamicData/7.1.1": {
       "type": "package",
@@ -481,6 +489,11 @@
       "sha512": ""
     },
     "UIX.Studio.Runtime/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Dock.Model/0.10.18.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""

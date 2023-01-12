@@ -103,6 +103,8 @@ Please see *Developmental configuration options* below for additional options.
 - **Projektanker.Icons.Avalonia/3.7.0**
 - **XamlNameReferenceGenerator/1.2.1**
 - **Avalonia.ReactiveUI.Events/0.10.14**
+- **AvaloniaGraphControl/0.10.13**
+- **Avalonia.Controls.PanAndZoom/0.14.0**
 
 ## Test dependencies
 
