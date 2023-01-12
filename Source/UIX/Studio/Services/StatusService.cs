@@ -18,6 +18,7 @@ namespace Studio.Services
             ViewModels.AddRange(new IStatusViewModel[]
             {
                 new LogStatusViewModel(),
+                new NetworkStatusViewModel(),
                 new InstrumentationStatusViewModel()
             });
         }

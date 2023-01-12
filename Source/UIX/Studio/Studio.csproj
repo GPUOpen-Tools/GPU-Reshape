@@ -122,6 +122,10 @@
         <DependentUpon>BlockGraphShaderContentView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Status\NetworkStatusView.axaml.cs">
+        <DependentUpon>NetworkStatusView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

@@ -152,8 +152,12 @@ uint64_t RemoteClientBridge::OnReadAsync(const void *data, uint64_t size) {
         memoryBridge.Commit();
     }
 
+    // Determine byte count
+    const size_t bytes = sizeof(MessageStreamHeaderProtocol) + protocol->size;
+    info.bytesRead += bytes;
+
     // Consume entire stream
-    return sizeof(MessageStreamHeaderProtocol) + protocol->size;
+    return bytes;
 }
 
 void RemoteClientBridge::Register(MessageID mid, const ComRef<IBridgeListener> &listener) {
@@ -180,6 +184,10 @@ IMessageStorage *RemoteClientBridge::GetOutput() {
     return &storage;
 }
 
+BridgeInfo RemoteClientBridge::GetInfo() {
+    return info;
+}
+
 void RemoteClientBridge::Commit() {
     // Get number of streams
     uint32_t streamCount;
@@ -198,6 +206,10 @@ void RemoteClientBridge::Commit() {
         // Send header and stream data (sync)
         client->WriteAsync(&protocol, sizeof(protocol));
         client->WriteAsync(stream.GetDataBegin(), protocol.size);
+
+        // Tracking
+        info.bytesWritten += sizeof(protocol);
+        info.bytesWritten += protocol.size;
     }
 
     // Commit all inbound streams

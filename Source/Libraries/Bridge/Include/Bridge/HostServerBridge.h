@@ -28,6 +28,7 @@ public:
     void Deregister(const ComRef<IBridgeListener>& listener) override;
     IMessageStorage *GetInput() override;
     IMessageStorage *GetOutput() override;
+    BridgeInfo GetInfo() override;
     void Commit() override;
 
 private:
@@ -46,6 +47,9 @@ private:
 
     /// Piggybacked memory bridge
     MemoryBridge memoryBridge;
+
+    /// Info across lifetime
+    BridgeInfo info;
 
     /// Cache for commits
     std::vector<MessageStream> streamCache;

@@ -82,7 +82,7 @@ namespace Features.Initialization.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Content = $"Uninitialized resource read",
-                        Count = 1
+                        Count = kv.Value
                     };
 
                     // Shader view model injection

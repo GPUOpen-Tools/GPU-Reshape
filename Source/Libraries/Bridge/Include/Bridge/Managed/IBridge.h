@@ -4,6 +4,7 @@
 #include <Bridge/IBridge.h>
 #include "IBridgeListener.h"
 #include "IMessageStorage.h"
+#include "BridgeInfo.h"
 
 namespace Bridge::CLR {
     public interface class IBridge {
@@ -24,6 +25,9 @@ namespace Bridge::CLR {
         /// Deregister an unspecialized listener for ordered messages
         /// \param listener the listener to be removed
         virtual void Deregister(IBridgeListener^listener) = 0;
+
+        /// Get the bridge diagnostic info
+        virtual BridgeInfo^ GetInfo() = 0;
 
         /// Get the input storage
         virtual IMessageStorage ^ GetInput() = 0;

@@ -59,8 +59,12 @@ uint64_t HostServerBridge::OnReadAsync(const void *data, uint64_t size) {
     stream.SetData(static_cast<const uint8_t*>(data) + sizeof(MessageStreamHeaderProtocol), protocol->size, 0);
     memoryBridge.GetOutput()->AddStream(stream);
 
+    // Determine byte count
+    const size_t bytes = sizeof(MessageStreamHeaderProtocol) + protocol->size;
+    info.bytesRead += bytes;
+
     // Consume entire stream
-    return sizeof(MessageStreamHeaderProtocol) + protocol->size;
+    return bytes;
 }
 
 void HostServerBridge::Register(MessageID mid, const ComRef<IBridgeListener>& listener) {
@@ -87,6 +91,10 @@ IMessageStorage *HostServerBridge::GetOutput() {
     return &storage;
 }
 
+BridgeInfo HostServerBridge::GetInfo() {
+    return info;
+}
+
 void HostServerBridge::Commit() {
     // Endpoint must be in a good state
     if (!server->IsOpen()) {
@@ -110,6 +118,10 @@ void HostServerBridge::Commit() {
         // Send header and stream data (sync)
         server->BroadcastServerAsync(&protocol, sizeof(protocol));
         server->BroadcastServerAsync(stream.GetDataBegin(), protocol.size);
+
+        // Tracking
+        info.bytesWritten += sizeof(protocol);
+        info.bytesWritten += protocol.size;
     }
 
     // Commit all inbound streams

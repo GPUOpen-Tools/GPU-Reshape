@@ -31,6 +31,7 @@ namespace Bridge::CLR {
         virtual void Deregister(IBridgeListener^ listener) sealed;
         virtual IMessageStorage^ GetInput() sealed;
         virtual IMessageStorage^ GetOutput() sealed;
+        virtual BridgeInfo^ GetInfo() sealed;
         virtual void Commit() sealed;
 
         /// Enables auto commits on remote appends

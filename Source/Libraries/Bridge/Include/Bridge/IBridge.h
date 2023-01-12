@@ -1,5 +1,8 @@
 #pragma once
 
+// Bridge
+#include "BridgeInfo.h"
+
 // Common
 #include <Common/IComponent.h>
 #include <Common/ComRef.h>
@@ -33,6 +36,9 @@ public:
     /// Deregister an unspecialized listener for ordered messages
     /// \param listener the listener to be removed
     virtual void Deregister(const ComRef<IBridgeListener>& listener) = 0;
+
+    /// Get the bridge info
+    virtual BridgeInfo GetInfo() = 0;
 
     /// Get the input storage
     virtual IMessageStorage* GetInput() = 0;

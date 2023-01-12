@@ -79,7 +79,7 @@ namespace Features.Concurrency.UIX.Workspace
                     var validationObject = new ValidationObject()
                     {
                         Content = $"Race condition detected",
-                        Count = 1
+                        Count = kv.Value
                     };
 
                     // Shader view model injection

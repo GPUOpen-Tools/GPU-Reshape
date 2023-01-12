@@ -35,6 +35,7 @@ public:
     void Deregister(const ComRef<IBridgeListener>& listener) override;
     IMessageStorage *GetInput() override;
     IMessageStorage *GetOutput() override;
+    BridgeInfo GetInfo() override;
     void Commit() override;
 
     /// Enables auto commits on remote appends
@@ -71,6 +72,9 @@ private:
 
     /// Piggybacked memory bridge
     MemoryBridge memoryBridge;
+
+    /// Info across lifetime
+    BridgeInfo info;
 
     /// Commit when streams are added
     bool commitOnAppend = false;

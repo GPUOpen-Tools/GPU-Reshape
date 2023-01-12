@@ -58,6 +58,9 @@ namespace Studio
 
             // Hosts all live workspaces
             locator.BindToSelf<Services.IWorkspaceService>(new Services.WorkspaceService());
+            
+            // Locator
+            locator.BindToSelf<Services.NetworkDiagnosticService>(new Services.NetworkDiagnosticService());
 
             // Hosts all status objects
             locator.BindToSelf<Services.IStatusService>(new Services.StatusService());

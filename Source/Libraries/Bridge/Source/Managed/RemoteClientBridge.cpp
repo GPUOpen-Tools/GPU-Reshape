@@ -77,6 +77,16 @@ Bridge::CLR::IMessageStorage ^ Bridge::CLR::RemoteClientBridge::GetOutput() {
     return gcnew BridgeMessageStorage(_private->bridge->GetOutput());
 }
 
+Bridge::CLR::BridgeInfo^ Bridge::CLR::RemoteClientBridge::GetInfo() {
+    const::BridgeInfo _privateInfo = _private->bridge->GetInfo();
+
+    // To managed
+    BridgeInfo^ info = gcnew BridgeInfo;
+    info->bytesWritten = _privateInfo.bytesWritten;
+    info->bytesRead = _privateInfo.bytesRead;
+    return info;
+}
+
 void Bridge::CLR::RemoteClientBridge::Commit() {
     _private->bridge->Commit();
 }

@@ -19,6 +19,7 @@ public:
     void Deregister(const ComRef<IBridgeListener>& listener) override;
     IMessageStorage *GetInput() override;
     IMessageStorage *GetOutput() override;
+    BridgeInfo GetInfo() override;
     void Commit() override;
 
 private:

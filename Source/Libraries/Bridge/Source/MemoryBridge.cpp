@@ -37,6 +37,11 @@ IMessageStorage *MemoryBridge::GetOutput() {
     return &sharedStorage;
 }
 
+BridgeInfo MemoryBridge::GetInfo() {
+    // Memory bridges do not keep track of written data
+    return {};
+}
+
 void MemoryBridge::Commit() {
     MutexGuard guard(mutex);
 

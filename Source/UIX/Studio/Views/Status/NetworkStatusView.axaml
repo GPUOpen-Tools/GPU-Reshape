@@ -1,0 +1,21 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Studio.ViewModels.Status"
+             xmlns:vc="using:Studio.ValueConverters"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
+             VerticalAlignment="Stretch"
+             mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="20"
+             x:Class="Studio.Views.Status.NetworkStatusView"
+             x:DataType="vm:NetworkStatusViewModel">
+    <UserControl.DataContext>
+        <vm:NetworkStatusViewModel />
+    </UserControl.DataContext>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 0 15 0">
+        <TextBlock VerticalAlignment="Center" Text="{Binding ReadAmount}" Margin="0 0 5 0" />
+        <PathIcon Data="{StaticResource Download}" Width="10" Opacity="{Binding ReadOpacity}" Margin="0 0 5 0" />
+        <TextBlock VerticalAlignment="Center" Text="{Binding WrittenAmount}" Margin="0 0 5 0" />
+        <PathIcon Data="{StaticResource Upload}" Width="10" Opacity="{Binding WriteOpacity}" />
+    </StackPanel>
+</UserControl>
