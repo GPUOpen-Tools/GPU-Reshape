@@ -45,6 +45,13 @@
         <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#3B3B3B" />
         <SolidColorBrush x:Key="TextBlockColor" Color="#262626" />
         <SolidColorBrush x:Key="ToggleButtonCheckColorBrush">#2C2C2C</SolidColorBrush>
+        
+        <!-- Connection strings -->
+        <Color x:Key="ConnectionKeyIP">#4C4C4C</Color>
+        <Color x:Key="ConnectionKeyPort">#290099</Color>
+        <Color x:Key="ConnectionKeyApplicationFilter">#083000</Color>
+        <Color x:Key="ConnectionKeyApplicationAPI">#610202</Color>
+        <Color x:Key="ConnectionKeyApplicationPID">#025e61</Color>
     </Styles.Resources>
 
     <!-- Base style -->

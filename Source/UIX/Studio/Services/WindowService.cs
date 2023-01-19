@@ -34,6 +34,7 @@ namespace Studio.Services
 
             // Properties
             window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            window.DataContext = viewModel;
 
             // Blocking
             window.ShowDialog(desktop.MainWindow);

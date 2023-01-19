@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Subjects;
+using System.Threading;
 using Avalonia;
 using Avalonia.Controls.Notifications;
 using Avalonia.Platform;
@@ -19,7 +21,7 @@ namespace Studio.ViewModels.Workspace
         /// Invoked during connection
         /// </summary>
         public ISubject<Unit> Connected { get; }
-        
+
         /// <summary>
         /// Invoked during connection rejection
         /// </summary>
@@ -63,10 +65,10 @@ namespace Studio.ViewModels.Workspace
             // Create subjects
             Connected = new Subject<Unit>();
             Refused = new Subject<Unit>();
-            
+
             // Create dispatcher local to the connection
             _dispatcher = new Dispatcher(AvaloniaLocator.Current.GetService<IPlatformThreadingInterface>());
-            
+
             // Create timer on main thread
             _timer = new DispatcherTimer(DispatcherPriority.Background)
             {
@@ -76,7 +78,7 @@ namespace Studio.ViewModels.Workspace
 
             // Subscribe tick
             _timer.Tick += OnTick;
-            
+
             // Must call start manually (a little vague)
             _timer.Start();
         }
@@ -96,45 +98,49 @@ namespace Studio.ViewModels.Workspace
         /// Connect synchronously
         /// </summary>
         /// <param name="ipvx">remote endpoint</param>
-        public void Connect(string ipvx)
+        /// <param name="port">optional</param>
+        public void Connect(string ipvx, int? port)
         {
             lock (this)
             {
+                // Close existing connection and cancel pending requests
+                _remote?.Stop();
+
                 // Create bridge
-                _remote = new Bridge.CLR.RemoteClientBridge();
+                if (_remote == null)
+                {
+                    // Create new RC bridge
+                    _remote = new RemoteClientBridge();
                 
-                // Always commit when remote append streams
-                _remote.SetCommitOnAppend(true);
+                    // Always commit when remote append streams
+                    _remote.SetCommitOnAppend(true);
+                
+                    // Set async handler
+                    _remote.SetAsyncConnectedDelegate(() =>
+                    {
+                        Connected.OnNext(Unit.Default);
+                    });
+                }
+
+                // Create config
+                var config = new EndpointConfig()
+                {
+                    applicationName = "Studio"
+                };
+
+                // Optional port
+                if (port.HasValue)
+                {
+                    config.sharedPort = (UInt32)port;
+                }
 
                 // Install against endpoint
-                bool state = _remote.Install(new Bridge.CLR.EndpointResolve()
+                _remote.InstallAsync(new EndpointResolve()
                 {
-                    config = new Bridge.CLR.EndpointConfig()
-                    {
-                        applicationName = "Studio"
-                    },
+                    config = config,
                     ipvxAddress = ipvx
                 });
-
-                // Invoke handlers
-                if (state)
-                {
-                    Connected.OnNext(Unit.Default);
-                }
-                else
-                {
-                    Refused.OnNext(Unit.Default);
-                }
             }
-        }
-
-        /// <summary>
-        /// Connect asynchronously
-        /// </summary>
-        /// <param name="ipvx">remote endpoint</param>
-        public void ConnectAsync(string ipvx)
-        {
-            _dispatcher.InvokeAsync(() => Connect(ipvx));
         }
 
         /// <summary>
@@ -158,7 +164,7 @@ namespace Studio.ViewModels.Workspace
             {
                 // Set info
                 Application = applicationInfo;
-                
+
                 // Pass down CLR
                 _remote?.RequestClientAsync(applicationInfo.Guid);
             }
@@ -190,7 +196,7 @@ namespace Studio.ViewModels.Workspace
             {
                 return;
             }
-            
+
             // Submit current bus
             Bridge?.GetOutput().AddStream(_sharedBus.Storage);
             Bridge?.Commit();
@@ -213,7 +219,7 @@ namespace Studio.ViewModels.Workspace
         /// Shared bus for convenient messaging
         /// </summary>
         private OrderedMessageView<ReadWriteMessageStream>? _sharedBus;
-        
+
         /// <summary>
         /// Internal underlying bridge
         /// </summary>

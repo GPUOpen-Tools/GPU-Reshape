@@ -1,24 +1,56 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Drawing;
+using System.Linq;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Bridge.CLR;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
-using Studio.ViewModels.Tools;
+using Runtime.Models.Connections;
+using Studio.Extensions;
+using Studio.Models.Workspace;
+using Studio.ViewModels.Connections;
+using Color = Avalonia.Media.Color;
 
 namespace Studio.ViewModels
 {
-    public class ConnectViewModel : ReactiveObject, IBridgeListener
+    public class ConnectViewModel : ReactiveObject, IBridgeListener, IActivatableViewModel
     {
         /// <summary>
         /// Connect to selected application
         /// </summary>
         public ICommand Connect { get; }
+
+        /// <summary>
+        /// VM activator
+        /// </summary>
+        public ViewModelActivator Activator { get; } = new();
+
+        /// <summary>
+        /// Current connection string
+        /// </summary>
+        public string ConnectionString
+        {
+            get => _connectionString;
+            set => this.RaiseAndSetIfChanged(ref _connectionString, value);
+        }
+
+        /// <summary>
+        /// Parsed connection query
+        /// </summary>
+        public ConnectionQueryViewModel? ConnectionQuery
+        {
+            get => _connectionQuery;
+            set => this.RaiseAndSetIfChanged(ref _connectionQuery, value);
+        }
 
         /// <summary>
         /// All resolved applications
@@ -29,7 +61,7 @@ namespace Studio.ViewModels
         /// User interaction during connection acceptance
         /// </summary>
         public Interaction<ConnectViewModel, bool> AcceptClient { get; }
-        
+
         /// <summary>
         /// Selected application for connection
         /// </summary>
@@ -47,7 +79,16 @@ namespace Studio.ViewModels
             get => _connectionStatus;
             set => this.RaiseAndSetIfChanged(ref _connectionStatus, value);
         }
-        
+
+        /// <summary>
+        /// All string decorators
+        /// </summary>
+        public SourceList<QueryAttributeDecorator> QueryDecorators
+        {
+            get => _queryDecorators;
+            set => this.RaiseAndSetIfChanged(ref _queryDecorators, value);
+        }
+
         public ConnectViewModel()
         {
             // Initialize connection status
@@ -55,15 +96,124 @@ namespace Studio.ViewModels
 
             // Create commands
             Connect = ReactiveCommand.Create(OnConnect);
-            
+
             // Create interactions
             AcceptClient = new();
-            
+
             // Subscribe
             _connectionViewModel.Connected.Subscribe(_ => OnRemoteConnected());
+
+            // Notify on query string change
+            this.WhenAnyValue(x => x.ConnectionString)
+                .Throttle(TimeSpan.FromMilliseconds(250))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(CreateConnectionQuery);
+
+            // Notify on query change
+            this.WhenAnyValue(x => x.ConnectionQuery)
+                .Throttle(TimeSpan.FromMilliseconds(750))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .WhereNotNull()
+                .Subscribe(CreateConnection);
+
+            // Cleanup
+            this.WhenDisposed(x =>
+            {
+                // Stop timer
+                _timer?.Stop();
+
+                // Register handler
+                _connectionViewModel.Bridge?.Deregister(this);
+            });
+        }
+
+        /// <summary>
+        /// Refresh the current query
+        /// </summary>
+        public void RefreshQuery()
+        {
+            CreateConnectionQuery(ConnectionString);
+        }
+
+        /// <summary>
+        /// Create a new connection query
+        /// </summary>
+        /// <param name="query">given query</param>
+        private void CreateConnectionQuery(string query)
+        {
+            // Try to parse collection
+            QueryAttribute[]? attributes = ConnectionQueryViewModel.GetAttributes(query);
+            if (attributes == null)
+            {
+                ConnectionStatus = ConnectionStatus.QueryInvalid;
+                return;
+            }
+
+            // Create new segment list
+            QueryDecorators.Clear();
+
+            // Visualize segments
+            foreach (QueryAttribute attribute in attributes)
+            {
+                QueryDecorators.Add(new QueryAttributeDecorator()
+                {
+                    Attribute = attribute,
+                    Color = attribute.Key switch
+                    {
+                        "port" => ResourceLocator.GetResource<Color>("ConnectionKeyPort"),
+                        "app" => ResourceLocator.GetResource<Color>("ConnectionKeyApplicationFilter"),
+                        "pid" => ResourceLocator.GetResource<Color>("ConnectionKeyApplicationPID"),
+                        "api" => ResourceLocator.GetResource<Color>("ConnectionKeyApplicationAPI"),
+                        _ => ResourceLocator.GetResource<Color>("ConnectionKeyIP")
+                    }
+                });
+            }
+
+            // Attempt to parse
+            ConnectionStatus status = ConnectionQueryViewModel.FromAttributes(attributes, out var queryObject);
+
+            // Update status
+            if (status != ConnectionStatus.None)
+            {
+                ConnectionStatus = status;
+            }
+            else
+            {
+                ConnectionStatus = _endpointConnected ? ConnectionStatus.EndpointConnected : ConnectionStatus.None;
+            }
+
+            // Set query
+            ConnectionQuery = queryObject;
+
+            // Re-filter if needed
+            FilterApplications();
+        }
+
+        /// <summary>
+        /// Create a new connection
+        /// </summary>
+        /// <param name="query"></param>
+        private void CreateConnection(ConnectionQueryViewModel query)
+        {
+            // Filter recreation of the endpoint connection
+            if (_pendingQuery?.IPvX == query.IPvX && _pendingQuery?.Port == query.Port)
+            {
+                return;
+            }
             
-            // Start connection at localhost
-            _connectionViewModel.ConnectAsync("127.0.0.1");
+            // Empty out pooled applications
+            _resolvedApplications.Clear();
+            _discoveryApplications.Clear();
+
+            // Not connected yet
+            _endpointConnected = false;
+
+            // Start connection
+            _connectionViewModel.Connect(query.IPvX ?? "127.0.0.1", query.Port);
+            _pendingQuery = query;
+
+            // Set status
+            ConnectionStatus = ConnectionStatus.ConnectingEndpoint;
         }
 
         /// <summary>
@@ -75,10 +225,10 @@ namespace Studio.ViewModels
             {
                 return;
             }
-            
+
             // Set status
             ConnectionStatus = Models.Workspace.ConnectionStatus.Connecting;
-            
+
             // Submit request
             _connectionViewModel.RequestClientAsync(SelectedApplication);
         }
@@ -90,11 +240,40 @@ namespace Studio.ViewModels
         {
             // Register handler
             _connectionViewModel.Bridge?.Register(this);
-            
+
             // Request discovery
             _connectionViewModel.DiscoverAsync();
+
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // Existing?
+                _timer?.Stop();
+
+                // Create timer on main thread
+                _timer = new DispatcherTimer(DispatcherPriority.Background)
+                {
+                    Interval = TimeSpan.FromSeconds(1),
+                    IsEnabled = true
+                };
+
+                // Subscribe tick
+                _timer.Tick += OnPoolingTick;
+
+                // Must call start manually (a little vague)
+                _timer.Start();
+            });
         }
-        
+
+        /// <summary>
+        /// Invoked on timer pooling
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnPoolingTick(object? sender, EventArgs e)
+        {
+            _connectionViewModel.DiscoverAsync();
+        }
+
         /// <summary>
         /// Message handler
         /// </summary>
@@ -136,7 +315,7 @@ namespace Studio.ViewModels
         {
             var flat = connected.Flat;
 
-            Dispatcher.UIThread.InvokeAsync(async () => 
+            Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 // Set status
                 if (flat.accepted == 0)
@@ -147,13 +326,13 @@ namespace Studio.ViewModels
                 {
                     ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationAccepted;
                 }
-            
+
                 // Confirm with view
                 if (!await AcceptClient.Handle(this))
                 {
                     return;
                 }
-                
+
                 // Get provider
                 var provider = App.Locator.GetService<Services.IWorkspaceService>();
 
@@ -206,12 +385,13 @@ namespace Studio.ViewModels
                     case HostServerInfoMessage.ID:
                     {
                         var info = message.Get<HostServerInfoMessage>();
-                        
+
                         // Add application
                         apps.Add(new Models.Workspace.ApplicationInfo
                         {
                             Name = info.application.String,
                             Process = info.process.String,
+                            API = info.api.String,
                             Pid = info.processId,
                             Guid = new Guid(info.guid.String)
                         });
@@ -219,24 +399,54 @@ namespace Studio.ViewModels
                     }
                 }
             }
-            
+
             // Add on UI thread
             Dispatcher.UIThread.InvokeAsync(() =>
             {
+                // Mark as connected
+                if (!_endpointConnected)
+                {
+                    _endpointConnected = true;
+                    ConnectionStatus = ConnectionStatus.EndpointConnected;
+                }
+
                 // Set new app list
-                _resolvedApplications.Clear();
-                _resolvedApplications.Add(apps);
-                
-                // Set status
-                ConnectionStatus = Models.Workspace.ConnectionStatus.None;
+                _discoveryApplications.Clear();
+                _discoveryApplications.Add(apps);
+
+                // Re-filter
+                FilterApplications();
             });
+        }
+
+        /// <summary>
+        /// Re-filter all applications
+        /// </summary>
+        private void FilterApplications()
+        {
+            if (ConnectionQuery == null)
+            {
+                return;
+            }
+
+            // Remove existing
+            _resolvedApplications.Clear();
+
+            // Filter by current query
+            _discoveryApplications.Where(x =>
+                {
+                    return (ConnectionQuery.ApplicationPid?.Equals((int)x.Pid) ?? true) &&
+                           x.API.Contains(ConnectionQuery.ApplicationAPI ?? string.Empty, StringComparison.InvariantCultureIgnoreCase) &&
+                           x.Process.Contains(ConnectionQuery.ApplicationFilter ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
+                })
+                .ForEach(x => _resolvedApplications.Add(x));
         }
 
         /// <summary>
         /// Internal connection
         /// </summary>
         private Workspace.ConnectionViewModel _connectionViewModel = new();
-        
+
         /// <summary>
         /// Internal connection status
         /// </summary>
@@ -246,10 +456,45 @@ namespace Studio.ViewModels
         /// Internal selected application
         /// </summary>
         private Models.Workspace.ApplicationInfo? _selectedApplication;
-        
+
         /// <summary>
         /// Internal application list
         /// </summary>
         private ObservableCollection<Models.Workspace.ApplicationInfo> _resolvedApplications = new();
+
+        /// <summary>
+        /// Internal discovery, unfiltered
+        /// </summary>
+        private List<Models.Workspace.ApplicationInfo> _discoveryApplications = new();
+
+        /// <summary>
+        /// Internal, default, connection string
+        /// </summary>
+        private string _connectionString = "ip:localhost";
+
+        /// <summary>
+        /// Internal connection state
+        /// </summary>
+        private bool _endpointConnected = false;
+
+        /// <summary>
+        /// Internal connection query
+        /// </summary>
+        private ConnectionQueryViewModel? _connectionQuery;
+
+        /// <summary>
+        /// Internal pending query, for endpoint checks
+        /// </summary>
+        private ConnectionQueryViewModel? _pendingQuery;
+
+        /// <summary>
+        /// Internal decorators
+        /// </summary>
+        private SourceList<QueryAttributeDecorator> _queryDecorators = new();
+
+        /// <summary>
+        /// Internal pooling timer
+        /// </summary>
+        private DispatcherTimer? _timer;
     }
 }

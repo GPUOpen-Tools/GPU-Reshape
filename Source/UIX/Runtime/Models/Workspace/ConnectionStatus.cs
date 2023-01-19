@@ -8,6 +8,16 @@
         None,
         
         /// <summary>
+        /// Connecting to the endpoint machine
+        /// </summary>
+        ConnectingEndpoint,
+        
+        /// <summary>
+        /// Endpoint has been connected to
+        /// </summary>
+        EndpointConnected,
+        
+        /// <summary>
         /// Awaiting server response
         /// </summary>
         Connecting,
@@ -30,6 +40,27 @@
         /// <summary>
         /// Application has accepted the request, bridge is now connected
         /// </summary>
-        ApplicationAccepted
+        ApplicationAccepted,
+        
+        /// <summary>
+        /// Failed to parse query, syntactical error
+        /// </summary>
+        QueryInvalid,
+        
+        /// <summary>
+        /// Query contains a duplicate key
+        /// </summary>
+        QueryDuplicateKey,
+        
+        /// <summary>
+        /// Query PID is invalid
+        /// </summary>
+        QueryInvalidPID,
+        
+        /// <summary>
+        /// Query port is invali
+        /// </summary>
+        QueryInvalidPort
+        
     }
 }

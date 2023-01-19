@@ -57,9 +57,14 @@ namespace Studio.ValueConverters
                     return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushLow");
                 case ConnectionStatus.ResolveRejected:
                 case ConnectionStatus.ApplicationRejected:
+                case ConnectionStatus.QueryInvalid:
+                case ConnectionStatus.QueryDuplicateKey:
+                case ConnectionStatus.QueryInvalidPort:
+                case ConnectionStatus.QueryInvalidPID:
                     return ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush");
                 case ConnectionStatus.ResolveAccepted:
                 case ConnectionStatus.ApplicationAccepted:
+                case ConnectionStatus.EndpointConnected:
                     return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushHigh");
             }
         }
@@ -76,6 +81,7 @@ namespace Studio.ValueConverters
                 default:
                     return false;
                 case ConnectionStatus.Connecting:
+                case ConnectionStatus.ConnectingEndpoint:
                     return true;
             }
         }
@@ -99,6 +105,16 @@ namespace Studio.ValueConverters
                     return "Endpoint application rejected request";
                 case ConnectionStatus.ApplicationAccepted:
                     return "Endpoint application accepted request";
+                case ConnectionStatus.QueryInvalid:
+                    return "Failed to parse endpoint query";
+                case ConnectionStatus.QueryDuplicateKey:
+                    return "Endpoint query has a duplicate key";
+                case ConnectionStatus.QueryInvalidPort:
+                    return "Endpoint query has an invalid port";
+                case ConnectionStatus.QueryInvalidPID:
+                    return "Endpoint query has an invalid process ID";
+                case ConnectionStatus.EndpointConnected:
+                    return "Connected to endpoint";
             }
         }
         

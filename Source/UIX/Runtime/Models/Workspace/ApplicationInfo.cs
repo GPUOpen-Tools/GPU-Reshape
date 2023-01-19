@@ -10,6 +10,11 @@ namespace Studio.Models.Workspace
         public ulong Pid { get; set; }
         
         /// <summary>
+        /// Underlying API of the application
+        /// </summary>
+        public string API { get; set; }
+        
+        /// <summary>
         /// Decorative name of the application
         /// </summary>
         public string Name { get; set; }
