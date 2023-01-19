@@ -4,6 +4,7 @@
 #include "MemoryBridge.h"
 #include "EndpointConfig.h"
 #include "Asio/AsioProtocol.h"
+#include "Asio/AsioDelegates.h"
 
 // Std
 #include <thread>
@@ -15,11 +16,22 @@ class AsioRemoteClient;
 /// Network Bridge
 class RemoteClientBridge final : public IBridge {
 public:
+    RemoteClientBridge();
     ~RemoteClientBridge();
 
     /// Install this bridge
     /// \return success state
     bool Install(const EndpointResolve& resolve);
+
+    /// Install this bridge
+    /// \return success state
+    void InstallAsync(const EndpointResolve& resolve);
+
+    /// Cancel pending requests
+    void Cancel();
+
+    /// Stop the connection
+    void Stop();
 
     /// Send an async discovery request
     void DiscoverAsync();
@@ -27,6 +39,10 @@ public:
     /// Send an async client request
     /// \param guid client guid, must originate from the discovery request
     void RequestClientAsync(const AsioHostClientToken& guid);
+
+    /// Set the asynchronous connection delegate
+    /// \param delegate delegate
+    void SetAsyncConnectedDelegate(const AsioClientAsyncConnectedDelegate& delegate);
 
     /// Overrides
     void Register(MessageID mid, const ComRef<IBridgeListener>& listener) override;

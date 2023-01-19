@@ -14,6 +14,7 @@ TEST_CASE("Bridge.Asio") {
 
     // Set up resolver
     AsioHostResolverServer resolver(config);
+    REQUIRE(resolver.IsOpen());
 
     std::atomic<bool> allocatedFlag{false};
     resolver.onAllocated.Add(0, [&](const AsioHostClientInfo& info) {
@@ -39,7 +40,8 @@ TEST_CASE("Bridge.Asio") {
     AsioRemoteConfig remoteConfig;
     remoteConfig.ipvxAddress = kAsioLocalhost;
 
-    AsioRemoteClient remoteClient(remoteConfig);
+    AsioRemoteClient remoteClient;
+    remoteClient.Connect(remoteConfig);
 
     AsioRemoteServerResolverDiscoveryRequest::Entry clientEntry;
 
@@ -70,4 +72,211 @@ TEST_CASE("Bridge.Asio") {
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
     REQUIRE(connectedFlag.load());
+}
+
+TEST_CASE("Bridge.AsioAsync") {
+    AsioConfig config;
+
+    // Set up resolver
+    AsioHostResolverServer resolver(config);
+    REQUIRE(resolver.IsOpen());
+
+    std::atomic<bool> allocatedFlag{false};
+    resolver.onAllocated.Add(0, [&](const AsioHostClientInfo& info) {
+        REQUIRE(std::string("Application.exe") == info.processName);
+        REQUIRE(std::string("SampleApplication") == info.applicationName);
+        REQUIRE(info.processId == 256);
+
+        allocatedFlag = true;
+    });
+
+    AsioHostClientInfo serverInfo;
+    serverInfo.processId = 256;
+    strcpy_s(serverInfo.processName, "Application.exe");
+    strcpy_s(serverInfo.applicationName, "SampleApplication");
+
+    AsioHostServer server(config, serverInfo);
+
+    REQUIRE(server.IsOpen());
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    REQUIRE(allocatedFlag.load());
+
+    AsioRemoteConfig remoteConfig;
+    remoteConfig.ipvxAddress = kAsioLocalhost;
+
+    AsioRemoteClient remoteClient;
+
+    std::atomic<bool> asyncConnectFlag{false};
+    
+    remoteClient.SetAsyncConnectedCallback([&] {
+        asyncConnectFlag = true;
+    });
+
+    remoteClient.ConnectAsync(remoteConfig);
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    REQUIRE(asyncConnectFlag.load());
+
+    AsioRemoteServerResolverDiscoveryRequest::Entry clientEntry;
+
+    std::atomic<bool> discoveryFlag{false};
+    std::atomic<bool> connectedFlag{false};
+
+    remoteClient.onDiscovery.Add(0, [&](const AsioRemoteServerResolverDiscoveryRequest::Response& response) {
+        REQUIRE(response.entryCount > 0);
+        clientEntry = response.entries[0];
+
+        REQUIRE(std::string("Application.exe") == clientEntry.info.processName);
+        REQUIRE(std::string("SampleApplication") == clientEntry.info.applicationName);
+        REQUIRE(clientEntry.info.processId == 256);
+
+        discoveryFlag = true;
+    });
+
+    remoteClient.onConnected.Add(0, [&](const AsioHostResolverClientRequest::ServerResponse& response) {
+        connectedFlag = true;
+    });
+
+    remoteClient.DiscoverAsync();
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    REQUIRE(discoveryFlag.load());
+
+    remoteClient.RequestClientAsync(clientEntry.token);
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    REQUIRE(connectedFlag.load());
+}
+
+TEST_CASE("Bridge.AsioAsyncCancel") {
+    AsioConfig config;
+
+    // Set up resolver
+    AsioHostResolverServer resolver(config);
+    REQUIRE(resolver.IsOpen());
+
+    std::atomic<bool> allocatedFlag{false};
+    resolver.onAllocated.Add(0, [&](const AsioHostClientInfo& info) {
+        REQUIRE(std::string("Application.exe") == info.processName);
+        REQUIRE(std::string("SampleApplication") == info.applicationName);
+        REQUIRE(info.processId == 256);
+
+        allocatedFlag = true;
+    });
+
+    AsioHostClientInfo serverInfo;
+    serverInfo.processId = 256;
+    strcpy_s(serverInfo.processName, "Application.exe");
+    strcpy_s(serverInfo.applicationName, "SampleApplication");
+
+    AsioHostServer server(config, serverInfo);
+
+    REQUIRE(server.IsOpen());
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    REQUIRE(allocatedFlag.load());
+
+    AsioRemoteClient remoteClient;
+
+    std::atomic<bool> asyncConnectFlag{false};
+
+    remoteClient.SetAsyncConnectedCallback([&] {
+        asyncConnectFlag = true;
+    });
+
+    AsioRemoteConfig remoteConfig;
+    remoteConfig.ipvxAddress = "127.255.255.0";
+
+    remoteClient.ConnectAsync(remoteConfig);
+    remoteClient.Stop();
+
+    remoteClient.ConnectAsync(remoteConfig);
+    remoteClient.Cancel();
+    
+    remoteConfig.ipvxAddress = kAsioLocalhost;
+
+    remoteClient.ConnectAsync(remoteConfig);
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    REQUIRE(asyncConnectFlag.load());
+
+    AsioRemoteServerResolverDiscoveryRequest::Entry clientEntry;
+
+    std::atomic<bool> discoveryFlag{false};
+    std::atomic<bool> connectedFlag{false};
+
+    remoteClient.onDiscovery.Add(0, [&](const AsioRemoteServerResolverDiscoveryRequest::Response& response) {
+        REQUIRE(response.entryCount > 0);
+        clientEntry = response.entries[0];
+
+        REQUIRE(std::string("Application.exe") == clientEntry.info.processName);
+        REQUIRE(std::string("SampleApplication") == clientEntry.info.applicationName);
+        REQUIRE(clientEntry.info.processId == 256);
+
+        discoveryFlag = true;
+    });
+
+    remoteClient.onConnected.Add(0, [&](const AsioHostResolverClientRequest::ServerResponse& response) {
+        connectedFlag = true;
+    });
+
+    remoteClient.DiscoverAsync();
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    REQUIRE(discoveryFlag.load());
+
+    remoteClient.RequestClientAsync(clientEntry.token);
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    REQUIRE(connectedFlag.load());
+}
+
+TEST_CASE("Bridge.LongStop") {
+    AsioConfig config;
+
+    // Set up resolver
+    AsioHostResolverServer resolver(config);
+    REQUIRE(resolver.IsOpen());
+
+    AsioHostServer server(config, AsioHostClientInfo{});
+
+    REQUIRE(server.IsOpen());
+
+    AsioRemoteClient remoteClient;
+
+    std::atomic<bool> asyncConnectFlag{false};
+
+    remoteClient.SetAsyncConnectedCallback([&] {
+        asyncConnectFlag = true;
+    });
+
+    AsioRemoteConfig remoteConfig;
+
+    // Connect to real host
+    remoteConfig.ipvxAddress = kAsioLocalhost;
+    remoteClient.ConnectAsync(remoteConfig);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    remoteClient.DiscoverAsync();
+    remoteClient.Stop();
+
+    REQUIRE(asyncConnectFlag.load());
+    asyncConnectFlag.store(false);
+
+    // Connect to fake host
+    remoteConfig.ipvxAddress = "127.0.0.0";
+    remoteClient.ConnectAsync(remoteConfig);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    remoteClient.Stop();
+
+    REQUIRE(!asyncConnectFlag.load());
+
+    // Connect to real host
+    remoteConfig.ipvxAddress = kAsioLocalhost;
+    remoteClient.ConnectAsync(remoteConfig);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    remoteClient.Stop();
+
+    REQUIRE(asyncConnectFlag.load());
+    asyncConnectFlag.store(false);
 }

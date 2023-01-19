@@ -88,6 +88,12 @@ struct ComRef {
         return object;
     }
 
+    /// Get the unsafe pointer
+    T* GetUnsafeAddUser() const {
+        component->AddUser();
+        return object;
+    }
+
     /// Access component
     T* operator->() const {
         return GetUnsafe();

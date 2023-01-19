@@ -12,6 +12,9 @@ namespace Backend {
         /// Application name
         const char* applicationName{"Unknown"};
 
+        /// API name
+        const char* apiName{"Unknown"};
+
         /// In memory bridge?
         bool memoryBridge{false};
 

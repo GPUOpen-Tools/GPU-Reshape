@@ -5,11 +5,16 @@
 
 class AsioClient {
 public:
-    /// Initialize this client
+    /// Initialize this client with a synchronous connection
     /// \param ipvxAddress ip address of the connecting endpoint
     /// \param port port number to be used
-    AsioClient(const char* ipvxAddress, uint16_t port) : connection(ioService), address(ipvxAddress), port(port) {
+    AsioClient(const char* ipvxAddress, uint16_t port) : connection(ioService), resolver(ioService), address(ipvxAddress), port(port) {
         OpenConnection();
+    }
+    
+    /// Initialize this client
+    AsioClient() : connection(ioService), resolver(ioService) {
+        
     }
 
     /// Destructor
@@ -29,6 +34,12 @@ public:
         connection.SetErrorCallback(delegate);
     }
 
+    /// Set the async connection delegate
+    /// \param delegate
+    void SetAsyncConnectedCallback(const AsioClientAsyncConnectedDelegate& delegate) {
+        asyncConnectedDelegate = delegate;
+    }
+
     /// Write async
     /// \param data data to be sent, lifetime bound to this call
     /// \param size byte count of data
@@ -42,31 +53,33 @@ public:
     }
 
     /// Connect to the endpoint
+    /// \param ipvxAddress ip address
+    /// \param port endpoint port
     /// \return success state
-    bool Connect() {
-        if (connection.IsOpen()) {
-            return true;
-        }
+    bool Connect(const char* ipvxAddress, uint16_t port) {
+        // Cache endpoint
+        this->address = ipvxAddress;
+        this->port = port;
 
+        // Open synchronous
         return OpenConnection();
     }
 
-    /// Run this client
-    void Run() {
-        ioService.run();
-    }
+    /// Asynchronously connect to the endpoint
+    /// \param ipvxAddress ip address
+    /// \param port endpoint port
+    void ConnectAsync(const char* ipvxAddress, uint16_t port) {
+        // Cache endpoint
+        this->address = ipvxAddress;
+        this->port = port;
 
-    /// Stop the client
-    void Stop() {
-        ioService.stop();
+        // Open asynchronous
+        OpenConnectionAsync();
     }
-
-private:
+    
     /// Try to open the connection
     /// \return success state
     bool OpenConnection() {
-        asio::ip::tcp::resolver resolver(ioService);
-
         // Attempt to resolve endpoint
         asio::ip::tcp::resolver::query    query(address.c_str(), std::to_string(port));
         asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
@@ -94,10 +107,67 @@ private:
         return true;
     }
 
+    /// Try to open an asynchronous connection
+    void OpenConnectionAsync() {
+        resolver.async_resolve(address.c_str(), std::to_string(port), [this](const std::error_code& code, const asio::ip::tcp::resolver::results_type& results) {
+            OnAsyncResolve(code, results);
+        });
+    }
+
+    /// Cancel an ongoing request
+    void Cancel() {
+        // Stop any resolver requests
+        resolver.cancel();
+
+        // Close existing socket
+        if (connection.Socket().is_open()) {
+            connection.Socket().cancel();
+        }
+    }
+
+    /// Run this client
+    void Run() {
+        ioService.run();
+    }
+
+    /// Stop the client
+    void Stop() {
+        ioService.stop();
+        connection.Close();
+    }
+
 private:
+    /// Delegates
+    AsioClientAsyncConnectedDelegate asyncConnectedDelegate;
+
+private:
+    /// Async resolve handler
+    /// \param code
+    /// \param results
+    void OnAsyncResolve(const std::error_code& code, const asio::ip::tcp::resolver::results_type& results) {
+        // Failed?
+        if (code) {
+            return;
+        }
+
+        // Connect to first valid endpoint
+        asio::async_connect(connection.Socket(), results.begin(), results.end(), [this](const std::error_code& ec, auto it){
+            // Start reading
+            connection.Install();
+
+            // Invoke handler
+            if (asyncConnectedDelegate) {
+                asyncConnectedDelegate();
+            }
+        });
+    }
+
+private:
+    /// Cached address
     std::string address;
 
-    uint16_t port;
+    /// Cached port
+    uint16_t port{0};
 
 private:
     /// ASIO service
@@ -105,4 +175,7 @@ private:
 
     /// Shared handler
     AsioSocketHandler connection;
+
+    /// Shared resolver
+    asio::ip::tcp::resolver resolver;
 };

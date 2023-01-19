@@ -77,6 +77,7 @@ struct ALIGN_PACK TAsioHeader : public AsioHeader {
 struct AsioHostClientInfo {
     char processName[512]{0};
     char applicationName[512]{0};
+    char apiName[256]{0};
     uint32_t processId{0};
 };
 

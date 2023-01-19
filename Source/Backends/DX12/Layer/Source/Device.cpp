@@ -128,6 +128,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
             // TODO: Does DX12 have the concept of application names?
             Backend::EnvironmentInfo environmentInfo;
             environmentInfo.applicationName = "Unknown";
+            environmentInfo.apiName = "D3D12";
 
             // Initialize the standard environment
             state->environment.Install(environmentInfo);

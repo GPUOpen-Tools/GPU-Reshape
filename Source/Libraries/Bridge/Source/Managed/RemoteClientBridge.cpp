@@ -1,3 +1,8 @@
+// CLR (odd-duck include order due to IServiceProvider clashes)
+#include <vcclr.h>
+#include <msclr/marshal_cppstd.h>
+
+// Bridge
 #include <Bridge/Managed/RemoteClientBridge.h>
 #include <Bridge/Managed/BridgeListenerInterop.h>
 #include <Bridge/Managed/BridgeMessageStorage.h>
@@ -6,8 +11,6 @@
 // Common
 #include <Common/Registry.h>
 
-using namespace System;
-using namespace System::Runtime::InteropServices;
 
 struct Bridge::CLR::RemoteClientBridgePrivate {
     /// Self hosted registry
@@ -34,11 +37,43 @@ bool Bridge::CLR::RemoteClientBridge::Install(const EndpointResolve^resolve) {
     // Convert to native resolve
     ::EndpointResolve nativeResolve;
     nativeResolve.config.sharedPort = resolve->config->sharedPort;
-    nativeResolve.config.applicationName = static_cast<char *>(Marshal::StringToHGlobalAnsi(resolve->config->applicationName).ToPointer());
-    nativeResolve.ipvxAddress = static_cast<char *>(Marshal::StringToHGlobalAnsi(resolve->ipvxAddress).ToPointer());
+    nativeResolve.config.applicationName = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(resolve->config->applicationName).ToPointer());
+    nativeResolve.ipvxAddress = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(resolve->ipvxAddress).ToPointer());
 
     // Pass down
     return _private->bridge->Install(nativeResolve);
+}
+
+void Bridge::CLR::RemoteClientBridge::InstallAsync(const EndpointResolve ^ resolve) {
+    // Convert to native resolve
+    ::EndpointResolve nativeResolve;
+    nativeResolve.config.sharedPort = resolve->config->sharedPort;
+    nativeResolve.config.applicationName = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(resolve->config->applicationName).ToPointer());
+    nativeResolve.ipvxAddress = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(resolve->ipvxAddress).ToPointer());
+
+    // Pass down
+    _private->bridge->InstallAsync(nativeResolve);
+}
+
+static void SetAsyncConnectedDelegateMarshal(Bridge::CLR::RemoteClientBridgePrivate* _private, Bridge::CLR::RemoteClientBridgeAsyncConnectedDelegate ^ delegate) {
+    gcroot wrapper(delegate);
+
+    // Set handler on wrapped
+    _private->bridge->SetAsyncConnectedDelegate([wrapper] {
+        wrapper->Invoke();
+    });
+}
+
+void Bridge::CLR::RemoteClientBridge::SetAsyncConnectedDelegate(RemoteClientBridgeAsyncConnectedDelegate ^ delegate) {
+    SetAsyncConnectedDelegateMarshal(_private, delegate);
+}
+
+void Bridge::CLR::RemoteClientBridge::Cancel() {
+    _private->bridge->Cancel();
+}
+
+void Bridge::CLR::RemoteClientBridge::Stop() {
+    _private->bridge->Stop();
 }
 
 void Bridge::CLR::RemoteClientBridge::DiscoverAsync() {
@@ -54,19 +89,71 @@ void Bridge::CLR::RemoteClientBridge::RequestClientAsync(System::Guid^ guid) {
 }
 
 void Bridge::CLR::RemoteClientBridge::Register(MessageID mid, IBridgeListener^listener) {
-    _private->bridge->Register(mid, _private->registry.New<BridgeListenerInterop>(listener));
+    MIDKey key(mid, listener);
+
+    // Already registered?
+    if (remoteKeyedInteropLookup.ContainsKey(key)) {
+        return;
+    }
+
+    // Create interop
+    ComRef interop = _private->registry.New<BridgeListenerInterop>(listener);
+
+    // Create entry
+    InteropEntry^ entry = gcnew InteropEntry();
+    entry->component = interop.GetUnsafeAddUser();
+    remoteKeyedInteropLookup.Add(key, entry);
+    
+    _private->bridge->Register(mid, interop);
 }
 
 void Bridge::CLR::RemoteClientBridge::Deregister(MessageID mid, IBridgeListener^listener) {
-    throw gcnew System::NotImplementedException();
+    InteropEntry^ interop;
+
+    // Try to find interop
+    if (!remoteKeyedInteropLookup.TryGetValue(MIDKey(mid, listener), interop)) {
+        return;
+    }
+
+    // Remove
+    _private->bridge->Deregister(mid, ComRef(interop->component));
+    remoteInteropLookup.Remove(listener);
+
+    // Remove implicit reference
+    destroyRef(interop->component);
 }
 
 void Bridge::CLR::RemoteClientBridge::Register(IBridgeListener^listener) {
-    _private->bridge->Register(_private->registry.New<BridgeListenerInterop>(listener));
+    // Already registered?
+    if (remoteInteropLookup.ContainsKey(listener)) {
+        return;
+    }
+
+    // Create interop
+    ComRef interop = _private->registry.New<BridgeListenerInterop>(listener);
+    
+    // Create entry
+    InteropEntry^ entry = gcnew InteropEntry();
+    entry->component = interop.GetUnsafeAddUser();
+    remoteInteropLookup.Add(listener, entry);
+    
+    _private->bridge->Register(interop);
 }
 
 void Bridge::CLR::RemoteClientBridge::Deregister(IBridgeListener^listener) {
-    throw gcnew System::NotImplementedException();
+    InteropEntry^ interop;
+
+    // Try to find interop
+    if (!remoteInteropLookup.TryGetValue(listener, interop)) {
+        return;
+    }
+
+    // Remove
+    _private->bridge->Deregister(ComRef(interop->component));
+    remoteInteropLookup.Remove(listener);
+
+    // Remove implicit reference
+    destroyRef(interop->component);
 }
 
 Bridge::CLR::IMessageStorage ^ Bridge::CLR::RemoteClientBridge::GetInput() {

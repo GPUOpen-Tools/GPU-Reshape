@@ -11,6 +11,9 @@ struct EndpointConfig {
 
     /// Name of the application
     const char* applicationName{"Unknown"};
+
+    /// Name of the API
+    const char* apiName{"Unknown"};
 };
 
 struct EndpointResolve {

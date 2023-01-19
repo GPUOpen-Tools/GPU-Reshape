@@ -10,15 +10,11 @@
 // Schemas
 #include <Schemas/HostResolve.h>
 
-bool RemoteClientBridge::Install(const EndpointResolve &resolve) {
-    // Port config
-    AsioRemoteConfig asioConfig;
-    asioConfig.hostResolvePort = resolve.config.sharedPort;
-    asioConfig.ipvxAddress = resolve.ipvxAddress;
 
+RemoteClientBridge::RemoteClientBridge() {
     // Create the client
-    client = new(allocators) AsioRemoteClient(asioConfig);
-
+    client = new(allocators) AsioRemoteClient();
+    
     // Subscribe
     client->onConnected.Add(0, [this](const AsioHostResolverClientRequest::ServerResponse& response) { OnConnected(response); });
     client->onResolve.Add(0, [this](const AsioHostResolverClientRequest::ResolveResponse& response) { OnResolve(response); });
@@ -28,9 +24,43 @@ bool RemoteClientBridge::Install(const EndpointResolve &resolve) {
     client->SetServerReadCallback([this](AsioSocketHandler &handler, const void *data, uint64_t size) {
         return OnReadAsync(data, size);
     });
+}
 
-    // OK
-    return true;
+RemoteClientBridge::~RemoteClientBridge() {
+    // Release endpoint
+    destroy(client, allocators);
+}
+
+bool RemoteClientBridge::Install(const EndpointResolve &resolve) {
+    // Port config
+    AsioRemoteConfig asioConfig;
+    asioConfig.hostResolvePort = resolve.config.sharedPort;
+    asioConfig.ipvxAddress = resolve.ipvxAddress;
+    
+    // Try to connect
+    return client->Connect(asioConfig);
+}
+
+void RemoteClientBridge::InstallAsync(const EndpointResolve &resolve) {
+    // Port config
+    AsioRemoteConfig asioConfig;
+    asioConfig.hostResolvePort = resolve.config.sharedPort;
+    asioConfig.ipvxAddress = resolve.ipvxAddress;
+
+    // Try to connect
+    client->ConnectAsync(asioConfig);
+}
+
+void RemoteClientBridge::Cancel() {
+    client->Cancel();
+}
+
+void RemoteClientBridge::Stop() {
+    client->Stop();
+}
+
+void RemoteClientBridge::SetAsyncConnectedDelegate(const AsioClientAsyncConnectedDelegate &delegate) {
+    client->SetAsyncConnectedCallback(delegate);
 }
 
 void RemoteClientBridge::DiscoverAsync() {
@@ -92,13 +122,15 @@ void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequ
             auto *info = view.Add<HostServerInfoMessage>(HostServerInfoMessage::AllocationInfo{
                 .guidLength = guid.length(),
                 .processLength = std::strlen(entry.info.processName),
-                .applicationLength = std::strlen(entry.info.applicationName)
+                .applicationLength = std::strlen(entry.info.applicationName),
+                .apiLength = std::strlen(entry.info.apiName)
             });
 
             // Set data
             info->guid.Set(guid);
             info->process.Set(entry.info.processName);
             info->application.Set(entry.info.applicationName);
+            info->api.Set(entry.info.apiName);
             info->processId = entry.info.processId;
         }
     }
@@ -123,11 +155,6 @@ void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequ
     if (commitOnAppend) {
         memoryBridge.Commit();
     }
-}
-
-RemoteClientBridge::~RemoteClientBridge() {
-    // Release endpoint
-    destroy(client, allocators);
 }
 
 uint64_t RemoteClientBridge::OnReadAsync(const void *data, uint64_t size) {

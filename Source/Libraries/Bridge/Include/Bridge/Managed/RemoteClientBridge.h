@@ -3,10 +3,17 @@
 #include "IBridge.h"
 #include "EndpointConfig.h"
 
+// Forward declarations
 class Registry;
 class RemoteClientBridge;
 
 namespace Bridge::CLR {
+    // Forward declarations
+    class BridgeListenerInterop;
+
+    /// Asynchronous connection accepted handler
+    public delegate void RemoteClientBridgeAsyncConnectedDelegate();
+
     public ref class RemoteClientBridge : public IBridge {
     public:
         RemoteClientBridge();
@@ -17,6 +24,21 @@ namespace Bridge::CLR {
         /// \return success state
         bool Install(const EndpointResolve^ resolve);
 
+        /// Install this bridge
+        /// \param resolve configuration
+        /// \return success state
+        void InstallAsync(const EndpointResolve^ resolve);
+
+        /// Set the asynchronous connection delegate
+        /// \param delegate delegate
+        void SetAsyncConnectedDelegate(RemoteClientBridgeAsyncConnectedDelegate^ delegate);
+
+        /// Cancel pending requests
+        void Cancel();
+
+        /// Close existing connection
+        void Stop();
+        
         /// Submit a discovery request
         void DiscoverAsync();
 
@@ -36,6 +58,21 @@ namespace Bridge::CLR {
 
         /// Enables auto commits on remote appends
         void SetCommitOnAppend(bool enabled);
+
+    private:
+        /// Intermediate entry
+        ref struct InteropEntry {
+            BridgeListenerInterop* component;
+        };
+
+        /// Message id to entry key
+        using MIDKey = Collections::Generic::KeyValuePair<uint32_t, IBridgeListener^>;
+
+        /// Ordered interop lookups
+        Collections::Generic::Dictionary<IBridgeListener^, InteropEntry^> remoteInteropLookup;
+
+        /// Static / dynamic interop lookups
+        Collections::Generic::Dictionary<MIDKey, InteropEntry^> remoteKeyedInteropLookup;
         
     private:
         /// Native data

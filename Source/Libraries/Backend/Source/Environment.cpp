@@ -55,8 +55,13 @@ bool Environment::Install(const EnvironmentInfo &info) {
         // Networked
         auto network = registry.AddNew<HostServerBridge>();
 
+        // Endpoint info
+        EndpointConfig endpointConfig;
+        endpointConfig.applicationName = info.applicationName;
+        endpointConfig.apiName = info.apiName;
+
         // Attempt to install as server
-        if (!network->Install(EndpointConfig{})) {
+        if (!network->Install(endpointConfig)) {
             return false;
         }
 

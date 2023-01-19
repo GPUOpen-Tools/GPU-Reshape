@@ -4,6 +4,7 @@
         <field name="process" type="string"/>
         <field name="processId" type="uint64"/>
         <field name="application" type="string"/>
+        <field name="api" type="string"/>
     </message>
     <message name="HostDiscovery">
         <field name="infos" type="stream"/>

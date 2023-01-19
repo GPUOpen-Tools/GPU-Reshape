@@ -2,6 +2,7 @@
 
 // Bridge
 #include "Asio.h"
+#include "AsioDelegates.h"
 #include "AsioConfig.h"
 
 // Common
@@ -54,6 +55,11 @@ public:
     /// Install this handler
     void Install() {
         Read();
+    }
+
+    /// Close this handler
+    void Close() {
+        socket.close();
     }
 
     /// Write async

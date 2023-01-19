@@ -23,14 +23,10 @@ using AsioRemoteServerConnectedDelegate = std::function<void(const AsioHostResol
 /// Remote endpoint client for local server interfacing, managed by the resolver
 struct AsioRemoteClient {
     /// Constructor
-    /// \param config remote endpoint configuration
-    AsioRemoteClient(const AsioRemoteConfig& config) : resolveClient(config.ipvxAddress, config.hostResolvePort), ipvxAddress(config.ipvxAddress) {
+    AsioRemoteClient() {
         resolveClient.SetReadCallback([this](AsioSocketHandler& handler, const void *data, uint64_t size) {
             return OnReadResolveAsync(handler, data, size);
         });
-
-        // Start runner
-        resolveClientRunner.RunAsync(resolveClient);
     }
 
     /// Destructor
@@ -38,13 +34,58 @@ struct AsioRemoteClient {
         Stop();
     }
 
+    /// Open a connection
+    /// \param config endpoint config
+    /// \return success state
+    bool Connect(const AsioRemoteConfig& config) {
+        // Cache endpoint info
+        ipvxAddress = config.ipvxAddress;
+
+        // Start synchronous connection
+        bool result = resolveClient.Connect(config.ipvxAddress, config.hostResolvePort);
+
+        // Start runner
+        resolveClientRunner.RunAsync(resolveClient);
+
+        // OK
+        return result;
+    }
+
+    /// Asynchronously open a connection
+    /// \param config endpoint config
+    void ConnectAsync(const AsioRemoteConfig& config) {
+        // Cache endpoint info
+        ipvxAddress = config.ipvxAddress;
+
+        // Start asynchronous connection
+        resolveClient.ConnectAsync(config.ipvxAddress, config.hostResolvePort);
+
+        // Start runner
+        resolveClientRunner.RunAsync(resolveClient);
+    }
+
+    /// Set the connection delegate
+    /// \param delegate
+    void SetAsyncConnectedCallback(const AsioClientAsyncConnectedDelegate& delegate) {
+        resolveClient.SetAsyncConnectedCallback(delegate);
+    }
+
+    /// Cancel ongoing requests
+    void Cancel() {
+        resolveClient.Cancel();
+    }
+
     /// Stop this client
     void Stop() {
         resolveClient.Stop();
 
+        // Stop the connected endpoint, optional
         if (endpointClient) {
             endpointClient->Stop();
         }
+
+        // Stop the worker
+        resolveClientRunner.Stop();
     }
 
     /// Send an async discovery request

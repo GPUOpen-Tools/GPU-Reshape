@@ -101,6 +101,7 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
         // Setup info
         Backend::EnvironmentInfo environmentInfo;
         environmentInfo.applicationName = pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->pApplicationName : "Unknown";
+        environmentInfo.apiName = "Vulkan";
 
         // Initialize the standard environment
         table->environment.Install(environmentInfo);
