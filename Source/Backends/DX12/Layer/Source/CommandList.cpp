@@ -561,7 +561,14 @@ void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12
     device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state);
 
     // Pass down callchain
-    table.next->ExecuteIndirect(pCommandSignature, MaxCommandCount, pArgumentBuffer, ArgumentBufferOffset, pCountBuffer, CountBufferOffset);
+    table.next->ExecuteIndirect(
+        pCommandSignature, 
+        MaxCommandCount, 
+        Next(pArgumentBuffer), 
+        ArgumentBufferOffset, 
+        Next(pCountBuffer), 
+        CountBufferOffset
+    );
 }
 
 void WINAPI HookID3D12CommandListSetGraphicsRootSignature(ID3D12CommandList* list, ID3D12RootSignature* rootSignature) {

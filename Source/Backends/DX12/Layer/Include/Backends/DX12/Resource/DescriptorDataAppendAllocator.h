@@ -100,15 +100,15 @@ private:
     /// Roll the current chunk
     void RollChunk() {
         // Advance current offset
-        mappedOffset += mappedSegmentLength;
+        mappedOffset += std::max<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, mappedSegmentLength);
 
         // Out of memory?
         if (mappedOffset + pendingRootCount >= chunkSize) {
             // Growth factor of 1.5
-            chunkSize = std::max<size_t>(64'000, static_cast<size_t>(chunkSize * 1.5f));
+            uint64_t nextSize = std::max<size_t>(64'000, static_cast<size_t>(chunkSize * 1.5f));
 
             // Create new chunk
-            CreateChunk();
+            CreateChunk(nextSize);
         }
 
         // Set next roll length
@@ -117,7 +117,7 @@ private:
     }
 
     /// Create a new chunk
-    void CreateChunk() {
+    void CreateChunk(uint64_t size) {
         // Release existing chunk if needed
         if (mapped) {
             // Map range
@@ -126,6 +126,9 @@ private:
             range.End = sizeof(uint32_t) * chunkSize;
             segment.entries.back().allocation.resource->Unmap(0, &range);
         }
+
+        // Set new size
+        chunkSize = size;
 
         // Reset
         mappedOffset = 0;

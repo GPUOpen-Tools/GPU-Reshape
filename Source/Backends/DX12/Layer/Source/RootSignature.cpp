@@ -136,16 +136,28 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                             break;
                     }
 
-                    // Create a mapping per internal register
-                    for (uint32_t registerIdx = 0; registerIdx < range.NumDescriptors; registerIdx++) {
+                    // Account for unbounded ranges
+                    if (range.NumDescriptors == UINT_MAX) {
                         // Create at space[base + idx]
-                        RootSignatureUserMapping& user = GetRootMapping(mapping, classType, range.RegisterSpace, range.BaseShaderRegister + registerIdx);
+                        RootSignatureUserMapping& user = GetRootMapping(mapping, classType, range.RegisterSpace, range.BaseShaderRegister);
                         user.rootParameter = i;
                         user.offset = descriptorOffset;
-                    }
+                        user.isUnbounded = true;
 
-                    // Next!
-                    descriptorOffset += range.NumDescriptors;
+                        // Next!
+                        ASSERT(rangeIdx + 1 == parameter.DescriptorTable.NumDescriptorRanges, "Unbounded range must be last slot");
+                    } else {
+                        // Create a mapping per internal register
+                        for (uint32_t registerIdx = 0; registerIdx < range.NumDescriptors; registerIdx++) {
+                            // Create at space[base + idx]
+                            RootSignatureUserMapping& user = GetRootMapping(mapping, classType, range.RegisterSpace, range.BaseShaderRegister + registerIdx);
+                            user.rootParameter = i;
+                            user.offset = descriptorOffset;
+                        }
+
+                        // Next!
+                        descriptorOffset += range.NumDescriptors;
+                    }
                 }
 
                 break;

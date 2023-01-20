@@ -9,4 +9,7 @@ struct RootSignatureUserMapping {
 
     /// Descriptor offset within the parameter
     uint32_t offset{UINT32_MAX};
+
+    /// Unbounded?
+    bool isUnbounded{false};
 };
