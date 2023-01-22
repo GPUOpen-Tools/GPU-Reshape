@@ -301,8 +301,11 @@ static bool WrapClass(const GeneratorInfo &info, ObjectWrappersState &state, con
 
     // Generate table getter
     state.getters << name << "Table GetTable(" << consumerKey << "* object) {\n";
-    state.getters << "\t" << name << "Table table;\n\n";
     state.getters << "\tauto wrapper = static_cast<" << key << "Wrapper*>(object);\n";
+    state.getters << "\tif (!wrapper) {\n";
+    state.getters << "\t\treturn {};\n";
+    state.getters << "\t}\n\n";
+    state.getters << "\t" << name << "Table table;\n";
     state.getters << "\ttable.next = wrapper->next;\n";
     state.getters << "\ttable.bottom = GetVTableRaw<" << key << "TopDetourVTable>(wrapper->next);\n";
     state.getters << "\ttable.state = wrapper->state;\n";

@@ -29,9 +29,9 @@ static bool WrapClass(const GeneratorInfo &info, TableState &state, const std::s
 
     // Create table
     state.tables << "struct " << objName << "Table {\n";
-    state.tables << "\t" << outerRevision << "DetourVTable *bottom;\n";
-    state.tables << "\t" << obj["state"].get<std::string>() << "* state;\n";
-    state.tables << "\t" << outerRevision << "* next;\n";
+    state.tables << "\t" << outerRevision << "DetourVTable *bottom{nullptr};\n";
+    state.tables << "\t" << obj["state"].get<std::string>() << "* state{nullptr};\n";
+    state.tables << "\t" << outerRevision << "* next{nullptr};\n";
     state.tables << "};\n\n";
 
     // Requested key may differ

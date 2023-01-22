@@ -237,6 +237,18 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     return S_OK;
 }
 
+static bool IsSupportedFeatureLevel(D3D_FEATURE_LEVEL featureLevel) {
+    switch (featureLevel) {
+        default:
+            // Do not attempt to support devices before 12 or hybrid setups
+            return false;
+        case D3D_FEATURE_LEVEL_12_0:
+        case D3D_FEATURE_LEVEL_12_1:
+        case D3D_FEATURE_LEVEL_12_2:
+            return true;
+    }
+}
+
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
@@ -250,6 +262,11 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
     if (FAILED(hr)) {
         return hr;
+    }
+
+    // Supported?
+    if (!IsSupportedFeatureLevel(minimumFeatureLevel)) {
+        return device->QueryInterface(riid, ppDevice);
     }
 
     // Create wrappers and states
@@ -275,6 +292,11 @@ HRESULT WINAPI HookID3D12CreateDevice(
     HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
     if (FAILED(hr)) {
         return hr;
+    }
+
+    // Supported?
+    if (!IsSupportedFeatureLevel(minimumFeatureLevel)) {
+        return device->QueryInterface(riid, ppDevice);
     }
 
     // Create wrappers and states

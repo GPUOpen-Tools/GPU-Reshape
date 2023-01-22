@@ -17,6 +17,7 @@ struct DeviceState;
 class ShaderDataHost final : public IShaderDataHost {
 public:
     explicit ShaderDataHost(DeviceState* table);
+    ~ShaderDataHost();
 
     /// Install this host
     /// \return success state

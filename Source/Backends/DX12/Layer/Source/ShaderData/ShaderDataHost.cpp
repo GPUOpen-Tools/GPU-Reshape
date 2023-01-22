@@ -7,6 +7,16 @@ ShaderDataHost::ShaderDataHost(DeviceState *device) : device(device) {
 
 }
 
+ShaderDataHost::~ShaderDataHost() {
+    // Release resources
+    for (const ResourceEntry& entry : resources) {
+        if (entry.allocation.resource) {
+            entry.allocation.allocation->Release();
+            entry.allocation.resource->Release();
+        }
+    }
+}
+
 bool ShaderDataHost::Install() {
     return true;
 }

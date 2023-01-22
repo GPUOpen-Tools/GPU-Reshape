@@ -136,13 +136,16 @@ void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12
     auto table = GetTable(_this);
     auto resource = GetTable(pResource);
 
-    // Associated heap?
-    if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
-        uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
-        ASSERT(offset % heap->stride == 0, "Invalid heap offset");
+    // TODO: Null descriptors!
+    if (pResource) {
+        // Associated heap?
+        if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
+            uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
+            ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
-        // TODO: SRB masking
-        heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state->virtualMapping);
+            // TODO: SRB masking
+            heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state->virtualMapping);
+        }
     }
 
     // Pass down callchain
@@ -153,13 +156,16 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
     auto table = GetTable(_this);
     auto resource = GetTable(pResource);
 
-    // Associated heap?
-    if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
-        uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
-        ASSERT(offset % heap->stride == 0, "Invalid heap offset");
+    // TODO: Null descriptors!
+    if (pResource) {
+        // Associated heap?
+        if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
+            uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
+            ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
-        // TODO: SRB masking
-        heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state->virtualMapping);
+            // TODO: SRB masking
+            heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state->virtualMapping);
+        }
     }
 
     // Pass down callchain
