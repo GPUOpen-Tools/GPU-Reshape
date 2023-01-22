@@ -150,13 +150,13 @@ struct TrivialStackVector {
     }
 
     /// Get the element at a given index
-    T& operator[](uint32_t i) {
+    T& operator[](size_t i) {
         ASSERT(i < size, "Index out of bounds");
         return data[i];
     }
 
     /// Get the element at a given index
-    const T& operator[](uint32_t i) const {
+    const T& operator[](size_t i) const {
         ASSERT(i < size, "Index out of bounds");
         return data[i];
     }

@@ -75,7 +75,7 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Default validation brush
         /// </summary>
-        private Brush _validationBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush");
+        private Brush _validationBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? new SolidColorBrush(Colors.Red);
 
         /// <summary>
         /// Underlying layer

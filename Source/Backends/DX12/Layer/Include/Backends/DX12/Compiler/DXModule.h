@@ -12,7 +12,7 @@
 // Forward declarations
 struct DXJob;
 struct DXStream;
-struct IDXDebugModule;
+class IDXDebugModule;
 namespace IL {
     struct Program;
 }

@@ -85,7 +85,7 @@ void ShaderCompiler::InitializeModule(ShaderState *state) {
     // Create the module on demand
     if (!state->module) {
         // Get type
-        uint32_t type = *static_cast<const uint64_t *>(state->key.byteCode.pShaderBytecode);
+        uint32_t type = *static_cast<const uint32_t *>(state->key.byteCode.pShaderBytecode);
 
         // Create the module
         switch (type) {

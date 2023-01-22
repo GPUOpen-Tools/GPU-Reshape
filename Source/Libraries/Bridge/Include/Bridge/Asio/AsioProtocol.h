@@ -153,7 +153,10 @@ struct ALIGN_PACK AsioRemoteServerResolverDiscoveryRequest : public TAsioHeader<
         uint64_t entryCount;
 
         /// All entries
+#pragma warning(push)
+#pragma warning(disable:4200)
         Entry entries[0];
+#pragma warning(pop)
     };
 };
 

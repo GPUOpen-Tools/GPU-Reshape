@@ -10,7 +10,7 @@
 
 // Forward declarations
 struct DeviceState;
-struct IDXDebugModule;
+class IDXDebugModule;
 class IBridge;
 
 class ShaderSGUIDHost final : public IShaderSGUIDHost {

@@ -120,7 +120,7 @@ ShaderExportSegmentCounterInfo ShaderExportStreamAllocator::AllocateCounterInfo(
     info.view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
     info.view.Format = DXGI_FORMAT_R32_UINT;
     info.view.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-    info.view.Buffer.NumElements = std::max(1ull, exportInfos.size());
+    info.view.Buffer.NumElements = std::max(1u, static_cast<uint32_t>(exportInfos.size()));
     info.view.Buffer.FirstElement = 0;
 
     // OK
@@ -162,7 +162,7 @@ ShaderExportStreamInfo ShaderExportStreamAllocator::AllocateStreamInfo(const Sha
     info.view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
     info.view.Format = DXGI_FORMAT_R32_UINT;
     info.view.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-    info.view.Buffer.NumElements = exportInfo.dataSize / sizeof(uint32_t);
+    info.view.Buffer.NumElements = static_cast<uint32_t>(exportInfo.dataSize / sizeof(uint32_t));
     info.view.Buffer.FirstElement = 0;
 
     // OK

@@ -23,7 +23,7 @@ void main(uint dtid : SV_DispatchThreadID) {
         data += texture.SampleLevel(defaultSampler, dtid.xx / 64.0f, 0.0f);
     }
 
-    for (uint i = 0; i < 64; i++, bufferRW[dtid] += 1) {
+    for (uint j = 0; j < 64; j++, bufferRW[dtid] += 1) {
         data += texture.Load(uint3(dtid.xx, 0));
     }
 

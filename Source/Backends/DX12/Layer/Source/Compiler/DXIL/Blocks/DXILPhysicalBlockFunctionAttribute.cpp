@@ -31,7 +31,7 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterAttributeGroup(struct LLV
 
                 ParameterAttributeGroup& group = parameterAttributeGroups.Add();
 
-                uint32_t id = reader.ConsumeOp();
+                uint32_t id = reader.ConsumeOp32();
                 uint64_t parameter = reader.ConsumeOp();
 
                 switch (static_cast<LLVMParameterGroupRecordIndex>(parameter)) {
@@ -94,7 +94,7 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterBlock(struct LLVMBlock *b
                 ParameterGroup& group = parameterGroups.Add();
 
                 while (reader.Any()) {
-                    uint32_t index = reader.ConsumeOp();
+                    uint32_t index = reader.ConsumeOp32();
                     ASSERT(index > 0, "Invalid parameter group index");
 
                     for (const ParameterAttribute& attrib : parameterAttributeGroups[index - 1].attributes) {
@@ -132,7 +132,7 @@ uint32_t DXILPhysicalBlockFunctionAttribute::FindOrCompileAttributeList(uint32_t
     }
 
     // Destination group index
-    uint32_t groupIndex = parameterAttributeGroups.Size();
+    uint32_t groupIndex = static_cast<uint32_t>(parameterAttributeGroups.Size());
 
     // Allocate group
     ParameterAttributeGroup& group = parameterAttributeGroups.Add();
@@ -157,7 +157,7 @@ uint32_t DXILPhysicalBlockFunctionAttribute::FindOrCompileAttributeList(uint32_t
     groupDeclarationBlock->AddRecord(groupRecord);
 
     // Destination parameter index
-    uint32_t parameterIndex = parameterGroups.Size();
+    uint32_t parameterIndex = static_cast<uint32_t>(parameterGroups.Size());
 
     // Parameter record
     LLVMRecord parameterRecord(LLVMParameterRecord::Entry);

@@ -39,5 +39,5 @@ DXBCSigner::~DXBCSigner() {
 }
 
 bool DXBCSigner::Sign(void *code, uint64_t length) {
-    return SUCCEEDED(dxbcSign(static_cast<BYTE*>(code), length));
+    return SUCCEEDED(dxbcSign(static_cast<BYTE*>(code), static_cast<uint32_t>(length)));
 }

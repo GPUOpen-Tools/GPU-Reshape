@@ -152,9 +152,11 @@ std::string_view ShaderSGUIDHost::GetSource(ShaderSGUID sguid) {
 std::string_view ShaderSGUIDHost::GetSource(const ShaderSourceMapping &mapping) {
     const SpvSourceMap* map = GetSourceMap(mapping.shaderGUID);
 
+    // Get line
     std::string_view view = map->GetLine(mapping.fileUID, mapping.line);
 
-    uint32_t column = std::min<uint32_t>(mapping.column, std::max<uint32_t>(view.length(), 1) - 1);
+    // To column
+    uint32_t column = std::min<uint32_t>(mapping.column, std::max<uint32_t>(static_cast<uint32_t>(view.length()), 1) - 1);
 
     // Offset by column
     return view.substr(column, view.length() - column);

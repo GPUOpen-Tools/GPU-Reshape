@@ -68,7 +68,7 @@ struct MessageStream {
     /// \param data the data pointer, byte size [dataSize]
     /// \param dataSize byte siz eof data
     /// \param messageCount the number of messages within this stream
-    void SetData(const void* data, uint64_t dataSize, uint32_t messageCount) {
+    void SetData(const void* data, uint64_t dataSize, uint64_t messageCount) {
         buffer.resize(dataSize);
         std::memcpy(buffer.data(), data, dataSize);
         count = messageCount;

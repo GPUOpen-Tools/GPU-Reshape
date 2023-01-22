@@ -8,7 +8,7 @@
 #include <Backend/FeatureHookTable.h>
 
 // Forward declarations
-class CommandListState;
+struct CommandListState;
 
 struct FeatureHook_DrawInstanced : TFeatureHook<Hooks::DrawInstanced> {
     void operator()(CommandListState* state, CommandContext* context, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) const {

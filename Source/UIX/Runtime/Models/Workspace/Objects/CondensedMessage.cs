@@ -12,11 +12,11 @@ namespace Studio.Models.Workspace.Objects
         /// <summary>
         /// Shader extract
         /// </summary>
-        public string Extract;
+        public string? Extract;
 
         /// <summary>
         /// General contents
         /// </summary>
-        public string Content;
+        public string? Content;
     }
 }

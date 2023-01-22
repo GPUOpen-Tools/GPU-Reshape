@@ -57,6 +57,6 @@ namespace Backend::IL {
             }
         }
 
-        return 0.0f;
+        return 0u;
     }
 }

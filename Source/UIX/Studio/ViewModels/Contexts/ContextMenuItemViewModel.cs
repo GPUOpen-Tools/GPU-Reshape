@@ -18,7 +18,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Command on invoke
         /// </summary>
-        public ICommand Command { get; }
+        public ICommand? Command { get; } = null;
 
         /// <summary>
         /// If this context menu is enabled

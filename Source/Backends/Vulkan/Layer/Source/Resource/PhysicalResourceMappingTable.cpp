@@ -30,7 +30,7 @@ PhysicalResourceMappingTable::~PhysicalResourceMappingTable() {
     deviceAllocator->Free(allocation);
 }
 
-uint64_t PhysicalResourceMappingTable::GetHeadOffset() const {
+uint32_t PhysicalResourceMappingTable::GetHeadOffset() const {
     if (segments.empty()) {
         return 0;
     }
@@ -39,7 +39,7 @@ uint64_t PhysicalResourceMappingTable::GetHeadOffset() const {
 }
 
 PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count) {
-    uint64_t head = GetHeadOffset();
+    uint32_t head = GetHeadOffset();
 
     // Out of (potentially fragmented) space?
     if (head + count >= virtualMappingCount) {
@@ -52,7 +52,7 @@ PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count)
     PhysicalResourceSegmentID id;
     if (freeIndices.empty()) {
         // Allocate at end
-        id = indices.size();
+        id = static_cast<uint32_t>(indices.size());
         indices.emplace_back();
     } else {
         // Consume free index
@@ -61,7 +61,7 @@ PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count)
     }
 
     // Set index
-    indices[id] = segments.size();
+    indices[id] = static_cast<uint32_t>(segments.size());
 
     // Create new segment
     SegmentEntry& entry = segments.emplace_back();
@@ -97,7 +97,7 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
     constexpr float GrowthFactor = 1.5f;
 
     // Number of old mappings
-    uint64_t migratedCount = virtualMappingCount;
+    uint32_t migratedCount = virtualMappingCount;
 
     // Old mapping data
     const VirtualResourceMapping* migratedMappings = virtualMappings;
@@ -242,7 +242,7 @@ uint64_t PhysicalResourceMappingTable::SummarizeFragmentation() const {
 void PhysicalResourceMappingTable::Defragment() {
     for (size_t i = 1; i < segments.size(); i++) {
         // The optimal offset
-        uint64_t relocatedOffset = segments[i - 1].offset + segments[i - 1].length;
+        uint32_t relocatedOffset = segments[i - 1].offset + segments[i - 1].length;
 
         // Already in optimal placement?
         if (relocatedOffset == segments[i].offset) {

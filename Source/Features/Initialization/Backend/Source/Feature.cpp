@@ -175,7 +175,7 @@ void InitializationFeature::MaskResourceSRB(CommandContext *context, uint64_t pu
     // Mask the entire resource as mapped
     CommandBuilder builder(context->buffer);
     builder.SetShaderProgram(srbMaskingShaderProgramID);
-    builder.SetEventData(srbMaskingShaderProgram->GetPUIDEventID(), puid);
+    builder.SetEventData(srbMaskingShaderProgram->GetPUIDEventID(), static_cast<uint32_t>(puid));
     builder.SetEventData(srbMaskingShaderProgram->GetMaskEventID(), ~0u);
     builder.Dispatch(1, 1, 1);
 }

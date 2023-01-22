@@ -13,8 +13,8 @@
 #include <vector>
 
 // Forward declarations
-class DeviceDispatchTable;
-struct DeviceAllocator;
+struct DeviceDispatchTable;
+class DeviceAllocator;
 
 /// Performs mapping between virtual descriptors and physical resources
 class PhysicalResourceMappingTable : public TComponent<PhysicalResourceMappingTable> {
@@ -74,7 +74,7 @@ public:
 private:
     /// Get the current offset
     /// \return element offset
-    uint64_t GetHeadOffset() const;
+    uint32_t GetHeadOffset() const;
 
     /// Allocate a new table with a given size
     /// \param count number of descriptors
@@ -110,8 +110,8 @@ private:
 private:
     struct SegmentEntry {
         PhysicalResourceSegmentID id{0};
-        uint64_t offset{0};
-        uint64_t length{0};
+        uint32_t offset{0};
+        uint32_t length{0};
     };
 
     /// Free indices to be used immediately

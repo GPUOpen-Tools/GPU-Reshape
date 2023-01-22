@@ -284,7 +284,7 @@ private:
             members[i] = GetSpvTypeId(type->memberTypes[i]);
         }
 
-        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeStruct, 2 + type->memberTypes.size());
+        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeStruct, 2 + static_cast<uint32_t>(type->memberTypes.size()));
         spv[1] = id;
 
         for (uint32_t i = 0; i < type->memberTypes.size(); i++) {
@@ -344,11 +344,11 @@ private:
             parameters[i] = GetSpvTypeId(type->parameterTypes[i]);
         }
 
-        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeFunction, 3 + type->parameterTypes.size());
+        SpvInstruction& spv = declarationStream->Allocate(SpvOpTypeFunction, 3 + static_cast<uint32_t>(type->parameterTypes.size()));
         spv[1] = id;
         spv[2] = returnId;
 
-        for (uint64_t i = 0; i < type->parameterTypes.size(); i++) {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(type->parameterTypes.size()); i++) {
             spv[3 + i] = parameters[i];
         }
 

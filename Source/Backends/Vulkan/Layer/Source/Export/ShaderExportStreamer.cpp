@@ -262,7 +262,7 @@ void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBind
         }
 
         // Descriptor dynamic offset
-        uint32_t dynamicOffset = bindState.descriptorDataAllocator->GetSegmentDynamicOffset();
+        uint32_t dynamicOffset = static_cast<uint32_t>(bindState.descriptorDataAllocator->GetSegmentDynamicOffset());
 
         // Bind the export
         table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
@@ -348,7 +348,7 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, Pipe
     }
 
     // Descriptor dynamic offset
-    uint32_t dynamicOffset = bindState.descriptorDataAllocator->GetSegmentDynamicOffset();
+    uint32_t dynamicOffset = static_cast<uint32_t>(bindState.descriptorDataAllocator->GetSegmentDynamicOffset());
 
     // Bind the export
     table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(

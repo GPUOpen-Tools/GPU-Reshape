@@ -135,7 +135,7 @@ public:
 
     /// Get the number of entries
     uint32_t GetEntryCount() const {
-        return indexLookup.size();
+        return static_cast<uint32_t>(indexLookup.size());
     }
 
 private:
@@ -337,7 +337,7 @@ private:
     /// \return DXIL id
     uint32_t Emit(const Backend::IL::Type* type, LLVMRecord& record) {
         // Add mapping
-        uint32_t id = indexLookup.size();
+        uint32_t id = static_cast<uint32_t>(indexLookup.size());
         AddTypeMapping(type, id);
         indexLookup.push_back(type);
 

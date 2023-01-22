@@ -49,7 +49,7 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
 
     // Set base register for shader exports
     bindingInfo.shaderExportBaseRegister = registerOffset;
-    bindingInfo.shaderExportCount = state->features.size() + 1u;
+    bindingInfo.shaderExportCount = static_cast<uint32_t>(state->features.size()) + 1u;
     registerOffset += bindingInfo.shaderExportCount;
 
     // Set base register for prmt data

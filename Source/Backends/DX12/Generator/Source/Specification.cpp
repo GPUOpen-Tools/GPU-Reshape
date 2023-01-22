@@ -89,7 +89,7 @@ static nlohmann::json TranslateType(CXType type) {
             obj["returnType"] = TranslateType(clang_getResultType(type));
 
             // Append parameters
-            for (uint32_t i = 0; i < clang_getNumArgTypes(type); i++) {
+            for (int i = 0; i < clang_getNumArgTypes(type); i++) {
                 obj["parameters"].emplace_back(TranslateType(clang_getArgType(type, i)));
             }
             break;
@@ -390,7 +390,7 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
         index,
         info.d3d12HeaderPath.c_str(),
         args.data(),
-        args.size(),
+        static_cast<int>(args.size()),
         nullptr, 0,
         CXTranslationUnit_SkipFunctionBodies,
         &unit

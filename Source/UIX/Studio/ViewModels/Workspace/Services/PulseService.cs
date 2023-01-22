@@ -75,7 +75,7 @@ namespace Studio.ViewModels.Workspace.Listeners
             var stream = new StaticMessageView<PingPongMessage, ReadWriteMessageStream>(new ReadWriteMessageStream());
 
             // Add local ping
-            var message = stream.Add<PingPongMessage>();
+            var message = stream.Add();
             message.timeStamp = EncodeDateTime(DateTime.Now);
             
             // Submit and wait for pong

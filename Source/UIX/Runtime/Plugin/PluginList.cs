@@ -1,10 +1,12 @@
-﻿namespace Studio.Plugin
+﻿using System;
+
+namespace Studio.Plugin
 {
     public class PluginList
     {
         /// <summary>
         /// All entries found
         /// </summary>
-        public PluginEntry[] Entries;
+        public PluginEntry[] Entries = Array.Empty<PluginEntry>();
     }
 }

@@ -152,7 +152,7 @@ ShaderProgramID ShaderProgramHost::Register(const ComRef<IShaderProgram> &progra
     // Allocate identifier
     ShaderProgramID id;
     if (freeIndices.empty()) {
-        id = programs.size();
+        id = static_cast<uint32_t>(programs.size());
         programs.emplace_back();
     } else {
         id = freeIndices.back();

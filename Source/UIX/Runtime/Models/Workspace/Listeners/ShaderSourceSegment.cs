@@ -7,7 +7,7 @@ namespace Studio.Models.Workspace.Listeners
         /// <summary>
         /// Contained shader extract
         /// </summary>
-        public string Extract { get; set; }
+        public string? Extract { get; set; }
         
         /// <summary>
         /// Location of this segment

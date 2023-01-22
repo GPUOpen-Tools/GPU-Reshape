@@ -13,7 +13,7 @@
 // Forward declarations
 struct DeviceState;
 struct ShaderExportStreamState;
-struct DescriptorDataAppendAllocator;
+class DescriptorDataAppendAllocator;
 
 struct CommandListState {
     ~CommandListState();

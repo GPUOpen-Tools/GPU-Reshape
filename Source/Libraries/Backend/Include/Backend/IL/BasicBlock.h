@@ -437,7 +437,7 @@ namespace IL {
         /// \return inserted reference
         template<typename T, typename = std::enable_if_t<!std::is_pointer_v<T>>>
         TypedIterator<T> Append(const T &instruction) {
-            return Append(static_cast<const Instruction*>(&instruction), IL::GetSize(&instruction));
+            return Append(static_cast<const Instruction*>(&instruction), static_cast<uint32_t>(IL::GetSize(&instruction)));
         }
 
         /// Append an instruction at a given point
@@ -487,12 +487,12 @@ namespace IL {
             size_t offset = instruction.relocationOffset->offset;
             data.erase(data.begin() + offset, data.begin() + offset + GetSize(ptr));
 
-            uint64_t relocationIndex = std::find(relocationTable.begin(), relocationTable.end(), instruction.relocationOffset) - relocationTable.begin();
+            const uint64_t relocationIndex = std::find(relocationTable.begin(), relocationTable.end(), instruction.relocationOffset) - relocationTable.begin();
 
             // Remove relocation offset
             RemoveRelocationOffset(instruction.relocationOffset);
 
-            ResummarizeRelocationTable(instruction.relocationOffset, relocationIndex);
+            ResummarizeRelocationTable(instruction.relocationOffset, static_cast<uint32_t>(relocationIndex));
 
 #ifndef NDEBUG
             debugRevision++;

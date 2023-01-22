@@ -48,7 +48,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Current content view model
         /// </summary>
-        public IShaderContentViewModel SelectedShaderContentViewModel
+        public IShaderContentViewModel? SelectedShaderContentViewModel
         {
             get => _selectedShaderContentViewModel;
             set => this.RaiseAndSetIfChanged(ref _selectedShaderContentViewModel, value);
@@ -189,7 +189,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Internal selection state
         /// </summary>
-        private IShaderContentViewModel _selectedShaderContentViewModel;
+        private IShaderContentViewModel? _selectedShaderContentViewModel;
 
         /// <summary>
         /// Underlying view model

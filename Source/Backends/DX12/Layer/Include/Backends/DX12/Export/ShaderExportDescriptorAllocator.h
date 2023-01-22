@@ -8,7 +8,7 @@
 #include <vector>
 
 // Forward declarations
-struct ShaderExportHost;
+class ShaderExportHost;
 
 class ShaderExportDescriptorAllocator {
 public:
@@ -33,12 +33,12 @@ public:
     }
 
     /// Get the allocation prefix offset
-    uint32_t GetPrefixOffset() const {
+    uint64_t GetPrefixOffset() const {
         return bound * descriptorAdvance;
     }
 
     /// Get the descriptor ptr advance
-    uint64_t GetAdvance() const {
+    uint32_t GetAdvance() const {
         return descriptorAdvance;
     }
 
@@ -46,7 +46,7 @@ public:
     /// Get a safe bound
     /// \param host shader export host
     /// \return descriptor count bound
-    static uint64_t GetDescriptorBound(ShaderExportHost* host);
+    static uint32_t GetDescriptorBound(ShaderExportHost* host);
 
 private:
     /// Current allocation counter
@@ -62,7 +62,7 @@ private:
     ID3D12DescriptorHeap* heap;
 
     /// Heap advance
-    uint64_t descriptorAdvance;
+    uint32_t descriptorAdvance;
 
     /// Base CPU handle
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;

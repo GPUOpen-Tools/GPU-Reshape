@@ -62,7 +62,7 @@ struct SpvParseContext {
 
     /// Get the templating source for the current offset
     IL::Source Source() const {
-        return IL::Source::Code(code - source.programBegin);
+        return IL::Source::Code(static_cast<uint32_t>(code - source.programBegin));
     }
 
     /// Does the instruction have a result?

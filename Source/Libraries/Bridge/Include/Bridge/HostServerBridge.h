@@ -10,7 +10,7 @@
 #include <condition_variable>
 
 // Forward declarations
-class AsioHostServer;
+struct AsioHostServer;
 
 /// Network Bridge
 class HostServerBridge final : public IBridge {

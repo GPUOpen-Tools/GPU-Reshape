@@ -93,7 +93,7 @@ struct LLVMBitStreamReader {
     /// Decode a signed LLVM value
     static int64_t DecodeSigned(uint64_t value) {
         uint64_t shr = value >> 1;
-        return (value & 0x1) ? -shr : shr;
+        return (value & 0x1) ? -static_cast<int64_t>(shr) : static_cast<int64_t>(shr);
     }
 
     /// Align the stream to 32 bits
@@ -144,13 +144,13 @@ struct LLVMBitStreamReader {
     T Variable(uint8_t count) {
         uint8_t available = 64u - bitOffset;
 
-        T mask = (1ull << count) - 1ull;
+        T mask = static_cast<T>((1ull << count) - 1ull);
 
         T data;
         if (count > available) {
-            data = (*ptr >> bitOffset) | (*(ptr + 1) << available);
+            data = static_cast<T>((*ptr >> bitOffset) | (*(ptr + 1) << available));
         } else {
-            data = (*ptr >> bitOffset);
+            data = static_cast<T>(*ptr >> bitOffset);
         }
 
         bitOffset += count;

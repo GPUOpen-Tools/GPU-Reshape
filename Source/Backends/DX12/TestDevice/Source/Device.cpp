@@ -345,7 +345,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
                 desc.Buffer.FirstElement = 0;
                 desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-                desc.Buffer.NumElements = resourceDesc.Width / Backend::IL::GetSize(resource.format);
+                desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / Backend::IL::GetSize(resource.format));
                 desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
                 device->CreateShaderResourceView(resource.resource.Get(), &desc, sharedResourceHeap.sharedCPUHeapOffset);
                 set.resources.count++;
@@ -357,7 +357,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
                 desc.Buffer.FirstElement = 0;
                 desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-                desc.Buffer.NumElements = resourceDesc.Width / Backend::IL::GetSize(resource.format);
+                desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / Backend::IL::GetSize(resource.format));
                 device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
                 set.resources.count++;
                 break;
@@ -419,7 +419,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
             case ResourceType::CBuffer: {
                 D3D12_CONSTANT_BUFFER_VIEW_DESC desc{};
                 desc.BufferLocation = resource.resource->GetGPUVirtualAddress();
-                desc.SizeInBytes = resourceDesc.Width;
+                desc.SizeInBytes = static_cast<uint32_t>(resourceDesc.Width);
                 device->CreateConstantBufferView(&desc, sharedResourceHeap.sharedCPUHeapOffset);
                 set.resources.count++;
                 break;
@@ -457,7 +457,7 @@ PipelineID Device::CreateComputePipeline(const ResourceLayoutID *layouts, uint32
         D3D12_ROOT_PARAMETER &root = rootParameters[i];
         root.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
         root.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        root.DescriptorTable.NumDescriptorRanges = layout.ranges.size();
+        root.DescriptorTable.NumDescriptorRanges = static_cast<uint32_t>(layout.ranges.size());
         root.DescriptorTable.pDescriptorRanges = layout.ranges.data();
 
         staticSamplers.insert(staticSamplers.end(), layout.staticSamplers.begin(), layout.staticSamplers.end());
@@ -465,10 +465,10 @@ PipelineID Device::CreateComputePipeline(const ResourceLayoutID *layouts, uint32
 
     // Signature description
     D3D12_ROOT_SIGNATURE_DESC signatureDesc{};
-    signatureDesc.NumParameters = rootParameters.size();
+    signatureDesc.NumParameters = static_cast<uint32_t>(rootParameters.size());
     signatureDesc.pParameters = rootParameters.data();
     signatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
-    signatureDesc.NumStaticSamplers = staticSamplers.size();
+    signatureDesc.NumStaticSamplers = static_cast<uint32_t>(staticSamplers.size());
     signatureDesc.pStaticSamplers = staticSamplers.data();
 
     // Serialize signature
@@ -638,6 +638,9 @@ SamplerID Device::CreateSampler() {
 
 Device::HeapInfo &Device::GetHeapForType(ResourceType type) {
     switch (type) {
+        default:
+            ASSERT(false, "Invalid resource type");
+            return sharedResourceHeap;
         case ResourceType::TexelBuffer:
         case ResourceType::RWTexelBuffer:
         case ResourceType::Texture1D:

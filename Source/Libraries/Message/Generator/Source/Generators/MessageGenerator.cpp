@@ -525,7 +525,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     }
 
     // Set size
-    out.size = cxxSizeType;
+    out.size = static_cast<uint32_t>(cxxSizeType);
 
     // Begin allocation info
     out.types << "\n";
@@ -549,9 +549,11 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     // Allocation patching
     out.types << "\n";
     out.types << "\t\t\tpublic void Patch(IMessage message) {\n";
-    out.types << "\t\t\t\tvar self = (" << message.name << "Message)message;\n";
-    out.types << "\t\t\t\tulong offset = 0;\n";
-    out.types << patch.str();
+    if (patch.str().length()) {
+        out.types << "\t\t\t\tvar self = (" << message.name << "Message)message;\n";
+        out.types << "\t\t\t\tulong offset = 0;\n";
+        out.types << patch.str();
+    }
     out.types << "\t\t\t}\n";
 
     // Allocation parameters

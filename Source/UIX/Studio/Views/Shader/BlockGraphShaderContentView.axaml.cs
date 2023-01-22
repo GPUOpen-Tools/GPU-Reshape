@@ -13,6 +13,7 @@ using DynamicData;
 using DynamicData.Binding;
 using Newtonsoft.Json;
 using ReactiveUI;
+using Studio.Extensions;
 using Studio.Models.Logging;
 using Studio.Services;
 using Studio.ViewModels.Shader;
@@ -36,14 +37,15 @@ namespace Studio.Views.Shader
 
             // Bind contents
             this.WhenAnyValue(x => x.DataContext)
-                .WhereNotNull()
-                .Cast<BlockGraphShaderContentViewModel>()
-                .WhereNotNull()
-                .Subscribe(x =>
+                .CastNullable<BlockGraphShaderContentViewModel>()
+                .Subscribe(viewModel =>
             {
-                x.Object.WhenAnyValue(x => x.BlockGraph).WhereNotNull().Subscribe(nodeGraph =>
+                viewModel.WhenAnyValue(x => x.Object).WhereNotNull().Subscribe(x =>
                 {
-                    CreateGraph(nodeGraph);
+                    x.WhenAnyValue(y => y.BlockGraph).Subscribe(contents =>
+                    {
+                        CreateGraph(contents);
+                    });
                 });
             });
         }

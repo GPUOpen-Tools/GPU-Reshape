@@ -812,6 +812,6 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     return TRUE;
 }
 
-extern "C" __declspec(dllexport) int WinHookAttach(int code, WPARAM wParam, LPARAM lParam) {
+extern "C" __declspec(dllexport) LRESULT WinHookAttach(int code, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(nullptr, code, wParam, lParam);
 }

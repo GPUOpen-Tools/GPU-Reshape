@@ -14,10 +14,7 @@ namespace Studio.ViewModels.Workspace
         /// <summary>
         /// Base property collection
         /// </summary>
-        public IPropertyViewModel PropertyCollection
-        {
-            get => _properties;
-        }
+        public IPropertyViewModel PropertyCollection => _properties;
 
         /// <summary>
         /// Active connection
@@ -46,15 +43,13 @@ namespace Studio.ViewModels.Workspace
         /// </summary>
         private void CreateProperties()
         {
-            // Create collection
-            _properties = new WorkspaceCollectionViewModel()
+            // Set connection
+            _properties.ConnectionViewModel = _connection;
+
+            // Create descriptor
+            _properties.Descriptor = new WorkspaceOverviewDescriptor()
             {
-                ConnectionViewModel = _connection,
-                
-                Descriptor = new WorkspaceOverviewDescriptor()
-                {
-                    Workspace = this
-                }
+                Workspace = this
             };
         }
 
@@ -66,6 +61,6 @@ namespace Studio.ViewModels.Workspace
         /// <summary>
         /// Internal property state
         /// </summary>
-        private IPropertyViewModel? _properties;
+        private WorkspaceCollectionViewModel _properties = new();
     }
 }

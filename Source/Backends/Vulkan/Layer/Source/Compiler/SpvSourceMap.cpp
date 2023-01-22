@@ -203,7 +203,7 @@ uint64_t SpvSourceMap::GetCombinedSourceLength(uint32_t fileUID) const {
 
         // Advance line count if not empty
         if (fragment.source.length()) {
-            line += fragment.lineOffsets.size();
+            line += static_cast<uint32_t>(fragment.lineOffsets.size());
         }
     }
 
@@ -231,7 +231,7 @@ void SpvSourceMap::FillCombinedSource(uint32_t fileUID, char *buffer) const {
 
         // Advance line count if not empty
         if (fragment.source.length()) {
-            line += fragment.lineOffsets.size();
+            line += static_cast<uint32_t>(fragment.lineOffsets.size());
         }
     }
 }

@@ -72,7 +72,7 @@ namespace Studio.ViewModels.Tools
         /// <summary>
         /// Current set of filtered events
         /// </summary>
-        public ReadOnlyObservableCollection<LogEvent> FilteredEvents => _filteredEvents;
+        public ReadOnlyObservableCollection<LogEvent>? FilteredEvents => _filteredEvents;
 
         /// <summary>
         /// Data view model
@@ -162,7 +162,7 @@ namespace Studio.ViewModels.Tools
         /// <summary>
         /// Internal filtered events
         /// </summary>
-        private ReadOnlyObservableCollection<Models.Logging.LogEvent> _filteredEvents;
+        private ReadOnlyObservableCollection<Models.Logging.LogEvent>? _filteredEvents;
 
         /// <summary>
         /// Internal info state

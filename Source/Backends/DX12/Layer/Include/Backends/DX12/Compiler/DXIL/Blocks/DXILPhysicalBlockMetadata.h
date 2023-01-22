@@ -210,7 +210,7 @@ public:
     struct Resources {
         uint32_t uid = ~0u;
         uint32_t source = ~0u;
-        uint64_t lists[static_cast<uint32_t>(DXILShaderResourceClass::Count)];
+        uint32_t lists[static_cast<uint32_t>(DXILShaderResourceClass::Count)];
     } resources;
 
     /// Represents a handle within a space

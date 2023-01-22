@@ -35,7 +35,7 @@ namespace Studio.ViewModels.Menu
         /// <summary>
         /// Target command
         /// </summary>
-        public ICommand Command { get; } = null;
+        public ICommand? Command { get; } = null;
 
         /// <summary>
         /// Constructor

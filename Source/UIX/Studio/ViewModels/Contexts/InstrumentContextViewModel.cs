@@ -36,7 +36,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Target command
         /// </summary>
-        public ICommand Command { get; }
+        public ICommand? Command { get; } = null;
 
         public InstrumentContextViewModel()
         {

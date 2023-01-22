@@ -104,6 +104,12 @@ namespace Studio.ViewModels.Controls
         /// </summary>
         private void OnPropertyChanged()
         {
+            if (_propertyViewModel == null)
+            {
+                return;
+            }
+            
+            // Set text
             Text = _propertyViewModel.Name;
             
             // Cleanup
@@ -155,7 +161,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Internal connection state
         /// </summary>
-        private IPropertyViewModel _propertyViewModel;
+        private IPropertyViewModel? _propertyViewModel;
 
         /// <summary>
         /// Internal text state

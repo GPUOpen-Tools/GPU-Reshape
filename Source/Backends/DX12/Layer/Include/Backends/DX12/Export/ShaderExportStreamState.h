@@ -18,10 +18,10 @@
 struct RootSignatureState;
 struct ShaderExportSegmentInfo;
 struct IncrementalFence;
-struct ShaderExportDescriptorAllocator;
+class ShaderExportDescriptorAllocator;
 struct FenceState;
 struct PipelineState;
-struct DescriptorDataAppendAllocator;
+class DescriptorDataAppendAllocator;
 struct DescriptorHeapState;
 
 /// Tracked descriptor allocation

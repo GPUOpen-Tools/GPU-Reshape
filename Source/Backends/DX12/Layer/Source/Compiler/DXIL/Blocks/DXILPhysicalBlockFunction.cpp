@@ -99,7 +99,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     table.idMap.ReserveForward(block->records.Size());
 
     // Visit function records
-    for (size_t recordIdx = 0; recordIdx < block->records.Size(); recordIdx++) {
+    for (uint32_t recordIdx = 0; recordIdx < static_cast<uint32_t>(block->records.Size()); recordIdx++) {
         LLVMRecord &record = block->records[recordIdx];
 
         LLVMRecordReader reader(record);
@@ -135,7 +135,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::DeclareBlocks: {
-                const uint32_t blockCount = reader.ConsumeOp();
+                const uint32_t blockCount = reader.ConsumeOp32();
 
                 // Allocate all blocks (except entry)
                 for (uint32_t i = 0; i < blockCount - 1; i++) {
@@ -145,8 +145,8 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 break;
             }
             case LLVMFunctionRecord::InstBinOp: {
-                uint64_t lhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                uint64_t rhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint32_t lhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+                uint32_t rhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Create type mapping
                 ilTypeMap.SetType(result, ilTypeMap.GetType(lhs));
@@ -265,10 +265,10 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 break;
             }
             case LLVMFunctionRecord::InstCast: {
-                uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint32_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Create type mapping
-                ilTypeMap.SetType(result, table.type.typeMap.GetType(reader.ConsumeOp()));
+                ilTypeMap.SetType(result, table.type.typeMap.GetType(reader.ConsumeOp32()));
 
                 auto castOp = static_cast<LLVMCastOp>(reader.ConsumeOp());
                 switch (castOp) {
@@ -348,12 +348,12 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 ASSERT(false, "Untested path, validate and remove");
 
                 // Get composite
-                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp());
-                uint64_t compositeValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp32());
+                uint32_t compositeValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Get index
-                const Backend::IL::Type* indexType = table.type.typeMap.GetType(reader.ConsumeOp());
-                uint64_t indexValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                const Backend::IL::Type* indexType = table.type.typeMap.GetType(reader.ConsumeOp32());
+                uint32_t indexValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 IL::InsertInstruction instr{};
                 instr.opCode = IL::OpCode::Insert;
@@ -369,11 +369,11 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 ASSERT(false, "Untested path, validate and remove");
 
                 // Get composite
-                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp());
-                uint64_t compositeValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                const Backend::IL::Type* compositeType = table.type.typeMap.GetType(reader.ConsumeOp32());
+                uint32_t compositeValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Get index
-                uint64_t indexValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint32_t indexValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 IL::ExtractInstruction instr{};
                 instr.opCode = IL::OpCode::Extract;
@@ -387,10 +387,10 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
             case LLVMFunctionRecord::InstExtractVal: {
                 // Get composite
-                uint64_t compositeValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint32_t compositeValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Get index, not relative
-                int64_t index = reader.ConsumeOp();
+                uint32_t index = reader.ConsumeOp32();
 
                 // Create type mapping
                 const Backend::IL::Type* type = ilTypeMap.GetType(compositeValue);
@@ -416,13 +416,8 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
                 instr.composite = compositeValue;
-
-                // Set as constant
-                instr.index = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                    Backend::IL::IntConstant{.value = index}
-                )->id);
-
+                instr.index = index;
+                
                 basicBlock->Append(instr);
                 break;
             }
@@ -444,13 +439,13 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 // Handle old instruction types
                 if (record.Is(LLVMFunctionRecord::InstGEP)) {
                     inBounds = reader.ConsumeOpAs<bool>();
-                    pointee = table.type.typeMap.GetType(reader.ConsumeOp());
+                    pointee = table.type.typeMap.GetType(reader.ConsumeOp32());
                 } else if (record.Is(LLVMFunctionRecord::InstGEPOld)) {
                     inBounds = true;
                 }
 
                 // Get first chain
-                uint64_t compositeId = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint32_t compositeId = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Get type of composite if needed
                 const auto* elementType = ilTypeMap.GetType(compositeId);
@@ -468,7 +463,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
                 for (uint32_t i = 0; i < addressCount; i++) {
                     // Get next chain
-                    uint64_t nextChainId = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                    uint32_t nextChainId = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                     // Constant indexing into struct?
                     switch (elementType->kind) {
@@ -497,7 +492,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                             const Backend::IL::Constant* constant = program.GetConstants().GetConstant(nextChainId);
                             ASSERT(constant, "GEP struct chains must be constant");
 
-                            uint32_t memberIdx = constant->As<Backend::IL::IntConstant>()->value;
+                            uint32_t memberIdx = static_cast<uint32_t>(constant->As<Backend::IL::IntConstant>()->value);
                             elementType = elementType->As<Backend::IL::StructType>()->memberTypes[memberIdx];
                             break;
                         }
@@ -519,9 +514,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
                 /* Select */
             case LLVMFunctionRecord::InstVSelect: {
-                uint64_t pass = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                uint64_t fail = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                uint64_t condition = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint32_t pass = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+                uint32_t fail = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+                uint32_t condition = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Create type mapping
                 ilTypeMap.SetType(result, ilTypeMap.GetType(pass));
@@ -556,8 +551,8 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
             case LLVMFunctionRecord::InstCmp:
             case LLVMFunctionRecord::InstCmp2: {
-                uint64_t lhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                uint64_t rhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint32_t lhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+                uint32_t rhs = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Create type mapping
                 ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::BoolType{}));
@@ -678,8 +673,8 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstAtomicRW: {
-                uint64_t address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint32_t address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+                uint32_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
                 uint64_t op = reader.ConsumeOp();
                 uint64_t _volatile = reader.ConsumeOp();
                 uint64_t ordering = reader.ConsumeOp();
@@ -707,7 +702,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.opCode = IL::OpCode::Return;
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
-                instr.value = reader.ConsumeOpDefault(IL::InvalidID);
+                instr.value = static_cast<uint32_t>(reader.ConsumeOpDefault(IL::InvalidID));
 
                 // Mapping
                 if (instr.value != IL::InvalidID) {
@@ -725,7 +720,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 break;
             }
             case LLVMFunctionRecord::InstBr: {
-                uint64_t pass = blockMapping[reader.ConsumeOp()]->GetID();
+                uint32_t pass = blockMapping[reader.ConsumeOp()]->GetID();
 
                 // Conditional?
                 if (reader.Any()) {
@@ -735,7 +730,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                     instr.source = IL::Source::Code(recordIdx);
                     instr.pass = pass;
                     instr.fail = blockMapping[reader.ConsumeOp()]->GetID();
-                    instr.cond = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                    instr.cond = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
                     basicBlock->Append(instr);
                 } else {
                     IL::BranchInstruction instr{};
@@ -757,11 +752,11 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             case LLVMFunctionRecord::InstSwitch: {
                 reader.ConsumeOp();
 
-                uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-                uint64_t _default = blockMapping[reader.ConsumeOp()]->GetID();
+                uint32_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+                uint32_t _default = blockMapping[reader.ConsumeOp()]->GetID();
 
                 // Get remaining count
-                uint64_t remaining = reader.Remaining();
+                uint32_t remaining = reader.Remaining();
                 ASSERT(remaining % 2 == 0, "Unexpected record switch operation count");
 
                 // Determine number of cases
@@ -817,10 +812,10 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
             case LLVMFunctionRecord::InstPhi: {
                 // Create type mapping
-                ilTypeMap.SetType(result, table.type.typeMap.GetType(reader.ConsumeOp()));
+                ilTypeMap.SetType(result, table.type.typeMap.GetType(reader.ConsumeOp32()));
 
                 // Get remaining count
-                uint64_t remaining = reader.Remaining();
+                uint32_t remaining = reader.Remaining();
                 ASSERT(remaining % 2 == 0, "Unexpected record phi operation count");
 
                 // Determine number of values
@@ -855,7 +850,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstAlloca: {
-                const Backend::IL::Type *type = table.type.typeMap.GetType(reader.ConsumeOp());
+                const Backend::IL::Type *type = table.type.typeMap.GetType(reader.ConsumeOp32());
 
                 // Create type mapping
                 ilTypeMap.SetType(result, type);
@@ -874,7 +869,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstLoad: {
-                uint32_t address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                uint32_t address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Get address type
                 const Backend::IL::Type *type = ilTypeMap.GetType(address);
@@ -902,9 +897,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.opCode = IL::OpCode::Store;
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
-                instr.address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                instr.address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
-                instr.value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                instr.value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
                 basicBlock->Append(instr);
                 break;
             }
@@ -914,12 +909,12 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.opCode = IL::OpCode::Store;
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
-                instr.address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                instr.address = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
                 // Type
                 reader.ConsumeOp();
 
-                instr.value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+                instr.value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
                 basicBlock->Append(instr);
                 break;
             }
@@ -941,7 +936,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 uint64_t type = reader.ConsumeOp();
 
                 // Get callee
-                uint64_t called = table.idMap.GetRelative(anchor, reader.ConsumeOp());
+                uint32_t called = table.idMap.GetRelative(anchor, reader.ConsumeOp32());
 
                 // Get call declaration
                 const DXILFunctionDeclaration *callDecl = GetFunctionDeclaration(called);
@@ -1030,7 +1025,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
     // Allocate id to current function offset
     record.SetSource(true, table.idMap.GetAnchor());
 
-    IL::ID id = table.idMap.AllocMappedID(DXILIDType::Function, functions.Size());
+    IL::ID id = table.idMap.AllocMappedID(DXILIDType::Function, static_cast<uint32_t>(functions.Size()));
 
     // Create function
     auto *function = functions.Add(new (allocators) DXILFunctionDeclaration);
@@ -1043,7 +1038,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
     function->hash = std::hash<std::string_view>{}(function->name);
 
     // Get function type
-    uint64_t type = reader.ConsumeOp();
+    uint32_t type = reader.ConsumeOp32();
     function->type = table.type.typeMap.GetType(type)->As<Backend::IL::FunctionType>();
 
     // Ignored
@@ -1058,7 +1053,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
 
     // Add to internal linked functions if not external
     if (proto == 0) {
-        internalLinkedFunctions.Add(functions.Size() - 1);
+        internalLinkedFunctions.Add(static_cast<uint32_t>(functions.Size() - 1));
     }
 }
 
@@ -1102,19 +1097,19 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             }
 
             // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value;
 
             // Resource class
-            auto _class = static_cast<DXILShaderResourceClass>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value);
+            auto _class = static_cast<DXILShaderResourceClass>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value);
 
             // Handle ids are always stored as constants
-            uint32_t handleId = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            uint32_t handleId = static_cast<uint32_t>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value);
 
             // Range indices may be dynamic
-            IL::ID rangeIndex = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            IL::ID rangeIndex = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
             // Divergent?
-            auto isNonUniform = program.GetConstants().GetConstant<IL::BoolConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            auto isNonUniform = program.GetConstants().GetConstant<IL::BoolConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value;
 
             // Get the actual handle type
             auto type = table.metadata.GetHandleType(_class, handleId);
@@ -1149,12 +1144,12 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             }
 
             // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value;
 
-            uint64_t outputID = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t row = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t column = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint32_t outputID = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t row = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t column = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
             // Emit
             IL::StoreOutputInstruction instr{};
@@ -1186,12 +1181,12 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             }
 
             // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value;
 
             // Get operands, ignore offset for now
-            uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t coordinate = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t offset = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint32_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t coordinate = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t offset = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
             // Emit as load
             IL::LoadBufferInstruction instr{};
@@ -1226,17 +1221,17 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             }
 
             // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value;
 
             // Get operands, ignore offset for now
-            uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t coordinate = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t offset = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t x = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t y = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t z = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t w = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t mask = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint32_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t coordinate = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t offset = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t x = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t y = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t z = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t w = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t mask = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
             // Get type
             const auto* bufferType = ilTypeMap.GetType(resource)->As<Backend::IL::BufferType>();
@@ -1284,17 +1279,17 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             }
 
             // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value;
 
             // Get operands, ignore offset for now
-            uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t mip = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t cx = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t cy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t cz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t ox = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t oy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t oz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint32_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t mip = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t cx = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t cy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t cz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t ox = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t oy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t oz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
             // Get type
             const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
@@ -1342,18 +1337,18 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             }
 
             // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value;
 
             // Get operands, ignore offset for now
-            uint64_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t cx = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t cy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t cz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t vx = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t vy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t vz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t vw = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
-            uint64_t mask = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint32_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t cx = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t cy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t cz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t vx = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t vy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t vz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t vw = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+            uint32_t mask = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
             // Get type
             const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
@@ -1386,10 +1381,10 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             }
 
             // Get special kind
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp()))->value;
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32()))->value;
 
             // Get operands
-            uint64_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp());
+            uint32_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
             // Handle op
             switch (static_cast<DXILOpcodes>(opCode)) {
@@ -1430,13 +1425,13 @@ uint32_t DXILPhysicalBlockFunction::GetSVOXCount(IL::ID value) {
     switch (table.idRemapper.GetUserMappingType(value)) {
         default:
             ASSERT(false, "Invalid id type");
-            break;
+            return ~0u;
         case DXILIDUserType::Singular: {
             return 1;
         }
         case DXILIDUserType::VectorOnStruct: {
             const auto* _struct = lhsType->As<Backend::IL::StructType>();
-            return _struct->memberTypes.size();
+            return static_cast<uint32_t>(_struct->memberTypes.size());
         }
         case DXILIDUserType::VectorOnSequential: {
             const auto* vector = lhsType->As<Backend::IL::VectorType>();
@@ -1487,9 +1482,10 @@ DXILPhysicalBlockFunction::SVOXElement DXILPhysicalBlockFunction::ExtractSVOXEle
 
     // Determine count
     switch (table.idRemapper.GetUserMappingType(value)) {
-        default:
+        default: {
             ASSERT(false, "Invalid id type");
-            break;
+            return {nullptr, IL::InvalidID};
+        }
         case DXILIDUserType::Singular: {
             return {lhsType, value};
         }
@@ -1717,7 +1713,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
 
     // Create mappings
     for (const IL::BasicBlock *bb: fn->GetBasicBlocks()) {
-        branchMappings[bb->GetID()] = branchMappings.size();
+        branchMappings[bb->GetID()] = static_cast<uint32_t>(branchMappings.size());
     }
 
     // Emit the number of blocks
@@ -1739,7 +1735,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
             // If it's valid, copy record
             if (instr->source.IsValid()) {
                 // Set relocation index
-                functionBlock.recordRelocation[instr->source.codeOffset] = block->records.Size();
+                functionBlock.recordRelocation[instr->source.codeOffset] = static_cast<uint32_t>(block->records.Size());
 
                 // Copy the source
                 record = source[instr->source.codeOffset];
@@ -2568,7 +2564,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                             record.opCount = 3;
                             record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                             record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(record.ops[0])));
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(static_cast<uint32_t>(record.ops[0]))));
                             record.ops[2] = static_cast<uint64_t>(LLVMCastOp::BitCast);
                             block->AddRecord(record);
                         });
@@ -2610,7 +2606,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     }
 
                     // Assign type
-                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(record.ops[0])));
+                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(static_cast<uint32_t>(record.ops[0]))));
 
                     // Set cmp op
                     record.ops[2] = static_cast<uint64_t>(opCode);
@@ -3212,7 +3208,7 @@ void DXILPhysicalBlockFunction::CreateExportHandle(const DXJob &job, struct LLVM
 
 const DXILFunctionDeclaration *DXILPhysicalBlockFunction::FindDeclaration(const std::string_view &view) {
     for (const DXILFunctionDeclaration *decl: functions) {
-        if (table.symbol.GetValueString(decl->anchor) == view) {
+        if (table.symbol.GetValueString(static_cast<uint32_t>(decl->anchor)) == view) {
             return decl;
         }
     }
@@ -3399,7 +3395,7 @@ void DXILPhysicalBlockFunction::CreateEventHandle(const DXJob &job, struct LLVMB
     // Create all row loads
     for (uint32_t row = 0; row < rowCount; row++) {
         // Allocate ids
-        uint64_t rowLegacyLoad = legacyRows.Add(program.GetIdentifierMap().AllocID());
+        uint32_t rowLegacyLoad = legacyRows.Add(program.GetIdentifierMap().AllocID());
 
         // Get intrinsic
         const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCBufferLoadLegacyI32);
@@ -3542,16 +3538,16 @@ const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUse
      */
 
     // Validate op code
-    uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op(4)))->value;
+    uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(4)))->value;
     ASSERT(opCode == static_cast<uint32_t>(DXILOpcodes::CreateHandle), "Expected CreateHandle");
 
     // Get operands
-    uint64_t _class = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op(5)))->value;
-    uint64_t rangeID = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op(6)))->value;
-    uint64_t rangeIndex = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op(7)))->value;
+    uint64_t _class = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(5)))->value;
+    uint64_t rangeID = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(6)))->value;
+    uint64_t rangeIndex = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(7)))->value;
 
     // Get metadata handle
-    const DXILPhysicalBlockMetadata::HandleEntry* handle = table.metadata.GetHandle(static_cast<DXILShaderResourceClass>(_class), rangeID);
+    const DXILPhysicalBlockMetadata::HandleEntry* handle = table.metadata.GetHandle(static_cast<DXILShaderResourceClass>(_class), static_cast<uint32_t>(rangeID));
     if (!handle) {
         return nullptr;
     }
@@ -3587,10 +3583,10 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
     ASSERT(userMapping, "Fallback user mappings not supported yet");
 
     // Allocate ids
-    uint64_t legacyLoad = program.GetIdentifierMap().AllocID();
-    uint64_t retOffset = program.GetIdentifierMap().AllocID();
-    uint64_t rootOffset = program.GetIdentifierMap().AllocID();
-    uint64_t descriptorOffset = program.GetIdentifierMap().AllocID();
+    uint32_t legacyLoad = program.GetIdentifierMap().AllocID();
+    uint32_t retOffset = program.GetIdentifierMap().AllocID();
+    uint32_t rootOffset = program.GetIdentifierMap().AllocID();
+    uint32_t descriptorOffset = program.GetIdentifierMap().AllocID();
 
     // Get the current root offset for the descriptor, entirely scalarized
     {
@@ -3701,7 +3697,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
 
 void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const IL::ExportInstruction *_instr) {
     // Atomically incremented head index
-    uint64_t atomicHead = program.GetIdentifierMap().AllocID();
+    uint32_t atomicHead = program.GetIdentifierMap().AllocID();
 
     // Allocate the message
     {

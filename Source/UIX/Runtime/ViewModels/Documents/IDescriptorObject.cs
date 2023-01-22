@@ -5,6 +5,6 @@
         /// <summary>
         /// Descriptor getter
         /// </summary>
-        public IDescriptor Descriptor { get; }
+        public IDescriptor? Descriptor { get; }
     }
 }

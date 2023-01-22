@@ -16,7 +16,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     ShaderDataID rid;
     if (freeIndices.empty()) {
         // Allocate at end
-        rid = indices.size();
+        rid = static_cast<uint32_t>(indices.size());
         indices.emplace_back();
     } else {
         // Consume free index
@@ -39,7 +39,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     desc.SampleDesc.Count = 1;
 
     // Set index
-    indices[rid] = resources.size();
+    indices[rid] = static_cast<uint32_t>(resources.size());
 
     // Create allocation
     ResourceEntry &entry = resources.emplace_back();
@@ -57,7 +57,7 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
     ShaderDataID rid;
     if (freeIndices.empty()) {
         // Allocate at end
-        rid = indices.size();
+        rid = static_cast<uint32_t>(indices.size());
         indices.emplace_back();
     } else {
         // Consume free index
@@ -66,7 +66,7 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
     }
 
     // Set index
-    indices[rid] = resources.size();
+    indices[rid] = static_cast<uint32_t>(resources.size());
 
     // Create allocation
     ResourceEntry &entry = resources.emplace_back();
@@ -153,7 +153,7 @@ void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescripto
                 view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
                 view.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
                 view.Buffer.FirstElement = 0;
-                view.Buffer.NumElements = entry.info.buffer.elementCount;
+                view.Buffer.NumElements = static_cast<uint32_t>(entry.info.buffer.elementCount);
                 view.Buffer.StructureByteStride = 0;
 
                 // Create descriptor

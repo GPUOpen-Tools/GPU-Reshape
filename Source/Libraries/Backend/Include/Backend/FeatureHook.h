@@ -4,7 +4,7 @@
 #include <Common/Delegate.h>
 
 // Forward declarations
-struct CommandContext;
+class CommandContext;
 
 /// Feature hook, derived type must implement operator()
 template<typename T>

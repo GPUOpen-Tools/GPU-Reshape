@@ -32,7 +32,7 @@ struct LLVMRecordStringView {
     /// \param out must be able to contain the string
     void Copy(char* out) const {
         for (uint32_t i = 0; i < operandCount; i++) {
-            out[i] = operands[i];
+            out[i] = static_cast<char>(operands[i]);
         }
     }
 

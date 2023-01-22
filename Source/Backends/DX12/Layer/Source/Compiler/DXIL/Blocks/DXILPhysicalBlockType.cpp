@@ -22,7 +22,7 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 break;
             }
             case LLVMTypeRecord::NumEntry: {
-                typeMap.SetEntryCount(record.ops[0]);
+                typeMap.SetEntryCount(static_cast<uint32_t>(record.ops[0]));
                 break;
             }
             case LLVMTypeRecord::Void: {
@@ -62,7 +62,7 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
             }
             case LLVMTypeRecord::Pointer: {
                 // Get pointee
-                const Backend::IL::Type *pointee = typeMap.GetType(record.ops[0]);
+                const Backend::IL::Type *pointee = typeMap.GetType(static_cast<uint32_t>(record.ops[0]));
                 if (!pointee) {
                     ASSERT(false, "Invalid pointer record");
                     return;
@@ -101,7 +101,7 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
             }
             case LLVMTypeRecord::Array: {
                 // Get contained
-                const Backend::IL::Type *contained = typeMap.GetType(record.ops[1]);
+                const Backend::IL::Type *contained = typeMap.GetType(static_cast<uint32_t>(record.ops[1]));
                 if (!contained) {
                     ASSERT(false, "Invalid array record");
                     return;
@@ -116,7 +116,7 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
             }
             case LLVMTypeRecord::Vector: {
                 // Get contained
-                const Backend::IL::Type *contained = typeMap.GetType(record.ops[1]);
+                const Backend::IL::Type *contained = typeMap.GetType(static_cast<uint32_t>(record.ops[1]));
                 if (!contained) {
                     ASSERT(false, "Invalid array record");
                     return;
@@ -156,7 +156,7 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 Backend::IL::StructType type;
 
                 for (uint32_t i = 1; i < record.opCount; i++) {
-                    type.memberTypes.push_back(typeMap.GetType(record.Op(i)));
+                    type.memberTypes.push_back(typeMap.GetType(record.Op32(i)));
                 }
 
                 typeMap.AddType(typeAlloc++, type);
@@ -166,14 +166,14 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 ASSERT(record.Op(0) == 0, "VaArg functions not supported");
 
                 Backend::IL::FunctionType decl;
-                decl.returnType = typeMap.GetType(record.Op(1));
+                decl.returnType = typeMap.GetType(record.Op32(1));
 
                 // Preallocate
                 decl.parameterTypes.reserve(record.opCount - 2);
 
                 // Fill parameters
                 for (uint32_t i = 2; i < record.opCount; i++) {
-                    decl.parameterTypes.push_back(typeMap.GetType(record.Op(i)));
+                    decl.parameterTypes.push_back(typeMap.GetType(record.Op32(i)));
                 }
 
                 typeMap.AddType(typeAlloc++, decl);

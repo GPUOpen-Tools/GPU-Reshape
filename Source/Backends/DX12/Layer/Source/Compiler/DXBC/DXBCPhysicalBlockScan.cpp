@@ -110,7 +110,7 @@ void DXBCPhysicalBlockScan::Stitch(const DXJob& job, DXStream &out) {
     uint64_t headerOffset = out.Append(header);
 
     // Starting chunk offset
-    uint32_t chunkOffset = out.GetByteSize() + sizeof(DXBCChunkEntryHeader) * sections.size();
+    uint32_t chunkOffset = out.GetByteSize() + static_cast<uint32_t>(sizeof(DXBCChunkEntryHeader) * sections.size());
 
     // Write section entries
     for (const Section& section : sections) {
@@ -121,7 +121,7 @@ void DXBCPhysicalBlockScan::Stitch(const DXJob& job, DXStream &out) {
         // Determine size
         uint32_t chunkSize;
         if (section.block.stream.GetByteSize()) {
-            chunkSize = section.block.stream.GetByteSize();
+            chunkSize = static_cast<uint32_t>(section.block.stream.GetByteSize());
         } else {
             chunkSize = section.block.length;
         }
@@ -135,7 +135,7 @@ void DXBCPhysicalBlockScan::Stitch(const DXJob& job, DXStream &out) {
         // Determine size
         uint32_t chunkSize;
         if (section.block.stream.GetByteSize()) {
-            chunkSize = section.block.stream.GetByteSize();
+            chunkSize = static_cast<uint32_t>(section.block.stream.GetByteSize());
         } else {
             chunkSize = section.block.length;
         }
@@ -163,7 +163,7 @@ void DXBCPhysicalBlockScan::Stitch(const DXJob& job, DXStream &out) {
     // Patch the header
     auto* stitchHeader = out.GetMutableDataAt<DXBCHeader>(headerOffset);
     std::memset(stitchHeader->privateChecksum, 0x0, sizeof(stitchHeader->privateChecksum));
-    stitchHeader->byteCount = byteLength;
+    stitchHeader->byteCount = static_cast<uint32_t>(byteLength);
 
     // Dump?
 #if DXBC_DUMP_STREAM

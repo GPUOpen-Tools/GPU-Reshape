@@ -39,7 +39,7 @@ struct DXILIDRemapper {
 
     /// Decode a user operand
     static IL::ID DecodeUserOperand(uint64_t id) {
-        return id & ~(1ull << 32u);
+        return static_cast<IL::ID>(id & ~(1ull << 32u));
     }
 
     DXILIDRemapper(DXILIDMap& idMap) : idMap(idMap) {
@@ -96,7 +96,7 @@ struct DXILIDRemapper {
     /// Set a user mapping
     /// \param user source user operand
     /// \param source destination LLVM value index
-    void SetUserMapping(IL::ID user, uint64_t source) {
+    void SetUserMapping(IL::ID user, uint32_t source) {
         if (userMappings.size() <= user) {
             userMappings.resize(user + 1);
         }
@@ -130,6 +130,9 @@ struct DXILIDRemapper {
     /// \return operand
     uint64_t RemoveRemapRule(uint64_t value, DXILIDRemapRule rule) {
         switch (rule) {
+            default:
+                ASSERT(false, "Invalid remap rule");
+                return ~0ull;
             case DXILIDRemapRule::None:
                 return value;
             case DXILIDRemapRule::Nullable:
@@ -144,6 +147,9 @@ struct DXILIDRemapper {
     /// \return operand
     uint64_t ApplyRemapRule(uint64_t value, DXILIDRemapRule rule) {
         switch (rule) {
+            default:
+                ASSERT(false, "Invalid remap rule");
+                return ~0ull;
             case DXILIDRemapRule::None:
                 return value;
             case DXILIDRemapRule::Nullable:
@@ -249,7 +255,7 @@ struct DXILIDRemapper {
             if (ref < 0) {
                 absoluteRemap = record.sourceAnchor + static_cast<uint32_t>(-ref);
             } else {
-                absoluteRemap = record.sourceAnchor - ref;
+                absoluteRemap = record.sourceAnchor - static_cast<uint32_t>(ref);
             }
 
             // Must be within the source range
@@ -369,7 +375,7 @@ struct DXILIDRemapper {
 
         // Unfold redirects
         while(redirect < userRedirects.size() && userRedirects.at(redirect) != ~0u) {
-            redirect = userRedirects.at(redirect);
+            redirect = static_cast<IL::ID>(userRedirects.at(redirect));
         }
 
         // Preserve user mappings
@@ -399,7 +405,7 @@ struct DXILIDRemapper {
         // Try to get redirect
         uint64_t redirect = TryGetUserRedirect(id);
         if (redirect != ~0u) {
-            return EncodeUserOperand(redirect);
+            return EncodeUserOperand(static_cast<IL::ID>(redirect));
         }
 
         // Encode regular user

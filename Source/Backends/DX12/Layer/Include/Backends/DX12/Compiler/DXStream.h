@@ -98,12 +98,12 @@ struct DXStream {
     }
 
     /// Get the byte size of this stream
-    size_t GetByteSize() const {
-        return stream.size() * sizeof(uint8_t);
+    uint32_t GetByteSize() const {
+        return static_cast<uint32_t>(stream.size() * sizeof(uint8_t));
     }
 
     /// Get the offset of this stream
-    size_t GetOffset() const {
+    uint32_t GetOffset() const {
         return GetByteSize();
     }
 

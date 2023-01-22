@@ -254,7 +254,7 @@ struct LLVMBitStreamWriter {
     /// Close this writer
     void Close() {
         const uint8_t wordCount = 2u - (bitOffset + 31) / 32;
-        stream.Resize(stream.GetByteSize() - sizeof(uint32_t) * wordCount);
+        stream.Resize(static_cast<uint32_t>(stream.GetByteSize() - sizeof(uint32_t) * wordCount));
     }
 
     /// Get the position of this writer

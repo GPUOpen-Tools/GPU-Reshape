@@ -15,7 +15,7 @@
 
 // Forward declarations
 struct DeviceState;
-struct DXModule;
+class DXModule;
 
 struct ShaderState : public ReferenceObject {
     /// Reference counted destructor

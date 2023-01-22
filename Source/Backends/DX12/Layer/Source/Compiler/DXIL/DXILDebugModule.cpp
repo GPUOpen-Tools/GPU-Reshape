@@ -147,7 +147,7 @@ void DXILDebugModule::ParseModuleFunction(const LLVMRecord& record) {
     ThinValue& value = thinValues.emplace_back();
 
     // Set type
-    value.thinType = record.Op(0);
+    value.thinType = record.Op32(0);
 
     // Inherit non-semantic from type
     value.bIsNonSemantic |= thinTypes.at(value.thinType).bIsNonSemantic;
@@ -186,7 +186,7 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
         const LLVMRecord& record = block->records[element.id];
 
         // Current anchor
-        uint32_t anchor = thinValues.size();
+        uint32_t anchor = static_cast<uint32_t>(thinValues.size());
 
         // Handle record
         switch (static_cast<LLVMFunctionRecord>(record.id)) {
@@ -321,7 +321,7 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, const LLVMRecord& record) 
     contents.Copy(fragment.contents.data());
 
     // Count number of line endings
-    uint32_t lineEndingCount = std::count(fragment.contents.begin(), fragment.contents.end(), '\n');
+    uint32_t lineEndingCount = static_cast<uint32_t>(std::count(fragment.contents.begin(), fragment.contents.end(), '\n'));
     fragment.lineOffsets.reserve(lineEndingCount + 1);
 
     // First line
@@ -330,7 +330,7 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, const LLVMRecord& record) 
     // Summarize line offsets
     for (size_t offset = 0; offset < fragment.contents.length(); offset++) {
         if (fragment.contents[offset] == '\n') {
-            fragment.lineOffsets.push_back(offset + 1);
+            fragment.lineOffsets.push_back(static_cast<uint32_t>(offset + 1));
         }
     }
 }
@@ -348,7 +348,7 @@ std::string_view DXILDebugModule::GetSourceFilename(uint32_t fileUID) {
 }
 
 uint32_t DXILDebugModule::GetFileCount() {
-    return sourceFragments.size();
+    return static_cast<uint32_t>(sourceFragments.size());
 }
 
 uint64_t DXILDebugModule::GetCombinedSourceLength(uint32_t fileUID) const {

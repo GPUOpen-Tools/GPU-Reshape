@@ -15,7 +15,7 @@ ShaderExportDescriptorAllocator::ShaderExportDescriptorAllocator(ID3D12Device* d
     descriptorAdvance = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 }
 
-uint64_t ShaderExportDescriptorAllocator::GetDescriptorBound(ShaderExportHost *host) {
+uint32_t ShaderExportDescriptorAllocator::GetDescriptorBound(ShaderExportHost *host) {
     // Entirely unsafe number of simultaneously executing command lists
     const uint32_t kMaxExecutingLists = 16384;
 

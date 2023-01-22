@@ -90,13 +90,13 @@ namespace Studio.Views.Editor
                     // Create formatted segment
                     FormattedText formatted = new FormattedText()
                     {
-                        Text = $"{marker.Object.Content} [{marker.Object.Count}]",
+                        Text = $"{marker.Object?.Content} [{marker.Object?.Count}]",
                         Typeface = new Typeface(FontFamily.Default),
                         FontSize = 12
                     };
                     
                     // Set style
-                    formatted.SetTextStyle(0, marker.Object.Content.Length, new SolidColorBrush(Colors.White));
+                    formatted.SetTextStyle(0, marker.Object?.Content.Length ?? 0, new SolidColorBrush(Colors.White));
 
                     // Default padding
                     uint Padding = 10;
@@ -167,7 +167,7 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Error brush
         /// </summary>
-        private Brush _validationBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush");
+        private Brush _validationBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? new SolidColorBrush(Colors.Red);
 
         /// <summary>
         /// All active segments

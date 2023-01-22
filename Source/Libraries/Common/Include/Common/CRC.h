@@ -89,10 +89,10 @@ namespace crcdetail
             0x2D02EF8DU
         };
 
-    constexpr uint32_t compute(const char* data, uint32_t len, uint32_t crc = 0)
+    constexpr uint32_t compute(const char* data, size_t len, uint32_t crc = 0)
     {
         crc = crc ^ 0xFFFFFFFFU;
-        for (uint32_t i = 0; i < len; i++)
+        for (size_t i = 0; i < len; i++)
         {
             // TODO: NOT CORRECT
             crc = table[uint8_t(*data) ^ (crc & 0xFF)] ^ (crc >> 8);
@@ -109,7 +109,7 @@ namespace crcliteral {
     }
 }
 
-inline uint64_t BufferCRC64(const void* data, uint32_t len, uint32_t crc = 0) {
+inline uint64_t BufferCRC64(const void* data, uint64_t len, uint32_t crc = 0) {
     return crcdetail::compute(static_cast<const char*>(data), len, crc);
 }
 

@@ -27,7 +27,7 @@ void DXILPhysicalBlockSymbol::ParseSymTab(const LLVMBlock *block) {
                  */
 
                 // May not be mapped
-                if (uint64_t value = record.Op(0); table.idMap.IsMapped(value)) {
+                if (uint32_t value = record.Op32(0); table.idMap.IsMapped(value)) {
                     // Grow to capacity
                     if (valueStrings.size() <= value) {
                         valueStrings.resize(value + 1);

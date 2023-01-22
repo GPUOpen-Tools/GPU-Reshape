@@ -15,7 +15,7 @@
 // Forward declarations
 struct ShaderExportSegmentInfo;
 struct FenceState;
-struct DescriptorDataAppendAllocator;
+class DescriptorDataAppendAllocator;
 
 /// Tracked descriptor allocation
 struct ShaderExportSegmentDescriptorAllocation {

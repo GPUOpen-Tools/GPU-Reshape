@@ -139,28 +139,28 @@ struct LLVMBlock {
     /// Add a record to the end of this block
     /// \param record record to be added
     void AddRecord(const LLVMRecord& record) {
-        elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, records.Size()));
+        elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(records.Size())));
         records.Add(record);
     }
 
     /// Add a block to the end of this block
     /// \param record block to be added
     void AddBlock(LLVMBlock* block) {
-        elements.Add(LLVMBlockElement(LLVMBlockElementType::Block, blocks.Size()));
+        elements.Add(LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(blocks.Size())));
         blocks.Add(block);
     }
 
     /// Add a record at a location
     /// \param record record to be added
     void InsertRecord(const LLVMBlockElement* location, const LLVMRecord& record) {
-        elements.Insert(location, LLVMBlockElement(LLVMBlockElementType::Record, records.Size()));
+        elements.Insert(location, LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(records.Size())));
         records.Add(record);
     }
 
     /// Add a block at a location
     /// \param record block to be added
     void InsertBlock(const LLVMBlockElement* location, LLVMBlock* block) {
-        elements.Insert(location, LLVMBlockElement(LLVMBlockElementType::Block, blocks.Size()));
+        elements.Insert(location, LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(blocks.Size())));
         blocks.Add(block);
     }
 

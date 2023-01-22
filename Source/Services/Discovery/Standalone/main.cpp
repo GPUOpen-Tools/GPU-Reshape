@@ -67,7 +67,7 @@ public:
 
             // Write the message
             DWORD dwBytesWritten{0};
-            WriteConsole(console, ss.str().c_str(), ss.str().length(), &dwBytesWritten, 0);
+            WriteConsole(console, ss.str().c_str(), static_cast<uint32_t>(ss.str().length()), &dwBytesWritten, 0);
 
             // Store final position
             position.cursor = screenInfo.dwCursorPosition;
@@ -78,7 +78,7 @@ public:
 
         // Compose number, split thousands by '
         std::string num = std::to_string(position.count);
-        for (int32_t i = num.length() - 3; i >= 1; i -= 3) {
+        for (int32_t i = static_cast<int32_t>(num.length()) - 3; i >= 1; i -= 3) {
             num.insert(num.begin() + i, '\'');
         }
 
@@ -92,7 +92,7 @@ public:
 
         // Write the count
         DWORD dwBytesWritten = 0;
-        WriteConsoleOutputCharacter(console, ss.str().c_str(), ss.str().length(), pos, &dwBytesWritten);
+        WriteConsoleOutputCharacter(console, ss.str().c_str(), static_cast<uint32_t>(ss.str().length()), pos, &dwBytesWritten);
     }
 
     ~MessageHub() {

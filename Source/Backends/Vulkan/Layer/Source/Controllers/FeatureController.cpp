@@ -81,7 +81,7 @@ void FeatureController::OnMessage(const GetFeaturesMessage& message) {
             // Set data
             descriptor->name.Set(info.name);
             descriptor->description.Set(info.description);
-            descriptor->featureBit = (1u << i);
+            descriptor->featureBit = (1ull << i);
         }
     }
 

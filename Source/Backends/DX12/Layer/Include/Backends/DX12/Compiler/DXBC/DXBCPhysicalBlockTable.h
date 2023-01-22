@@ -10,8 +10,8 @@
 // Forward declarations
 struct DXJob;
 struct DXStream;
-struct DXILModule;
-struct IDXDebugModule;
+class DXILModule;
+class IDXDebugModule;
 
 /// Complete physical block table
 struct DXBCPhysicalBlockTable {

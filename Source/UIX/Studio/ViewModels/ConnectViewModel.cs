@@ -311,7 +311,7 @@ namespace Studio.ViewModels
         /// Invoked on connection messages
         /// </summary>
         /// <param name="connected">message</param>
-        private async void Handle(HostConnectedMessage connected)
+        private void Handle(HostConnectedMessage connected)
         {
             var flat = connected.Flat;
 
@@ -348,7 +348,7 @@ namespace Studio.ViewModels
         /// Invoked on resolved messages
         /// </summary>
         /// <param name="resolved">message</param>
-        private async void Handle(HostResolvedMessage resolved)
+        private void Handle(HostResolvedMessage resolved)
         {
             var flat = resolved.Flat;
 

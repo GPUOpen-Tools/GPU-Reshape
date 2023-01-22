@@ -7,7 +7,7 @@
 #include <cstdint>
 
 // Forward declarations
-struct CommandContext;
+class CommandContext;
 struct BufferDescriptor;
 
 // Hook types

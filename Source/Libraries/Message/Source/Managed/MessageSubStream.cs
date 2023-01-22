@@ -58,7 +58,7 @@ namespace Message.CLR
                     {
                         Ptr = array.GetDataStart(),
                         Size = (ulong)array.Count,
-                        Count = (int)Count,
+                        Count = Count,
                         Schema = Schema
                     };
                 }

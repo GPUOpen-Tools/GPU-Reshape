@@ -101,14 +101,14 @@ bool ShaderExportDescriptorAllocator::Install() {
 
     // Binding create info
     VkDescriptorSetLayoutBindingFlagsCreateInfo bindingCreateInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
-    bindingCreateInfo.bindingCount = bindings.Size();
+    bindingCreateInfo.bindingCount = static_cast<uint32_t>(bindings.Size());
     bindingCreateInfo.pBindingFlags = bindingFlags.Data();
 
     // Set layout create info
     VkDescriptorSetLayoutCreateInfo setInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
     setInfo.pNext = &bindingCreateInfo;
     setInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-    setInfo.bindingCount = bindings.Size();
+    setInfo.bindingCount = static_cast<uint32_t>(bindings.Size());
     setInfo.pBindings = bindings.Data();
     if (table->next_vkCreateDescriptorSetLayout(table->object, &setInfo, nullptr, &layout) != VK_SUCCESS) {
         return false;
@@ -144,8 +144,8 @@ void ShaderExportDescriptorAllocator::CreateBindingLayout() {
 
     // Data resources
     bindingInfo.shaderDataDescriptorOffset = offset;
-    bindingInfo.shaderDataDescriptorCount = dataResources.size();
-    offset += dataResources.size();
+    bindingInfo.shaderDataDescriptorCount = static_cast<uint32_t>(dataResources.size());
+    offset += static_cast<uint32_t>(dataResources.size());
 }
 
 void ShaderExportDescriptorAllocator::CreateDummyBuffer() {
@@ -355,7 +355,7 @@ void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentD
     }
 
     // Update the descriptor set
-    table->next_vkUpdateDescriptorSets(table->object, descriptorWrites.Size(), descriptorWrites.Data(), 0, nullptr);
+    table->next_vkUpdateDescriptorSets(table->object, static_cast<uint32_t>(descriptorWrites.Size()), descriptorWrites.Data(), 0, nullptr);
 
     // Create views to shader resources
     table->dataHost->CreateDescriptors(info.set, bindingInfo.shaderDataDescriptorOffset);
@@ -393,6 +393,6 @@ void ShaderExportDescriptorAllocator::Update(const ShaderExportSegmentDescriptor
     }
 
     // Update the descriptor set
-    table->next_vkUpdateDescriptorSets(table->object, descriptorWrites.Size(), descriptorWrites.Data(), 0, nullptr);
+    table->next_vkUpdateDescriptorSets(table->object, static_cast<uint32_t>(descriptorWrites.Size()), descriptorWrites.Data(), 0, nullptr);
 }
 

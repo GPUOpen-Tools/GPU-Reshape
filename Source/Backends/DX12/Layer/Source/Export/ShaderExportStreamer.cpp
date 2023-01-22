@@ -356,7 +356,7 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
             device->object->CreateUnorderedAccessView(
                 segment->allocation->streams[i].allocation.device.resource, nullptr,
                 &segment->allocation->streams[i].view,
-                descriptorLayout.GetExportStream(allocation.info.cpuHandle, i)
+                descriptorLayout.GetExportStream(allocation.info.cpuHandle, static_cast<uint32_t>(i))
             );
         }
     }
@@ -387,7 +387,7 @@ void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::Descriptor(baseDescriptor);
 
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, offset / state->heap->stride);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->heap->stride));
 }
 
 void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
@@ -404,7 +404,7 @@ void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamStat
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::Descriptor(baseDescriptor);
 
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, offset / state->heap->stride);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->heap->stride));
 }
 
 void ShaderExportStreamer::SetComputeRootShaderResourceView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
@@ -436,8 +436,8 @@ void ShaderExportStreamer::SetGraphicsRootConstants(ShaderExportStreamState* sta
 
     // Reallocate if out of space
     if (value.payload.constant.dataByteCount < end) {
-        value.payload.constant.dataByteCount = end;
-        value.payload.constant.data = bindState.rootConstantAllocator.AllocateArray<uint8_t>(end);
+        value.payload.constant.dataByteCount = static_cast<uint32_t>(end);
+        value.payload.constant.data = bindState.rootConstantAllocator.AllocateArray<uint8_t>(value.payload.constant.dataByteCount);
     }
 
     // Copy data
@@ -457,8 +457,8 @@ void ShaderExportStreamer::SetComputeRootConstants(ShaderExportStreamState* stat
 
     // Reallocate if out of space
     if (value.payload.constant.dataByteCount < end) {
-        value.payload.constant.dataByteCount = end;
-        value.payload.constant.data = bindState.rootConstantAllocator.AllocateArray<uint8_t>(end);
+        value.payload.constant.dataByteCount = static_cast<uint32_t>(end);
+        value.payload.constant.data = bindState.rootConstantAllocator.AllocateArray<uint8_t>(value.payload.constant.dataByteCount);
     }
 
     // Copy data

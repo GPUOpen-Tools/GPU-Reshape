@@ -72,8 +72,8 @@ private:
         ASSERT(offset < kMaxDWordCount, "Event offset out of bounds");
 
         // Dirty!
-        graphicsDirtyMask |= (1u << offset);
-        computeDirtyMask |= (1u << offset);
+        graphicsDirtyMask |= (1ull << offset);
+        computeDirtyMask |= (1ull << offset);
 
         dwords[offset] = value;
     }

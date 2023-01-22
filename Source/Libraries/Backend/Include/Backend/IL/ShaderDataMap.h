@@ -76,7 +76,7 @@ namespace IL {
         /// Get the number of datas
         /// \return
         uint32_t GetCount() {
-            return datas.size();
+            return static_cast<uint32_t>(datas.size());
         }
 
     private:

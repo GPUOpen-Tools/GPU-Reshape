@@ -77,7 +77,7 @@ bool DXILSigner::Sign(void *code, uint64_t length) {
 
     // Create a pinned blob (no-copy)
     Microsoft::WRL::ComPtr<IDxcBlobEncoding> pinnedBlob;
-    library->CreateBlobWithEncodingFromPinned(static_cast<BYTE*>(code), length, 0u, pinnedBlob.GetAddressOf());
+    library->CreateBlobWithEncodingFromPinned(static_cast<BYTE*>(code), static_cast<uint32_t>(length), 0u, pinnedBlob.GetAddressOf());
 
     // Attempt to sign the code (no-copy)
     if (FAILED(validator->Validate(pinnedBlob.Get(), DxcValidatorFlags_InPlaceEdit, &result))) {

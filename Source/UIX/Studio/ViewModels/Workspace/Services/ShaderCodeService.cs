@@ -41,7 +41,7 @@ namespace Studio.ViewModels.Workspace.Listeners
                             var shaderCode = message.Get<ShaderCodeMessage>();
 
                             // Try to get the view model
-                            if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry))
+                            if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry) || entry.ShaderViewModel == null)
                             {
                                 continue;
                             }
@@ -68,7 +68,7 @@ namespace Studio.ViewModels.Workspace.Listeners
                             var shaderCode = message.Get<ShaderCodeFileMessage>();
 
                             // Try to get the view model
-                            if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry))
+                            if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry) || entry.ShaderViewModel == null)
                             {
                                 continue;
                             }
@@ -103,7 +103,7 @@ namespace Studio.ViewModels.Workspace.Listeners
                             var shaderCode = message.Get<ShaderILMessage>();
 
                             // Try to get the view model
-                            if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry))
+                            if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry) || entry.ShaderViewModel == null)
                             {
                                 continue;
                             }
@@ -130,7 +130,7 @@ namespace Studio.ViewModels.Workspace.Listeners
                             var shaderCode = message.Get<ShaderBlockGraphMessage>();
 
                             // Try to get the view model
-                            if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry))
+                            if (!_pendingShaderViewModels.TryGetValue(shaderCode.shaderUID, out PendingEntry? entry) || entry.ShaderViewModel == null)
                             {
                                 continue;
                             }
@@ -236,7 +236,7 @@ namespace Studio.ViewModels.Workspace.Listeners
         /// <returns></returns>
         private PendingEntry GetEntry(UInt64 guid)
         {
-            if (!_pendingShaderViewModels.TryGetValue(guid, out PendingEntry entry))
+            if (!_pendingShaderViewModels.TryGetValue(guid, out PendingEntry? entry))
             {
                 entry = new PendingEntry()
                 {
@@ -263,7 +263,7 @@ namespace Studio.ViewModels.Workspace.Listeners
             /// <summary>
             /// Parent view model
             /// </summary>
-            public Objects.ShaderViewModel ShaderViewModel;
+            public Objects.ShaderViewModel? ShaderViewModel;
         }
 
         /// <summary>

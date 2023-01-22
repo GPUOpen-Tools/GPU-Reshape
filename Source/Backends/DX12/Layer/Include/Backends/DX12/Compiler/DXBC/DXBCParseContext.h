@@ -5,7 +5,7 @@
 
 /// DXBC parsing context
 struct DXBCParseContext {
-    DXBCParseContext(const void* ptr, uint32_t length) :
+    DXBCParseContext(const void* ptr, uint64_t length) :
         start(reinterpret_cast<const uint8_t*>(ptr)),
         ptr(reinterpret_cast<const uint8_t*>(ptr)),
         end(reinterpret_cast<const uint8_t*>(ptr) + length) {

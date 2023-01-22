@@ -147,7 +147,7 @@ $RESOURCES_SET
         }
 
         // Create pipeline
-        PipelineID pipeline = device->CreateComputePipeline(layouts.data(), layouts.size(), code.code, code.size);
+        PipelineID pipeline = device->CreateComputePipeline(layouts.data(), static_cast<uint32_t>(layouts.size()), code.code, code.size);
 
         // Set the bridge up for the expected communication
         ConfigureBridge();

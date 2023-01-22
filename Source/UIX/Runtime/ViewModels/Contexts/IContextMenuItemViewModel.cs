@@ -18,7 +18,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Target command
         /// </summary>
-        public ICommand Command { get; }
+        public ICommand? Command { get; }
         
         /// <summary>
         /// Is this menu item enabled?

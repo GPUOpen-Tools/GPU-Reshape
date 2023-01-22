@@ -90,9 +90,16 @@ std::string GlobalUID::ToString() const {
     OLECHAR *guidString;
     StringFromCLSID(guid, &guidString);
 
-    // Transform to std string
-    std::string str = std::string(guidString, guidString + std::wcslen(guidString));
+    // Get the converted length
+    int32_t wideLength = static_cast<int32_t>(std::wcslen(guidString));
 
+    // Get the UTF8 length
+    int32_t length = WideCharToMultiByte(CP_UTF8, 0, guidString, wideLength, nullptr, 0, nullptr, nullptr);
+
+    // To UTF8
+    std::string str(length, 0);
+    WideCharToMultiByte(CP_UTF8, 0, guidString, wideLength, &str[0], length, nullptr, nullptr);
+    
     // OK
     CoTaskMemFree(guidString);
     return str;

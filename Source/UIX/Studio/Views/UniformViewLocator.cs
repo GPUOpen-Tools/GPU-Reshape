@@ -17,7 +17,7 @@ namespace Studio.Views
             }
             
             // Get name
-            string typeName = viewModel.GetType().FullName;
+            string typeName = viewModel.GetType().FullName ?? string.Empty;
             
             // Replace all instances of view model with view (incredibly complicated view model to view association, almost frightening)
             string viewName = typeName.Replace("ViewModel", "View");

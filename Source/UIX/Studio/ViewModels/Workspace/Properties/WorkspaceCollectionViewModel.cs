@@ -42,7 +42,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Document descriptor
         /// </summary>
-        public IDescriptor Descriptor { get; set; }
+        public IDescriptor? Descriptor { get; set; }
 
         /// <summary>
         /// View model associated with this property
@@ -135,7 +135,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Get the workspace
         /// </summary>
         /// <returns></returns>
-        public IPropertyViewModel? GetWorkspace()
+        public IPropertyViewModel GetWorkspace()
         {
             return this;
         }

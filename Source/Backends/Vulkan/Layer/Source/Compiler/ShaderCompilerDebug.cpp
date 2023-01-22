@@ -91,7 +91,7 @@ bool ShaderCompilerDebug::Install() {
     return true;
 }
 
-bool ShaderCompilerDebug::Validate(const uint32_t* spirvCode, uint32_t spirvSize) {
+bool ShaderCompilerDebug::Validate(const uint32_t* spirvCode, uint64_t spirvSize) {
     // Ensure validation is sequential for easier debugging
     std::lock_guard guard(sharedLock);
 
@@ -152,7 +152,7 @@ std::filesystem::path ShaderCompilerDebug::AllocatePath(SpvModule *module) {
     return shaderPath;
 }
 
-void ShaderCompilerDebug::Add(const std::filesystem::path& basePath, const std::string_view &category, SpvModule *module, const void *spirvCode, uint32_t spirvSize) {
+void ShaderCompilerDebug::Add(const std::filesystem::path& basePath, const std::string_view &category, SpvModule *module, const void *spirvCode, uint64_t spirvSize) {
     std::string categoryPath = basePath.string();
     categoryPath.append(".");
     categoryPath.append(category);

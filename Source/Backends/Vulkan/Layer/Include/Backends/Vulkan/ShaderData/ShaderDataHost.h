@@ -16,7 +16,7 @@
 
 // Forward declarations
 struct DeviceDispatchTable;
-struct DeviceAllocator;
+class DeviceAllocator;
 
 class ShaderDataHost final : public IShaderDataHost {
 public:

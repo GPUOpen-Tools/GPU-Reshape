@@ -39,6 +39,11 @@ struct LLVMRecord {
     }
 
     /// Get an operand
+    uint32_t Op32(uint32_t i) const {
+        return static_cast<uint32_t>(Op(i));
+    }
+
+    /// Get an operand
     uint64_t& Op(uint32_t i) {
         ASSERT(i < opCount, "Operand out of bounds");
         return ops[i];

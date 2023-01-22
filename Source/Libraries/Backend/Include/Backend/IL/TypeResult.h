@@ -315,7 +315,7 @@ namespace Backend::IL {
                     const Backend::IL::Constant* constant = program.GetConstants().GetConstant(instr->chains[i].index);
                     ASSERT(constant, "Struct chains must be constant");
 
-                    uint32_t memberIdx = constant->As<Backend::IL::IntConstant>()->value;
+                    auto memberIdx = static_cast<uint32_t>(constant->As<Backend::IL::IntConstant>()->value);
                     type = type->As<Backend::IL::StructType>()->memberTypes[memberIdx];
                     break;
                 }

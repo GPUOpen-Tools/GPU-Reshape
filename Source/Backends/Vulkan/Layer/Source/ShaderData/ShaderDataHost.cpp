@@ -54,7 +54,7 @@ void ShaderDataHost::CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffs
                 descriptorWrite.pTexelBufferView = &entry.view;
                 descriptorWrite.dstArrayElement = 0;
                 descriptorWrite.dstSet = set;
-                descriptorWrite.dstBinding = bindingOffset + (descriptorWrites.Size() - 1u);
+                descriptorWrite.dstBinding = bindingOffset + static_cast<uint32_t>(descriptorWrites.Size() - 1u);
                 break;
             }
             case ShaderDataType::Texture: {
@@ -65,7 +65,7 @@ void ShaderDataHost::CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffs
     }
 
     // Update the descriptor set
-    table->next_vkUpdateDescriptorSets(table->object, descriptorWrites.Size(), descriptorWrites.Data(), 0, nullptr);
+    table->next_vkUpdateDescriptorSets(table->object, static_cast<uint32_t>(descriptorWrites.Size()), descriptorWrites.Data(), 0, nullptr);
 }
 
 ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
@@ -73,7 +73,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     ShaderDataID rid;
     if (freeIndices.empty()) {
         // Allocate at end
-        rid = indices.size();
+        rid = static_cast<uint32_t>(indices.size());
         indices.emplace_back();
     } else {
         // Consume free index
@@ -82,7 +82,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     }
 
     // Set index
-    indices[rid] = resources.size();
+    indices[rid] = static_cast<uint32_t>(resources.size());
 
     // Create allocation
     ResourceEntry &entry = resources.emplace_back();
@@ -131,7 +131,7 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
     ShaderDataID rid;
     if (freeIndices.empty()) {
         // Allocate at end
-        rid = indices.size();
+        rid = static_cast<uint32_t>(indices.size());
         indices.emplace_back();
     } else {
         // Consume free index
@@ -140,7 +140,7 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
     }
 
     // Set index
-    indices[rid] = resources.size();
+    indices[rid] = static_cast<uint32_t>(resources.size());
 
     // Create allocation
     ResourceEntry &entry = resources.emplace_back();

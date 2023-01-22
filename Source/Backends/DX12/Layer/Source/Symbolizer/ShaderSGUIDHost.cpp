@@ -158,7 +158,7 @@ std::string_view ShaderSGUIDHost::GetSource(const ShaderSourceMapping &mapping) 
     std::string_view view = debugModule->GetLine(mapping.fileUID, mapping.line);
 
     // Safe column count
-    uint32_t column = std::min<uint32_t>(mapping.column, std::max<uint32_t>(view.length(), 1) - 1);
+    uint32_t column = std::min<uint32_t>(mapping.column, std::max(static_cast<uint32_t>(view.length()), 1u) - 1);
 
     // Offset by column
     return view.substr(column, view.length() - column);

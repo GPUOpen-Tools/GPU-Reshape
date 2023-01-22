@@ -23,7 +23,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
 
     for (LLVMRecord &record: block->records) {
         if (record.Is(LLVMConstantRecord::SetType)) {
-            type = table.type.typeMap.GetType(record.ops[0]);
+            type = table.type.typeMap.GetType(static_cast<uint32_t>(record.ops[0]));
             continue;
         }
 
@@ -126,7 +126,7 @@ void DXILPhysicalBlockGlobal::ParseGlobalVar(struct LLVMRecord& record) {
     IL::ID id = table.idMap.AllocMappedID(DXILIDType::Variable);
 
     // Set type, IL programs have no concept of globals for now
-    const Backend::IL::Type* pointeeType = table.type.typeMap.GetType(record.ops[0]);
+    const Backend::IL::Type* pointeeType = table.type.typeMap.GetType(static_cast<uint32_t>(record.ops[0]));
 
     // Always stored as pointer to
     program.GetTypeMap().SetType(id, program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {

@@ -30,7 +30,7 @@ public:
     /// Validate a module
     /// \param module
     /// \return
-    bool Validate(const uint32_t* spirvCode, uint32_t spirvSize);
+    bool Validate(const uint32_t* spirvCode, uint64_t spirvSize);
 
     /// Allocate a path
     /// \param module module to be allocated for
@@ -48,7 +48,7 @@ public:
     /// \param module module to be serialized
     /// \param spirvCode produced spirv code
     /// \param spirvSize produced spirv size
-    void Add(const std::filesystem::path& basePath, const std::string_view& category, SpvModule *module, const void* spirvCode, uint32_t spirvSize);
+    void Add(const std::filesystem::path& basePath, const std::string_view& category, SpvModule *module, const void* spirvCode, uint64_t spirvSize);
 
 private:
     InstanceDispatchTable* table;

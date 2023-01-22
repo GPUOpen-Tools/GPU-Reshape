@@ -159,7 +159,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMB
 
             case static_cast<uint32_t>(LLVMReservedAbbreviation::EnterSubBlock): {
                 // Add element
-                block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Block, block->blocks.Size()));
+                block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(block->blocks.Size())));
 
                 // Scan child tree
                 if (ScanEnterSubBlock(stream, block->blocks.Add(new(Allocators{}) LLVMBlock)) != ScanResult::OK) {
@@ -195,7 +195,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanAbbreviation(LLVMBi
      * */
 
     // Add element
-    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Abbreviation, block->abbreviations.Size()));
+    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Abbreviation, static_cast<uint32_t>(block->abbreviations.Size())));
 
     // Create new abbreviation
     LLVMAbbreviation &abbreviation = block->abbreviations.Add();
@@ -255,7 +255,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedRecord
      * */
 
     // Add element
-    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, block->records.Size()));
+    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(block->records.Size())));
 
     // Add record
     LLVMRecord &record = block->records.Add();
@@ -363,7 +363,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedInfoRe
             auto *meta = new(Allocators{}) LLVMBlockMetadata;
 
             // Set id
-            meta->id = record.ops[0];
+            meta->id = record.Op32(0);
 
             // Assign lookup
             ASSERT(record.opCount == 1, "Unexpected record count");
@@ -405,7 +405,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
     }
 
     // Add element
-    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, block->records.Size()));
+    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(block->records.Size())));
 
     // Add record
     LLVMRecord &record = block->records.Add();
@@ -432,7 +432,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
             record.abbreviation.type = LLVMRecordAbbreviationType::BlockMetadata;
             record.abbreviation.abbreviationId = abbreviationIndex;
         } else {
-            abbreviationIndex -= block->metadata->abbreviations.Size();
+            abbreviationIndex -= static_cast<uint32_t>(block->metadata->abbreviations.Size());
         }
     }
 
@@ -446,7 +446,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
     }
 
     // Scan id
-    record.id = ScanTrivialAbbreviationParameter(stream, abbreviation->parameters[0]);
+    record.id = static_cast<uint32_t>(ScanTrivialAbbreviationParameter(stream, abbreviation->parameters[0]));
 
     // Flush
     recordOperandCache.clear();
@@ -518,17 +518,17 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
                 record.blob = stream.GetSafeData();
 
                 // Skip blob (takes byte count)
-                stream.Skip(record.blobSize);
+                stream.Skip(static_cast<uint32_t>(record.blobSize));
                 break;
             }
         }
     }
 
     // Set op count
-    record.opCount = recordOperandCache.size();
+    record.opCount = static_cast<uint32_t>(recordOperandCache.size());
 
     // Allocate final records
-    record.ops = recordAllocator.AllocateArray<uint64_t>(recordOperandCache.size());
+    record.ops = recordAllocator.AllocateArray<uint64_t>(static_cast<uint32_t>(recordOperandCache.size()));
     std::memcpy(record.ops, recordOperandCache.data(), sizeof(uint64_t) * recordOperandCache.size());
 
     // OK
@@ -546,10 +546,10 @@ uint64_t DXILPhysicalBlockScan::ScanTrivialAbbreviationParameter(LLVMBitStreamRe
             return parameter.value;
         }
         case LLVMAbbreviationEncoding::Fixed: {
-            return stream.Fixed<uint64_t>(parameter.value);
+            return stream.Fixed<uint64_t>(static_cast<uint32_t>(parameter.value));
         }
         case LLVMAbbreviationEncoding::VBR: {
-            return stream.VBR<uint64_t>(parameter.value);
+            return stream.VBR<uint64_t>(static_cast<uint32_t>(parameter.value));
         }
         case LLVMAbbreviationEncoding::Char6: {
             return stream.Char6();
@@ -816,7 +816,7 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteSubBlock(LLVMBitS
                         case LLVMRecordAbbreviationType::BlockLocal: {
                             // Index after metadata abbreviations
                             if (block->metadata) {
-                                encodedAbbreviationId += block->metadata->abbreviations.Size();
+                                encodedAbbreviationId += static_cast<uint32_t>(block->metadata->abbreviations.Size());
                             }
 
                             // Local indexc
@@ -826,13 +826,13 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteSubBlock(LLVMBitS
                     }
 
                     // Write id
-                    stream.Fixed<uint32_t>(encodedAbbreviationId, block->abbreviationSize);
+                    stream.Fixed<uint32_t>(encodedAbbreviationId, static_cast<uint8_t>(block->abbreviationSize));
 
                     // Write contents
                     result = WriteRecord(stream, block, record);
                 } else {
                     // Write id
-                    stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::UnabbreviatedRecord), block->abbreviationSize);
+                    stream.Fixed<uint32_t>(static_cast<uint32_t>(LLVMReservedAbbreviation::UnabbreviatedRecord), static_cast<uint8_t>(block->abbreviationSize));
 
                     // Write contents
                     result = WriteUnabbreviatedRecord(stream, record);
@@ -854,7 +854,7 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteSubBlock(LLVMBitS
     stream.AlignDWord();
 
     // Patch position, -1 to exclude the length itself
-    stream.FixedPatch<uint32_t>(lengthPos, LLVMBitStreamWriter::Position::DWord(lengthPos, stream.Pos()) - 1);
+    stream.FixedPatch<uint32_t>(lengthPos, static_cast<uint32_t>(LLVMBitStreamWriter::Position::DWord(lengthPos, stream.Pos()) - 1));
 
     // OK
     return WriteResult::OK;
@@ -899,7 +899,7 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteBlockInfo(LLVMBit
     stream.AlignDWord();
 
     // Patch position, -1 to exclude the length itself
-    stream.FixedPatch<uint32_t>(lengthPos, LLVMBitStreamWriter::Position::DWord(lengthPos, stream.Pos()) - 1);
+    stream.FixedPatch<uint32_t>(lengthPos, static_cast<uint32_t>(LLVMBitStreamWriter::Position::DWord(lengthPos, stream.Pos()) - 1));
 
     // OK
     return WriteResult::OK;
@@ -912,7 +912,7 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteAbbreviation(LLVM
      * */
 
     // Write count
-    stream.VBR<uint32_t>(abbreviation.parameters.Size(), 5);
+    stream.VBR<uint32_t>(static_cast<uint32_t>(abbreviation.parameters.Size()), 5);
 
     for (const LLVMAbbreviationParameter &parameter: abbreviation.parameters) {
         const bool isLiteral = parameter.encoding == LLVMAbbreviationEncoding::Literal;
@@ -1065,7 +1065,7 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteRecord(LLVMBitStr
 
                 // Write out blob, size already aligned to dword
                 ASSERT(record.blobSize % sizeof(uint32_t) == 0, "Blob size must dword aligned");
-                stream.WriteDWord(record.blob, record.blobSize / sizeof(uint32_t));
+                stream.WriteDWord(record.blob, static_cast<uint32_t>(record.blobSize / sizeof(uint32_t)));
                 break;
             }
         }
@@ -1087,15 +1087,15 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteTrivialAbbreviati
             break;
         }
         case LLVMAbbreviationEncoding::Fixed: {
-            stream.Fixed<uint64_t>(op, parameter.value);
+            stream.Fixed<uint64_t>(op, static_cast<uint32_t>(parameter.value));
             break;
         }
         case LLVMAbbreviationEncoding::VBR: {
-            stream.VBR<uint64_t>(op, parameter.value);
+            stream.VBR<uint64_t>(op, static_cast<uint32_t>(parameter.value));
             break;
         }
         case LLVMAbbreviationEncoding::Char6: {
-            stream.Char6(op);
+            stream.Char6(static_cast<char>(op));
             break;
         }
     }

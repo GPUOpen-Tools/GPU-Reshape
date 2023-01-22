@@ -47,7 +47,7 @@ namespace Message.CLR
         ByteSpan Allocate(int size);
 
         // Get the number of messages
-        int GetCount();
+        ulong GetCount();
     }
 
     public sealed class ReadOnlyMessageStream : IMessageStream
@@ -67,7 +67,7 @@ namespace Message.CLR
             return Schema;
         }
 
-        public int GetCount()
+        public ulong GetCount()
         {
             return Count;
         }
@@ -95,7 +95,7 @@ namespace Message.CLR
         public ulong Size;
 
         // Number of messages
-        public int Count;
+        public ulong Count;
     }
 
     public sealed class ReadWriteMessageStream : IMessageStream
@@ -115,7 +115,7 @@ namespace Message.CLR
             return Schema;
         }
 
-        public int GetCount()
+        public ulong GetCount()
         {
             return Count;
         }
@@ -149,7 +149,7 @@ namespace Message.CLR
         public MessageSchema Schema;
 
         // Number of messages
-        public int Count;
+        public ulong Count;
 
         // Read write stream
         public MemoryStream Data = new MemoryStream();
@@ -173,7 +173,7 @@ namespace Message.CLR
         }
 
         // Add a new message with given allocation request
-        public T Add<T>(IMessageAllocationRequest request) where T : IMessage, new()
+        public T Add(IMessageAllocationRequest request)
         {
             // Allocate message
             T message = new T()
@@ -189,7 +189,7 @@ namespace Message.CLR
         }
 
         // Add a new message with default allocation requests
-        public T Add<T>() where T : IMessage, new()
+        public T Add() 
         {
             // Allocate message
             T message = new T();
@@ -257,7 +257,7 @@ namespace Message.CLR
         }
 
         // Add a new message with given allocation request
-        public T Add<T>(IMessageAllocationRequest request) where T : IMessage, new()
+        public T Add(IMessageAllocationRequest request)
         {
             // Size of the schema header
             int headerSize = Marshal.SizeOf<DynamicMessageSchema.Header>();
@@ -288,7 +288,7 @@ namespace Message.CLR
         }
 
         // Add a new message with default allocation requests
-        public T Add<T>() where T : IMessage, new()
+        public T Add()
         {
             // Allocate message
             T message = new T();

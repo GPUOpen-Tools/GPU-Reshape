@@ -239,8 +239,8 @@ void MetadataController::OnMessage(const struct GetObjectStatesMessage& message)
 
     // Add response (linear locks)
     auto&& response = view.Add<ObjectStatesMessage>();
-    response->shaderCount = table->states_shaderModule.GetLinear().object.size();
-    response->pipelineCount = table->states_shaderModule.GetLinear().object.size();
+    response->shaderCount = static_cast<uint32_t>(table->states_shaderModule.GetLinear().object.size());
+    response->pipelineCount = static_cast<uint32_t>(table->states_shaderModule.GetLinear().object.size());
 }
 
 void MetadataController::OnMessage(const struct GetShaderUIDRangeMessage& message) {
@@ -297,16 +297,16 @@ void MetadataController::OnMessage(const struct GetShaderSourceMappingMessage& m
     MessageStreamView<ShaderSourceMappingMessage> view(segmentMappingStream);
 
     // Get mapping
-    ShaderSourceMapping mapping = table->sguidHost->GetMapping(message.sguid);
+    ShaderSourceMapping mapping = table->sguidHost->GetMapping(static_cast<uint32_t>(message.sguid));
 
     // Get contents
-    std::string_view sourceContents = table->sguidHost->GetSource(message.sguid);
+    std::string_view sourceContents = table->sguidHost->GetSource(static_cast<uint32_t>(message.sguid));
 
     // Add response
     ShaderSourceMappingMessage* response = view.Add(ShaderSourceMappingMessage::AllocationInfo{ 
         .contentsLength = sourceContents.length()
     });
-    response->sguid = message.sguid;
+    response->sguid = static_cast<uint32_t>(message.sguid);
     response->shaderGUID = mapping.shaderGUID;
     response->fileUID = mapping.fileUID;
     response->line = mapping.line;

@@ -11,7 +11,7 @@
 #include <atomic>
 
 // Forward declarations
-class AsioRemoteClient;
+struct AsioRemoteClient;
 
 /// Network Bridge
 class RemoteClientBridge final : public IBridge {

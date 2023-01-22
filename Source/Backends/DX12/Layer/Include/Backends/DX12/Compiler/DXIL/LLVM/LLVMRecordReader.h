@@ -14,6 +14,11 @@ struct LLVMRecordReader {
     }
 
     /// Consume an operand
+    uint32_t ConsumeOp32() {
+        return static_cast<uint32_t>(ConsumeOp());
+    }
+
+    /// Consume an operand
     template<typename T>
     T ConsumeOpAs() {
         return record.OpAs<T>(offset++);

@@ -182,7 +182,7 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
     block->stream.AppendData(&runtimeInfo, runtimeInfoSize);
 
     // Number of resources and size
-    const uint32_t resourceCount = cbvs.Size() + srvs.Size() + uavs.Size() + samplers.Size();
+    const uint32_t resourceCount = static_cast<uint32_t>(cbvs.Size() + srvs.Size() + uavs.Size() + samplers.Size());
     block->stream.Append(resourceCount);
     block->stream.Append(runtimeBindingsSize);
 
@@ -207,7 +207,7 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
     }
 
     // Add post
-    block->stream.AppendData(block->ptr + offset, block->length - offset);
+    block->stream.AppendData(block->ptr + offset, static_cast<uint32_t>(block->length - offset));
 }
 
 void DXBCPhysicalBlockPipelineStateValidation::CopyTo(DXBCPhysicalBlockPipelineStateValidation &out) {

@@ -4,7 +4,7 @@
 #include <Backends/DX12/DX12.h>
 
 // Forward declarations
-class DeviceState;
+struct DeviceState;
 struct RootRegisterBindingInfo;
 struct RootSignaturePhysicalMapping;
 

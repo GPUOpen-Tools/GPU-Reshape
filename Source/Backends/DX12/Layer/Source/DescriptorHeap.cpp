@@ -139,7 +139,7 @@ void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12
         ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
         // TODO: SRB masking
-        heap->prmTable->WriteMapping(offset / heap->stride, resource.state->virtualMapping);
+        heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state->virtualMapping);
     }
 
     // Pass down callchain
@@ -156,7 +156,7 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
         ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
         // TODO: SRB masking
-        heap->prmTable->WriteMapping(offset / heap->stride, resource.state->virtualMapping);
+        heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state->virtualMapping);
     }
 
     // Pass down callchain

@@ -152,8 +152,8 @@ void DXBCPhysicalBlockRootSignature::Compile() {
     CompileShaderExport();
 
     // Emit partially updated header
-    header.parameterCount = parameters.size();
-    header.staticSamplerCount = samplers.size();
+    header.parameterCount = static_cast<uint32_t>(parameters.size());
+    header.staticSamplerCount = static_cast<uint32_t>(samplers.size());
     const size_t headerOffset = block->stream.Append(header);
 
     // Range size
@@ -197,7 +197,7 @@ void DXBCPhysicalBlockRootSignature::Compile() {
         if (parameter.type == DXBCRootSignatureParameterType::DescriptorTable) {
             // Emit table
             DXBCRootSignatureDescriptorTable table;
-            table.rangeCount = parameter.descriptorTable.ranges.size();
+            table.rangeCount = static_cast<uint32_t>(parameter.descriptorTable.ranges.size());
             table.rangeOffset = rangeOffset;
             block->stream.Append(table);
 
@@ -278,7 +278,7 @@ void DXBCPhysicalBlockRootSignature::Compile() {
     uint32_t samplerOffset = block->stream.GetOffset();
 
     // Blind insert all samplers
-    block->stream.AppendData(samplers.data(), samplers.size() * sizeof(DXBCRootSignatureSamplerStub));
+    block->stream.AppendData(samplers.data(), static_cast<uint32_t>(samplers.size() * sizeof(DXBCRootSignatureSamplerStub)));
 
     // Update header
     auto *mutableHeader = block->stream.GetMutableDataAt<DXBCRootSignatureHeader>(headerOffset);

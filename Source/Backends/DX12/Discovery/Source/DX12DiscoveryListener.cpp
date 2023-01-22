@@ -94,7 +94,7 @@ bool InstallService(const wchar_t *name, const wchar_t *path) {
     error = RegSetValueExW(
         keyHandle,
         name, 0, REG_SZ,
-        reinterpret_cast<const BYTE *>(path), (std::wcslen(path) + 1) * sizeof(wchar_t)
+        reinterpret_cast<const BYTE *>(path), static_cast<uint32_t>((std::wcslen(path) + 1) * sizeof(wchar_t))
     );
     if (error != ERROR_SUCCESS) {
         return false;

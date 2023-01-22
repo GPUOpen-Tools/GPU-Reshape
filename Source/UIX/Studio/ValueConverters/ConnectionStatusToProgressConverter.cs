@@ -51,21 +51,23 @@ namespace Studio.ValueConverters
         /// <returns>color brush</returns>
         private SolidColorBrush ToColorBrush(ConnectionStatus status)
         {
+            var _default = new SolidColorBrush(Colors.Black);
+            
             switch (status)
             {
                 default:
-                    return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushLow");
+                    return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushLow") ?? _default;
                 case ConnectionStatus.ResolveRejected:
                 case ConnectionStatus.ApplicationRejected:
                 case ConnectionStatus.QueryInvalid:
                 case ConnectionStatus.QueryDuplicateKey:
                 case ConnectionStatus.QueryInvalidPort:
                 case ConnectionStatus.QueryInvalidPID:
-                    return ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush");
+                    return ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? _default;
                 case ConnectionStatus.ResolveAccepted:
                 case ConnectionStatus.ApplicationAccepted:
                 case ConnectionStatus.EndpointConnected:
-                    return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushHigh");
+                    return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushHigh") ?? _default;
             }
         }
 

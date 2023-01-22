@@ -8,7 +8,7 @@
 #include <Backend/FeatureHookTable.h>
 
 // Forward declarations
-class CommandBufferObject;
+struct CommandBufferObject;
 
 struct FeatureHook_vkCmdDraw : TFeatureHook<Hooks::DrawInstanced> {
     void operator()(CommandBufferObject* object, CommandContext* context, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) const {

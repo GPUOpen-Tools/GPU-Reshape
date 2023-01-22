@@ -8,6 +8,7 @@ using AvaloniaEdit.Utils;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
+using Studio.Extensions;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.Views.Editor;
@@ -41,14 +42,15 @@ namespace Studio.Views.Shader
             
             // Bind contents
             this.WhenAnyValue(x => x.DataContext)
-                .WhereNotNull()
-                .Cast<ILShaderContentViewModel>()
-                .WhereNotNull()
-                .Subscribe(x =>
+                .CastNullable<ILShaderContentViewModel>()
+                .Subscribe(viewModel =>
             {
-                x.Object.WhenAnyValue(x => x.IL).WhereNotNull().Subscribe(il =>
+                viewModel.WhenAnyValue(x => x.Object).WhereNotNull().Subscribe(x =>
                 {
-                    Editor.Text = il;
+                    x.WhenAnyValue(y => y.IL).Subscribe(contents =>
+                    {
+                        Editor.Text = contents;
+                    });
                 });
             });
         }

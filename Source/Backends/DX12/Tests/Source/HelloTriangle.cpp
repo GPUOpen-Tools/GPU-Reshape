@@ -442,7 +442,7 @@ TEST_CASE("HelloTriangle") {
         auto t1 = timer.now();
 
         // Delta from last point
-        float delta = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() / 1e6;
+        float delta = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count() / 1e6f;
         t0 = t1;
 
         // Accumulate
@@ -515,7 +515,7 @@ TEST_CASE("HelloTriangle") {
         }
 
         // Record delta
-        float recordDelta = std::chrono::duration_cast<std::chrono::nanoseconds>(timer.now() - t0Record).count() / 1e6;
+        float recordDelta = std::chrono::duration_cast<std::chrono::nanoseconds>(timer.now() - t0Record).count() / 1e6f;
 
         // Accumulate
         recordAccum.Add(recordDelta);

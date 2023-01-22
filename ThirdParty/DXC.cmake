@@ -20,6 +20,9 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
     # Generated dependencies
     set(InternalGenerated "")
 
+    # Default arguments
+    set(SupressArguments -Wno-unknown-attributes -Wno-ignored-attributes)
+
     # Generate vulkan
     if (${ENABLE_BACKEND_VULKAN})
         add_custom_command(
@@ -35,6 +38,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
                 ${Hlsl}
                 -Fh ${HEADER}Vulkan.h
                 -Vn ${VAR}Vulkan
+                ${SupressArguments}
                 ${Args}
         )
 
@@ -56,6 +60,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
                 ${Hlsl}
                 -Fh ${HEADER}D3D12.h
                 -Vn ${VAR}D3D12
+                ${SupressArguments}
                 ${Args}
         )
 
@@ -74,6 +79,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
                     -Qembed_debug
                     ${Hlsl}
                     -Fc ${HEADER}D3D12.dxil.txt
+                    ${SupressArguments}
                     ${Args}
             )
 

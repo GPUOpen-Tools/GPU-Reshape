@@ -18,14 +18,14 @@ void main(uint dtid : SV_DispatchThreadID) {
     }
 
     [unroll]
-    for (uint i = 0; i < 64; i++) {
+    for (uint k = 0; k < 64; k++) {
         data += bufferRW[dtid.x * 3u];
     }
 
     GroupMemoryBarrierWithGroupSync();
 
     // Test potential splits in continue block
-    for (uint i = 0; i < 64; i++, bufferRW[dtid] += 1) {
+    for (uint j = 0; j < 64; j++, bufferRW[dtid] += 1) {
         data += bufferRW[dtid.x];
     }
 

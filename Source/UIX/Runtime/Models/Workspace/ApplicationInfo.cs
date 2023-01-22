@@ -8,21 +8,21 @@ namespace Studio.Models.Workspace
         /// Process id of the application
         /// </summary>
         public ulong Pid { get; set; }
-        
+
         /// <summary>
         /// Underlying API of the application
         /// </summary>
-        public string API { get; set; }
+        public string API { get; set; } = string.Empty;
         
         /// <summary>
         /// Decorative name of the application
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         
         /// <summary>
         /// Process name of the application
         /// </summary>
-        public string Process { get; set; }
+        public string Process { get; set; } = string.Empty;
 
         /// <summary>
         /// Host resolve GUID of the application

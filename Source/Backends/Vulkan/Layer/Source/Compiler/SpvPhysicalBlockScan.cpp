@@ -56,7 +56,7 @@ bool SpvPhysicalBlockScan::Scan(const uint32_t *const code, uint32_t count) {
         uint32_t wordCount = instruction->GetWordCount();
 
         // Current offset
-        uint32_t source = offset - code;
+        uint32_t source = static_cast<uint32_t>(offset - code);
 
         // Skip further function definitions
         if (type == SpvPhysicalBlockType::Function) {
@@ -130,7 +130,7 @@ void SpvPhysicalBlockScan::Stitch(SpvStream &out) {
     // Append all sections
     for (uint32_t i = 0; i < static_cast<uint32_t>(SpvPhysicalBlockType::Count); i++) {
         const Section& section = sections[i];
-        out.AppendData(section.physicalBlock.stream.GetData(), section.physicalBlock.stream.GetWordCount());
+        out.AppendData(section.physicalBlock.stream.GetData(), static_cast<uint32_t>(section.physicalBlock.stream.GetWordCount()));
     }
 }
 

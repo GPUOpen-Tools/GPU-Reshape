@@ -7,7 +7,7 @@ namespace Studio.Views.Shader.Graphing
         /// <summary>
         /// Name of this block
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         
         /// <summary>
         /// Color of this block

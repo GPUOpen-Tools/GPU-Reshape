@@ -44,7 +44,7 @@ void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
     LLVMRecordStringView recordName;
 
     // Visit records
-    for (size_t i = 0; i < block->records.Size(); i++) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(block->records.Size()); i++) {
         const LLVMRecord &record = block->records[i];
 
         // Get metadata
@@ -85,7 +85,7 @@ void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
             case LLVMMetadataRecord::Value: {
                 if (table.idMap.GetType(record.Op(1)) == DXILIDType::Constant) {
                     auto mapped = table.idMap.GetMappedCheckType(record.Op(1), DXILIDType::Constant);
-                    md.value.type = table.type.typeMap.GetType(record.Op(0));
+                    md.value.type = table.type.typeMap.GetType(record.Op32(0));
                     md.value.constant = program.GetConstants().GetConstant(mapped);
                     ASSERT(md.value.type, "Expected type");
                     ASSERT(md.value.constant, "Expected constant");
@@ -120,11 +120,11 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
 
             // Set ids
             resources.uid = block->uid;
-            resources.source = record.Op(0);
+            resources.source = record.Op32(0);
 
             // Check classes
             for (uint32_t i = 0; i < static_cast<uint32_t>(DXILShaderResourceClass::Count); i++) {
-                if (resources.lists[i] = list.Op(i); resources.lists[i] != 0) {
+                if (resources.lists[i] = list.Op32(i); resources.lists[i] != 0) {
                     ParseResourceList(metadataBlock, block, static_cast<DXILShaderResourceClass>(i), resources.lists[i]);
                 }
             }
@@ -143,7 +143,7 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
 
             // Set ids
             entryPoint.uid = block->uid;
-            entryPoint.program = record.Op(0);
+            entryPoint.program = record.Op32(0);
 
             // Extended metadata kv pairs?
             if (list.Op(4)) {
@@ -151,13 +151,13 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
 
                 // Parse tags
                 for (uint32_t kv = 0; kv < kvRecord.opCount; kv += 2) {
-                    switch (GetOperandU32Constant<DXILProgramTag>(metadataBlock, kvRecord.Op(kv + 0))) {
+                    switch (GetOperandU32Constant<DXILProgramTag>(metadataBlock, kvRecord.Op32(kv + 0))) {
                         default: {
                             break;
                         }
                         case DXILProgramTag::ShaderFlags: {
                             // Get current flags
-                            programMetadata.shaderFlags = DXILProgramShaderFlagSet(GetOperandU32Constant(metadataBlock, kvRecord.Op(kv + 1)));
+                            programMetadata.shaderFlags = DXILProgramShaderFlagSet(GetOperandU32Constant(metadataBlock, kvRecord.Op32(kv + 1)));
                             break;
                         }
                     }
@@ -212,10 +212,10 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         const LLVMRecord &resource = block->records[record.ops[i] - 1];
 
         // Get handle id
-        uint64_t resourceID = GetOperandU32Constant(metadataBlock, resource.Op(0));
+        uint64_t resourceID = GetOperandU32Constant(metadataBlock, resource.Op32(0));
 
         // Undef constant
-        const IL::Constant *constantPointer = GetOperandConstant(metadataBlock, resource.Op(1));
+        const IL::Constant *constantPointer = GetOperandConstant(metadataBlock, resource.Op32(1));
 
         // Get pointer
         auto* constantPointerType = constantPointer->type->As<Backend::IL::PointerType>();
@@ -254,9 +254,9 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         // uint64_t name = GetOperandU32Constant(resource.Op(2))->value;
 
         // Resource binding
-        uint64_t bindSpace = GetOperandU32Constant(metadataBlock, resource.Op(3));
-        uint64_t rsBase = GetOperandU32Constant(metadataBlock, resource.Op(4));
-        uint64_t rsRange = GetOperandU32Constant(metadataBlock, resource.Op(5));
+        uint32_t bindSpace = GetOperandU32Constant(metadataBlock, resource.Op32(3));
+        uint32_t rsBase = GetOperandU32Constant(metadataBlock, resource.Op32(4));
+        uint32_t rsRange = GetOperandU32Constant(metadataBlock, resource.Op32(5));
 
         // Get the space
         UserRegisterSpace& registerSpace = FindOrAddRegisterSpace(bindSpace);
@@ -278,8 +278,8 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 break;
             case DXILShaderResourceClass::SRVs: {
                 // Unique ops
-                auto shape = GetOperandU32Constant<DXILShaderResourceShape>(metadataBlock, resource.Op(6));
-                uint64_t sampleCount = GetOperandU32Constant(metadataBlock, resource.Op(7));
+                auto shape = GetOperandU32Constant<DXILShaderResourceShape>(metadataBlock, resource.Op32(6));
+                uint64_t sampleCount = GetOperandU32Constant(metadataBlock, resource.Op32(7));
 
                 // Optional element type
                 const Backend::IL::Type* elementType{nullptr};
@@ -288,7 +288,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 Backend::IL::Format format{Backend::IL::Format::None};
 
                 // Has extended metadata?
-                if (uint32_t extendedMetadataId = resource.Op(8)) {
+                if (uint32_t extendedMetadataId = resource.Op32(8)) {
                     // Get extended metadata
                     Metadata &extendedMetadata = metadataBlock.metadata[extendedMetadataId - 1];
 
@@ -298,10 +298,10 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                     // Parse tags
                     for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
-                        switch (static_cast<DXILSRVTag>(GetOperandU32Constant(metadataBlock, resource.Op(kv + 0)))) {
+                        switch (static_cast<DXILSRVTag>(GetOperandU32Constant(metadataBlock, resource.Op32(kv + 0)))) {
                             case DXILSRVTag::ElementType: {
                                 // Get type
-                                auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op(kv + 1));
+                                auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op32(kv + 1));
 
                                 // Get type and format
                                 elementType = GetComponentType(componentType);
@@ -371,10 +371,10 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
             }
             case DXILShaderResourceClass::UAVs: {
                 // Unique ops
-                auto shape = static_cast<DXILShaderResourceShape>(GetOperandU32Constant(metadataBlock, resource.Op(6)));
-                uint64_t globallyCoherent = GetOperandBoolConstant(metadataBlock, resource.Op(7));
-                uint64_t counter = GetOperandBoolConstant(metadataBlock, resource.Op(8));
-                uint64_t rasterizerOrderedView = GetOperandBoolConstant(metadataBlock, resource.Op(9));
+                auto shape = static_cast<DXILShaderResourceShape>(GetOperandU32Constant(metadataBlock, resource.Op32(6)));
+                uint64_t globallyCoherent = GetOperandBoolConstant(metadataBlock, resource.Op32(7));
+                uint64_t counter = GetOperandBoolConstant(metadataBlock, resource.Op32(8));
+                uint64_t rasterizerOrderedView = GetOperandBoolConstant(metadataBlock, resource.Op32(9));
 
                 // Optional element type
                 const Backend::IL::Type *elementType{nullptr};
@@ -383,7 +383,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 Backend::IL::Format format{Backend::IL::Format::None};
 
                 // Has extended metadata?
-                if (uint32_t extendedMetadataId = resource.Op(10)) {
+                if (uint32_t extendedMetadataId = resource.Op32(10)) {
                     // Get extended metadata
                     Metadata &extendedMetadata = metadataBlock.metadata[extendedMetadataId - 1];
 
@@ -393,10 +393,10 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                     // Parse tags
                     for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
-                        switch (static_cast<DXILUAVTag>(GetOperandU32Constant(metadataBlock, resource.Op(kv + 0)))) {
+                        switch (static_cast<DXILUAVTag>(GetOperandU32Constant(metadataBlock, resource.Op32(kv + 0)))) {
                             case DXILUAVTag::ElementType: {
                                 // Get type
-                                auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op(kv + 1));
+                                auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op32(kv + 1));
 
                                 // Get type and format
                                 elementType = GetComponentType(componentType);
@@ -467,9 +467,9 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
             }
             case DXILShaderResourceClass::CBVs: {
                 // Unique ops
-                uint64_t byteSize = GetOperandU32Constant(metadataBlock, resource.Op(6));
+                uint64_t byteSize = GetOperandU32Constant(metadataBlock, resource.Op32(6));
 
-                if (uint32_t nullableMetadata = resource.Op(7)) {
+                if (uint32_t nullableMetadata = resource.Op32(7)) {
                     uint64_t extendedMetadata = GetOperandU32Constant(metadataBlock, nullableMetadata);
                 }
 
@@ -479,9 +479,9 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
             }
             case DXILShaderResourceClass::Samplers: {
                 // Unique ops
-                uint64_t samplerType = GetOperandU32Constant(metadataBlock, resource.Op(6));
+                uint64_t samplerType = GetOperandU32Constant(metadataBlock, resource.Op32(6));
 
-                if (uint32_t nullableMetadata = resource.Op(7)) {
+                if (uint32_t nullableMetadata = resource.Op32(7)) {
                     uint64_t extendedMetadata = GetOperandU32Constant(metadataBlock, nullableMetadata);
                 }
 
@@ -492,7 +492,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         }
 
         // Push handle
-        uint32_t handleID = handles.size();
+        uint32_t handleID = static_cast<uint32_t>(handles.size());
         handles.push_back(entry);
 
         // Ensure space
@@ -640,7 +640,7 @@ ComponentType DXILPhysicalBlockMetadata::GetFormatComponent(Backend::IL::Format 
     switch (format) {
         default:
             ASSERT(false, "Invalid value");
-            break;
+            return ComponentType::None;
         case Backend::IL::Format::RGBA32Float:
             return ComponentType::FP32;
         case Backend::IL::Format::RGBA16Float:
@@ -752,7 +752,7 @@ void DXILPhysicalBlockMetadata::CompileMetadata(const DXJob& job) {
 
 void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
     // Set source result for stitching
-    for (size_t i = 0; i < block->records.Size(); i++) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(block->records.Size()); i++) {
         LLVMRecord &record = block->records[i];
         record.result = i;
     }
@@ -918,23 +918,23 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddString(DXILPhysicalBlockMetadata::M
 
     // Add value md
     Metadata& md = metadata.metadata.emplace_back();
-    md.source = block->records.Size();
+    md.source = static_cast<uint32_t>(block->records.Size());
     md.name = str;
 
     // Insert value record
     LLVMRecord record(LLVMMetadataRecord::StringOld);
-    record.opCount = str.length();
+    record.opCount = static_cast<uint32_t>(str.length());
     record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
 
     // Copy string
     for (size_t i = 0; i < str.length(); i++) {
-        record.ops[i] = str[i];
+        record.ops[i] = static_cast<uint64_t>(str[i]);
     }
 
     block->AddRecord(record);
 
     // OK
-    return metadata.metadata.size();
+    return static_cast<uint32_t>(metadata.metadata.size());
 }
 
 uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMetadata::MetadataBlock &metadata, LLVMBlock *block, const Backend::IL::Constant *constant) {
@@ -947,7 +947,7 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMe
 
     // Add value md
     Metadata& md = metadata.metadata.emplace_back();
-    md.source = block->records.Size();
+    md.source = static_cast<uint32_t>(block->records.Size());
     md.value.type = constant->type;
     md.value.constant = constant;
 
@@ -960,7 +960,7 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMe
     block->AddRecord(record);
 
     // OK
-    return metadata.metadata.size();
+    return static_cast<uint32_t>(metadata.metadata.size());
 }
 
 void DXILPhysicalBlockMetadata::EnsureUAVCapability() {
@@ -999,7 +999,7 @@ void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job)
 
     // Class identifier (+1 for nullability)
     Metadata& classMd = metadataBlock->metadata.emplace_back();
-    classMd.source = mdBlock->records.Size();
+    classMd.source = static_cast<uint32_t>(mdBlock->records.Size());
     uint32_t classId = classMd.source + 1;
 
     // Class list, points to the individual class handles
@@ -1013,7 +1013,7 @@ void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job)
     mdBlock->AddRecord(classRecord);
 
     // Set source for later lookup
-    resources.source = mdBlock->records.Size() - 1;
+    resources.source = static_cast<uint32_t>(mdBlock->records.Size() - 1);
 
     // Get the program block
     LLVMRecord& programRecord = declarationBlock->GetBlockWithUID(entryPoint.uid)->records[entryPoint.program];
@@ -1026,17 +1026,17 @@ void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job)
     const char* name = "dx.resources";
 
     // Add md
-    metadataBlock->metadata.emplace_back().source = mdBlock->records.Size();
+    metadataBlock->metadata.emplace_back().source = static_cast<uint32_t>(mdBlock->records.Size());
 
     // Name dx.resources
     LLVMRecord nameRecord(LLVMMetadataRecord::Name);
-    nameRecord.opCount = std::strlen(name);
+    nameRecord.opCount = static_cast<uint32_t>(std::strlen(name));
     nameRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(nameRecord.opCount);
     std::copy(name, name + nameRecord.opCount, nameRecord.ops);
     mdBlock->AddRecord(nameRecord);
 
     // Add md
-    metadataBlock->metadata.emplace_back().source = mdBlock->records.Size();
+    metadataBlock->metadata.emplace_back().source = static_cast<uint32_t>(mdBlock->records.Size());
 
     // Insert dx.resources, points to the class list
     LLVMRecord dxResourceRecord(LLVMMetadataRecord::NamedNode);
@@ -1090,10 +1090,10 @@ void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXJob& job) {
 
     // Append handle to class
     MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::UAVs);
-    _class.handles.push_back(handles.size() - 1);
+    _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
 
     // Set binding info
-    table.bindingInfo.shaderExportHandleId = _class.handles.size() - 1;
+    table.bindingInfo.shaderExportHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
 }
 
 void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXJob &job) {
@@ -1126,10 +1126,10 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXJob &job) {
 
     // Append handle to class
     MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::SRVs);
-    _class.handles.push_back(handles.size() - 1);
+    _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
 
     // Set binding info
-    table.bindingInfo.prmtHandleId = _class.handles.size() - 1;
+    table.bindingInfo.prmtHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
 }
 
 void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXJob &job) {
@@ -1167,10 +1167,10 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXJob &job) {
 
     // Append handle to class
     MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::CBVs);
-    _class.handles.push_back(handles.size() - 1);
+    _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
 
     // Set binding info
-    table.bindingInfo.descriptorConstantsHandleId = _class.handles.size() - 1;
+    table.bindingInfo.descriptorConstantsHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
 }
 
 void DXILPhysicalBlockMetadata::CreateEventHandle(const DXJob &job) {
@@ -1239,10 +1239,10 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXJob &job) {
 
     // Append handle to class
     MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::CBVs);
-    _class.handles.push_back(handles.size() - 1);
+    _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
 
     // Set binding info
-    table.bindingInfo.eventConstantsHandleId = _class.handles.size() - 1;
+    table.bindingInfo.eventConstantsHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
 }
 
 void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXJob& job) {
@@ -1253,7 +1253,7 @@ void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXJob& job) {
 
     // Set binding info
     // Handles are allocated linearly after the current index
-    table.bindingInfo.shaderDataHandleId = _class.handles.size();
+    table.bindingInfo.shaderDataHandleId = static_cast<uint32_t>(_class.handles.size());
 
     // Current register offset
     uint32_t registerOffset{0};
@@ -1298,7 +1298,7 @@ void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXJob& job) {
         handle.uav.shape = DXILShaderResourceShape::TypedBuffer;
 
         // Append handle to class
-        _class.handles.push_back(handles.size() - 1);
+        _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
 
         // Next
         registerOffset++;
@@ -1321,28 +1321,28 @@ LLVMRecordView DXILPhysicalBlockMetadata::CompileResourceClassRecord(const Mappe
         classRecord = LLVMRecordView(block, resources.lists[static_cast<uint32_t>(mapped._class)] - 1);
 
         // Extend operands
-        auto* ops = table.recordAllocator.AllocateArray<uint64_t>(mapped.handles.size());
+        auto* ops = table.recordAllocator.AllocateArray<uint64_t>(static_cast<uint32_t>(mapped.handles.size()));
         std::memcpy(ops, classRecord->ops, sizeof(uint64_t) * classRecord->opCount);
 
         // Set operands
-        classRecord->opCount = mapped.handles.size();
+        classRecord->opCount = static_cast<uint32_t>(mapped.handles.size());
         classRecord->ops = ops;
     } else {
         // Emplace record
         block->records.Add();
 
         // Allocate new list record
-        classRecord = LLVMRecordView(block, block->records.Size() - 1);
+        classRecord = LLVMRecordView(block, static_cast<uint32_t>(block->records.Size()) - 1);
         classRecord->id = static_cast<uint32_t>(LLVMMetadataRecord::Node);
-        classRecord->ops = table.recordAllocator.AllocateArray<uint64_t>(mapped.handles.size());
-        classRecord->opCount = mapped.handles.size();
+        classRecord->ops = table.recordAllocator.AllocateArray<uint64_t>(static_cast<uint32_t>(mapped.handles.size()));
+        classRecord->opCount = static_cast<uint32_t>(mapped.handles.size());
 
         // Set new UAV node, +1 for nullability
-        resources.lists[static_cast<uint32_t>(mapped._class)] = block->records.Size();
+        resources.lists[static_cast<uint32_t>(mapped._class)] = static_cast<uint32_t>(block->records.Size());
 
         // Create resource metadata row
         Metadata& uavMd = metadataBlock->metadata.emplace_back();
-        uavMd.source = block->records.Size() - 1;
+        uavMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
 
         // Get class record
         LLVMRecord& classListRecord = block->records[resources.source];
@@ -1374,7 +1374,7 @@ void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXJob &job) {
     LLVMRecordView classRecord = CompileResourceClassRecord(mapped);
 
     // Populate handles
-    for (size_t i = 0; i < mapped.handles.size(); i++) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(mapped.handles.size()); i++) {
         const HandleEntry& handle = handles[mapped.handles[i]];
 
         // Parsed handle?
@@ -1393,10 +1393,10 @@ void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXJob &job) {
 
         // Create extended metadata row
         Metadata& extendedMd = metadataBlock->metadata.emplace_back();
-        extendedMd.source = block->records.Size() - 1;
+        extendedMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
 
         // Index of extended node
-        uint32_t extendedMdIndex = metadataBlock->metadata.size();
+        uint32_t extendedMdIndex = static_cast<uint32_t>(metadataBlock->metadata.size());
 
         // Insert resource record node
         LLVMRecord resource(LLVMMetadataRecord::Node);
@@ -1416,7 +1416,7 @@ void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXJob &job) {
 
         // Create resource metadata row
         Metadata& resourceMd = metadataBlock->metadata.emplace_back();
-        resourceMd.source = block->records.Size() - 1;
+        resourceMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
 
         // Insert handle
         classRecord->ops[i] = metadataBlock->metadata.size();
@@ -1462,7 +1462,7 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXJob &job) {
     LLVMRecordView classRecord = CompileResourceClassRecord(mapped);
 
     // Populate handles
-    for (size_t i = 0; i < mapped.handles.size(); i++) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(mapped.handles.size()); i++) {
         const HandleEntry& handle = handles[mapped.handles[i]];
 
         // Parsed handle?
@@ -1481,10 +1481,10 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXJob &job) {
 
         // Create extended metadata row
         Metadata& extendedMd = metadataBlock->metadata.emplace_back();
-        extendedMd.source = block->records.Size() - 1;
+        extendedMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
 
         // Index of extended node
-        uint32_t extendedMdIndex = metadataBlock->metadata.size();
+        uint32_t extendedMdIndex = static_cast<uint32_t>(metadataBlock->metadata.size());
 
         // Insert resource record node
         LLVMRecord resource(LLVMMetadataRecord::Node);
@@ -1506,7 +1506,7 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXJob &job) {
 
         // Create resource metadata row
         Metadata& resourceMd = metadataBlock->metadata.emplace_back();
-        resourceMd.source = block->records.Size() - 1;
+        resourceMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
 
         // Insert handle
         classRecord->ops[i] = metadataBlock->metadata.size();
@@ -1532,7 +1532,7 @@ void DXILPhysicalBlockMetadata::CompileCBVResourceClass(const DXJob &job) {
     LLVMRecordView classRecord = CompileResourceClassRecord(mapped);
 
     // Populate handles
-    for (size_t i = 0; i < mapped.handles.size(); i++) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(mapped.handles.size()); i++) {
         const HandleEntry& handle = handles[mapped.handles[i]];
 
         // Parsed handle?
@@ -1551,13 +1551,13 @@ void DXILPhysicalBlockMetadata::CompileCBVResourceClass(const DXJob &job) {
         resource.ops[3] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.bindSpace);
         resource.ops[4] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerBase);
         resource.ops[5] = FindOrAddOperandU32Constant(*metadataBlock, block, handle.registerRange);
-        resource.ops[6] = FindOrAddOperandU32Constant(*metadataBlock, block, Backend::IL::GetPODNonAlignedTypeByteSize(handle.type->As<Backend::IL::PointerType>()->pointee));
+        resource.ops[6] = FindOrAddOperandU32Constant(*metadataBlock, block, static_cast<uint32_t>(GetPODNonAlignedTypeByteSize(handle.type->As<Backend::IL::PointerType>()->pointee)));
         resource.ops[7] = 0u;
         block->AddRecord(resource);
 
         // Create resource metadata row
         Metadata& resourceMd = metadataBlock->metadata.emplace_back();
-        resourceMd.source = block->records.Size() - 1;
+        resourceMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
 
         // Insert handle
         classRecord->ops[i] = metadataBlock->metadata.size();
@@ -1611,25 +1611,25 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
 
         // KV identifier
         Metadata& uavMd = metadataBlock->metadata.emplace_back();
-        uavMd.source = mdBlock->records.Size() - 1;
+        uavMd.source = static_cast<uint32_t>(mdBlock->records.Size()) - 1;
         programRecord->Op(4) = uavMd.source + 1;
     }
 
     // Get the kv node
-    LLVMRecordView kvRecord(mdBlock, programRecord->Op(4) - 1);
+    LLVMRecordView kvRecord(mdBlock, programRecord->Op32(4) - 1);
 
     // Parse tags
     for (uint32_t kv = 0; kv < kvRecord->opCount; kv += 2) {
-        switch (GetOperandU32Constant<DXILProgramTag>(*metadataBlock, kvRecord->Op(kv + 0))) {
+        switch (GetOperandU32Constant<DXILProgramTag>(*metadataBlock, kvRecord->Op32(kv + 0))) {
             default: {
                 break;
             }
             case DXILProgramTag::ShaderFlags: {
                 // Get current flags
-                uint64_t existingFlags = GetOperandU32Constant(*metadataBlock, kvRecord->Op(kv + 1));
+                uint32_t existingFlags = GetOperandU32Constant(*metadataBlock, kvRecord->Op32(kv + 1));
 
                 // Or flags
-                uint64_t combined = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, existingFlags | programMetadata.internalShaderFlags.value);
+                uint32_t combined = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, existingFlags | static_cast<uint32_t>(programMetadata.internalShaderFlags.value));
 
                 // Write combined
                 kvRecord->Op(kv + 1) = combined;
@@ -1649,7 +1649,7 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
 
         // Append flag
         ops[kvRecord->opCount + 0] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint64_t>(DXILProgramTag::ShaderFlags));
-        ops[kvRecord->opCount + 1] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, programMetadata.internalShaderFlags.value);
+        ops[kvRecord->opCount + 1] = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, static_cast<uint32_t>(programMetadata.internalShaderFlags.value));
 
         // Set new ops
         kvRecord->ops = ops;
