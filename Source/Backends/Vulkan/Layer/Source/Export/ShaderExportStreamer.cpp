@@ -87,16 +87,22 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
 }
 
 void ShaderExportStreamer::Free(ShaderExportStreamState *state) {
+    std::lock_guard guard(mutex);
+
     // Done
     streamStatePool.Push(state);
 }
 
 void ShaderExportStreamer::Free(ShaderExportQueueState *state) {
+    std::lock_guard guard(mutex);
+
     // Done
     queuePool.Push(state);
 }
 
 ShaderExportStreamSegment *ShaderExportStreamer::AllocateSegment() {
+    std::lock_guard guard(mutex);
+
     // Try existing allocation
     if (ShaderExportStreamSegment* segment = segmentPool.TryPop()) {
         return segment;
@@ -125,6 +131,8 @@ void ShaderExportStreamer::Enqueue(ShaderExportQueueState* queue, ShaderExportSt
 }
 
 void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer) {
+    std::lock_guard guard(mutex);
+
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
         std::fill(bindState.persistentDescriptorState.begin(), bindState.persistentDescriptorState.end(), ShaderExportDescriptorState());
@@ -472,6 +480,9 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
 }
 
 void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue, ShaderExportStreamSegment *segment) {
+    std::lock_guard guard(mutex);
+
+    // Get queue
     QueueState* queueState = table->states_queue.GetNoLock(queue->queue);
 
     // Move ownership to queue (don't release the reference count, queue owns it now)
@@ -515,6 +526,9 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
 }
 
 VkCommandBuffer ShaderExportStreamer::RecordPatchCommandBuffer(ShaderExportQueueState* state, ShaderExportStreamSegment* segment) {
+    std::lock_guard guard(mutex);
+
+    // Get queue
     QueueState* queueState = table->states_queue.Get(state->queue);
 
     // Pop a new command buffer

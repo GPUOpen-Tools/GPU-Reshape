@@ -121,16 +121,22 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
 }
 
 void ShaderExportStreamer::Free(ShaderExportStreamState *state) {
+    std::lock_guard guard(mutex);
+
     // Done
     streamStatePool.Push(state);
 }
 
 void ShaderExportStreamer::Free(ShaderExportQueueState *state) {
+    std::lock_guard guard(mutex);
+
     // Done
     queuePool.Push(state);
 }
 
 ShaderExportStreamSegment *ShaderExportStreamer::AllocateSegment() {
+    std::lock_guard guard(mutex);
+
     // Try existing allocation
     if (ShaderExportStreamSegment* segment = segmentPool.TryPop()) {
         return segment;
@@ -156,6 +162,8 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
 }
 
 void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, CommandListState* commandList) {
+    std::lock_guard guard(mutex);
+
     // Reset state
     state->rootSignature = nullptr;
     state->isInstrumented = false;
@@ -541,6 +549,8 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
 }
 
 void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, ShaderExportStreamSegment *segment) {
+    std::lock_guard guard(mutex);
+    
     // Remove fence reference
     segment->fence = nullptr;
     segment->fenceNextCommitId = 0;
@@ -584,6 +594,8 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
 }
 
 ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* segment) {
+    std::lock_guard guard(mutex);
+    
     segment->patchDeviceCPUDescriptor = sharedCPUHeapAllocator->Allocate(1);
     segment->patchDeviceGPUDescriptor = sharedGPUHeapAllocator->Allocate(1);
 

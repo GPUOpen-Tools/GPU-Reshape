@@ -103,7 +103,7 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
     const VirtualResourceMapping* migratedMappings = virtualMappings;
 
     // Set new allocation count
-    virtualMappingCount = std::min(64'000u, static_cast<uint32_t>(static_cast<float>(count) * GrowthFactor));
+    virtualMappingCount = std::max(64'000u, static_cast<uint32_t>(static_cast<float>(count) * GrowthFactor));
 
     // Buffer info
     VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
