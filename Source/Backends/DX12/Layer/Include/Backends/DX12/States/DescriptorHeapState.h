@@ -13,6 +13,16 @@ class PhysicalResourceMappingTable;
 struct DescriptorHeapState {
     ~DescriptorHeapState();
 
+    /// Check if a GPU handle is in bounds to this heap
+    bool IsInBounds(D3D12_GPU_DESCRIPTOR_HANDLE handle) const {
+        return handle.ptr >= gpuDescriptorBase.ptr && handle.ptr < gpuDescriptorBase.ptr + physicalDescriptorCount * stride;
+    }
+
+    /// Check if a CPU handle is in bounds to this heap
+    bool IsInBounds(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {
+        return handle.ptr >= cpuDescriptorBase.ptr && handle.ptr < cpuDescriptorBase.ptr + physicalDescriptorCount * stride;
+    }
+
     /// Parent state
     ID3D12Device* parent{};
 
@@ -31,6 +41,9 @@ struct DescriptorHeapState {
 
     /// Stride of this heap
     uint64_t stride{0};
+
+    /// Number of descriptors, includes prefix
+    uint64_t physicalDescriptorCount{0};
 
     /// Internal allocator
     ShaderExportDescriptorAllocator* allocator{nullptr};

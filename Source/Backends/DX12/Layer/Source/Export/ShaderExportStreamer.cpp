@@ -374,7 +374,11 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
 }
 
 void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
-    ASSERT(baseDescriptor.ptr >= state->heap->gpuDescriptorBase.ptr, "Mismatched streaming heap");
+    // If the address is outside the SRV heap, then it's originating from a foreign heap
+    // This could be intentional, say a sampler heap, or a bug from the parent application
+    if (!state->heap->IsInBounds(baseDescriptor)) {
+        return;
+    }
 
     // Get offset
     uint64_t offset = baseDescriptor.ptr - state->heap->gpuDescriptorBase.ptr;
@@ -391,7 +395,11 @@ void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState
 }
 
 void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
-    ASSERT(baseDescriptor.ptr >= state->heap->gpuDescriptorBase.ptr, "Mismatched streaming heap");
+    // If the address is outside the SRV heap, then it's originating from a foreign heap
+    // This could be intentional, say a sampler heap, or a bug from the parent application
+    if (!state->heap->IsInBounds(baseDescriptor)) {
+        return;
+    }
 
     // Get offset
     uint64_t offset = baseDescriptor.ptr - state->heap->gpuDescriptorBase.ptr;

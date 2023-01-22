@@ -48,6 +48,9 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
             state->cpuDescriptorBase = heap->GetCPUDescriptorHandleForHeapStart();
             state->stride = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+            // Set count
+            state->physicalDescriptorCount = desc->NumDescriptors;
+            
             // GPU base if heap supports
             if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
                 state->gpuDescriptorBase = heap->GetGPUDescriptorHandleForHeapStart();
