@@ -25,15 +25,19 @@ else()
     message(FATAL_ERROR "Only x64 target not supported")
 endif()
 
-# Toolchain support
+# Support up to 20
 if (MSVC)
-    # Support up to 20
-    add_compile_options(/std:c++20)
+    # Clang(CL) frontend?
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL Clang)
+        set(CMAKE_CXX_STANDARD 20)
+    else()
+        add_compile_options(/std:c++20)
+    endif()
 elseif(MINGW)
-    message(WARNING "MinGW support not complete")
-
-    # Set the standard
     set(CMAKE_CXX_STANDARD 20)
+
+    # Sparsely maintained
+    message(WARNING "MinGW support not complete")
 else()
     message(FATAL_ERROR "Unsupported compiler ${CMAKE_CXX_COMPILER_ID}")
 endif()
