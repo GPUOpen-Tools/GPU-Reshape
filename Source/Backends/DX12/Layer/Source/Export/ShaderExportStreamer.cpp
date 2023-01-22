@@ -374,27 +374,12 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
 }
 
 void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
-    // If the address is outside the SRV heap, then it's originating from a foreign heap
-    // This could be intentional, say a sampler heap, or a bug from the parent application
-    if (!state->heap->IsInBounds(baseDescriptor)) {
-        return;
-    }
-
-    // Get offset
-    uint64_t offset = baseDescriptor.ptr - state->heap->gpuDescriptorBase.ptr;
-    ASSERT(offset % state->heap->stride == 0, "Mismatched heap stride");
-
     // Bind state
     ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::Descriptor(baseDescriptor);
 
-    // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->heap->stride));
-}
-
-void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
     // If the address is outside the SRV heap, then it's originating from a foreign heap
     // This could be intentional, say a sampler heap, or a bug from the parent application
     if (!state->heap->IsInBounds(baseDescriptor)) {
@@ -405,11 +390,26 @@ void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamStat
     uint64_t offset = baseDescriptor.ptr - state->heap->gpuDescriptorBase.ptr;
     ASSERT(offset % state->heap->stride == 0, "Mismatched heap stride");
 
+    // Set the root PRMT offset
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->heap->stride));
+}
+
+void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
     // Bind state
     ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::Descriptor(baseDescriptor);
+
+    // If the address is outside the SRV heap, then it's originating from a foreign heap
+    // This could be intentional, say a sampler heap, or a bug from the parent application
+    if (!state->heap->IsInBounds(baseDescriptor)) {
+        return;
+    }
+
+    // Get offset
+    uint64_t offset = baseDescriptor.ptr - state->heap->gpuDescriptorBase.ptr;
+    ASSERT(offset % state->heap->stride == 0, "Mismatched heap stride");
 
     // Set the root PRMT offset
     bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->heap->stride));
