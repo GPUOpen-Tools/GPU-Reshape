@@ -10,7 +10,7 @@ struct UniqueID {
 
     }
 
-    constexpr explicit UniqueID(T value) : value(value), valid(true) {
+    constexpr explicit UniqueID(T value) : valid(true), value(value) {
 
     }
 

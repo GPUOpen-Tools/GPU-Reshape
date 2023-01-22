@@ -8,7 +8,7 @@ public:
     /// Initialize this client with a synchronous connection
     /// \param ipvxAddress ip address of the connecting endpoint
     /// \param port port number to be used
-    AsioClient(const char* ipvxAddress, uint16_t port) : connection(ioService), resolver(ioService), address(ipvxAddress), port(port) {
+    AsioClient(const char* ipvxAddress, uint16_t port) : address(ipvxAddress), port(port), connection(ioService), resolver(ioService) {
         OpenConnection();
     }
     

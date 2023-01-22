@@ -55,16 +55,20 @@ namespace std {
     }
 
     // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
-    inline bool ends_with(std::string const &value, std::string const &ending) {
+    inline bool ends_with(std::string_view const &value, std::string_view const &ending) {
         if (ending.size() > value.size()) return false;
         return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
     }
 
-    static bool iswhitespace(char c) {
+    inline bool starts_with(std::string_view const &value, std::string_view const &ending) {
+        return value.rfind(ending, 0) == 0;
+    }
+
+    static inline bool iswhitespace(char c) {
         return isspace(c) && c != '\n';
     }
 
-    static bool iscxxalnum(char c) {
+    static inline bool iscxxalnum(char c) {
         return isalnum(c) || c == '_';
     }
 }

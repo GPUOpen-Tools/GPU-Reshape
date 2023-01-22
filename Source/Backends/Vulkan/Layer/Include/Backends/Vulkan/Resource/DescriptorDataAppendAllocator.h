@@ -14,7 +14,7 @@
 
 class DescriptorDataAppendAllocator {
 public:
-    DescriptorDataAppendAllocator(DeviceDispatchTable* table, const ComRef<DeviceAllocator>& allocator, size_t maxChunkSize) : table(table), allocator(allocator), maxChunkSize(maxChunkSize) {
+    DescriptorDataAppendAllocator(DeviceDispatchTable* table, const ComRef<DeviceAllocator>& allocator, size_t maxChunkSize) : maxChunkSize(maxChunkSize), allocator(allocator), table(table) {
 
     }
 

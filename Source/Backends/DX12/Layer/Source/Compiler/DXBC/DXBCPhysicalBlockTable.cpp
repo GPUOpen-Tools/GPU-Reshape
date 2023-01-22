@@ -8,13 +8,13 @@
 #include <Common/Allocators.h>
 
 DXBCPhysicalBlockTable::DXBCPhysicalBlockTable(const Allocators &allocators, IL::Program &program) :
-    allocators(allocators),
-    program(program),
     scan(allocators),
     shader(allocators, program, *this),
     pipelineStateValidation(allocators, program, *this),
     rootSignature(allocators, program, *this),
-    featureInfo(allocators, program, *this) {
+    featureInfo(allocators, program, *this),
+    allocators(allocators),
+    program(program) {
     /* */
 }
 

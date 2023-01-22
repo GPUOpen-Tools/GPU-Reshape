@@ -7,6 +7,9 @@
 // Backend
 #include <Backend/IL/TypeSize.h>
 
+// Common
+#include <Common/Sink.h>
+
 /*
  * LLVM DXIL Specification
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/DXIL.rst
@@ -281,6 +284,9 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 auto shape = GetOperandU32Constant<DXILShaderResourceShape>(metadataBlock, resource.Op32(6));
                 uint64_t sampleCount = GetOperandU32Constant(metadataBlock, resource.Op32(7));
 
+                // Unused
+                GRS_SINK(sampleCount);
+
                 // Optional element type
                 const Backend::IL::Type* elementType{nullptr};
 
@@ -376,6 +382,11 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 uint64_t counter = GetOperandBoolConstant(metadataBlock, resource.Op32(8));
                 uint64_t rasterizerOrderedView = GetOperandBoolConstant(metadataBlock, resource.Op32(9));
 
+                // Unused
+                GRS_SINK(globallyCoherent);
+                GRS_SINK(counter);
+                GRS_SINK(rasterizerOrderedView);
+
                 // Optional element type
                 const Backend::IL::Type *elementType{nullptr};
 
@@ -469,8 +480,14 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 // Unique ops
                 uint64_t byteSize = GetOperandU32Constant(metadataBlock, resource.Op32(6));
 
+                // Unused
+                GRS_SINK(byteSize);
+
                 if (uint32_t nullableMetadata = resource.Op32(7)) {
                     uint64_t extendedMetadata = GetOperandU32Constant(metadataBlock, nullableMetadata);
+
+                    // Unused
+                    GRS_SINK(extendedMetadata);
                 }
 
                 Backend::IL::CBufferType cbuffer{};
@@ -481,8 +498,14 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                 // Unique ops
                 uint64_t samplerType = GetOperandU32Constant(metadataBlock, resource.Op32(6));
 
+                // Unused
+                GRS_SINK(samplerType);
+
                 if (uint32_t nullableMetadata = resource.Op32(7)) {
                     uint64_t extendedMetadata = GetOperandU32Constant(metadataBlock, nullableMetadata);
+
+                    // Unused
+                    GRS_SINK(extendedMetadata);
                 }
 
                 Backend::IL::SamplerType sampler{};

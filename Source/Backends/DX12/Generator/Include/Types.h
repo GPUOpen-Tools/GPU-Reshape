@@ -1,5 +1,8 @@
 #pragma once
 
+// Common
+#include <Common/String.h>
+
 // Json
 #include <nlohmann/json.hpp>
 
@@ -10,8 +13,8 @@
 /// Check if a structured type
 /// \param type json type
 /// \return true if structured
-static bool IsTypeStruct(const nlohmann::json &type) {
-    return type["type"].get<std::string>() == "struct" && type["name"].get<std::string>().starts_with("D3D12_");
+static inline bool IsTypeStruct(const nlohmann::json &type) {
+    return type["type"].get<std::string>() == "struct" && std::starts_with(type["name"].get<std::string>(), "D3D12_");
 }
 
 /// Pretty print a type
@@ -19,7 +22,7 @@ static bool IsTypeStruct(const nlohmann::json &type) {
 /// \param type the json type
 /// \param isFPtr outer function pointer?
 /// \return success state
-static bool PrettyPrintType(std::stringstream &ss, const nlohmann::json &type, bool isFPtr = false, bool emitConst = true) {
+static inline bool PrettyPrintType(std::stringstream &ss, const nlohmann::json &type, bool isFPtr = false, bool emitConst = true) {
     auto typeKind = type["type"].get<std::string>();
 
     // Common
@@ -111,7 +114,7 @@ static bool PrettyPrintType(std::stringstream &ss, const nlohmann::json &type, b
 /// \param name parameter name
 /// \param top top type?
 /// \return success state
-static bool PrettyPrintParameter(std::stringstream &ss, const nlohmann::json &type, const std::string &name, bool top = true) {
+static inline bool PrettyPrintParameter(std::stringstream &ss, const nlohmann::json &type, const std::string &name, bool top = true) {
     auto typeKind = type["type"].get<std::string>();
 
     bool isPointer = typeKind == "pointer";
@@ -178,7 +181,7 @@ static bool PrettyPrintParameter(std::stringstream &ss, const nlohmann::json &ty
 /// Get the base name of an interface
 /// \param name top name
 /// \return interface base name
-static std::string GetInterfaceBaseName(const std::string &name) {
+static inline std::string GetInterfaceBaseName(const std::string &name) {
     size_t i = name.length() - 1;
     while (isdigit(name[i])) {
         i--;
@@ -191,7 +194,7 @@ static std::string GetInterfaceBaseName(const std::string &name) {
 /// \param name base name
 /// \param revision revision number
 /// \return name
-static std::string GetInterfaceRevision(const std::string &name, uint32_t revision) {
+static inline std::string GetInterfaceRevision(const std::string &name, uint32_t revision) {
     return revision ? name + std::to_string(revision) : name;
 }
 
@@ -199,7 +202,7 @@ static std::string GetInterfaceRevision(const std::string &name, uint32_t revisi
 /// \param info generation info
 /// \param key base key
 /// \return revision name
-static std::string GetOuterRevision(const GeneratorInfo &info, const std::string& key) {
+static inline std::string GetOuterRevision(const GeneratorInfo &info, const std::string& key) {
     uint32_t i = 0;
     while (info.specification["interfaces"].contains(key + std::to_string(i + 1))) {
         i++;

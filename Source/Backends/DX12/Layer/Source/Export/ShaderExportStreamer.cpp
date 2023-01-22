@@ -300,7 +300,7 @@ void ShaderExportStreamer::Process(CommandQueueState* queueState) {
 
 void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, uint32_t slot, PipelineType type, CommandListState *commandList) {
     switch (type) {
-        case PipelineType::None:
+        default:
             ASSERT(false, "Invalid pipeline");
             break;
         case PipelineType::Graphics:

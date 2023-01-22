@@ -13,12 +13,10 @@ static uint64_t DeepCopyExtensionByteSize(const void* extension);
 static void* DeepCopyExtension(const void* extension, uint8_t* blob, uint64_t& blobOffset);
 
 uint64_t DeepCopyExtensionByteSizeDeviceLoader(const void* extension) {
-    const auto& source = *static_cast<const StructureType*>(extension);
     return 0;
 }
 
 void* DeepCopyExtensionDeviceLoader(const void* extension, uint8_t* blob, uint64_t& blobOffset) {
-    const auto& source = *static_cast<const StructureType*>(extension);
     return const_cast<void*>(extension);
 }
 
@@ -35,8 +33,6 @@ uint64_t DeepCopyExtensionByteSizeGPUOpen(const void* extension) {
 }
 
 void* DeepCopyExtensionGPUOpen(const void* extension, uint8_t* blob, uint64_t& blobOffset) {
-    const auto& source = *static_cast<const VkGPUOpenGPUValidationCreateInfo*>(extension);
-
     auto* _mutable = reinterpret_cast<VkGPUOpenGPUValidationCreateInfo*>(blob[blobOffset]);
     std::memcpy(_mutable, extension, sizeof(VkGPUOpenGPUValidationCreateInfo));
     blobOffset += sizeof(VkGPUOpenGPUValidationCreateInfo);

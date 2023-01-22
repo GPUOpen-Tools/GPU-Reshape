@@ -58,6 +58,11 @@ struct LLVMRecordStringView {
         return true;
     }
 
+    /// Check for equality with rhs string
+    bool operator!=(const std::string_view& rhs) const {
+        return !(*this == rhs);
+    }
+
     /// Check if this string starts with a sub string
     bool StartsWith(const std::string_view& str) const {
         if (str.length() > operandCount) {

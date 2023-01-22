@@ -21,7 +21,7 @@ namespace {
 /// \param type RST type
 /// \return empty if failed
 static std::string TranslateType(const std::string_view& type, std::string_view prefix = "") {
-    if (prefix.starts_with("DXILIntrinsicTypeSpec::ResRet")) {
+    if (std::starts_with(prefix, "DXILIntrinsicTypeSpec::ResRet")) {
         if (type[0] == 'i') {
             return "DXILIntrinsicTypeSpec::ResRetI32";
         } else {
@@ -29,7 +29,7 @@ static std::string TranslateType(const std::string_view& type, std::string_view 
         }
     }
 
-    if (prefix.starts_with("DXILIntrinsicTypeSpec::CBufRet")) {
+    if (std::starts_with(prefix, "DXILIntrinsicTypeSpec::CBufRet")) {
         if (type[0] == 'i') {
             return "DXILIntrinsicTypeSpec::CBufRetI32";
         } else {

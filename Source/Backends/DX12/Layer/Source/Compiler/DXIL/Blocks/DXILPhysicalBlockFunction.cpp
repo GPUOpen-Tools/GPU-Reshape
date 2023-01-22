@@ -11,6 +11,9 @@
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/PrettyPrint.h>
 
+// Common
+#include <Common/Sink.h>
+
 // Std
 #ifndef NDEBUG
 #include <sstream>
@@ -355,6 +358,10 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 const Backend::IL::Type* indexType = table.type.typeMap.GetType(reader.ConsumeOp32());
                 uint32_t indexValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
+                // Unused
+                GRS_SINK(compositeType);
+                GRS_SINK(indexType);
+
                 IL::InsertInstruction instr{};
                 instr.opCode = IL::OpCode::Insert;
                 instr.result = result;
@@ -374,6 +381,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
                 // Get index
                 uint32_t indexValue = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+
+                // Unused
+                GRS_SINK(compositeType);
 
                 IL::ExtractInstruction instr{};
                 instr.opCode = IL::OpCode::Extract;
@@ -680,6 +690,13 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 uint64_t ordering = reader.ConsumeOp();
                 uint64_t scope = reader.ConsumeOp();
 
+                // Unused
+                GRS_SINK(value);
+                GRS_SINK(op);
+                GRS_SINK(_volatile);
+                GRS_SINK(ordering);
+                GRS_SINK(scope);
+
                 const auto* pointerType = ilTypeMap.GetType(address)->As<Backend::IL::PointerType>();
 
                 // Emit as unexposed
@@ -858,6 +875,10 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 uint64_t sizeType = reader.ConsumeOp();
                 uint64_t size = reader.ConsumeOp();
 
+                // Unused
+                GRS_SINK(sizeType);
+                GRS_SINK(size);
+
                 // Append
                 IL::AllocaInstruction instr{};
                 instr.opCode = IL::OpCode::Alloca;
@@ -935,6 +956,13 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 // Get type of function
                 uint64_t type = reader.ConsumeOp();
 
+                // Unused
+                GRS_SINK(attributes);
+                GRS_SINK(callConv);
+                GRS_SINK(isTailCall);
+                GRS_SINK(isMustTailCall);
+                GRS_SINK(type);
+
                 // Get callee
                 uint32_t called = table.idMap.GetRelative(anchor, reader.ConsumeOp32());
 
@@ -1003,6 +1031,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
             // Debugger hack to keep instr in the scope
             bool _ = false;
+            GRS_SINK(_);
         }
     }
 #endif // NDEBUG
@@ -1050,6 +1079,10 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
 
     // Ignored
     uint64_t paramAttr = reader.ConsumeOp();
+
+    // Unused
+    GRS_SINK(callingConv);
+    GRS_SINK(paramAttr);
 
     // Add to internal linked functions if not external
     if (proto == 0) {
@@ -1117,6 +1150,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             // Set as pointee type
             ilTypeMap.SetType(result, type);
 
+            // Unused
+            GRS_SINK(opCode, rangeIndex, isNonUniform);
+
             // Keep the original record
             IL::UnexposedInstruction instr{};
             instr.opCode = IL::OpCode::Unexposed;
@@ -1150,6 +1186,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t row = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
             uint32_t column = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
             uint32_t value = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+
+            // Unused
+            GRS_SINK(opCode);
 
             // Emit
             IL::StoreOutputInstruction instr{};
@@ -1187,6 +1226,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t resource = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
             uint32_t coordinate = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
             uint32_t offset = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+
+            // Unused
+            GRS_SINK(opCode, offset);
 
             // Emit as load
             IL::LoadBufferInstruction instr{};
@@ -1232,6 +1274,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t z = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
             uint32_t w = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
             uint32_t mask = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+
+            // Unused
+            GRS_SINK(opCode, offset);
 
             // Get type
             const auto* bufferType = ilTypeMap.GetType(resource)->As<Backend::IL::BufferType>();
@@ -1291,6 +1336,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t oy = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
             uint32_t oz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
 
+            // Unused
+            GRS_SINK(opCode, ox, oy, oz, mip);
+
             // Get type
             const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
 
@@ -1349,6 +1397,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t vz = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
             uint32_t vw = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
             uint32_t mask = table.idMap.GetMappedRelative(anchor, reader.ConsumeOp32());
+
+            // Unused
+            GRS_SINK(opCode);
 
             // Get type
             const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
@@ -2417,9 +2468,6 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                         dxilOpCode = DXILOpcodes::IsInf_;
                     }
 
-                    // Get type to determine intrinsic
-                    const Backend::IL::Type* type = program.GetTypeMap().GetType(instr->result);
-
                     // Handle as unary
                     UnaryOpSVOX(block, instr->result, value, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value) {
                         uint64_t ops[2];
@@ -2550,7 +2598,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
 
                     // LLVM IR does not differentiate between signed and unsigned, and is instead part of the instructions themselves (Fx. SDiv, UDiv)
                     // So, the resulting type will dictate future operations, value redirection is enough.
-                    const bool bIsIntegerCast = IsComponentType<Backend::IL::IntType>(valueType) && IsComponentType<Backend::IL::IntType>(resultType);
+                    const bool bIsIntegerCast = Backend::IL::IsComponentType<Backend::IL::IntType>(valueType) && Backend::IL::IsComponentType<Backend::IL::IntType>(resultType);
 
                     // Any need to cast at all?
                     if (valueType == resultType || bIsIntegerCast) {

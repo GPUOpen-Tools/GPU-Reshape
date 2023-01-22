@@ -20,7 +20,7 @@ static void WrapClass(const GeneratorInfo &info, ProxiesState &state, const std:
     state.proxies << "\tCommandContext* context{nullptr};\n";
 
     // Create proxies
-    for (const std::string& proxy : obj["proxies"]) {
+    for (const std::string proxy : obj["proxies"]) {
         // Generate feature bit set
         state.proxies << "\n\tuint64_t featureBitSet_" << proxy << "{0};\n";
 

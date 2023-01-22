@@ -17,10 +17,10 @@ namespace IL {
     struct Program {
         Program(const Allocators &allocators, uint64_t shaderGUID) :
             allocators(allocators),
-            typeMap(allocators, identifierMap),
-            constants(allocators, identifierMap, typeMap),
             functions(allocators, identifierMap),
             variables(allocators, identifierMap),
+            constants(allocators, identifierMap, typeMap),
+            typeMap(allocators, identifierMap),
             shaderDataMap(identifierMap, typeMap),
             shaderGUID(shaderGUID) {
             /* */

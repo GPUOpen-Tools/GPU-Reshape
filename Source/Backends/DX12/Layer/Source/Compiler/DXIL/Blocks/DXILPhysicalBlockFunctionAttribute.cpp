@@ -5,6 +5,9 @@
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
 
+// Common
+#include <Common/Sink.h>
+
 /*
  * LLVM DXIL Specification
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/DXIL.rst
@@ -34,6 +37,9 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterAttributeGroup(struct LLV
                 uint32_t id = reader.ConsumeOp32();
                 uint64_t parameter = reader.ConsumeOp();
 
+                // Unused
+                GRS_SINK(id);
+
                 switch (static_cast<LLVMParameterGroupRecordIndex>(parameter)) {
                     default:
                         break;
@@ -61,6 +67,9 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterAttributeGroup(struct LLV
                         case LLVMParameterGroupKind::WellKnownValue: {
                             uint64_t key = reader.ConsumeOp();
                             attribute.value = reader.ConsumeOpAs<LLVMParameterGroupValue>();
+
+                            // Unused
+                            GRS_SINK(key);
                             break;
                         }
                         case LLVMParameterGroupKind::String: {
@@ -70,12 +79,15 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterAttributeGroup(struct LLV
                         case LLVMParameterGroupKind::StringValue: {
                             uint64_t key = reader.ConsumeOp();
                             attribute.view = LLVMRecordStringView(record, reader.Offset());
+
+                            // Unused
+                            GRS_SINK(key);
                             break;
                         }
                     };
                 }
             }
-                break;
+            break;
         }
     }
 }

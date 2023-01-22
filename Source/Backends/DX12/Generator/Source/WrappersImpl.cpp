@@ -240,7 +240,6 @@ static bool WrapClass(const GeneratorInfo &info, WrapperImplState &state, const 
 
     // Get vtable
     auto &&objInterface = interfaces[outerRevision];
-    auto &&objVtbl = objInterface["vtable"];
 
     // Object common
     auto name = obj["name"].get<std::string>();

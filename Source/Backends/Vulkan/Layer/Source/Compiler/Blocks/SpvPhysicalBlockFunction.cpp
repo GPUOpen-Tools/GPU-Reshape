@@ -770,7 +770,6 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
     for (auto instr = bb->begin(); instr != bb->end(); instr++) {
         // If trivial, just copy it directly
         if (instr->source.TriviallyCopyable()) {
-            auto ptr = instr.Get();
             stream.Template(instr->source);
             continue;
         }
@@ -815,9 +814,6 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
             }
             case IL::OpCode::StoreTexture: {
                 auto *storeTexture = instr.As<IL::StoreTextureInstruction>();
-
-                // Get the texture type
-                const auto* textureType = ilTypeMap.GetType(storeTexture->texture)->As<Backend::IL::TextureType>();
 
                 // Write image
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageWrite, 4, instr->source);
@@ -887,7 +883,8 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
                 SpvOp op;
                 switch (lhsType->kind) {
                     default:
-                    ASSERT(false, "Invalid And operand type");
+                        ASSERT(false, "Invalid And operand type");
+                        op = SpvOpBitwiseOr;
                         break;
                     case Backend::IL::TypeKind::Bool:
                         op = SpvOpLogicalOr;
@@ -912,7 +909,8 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
                 SpvOp op;
                 switch (lhsType->kind) {
                     default:
-                    ASSERT(false, "Invalid And operand type");
+                        ASSERT(false, "Invalid And operand type");
+                        op = SpvOpBitwiseAnd;
                         break;
                     case Backend::IL::TypeKind::Bool:
                         op = SpvOpLogicalAnd;
@@ -969,7 +967,8 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
                 SpvOp op;
                 switch (lhsType->kind) {
                     default:
-                    ASSERT(false, "Invalid Equal operand type");
+                        ASSERT(false, "Invalid Equal operand type");
+                        op = SpvOpIEqual;
                         break;
                     case Backend::IL::TypeKind::Bool:
                         op = SpvOpLogicalEqual;
@@ -998,6 +997,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
                 switch (lhsType->kind) {
                     default:
                         ASSERT(false, "Invalid NotEqual operand type");
+                        op = SpvOpINotEqual;
                         break;
                     case Backend::IL::TypeKind::Bool:
                         op = SpvOpLogicalNotEqual;
@@ -1573,9 +1573,6 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
 
                 // Get resulting type
                 const auto* pointerType = resultType->As<Backend::IL::PointerType>();
-
-                // Get the composite type
-                const auto* compositeType = ilTypeMap.GetType(_instr->composite);
 
                 // Texel addresses must be handled separately
                 if (pointerType->addressSpace == Backend::IL::AddressSpace::Texture || pointerType->addressSpace == Backend::IL::AddressSpace::Buffer) {

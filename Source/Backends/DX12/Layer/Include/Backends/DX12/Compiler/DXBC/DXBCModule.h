@@ -32,6 +32,8 @@ public:
     IDXDebugModule *GetDebug() override;
 
 private:
+    Allocators allocators;
+
     /// Physical table
     DXBCPhysicalBlockTable table;
 
@@ -51,7 +53,4 @@ private:
 #if SHADER_COMPILER_DEBUG
     std::string instrumentationGUIDName;
 #endif
-
-private:
-    Allocators allocators;
 };

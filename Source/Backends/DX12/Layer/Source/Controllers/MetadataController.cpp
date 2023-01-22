@@ -195,9 +195,6 @@ void MetadataController::OnMessage(const GetShaderILMessage& message) {
         return;
     }
 
-    // Get debug module
-    IDXDebugModule* debugModule = shader->module->GetDebug();
-
     // Pretty print to stream
     std::stringstream ilStream;
     IL::PrettyPrint(*shader->module->GetProgram(), ilStream);

@@ -24,6 +24,9 @@ void PipelineCompiler::AddBatch(DeviceDispatchTable *table, PipelineJob *jobs, u
     // Segment the types
     for (uint32_t i = 0; i < count; i++) {
         switch (jobs[i].state->type) {
+            default:
+                ASSERT(false, "Invalid pipeline type");
+                break;
             case PipelineType::Graphics:
                 graphicsJobs.push_back(jobs[i]);
                 break;
@@ -73,6 +76,9 @@ void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, const std::vec
 
         // Submit the job
         switch (type) {
+            default:
+                ASSERT(false, "Invalid pipeline type");
+                break;
             case PipelineType::Graphics:
                 dispatcher->Add(BindDelegate(this, PipelineCompiler::WorkerGraphics), data, bucket);
                 break;

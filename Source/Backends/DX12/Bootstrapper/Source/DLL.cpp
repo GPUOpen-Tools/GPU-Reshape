@@ -33,8 +33,8 @@
 
 /// Symbol helper (nay, repent! a macro!)
 #define SYMBOL(NAME, STR) \
-    static constexpr const char* k##NAME = STR; \
-    static constexpr const wchar_t* k##NAME##W = L##STR;
+    [[maybe_unused]] static constexpr const char* k##NAME = STR; \
+    [[maybe_unused]] static constexpr const wchar_t* k##NAME##W = L##STR;
 
 /// Symbols
 SYMBOL(D3D12ModuleName, "d3d12.dll");

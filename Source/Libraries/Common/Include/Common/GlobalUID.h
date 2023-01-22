@@ -53,7 +53,12 @@ struct GlobalUID {
 
     /// Compare two UUIDs
     bool operator==(const GlobalUID& other) const {
-        return !std::memcmp(uuid, other.uuid, sizeof(uuid));
+        return std::memcmp(uuid, other.uuid, sizeof(uuid)) == 0;
+    }
+
+    /// Compare two UUIDs
+    bool operator!=(const GlobalUID& other) const {
+        return std::memcmp(uuid, other.uuid, sizeof(uuid)) != 0;
     }
 
 private:

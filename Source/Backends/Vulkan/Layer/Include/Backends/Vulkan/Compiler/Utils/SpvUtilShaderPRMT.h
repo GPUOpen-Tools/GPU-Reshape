@@ -44,11 +44,11 @@ private:
      SpvValueDecoration GetSourceResourceDecoration(IL::ID resource);
 
 private:
-    /// Backend program
-    Backend::IL::Program &program;
-
     /// Shared allocators
     Allocators allocators;
+
+    /// Backend program
+    Backend::IL::Program &program;
 
     /// Parent table
     SpvPhysicalBlockTable& table;

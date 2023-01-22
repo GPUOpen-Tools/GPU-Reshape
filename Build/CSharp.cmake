@@ -30,6 +30,11 @@ function(Project_AddDotNetEx)
         #   ! WORKAROUND, Visual Studio generators do not support C# sources from add_custom_command
         #                 Check introduced by 3.24
         add_library(${ARGS_NAME}.Sham INTERFACE ${${ARGS_GENERATED}_Sham})
+		
+		# Create dummy file to keep MSVC happy
+		if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${${ARGS_GENERATED}_Sham}")
+			file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${${ARGS_GENERATED}_Sham}" Sham)
+		endif()
     endif()
 
     # Create library
@@ -45,6 +50,12 @@ function(Project_AddDotNetEx)
 
         # Enable CLR
         set_target_properties(${ARGS_NAME} PROPERTIES COMMON_LANGUAGE_RUNTIME "")
+        
+		# C++/CLI does not support 20 at the moment, downgrade to 17 
+		get_target_property(CLIOptions ${ARGS_NAME} COMPILE_OPTIONS)
+		list(REMOVE_ITEM CLIOptions "/std:c++20")
+		list(APPEND CLIOptions "/std:c++17")
+		set_property(TARGET ${ARGS_NAME} PROPERTY COMPILE_OPTIONS ${CLIOptions})
     endif()
 
     # Set .NET, link to assemblies and libs

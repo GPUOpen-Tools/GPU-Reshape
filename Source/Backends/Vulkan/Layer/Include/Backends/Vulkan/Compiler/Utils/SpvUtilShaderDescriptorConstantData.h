@@ -31,11 +31,11 @@ struct SpvUtilShaderDescriptorConstantData {
     void CopyTo(SpvPhysicalBlockTable& remote, SpvUtilShaderDescriptorConstantData& out);
 
 private:
-    /// Backend program
-    Backend::IL::Program &program;
-
     /// Shared allocators
     Allocators allocators;
+
+    /// Backend program
+    Backend::IL::Program &program;
 
     /// Parent table
     SpvPhysicalBlockTable& table;

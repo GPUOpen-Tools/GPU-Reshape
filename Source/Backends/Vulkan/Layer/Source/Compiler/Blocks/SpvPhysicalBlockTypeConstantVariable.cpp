@@ -2,6 +2,9 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
 
+// Common
+#include <Common/Sink.h>
+
 SpvPhysicalBlockTypeConstantVariable::SpvPhysicalBlockTypeConstantVariable(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
    SpvPhysicalBlockSection(allocators, program, table),
     typeMap(allocators, &program.GetTypeMap()) {
@@ -122,6 +125,9 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 bool isDepth = ctx++;
                 bool isArrayed = ctx++;
                 bool multisampled = ctx++;
+
+                // Ignored for now
+                GRS_SINK(isDepth);
 
                 // Translate the sampler mode
                 Backend::IL::ResourceSamplerMode samplerMode;

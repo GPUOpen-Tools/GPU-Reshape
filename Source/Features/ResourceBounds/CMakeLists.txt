@@ -11,5 +11,8 @@ add_dependencies(
     Features.ResourceBounds.Frontend.Hub
 )
 
+# IDE source discovery
+SetSourceDiscovery(Features.ResourceBounds CXX)
+
 # Copy xml
 ConfigureOutput(ResourceBounds.xml Plugins/ResourceBounds.xml)

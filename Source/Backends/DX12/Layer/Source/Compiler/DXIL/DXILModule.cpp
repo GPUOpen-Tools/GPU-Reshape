@@ -5,9 +5,9 @@ DXILModule::DXILModule(const Allocators &allocators) : DXILModule(allocators, ne
 }
 
 DXILModule::DXILModule(const Allocators &allocators, IL::Program *program) :
-    allocators(allocators),
+    table(allocators, *program),
     program(program),
-    table(allocators, *program) {
+    allocators(allocators) {
     /* */
 }
 

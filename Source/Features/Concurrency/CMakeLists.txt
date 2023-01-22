@@ -10,5 +10,8 @@ add_dependencies(
     Features.Concurrency.Backend
 )
 
+# IDE source discovery
+SetSourceDiscovery(Features.Concurrency CXX)
+
 # Copy xml
 ConfigureOutput(Concurrency.xml Plugins/Concurrency.xml)

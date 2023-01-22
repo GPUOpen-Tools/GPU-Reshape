@@ -10,5 +10,8 @@ add_dependencies(
     Features.Initialization.Backend
 )
 
+# IDE source discovery
+SetSourceDiscovery(Features.Initialization CXX)
+
 # Copy xml
 ConfigureOutput(Initialization.xml Plugins/Initialization.xml)

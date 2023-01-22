@@ -12,9 +12,6 @@ void DXBCPhysicalBlockShader::Parse() {
     // Setup parser
     DXBCParseContext ctx(block->ptr, block->length);
 
-    // Consume header
-    auto header = ctx.Consume<DXBCShaderHeader>();
-
     // ...
     while (ctx.IsGood()) {
         return;

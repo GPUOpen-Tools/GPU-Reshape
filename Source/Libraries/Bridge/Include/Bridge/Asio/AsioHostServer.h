@@ -15,7 +15,7 @@ struct AsioHostServer {
     /// Constructor
     /// \param config the shared configuration
     /// \param info general information about the server
-    AsioHostServer(const AsioConfig& config, const AsioHostClientInfo& info) : resolveClient(kAsioLocalhost, config.hostResolvePort), info(info) {
+    AsioHostServer(const AsioConfig& config, const AsioHostClientInfo& info) : info(info), resolveClient(kAsioLocalhost, config.hostResolvePort) {
         resolveClient.SetReadCallback([this](AsioSocketHandler& handler, const void *data, uint64_t size) {
             return OnReadAsync(handler, data, size);
         });

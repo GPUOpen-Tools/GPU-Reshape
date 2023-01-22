@@ -9,7 +9,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 option(INSTALL_THIRD_PARTY   "Fetch and install third party libraries" ON)
 option(ENABLE_BACKEND_VULKAN "Enables Vulkan backend" ON)
 option(ENABLE_BACKEND_DX12   "Enables DX12 backend" ON)
-option(ENABLE_UIX            "Enables UIX building (Experimental)" OFF)
+option(ENABLE_UIX            "Enables UIX building" ON)
 option(ENABLE_MIXED_COMPILER "Enables mixed compiler building, separates build folders" ON)
 option(ENABLE_EXPERIMENTAL   "Enables experimental features" OFF)
 
@@ -27,13 +27,13 @@ endif()
 
 # Toolchain support
 if (MSVC)
-    # Supported
-    add_compile_options(/std:c++latest)
+    # Support up to 20
+    add_compile_options(/std:c++20)
 elseif(MINGW)
     message(WARNING "MinGW support not complete")
 
     # Set the standard
-    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD 20)
 else()
     message(FATAL_ERROR "Unsupported compiler ${CMAKE_CXX_COMPILER_ID}")
 endif()
@@ -101,7 +101,29 @@ function(PostBuildCopy NAME DIR)
     )
 endfunction()
 
-# Add all projects
+# Add build support
 add_subdirectory(Build)
+
+# Add external projects
 add_subdirectory(ThirdParty)
+
+# Local compiler setup
+if (MSVC)
+    # Enable warnings are errors globally
+    add_compile_options(/W3 /WX)
+
+    # Clang(CL) frontend?
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL Clang)
+		# Overly pedantic
+        add_compile_options(/clang:-Wno-unused-private-field)
+    endif()
+elseif(MINGW)
+    # Enable warnings are errors globally
+	# TODO: -Wall is overly protective, and will break with new compiler versions
+    add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+else()
+    message(FATAL_ERROR "Unsupported compiler ${CMAKE_CXX_COMPILER_ID}")
+endif()
+
+# Add internal projects
 add_subdirectory(Source)

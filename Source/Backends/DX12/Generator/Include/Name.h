@@ -6,7 +6,7 @@
 /// Get the friendly deep copy name
 /// \param name top typename
 /// \return deep copy name
-static std::string GetPrettyName(const std::string& name) {
+static inline std::string GetPrettyName(const std::string& name) {
     std::string contents;
     contents.reserve(name.length());
 

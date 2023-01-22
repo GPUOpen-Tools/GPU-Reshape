@@ -46,7 +46,7 @@ static bool DetourInterface(const GeneratorInfo &info, DetourState& state, const
         std::string pfnName = "PFN_" + key + fieldName;
 
         // Emit PFN once
-        if (!state.functions.contains(pfnName)) {
+        if (!state.functions.count(pfnName)) {
             state.pfn << "using " << pfnName << " = ";
 
             bool isStructRet = IsTypeStruct(method["returnType"]);
@@ -98,7 +98,7 @@ static bool DetourInterface(const GeneratorInfo &info, DetourState& state, const
 /// Detour a given interface
 static bool DetourObject(const GeneratorInfo &info, DetourState& state, const std::string& key) {
     // Already detoured?
-    if (state.interfaces.contains(key)) {
+    if (state.interfaces.count(key)) {
         return true;
     }
 
@@ -159,7 +159,6 @@ bool Generators::Detour(const GeneratorInfo &info, TemplateEngine &templateEngin
     }
 
     // Common
-    auto&& interfaces = info.specification["interfaces"];
     auto&& objects    = info.hooks["objects"];
 
     // Generate detours for all hooked objects
@@ -178,7 +177,7 @@ bool Generators::Detour(const GeneratorInfo &info, TemplateEngine &templateEngin
         state.typedefs << "using " << key << "TopDetourVTable = " << outerRevision << "DetourVTable;\n";
 
         // Populators
-        state.populators << "static " << key << "TopDetourVTable PopulateTopDetourVTable(" << key << "* object) {\n";
+        state.populators << "static inline " << key << "TopDetourVTable PopulateTopDetourVTable(" << key << "* object) {\n";
         state.populators << "\t" << key << "TopDetourVTable out{};\n";
         state.populators << "\n";
         state.populators << "\tvoid* _interface;\n";

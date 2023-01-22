@@ -29,7 +29,7 @@
  *   https://llvm.org/docs/BitCodeFormat.html#module-code-version-record
  * */
 
-DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : allocators(allocators), recordAllocator(allocators) {
+DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : recordAllocator(allocators), allocators(allocators) {
 
 }
 

@@ -237,8 +237,10 @@ bool MessageGenerator::GenerateCPP(const Message &message, MessageStream &out) {
     // Allocation patching
     out.types << "\n";
     out.types << "\t\tvoid Patch(" << message.name << "Message* message) const {\n";
-    out.types << "\t\t\tuint64_t offset = 0;\n";
-    out.types << patch.str();
+    if (patch.str().length()) {
+        out.types << "\t\t\tuint64_t offset = 0;\n";
+        out.types << patch.str();
+    }
     out.types << "\t\t}";
 
     // Allocation parameters
@@ -280,9 +282,6 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     // Generate all out.members
     for (auto fieldIt = message.fields.begin(); fieldIt != message.fields.end(); fieldIt++) {
         const Field &field = *fieldIt;
-
-        // Get the default value
-        const Attribute* defaultValue = field.attributes.Get("value");
 
         // Bit specifier?
         const Attribute* bits = field.attributes.Get("bits");

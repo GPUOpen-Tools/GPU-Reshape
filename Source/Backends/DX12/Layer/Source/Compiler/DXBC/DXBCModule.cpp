@@ -17,8 +17,8 @@ DXBCModule::DXBCModule(const Allocators &allocators, uint64_t shaderGUID, const 
 
 DXBCModule::DXBCModule(const Allocators &allocators, IL::Program *program, const GlobalUID& instrumentationGUID) :
     allocators(allocators),
-    program(program),
     table(allocators, *program),
+    program(program),
     instrumentationGUID(instrumentationGUID) {
     /* */
 }

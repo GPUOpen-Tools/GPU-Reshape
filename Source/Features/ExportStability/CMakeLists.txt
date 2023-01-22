@@ -10,5 +10,8 @@ add_dependencies(
     Features.ExportStability.Backend
 )
 
+# IDE source discovery
+SetSourceDiscovery(Features.ExportStability CXX)
+
 # Copy xml
 ConfigureOutput(ExportStability.xml Plugins/ExportStability.xml)

@@ -8,7 +8,7 @@
 #include <sstream>
 #include <map>
 
-Assembler::Assembler(const AssembleInfo &assembleInfo, const Program &program) : assembleInfo(assembleInfo), program(program) {
+Assembler::Assembler(const AssembleInfo &assembleInfo, const Program &program) : program(program), assembleInfo(assembleInfo) {
 }
 
 bool Assembler::Assemble(std::ostream &out) {
@@ -191,16 +191,18 @@ void Assembler::AssembleResources() {
         }
         types << ",\n";
 
-        create << "\t\tconst uint32_t data" << i << "[] = {";
-        for (uint64_t data : resource.initialization.data) {
-            create << data << ", ";
-        }
+        if (resource.type != ResourceType::SamplerState) {
+            create << "\t\tconst uint32_t data" << i << "[] = {";
+            for (uint64_t data : resource.initialization.data) {
+                create << data << ", ";
+            }
 
-        if (resource.initialization.data.empty()) {
-            create << "0";
-        }
+            if (resource.initialization.data.empty()) {
+                create << "0";
+            }
 
-        create << "};\n";
+            create << "};\n";
+        }
 
         create << "\t\t";
         switch (resource.type) {

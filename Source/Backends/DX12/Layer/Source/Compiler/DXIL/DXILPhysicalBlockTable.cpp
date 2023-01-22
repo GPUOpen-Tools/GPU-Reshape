@@ -4,9 +4,6 @@
 
 DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL::Program &program) :
     scan(allocators),
-    program(program),
-    idMap(program),
-    idRemapper(idMap),
     function(allocators, program, *this),
     functionAttribute(allocators, program, *this),
     type(allocators, program, *this),
@@ -15,6 +12,9 @@ DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL:
     symbol(allocators, program, *this),
     metadata(allocators, program, *this),
     intrinsics(allocators, program, *this),
+    program(program),
+    idMap(program),
+    idRemapper(idMap),
     recordAllocator(allocators) {
 
 }

@@ -49,8 +49,6 @@ public:
     }
 
     void Inject(IL::Program &program) override {
-        IL::IdentifierMap& map = program.GetIdentifierMap();
-
         for (IL::Function* fn : program.GetFunctionList()) {
             for (IL::BasicBlock* bb : fn->GetBasicBlocks()) {
                 for (auto it = bb->begin(); it != bb->end(); ++it) {

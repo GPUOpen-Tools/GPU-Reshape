@@ -15,3 +15,6 @@ add_dependencies(
     Features
     Features.ResourceBounds
 )
+
+# IDE source discovery
+SetSourceDiscovery(Features CXX)

@@ -18,8 +18,8 @@ public:
     DXILConstantMap(const Allocators& allocators, Backend::IL::ConstantMap& programMap, Backend::IL::IdentifierMap& identifierMap, DXILTypeMap& typeMap) :
         programMap(programMap),
         identifierMap(identifierMap),
-        recordAllocator(allocators),
-        typeMap(typeMap) {
+        typeMap(typeMap),
+        recordAllocator(allocators) {
 
     }
 

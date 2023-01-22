@@ -1,6 +1,8 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 
 SpvPhysicalBlockTable::SpvPhysicalBlockTable(const Allocators &allocators, IL::Program &program) :
+    program(program),
+    scan(program),
     entryPoint(allocators, program, *this),
     capability(allocators, program, *this),
     annotation(allocators, program, *this),
@@ -9,9 +11,7 @@ SpvPhysicalBlockTable::SpvPhysicalBlockTable(const Allocators &allocators, IL::P
     function(allocators, program, *this),
     shaderExport(allocators, program, *this),
     shaderPRMT(allocators, program, *this),
-    shaderDescriptorConstantData(allocators, program, *this),
-    program(program),
-    scan(program) {
+    shaderDescriptorConstantData(allocators, program, *this) {
     /* */
 }
 

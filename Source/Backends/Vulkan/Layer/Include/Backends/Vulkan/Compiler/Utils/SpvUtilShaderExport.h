@@ -32,11 +32,11 @@ struct SpvUtilShaderExport {
     void CopyTo(SpvPhysicalBlockTable& remote, SpvUtilShaderExport& out);
 
 private:
-    /// Backend program
-    Backend::IL::Program &program;
-
     /// Shared allocators
     Allocators allocators;
+
+    /// Backend program
+    Backend::IL::Program &program;
 
     /// Parent table
     SpvPhysicalBlockTable& table;

@@ -18,7 +18,7 @@
 namespace IL {
     struct Function {
         Function(const Allocators &allocators, IdentifierMap &map, ID id) :
-            allocators(allocators), map(map), id(id),
+            allocators(allocators), id(id), map(map),
             basicBlocks(allocators, map),
             parameters(allocators, map),
             variables(allocators, map) {

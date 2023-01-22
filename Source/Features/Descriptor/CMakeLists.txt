@@ -10,5 +10,8 @@ add_dependencies(
     Features.Descriptor.Backend
 )
 
+# IDE source discovery
+SetSourceDiscovery(Features.Descriptor CXX)
+
 # Copy xml
 ConfigureOutput(Descriptor.xml Plugins/Descriptor.xml)

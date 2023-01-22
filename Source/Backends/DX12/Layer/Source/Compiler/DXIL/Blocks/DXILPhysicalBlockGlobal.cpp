@@ -168,9 +168,6 @@ void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
             continue;
         }
 
-        // Current remapping anchor
-        DXILIDRemapper::Anchor anchor = table.idRemapper.GetAnchor();
-
         // Allocate result
         table.idRemapper.AllocRecordMapping(record);
 

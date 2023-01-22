@@ -19,7 +19,7 @@ public:
         allocators.free = FreeDefault;
     }
 
-    Registry(Registry* parent) : parent(parent), allocators(parent->allocators) {
+    Registry(Registry* parent) : allocators(parent->allocators), parent(parent) {
 
     }
 

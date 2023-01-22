@@ -16,13 +16,6 @@ static bool WrapClass(const GeneratorInfo &info, VTableState& state, const std::
     // Get the outer revision
     std::string outerRevision = GetOuterRevision(info, key);
 
-    // Common
-    auto&& interfaces = info.specification["interfaces"];
-
-    // Get vtable
-    auto&& objInterface = interfaces[outerRevision];
-    auto&& objVtbl      = interfaces[std::string(objInterface["vtable"])];
-
     // Object common
     auto&& hooks    = obj["hooks"];
     auto   objName  = obj["name"].get<std::string>();

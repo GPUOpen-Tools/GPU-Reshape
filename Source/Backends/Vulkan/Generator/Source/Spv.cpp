@@ -31,7 +31,7 @@ bool Generators::Spv(const GeneratorInfo &info, TemplateEngine &templateEngine) 
         std::string _class = instruction["class"];
 
         // If not mapped or already covered, ignore
-        if (!classMappings.contains(_class) || coverage.contains(instruction["opcode"])) {
+        if (!classMappings.count(_class) || coverage.count(instruction["opcode"])) {
             continue;
         }
 

@@ -641,6 +641,9 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
                 case Backend::IL::AddressSpace::Unexposed:
                     line << "Unexposed";
                     break;
+                case Backend::IL::AddressSpace::RootConstant:
+                    line << "RootConstant";
+                    break;
             }
             break;
         }
@@ -713,12 +716,10 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
             break;
         }
         case Backend::IL::TypeKind::Sampler: {
-            auto sampler = type->As<Backend::IL::SamplerType>();
             line << "Sampler";
             break;
         }
         case Backend::IL::TypeKind::CBuffer: {
-            auto cbuffer = type->As<Backend::IL::CBufferType>();
             line << "CBuffer";
             break;
         }

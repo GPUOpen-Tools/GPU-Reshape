@@ -2,9 +2,9 @@
 
 _Coding style guide, incomplete_
 
-## 1. C++
+## C++
 
-### 1.1. Casing
+### Casing
 
 All type definitions, function declarations and global definitions follow the Pascal Case. Each word within the name must be capitalized.
 
@@ -30,7 +30,7 @@ struct FooBar {
 };
 ```
 
-### 1.2 Scope and Indentation
+### Scope and Indentation
 
 All tabs must be 4 spaces.
 
@@ -54,3 +54,15 @@ void Foo() {
     }
 }
 ```
+
+### Preprocessors
+
+All preprocessors must be upper case with underscores for separation, and start with `GRS_`.
+
+```cpp
+#define GRS_DECLARE_TYPE
+```
+
+## C#
+
+Please refer to the Microsoft C# code style.

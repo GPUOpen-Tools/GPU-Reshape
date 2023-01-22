@@ -90,3 +90,8 @@ function(add_executable NAME)
     _add_executable(${NAME} ${ARGN})
     VisualStudioProjectPostfix(${NAME})
 endfunction(add_executable)
+
+function(add_custom_target NAME)
+    _add_custom_target(${NAME} ${ARGN})
+    VisualStudioProjectPostfix(${NAME})
+endfunction(add_custom_target)

@@ -55,6 +55,7 @@ class IFeature
 {
 public:
     virtual void Foo() = 0;
+    virtual ~IFeature() = default;
 
     // Function pointer test
     void(*fooFPtr)(IFeature* frame){nullptr};

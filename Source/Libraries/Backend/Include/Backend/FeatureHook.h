@@ -42,7 +42,9 @@ inline void ApplyFeatureHook(O* object, CommandContext* context, uint64_t featur
     unsigned long index;
     while (_BitScanReverse64(&index, bitMask)) {
         // Forward the hook to the appropriate handler
-        T{featureHooks[index]}(object, context, args...);
+        T handler;
+        handler.hook = featureHooks[index];
+        handler(object, context, args...);
 
         // Next!
         bitMask &= ~(1ull << index);

@@ -12,21 +12,21 @@ struct ComRef {
     }
 
     /// Construct from raw component
-    ComRef(T* component) : component(static_cast<IComponentBase*>(component)), object(component) {
+    ComRef(T* component) : object(component), component(static_cast<IComponentBase*>(component)) {
         if (component) {
             component->AddUser();
         }
     }
 
     /// Copy constructor
-    ComRef(const ComRef& rhs) : component(rhs.component), object(rhs.object) {
+    ComRef(const ComRef& rhs) : object(rhs.object), component(rhs.component) {
         if (component) {
             component->AddUser();
         }
     }
 
     /// Move constructor
-    ComRef(ComRef&& rhs) : component(rhs.component), object(rhs.object) {
+    ComRef(ComRef&& rhs) : object(rhs.object), component(rhs.component) {
         rhs.component = nullptr;
         rhs.object = nullptr;
     }

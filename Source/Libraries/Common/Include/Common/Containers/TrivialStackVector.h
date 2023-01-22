@@ -21,7 +21,7 @@ struct TrivialStackVector {
     }
 
     /// Move from other
-    TrivialStackVector(TrivialStackVector&& other) : fallback(std::move(other.fallback)), size(other.size) {
+    TrivialStackVector(TrivialStackVector&& other) : size(other.size), fallback(std::move(other.fallback)) {
         if (other.data != other.stack) {
             data = fallback.data();
         } else {

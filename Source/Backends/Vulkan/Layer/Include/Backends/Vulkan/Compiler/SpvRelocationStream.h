@@ -28,7 +28,7 @@ struct SpvRelocationBlock {
     /// \param code the source data
     /// \param span the source byte range
     /// \param ptr the constant data to be written, size must be source byte range
-    SpvRelocationBlock(const uint32_t *code, const IL::SourceSpan &span, const void* ptr) : span(span), stream(code), ptr(ptr) {
+    SpvRelocationBlock(const uint32_t *code, const IL::SourceSpan &span, const void* ptr) : span(span), ptr(ptr), stream(code) {
 
     }
 
@@ -107,10 +107,6 @@ struct SpvRelocationStream {
         // End stitching
         if (!blocks.empty() && blocks.back().span.end != wordCount) {
             uint32_t blockEnd = blocks.back().span.end;
-
-            auto* test = reinterpret_cast<const SpvInstruction*>(code + blockEnd);
-            SpvOp op = test->GetOp();
-            bool b = false;
 
             // ... block data
             // -- Block end  ------ \

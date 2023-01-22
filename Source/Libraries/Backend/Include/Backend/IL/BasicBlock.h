@@ -356,7 +356,7 @@ namespace IL {
         };
 
         /// Constructor
-        BasicBlock(const Allocators &allocators, IdentifierMap &map, ID id) : relocationAllocator(allocators), allocators(allocators), map(map), id(id) {
+        BasicBlock(const Allocators &allocators, IdentifierMap &map, ID id) : allocators(allocators), id(id), map(map), relocationAllocator(allocators) {
 
         }
 

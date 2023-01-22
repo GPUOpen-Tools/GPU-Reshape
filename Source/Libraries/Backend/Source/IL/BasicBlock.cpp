@@ -116,10 +116,10 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
                             continue;
                         }
 
+#if 0
                         // Referenced value, originates from *this* block
                         OpaqueInstructionRef phiValueRef = map.Get(value.value);
 
-#if 0
                         // Is the referenced value beyond the split point?
                         bool isPostSplitPoint = phiValueRef.relocationOffset->offset >= splitPointRelocationOffset;
                         if (!isPostSplitPoint) {

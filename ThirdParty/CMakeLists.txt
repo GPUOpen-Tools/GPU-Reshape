@@ -41,7 +41,7 @@ function(ExternalProject_Link Project Name)
         add_dependencies(${Project} ${Name})
     endif()
 
-    target_include_directories(${Project} PUBLIC ${CMAKE_BINARY_DIR}/External/include)
+    target_include_directories(${Project} SYSTEM PUBLIC ${CMAKE_BINARY_DIR}/External/include)
     target_link_directories(${Project} PUBLIC ${CMAKE_BINARY_DIR}/External/lib)
 
     if (NOT "${ARGN}" STREQUAL "")
