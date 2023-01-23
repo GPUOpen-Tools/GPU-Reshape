@@ -12,6 +12,7 @@
 #include <Backends/Vulkan/Translation.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
+#include <Backends/Vulkan/States/DescriptorPoolState.h>
 
 // Common
 #include <Common/Hash.h>
@@ -82,12 +83,20 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         return result;
     }
 
+    // Get pool
+    DescriptorPoolState* poolState = table->states_descriptorPool.Get(pAllocateInfo->descriptorPool);
+
     // Create the new states
     for (uint32_t i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
+        // Create state
         auto state = new(table->allocators) DescriptorSetState;
         state->object = pDescriptorSets[i];
         state->table = table;
+        state->poolSwapIndex = static_cast<uint32_t>(poolState->states.size());
 
+        // Add state object
+        poolState->states.push_back(state);
+        
         // Get layout
         const DescriptorSetLayoutState* layout = table->states_descriptorSetLayout.Get(pAllocateInfo->pSetLayouts[i]);
 
@@ -105,13 +114,114 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkFreeDescriptorSets(VkDevice device, VkDescriptorPool descriptorPool, uint32_t descriptorSetCount, const VkDescriptorSet* pDescriptorSets) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Get pool
+    DescriptorPoolState* pool = table->states_descriptorPool.Get(descriptorPool);
+
     // Remove the states
     for (uint32_t i = 0; i < descriptorSetCount; i++) {
-        table->states_descriptorSet.Remove(pDescriptorSets[i]);
+        DescriptorSetState* setState = table->states_descriptorSet.Get(pDescriptorSets[i]);
+
+        // Not last element?
+        if (setState->poolSwapIndex != pool->states.size() - 1) {
+            DescriptorSetState* lastState = pool->states.back();
+
+            // Swap last with current
+            std::swap(pool->states[setState->poolSwapIndex], lastState);
+
+            // Reassign new position of last
+            lastState->poolSwapIndex = setState->poolSwapIndex;
+        }
+
+        // Remove state
+        pool->states.pop_back();
+        
+        // Destroy the PRMT segment range
+        table->prmTable->Free(setState->segmentID);
+
+        // Remove tracking
+        table->states_descriptorSet.Remove(setState->object, setState);
+
+        // Destroy state
+        destroy(setState, table->allocators);
     }
 
     // Pass down callchain
     return table->next_vkFreeDescriptorSets(device, descriptorPool, descriptorSetCount, pDescriptorSets);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateDescriptorPool(VkDevice device, const VkDescriptorPoolCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDescriptorPool* pDescriptorPool) {
+    DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Pass down callchain
+    VkResult result = table->next_vkCreateDescriptorPool(device, pCreateInfo, pAllocator, pDescriptorPool);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+    
+    auto state = new(table->allocators) DescriptorPoolState;
+    state->object = *pDescriptorPool;
+    state->table = table;
+
+    // Store lookup
+    table->states_descriptorPool.Add(*pDescriptorPool, state);
+
+    // OK
+    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetDescriptorPool(VkDevice device, VkDescriptorPool descriptorPool, VkDescriptorPoolResetFlags flags) {
+    DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+    
+    // Get pool
+    DescriptorPoolState* pool = table->states_descriptorPool.Get(descriptorPool);
+    
+    // Remove the states
+    for (DescriptorSetState* state : pool->states) {
+        // Destroy the PRMT segment range
+        table->prmTable->Free(state->segmentID);
+
+        // Remove tracking
+        table->states_descriptorSet.Remove(state->object, state);
+
+        // Destroy state
+        destroy(state, table->allocators);
+    }
+
+    // Cleanup
+    pool->states.clear();
+
+    // Pass down callchain
+    return table->next_vkResetDescriptorPool(device, descriptorPool, flags);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyDescriptorPool(VkDevice device, VkDescriptorPool descriptorPool, const VkAllocationCallbacks* pAllocator) {
+    DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Null destruction is allowed by the standard
+    if (!descriptorPool) {
+        return;
+    }
+    
+    // Get pool
+    DescriptorPoolState* pool = table->states_descriptorPool.Get(descriptorPool);
+
+    // Remove the states
+    for (DescriptorSetState* state : pool->states) {
+        // Destroy the PRMT segment range
+        table->prmTable->Free(state->segmentID);
+
+        // Remove tracking
+        table->states_descriptorSet.Remove(state->object, state);
+
+        // Destroy state
+        destroy(state, table->allocators);
+    }
+    
+    // Pass down callchain
+    table->next_vkDestroyDescriptorPool(device, descriptorPool, pAllocator);
+    
+    // Store lookup
+    table->states_descriptorPool.Remove(descriptorPool);
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t descriptorWriteCount, const VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorCopyCount, const VkCopyDescriptorSet* pDescriptorCopies) {

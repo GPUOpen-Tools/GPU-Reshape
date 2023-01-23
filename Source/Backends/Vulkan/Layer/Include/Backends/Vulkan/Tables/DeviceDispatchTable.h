@@ -30,6 +30,7 @@ struct CommandPoolState;
 struct ShaderModuleState;
 struct DescriptorSetLayoutState;
 struct DescriptorSetState;
+struct DescriptorPoolState;
 struct SamplerState;
 struct BufferState;
 struct SwapchainState;
@@ -109,6 +110,7 @@ struct DeviceDispatchTable {
     TrackedObject<VkShaderModule, ShaderModuleState>               states_shaderModule;
     TrackedObject<VkDescriptorSetLayout, DescriptorSetLayoutState> states_descriptorSetLayout;
     TrackedObject<VkDescriptorSet, DescriptorSetState>             states_descriptorSet;
+    TrackedObject<VkDescriptorPool, DescriptorPoolState>           states_descriptorPool;
     TrackedObject<VkSampler, SamplerState>                         states_sampler;
     TrackedObject<VkBuffer, BufferState>                           states_buffer;
     TrackedObject<VkSwapchainKHR, SwapchainState>                  states_swapchain;
@@ -175,6 +177,7 @@ struct DeviceDispatchTable {
     PFN_vkDestroyDescriptorPool           next_vkDestroyDescriptorPool;
     PFN_vkCreateDescriptorSetLayout       next_vkCreateDescriptorSetLayout;
     PFN_vkDestroyDescriptorSetLayout      next_vkDestroyDescriptorSetLayout;
+    PFN_vkResetDescriptorPool             next_vkResetDescriptorPool;
     PFN_vkAllocateDescriptorSets          next_vkAllocateDescriptorSets;
     PFN_vkFreeDescriptorSets              next_vkFreeDescriptorSets;
     PFN_vkCreatePipelineLayout            next_vkCreatePipelineLayout;

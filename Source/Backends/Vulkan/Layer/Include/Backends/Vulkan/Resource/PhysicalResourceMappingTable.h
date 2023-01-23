@@ -80,10 +80,6 @@ private:
     /// \param count number of descriptors
     void AllocateTable(uint32_t count);
 
-    /// Get the total number of fragmented elements
-    /// \return
-    uint64_t SummarizeFragmentation() const;
-
     /// Defragment the table
     void Defragment();
 
@@ -122,6 +118,12 @@ private:
 
     /// Linear segments
     std::vector<SegmentEntry> segments;
+
+    /// Number of live segments
+    uint32_t liveSegmentCount{0};
+
+    /// Current fragmentation
+    uint32_t fragmentedEntries{0};
 
 private:
     DeviceDispatchTable* table;

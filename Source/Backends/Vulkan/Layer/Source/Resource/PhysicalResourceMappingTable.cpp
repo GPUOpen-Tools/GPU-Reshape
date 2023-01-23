@@ -69,6 +69,9 @@ PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count)
     entry.offset = head;
     entry.length = count;
 
+    // Add as live
+    liveSegmentCount++;
+
     // OK
     return id;
 }
@@ -76,19 +79,20 @@ PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count)
 void PhysicalResourceMappingTable::Free(PhysicalResourceSegmentID id) {
     uint32_t index = indices[id];
 
-    // Not last element?
-    if (index != segments.size() - 1) {
-        const SegmentEntry &back = segments.back();
-
-        // Swap move last element to current position
-        indices[back.id] = index;
-
-        // Update indices
-        segments[index] = back;
+    // Last segments do not require segmentation
+    if (index + 1 == segments.size()) {
+        segments.pop_back();
+    } else {
+        // Track fragmentation
+        fragmentedEntries += segments[index].length;
+        
+        // Let the defragmentation pick it up
+        segments[index].length = 0;
     }
 
-    segments.pop_back();
-
+    // Not live
+    liveSegmentCount--;
+    
     // Add as free index
     freeIndices.push_back(id);
 }
@@ -163,11 +167,17 @@ void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
     // Ratio threshold at which to defragment the virtual mappings
     constexpr double DefragmentationThreshold = 0.5f;
 
-    // Determine the number of fragmented mappings
-    uint64_t fragmentedMappings = SummarizeFragmentation();
+    // Validate ranges
+#if !defined(NDEBUG)
+    // Count all loose data
+    for (size_t i = 0; i < segments.size() - 1; i++) {
+        uint64_t end = segments[i].offset + segments[i].length;
+        ASSERT(segments[i + 1].offset >= end, "Overlapping PRMT segment");
+    }
+#endif // !defined(NDEBUG)
 
     // Defragment if needed
-    if (fragmentedMappings && fragmentedMappings / static_cast<double>(virtualMappingCount) >= DefragmentationThreshold) {
+    if (fragmentedEntries && fragmentedEntries / static_cast<double>(virtualMappingCount) >= DefragmentationThreshold) {
         Defragment();
     }
 
@@ -219,30 +229,16 @@ void PhysicalResourceMappingTable::WriteMapping(PhysicalResourceSegmentID id, ui
     virtualMappings[segment.offset + offset] = mapping;
 }
 
-uint64_t PhysicalResourceMappingTable::SummarizeFragmentation() const {
-    uint64_t fragmentedMappings{0};
-
-    // No segments?
-    if (segments.empty()) {
-        return fragmentedMappings;
-    }
-
-    // Count all loose data
-    for (size_t i = 0; i < segments.size() - 1; i++) {
-        uint64_t end = segments[i].offset + segments[i].length;
-
-        ASSERT(segments[i + 1].offset >= end, "Overlapping PRMT segment");
-        fragmentedMappings += segments[i + 1].offset - end;
-    }
-
-    // OK
-    return fragmentedMappings;
-}
-
 void PhysicalResourceMappingTable::Defragment() {
-    for (size_t i = 1; i < segments.size(); i++) {
-        // The optimal offset
-        uint32_t relocatedOffset = segments[i - 1].offset + segments[i - 1].length;
+    // The current optimal offset
+    uint32_t relocatedOffset = 0;
+
+    // Defragment all live mappings
+    for (size_t i = 0; i < segments.size(); i++) {
+        // Removed segment?
+        if (segments[i].length == 0) {
+            continue;
+        }
 
         // Already in optimal placement?
         if (relocatedOffset == segments[i].offset) {
@@ -254,7 +250,41 @@ void PhysicalResourceMappingTable::Defragment() {
 
         // Update offset
         segments[i].offset = relocatedOffset;
+
+        // Offset
+        relocatedOffset += segments[i].length;
     }
+
+    // Current live offset
+    uint32_t liveHead = 0;
+
+    // Remove dead segments
+    for (size_t i = 0; i < segments.size(); i++) {
+        const SegmentEntry& peekSegment = segments[i];
+
+        // Skip if removed, or not fragmented
+        if (peekSegment.length == 0 || liveHead == i) {
+            continue;
+        }
+
+        // Move peek segment to current
+        segments[liveHead] = peekSegment;
+
+        // Update lookup for peek segment to live
+        indices[peekSegment.id] = liveHead;
+
+        // Next!
+        liveHead++;
+    }
+
+    // Remove dead segments
+    segments.erase(segments.begin() + liveHead, segments.end());
+
+    // Validate
+    ASSERT(liveHead == liveSegmentCount, "Invalid tracked live count to segment");
+
+    // No longer fragmented
+    fragmentedEntries = 0;
 }
 
 uint32_t PhysicalResourceMappingTable::GetSegmentShaderOffset(PhysicalResourceSegmentID id) {

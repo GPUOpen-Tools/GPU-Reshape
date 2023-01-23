@@ -24,6 +24,9 @@ struct DescriptorSetState {
     /// Allocated segment
     PhysicalResourceSegmentID segmentID{0};
 
+    /// Linear swap index
+    uint32_t poolSwapIndex{0};
+
     /// Unique identifier, unique for the type
     uint64_t uid;
 };
