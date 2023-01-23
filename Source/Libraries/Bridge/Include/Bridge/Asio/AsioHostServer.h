@@ -49,9 +49,11 @@ struct AsioHostServer {
     /// Stop the server
     void Stop() {
         resolveClient.Stop();
+        resolveClientRunner.Stop();
 
         if (server) {
             server->Stop();
+            serverRunner.Stop();
         }
     }
 
