@@ -22,6 +22,7 @@
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 #include <Backends/DX12/ShaderProgram/ShaderProgramHost.h>
+#include <Backends/DX12/WRL.h>
 #include <Backends/DX12/Layer.h>
 
 // Backend
@@ -237,16 +238,45 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     return S_OK;
 }
 
-static bool IsSupportedFeatureLevel(D3D_FEATURE_LEVEL featureLevel) {
-    switch (featureLevel) {
-        default:
-            // Do not attempt to support devices before 12 or hybrid setups
+static bool IsSupportedFeatureLevel(IUnknown* opaqueAdapter, D3D_FEATURE_LEVEL featureLevel) {
+    WRLComPtr<IDXGIAdapter> adapter;
+
+    // Existing adapter to pool from?
+    if (opaqueAdapter) {
+        if (FAILED(opaqueAdapter->QueryInterface(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(adapter.GetAddressOf())))) {
             return false;
-        case D3D_FEATURE_LEVEL_12_0:
-        case D3D_FEATURE_LEVEL_12_1:
-        case D3D_FEATURE_LEVEL_12_2:
-            return true;
+        }
+    } else {
+        // Attempt to create a factory
+        WRLComPtr<IDXGIFactory1> factory;
+        if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1) , reinterpret_cast<void**>(factory.GetAddressOf())))) {
+            return false;
+        }
+
+        // Query base adapter
+        if (FAILED(factory->EnumAdapters(0, &adapter))) {
+            return false;
+        }
     }
+
+    // Get description
+    DXGI_ADAPTER_DESC adapterDesc;
+    if (FAILED(adapter->GetDesc(&adapterDesc))) {
+        return false;
+    }
+
+    // Skip warp adapters
+    if (adapterDesc.VendorId == 0x1414 && adapterDesc.DeviceId == 0x8c) {
+        return false;
+    }
+     
+    // Do not attempt to support devices under feature level 11_0
+    if (featureLevel < D3D_FEATURE_LEVEL_11_0) {
+        return false;
+    }
+
+    // OK
+    return true;
 }
 
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
@@ -265,7 +295,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     }
 
     // Supported?
-    if (!IsSupportedFeatureLevel(minimumFeatureLevel)) {
+    if (!IsSupportedFeatureLevel(pAdapter, minimumFeatureLevel)) {
         return device->QueryInterface(riid, ppDevice);
     }
 
@@ -295,7 +325,7 @@ HRESULT WINAPI HookID3D12CreateDevice(
     }
 
     // Supported?
-    if (!IsSupportedFeatureLevel(minimumFeatureLevel)) {
+    if (!IsSupportedFeatureLevel(pAdapter, minimumFeatureLevel)) {
         return device->QueryInterface(riid, ppDevice);
     }
 
