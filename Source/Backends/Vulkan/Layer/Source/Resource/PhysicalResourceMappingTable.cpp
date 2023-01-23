@@ -160,7 +160,7 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
 }
 
 void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
-    if (!isDirty || segments.empty()) {
+    if (!isDirty || !liveSegmentCount) {
         return;
     }
 
