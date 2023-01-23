@@ -51,8 +51,9 @@
         "CreateCommandQueue",
         "CreateCommandAllocator",
         "CreateCommandList",
+        "CreateCommandList1",
         "CreateFence",
-        "CreateCommandQueue",
+        "CreateCommandQueue1",
         "CreateDescriptorHeap",
         "CreateRootSignature",
         "CreatePipelineState",
@@ -69,7 +70,8 @@
         "ExecuteCommandLists",
         "Signal",
         "Wait",
-        "GetDevice"
+        "GetDevice",
+        "GetDesc"
       ]
     },
     "ID3D12CommandAllocator": {
@@ -108,7 +110,8 @@
         "DrawIndexedInstanced",
         "Dispatch",
         "ExecuteIndirect",
-        "GetDevice"
+        "GetDevice",
+        "GetType"
       ],
       "proxies": [
         "DrawInstanced",

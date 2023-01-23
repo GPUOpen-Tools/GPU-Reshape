@@ -30,6 +30,9 @@ struct CommandListState {
     /// Current descriptor state
     DescriptorDataAppendAllocator* descriptorAllocator{nullptr};
 
+    /// The actual list type
+    D3D12_COMMAND_LIST_TYPE userType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
     /// All contained proxies
     ID3D12GraphicsCommandListFeatureProxies proxies;
 

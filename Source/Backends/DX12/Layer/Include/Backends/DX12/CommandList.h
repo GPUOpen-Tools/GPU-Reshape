@@ -18,11 +18,14 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet
 
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreateCommandQueue(ID3D12Device *, const D3D12_COMMAND_QUEUE_DESC *, const IID &, void **);
+HRESULT WINAPI HookID3D12DeviceCreateCommandQueue1(ID3D12Device *, const D3D12_COMMAND_QUEUE_DESC* desc, const IID& creatorId, const IID& riid, void** ppCommandQueue);
 HRESULT WINAPI HookID3D12CommandQueueGetDevice(ID3D12CommandQueue *_this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12DeviceCreateCommandAllocator(ID3D12Device *, D3D12_COMMAND_LIST_TYPE, const IID &, void **);
 HRESULT WINAPI HookID3D12CommandAllocatorGetDevice(ID3D12CommandAllocator *_this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12DeviceCreateCommandList(ID3D12Device *, UINT, D3D12_COMMAND_LIST_TYPE, ID3D12CommandAllocator *, ID3D12PipelineState *, const IID &, void **);
+HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *, UINT, D3D12_COMMAND_LIST_TYPE, D3D12_COMMAND_LIST_FLAGS, const IID &, void **);
 void WINAPI HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *, UINT, ID3D12CommandList *const *);
+void WINAPI HookID3D12CommandQueueGetDesc(ID3D12CommandQueue *, D3D12_COMMAND_QUEUE_DESC* out);
 HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue *_this, ID3D12Fence *pFence, UINT64 Value);
 HRESULT WINAPI HookID3D12CommandQueueWait(ID3D12CommandQueue *_this, ID3D12Fence *pFence, UINT64 Value);
 HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12CommandAllocator *allocator, ID3D12PipelineState *state);
@@ -49,6 +52,7 @@ void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstant(ID3D12CommandList 
 void WINAPI HookID3D12CommandListSetComputeRoot32BitConstants(ID3D12CommandList *list, UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues);
 void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstants(ID3D12CommandList *list, UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues);
 HRESULT WINAPI HookID3D12CommandListGetDevice(ID3D12CommandList *_this, REFIID riid, void **ppDevice);
+D3D12_COMMAND_LIST_TYPE WINAPI HookID3D12CommandListGetType(ID3D12CommandList *_this);
 
 /// Extension hooks
 DX12_C_LINKAGE AGSReturnCode HookAMDAGSDestroyDevice(AGSContext *context, ID3D12Device *device, unsigned int *deviceReferences);

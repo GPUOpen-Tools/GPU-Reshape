@@ -13,6 +13,16 @@
 #include <Backend/IFeature.h>
 #include <Backends/DX12/IncrementalFence.h>
 
+static D3D12_COMMAND_LIST_TYPE GetEmulatedCommandListType(D3D12_COMMAND_LIST_TYPE type) {
+    switch (type) {
+        default:
+            return type;
+        case D3D12_COMMAND_LIST_TYPE_COPY:
+            // Copy queues are emulated on compute, this allows for kernels to be run for validation purposes
+            return D3D12_COMMAND_LIST_TYPE_COMPUTE;
+    }
+}
+
 void CreateDeviceCommandProxies(DeviceState *state) {
     for (uint32_t i = 0; i < static_cast<uint32_t>(state->features.size()); i++) {
         const ComRef<IFeature>& feature = state->features[i];
@@ -39,17 +49,8 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet
     state->commandListProxies.featureBitSet_CopyBufferRegion = state->commandListProxies.featureBitSetMask_CopyBufferRegion & featureSet;
 }
 
-HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COMMAND_QUEUE_DESC *desc, const IID &riid, void **pCommandQueue) {
+static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue* commandQueue, const D3D12_COMMAND_QUEUE_DESC *desc, const IID &riid, void **pCommandQueue) {
     auto table = GetTable(device);
-
-    // Object
-    ID3D12CommandQueue *commandQueue{nullptr};
-
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateCommandQueue(table.next, desc, __uuidof(ID3D12CommandQueue), reinterpret_cast<void **>(&commandQueue));
-    if (FAILED(hr)) {
-        return hr;
-    }
 
     // Create state
     auto *state = new CommandQueueState();
@@ -63,7 +64,7 @@ HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COM
 
     // Query to external object if requested
     if (pCommandQueue) {
-        hr = commandQueue->QueryInterface(riid, pCommandQueue);
+        HRESULT hr = commandQueue->QueryInterface(riid, pCommandQueue);
         if (FAILED(hr)) {
             return hr;
         }
@@ -88,6 +89,46 @@ HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COM
     return S_OK;
 }
 
+HRESULT HookID3D12DeviceCreateCommandQueue(ID3D12Device *device, const D3D12_COMMAND_QUEUE_DESC *desc, const IID &riid, void **pCommandQueue) {
+    auto table = GetTable(device);
+
+    // Object
+    ID3D12CommandQueue *commandQueue{nullptr};
+
+    // Get emulated description
+    D3D12_COMMAND_QUEUE_DESC emulatedDesc = *desc;
+    emulatedDesc.Type = GetEmulatedCommandListType(desc->Type);
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateCommandQueue(table.next, &emulatedDesc, __uuidof(ID3D12CommandQueue), reinterpret_cast<void **>(&commandQueue));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // OK
+    return CreateCommandQueueState(device, commandQueue, desc, riid, pCommandQueue);
+}
+
+HRESULT WINAPI HookID3D12DeviceCreateCommandQueue1(ID3D12Device *device, const D3D12_COMMAND_QUEUE_DESC* desc, const IID& creatorId, const IID& riid, void** pCommandQueue) {
+    auto table = GetTable(device);
+
+    // Object
+    ID3D12CommandQueue *commandQueue{nullptr};
+
+    // Get emulated description
+    D3D12_COMMAND_QUEUE_DESC emulatedDesc = *desc;
+    emulatedDesc.Type = GetEmulatedCommandListType(desc->Type);
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateCommandQueue1(table.next, &emulatedDesc, creatorId, __uuidof(ID3D12CommandQueue), reinterpret_cast<void **>(&commandQueue));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // OK
+    return CreateCommandQueueState(device, commandQueue, desc, riid, pCommandQueue);
+}
+
 HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
     auto table = GetTable(queue);
 
@@ -109,7 +150,7 @@ HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMA
     ID3D12CommandAllocator *commandAllocator{nullptr};
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateCommandAllocator(table.next, type, __uuidof(ID3D12CommandAllocator), reinterpret_cast<void **>(&commandAllocator));
+    HRESULT hr = table.bottom->next_CreateCommandAllocator(table.next, GetEmulatedCommandListType(type), __uuidof(ID3D12CommandAllocator), reinterpret_cast<void **>(&commandAllocator));
     if (FAILED(hr)) {
         return hr;
     }
@@ -117,6 +158,7 @@ HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMA
     // Create state
     auto *state = new CommandAllocatorState();
     state->allocators = table.state->allocators;
+    state->userType = type;
     state->parent = device;
 
     // Create detours
@@ -171,25 +213,14 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
     state->userContext.eventStack.SetRemapping(device->eventRemappingTable);
 }
 
-HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *allocator, ID3D12PipelineState *initialState, const IID &riid, void **pCommandList) {
+HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandList, D3D12_COMMAND_LIST_TYPE type, ID3D12PipelineState *initialState, ID3D12PipelineState* hotSwap, const IID &riid, void **pCommandList) {
     auto table = GetTable(device);
-
-    // Object
-    ID3D12CommandList *commandList{nullptr};
-
-    // Get hot swap
-    ID3D12PipelineState *hotSwap = GetHotSwapPipeline(initialState);
-
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateCommandList(table.next, nodeMask, type, Next(allocator), hotSwap ? hotSwap : Next(initialState), __uuidof(ID3D12CommandList), reinterpret_cast<void **>(&commandList));
-    if (FAILED(hr)) {
-        return hr;
-    }
 
     // Create state
     auto *state = new CommandListState();
     state->allocators = table.state->allocators;
     state->parent = device;
+    state->userType = type;
     state->object = static_cast<ID3D12GraphicsCommandList*>(commandList);
 
     // Create detours
@@ -197,7 +228,7 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
 
     // Query to external object if requested
     if (pCommandList) {
-        hr = commandList->QueryInterface(riid, pCommandList);
+        HRESULT hr = commandList->QueryInterface(riid, pCommandList);
         if (FAILED(hr)) {
             return hr;
         }
@@ -214,6 +245,41 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
 
     // OK
     return S_OK;
+}
+
+HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *allocator, ID3D12PipelineState *initialState, const IID &riid, void **pCommandList) {
+    auto table = GetTable(device);
+
+    // Object
+    ID3D12CommandList *commandList{nullptr};
+
+    // Get hot swap
+    ID3D12PipelineState *hotSwap = GetHotSwapPipeline(initialState);
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateCommandList(table.next, nodeMask, GetEmulatedCommandListType(type), Next(allocator), hotSwap ? hotSwap : Next(initialState), __uuidof(ID3D12CommandList), reinterpret_cast<void **>(&commandList));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create state
+    return CreateCommandListState(device, commandList, type, initialState, hotSwap, riid, pCommandList);
+}
+
+HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_LIST_FLAGS flags, const IID &riid, void **pCommandList) {
+    auto table = GetTable(device);
+
+    // Object
+    ID3D12CommandList *commandList{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateCommandList1(table.next, nodeMask, GetEmulatedCommandListType(type), flags, __uuidof(ID3D12CommandList), reinterpret_cast<void **>(&commandList));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create state
+    return CreateCommandListState(device, commandList, type, nullptr, nullptr, riid, pCommandList);
 }
 
 HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12CommandAllocator *allocator, ID3D12PipelineState *state) {
@@ -685,6 +751,13 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     device.state->exportStreamer->Enqueue(table.state, segment);
 }
 
+void WINAPI HookID3D12CommandQueueGetDesc(ID3D12CommandQueue *_this, D3D12_COMMAND_QUEUE_DESC* out) {
+    auto table = GetTable(_this);
+
+    // Report internal user description, not underlying
+    *out = table.state->desc;
+}
+
 HRESULT HookID3D12CommandQueueGetDevice(ID3D12CommandQueue *_this, const IID &riid, void **ppDevice) {
     auto table = GetTable(_this);
 
@@ -697,6 +770,13 @@ HRESULT HookID3D12CommandListGetDevice(ID3D12CommandList *_this, const IID &riid
 
     // Pass to device query
     return table.state->parent->QueryInterface(riid, ppDevice);
+}
+
+D3D12_COMMAND_LIST_TYPE WINAPI HookID3D12CommandListGetType(ID3D12CommandList *_this) {
+    auto table = GetTable(_this);
+
+    // Report internal user type
+    return table.state->userType;
 }
 
 HRESULT HookID3D12CommandAllocatorGetDevice(ID3D12CommandAllocator *_this, const IID &riid, void **ppDevice) {
@@ -744,15 +824,18 @@ ImmediateCommandList CommandQueueState::PopCommandList() {
         return list;
     }
 
+    // Use the queues emulated type
+    D3D12_COMMAND_LIST_TYPE emulatedType = GetEmulatedCommandListType(desc.Type);
+
     // Create allocator
-    if (FAILED(device.state->object->CreateCommandAllocator(desc.Type, IID_PPV_ARGS(&list.allocator)))) {
+    if (FAILED(device.state->object->CreateCommandAllocator(emulatedType, IID_PPV_ARGS(&list.allocator)))) {
         return {};
     }
 
     // Attempt to create
     if (FAILED(device.state->object->CreateCommandList(
         0,
-        desc.Type,
+        emulatedType,
         list.allocator,
         nullptr,
         IID_PPV_ARGS(&list.commandList)
