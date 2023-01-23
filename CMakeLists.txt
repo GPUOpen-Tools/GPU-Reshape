@@ -11,6 +11,7 @@ option(ENABLE_BACKEND_VULKAN "Enables Vulkan backend" ON)
 option(ENABLE_BACKEND_DX12   "Enables DX12 backend" ON)
 option(ENABLE_UIX            "Enables UIX building" ON)
 option(ENABLE_MIXED_COMPILER "Enables mixed compiler building, separates build folders" ON)
+option(ENABLE_NUGET_RESTORE  "Enables nuget restore during configuration" ON)
 option(ENABLE_EXPERIMENTAL   "Enables experimental features" OFF)
 
 # Developmental options

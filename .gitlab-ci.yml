@@ -14,7 +14,7 @@ build_release:
     paths:
     - Bin/Release/
   script:
-  - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Release" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019"'
+  - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Release" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019" -DCMAKE_VS_NUGET_PACKAGE_RESTORE=ON'
   - 'cmake --build cmake-build-vs2019 --config Release --parallel 4 -- /p:CL_MPcount=16'
 
 build_debug:
@@ -26,6 +26,6 @@ build_debug:
     paths:
     - Bin/Debug/
   script:
-  - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Debug" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019"'
+  - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Debug" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019" -DCMAKE_VS_NUGET_PACKAGE_RESTORE=ON'
   - 'cmake --build cmake-build-vs2019 --config Debug --parallel 4 -- /p:CL_MPcount=16'
 

@@ -95,3 +95,23 @@ function(add_custom_target NAME)
     _add_custom_target(${NAME} ${ARGN})
     VisualStudioProjectPostfix(${NAME})
 endfunction(add_custom_target)
+
+function(include_external_msproject NAME PATH)
+    _include_external_msproject("${NAME}" "${PATH}")
+
+    # Force restore of all available packages
+    if (${ENABLE_NUGET_RESTORE})
+        message("Restoring nuget packages in ${NAME}")
+        execute_process(
+            COMMAND ${CMAKE_SOURCE_DIR}/ThirdParty/Nuget/nuget.exe restore "${PATH}"
+            RESULT_VARIABLE Result
+            OUTPUT_VARIABLE Output
+            ERROR_VARIABLE  Output
+        )
+
+        # Failed?
+        if (NOT "${Result}" STREQUAL "0")
+            message(FATAL_ERROR "Failed to restore nuget packages in ${PATH}, output:\n${Output}")
+        endif()
+    endif()
+endfunction(include_external_msproject)
