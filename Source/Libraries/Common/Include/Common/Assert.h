@@ -7,7 +7,7 @@ namespace Detail {
 
 /// Assertion
 #if defined(NDEBUG)
-#   define ASSERT(EXPRESSION, MESSAGE) (void)0
+#   define ASSERT(EXPRESSION, MESSAGE) while(false) { (void)(EXPRESSION); } (void)0
 #else
 #   define ASSERT(EXPRESSION, MESSAGE) if (!(EXPRESSION)) { ::Detail::Break(MESSAGE); } (void)0
 #endif

@@ -6,5 +6,5 @@ namespace Detail {
 }
 
 #ifndef GRS_SINK
-#   define GRS_SINK(...) { ::Detail::Sink(__VA_ARGS__); } while(false) (void)0
+#   define GRS_SINK(...) while(false) { ::Detail::Sink(__VA_ARGS__); } (void)0
 #endif // GRS_SINK
