@@ -679,7 +679,7 @@ void DXILPhysicalBlockScan::Stitch(DXStream &out) {
 
     // Validate written stream by re-reading it,
 #if DXIL_VALIDATE_MIRROR
-    LLVMBitStreamReader reader(out.GetData() + validationOffset, out.GetByteSize() - validationOffset);
+    LLVMBitStreamReader reader(out.GetData() + validationOffset, static_cast<uint32_t>(out.GetByteSize() - validationOffset));
 
     // Validate bit stream
     ASSERT(reader.ValidateAndConsume(), "Validation failed");

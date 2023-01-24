@@ -870,7 +870,10 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 const Backend::IL::Type *type = table.type.typeMap.GetType(reader.ConsumeOp32());
 
                 // Create type mapping
-                ilTypeMap.SetType(result, type);
+                ilTypeMap.SetType(result, ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
+                    .pointee = type,
+                    .addressSpace = Backend::IL::AddressSpace::Function
+                }));
 
                 uint64_t sizeType = reader.ConsumeOp();
                 uint64_t size = reader.ConsumeOp();
@@ -3129,6 +3132,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstAlloca: {
+                table.idRemapper.Remap(record.Op(2));
                 break;
             }
 
