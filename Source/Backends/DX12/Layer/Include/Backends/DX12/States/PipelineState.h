@@ -78,6 +78,9 @@ struct PipelineState : public ReferenceObject {
     /// TODO: How do we manage lifetimes here?
     std::map<uint64_t, ID3D12PipelineState*> instrumentObjects;
 
+    /// Optional pipeline stream blob
+    std::vector<uint8_t> subObjectStreamBlob;
+
     /// Unique ID
     uint64_t uid{0};
 
@@ -86,7 +89,7 @@ struct PipelineState : public ReferenceObject {
 };
 
 struct GraphicsPipelineState : public PipelineState {
-    /// Creation deep copy
+    /// Creation deep copy, if invalid, present in stream blob
     D3D12GraphicsPipelineStateDescDeepCopy deepCopy;
 
     /// Stage shaders
@@ -95,12 +98,22 @@ struct GraphicsPipelineState : public PipelineState {
     ShaderState* ds{nullptr};
     ShaderState* gs{nullptr};
     ShaderState* ps{nullptr};
+
+    /// Stream offsets
+    uint64_t streamVSOffset{0};
+    uint64_t streamHSOffset{0};
+    uint64_t streamDSOffset{0};
+    uint64_t streamGSOffset{0};
+    uint64_t streamPSOffset{0};
 };
 
 struct ComputePipelineState : public PipelineState {
-    /// Creation deep copy
+    /// Creation deep copy, if invalid, present in stream blob
     D3D12ComputePipelineStateDescDeepCopy deepCopy;
 
     /// Stage shaders
     ShaderState* cs{nullptr};
+
+    /// Stream offsets
+    uint64_t streamCSOffset{0};
 };

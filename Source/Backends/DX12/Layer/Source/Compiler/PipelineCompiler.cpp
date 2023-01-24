@@ -1,6 +1,7 @@
 #include <Backends/DX12/Compiler/PipelineCompiler.h>
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/SubObjectReader.h>
 
 // Common
 #include <Common/Dispatcher/Dispatcher.h>
@@ -108,69 +109,159 @@ void PipelineCompiler::WorkerCompute(void *data) {
 }
 
 void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
+    TrivialStackVector<uint8_t, 64'000> streamStack;
+
+    // Device used for stream creates
+    ID3D12Device2* streamDevice;
+
+    // Query stream device
+    if (FAILED(device->object->QueryInterface(__uuidof(ID3D12Device2), reinterpret_cast<void**>(&streamDevice)))) {
+        streamDevice = nullptr;
+    }
+
     // Populate all creation infos
     for (uint32_t i = 0; i < batch.count; i++) {
         PipelineJob &job = batch.jobs[i];
         PipelineState *state = job.state;
 
         // State
-        auto graphicsState = static_cast<GraphicsPipelineState *>(state);
-
-        // Copy the deep creation info
-        //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
         ASSERT(state->type == PipelineType::Graphics, "Unexpected pipeline type");
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = graphicsState->deepCopy.desc;
-
-        // Instrumentation offset
-        uint32_t keyOffset{0};
-
-        // Vertex shader
-        if (graphicsState->vs) {
-            desc.VS = graphicsState->vs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
-            if (!desc.VS.pShaderBytecode) {
-                continue;
-            }
-        }
-
-        // Hull shader
-        if (graphicsState->hs) {
-            desc.HS = graphicsState->hs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
-            if (!desc.HS.pShaderBytecode) {
-                continue;
-            }
-        }
-
-        // Domain shader
-        if (graphicsState->ds) {
-            desc.DS = graphicsState->ds->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
-            if (!desc.DS.pShaderBytecode) {
-                continue;
-            }
-        }
-
-        // Geometry shader
-        if (graphicsState->gs) {
-            desc.GS = graphicsState->gs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
-            if (!desc.GS.pShaderBytecode) {
-                continue;
-            }
-        }
-
-        // Pixel shader
-        if (graphicsState->ps) {
-            desc.PS = graphicsState->ps->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
-            if (!desc.PS.pShaderBytecode) {
-                continue;
-            }
-        }
+        auto graphicsState = static_cast<GraphicsPipelineState *>(state);
 
         // Destination pipeline
         ID3D12PipelineState* pipeline{nullptr};
 
-        // Attempt to create pipeline
-        HRESULT result = device->object->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipeline));
-        if (FAILED(result)) {
-            continue;
+        // Stream based?
+        if (!graphicsState->deepCopy.blob) {
+            if (!streamDevice) {
+                continue;
+            }
+
+            // Copy stream data
+            streamStack.Resize(state->subObjectStreamBlob.size());
+            std::memcpy(streamStack.Data(), state->subObjectStreamBlob.data(), state->subObjectStreamBlob.size());
+
+            // Instrumentation offset
+            uint32_t keyOffset{0};
+
+            // Vertex shader
+            if (graphicsState->vs) {
+                D3D12_SHADER_BYTECODE overwrite = graphicsState->vs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!overwrite.pShaderBytecode) {
+                    continue;
+                }
+
+                // Overwrite compute sub-object
+                *reinterpret_cast<D3D12_SHADER_BYTECODE*>(streamStack.Data() + graphicsState->streamVSOffset) = overwrite;
+            }
+
+            // Hull shader
+            if (graphicsState->hs) {
+                D3D12_SHADER_BYTECODE overwrite = graphicsState->hs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!overwrite.pShaderBytecode) {
+                    continue;
+                }
+
+                // Overwrite compute sub-object
+                *reinterpret_cast<D3D12_SHADER_BYTECODE*>(streamStack.Data() + graphicsState->streamHSOffset) = overwrite;
+            }
+
+            // Domain shader
+            if (graphicsState->ds) {
+                D3D12_SHADER_BYTECODE overwrite = graphicsState->ds->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!overwrite.pShaderBytecode) {
+                    continue;
+                }
+
+                // Overwrite compute sub-object
+                *reinterpret_cast<D3D12_SHADER_BYTECODE*>(streamStack.Data() + graphicsState->streamDSOffset) = overwrite;
+            }
+
+            // Geometry shader
+            if (graphicsState->gs) {
+                D3D12_SHADER_BYTECODE overwrite = graphicsState->gs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!overwrite.pShaderBytecode) {
+                    continue;
+                }
+
+                // Overwrite compute sub-object
+                *reinterpret_cast<D3D12_SHADER_BYTECODE*>(streamStack.Data() + graphicsState->streamGSOffset) = overwrite;
+            }
+
+            // Pixel shader
+            if (graphicsState->ps) {
+                D3D12_SHADER_BYTECODE overwrite = graphicsState->ps->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!overwrite.pShaderBytecode) {
+                    continue;
+                }
+
+                // Overwrite compute sub-object
+                *reinterpret_cast<D3D12_SHADER_BYTECODE*>(streamStack.Data() + graphicsState->streamPSOffset) = overwrite;
+            }
+
+            // To stream description
+            D3D12_PIPELINE_STATE_STREAM_DESC desc;
+            desc.SizeInBytes = streamStack.Size();
+            desc.pPipelineStateSubobjectStream = streamStack.Data();
+
+            // Pass down callchain
+            HRESULT hr = streamDevice->CreatePipelineState(&desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
+            if (FAILED(hr)) {
+                continue;
+            }
+        } else {
+            // Copy the deep creation info
+            //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
+            D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = graphicsState->deepCopy.desc;
+
+            // Instrumentation offset
+            uint32_t keyOffset{0};
+
+            // Vertex shader
+            if (graphicsState->vs) {
+                desc.VS = graphicsState->vs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!desc.VS.pShaderBytecode) {
+                    continue;
+                }
+            }
+
+            // Hull shader
+            if (graphicsState->hs) {
+                desc.HS = graphicsState->hs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!desc.HS.pShaderBytecode) {
+                    continue;
+                }
+            }
+
+            // Domain shader
+            if (graphicsState->ds) {
+                desc.DS = graphicsState->ds->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!desc.DS.pShaderBytecode) {
+                    continue;
+                }
+            }
+
+            // Geometry shader
+            if (graphicsState->gs) {
+                desc.GS = graphicsState->gs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!desc.GS.pShaderBytecode) {
+                    continue;
+                }
+            }
+
+            // Pixel shader
+            if (graphicsState->ps) {
+                desc.PS = graphicsState->ps->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!desc.PS.pShaderBytecode) {
+                    continue;
+                }
+            }
+
+            // Attempt to create pipeline
+            HRESULT result = device->object->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipeline));
+            if (FAILED(result)) {
+                continue;
+            }
         }
 
         // Add pipeline
@@ -187,35 +278,75 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 
     // Free job
     destroy(batch.jobs, allocators);
+
+    // Cleanup stream
+    if (streamDevice) {
+        streamDevice->Release();
+    }
 }
 
 void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
+    TrivialStackVector<uint8_t, 64'000> streamStack;
+
+    // Device used for stream creates
+    ID3D12Device2* streamDevice;
+
+    // Query stream device
+    if (FAILED(device->object->QueryInterface(__uuidof(ID3D12Device2), reinterpret_cast<void**>(&streamDevice)))) {
+        streamDevice = nullptr;
+    }
+
     // Populate all creation infos
     for (uint32_t i = 0; i < batch.count; i++) {
         PipelineJob &job = batch.jobs[i];
         PipelineState *state = job.state;
 
-        // State
-        auto computeState = static_cast<ComputePipelineState *>(state);
-
-        // Copy the deep creation info
-        //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
-        ASSERT(state->type == PipelineType::Compute, "Unexpected pipeline type");
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = computeState->deepCopy.desc;
-
-        // Assign instrumented version
-        desc.CS = computeState->cs->GetInstrument(job.shaderInstrumentationKeys[0]);
-        if (!desc.CS.pShaderBytecode) {
-            continue;
-        }
-
         // Destination pipeline
         ID3D12PipelineState* pipeline{nullptr};
 
-        // Attempt to create pipeline
-        HRESULT result = device->object->CreateComputePipelineState(&desc, IID_PPV_ARGS(&pipeline));
-        if (FAILED(result)) {
-            continue;
+        // State
+        ASSERT(state->type == PipelineType::Compute, "Unexpected pipeline type");
+        auto computeState = static_cast<ComputePipelineState *>(state);
+
+        // Stream based?
+        if (!computeState->deepCopy.blob) {
+            if (!streamDevice) {
+                continue;
+            }
+
+            // Copy stream data
+            streamStack.Resize(state->subObjectStreamBlob.size());
+            std::memcpy(streamStack.Data(), state->subObjectStreamBlob.data(), state->subObjectStreamBlob.size());
+
+            // Overwrite compute sub-object
+            *reinterpret_cast<D3D12_SHADER_BYTECODE*>(streamStack.Data() + computeState->streamCSOffset) = computeState->cs->GetInstrument(job.shaderInstrumentationKeys[0]);
+
+            // To stream description
+            D3D12_PIPELINE_STATE_STREAM_DESC desc;
+            desc.SizeInBytes = streamStack.Size();
+            desc.pPipelineStateSubobjectStream = streamStack.Data();
+
+            // Pass down callchain
+            HRESULT hr = streamDevice->CreatePipelineState(&desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
+            if (FAILED(hr)) {
+                continue;
+            }
+        } else {
+            // Copy the deep creation info
+            //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
+            D3D12_COMPUTE_PIPELINE_STATE_DESC desc = computeState->deepCopy.desc;
+
+            // Assign instrumented version
+            desc.CS = computeState->cs->GetInstrument(job.shaderInstrumentationKeys[0]);
+            if (!desc.CS.pShaderBytecode) {
+                continue;
+            }
+
+            // Attempt to create pipeline
+            HRESULT result = device->object->CreateComputePipelineState(&desc, IID_PPV_ARGS(&pipeline));
+            if (FAILED(result)) {
+                continue;
+            }
         }
 
         // Add pipeline
@@ -232,4 +363,9 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
 
     // Free job
     destroy(batch.jobs, allocators);
+
+    // Cleanup stream
+    if (streamDevice) {
+        streamDevice->Release();
+    }
 }
