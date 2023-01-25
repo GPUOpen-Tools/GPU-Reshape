@@ -133,7 +133,7 @@ struct SubObjectReader {
     /// \param outOffset previous offset
     /// \return type ref
     template<typename T>
-    T& ConsumeWithOffset(uint64_t outOffset) {
+    T& ConsumeWithOffset(uint64_t& outOffset) {
         outOffset = consumeOffset;
         return Consume<T>();
     }
@@ -143,7 +143,7 @@ struct SubObjectReader {
     /// \param outOffset previous offset
     /// \return type ref
     template<typename T>
-    T& AlignedConsumeWithOffset(uint64_t outOffset) {
+    T& AlignedConsumeWithOffset(uint64_t& outOffset) {
         Align();
         return ConsumeWithOffset<T>(outOffset);
     }

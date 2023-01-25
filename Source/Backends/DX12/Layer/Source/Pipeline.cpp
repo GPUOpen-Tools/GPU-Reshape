@@ -69,7 +69,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
     // Create reader
     SubObjectReader reader(desc);
 
-    // Final state
+    // Final pipeline
     PipelineState* opaqueState{nullptr};
 
     // Handle type
