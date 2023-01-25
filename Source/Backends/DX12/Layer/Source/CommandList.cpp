@@ -4,6 +4,7 @@
 #include <Backends/DX12/States/CommandQueueState.h>
 #include <Backends/DX12/States/CommandAllocatorState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/States/CommandSignatureState.h>
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/DescriptorHeapState.h>
 #include <Backends/DX12/Command/UserCommandBuffer.h>
@@ -127,6 +128,65 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandQueue1(ID3D12Device *device, const D
 
     // OK
     return CreateCommandQueueState(device, commandQueue, desc, riid, pCommandQueue);
+}
+
+HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, const D3D12_COMMAND_SIGNATURE_DESC* pDesc, ID3D12RootSignature* pRootSignature, const IID& riid, void** ppvCommandSignature) {
+    auto table = GetTable(device);
+
+    // Object
+    ID3D12CommandSignature *commandSignature{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateCommandSignature(table.next, pDesc, Next(pRootSignature), __uuidof(ID3D12CommandSignature), reinterpret_cast<void **>(&commandSignature));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create state
+    auto *state = new CommandSignatureState();
+    state->allocators = table.state->allocators;
+    state->parent = device;
+    state->object = commandSignature;
+
+    // Filter arguments
+    for (uint32_t i = 0; i < pDesc->NumArgumentDescs; i++) {
+        switch (pDesc->pArgumentDescs[i].Type) {
+            default:
+                break;
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DRAW:
+                state->activeTypes |= PipelineType::Graphics;
+                break;
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED:
+                state->activeTypes |= PipelineType::Graphics;
+                break;
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH:
+                state->activeTypes |= PipelineType::Compute;
+                break;
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS:
+                ASSERT(false, "Raytracing is not supported yet");
+                break;
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH:
+                ASSERT(false, "Mesh shaders are not supported yet");
+                break;
+        }
+    }
+
+    // Create detours
+    commandSignature = CreateDetour(Allocators{}, commandSignature, state);
+
+    // Query to external object if requested
+    if (ppvCommandSignature) {
+        HRESULT hr = commandSignature->QueryInterface(riid, ppvCommandSignature);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    commandSignature->Release();
+
+    // OK
+    return S_OK;
 }
 
 HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
@@ -480,12 +540,15 @@ static void CommitGraphics(DeviceState* device, CommandListState* list) {
     // Inform the streamer
     device->exportStreamer->CommitGraphics(list->streamState, list);
 
+    // Bind state
+    ShaderExportStreamBindState& bindState = list->streamState->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
+
     // TODO: Update the event data in batches
     if (uint64_t bitMask = list->userContext.eventStack.GetGraphicsDirtyMask()) {
         unsigned long index;
         while (_BitScanReverse64(&index, bitMask)) {
             list->object->SetGraphicsRoot32BitConstant(
-                list->streamState->pipeline->signature->userRootCount + 2u,
+                bindState.pipeline->signature->userRootCount + 2u,
                 list->userContext.eventStack.GetData()[index],
                 index
             );
@@ -506,12 +569,15 @@ static void CommitCompute(DeviceState* device, CommandListState* list) {
     // Inform the streamer
     device->exportStreamer->CommitCompute(list->streamState, list);
 
+    // Bind state
+    ShaderExportStreamBindState& bindState = list->streamState->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+
     // TODO: Update the event data in batches
     if (uint64_t bitMask = list->userContext.eventStack.GetComputeDirtyMask()) {
         unsigned long index;
         while (_BitScanReverse64(&index, bitMask)) {
             list->object->SetComputeRoot32BitConstant(
-                list->streamState->pipeline->signature->userRootCount + 2u,
+                bindState.pipeline->signature->userRootCount + 2u,
                 list->userContext.eventStack.GetData()[index],
                 index
             );
@@ -622,13 +688,22 @@ void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12
     // Get device
     auto device = GetTable(table.state->parent);
 
-    // Inform the streamer
-    device.state->exportStreamer->CommitCompute(table.state->streamState, table.state);
-    device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state);
+    // Get signature
+    auto signatureTable = GetTable(pCommandSignature);
+
+    // Commit compute if needed
+    if (signatureTable.state->activeTypes & PipelineType::Compute) {
+        device.state->exportStreamer->CommitCompute(table.state->streamState, table.state);
+    }
+    
+    // Commit graphics if needed
+    if (signatureTable.state->activeTypes & PipelineType::Graphics) {
+        device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state);
+    }
 
     // Pass down callchain
     table.next->ExecuteIndirect(
-        pCommandSignature, 
+        signatureTable.next, 
         MaxCommandCount, 
         Next(pArgumentBuffer), 
         ArgumentBufferOffset, 
@@ -648,7 +723,7 @@ void WINAPI HookID3D12CommandListSetGraphicsRootSignature(ID3D12CommandList* lis
     table.bottom->next_SetGraphicsRootSignature(table.next, rsTable.next);
 
     // Inform the streamer of a new root signature
-    device.state->exportStreamer->SetRootSignature(table.state->streamState, rsTable.state, table.state);
+    device.state->exportStreamer->SetGraphicsRootSignature(table.state->streamState, rsTable.state, table.state);
 }
 
 void WINAPI HookID3D12CommandListSetComputeRootSignature(ID3D12CommandList* list, ID3D12RootSignature* rootSignature) {
@@ -662,7 +737,7 @@ void WINAPI HookID3D12CommandListSetComputeRootSignature(ID3D12CommandList* list
     table.bottom->next_SetComputeRootSignature(table.next, rsTable.next);
 
     // Inform the streamer of a new root signature
-    device.state->exportStreamer->SetRootSignature(table.state->streamState, rsTable.state, table.state);
+    device.state->exportStreamer->SetComputeRootSignature(table.state->streamState, rsTable.state, table.state);
 }
 
 HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList *list) {

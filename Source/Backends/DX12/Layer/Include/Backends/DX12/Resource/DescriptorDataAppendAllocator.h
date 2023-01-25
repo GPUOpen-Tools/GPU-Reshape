@@ -80,6 +80,10 @@ public:
     /// Get the current segment address
     /// \return
     D3D12_GPU_VIRTUAL_ADDRESS GetSegmentVirtualAddress() {
+        if (segment.entries.empty()) {
+            return 0ull;
+        }
+        
         return segment.entries.back().allocation.resource->GetGPUVirtualAddress() + mappedOffset;
     }
 

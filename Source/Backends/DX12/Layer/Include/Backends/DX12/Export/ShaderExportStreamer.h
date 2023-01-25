@@ -86,12 +86,19 @@ public:
     /// \param commandList the command list
     void SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, CommandListState* commandList);
 
-    /// Invoked during pipeline binding
+    /// Invoked during root signature binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandList the command list
-    void SetRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, CommandListState* commandList);
+    void SetComputeRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, CommandListState* commandList);
+
+    /// Invoked during root signature binding
+    /// \param state the stream state
+    /// \param pipeline the pipeline state being bound
+    /// \param instrumented true if an instrumented pipeline has been bound
+    /// \param commandList the command list
+    void SetGraphicsRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, CommandListState* commandList);
 
     /// Commit all compute data
     /// \param state given state
@@ -208,6 +215,9 @@ private:
 
     /// Free a segment
     void FreeSegmentNoQueueLock(CommandQueueState* queue, ShaderExportStreamSegment* segment);
+
+    /// Get the expected bind state of a pipeline
+    ShaderExportStreamBindState& GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline);
 
 private:
     DeviceState* device;

@@ -14,21 +14,21 @@ static void ReconstructPipelineState(CommandListState* commandList, DeviceState*
     ShaderExportStreamBindState& bindState = commandList->streamState->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
 
     // Any?
-    if (!commandList->streamState->pipelineObject) {
+    if (!bindState.pipelineObject) {
         return;
     }
 
     // Reset signature if needed
-    if (commandList->streamState->pipeline->type == PipelineType::Compute) {
-        commandList->object->SetComputeRootSignature(commandList->streamState->pipeline->signature->object);
+    if (bindState.pipeline->type == PipelineType::Compute) {
+        commandList->object->SetComputeRootSignature(bindState.pipeline->signature->object);
     }
 
     // Set PSO
-    commandList->object->SetPipelineState(commandList->streamState->pipelineObject);
+    commandList->object->SetPipelineState(bindState.pipelineObject);
 
     // Rebind root data, invalidated by signature change
-    if (commandList->streamState->pipeline->type == PipelineType::Compute) {
-        for (uint32_t i = 0; i < commandList->streamState->pipeline->signature->userRootCount; i++) {
+    if (bindState.pipeline->type == PipelineType::Compute) {
+        for (uint32_t i = 0; i < bindState.pipeline->signature->userRootCount; i++) {
             const ShaderExportRootParameterValue& value = bindState.persistentRootParameters[i];
 
             switch (value.type) {
@@ -59,7 +59,7 @@ static void ReconstructPipelineState(CommandListState* commandList, DeviceState*
     }
 
     // Rebind the export, invalidated by signature change
-    device->exportStreamer->BindShaderExport(commandList->streamState, commandList->streamState->pipeline, commandList);
+    device->exportStreamer->BindShaderExport(commandList->streamState, bindState.pipeline, commandList);
 }
 
 static void ReconstructState(CommandListState* commandList, DeviceState* device, const UserCommandState& state) {

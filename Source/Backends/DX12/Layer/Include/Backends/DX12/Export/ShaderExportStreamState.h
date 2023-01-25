@@ -97,6 +97,18 @@ struct ShaderExportRootParameterValue {
 };
 
 struct ShaderExportStreamBindState {
+    /// Currently bound root signature
+    const RootSignatureState* rootSignature{nullptr};
+
+    /// Currently bound pipeline
+    const PipelineState* pipeline{nullptr};
+
+    /// Currently instrumented pipeline
+    ID3D12PipelineState* pipelineObject{nullptr};
+
+    /// Is the current pipeline instrumented?
+    bool isInstrumented{false};
+
     /// Descriptor data allocator tied to this segment
     DescriptorDataAppendAllocator* descriptorDataAllocator{nullptr};
 
@@ -109,20 +121,8 @@ struct ShaderExportStreamBindState {
 
 /// Single stream state
 struct ShaderExportStreamState {
-    /// Currently bound root signature
-    const RootSignatureState* rootSignature{nullptr};
-
-    /// Currently bound pipeline
-    const PipelineState* pipeline{nullptr};
-
-    /// Currently instrumented pipeline
-    ID3D12PipelineState* pipelineObject{nullptr};
-
     /// Currently bound (SRV, UAV, CBV) heap
     const DescriptorHeapState* heap{nullptr};
-
-    /// Is the current pipeline instrumented?
-    bool isInstrumented{false};
 
     /// Current mask of bound segments
     PipelineTypeSet pipelineSegmentMask{0};

@@ -19,7 +19,8 @@
     "States/SwapChainState.h",
     "States/DXGIFactoryState.h",
     "States/CommandAllocatorState.h",
-    "States/CommandQueueState.h"
+    "States/CommandQueueState.h",
+    "States/CommandSignatureState.h"
   ],
   "files": [
     "d3d12.h",
@@ -60,7 +61,8 @@
         "CreateGraphicsPipelineState",
         "CreateComputePipelineState",
         "CreateShaderResourceView",
-        "CreateUnorderedAccessView"
+        "CreateUnorderedAccessView",
+        "CreateCommandSignature"
       ]
     },
     "ID3D12CommandQueue": {
@@ -157,6 +159,12 @@
         "GetCPUDescriptorHandleForHeapStart",
         "GetGPUDescriptorHandleForHeapStart",
         "GetDevice"
+      ]
+    },
+    "ID3D12CommandSignature": {
+      "name": "CommandSignature",
+      "state": "CommandSignatureState",
+      "hooks": [
       ]
     },
     "IDXGISwapChain": {

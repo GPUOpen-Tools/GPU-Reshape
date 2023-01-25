@@ -165,9 +165,6 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
     std::lock_guard guard(mutex);
 
     // Reset state
-    state->rootSignature = nullptr;
-    state->isInstrumented = false;
-    state->pipeline = nullptr;
     state->heap = nullptr;
     state->pipelineSegmentMask = {};
 
@@ -201,6 +198,11 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
 
         // Clear all persistent parameters
         std::fill_n(bindState.persistentRootParameters, MaxRootSignatureDWord, ShaderExportRootParameterValue {});
+
+        // Reset state
+        bindState.rootSignature = nullptr;
+        bindState.pipeline = nullptr;
+        bindState.isInstrumented = false;
     }
 }
 
@@ -233,63 +235,122 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, Des
     // Changing descriptor set invalidates all bound information
     state->pipelineSegmentMask = {};
 
-    // Set if valid
-    if (state->rootSignature && state->pipeline && state->isInstrumented) {
-        BindShaderExport(state, state->pipeline, commandList);
+    // Handle bind states
+    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+        ShaderExportStreamBindState &bindState = state->bindStates[i];
+
+        // Set if valid
+        if (bindState.rootSignature && bindState.pipeline && bindState.isInstrumented) {
+            BindShaderExport(state, bindState.pipeline, commandList);
+        }
     }
 }
 
-void ShaderExportStreamer::SetRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, CommandListState* commandList) {
+void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, CommandListState* commandList) {
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+
     // Reset mask in case it's changed
-    if (state->rootSignature) {
-        state->pipelineSegmentMask = PipelineType::None;
+    if (bindState.rootSignature) {
+        state->pipelineSegmentMask &= ~PipelineTypeSet(PipelineType::Compute);
     }
 
     // Keep state
-    state->rootSignature = rootSignature;
+    bindState.rootSignature = rootSignature;
 
     // Create initial descriptor segments
-    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        state->bindStates[i].descriptorDataAllocator->BeginSegment(rootSignature->userRootCount);
-    }
+    bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount);
 
     // Ensure the shader export states are bound
-    if (state->pipeline && state->isInstrumented) {
-        BindShaderExport(state, state->pipeline, commandList);
+    if (bindState.pipeline && bindState.isInstrumented) {
+        BindShaderExport(state, bindState.pipeline, commandList);
+    }
+}
+
+void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, CommandListState* commandList) {
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
+
+    // Reset mask in case it's changed
+    if (bindState.rootSignature) {
+        state->pipelineSegmentMask &= ~PipelineTypeSet(PipelineType::Graphics);
+    }
+
+    // Keep state
+    bindState.rootSignature = rootSignature;
+
+    // Create initial descriptor segments
+    bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount);
+
+    // Ensure the shader export states are bound
+    if (bindState.pipeline && bindState.isInstrumented) {
+        BindShaderExport(state, bindState.pipeline, commandList);
     }
 }
 
 void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, CommandListState* commandList) {
-    DescriptorDataAppendAllocator* dataAllocator = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)].descriptorDataAllocator;
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
 
     // If the allocator has rolled, a new segment is pending binding
-    if (dataAllocator->HasRolled()) {
-        commandList->object->SetComputeRootConstantBufferView(state->rootSignature->userRootCount + 1, dataAllocator->GetSegmentVirtualAddress());
+    if (bindState.descriptorDataAllocator->HasRolled()) {
+        commandList->object->SetComputeRootConstantBufferView(bindState.rootSignature->userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
     }
 
     // Begin new segment
-    dataAllocator->BeginSegment(state->rootSignature->userRootCount);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->userRootCount);
 }
 
 void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, CommandListState* commandList) {
-    DescriptorDataAppendAllocator* dataAllocator = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)].descriptorDataAllocator;
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
 
     // If the allocator has rolled, a new segment is pending binding
-    if (dataAllocator->HasRolled()) {
-        commandList->object->SetGraphicsRootConstantBufferView(state->rootSignature->userRootCount + 1, dataAllocator->GetSegmentVirtualAddress());
+    if (bindState.descriptorDataAllocator->HasRolled()) {
+        commandList->object->SetGraphicsRootConstantBufferView(bindState.rootSignature->userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
     }
 
     // Begin new segment
-    dataAllocator->BeginSegment(state->rootSignature->userRootCount);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->userRootCount);
+}
+
+ShaderExportStreamBindState& ShaderExportStreamer::GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline) {
+    // Get slot
+    PipelineType slot;
+    switch (pipeline->type) {
+        default:
+            ASSERT(false, "Invalid pipeline");
+            slot = PipelineType::None;
+            break;
+        case PipelineType::Graphics:
+            slot = PipelineType::GraphicsSlot;
+            break;
+        case PipelineType::Compute:
+            slot = PipelineType::ComputeSlot;
+            break;
+    }
+
+    // Get bind state from slot
+    return state->bindStates[static_cast<uint32_t>(slot)];
 }
 
 void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, ID3D12PipelineState* pipelineObject, bool instrumented, CommandListState* commandList) {
-    state->pipeline = pipeline;
-    state->pipelineObject = pipelineObject;
-    state->isInstrumented = instrumented;
+    // Get bind state from slot
+    ShaderExportStreamBindState& bindState = GetBindStateFromPipeline(state, pipeline);
+
+    // Set state
+    bindState.pipeline = pipeline;
+    bindState.pipelineObject = pipelineObject;
+    bindState.isInstrumented = instrumented;
+
+    // Invalidated root signature?
+    if (bindState.rootSignature != pipeline->signature) {
+        state->pipelineSegmentMask &= ~PipelineTypeSet(pipeline->type);
+        bindState.rootSignature = nullptr;
+    }
 
     // Ensure the shader export states are bound
-    if (state->rootSignature && instrumented) {
+    if (bindState.rootSignature && instrumented) {
         BindShaderExport(state, pipeline, commandList);
     }
 }
@@ -326,7 +387,11 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
         return;
     }
 
-    BindShaderExport(state, state->rootSignature->userRootCount, pipeline->type, commandList);
+    // Get binds
+    ShaderExportStreamBindState& bindState = GetBindStateFromPipeline(state, pipeline);
+
+    // Set on bind state
+    BindShaderExport(state, bindState.rootSignature->userRootCount, pipeline->type, commandList);
 
     // Mark as bound
     state->pipelineSegmentMask |= pipeline->type;
