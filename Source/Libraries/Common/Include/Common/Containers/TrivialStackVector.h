@@ -85,8 +85,9 @@ struct TrivialStackVector {
 
             if (data == stack) {
                 std::memcpy(fallback.data(), stack, sizeof(T) * std::min(size, length));
-                data = fallback.data();
             }
+            
+            data = fallback.data();
         }
 
         size = length;
