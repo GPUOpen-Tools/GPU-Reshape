@@ -33,6 +33,7 @@ void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
     out.registerSpaceBound = registerSpaceBound;
     out.programMetadata = programMetadata;
     out.shadingModel = shadingModel;
+    out.validationVersion = validationVersion;
     out.handles = handles;
 }
 
@@ -169,7 +170,24 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
             break;
         }
 
-            // Program entrypoints
+        // Program entrypoints
+        case CRC64("dx.valver"): {
+            if (name != "dx.valver") {
+                return;
+            }
+            
+            // Get list
+            ASSERT(record.opCount == 1, "Expected a single value for dx.valver");
+            const LLVMRecord &list = block->records[record.Op(0)];
+
+            // Read validator
+            ASSERT(list.opCount == 2, "Expected two values for [dx.valver]");
+            validationVersion.major = GetOperandU32Constant(metadataBlock, list.Op32(0));
+            validationVersion.minor = GetOperandU32Constant(metadataBlock, list.Op32(1));
+            break;
+        }
+
+            // Program shader model
         case CRC64("dx.shaderModel"): {
             if (name != "dx.shaderModel") {
                 return;
@@ -200,6 +218,7 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
             } else if (shadingModelStr == "ms") {
                 shadingModel._class = DXILShadingModelClass::MS;
             }
+            break;
         }
     }
 }
@@ -1460,9 +1479,17 @@ void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXJob &job) {
         count += handle.registerRange;
     }
 
-    // Exceeded 8?
-    if (count > 8) {
-        AddProgramFlag(DXILProgramShaderFlag::Use64UAVs);
+    // Account for invalid validation 1.6 behaviour (signers are not happy otherwise)
+    if (validationVersion.major > 1 || validationVersion.minor > 5) {
+        // Expected behaviour, if exceeded 8 add the flag
+        if (count > 8) {
+            AddProgramFlag(DXILProgramShaderFlag::Use64UAVs);
+        }
+    } else {
+        // Invalid behaviour, test against actual count
+        if (mapped.handles.size() > 8) {
+            AddProgramFlag(DXILProgramShaderFlag::Use64UAVs);
+        }
     }
 }
 

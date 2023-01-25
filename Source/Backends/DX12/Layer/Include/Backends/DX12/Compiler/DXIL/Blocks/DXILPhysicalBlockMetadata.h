@@ -338,6 +338,11 @@ private:
         DXILShadingModelClass _class;
     } shadingModel;
 
+    struct ValidationVersion {
+        uint32_t major{1};
+        uint32_t minor{0};
+    } validationVersion;
+
     struct ProgramMetadata {
         /// User provided flags
         DXILProgramShaderFlagSet shaderFlags{ 0 };
