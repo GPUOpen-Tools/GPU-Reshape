@@ -173,6 +173,13 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
         } else {
             // Interface querying
             if (methodName == "QueryInterface") {
+                // Check state query
+                state.hooks << "\t\tif (riid == __uuidof(" << objDecl["state"].get<std::string>() << ")) {\n";
+                state.hooks << "\t\t\t/* No ref added */\n";
+                state.hooks << "\t\t\t*ppvObject = state;\n";
+                state.hooks << "\t\t\treturn S_OK;\n";
+                state.hooks << "\t\t}\n\n";
+                
                 // If unwrapping, simply proxy down the next object
                 state.hooks << "\t\tif (riid == IID_Unwrap) {\n";
                 state.hooks << "\t\t\t/* No ref added */\n";

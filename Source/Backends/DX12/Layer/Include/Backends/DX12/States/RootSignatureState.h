@@ -10,7 +10,7 @@
 // Forward declarations
 struct RootSignaturePhysicalMapping;
 
-struct RootSignatureState {
+struct __declspec(uuid("BDB0A8F7-96A0-4421-8AC6-6ECEA23F4BCA")) RootSignatureState {
     ~RootSignatureState();
 
     /// Parent state

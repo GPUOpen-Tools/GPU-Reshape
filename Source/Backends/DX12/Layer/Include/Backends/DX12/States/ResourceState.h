@@ -7,7 +7,7 @@
 // Common
 #include <Common/Allocators.h>
 
-struct ResourceState {
+struct __declspec(uuid("09175D5B-BA8A-4531-9553-BC1CD024A1FE")) ResourceState {
     ~ResourceState();
 
     /// Parent state

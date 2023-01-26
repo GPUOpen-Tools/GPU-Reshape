@@ -10,7 +10,7 @@
 class ShaderExportDescriptorAllocator;
 class PhysicalResourceMappingTable;
 
-struct DescriptorHeapState {
+struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapState {
     ~DescriptorHeapState();
 
     /// Check if a GPU handle is in bounds to this heap

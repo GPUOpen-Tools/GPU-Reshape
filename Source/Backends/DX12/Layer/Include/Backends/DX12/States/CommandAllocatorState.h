@@ -6,7 +6,7 @@
 // Common
 #include <Common/Allocators.h>
 
-struct CommandAllocatorState {
+struct __declspec(uuid("23000608-5CA5-4865-883A-4A864750B14B")) CommandAllocatorState {
     ~CommandAllocatorState();
 
     /// Parent state

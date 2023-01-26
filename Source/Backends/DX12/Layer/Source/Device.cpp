@@ -354,6 +354,21 @@ AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCre
     // Queried device
     decltype(AGSDX12ReturnedParams::pDevice) device;
 
+    // AGS *may* internally call the hooked device creation, double the wrap double the trouble
+    if (DeviceState* wrap{nullptr}; SUCCEEDED(returnedParams->pDevice->QueryInterface(__uuidof(DeviceState), reinterpret_cast<void**>(&wrap)))) {
+        // Query wrapped to expected interface
+        if (FAILED(returnedParams->pDevice->QueryInterface(creationParams->iid, reinterpret_cast<void**>(&device)))) {
+            return AGS_FAILURE;
+        }
+
+        // Parent caller implicitly adds a reference to the object, release the fake reference
+        returnedParams->pDevice->Release();
+
+        // OK
+        returnedParams->pDevice = device;
+        return AGS_SUCCESS;
+    }
+
     // Create wrapper, iid dictated by creation parameters
     HRESULT hr = D3D12CreateDeviceGPUOpen(
         reinterpret_cast<ID3D12Device*>(returnedParams->pDevice),

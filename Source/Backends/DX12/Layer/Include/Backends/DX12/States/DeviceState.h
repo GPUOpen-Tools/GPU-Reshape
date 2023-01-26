@@ -39,7 +39,7 @@ class ShaderSGUIDHost;
 class DeviceAllocator;
 class ShaderProgramHost;
 
-struct DeviceState {
+struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     ~DeviceState();
 
     /// Owned object

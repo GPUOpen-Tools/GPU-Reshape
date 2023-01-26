@@ -15,7 +15,7 @@ struct DeviceState;
 struct ShaderExportStreamState;
 class DescriptorDataAppendAllocator;
 
-struct CommandListState {
+struct __declspec(uuid("8270D898-4356-4503-8DEB-9CD73BB31B21")) CommandListState {
     ~CommandListState();
 
     /// Parent state

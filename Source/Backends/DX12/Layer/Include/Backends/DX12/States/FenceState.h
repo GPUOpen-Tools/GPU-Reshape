@@ -6,7 +6,7 @@
 // Common
 #include <Common/Allocators.h>
 
-struct FenceState {
+struct __declspec(uuid("C36CADAF-D6C8-4DC4-B906-CCE432A96956")) FenceState {
     ~FenceState();
 
     /// Check if a commit has been completed

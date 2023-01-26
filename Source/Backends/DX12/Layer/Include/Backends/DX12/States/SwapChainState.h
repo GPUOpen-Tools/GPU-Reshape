@@ -9,7 +9,7 @@
 // Std
 #include <vector>
 
-struct SwapChainState {
+struct __declspec(uuid("664ECE39-6CD9-49E1-9790-21464F3F450A")) SwapChainState {
     ~SwapChainState();
 
     /// Parent state

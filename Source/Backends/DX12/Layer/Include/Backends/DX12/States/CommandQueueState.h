@@ -14,7 +14,7 @@
 struct ShaderExportQueueState;
 struct IncrementalFence;
 
-struct CommandQueueState {
+struct __declspec(uuid("0808310A-9E0B-41B6-81E5-4840CDF1EDAA")) CommandQueueState {
     ~CommandQueueState();
 
     /// Pop a new command list

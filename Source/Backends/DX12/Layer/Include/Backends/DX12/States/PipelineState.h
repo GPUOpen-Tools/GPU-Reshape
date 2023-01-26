@@ -21,7 +21,7 @@
 struct RootSignatureState;
 struct ShaderState;
 
-struct PipelineState : public ReferenceObject {
+struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : public ReferenceObject {
     /// Reference counted destructor
     virtual ~PipelineState();
 
