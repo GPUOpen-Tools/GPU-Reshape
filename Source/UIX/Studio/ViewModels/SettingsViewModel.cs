@@ -83,17 +83,13 @@ namespace Studio.ViewModels
         public SettingsViewModel()
         {
             // Create service
-            _discoveryService = new DiscoveryService();
+            _discoveryService = App.Locator.GetService<Services.IBackendDiscoveryService>()?.Service;
             
-            // Install
-            if (!_discoveryService.Install())
+            // Set status on failure
+            if (_discoveryService == null)
             {
-                // Set status
                 Status = "Failed initialization";
                 ButtonText = "None";
-                
-                // Invalidate
-                _discoveryService = null;
             }
             
             // Create commands

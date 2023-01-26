@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using Avalonia;
+using Discovery.CLR;
 using Dock.Model.Controls;
 using Dock.Model.Core;
 using ReactiveUI;
@@ -111,6 +112,16 @@ namespace Studio.ViewModels
                 if (dock.Close.CanExecute(null))
                 {
                     dock.Close.Execute(null);
+                }
+            }
+
+            // Get valid discovery
+            if (App.Locator.GetService<IBackendDiscoveryService>() is { Service: { } } discovery)
+            {
+                // In case this is not a global install, remove the hooks on exit 
+                if (!discovery.Service.IsGloballyInstalled())
+                {
+                    discovery.Service.Stop();
                 }
             }
         }

@@ -30,7 +30,7 @@ bool QueryService(const wchar_t *name, const wchar_t *path) {
     wchar_t buffer[2048];
 
     // Size of data, replaced
-    DWORD bufferSize = sizeof(2048);
+    DWORD bufferSize = sizeof(buffer);
 
     // Attempt to query key, if it already exists, another service is present
     error = RegGetValueW(
@@ -71,7 +71,7 @@ bool InstallService(const wchar_t *name, const wchar_t *path) {
     wchar_t buffer[2048];
 
     // Size of data, replaced
-    DWORD bufferSize = sizeof(2048);
+    DWORD bufferSize = sizeof(buffer);
 
     // Attempt to query key, if it already exists, another service is present
     error = RegGetValueW(

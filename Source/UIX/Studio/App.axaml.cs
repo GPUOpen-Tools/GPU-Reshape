@@ -73,6 +73,9 @@ namespace Studio
 
             // Initiates the host resolver if not already up and running
             locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
+            
+            // Local discoverability
+            locator.BindToSelf<Services.IBackendDiscoveryService>(new Services.BackendDiscoveryService());
         }
 
         private void InstallPlugins()
