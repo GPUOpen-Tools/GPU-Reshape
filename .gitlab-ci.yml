@@ -12,7 +12,7 @@ build_release:
   stage: build
   artifacts:
     paths:
-    - Bin/Release/
+    - Bin/MSVC/Release/
   script:
   - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Release" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019" -DCMAKE_VS_NUGET_PACKAGE_RESTORE=ON'
   - 'cmake -P Build/Utils/CSProjPatch.cmake '
@@ -27,7 +27,7 @@ build_debug:
   stage: build
   artifacts:
     paths:
-    - Bin/Debug/
+    - Bin/MSVC/Debug/
   script:
   - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Debug" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019" -DCMAKE_VS_NUGET_PACKAGE_RESTORE=ON'
   - 'cmake -P Build/Utils/CSProjPatch.cmake '
