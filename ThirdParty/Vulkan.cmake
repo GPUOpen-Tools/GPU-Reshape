@@ -3,7 +3,7 @@
 ExternalProject_Add(
     VulkanHeaders
     GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers
-    GIT_TAG v1.2.189
+    GIT_TAG v1.3.236
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/VulkanHeaders
     USES_TERMINAL_INSTALL 0
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
@@ -27,7 +27,7 @@ ExternalProject_Add(
     VulkanLoader
     DEPENDS VulkanHeaders
     GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Loader
-    GIT_TAG sdk-1.2.189.0
+    GIT_TAG sdk-1.3.236.0
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/VulkanLoader
     USES_TERMINAL_INSTALL 0
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
