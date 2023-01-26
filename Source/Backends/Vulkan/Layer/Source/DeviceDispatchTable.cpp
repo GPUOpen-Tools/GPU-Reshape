@@ -62,6 +62,7 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkDestroyFence = reinterpret_cast<PFN_vkDestroyFence>(getDeviceProcAddr(object, "vkDestroyFence"));
     next_vkResetFences = reinterpret_cast<PFN_vkResetFences>(getDeviceProcAddr(object, "vkResetFences"));
     next_vkCreateRenderPass = reinterpret_cast<PFN_vkCreateRenderPass>(getDeviceProcAddr(object, "vkCreateRenderPass"));
+    next_vkCreateRenderPass2 = reinterpret_cast<PFN_vkCreateRenderPass2>(getDeviceProcAddr(object, "vkCreateRenderPass2"));
     next_vkDestroyRenderPass = reinterpret_cast<PFN_vkDestroyRenderPass>(getDeviceProcAddr(object, "vkDestroyRenderPass"));
     next_vkBindBufferMemory = reinterpret_cast<PFN_vkBindBufferMemory>(getDeviceProcAddr(object, "vkBindBufferMemory"));
     next_vkUpdateDescriptorSets = reinterpret_cast<PFN_vkUpdateDescriptorSets>(getDeviceProcAddr(object, "vkUpdateDescriptorSets"));
@@ -177,6 +178,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkCreateRenderPass"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateRenderPass);
+
+    if (!std::strcmp(name, "vkCreateRenderPass2"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateRenderPass2);
 
     if (!std::strcmp(name, "vkCreateDescriptorPool"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateDescriptorPool);

@@ -76,7 +76,7 @@ list(JOIN VkHooks "," VkHooksJoin)
 list(JOIN VkWhitelist "," VkWhitelistJoin)
 
 # Object list
-set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkDeviceCreateInfo)
+set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkDeviceCreateInfo,VkPipelineShaderStageCreateInfo)
 
 # Generate the deep copy objects
 add_custom_command(

@@ -30,14 +30,15 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, 
     auto state = new(table->allocators) DescriptorSetLayoutState;
     state->object = *pSetLayout;
     state->compatabilityHash = 0x0;
-    state->descriptorCount = pCreateInfo->bindingCount;
+    state->descriptorCount = 0;
 
     // Hash
     CombineHash(state->compatabilityHash, pCreateInfo->bindingCount);
 
     // Check all binding types
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
-        switch (pCreateInfo->pBindings[i].descriptorType) {
+        const VkDescriptorSetLayoutBinding& binding = pCreateInfo->pBindings[i];
+        switch (binding.descriptorType) {
             default:
                 break;
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
@@ -47,9 +48,12 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, 
         }
 
         // Hash
-        CombineHash(state->compatabilityHash, pCreateInfo->pBindings[i].descriptorType);
-        CombineHash(state->compatabilityHash, pCreateInfo->pBindings[i].descriptorCount);
-        CombineHash(state->compatabilityHash, pCreateInfo->pBindings[i].binding);
+        CombineHash(state->compatabilityHash, binding.descriptorType);
+        CombineHash(state->compatabilityHash, binding.descriptorCount);
+        CombineHash(state->compatabilityHash, binding.binding);
+
+        // Accumulate bound
+        state->descriptorCount = std::max(state->descriptorCount, binding.binding + binding.descriptorCount);
     }
 
     // Store lookup
@@ -335,7 +339,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
 
         // Copy previous ranges
         auto *ranges = ALLOCA_ARRAY(VkPushConstantRange, pCreateInfo->pushConstantRangeCount + 1);
-        std::memcpy(setLayouts, pCreateInfo->pSetLayouts, sizeof(VkPushConstantRange) * pCreateInfo->pushConstantRangeCount);
+        std::memcpy(ranges, pCreateInfo->pPushConstantRanges, sizeof(VkPushConstantRange) * pCreateInfo->pushConstantRangeCount);
 
         // Get number of events
         uint32_t eventCount{0};

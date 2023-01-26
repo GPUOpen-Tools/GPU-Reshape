@@ -25,6 +25,30 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass(VkDevice device, const Vk
     return VK_SUCCESS;
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2(VkDevice device, const VkRenderPassCreateInfo2* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkRenderPass* pRenderPass) {
+    DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Pass down callchain
+    VkResult result = table->next_vkCreateRenderPass2(device, pCreateInfo, pAllocator, pRenderPass);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    // Create the new state
+    auto state = new(table->allocators) RenderPassState;
+    state->table = table;
+    state->object = *pRenderPass;
+
+    // External user
+    state->AddUser();
+
+    // Store lookup
+    table->states_renderPass.Add(*pRenderPass, state);
+
+    // OK
+    return VK_SUCCESS;
+}
+
 VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyRenderPass(VkDevice device, VkRenderPass renderPass, const VkAllocationCallbacks* pAllocator) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
