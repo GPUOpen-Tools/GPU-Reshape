@@ -290,14 +290,6 @@
             "fileVersion": "1.0.0.0"
           }
         }
-      },
-      "Dock.Model/0.10.18.0": {
-        "runtime": {
-          "Dock.Model.dll": {
-            "assemblyVersion": "0.10.18.0",
-            "fileVersion": "0.10.18.0"
-          }
-        }
       }
     }
   },
@@ -489,11 +481,6 @@
       "sha512": ""
     },
     "UIX.Studio.Runtime/1.0.0.0": {
-      "type": "reference",
-      "serviceable": false,
-      "sha512": ""
-    },
-    "Dock.Model/0.10.18.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
