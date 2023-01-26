@@ -7,6 +7,7 @@ endif()
 
 if (CMAKE_GENERATOR MATCHES "Visual Studio")
     include(VisualStudio.cmake)
+    include(MSBuild.cmake)
 endif()
 
 if (${ENABLE_ASAN} AND NOT CMAKE_GENERATOR MATCHES "Visual Studio")
