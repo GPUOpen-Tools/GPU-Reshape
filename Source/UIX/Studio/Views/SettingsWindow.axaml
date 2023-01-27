@@ -30,7 +30,7 @@
     <Grid>
         <!-- Tool Header -->
         <StackPanel VerticalAlignment="Top" Orientation="Horizontal"  Margin="5">
-            <Image Source="/Resources/Icons/AppBlack.png" Width="17" />
+            <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="17" />
 
             <TextBlock Margin="7,0,0,0">Settings</TextBlock>
         </StackPanel>

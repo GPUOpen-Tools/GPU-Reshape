@@ -3,7 +3,7 @@
         <OutputType>WinExe</OutputType>
         <TargetFramework>net5.0</TargetFramework>
         <Nullable>enable</Nullable>
-        <ApplicationIcon>Resources\Icons\AppBlack.ico</ApplicationIcon>
+        <ApplicationIcon>Resources\Icons\Icon_Frame.ico</ApplicationIcon>
         <TargetCulture>en</TargetCulture>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
         <Configurations>Debug;Release</Configurations>
@@ -78,10 +78,6 @@
         <DependentUpon>WorkspacePropertyView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <None Remove="Resources\Icons\AppBlack.ico" />
-      <AvaloniaResource Include="Resources\Icons\AppBlack.ico" />
-      <None Remove="Resources\Icons\AppBlack.png" />
-      <AvaloniaResource Include="Resources\Icons\AppBlack.png" />
       <Compile Update="Views\SettingsWindow.axaml.cs">
         <DependentUpon>SettingWindow.axaml</DependentUpon>
         <SubType>Code</SubType>
@@ -126,6 +122,10 @@
         <DependentUpon>NetworkStatusView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <AvaloniaResource Include="Resources\Icons\Icon_NoFrame.png" />
+      <AvaloniaResource Include="Resources\Icons\Icon.svg" />
+      <AvaloniaResource Include="Resources\Icons\Icon_Frame.ico" />
+      <AvaloniaResource Include="Resources\Icons\Icon_Frame.png" />
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
@@ -133,7 +133,6 @@
         <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       </EmbeddedResource>
       <None Remove="Resources\Icons\App.png" />
-      <AvaloniaResource Include="Resources\Icons\App.png" />
     </ItemGroup>
     <ItemGroup>
       <Reference Include="Features.ResourceBounds.Backend.DotNet">

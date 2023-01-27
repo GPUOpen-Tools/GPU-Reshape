@@ -20,7 +20,7 @@
     </Design.DataContext>
     <Grid RowDefinitions="30,*,25" ColumnDefinitions="Auto,*" Name="MainGrid">
         <Grid Grid.Row="0" Grid.Column="0">
-            <Image Source="/Resources/Icons/AppBlack.png" Width="20" Margin="5,0,0,0" HorizontalAlignment="Left" />
+            <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="20" Margin="5,0,0,0" HorizontalAlignment="Left" />
 
             <Menu 
                 Grid.Row="0" 

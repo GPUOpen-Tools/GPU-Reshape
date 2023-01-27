@@ -118,7 +118,7 @@ namespace Studio.ViewModels
             // Get valid discovery
             if (App.Locator.GetService<IBackendDiscoveryService>() is { Service: { } } discovery)
             {
-                // In case this is not a global install, remove the hooks on exit 
+                // In case this is not a global install, remove the hooks on exit
                 if (!discovery.Service.IsGloballyInstalled())
                 {
                     discovery.Service.Stop();

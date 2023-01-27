@@ -22,7 +22,7 @@
     <Grid Margin="5">
         <!-- Tool Header -->
         <StackPanel VerticalAlignment="Top" Orientation="Horizontal">
-            <Image Source="/Resources/Icons/AppBlack.png" Width="17" />
+            <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="17" />
 
             <TextBlock Margin="7,0,0,0">About GPU Rebase</TextBlock>
         </StackPanel>
@@ -30,7 +30,7 @@
         <!-- Content -->
         <Grid Margin="25,50,5,30" VerticalAlignment="Top" HorizontalAlignment="Left">
             <StackPanel Orientation="Horizontal">
-                <Image Source="/Resources/Icons/AppBlack.png" VerticalAlignment="Top" Width="85" />
+                <Image Source="/Resources/Icons/Icon_NoFrame.png" VerticalAlignment="Top" Width="85" />
 
                 <StackPanel Orientation="Vertical" Margin="15,0,0,0">
                     <TextBlock Margin="0" FontSize="15" FontWeight="Bold" Text="GPU Rebase a2023.0.0" />
