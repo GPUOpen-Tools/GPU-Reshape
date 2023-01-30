@@ -31,6 +31,7 @@ class Registry;
 using PFN_CREATE_DXGI_FACTORY = HRESULT(WINAPI*)(REFIID riid, _COM_Outptr_ void **ppFactory);
 using PFN_CREATE_DXGI_FACTORY1 = HRESULT(WINAPI*)(REFIID riid, _COM_Outptr_ void **ppFactory);
 using PFN_CREATE_DXGI_FACTORY2 = HRESULT(WINAPI*)(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory);
+using PFN_ENABLE_EXPERIMENTAL_FEATURES = HRESULT(WINAPI*)(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes);
 using PFN_D3D12_SET_DEVICE_GPUOPEN_GPU_VALIDATION_INFO = HRESULT (WINAPI *)(const struct D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info);
 using PFN_D3D12_CREATE_DEVICE_GPUOPEN = HRESULT (WINAPI *)(IUnknown *pAdapter, D3D_FEATURE_LEVEL minimumFeatureLevel, REFIID riid, void **ppDevice, const struct D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info);
 using PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN = HRESULT(WINAPI *)(const struct D3D12GPUOpenFunctionTable* table);
@@ -56,12 +57,21 @@ struct D3D12GPUOpenFunctionTable {
     PFN_CREATE_DXGI_FACTORY1 next_CreateDXGIFactory1Original{nullptr};
     PFN_CREATE_DXGI_FACTORY2 next_CreateDXGIFactory2Original{nullptr};
 
+    /// Optional
+    PFN_ENABLE_EXPERIMENTAL_FEATURES next_EnableExperimentalFeatures{nullptr};
+
     /// Extensions
     PFN_AMD_AGS_CREATE_DEVICE  next_AMDAGSCreateDevice{nullptr};
     PFN_AMD_AGS_DESTRIY_DEVICE next_AMDAGSDestroyDevice{nullptr};
     PFN_AMD_AGS_PUSH_MARKER    next_AMDAGSPushMarker{nullptr};
     PFN_AMD_AGS_POP_MARKER     next_AMDAGSPopMarker{nullptr};
     PFN_AMD_AGS_SET_MARKER     next_AMDAGSSetMarker{nullptr};
+};
+
+/// Process state
+struct D3D12GPUOpenProcessState {
+    bool isExperimentalModeEnabled{false};
+    bool isExperimentalShaderModelsEnabled{false};
 };
 
 /// Bootstrapper info
@@ -74,6 +84,9 @@ extern std::optional<D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO> D3D12DeviceGPUOpe
 
 /// Shared function table
 extern D3D12GPUOpenFunctionTable D3D12GPUOpenFunctionTableNext;
+
+/// Shared process info
+extern D3D12GPUOpenProcessState D3D12GPUOpenProcessInfo;
 
 /// Prototypes
 /// Set the shared validation info

@@ -35,6 +35,7 @@
 
 // Common
 #include <Common/IComponentTemplate.h>
+#include <Common/GlobalUID.h>
 
 // Detour
 #include <Detour/detours.h>
@@ -279,6 +280,66 @@ static bool IsSupportedFeatureLevel(IUnknown* opaqueAdapter, D3D_FEATURE_LEVEL f
     return true;
 }
 
+// https://stackoverflow.com/questions/41231586/how-to-detect-if-developer-mode-is-active-on-windows-10
+[[maybe_unused]]
+static bool IsDevelopmentModeEnabled() {
+    HKEY keyHandle;
+
+    // Development mode path
+    if (LSTATUS result = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock", 0, KEY_READ, &keyHandle); result != ERROR_SUCCESS) {
+        return false;
+    }
+
+    // Resulting data
+    DWORD value{};
+    DWORD valueSize = sizeof(value);
+
+    // Query development mode
+    LRESULT result = RegQueryValueExW(keyHandle, L"AllowDevelopmentWithoutDevLicense", 0, nullptr, reinterpret_cast<LPBYTE>(&value), &valueSize);
+
+    // Cleanup
+    RegCloseKey(keyHandle);
+
+    // Failed?
+    if (result != ERROR_SUCCESS) {
+        return false;
+    }
+
+    // OK
+    return value != 0;
+}
+
+static void ConditionallyEnableExperimentalMode() {
+    // Not of use when debugging
+#if defined(NDEBUG)
+    // Only attempt this on development modes
+    if (static bool DeveloperModeEnabled = IsDevelopmentModeEnabled(); !DeveloperModeEnabled) {
+        return;
+    }
+
+    // Only invoke on first run, successive device creations are lost otherwise
+    if (D3D12GPUOpenProcessInfo.isExperimentalModeEnabled) {
+        return;
+    }
+
+    // Keep track
+    D3D12GPUOpenProcessInfo.isExperimentalModeEnabled = true;
+
+    // Request experimental shader models
+    UUID ExperimentalShaderModels = GlobalUID::FromString("{76f5573e-f13a-40f5-b297-81ce9e18933f}").AsPlatformGUID();
+
+    // Pass down callchain
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures(1u, &ExperimentalShaderModels, nullptr, nullptr);
+    if (FAILED(hr)) {
+        // Logging?
+        return;
+    }
+
+    // OK!
+    D3D12GPUOpenProcessInfo.isExperimentalShaderModelsEnabled = true;
+#endif // defined(NDEBUG)
+}
+
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
@@ -287,6 +348,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 ) {
     // Object
     ID3D12Device *device{nullptr};
+
+    // Try to enable for faster instrumentation
+    ConditionallyEnableExperimentalMode();
 
     // Pass down callchain
     HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
@@ -318,6 +382,9 @@ HRESULT WINAPI HookID3D12CreateDevice(
     // Object
     ID3D12Device *device{nullptr};
 
+    // Try to enable for faster instrumentation
+    ConditionallyEnableExperimentalMode();
+
     // Pass down callchain
     HRESULT hr = D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, IID_PPV_ARGS(&device));
     if (FAILED(hr)) {
@@ -340,10 +407,27 @@ HRESULT WINAPI HookID3D12CreateDevice(
     );
 }
 
+HRESULT WINAPI HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes) {
+    // Keep track
+    D3D12GPUOpenProcessInfo.isExperimentalModeEnabled = true;
+
+    // Pass down callchain
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // OK
+    return S_OK;
+}
+
 AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams) {
     // Create with base interface
     AGSDX12DeviceCreationParams params = *creationParams;
     params.iid = __uuidof(ID3D12Device);
+
+    // Try to enable for faster instrumentation
+    ConditionallyEnableExperimentalMode();
 
     // Pass down callchain
     AGSReturnCode code = D3D12GPUOpenFunctionTableNext.next_AMDAGSCreateDevice(context, &params, extensionParams, returnedParams);
@@ -417,6 +501,10 @@ bool GlobalDeviceDetour::Install() {
     D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(GetProcAddress(handle, "D3D12CreateDevice"));
     DetourAttach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
 
+    // Attach against original address
+    D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(GetProcAddress(handle, "D3D12EnableExperimentalFeatures"));
+    DetourAttach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
+
     // OK
     return true;
 }
@@ -424,6 +512,7 @@ bool GlobalDeviceDetour::Install() {
 void GlobalDeviceDetour::Uninstall() {
     // Detach from detour
     DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
+    DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
 }
 
 void BridgeDeviceSyncPoint(DeviceState *device) {

@@ -1,4 +1,5 @@
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
+#include <Backends/DX12/Layer.h>
 
 // System
 #include <Windows.h>
@@ -55,6 +56,9 @@ bool DXILSigner::Install() {
         return false;
     }
 
+    // Signing may not be required
+    needsSigning = !D3D12GPUOpenProcessInfo.isExperimentalShaderModelsEnabled;
+
     // OK
     return true;
 }
@@ -74,6 +78,14 @@ DXILSigner::~DXILSigner() {
 
 bool DXILSigner::Sign(void *code, uint64_t length) {
     Microsoft::WRL::ComPtr<IDxcOperationResult> result;
+
+    // Early out if not needed
+    //  ! Keep it in for debug validation
+#if defined(NDEBUG)
+    if (!needsSigning) {
+        return true;
+    }
+#endif // defined(NDEBUG)
 
     // Create a pinned blob (no-copy)
     Microsoft::WRL::ComPtr<IDxcBlobEncoding> pinnedBlob;

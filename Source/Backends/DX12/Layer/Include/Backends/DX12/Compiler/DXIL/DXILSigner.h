@@ -38,4 +38,7 @@ private:
     /// Dynamic modules
     HMODULE dxilModule{nullptr};
     HMODULE dxCompilerModule{nullptr};
+
+    /// Signing required?
+    bool needsSigning{true};
 };

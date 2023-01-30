@@ -200,6 +200,11 @@ void BootstrapLayer(const char* invoker, bool native) {
         DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory2"));
     }
 
+    // Get feature enabling if not hooked
+    if (!DetourFunctionTable.next_EnableExperimentalFeatures) {
+        DetourFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12EnableExperimentalFeatures"));
+    }
+
     // Get amd ags if not hooked
     if (!DetourFunctionTable.next_AMDAGSCreateDevice) {
         DetourFunctionTable.next_AMDAGSCreateDevice  = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_CreateDevice"));
@@ -223,6 +228,7 @@ void BootstrapLayer(const char* invoker, bool native) {
         LayerFunctionTable.next_CreateDXGIFactoryOriginal  = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(Kernel32GetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory"));
         LayerFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(Kernel32GetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory1"));
         LayerFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(Kernel32GetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory2"));
+        LayerFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(Kernel32GetProcAddressOriginal(LayerModule, "D3D12EnableExperimentalFeatures"));
         LayerFunctionTable.next_AMDAGSCreateDevice         = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(GetProcAddress(LayerModule, "HookAMDAGSCreateDevice"));
         LayerFunctionTable.next_AMDAGSDestroyDevice        = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(GetProcAddress(LayerModule, "HookAMDAGSDestroyDevice"));
         LayerFunctionTable.next_AMDAGSPushMarker           = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(GetProcAddress(LayerModule, "HookAMDAGSPushMarker"));
@@ -296,6 +302,8 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
             else if (LayerModule == D3D12Module) {
                 if (!std::strcmp(lpProcName, "D3D12CreateDevice")) {
                     return Kernel32GetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice");
+                } else if (!std::strcmp(lpProcName, "D3D12EnableExperimentalFeatures")) {
+                    return Kernel32GetProcAddressOriginal(LayerModule, "HookD3D12EnableExperimentalFeatures");
                 }
             }
 
@@ -496,6 +504,11 @@ HRESULT WINAPI HookID3D12CreateDevice(
     return LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, riid, ppDevice);
 }
 
+HRESULT HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes) {
+    WaitForDeferredInitialization();
+    return LayerFunctionTable.next_EnableExperimentalFeatures(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
+}
+
 AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams) {
     WaitForDeferredInitialization();
     return LayerFunctionTable.next_AMDAGSCreateDevice(context, creationParams, extensionParams, returnedParams);
@@ -587,6 +600,10 @@ void DetourInitialCreation() {
         // Attach against original address
         DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12CreateDevice"));
         DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
+
+        // Attach against original address
+        DetourFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12EnableExperimentalFeatures"));
+        DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
     }
 
     // Attempt to find dxgi module
@@ -619,6 +636,12 @@ void DetachInitialCreation() {
     if (DetourFunctionTable.next_D3D12CreateDeviceOriginal) {
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
         DetourFunctionTable.next_D3D12CreateDeviceOriginal = nullptr;
+    }
+
+    // Remove device
+    if (DetourFunctionTable.next_EnableExperimentalFeatures) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
+        DetourFunctionTable.next_EnableExperimentalFeatures = nullptr;
     }
 
     // Remove factory revision 0

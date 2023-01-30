@@ -139,7 +139,8 @@ bool ShaderProgramHost::InstallPrograms() {
         computeDesc.pRootSignature = rootSignature;
 
         // Finally, create the pipeline
-        if (FAILED(device->object->CreateComputePipelineState(&computeDesc, __uuidof(ID3D12PipelineState), reinterpret_cast<void**>(&entry.pipeline)))) {
+        HRESULT result = device->object->CreateComputePipelineState(&computeDesc, __uuidof(ID3D12PipelineState), reinterpret_cast<void**>(&entry.pipeline));
+        if (FAILED(result)) {
             return false;
         }
     }
