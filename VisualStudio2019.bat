@@ -1,7 +1,7 @@
 @echo off
 
 rem Info
-echo GPU Rebase - Solution generator
+echo GPU Reshape - Solution generator
 echo:
 echo For the full set of configuration switches and options, see the build documentation.
 echo:

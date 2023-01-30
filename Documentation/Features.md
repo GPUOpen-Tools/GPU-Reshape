@@ -10,7 +10,7 @@ Status of all implemented and planned features.
 | Descriptor bounds            | Validation   | :heavy_check_mark: | :heavy_check_mark: |
 | Resource export stability    | Validation   | :heavy_check_mark: | :heavy_check_mark: |
 | Concurrency                  | Validation   | :heavy_check_mark: | :heavy_check_mark: |
-| Resource initialization      | Validation   | :heavy_check_mark: |                    |
+| Resource initialization      | Validation   | :heavy_check_mark: | :heavy_check_mark: |
 | Numeric & builtin stability  | Validation   |                    |                    |
 | Indirect parameters          | Validation   |                    |                    |
 | Direct Parameters            | Validation   |                    |                    |

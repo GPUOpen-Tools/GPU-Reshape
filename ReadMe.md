@@ -1,7 +1,8 @@
-# GPUOpen - GPU Based Validation
+<img style="float: left;" width="175" src="/Source/UIX/Studio/Resources/Icons/Icon_Frame.png">
 
-An open collaboration between AMD, Avalanche Studios and Miguel Petersen. \
-_( just example crediting, I'm sure there's a far more professional / official way to go about this! )_
+# GPU Reshape
+
+An open collaboration between **Miguel Petersen** (author), **Advanced Micro Devices** and **Avalanche Studios Group**.
 
 ---
 
@@ -15,59 +16,63 @@ _( just example crediting, I'm sure there's a far more professional / official w
 
 ---
 
-Sample screenshot showcasing early UIX development, demonstrating a functional 
-application stack to mature projects. **The UIX is less than a month old, functionality and visuals will improve drastically over time.**
+<p float="left">
+  <img src="/Documentation/Resources/Images/StudioC.png" width="450" /> 
+  <img src="/Documentation/Resources/Images/StudioB.png" width="450" />
+</p>
 
-![Studio Preview](Documentation/Resources/Images/StudioC.png)
+**GPU Reshape** offers API agnostic instrumentation of GPU side operations to perform, e.g., validation of potentially undefined behaviour, supporting both Vulkan and D3D12 (DXIL).
+No application side integration is required.
 
+Current feature scope provides instrumentation on operations which are either undefined behaviour, or typically indicative of user fault such as:
 
-## The life of a validation message
+- Validation on out-of-bounds resource reads / writes
+- Validation on out-of-bounds descriptor reads, and descriptor compatability testing
+- Validation of floating point exports (fragment, unordered access view) against NaN / Inf
+- Detection of potentially hazardous concurrent resource read / writes
+- Validation of resource initialization during reads
 
-### Connection
+The future feature scope includes profiling and debugging functionality, such as branch hot spots, live breakpoints, and assertions. 
+For the full planned feature set, see [Features](Documentation/Features.md).
 
-Any application using a supported API (Vulkan, DX12 *1) first attempts communication
-with the host resolver service. The host resolver service is responsible for general 
-discoverability and handshakes between clients and applications. If the host resolver service 
-cannot be found, an instance is started. Once connected, general application information is
-submitted such as the name, API and process ID.
+## Instrumentation as a framework
 
-The remote client, i.e. instance of the UIX above, connects to the host resolver at specified IP 
-(no restriction on endpoint) and preconfigured port. Once connected, the client requests all discovered
-applications on the target machine, and their associated metadata. Once an application has been selected,
-a connection request is sent to the host resolver.
+The toolset provides a generalized SSA-based intermediate language from which all instrumentation is done, bi-directionally translated to SPIRV and DXIL.
+Each feature, such as the validation of out-of-bounds reads, operates solely on the intermediate language and has no visibility on the backend language nor API.
 
-Upon receiving a connection request, the host resolver passes this to the respective application and requests
-that the client instantiates a local server. The application server is created on demand as to not
-pollute local ports. Once instantiated, the system allocated port is sent to the host resolver, which sends 
-the dedicated connection information back to the remote client.
+Each feature can alter the program as it sees fit, such as adding basic-blocks, modifying instructions, and even removing instructions. The feature is given a [Program](Documentation/API/IL.md), which
+act as the abstraction for the active backend, from which the user has access to all functions, basic-blocks, instructions, types, etc..., and is able to modify as necessary.
+After modification, the backend then performs just-in-time recompilation of the modified program back to the backend language.
 
-The remote client now holds a dedicated connection to the application.
+The toolset additionally provides a set of building blocks needed for instrumentation:
 
-(1) DX12 support is a work in progress
+- [Message Streams](Documentation/API/Message.md) help facilitate GPU -> CPU communication, and also serves as the base for inter-process/endpoint communication.
+- Persistent data such as buffers, textures and push / root constants, visible to all instrumentation features. Certain features require state management.
+- User programs, entirely user driven compute kernels written through the intermediate language. All persistent data visible.
+- User side command hooking, certain features may wish to modify state, invoke kernels, before the pending command.
+- Resource tokens, abstracting away differences in binding models by providing a token from shader resource handles. Each token provides a physical UID, resource type and sub-resource base.
+- (*, there's more, need to expand, and write documentation...)
 
-### Instrumentation
+Features do not need to concern themselves with backend specifics, such as vectorized versus scalarized execution, control-flow requirements, and other implementation details. Given compliance, each feature
+will translate seamlessly to the backend language.
 
-The remote client requests instrumentation of all pipelines / shaders by sending the respective messages to the application.
-Through the dedicated connection, all communication is performed through the language-agnostic messaging API. 
+This toolset aims to serve as a **framework** for instrumentation, acting as a modular base from which any number of tools, techniques, optimizations, etc..., can be implemented. 
 
-Once recieved, the application begins JIT recompilation of all affected shader modules and pipelines, through the API-agnostic bi-directional intermediate language.
-The instrumentation is entirely modularized, and operates solely on the mentioned intermediate language.
+## Credit
 
-Once the instrumentation request has completed, the backend pushes the instrumentation state for succeeding command buffers / lists.
-And performs all relevant state management.
+GPU Reshape was initially developed as a prototype tool by Miguel Petersen at Avalanche Studios Group, extending validation tools to shader side operations.
+It was then requested to continue development externally through an open collaboration on GPUOpen.
 
-Up-stream message (GPU to CPU) exporting on shader instrumentation failures is performed through the same
-agnostic messaging API. Due to the flat in-memory representation there is a zero deserialization cost, which in turn means that the
-up-stream messages can be streamed directly to the remote client without any processing.
+Development is lead by Miguel Petersen, with support by: (readme todo, support? sounds vague, collaborators? need to figure out the terminology for proper crediting)
 
-Upon validation errors, the GPU message stream is transferred over and submitted to all connected clients. Exact submission, segmentation,
-and compression policy is up to the respective backend.
+- Lou Kramer (AMD)
+- Jonas Gustavsson (AMD)
+- Daniel Isheden (Avalanche Studios)
+- Alexander Polya (Avalanche Studios)
+- Wiliam Hjelm (Avalanche Studios)
 
-### Metadata
-
-The remote client then requests numerous metadata requests, such as the active shaders, code within a shader, validation shader location lookups, etc...
-anything needed to create a respectable presentation of the application state.
-
-Everything passing through language boundaries (C++, C#), machine boundaries (networking), and even hardware boundaries (GPU, CPU)
-uses the same messaging API. Any created message is entirely compatible with any of the other receivers.
-Reading and writing to said messages is performed through auto-generated helpers, even for emitting messages through the intermediate language.
+Copyright © 2023 Miguel Petersen
+</br>
+Copyright © 2023 Advanced Micro Devices
+</br>
+Copyright © 2023 Avalanche Studios Group
