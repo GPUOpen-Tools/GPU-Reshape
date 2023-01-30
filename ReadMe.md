@@ -1,28 +1,28 @@
-<img style="float: left;" width="175" src="/Source/UIX/Studio/Resources/Icons/Icon_Frame.png">
-
-# GPU Reshape
-
-An open collaboration between **Miguel Petersen** (author), **Advanced Micro Devices** and **Avalanche Studios Group**.
-
----
-
-[Build](Documentation/Build.md) -
-[UIX](Documentation/UIX.md) -
-[API](Documentation/API.md) -
-[Motivation](Documentation/Motivation.md) -
-[Design](Documentation/Design.md) -
-[Features](Documentation/Features.md) -
-[Proof of concept](Avalanche/ReadMe.md)
-
----
-
-<p float="left">
-  <img src="/Documentation/Resources/Images/StudioC.png" width="450" /> 
-  <img src="/Documentation/Resources/Images/StudioB.png" width="450" />
-</p>
+<h1><img align="center" height="75" src="/Source/UIX/Studio/Resources/Icons/Icon_Frame.png"> <a>GPU Reshape</a></h1>
 
 **GPU Reshape** offers API agnostic instrumentation of GPU side operations to perform, e.g., validation of potentially undefined behaviour, supporting both Vulkan and D3D12 (DXIL).
 No application side integration is required.
+
+GPU Reshape is an open collaboration between **Miguel Petersen** (author), **Advanced Micro Devices** and **Avalanche Studios Group**.
+
+<p float="left" align="center">
+  <img src="/Documentation/Resources/Images/StudioC.png" width="400" /> 
+  <img src="/Documentation/Resources/Images/StudioB.png" width="417" />
+</p>
+
+---
+
+<p align="center">
+  <a href="Documentation/Build.md">Build</a> -
+  <a href="Documentation/UIX.md">UIX</a> -
+  <a href="Documentation/API.md">API</a> -
+  <a href="Documentation/Motivation.md">Motivation</a> -
+  <a href="Documentation/Design.md">Design</a> -
+  <a href="Documentation/Features.md">Features</a> -
+  <a href="Avalanche/ReadMe.md">Proof of concept</a>
+</p>
+
+---
 
 Current feature scope provides instrumentation on operations which are either undefined behaviour, or typically indicative of user fault such as:
 
