@@ -65,6 +65,6 @@ target_link_libraries(Libraries.Bridge.Tests PUBLIC Libraries.Bridge)
 
 #----- .Net bindings -----#
 
-if (${ENABLE_UIX})
+if (${BUILD_UIX})
     include(DotNet.cmake)
 endif()

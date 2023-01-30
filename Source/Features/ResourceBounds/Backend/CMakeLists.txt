@@ -42,6 +42,6 @@ Project_AddTest(
 
 #----- .Net bindings -----#
 
-if (${ENABLE_UIX})
+if (${BUILD_UIX})
     Project_AddSchemaDotNet(Features.ResourceBounds.Backend.DotNet GeneratedCS)
 endif()

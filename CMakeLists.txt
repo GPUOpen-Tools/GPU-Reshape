@@ -44,11 +44,8 @@ else()
 endif()
 
 # UIX bindings
-if (${ENABLE_UIX})
-    if (NOT CMAKE_GENERATOR MATCHES "Visual Studio")
-        # CMake limitation
-        message(FATAL_ERROR "UIX building currently only supported on Visual Studio generators")
-    endif()
+if (${ENABLE_UIX} AND CMAKE_GENERATOR MATCHES "Visual Studio")
+    set(BUILD_UIX ON)
 
     # Enable additional languages
     enable_language(CSharp)
@@ -57,6 +54,8 @@ if (${ENABLE_UIX})
     SET(CMAKE_DOTNET_TARGET_FRAMEWORK_VERSION "v4.8")
     SET(CMAKE_CSharp_FLAGS "/langversion:6")
     SET(CMAKE_CSharp_FLAGS "/platform:x64")
+else()
+    set(BUILD_UIX OFF)
 endif()
 
 # Release configuration

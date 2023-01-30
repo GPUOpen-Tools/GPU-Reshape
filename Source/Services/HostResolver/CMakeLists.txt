@@ -51,6 +51,6 @@ add_dependencies(Services.HostResolver Services.HostResolver.Standalone)
 
 #----- .Net bindings -----#
 
-if (${ENABLE_UIX})
+if (${BUILD_UIX})
     include(DotNet.cmake)
 endif()

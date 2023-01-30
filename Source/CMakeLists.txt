@@ -15,6 +15,6 @@ add_subdirectory(Features)
 add_subdirectory(Services)
 
 # UIX
-if (${ENABLE_UIX})
+if (${BUILD_UIX})
     add_subdirectory(UIX)
 endif ()

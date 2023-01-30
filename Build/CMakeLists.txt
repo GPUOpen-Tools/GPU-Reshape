@@ -1,7 +1,7 @@
 
 include(Files.cmake)
 
-if (${ENABLE_UIX})
+if (${BUILD_UIX})
     include(CSharp.cmake)
 endif()
 

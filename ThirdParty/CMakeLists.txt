@@ -31,7 +31,7 @@ include(D3D12MA.cmake)
 include(AMDAGS.cmake)
 
 # UI?
-if (${ENABLE_UIX})
+if (${BUILD_UIX})
     include(Avalonia.cmake)
 endif ()
 

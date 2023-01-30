@@ -87,7 +87,7 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
     endif()
 
     # C#
-    if (${ENABLE_UIX})
+    if (${BUILD_UIX})
         set(OutputPath ${SCHEMA_OUT_PATH}/${SchemaName}.cs)
 
         # Generate the schema
@@ -182,6 +182,6 @@ target_link_libraries(Libraries.Message.Tests PUBLIC Libraries.Message)
 
 #----- .Net bindings -----#
 
-if (${ENABLE_UIX})
+if (${BUILD_UIX})
     include(DotNet.cmake)
 endif()

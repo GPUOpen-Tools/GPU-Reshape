@@ -41,6 +41,6 @@ add_dependencies(Services.Discovery.Standalone Features)
 
 #----- .Net bindings -----#
 
-if (${ENABLE_UIX})
+if (${BUILD_UIX})
     include(DotNet.cmake)
 endif()

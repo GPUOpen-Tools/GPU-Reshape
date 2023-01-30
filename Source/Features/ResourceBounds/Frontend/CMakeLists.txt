@@ -26,7 +26,7 @@ add_custom_command(
 
 #----- .Net UIX -----#
 
-if (${ENABLE_UIX})
+if (${BUILD_UIX})
     # Add external projects
     include_external_msproject(Features.ResourceBounds.Frontend.UIX ${CMAKE_CURRENT_SOURCE_DIR}/UIX/UIX.csproj)
 
