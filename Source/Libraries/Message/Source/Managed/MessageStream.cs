@@ -164,8 +164,12 @@ namespace Message.CLR
             // Create default request
             IMessageAllocationRequest request = new T().DefaultRequest();
 
+            // Assign schema
+            MessageSchema schema = storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Static, id = request.ID });
+            
+            // Validate
             Debug.Assert(
-                storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Static, id = request.ID }).type == MessageSchemaType.Static,
+                schema.type == MessageSchemaType.Static,
                 "Static view on non-static stream"
             );
 
@@ -248,8 +252,12 @@ namespace Message.CLR
             // Create default request
             IMessageAllocationRequest request = new T().DefaultRequest();
 
+            // Assign schema
+            MessageSchema schema = storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Dynamic, id = request.ID });
+            
+            // Validate
             Debug.Assert(
-                storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Dynamic, id = request.ID }).type == MessageSchemaType.Dynamic,
+                schema.type == MessageSchemaType.Dynamic,
                 "Dynamic view on non-dynamic stream"
             );
 
@@ -378,8 +386,12 @@ namespace Message.CLR
 
         public OrderedMessageView(S storage)
         {
+            // Assign schema
+            MessageSchema schema = storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Ordered, id = ~0u });
+            
+            // Validate
             Debug.Assert(
-                storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Ordered, id = ~0u }).type == MessageSchemaType.Ordered,
+                schema.type == MessageSchemaType.Ordered,
                 "Ordered view on unordered stream"
             );
 
