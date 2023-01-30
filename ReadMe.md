@@ -7,7 +7,7 @@ GPU Reshape is an open collaboration between **Miguel Petersen** (author), **Adv
 
 <p float="left" align="center">
   <img src="/Documentation/Resources/Images/StudioC.png" width="400" /> 
-  <img src="/Documentation/Resources/Images/StudioB.png" width="417" />
+  <img src="/Documentation/Resources/Images/StudioB.png" width="360" />
 </p>
 
 ---
