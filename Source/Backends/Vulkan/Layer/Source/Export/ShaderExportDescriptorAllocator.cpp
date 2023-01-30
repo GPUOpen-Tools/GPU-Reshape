@@ -336,14 +336,14 @@ void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentD
     prmtWrite.dstSet = info.set;
     prmtWrite.dstBinding = bindingInfo.prmtDescriptorOffset;
 
+    // Chunk info
+    VkDescriptorBufferInfo bufferInfo;
+    bufferInfo.buffer = descriptorChunk;
+    bufferInfo.offset = 0;
+    bufferInfo.range = VK_WHOLE_SIZE;
+
     // Has descriptor data?
     if (descriptorChunk) {
-        // Chunk info
-        VkDescriptorBufferInfo bufferInfo;
-        bufferInfo.buffer = descriptorChunk;
-        bufferInfo.offset = 0;
-        bufferInfo.range = VK_WHOLE_SIZE;
-
         // Write descriptor
         VkWriteDescriptorSet& descriptorWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;

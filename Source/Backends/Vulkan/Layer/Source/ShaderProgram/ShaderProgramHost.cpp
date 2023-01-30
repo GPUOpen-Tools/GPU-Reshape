@@ -131,13 +131,13 @@ bool ShaderProgramHost::InstallPrograms() {
         layoutCreateInfo.setLayoutCount = 1;
         layoutCreateInfo.pSetLayouts = &layout;
 
+        VkPushConstantRange range;
+        range.offset = 0u;
+        range.size = eventCount * sizeof(uint32_t);
+        range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
         // Optional event data
         if (eventCount > 0) {
-            VkPushConstantRange range;
-            range.offset = 0u;
-            range.size = eventCount * sizeof(uint32_t);
-            range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
             // Set ranges
             layoutCreateInfo.pushConstantRangeCount = 1;
             layoutCreateInfo.pPushConstantRanges = &range;
