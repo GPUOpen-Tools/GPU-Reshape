@@ -14,6 +14,7 @@
 
 // Forward declarations
 struct DXJob;
+struct DXILValueReader;
 
 /// Function block
 struct DXILPhysicalBlockFunction : public DXILPhysicalBlockSection {
@@ -192,7 +193,7 @@ private:
     /// \param called called function index
     /// \param declaration pulled declaration
     /// \return true if recognized intrinsic
-    bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, LLVMRecordReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
+    bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
 
 private:
     struct FunctionBlock {

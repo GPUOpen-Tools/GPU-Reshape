@@ -2,7 +2,7 @@
 
 // Std
 #include <list>
-#include <map>
+#include <unordered_map>
 
 // Backend
 #include "BasicBlock.h"
@@ -110,7 +110,7 @@ namespace IL {
         Container basicBlocks;
 
         /// Block map
-        std::map<ID, BasicBlock*> basicBlockMap;
+        std::unordered_map<ID, BasicBlock*> basicBlockMap;
 
         /// Basic block revision
         uint32_t revision{0};

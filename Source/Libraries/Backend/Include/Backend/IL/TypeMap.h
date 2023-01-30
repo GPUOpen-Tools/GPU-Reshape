@@ -12,6 +12,7 @@
 
 // Std
 #include <map>
+#include <unordered_map>
 
 namespace Backend::IL {
     using namespace ::IL;
@@ -94,6 +95,11 @@ namespace Backend::IL {
         void SetType(ID id, const Type *type) {
             ASSERT(id != InvalidID, "SetType must have a valid id");
             ASSERT(type, "SetType must have a valid type");
+
+            if (idMap.size() <= id) {
+                idMap.resize(id + 1);
+            }
+            
             idMap[id] = type;
         }
 
@@ -101,12 +107,11 @@ namespace Backend::IL {
         /// \param id the id to be looked up
         /// \return the resulting type, may be nullptr
         const Type *GetType(ID id) const {
-            auto it = idMap.find(id);
-            if (it == idMap.end()) {
+            if (idMap.size() <= id) {
                 return nullptr;
             }
 
-            return it->second;
+            return idMap[id];
         }
 
         /// Iterator accessors
@@ -191,6 +196,6 @@ namespace Backend::IL {
         TypeMaps maps;
 
         /// Id lookup
-        std::map<ID, const Type *> idMap;
+        std::vector<const Type*> idMap;
     };
 }

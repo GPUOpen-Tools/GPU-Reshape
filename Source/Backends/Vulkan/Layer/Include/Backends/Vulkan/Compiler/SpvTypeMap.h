@@ -15,7 +15,7 @@
 #include <Common/Alloca.h>
 
 // Std
-#include <map>
+#include <unordered_map>
 
 struct SpvTypeMap {
     SpvTypeMap(const Allocators& allocators, Backend::IL::TypeMap* programMap) : allocators(allocators), programMap(programMap) {
@@ -369,6 +369,6 @@ private:
     Backend::IL::TypeMap* programMap{nullptr};
 
     /// Bidirectional
-    std::map<const Backend::IL::Type*, SpvId> spvMap;
-    std::map<SpvId, const Backend::IL::Type*> idMap;
+    std::unordered_map<const Backend::IL::Type*, SpvId> spvMap;
+    std::unordered_map<SpvId, const Backend::IL::Type*> idMap;
 };

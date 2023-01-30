@@ -42,6 +42,11 @@ struct DXILIDRemapper {
         return static_cast<IL::ID>(id & ~(1ull << 32u));
     }
 
+    /// Decode a forward encoded value
+    static uint32_t DecodeForward(uint32_t id) {
+        return static_cast<uint32_t>(-static_cast<int32_t>(id));
+    }
+
     DXILIDRemapper(DXILIDMap& idMap) : idMap(idMap) {
 
     }
@@ -207,16 +212,40 @@ struct DXILIDRemapper {
         }
     }
 
-    /// Remap a DXIL value
+    /// Check if a given value is resolved
+    /// \param record source record
+    /// \param id relative id
+    /// \return true if resolved
+    bool IsResolved(const LLVMRecord &record, uint32_t id) {
+        if (IsSourceOperand(id)) {
+            return id <= record.sourceAnchor;
+        } else {
+            ASSERT(false, "Non-source resolve states not implemented");
+            return false;
+        }
+    }
+    
+    ///  Remap a DXIL value
+    /// \param anchor source anchor
+    /// \param record source record
     /// \param source source DXIL value
-    void RemapRelative(const Anchor &anchor, const LLVMRecord &record, uint64_t &source) {
+    /// \return
+    bool RemapRelative(const Anchor &anchor, const LLVMRecord &record, uint64_t &source) {
         uint32_t absoluteRemap;
 
         // Original source mappings are allocated at a given range
         if (IsSourceOperand(source)) {
             ASSERT(record.sourceAnchor != ~0u, "Source operand on a user record");
 
-            uint32_t mapping = sourceMappings.at(record.sourceAnchor - source);
+            // Forward?
+            uint32_t mapping;
+            if (source <= record.sourceAnchor) {
+                mapping = sourceMappings.at(record.sourceAnchor - source);
+            } else {
+                mapping = sourceMappings.at(record.sourceAnchor + DXILIDRemapper::DecodeForward(static_cast<uint32_t>(source)));
+            }
+
+            // Valid?
             ASSERT(mapping != ~0u, "Remapped not found on source operand");
 
             // Assign absolute
@@ -233,13 +262,13 @@ struct DXILIDRemapper {
 #ifndef NDEBUG
         if (absoluteRemap == ~0u) {
             source = ~0u;
-            return;
+            return absoluteRemap > anchor.stitchAnchor;
         }
 #endif // NDEBUG
 
         // Re-encode relative
-        ASSERT(anchor.stitchAnchor >= absoluteRemap, "Remapping an unresolved relative, requires forward referencing");
         source = anchor.stitchAnchor - absoluteRemap;
+        return absoluteRemap > anchor.stitchAnchor;
     }
 
     /// Remap a DXIL value

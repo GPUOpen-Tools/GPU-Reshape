@@ -93,10 +93,15 @@ struct TrivialStackVector {
         size = length;
     }
 
+    /// Clear all elements
+    void Clear() {
+        size = 0;
+    }
+
     /// Reserve this container
     /// \param length the desired allocated length
     void Reserve(size_t length) {
-        if (size > STACK_LENGTH) {
+        if (size > STACK_LENGTH && length > fallback.capacity()) {
             fallback.reserve(length);
             data = fallback.data();
         }

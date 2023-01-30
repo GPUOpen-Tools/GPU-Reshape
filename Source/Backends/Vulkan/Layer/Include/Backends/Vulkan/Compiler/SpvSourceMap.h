@@ -3,7 +3,7 @@
 // Std
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 
 // Layer
 #include "Spv.h"
@@ -103,7 +103,7 @@ private:
     std::vector<PhysicalSource> physicalSources;
 
     /// All mappings
-    std::map<uint32_t, SpvSourceAssociation> sourceAssociations;
+    std::unordered_map<uint32_t, SpvSourceAssociation> sourceAssociations;
 
     /// All section mappings, to have monotonically incrementing sections
     std::vector<uint32_t> sourceMappings;

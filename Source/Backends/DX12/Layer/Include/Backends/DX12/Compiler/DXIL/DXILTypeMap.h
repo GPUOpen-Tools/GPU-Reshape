@@ -138,6 +138,11 @@ public:
         return static_cast<uint32_t>(indexLookup.size());
     }
 
+    /// Get the program side map
+    Backend::IL::TypeMap& GetProgramMap() const {
+        return programMap;
+    }
+
 private:
     /// Compile a given type
     /// \param type

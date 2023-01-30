@@ -21,10 +21,10 @@
 // TODO: Can be array lookups
 struct TraversalState {
     /// Block user counters
-    std::map<IL::ID, int32_t> userMap;
+    std::unordered_map<IL::ID, int32_t> userMap;
 
     /// Visitation state stack
-    std::map<IL::ID, bool> visitationStack;
+    std::unordered_map<IL::ID, bool> visitationStack;
 
     /// Number of users on the current candidate
     uint32_t candidateUsers{UINT32_MAX};
@@ -121,7 +121,7 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
     TraversalState state;
 
     // Phi instruction producers
-    std::map<IL::ID, std::vector<IL::ID>> phiProducers;
+    std::unordered_map<IL::ID, std::vector<IL::ID>> phiProducers;
 
     // Accumulate users
     for (IL::BasicBlock *block: basicBlocks) {

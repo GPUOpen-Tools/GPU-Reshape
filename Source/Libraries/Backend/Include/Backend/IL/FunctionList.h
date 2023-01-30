@@ -1,7 +1,7 @@
 #pragma once
 
 #include <list>
-#include <map>
+#include <unordered_map>
 
 #include "Function.h"
 
@@ -107,7 +107,7 @@ namespace IL {
         Container functions;
 
         /// Block map
-        std::map<ID, Function*> functionMap;
+        std::unordered_map<ID, Function*> functionMap;
 
         /// Basic block revision
         uint32_t revision{0};

@@ -9,7 +9,7 @@
 #include <Backend/ShaderData/ShaderDataInfo.h>
 
 // Std
-#include <map>
+#include <unordered_map>
 
 namespace IL {
     struct ShaderDataMap {
@@ -109,7 +109,7 @@ namespace IL {
         Backend::IL::TypeMap& typeMap;
 
         /// Data mappings
-        std::map<ShaderDataID, DataEntry> identifiers;
+        std::unordered_map<ShaderDataID, DataEntry> identifiers;
 
         /// All datas
         Container datas;

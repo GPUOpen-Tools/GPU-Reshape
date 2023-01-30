@@ -15,7 +15,7 @@
 // Std
 #include <vector>
 #include <string>
-#include <map>
+#include <unordered_map>
 
 // Forward declarations
 struct DXStream;
@@ -187,7 +187,7 @@ private:
     std::vector<uint64_t> recordOperandCache;
 
     /// Lookup for out-of-place BLOCKINFO association
-    std::map<uint32_t, LLVMBlockMetadata*> metadataLookup;
+    std::unordered_map<uint32_t, LLVMBlockMetadata*> metadataLookup;
     
     /// Shared allocator for records
     LinearBlockAllocator<sizeof(uint64_t) * 1024u> recordAllocator;

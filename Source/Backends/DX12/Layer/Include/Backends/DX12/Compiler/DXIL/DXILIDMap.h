@@ -105,7 +105,16 @@ struct DXILIDMap {
     /// \param id relative id
     /// \return absolute id
     uint32_t GetMappedRelative(uint32_t anchor, uint32_t id) const {
+        ASSERT(id <= anchor, "Mapped relative refers to a forward reference, forward resolves must be handled through GetMappedForward");
         return GetMapped(anchor - id);
+    }
+
+    /// Check if a given value is resolved or not
+    /// \param anchor source anchor
+    /// \param id relative id
+    /// \return true if resolved
+    bool IsResolved(uint32_t anchor, uint32_t id) const {
+        return id <= anchor;
     }
 
     /// Get a mapped value

@@ -9,7 +9,7 @@
 #include <Common/Containers/LinearBlockAllocator.h>
 
 // Std
-#include <map>
+#include <unordered_map>
 
 namespace Backend::IL {
     using namespace ::IL;
@@ -188,6 +188,6 @@ namespace Backend::IL {
         ConstantMaps maps;
 
         /// Id lookup
-        std::map<ID, const Constant *> idMap;
+        std::unordered_map<ID, const Constant *> idMap;
     };
 }

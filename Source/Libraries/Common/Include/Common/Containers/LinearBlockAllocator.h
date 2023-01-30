@@ -27,63 +27,68 @@ struct LinearBlockAllocator {
     T* Allocate(A&&... args) {
         ASSERT(sizeof(T) <= BLOCK_SIZE, "Allocation larger than block size");
 
-        // Check existing blocks
-        for (auto it = blocks.rbegin(); it != blocks.rend(); it++) {
-            Block* block = *it;
+        // Any previous blocks?
+        for (; freeBlockHead < blocks.size(); freeBlockHead++) {
+            Block& block = blocks[freeBlockHead];
 
-            if (sizeof(T) + block->head <= BLOCK_SIZE) {
-                size_t offset = block->head;
-                block->head += sizeof(T);
+            // Enough space to accomodate?
+            if (sizeof(T) + block.head <= block.tail) {
+                size_t offset = block.head;
+                block.head += sizeof(T);
 
-                return new (&block->data[offset]) T(args...);
+                // Allocate in place
+                return new (block.data + offset) T(args...);
             }
         }
 
         // Push new block
-        Block* block = new (allocators) Block();
-        block->head = sizeof(T);
-        blocks.push_back(block);
+        Block& block = AllocateBlock();
+        block.head = sizeof(T);
 
-        return new (&block->data[0]) T(args...);
+        // Allocate in place
+        return new (block.data) T(args...);
     }
 
     /// Allocate a type, type must be trivially destructible
-    /// \param args constructor arguments
+    /// \param count the number of elements
     /// \return the allocated type
     template<typename T>
     T* AllocateArray(uint32_t count) {
         const size_t size = sizeof(T) * count;
 
+        // Allow for unexpected sizes on arrays
         if (size > BLOCK_SIZE) {
             T* alloc = new (allocators) T[count];
             freeAllocations.push_back(alloc);
             return alloc;
         }
 
-        // Check existing blocks
-        for (auto it = blocks.rbegin(); it != blocks.rend(); it++) {
-            Block* block = *it;
+        // Any previous blocks?
+        for (; freeBlockHead < blocks.size(); freeBlockHead++) {
+            Block& block = blocks[freeBlockHead];
 
-            if (size + block->head <= BLOCK_SIZE) {
-                size_t offset = block->head;
-                block->head += size;
+            // Enough space to accomodate?
+            if (size + block.head <= block.tail) {
+                size_t offset = block.head;
+                block.head += size;
 
-                return reinterpret_cast<T*>(&block->data[offset]);
+                // No alloc
+                return reinterpret_cast<T*>(block.data + offset);
             }
         }
-
+        
         // Push new block
-        Block* block = new (allocators) Block();
-        block->head = size;
-        blocks.push_back(block);
+        Block& block = AllocateBlock();
+        block.head = size;
 
-        return reinterpret_cast<T*>(&block->data[0]);
+        // No alloc
+        return reinterpret_cast<T*>(block.data);
     }
 
     /// Clear this allocator, free all blocks
     void Clear() {
-        for (Block* block : blocks) {
-            destroy(block, allocators);
+        for (Block& block : blocks) {
+            destroy(block.data, allocators);
         }
 
         for (void* _free : freeAllocations) {
@@ -95,8 +100,13 @@ struct LinearBlockAllocator {
 
     /// Clear this allocator, keep blocks alive
     void ClearSubAllocations() {
-        for (Block* block : blocks) {
-            block->head = 0;
+        // Note: This ... is not entirely correct. Allocations can happen at varying sizes, so we could run into a case
+        //       where the visitation will skip valid blocks for future candidates. But, I believe this is not the purpose
+        //       of this allocator anyway.
+        freeBlockHead = 0;
+        
+        for (Block& block : blocks) {
+            block.head = 0;
         }
 
         for (void* _free : freeAllocations) {
@@ -105,15 +115,36 @@ struct LinearBlockAllocator {
     }
 
 private:
-    Allocators allocators;
-
     struct Block {
-        uint8_t data[BLOCK_SIZE];
+        uint8_t* data{nullptr};
         size_t head{0};
+        size_t tail{0};
     };
 
-    // All allocated blocks
-    std::vector<Block*> blocks;
+    /// Allocate a new block
+    Block& AllocateBlock() {
+        constexpr float kGrowthFactor = 1.5f;
 
+        // New tail
+        const size_t length = blocks.empty() ? BLOCK_SIZE : static_cast<size_t>(blocks.back().tail * kGrowthFactor);
+        
+        // Create block
+        Block& block = blocks.emplace_back();
+        block.tail = length;
+        block.data = new (allocators) uint8_t[block.tail];
+        return block;
+    }
+    
+
+private:
+    Allocators allocators;
+
+    /// All allocated blocks
+    std::vector<Block> blocks;
+
+    /// Current block visitation head
+    uint32_t freeBlockHead{0};
+
+    /// Loose allocations, free'd manually
     std::vector<void*> freeAllocations;
 };

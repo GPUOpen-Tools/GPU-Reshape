@@ -267,7 +267,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedRecord
     record.opCount = stream.VBR<uint32_t>(6);
 
     // Allocate
-    record.ops = new(Allocators{}) uint64_t[record.opCount];
+    record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
 
     // Scan all ops
     for (uint32_t i = 0; i < record.opCount; i++) {
@@ -490,9 +490,40 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
                 // Get array count
                 auto count = stream.VBR<uint64_t>(6);
 
+                // Preallocate length
+                const uint64_t dataOffset = recordOperandCache.size();
+                recordOperandCache.resize(dataOffset + count);
+
                 // Scan all elements
-                for (uint32_t elementIndex = 0; elementIndex < count; elementIndex++) {
-                    recordOperandCache.push_back(ScanTrivialAbbreviationParameter(stream, contained));
+                //  ? Flatten the switch to improve inlining efforts
+                switch (contained.encoding) {
+                    default:
+                        ASSERT(false, "Unexpected encoding");
+                        break;
+
+                    /* Handle cases */
+                    case LLVMAbbreviationEncoding::Literal: {
+                        std::fill_n(recordOperandCache.data() + dataOffset, count, contained.value);
+                        break;
+                    }
+                    case LLVMAbbreviationEncoding::Fixed: {
+                        for (uint32_t elementIndex = 0; elementIndex < count; elementIndex++) {
+                            recordOperandCache[dataOffset + elementIndex] = stream.Fixed<uint64_t>(static_cast<uint32_t>(contained.value));
+                        }
+                        break;
+                    }
+                    case LLVMAbbreviationEncoding::VBR: {
+                        for (uint32_t elementIndex = 0; elementIndex < count; elementIndex++) {
+                            recordOperandCache[dataOffset + elementIndex] = stream.VBR<uint64_t>(static_cast<uint32_t>(contained.value));
+                        }
+                        break;
+                    }
+                    case LLVMAbbreviationEncoding::Char6: {
+                        for (uint32_t elementIndex = 0; elementIndex < count; elementIndex++) {
+                            recordOperandCache[dataOffset + elementIndex] = stream.Char6();
+                        }
+                        break;
+                    }
                 }
 
                 // Must be end

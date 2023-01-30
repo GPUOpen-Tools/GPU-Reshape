@@ -55,7 +55,7 @@ public:
     /// \param value value at root offset
     void SetOrAllocate(uint32_t offset, uint32_t allocationSize, uint32_t value) {
         // Begin a new segment if the previous does not suffice, may be allocated dynamically
-        if (offset <= mappedSegmentLength) {
+        if (offset >= mappedSegmentLength) {
             ASSERT(allocationSize > offset, "Chunk allocation size must be larger than the expected offset");
             BeginSegment(allocationSize);
         }
