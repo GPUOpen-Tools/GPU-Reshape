@@ -58,20 +58,20 @@ else()
     set(BUILD_UIX OFF)
 endif()
 
-# Release configuration
-if (CMAKE_BUILD_TYPE MATCHES "Release")
-    if (MSVC)
-        # Ensure executables share the same runtimes
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MD")
+# Ensure executables share the same runtimes
+if (MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MD")
+endif()
 
-        # Debug info?
-        if (ENABLE_RELEASE_DEBUG)
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Z7 /DEBUG")
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
-            set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG")
-        endif()
+# Release configuration
+if (${ENABLE_RELEASE_DEBUG})
+    if (MSVC)
+        set(MSVC_OPTIONS /Z7 /DEBUG)
+        add_compile_options("$<$<CONFIG:Release>:${MSVC_OPTIONS}>")
     else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+        if (CMAKE_BUILD_TYPE MATCHES "Release")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+        endif()
     endif()
 endif()
 
