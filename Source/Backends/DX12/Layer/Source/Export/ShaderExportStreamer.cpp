@@ -202,6 +202,7 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
         // Reset state
         bindState.rootSignature = nullptr;
         bindState.pipeline = nullptr;
+        bindState.pipelineObject = nullptr;
         bindState.isInstrumented = false;
     }
 }

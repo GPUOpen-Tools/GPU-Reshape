@@ -140,6 +140,7 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Co
         // Reset state
         bindState.deviceDescriptorOverwriteMask = 0x0;
         bindState.pipeline = nullptr;
+        bindState.pipelineObject = nullptr;
         bindState.isInstrumented = false;
     }
 
