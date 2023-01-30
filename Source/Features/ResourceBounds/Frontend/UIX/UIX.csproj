@@ -16,6 +16,11 @@
         <OutputPath>..\..\..\..\..\Bin\MSVC\Release\</OutputPath>
     </PropertyGroup>
     
+    <PropertyGroup Condition=" '$(Configuration)' == 'RelWithDebInfo' ">
+        <DebugType>none</DebugType>
+        <OutputPath>..\..\..\..\..\Bin\MSVC\RelWithDebInfo\</OutputPath>
+    </PropertyGroup>
+    
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <OutputPath>..\..\..\..\..\Bin\MSVC\Debug\</OutputPath>
     </PropertyGroup>

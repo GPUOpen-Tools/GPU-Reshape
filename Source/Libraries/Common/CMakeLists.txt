@@ -32,4 +32,4 @@ target_include_directories(Libraries.Common PUBLIC Include)
 
 # Links
 ExternalProject_Link(Libraries.Common TinyXML2 tinyxml2)
-ExternalProject_Link(Libraries.Common Fmt $<$<CONFIG:Debug>:fmtd> $<$<CONFIG:Release>:fmt>)
+ExternalProject_Link(Libraries.Common Fmt $<$<CONFIG:Debug>:fmtd> $<$<CONFIG:Release>:fmt> $<$<CONFIG:RelWithDebInfo>:fmt>)
