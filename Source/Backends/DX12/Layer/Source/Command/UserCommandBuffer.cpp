@@ -49,7 +49,7 @@ static void ReconstructPipelineState(CommandListState* commandList, DeviceState*
                 case ShaderExportRootParameterValueType::Constant:
                     commandList->object->SetComputeRoot32BitConstants(
                         i,
-                        value.payload.constant.dataByteCount,
+                        value.payload.constant.dataByteCount / sizeof(uint32_t),
                         value.payload.constant.data,
                         0
                     );
@@ -127,7 +127,10 @@ void CommitCommands(CommandListState* commandList) {
             }
         }
     }
-
+    
+    // Done
+    commandList->userContext.buffer.Clear();
+    
     // Reconstruct user state
     ReconstructState(commandList, device.state, state);
 }

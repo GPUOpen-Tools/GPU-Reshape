@@ -153,6 +153,9 @@ void CommitCommands(CommandBufferObject* commandBuffer) {
         }
     }
 
+    // Done
+    commandBuffer->userContext.buffer.Clear();
+
     // Reconstruct expected user state
     ReconstructState(commandBuffer, state);
 }
