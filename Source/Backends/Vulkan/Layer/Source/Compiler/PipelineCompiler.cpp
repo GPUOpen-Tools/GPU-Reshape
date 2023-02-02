@@ -144,12 +144,23 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     // Created pipelines
     auto pipelines = ALLOCA_ARRAY(VkPipeline, batch.count);
 
+    // Batched?
+#if PIPELINE_COMPILER_NO_BATCH
+    for (uint32_t i = 0; i < batch.count; i++) {
+        VkResult result = batch.table->next_vkCreateGraphicsPipelines(batch.table->object, nullptr, 1u, &createInfos[i], nullptr, &pipelines[i]);
+        if (result != VK_SUCCESS) {
+            // TODO: Error reporting
+            return;
+        }
+    }
+#else
     // TODO: Pipeline cache?
     VkResult result = batch.table->next_vkCreateGraphicsPipelines(batch.table->object, nullptr, batch.count, createInfos, nullptr, pipelines);
     if (result != VK_SUCCESS) {
         // TODO: Error reporting
         return;
     }
+#endif
 
     // Set final objects
     for (uint32_t i = 0; i < batch.count; i++) {

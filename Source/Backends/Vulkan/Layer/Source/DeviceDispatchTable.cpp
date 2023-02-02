@@ -182,6 +182,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
     if (!std::strcmp(name, "vkCreateRenderPass2"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateRenderPass2);
 
+    if (!std::strcmp(name, "vkDestroyRenderPass"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyRenderPass);
+
     if (!std::strcmp(name, "vkCreateDescriptorPool"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateDescriptorPool);
 

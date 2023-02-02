@@ -16,6 +16,9 @@
 /// Log instrumentation keys that have been rejected
 #define LOG_REJECTED_KEYS (1)
 
+/// Disables pipeline batching for debugging purposes
+#define PIPELINE_COMPILER_NO_BATCH (VK_DIAGNOSTIC && 0)
+
 /// Enable serial compilation for debugging purposes
 #define SHADER_COMPILER_SERIAL (VK_DIAGNOSTIC && 0)
 
