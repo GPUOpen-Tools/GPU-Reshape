@@ -18,7 +18,8 @@ namespace Backend::IL {
     struct ConstantMap {
         using Container = std::vector<Constant*>;
         
-        ConstantMap(const Allocators &allocators, IdentifierMap& identifierMap, TypeMap& typeMap) : allocators(allocators), blockAllocator(allocators), identifierMap(identifierMap), typeMap(typeMap) {
+        ConstantMap(const Allocators &allocators, IdentifierMap& identifierMap, TypeMap& typeMap, const CapabilityTable& capabilityTable)
+            : allocators(allocators), blockAllocator(allocators), capabilityTable(capabilityTable), identifierMap(identifierMap), typeMap(typeMap) {
 
         }
 
@@ -38,7 +39,7 @@ namespace Backend::IL {
         const T* FindConstant(const typename T::Type* type, const T &constant) {
             auto&& sortMap = GetSortMap<T>();
 
-            if (auto it = sortMap.find(constant.SortKey(type)); it != sortMap.end()) {
+            if (auto it = sortMap.find(constant.SortKey(capabilityTable, type)); it != sortMap.end()) {
                 return it->second;
             }
 
@@ -52,7 +53,7 @@ namespace Backend::IL {
         const T* FindConstantOrAdd(const typename T::Type* type, const T &constant) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &constantPtr = sortMap[constant.SortKey(type)];
+            auto &constantPtr = sortMap[constant.SortKey(capabilityTable, type)];
             if (!constantPtr) {
                 constantPtr = AllocateConstant<T>(identifierMap.AllocID(), type, constant);
             }
@@ -66,7 +67,7 @@ namespace Backend::IL {
         const Constant* AddConstant(ID id, const typename T::Type* type, const T &constant) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &constantPtr = sortMap[constant.SortKey(type)];
+            auto &constantPtr = sortMap[constant.SortKey(capabilityTable, type)];
             if (!constantPtr) {
                 constantPtr = AllocateConstant<T>(id, type, constant);
                 idMap[id] = constantPtr;
@@ -165,6 +166,9 @@ namespace Backend::IL {
 
         /// Block allocator for constants, constants never need to be freed
         LinearBlockAllocator<1024> blockAllocator;
+
+        /// Unique constraints for type mapping
+        const CapabilityTable& capabilityTable;
 
         /// Constant cache
         struct ConstantMaps {

@@ -15,6 +15,9 @@ DXILPhysicalBlockType::DXILPhysicalBlockType(const Allocators &allocators, IL::P
 }
 
 void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
+    // Names for struct consumes
+    const LLVMRecord* nameConsumeRecord{nullptr};
+    
     // Visit type records
     for (const LLVMRecord &record: block->records) {
         switch (record.As<LLVMTypeRecord>()) {
@@ -148,11 +151,10 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 break;
             }
             case LLVMTypeRecord::StructName: {
-                /* Ignore */
+                nameConsumeRecord = &record;
                 break;
             }
-            case LLVMTypeRecord::StructAnon:
-            case LLVMTypeRecord::StructNamed: {
+            case LLVMTypeRecord::StructAnon: {
                 Backend::IL::StructType type;
 
                 for (uint32_t i = 1; i < record.opCount; i++) {
@@ -160,6 +162,28 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 }
 
                 typeMap.AddType(typeAlloc++, type);
+                break;
+            }
+            case LLVMTypeRecord::StructNamed: {
+                Backend::IL::StructType type;
+
+                for (uint32_t i = 1; i < record.opCount; i++) {
+                    type.memberTypes.push_back(typeMap.GetType(record.Op32(i)));
+                }
+
+                // Temporary contiguous name
+                TrivialStackVector<char, 128> name;
+                name.Resize(nameConsumeRecord->opCount + 1);
+
+                // Fill name
+                for (uint32_t i = 0; i < nameConsumeRecord->opCount; i++) {
+                    name[i] = static_cast<char>(nameConsumeRecord->ops[i]);
+                }
+
+                // End
+                name[nameConsumeRecord->opCount] = '\0';
+
+                typeMap.AddNamedType(typeAlloc++, type, name.Data());
                 break;
             }
             case LLVMTypeRecord::Function: {

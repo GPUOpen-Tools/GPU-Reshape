@@ -11,9 +11,11 @@
 
 // Common
 #include <Common/Containers/LinearBlockAllocator.h>
+#include <Common/Alloca.h>
 
 // Std
 #include <vector>
+#include <map>
 
 class DXILTypeMap {
 public:
@@ -38,6 +40,7 @@ public:
     void CopyTo(DXILTypeMap& out) {
         out.indexLookup = indexLookup;
         out.typeLookup = typeLookup;
+        out.namedLookup = namedLookup;
     }
 
     /// Add a type
@@ -66,6 +69,26 @@ public:
         return type;
     }
 
+    /// Add a named type
+    /// \param index the linear block index
+    /// \param decl the IL type declaration
+    /// \param name given name
+    template<typename T>
+    const Backend::IL::Type* AddNamedType(uint32_t index, const T& decl, const char* name) {
+        ASSERT(!namedLookup.contains(name), "Duplicate named type");
+
+        // LLVM types are indexed separately from global identifiers, so always allocate
+        const T* type = programMap.AddUnsortedType<T>(identifierMap.AllocID(), decl);
+        indexLookup.at(index) = type;
+        AddTypeMapping(type, index);
+
+        // Named mapping
+        namedLookup[name] = type;
+
+        // OK
+        return type;
+    }
+
     /// Get a type
     /// \param index the linear record type index
     /// \return may be nullptr
@@ -91,8 +114,12 @@ public:
     /// \param type given type, must be namable
     /// \param name given name
     const Backend::IL::Type* CompileNamedType(const Backend::IL::Type* type, const char* name) {
-        if (HasType(type)) {
-            return type;
+        auto&& it = namedLookup.find(name);
+
+        // Named types use name as key
+        // TODO: Validate fetched type against requested
+        if (it != namedLookup.end()) {
+            return it->second;
         }
 
         // Only certain named types
@@ -290,16 +317,26 @@ private:
     }
 
     /// Compile a given type
-    uint32_t CompileType(const Backend::IL::FunctionType* type) {
+    uint32_t CompileType(const Backend::IL::FunctionType *type) {
+        // Get return uid
+        uint32_t returnId = GetType(type->returnType);
+        
+        // Get parameter uids
+        auto *parameters = ALLOCA_ARRAY(uint32_t, type->parameterTypes.size());
+        for (uint64_t i = 0; i < type->parameterTypes.size(); i++) {
+            parameters[i] = GetType(type->parameterTypes[i]);
+        }
+
+        // Setup record
         LLVMRecord record(LLVMTypeRecord::Function);
         record.opCount = 2 + type->parameterTypes.size();
-
         record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
         record.ops[0] = 0;
-        record.ops[1] = GetType(type->returnType);
+        record.ops[1] = returnId;
 
+        // Copy parameters
         for (size_t i = 0; i < type->parameterTypes.size(); i++) {
-            record.ops[2 + i] = GetType(type->parameterTypes[i]);
+            record.ops[2 + i] = parameters[i];
         }
 
         return Emit(type, record);
@@ -321,6 +358,15 @@ private:
 
             // Emit
             declarationBlock->AddRecord(record);
+
+            // Store lookup
+            namedLookup[name] = type;
+        }
+
+        // Get member uids
+        auto *members = ALLOCA_ARRAY(uint32_t, type->memberTypes.size());
+        for (uint64_t i = 0; i < type->memberTypes.size(); i++) {
+            members[i] = GetType(type->memberTypes[i]);
         }
 
         // Insert struct record, optionally named
@@ -329,8 +375,9 @@ private:
         record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
         record.ops[0] = 0;
 
+        // Copy members
         for (size_t i = 0; i < type->memberTypes.size(); i++) {
-            record.ops[1 + i] = GetType(type->memberTypes[i]);
+            record.ops[1 + i] = members[i];
         }
 
         return Emit(type, record);
@@ -372,6 +419,9 @@ private:
 
     /// Local lookup table
     std::vector<const Backend::IL::Type*> indexLookup;
+
+    /// Named lookup table
+    std::map<std::string, const Backend::IL::Type*> namedLookup;
 
     /// IL type to DXIL type table
     std::vector<uint32_t> typeLookup;

@@ -3,6 +3,7 @@
 // Backend
 #include "Type.h"
 #include "ID.h"
+#include "CapabilityTable.h"
 
 // Common
 #include <Common/Containers/LinearBlockAllocator.h>
@@ -21,7 +22,8 @@ namespace Backend::IL {
     struct TypeMap {
         using Container = std::vector<Type*>;
 
-        TypeMap(const Allocators &allocators, IdentifierMap& identifierMap) : allocators(allocators), blockAllocator(allocators), identifierMap(identifierMap) {
+        TypeMap(const Allocators &allocators, IdentifierMap& identifierMap, const CapabilityTable& capabilityTable)
+            : allocators(allocators), blockAllocator(allocators), capabilityTable(capabilityTable), identifierMap(identifierMap) {
 
         }
 
@@ -42,7 +44,7 @@ namespace Backend::IL {
         const T* FindType(const T &type) {
             auto&& sortMap = GetSortMap<T>();
 
-            if (auto it = sortMap.find(type.SortKey()); it != sortMap.end()) {
+            if (auto it = sortMap.find(type.SortKey(capabilityTable)); it != sortMap.end()) {
                 return it->second;
             }
 
@@ -56,7 +58,7 @@ namespace Backend::IL {
         const T* FindTypeOrAdd(const T &type) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &typePtr = sortMap[type.SortKey()];
+            auto &typePtr = sortMap[type.SortKey(capabilityTable)];
             if (!typePtr) {
                 typePtr = AllocateType<T>(identifierMap.AllocID(), type);
             }
@@ -70,7 +72,7 @@ namespace Backend::IL {
         const T* AddType(ID id, const T &type) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &typePtr = sortMap[type.SortKey()];
+            auto &typePtr = sortMap[type.SortKey(capabilityTable)];
             if (!typePtr) {
                 typePtr = AllocateType<T>(id, type);
             }
@@ -167,6 +169,9 @@ namespace Backend::IL {
 
         /// Block allocator for types, types never need to be freed
         LinearBlockAllocator<1024> blockAllocator;
+
+        /// Unique constraints for type mapping
+        const CapabilityTable& capabilityTable;
 
         /// Type cache
         struct TypeMaps {

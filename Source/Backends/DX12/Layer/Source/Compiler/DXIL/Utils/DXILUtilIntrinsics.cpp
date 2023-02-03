@@ -15,14 +15,14 @@ void DXILUtilIntrinsics::Compile() {
     f32Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 32});
 
     // Structured handle type
-    handleType = typeMap.FindTypeOrAdd(Backend::IL::StructType{
+    handleType = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType{
         .memberTypes {
             typeMap.FindTypeOrAdd(Backend::IL::PointerType{
                 .pointee = i8Type,
                 .addressSpace = Backend::IL::AddressSpace::Function
             })
         }
-    });
+    }), "dx.types.Handle");
 
     // Structured size map
     dimensionsType = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {

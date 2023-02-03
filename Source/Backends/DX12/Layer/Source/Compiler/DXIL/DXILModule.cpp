@@ -22,6 +22,12 @@ DXModule* DXILModule::Copy() {
 }
 
 bool DXILModule::Parse(const void *byteCode, uint64_t byteLength) {
+    IL::CapabilityTable &capabilities = program->GetCapabilityTable();
+
+    // LLVM integers are not unique to the sign, exposed through the operations instead
+    capabilities.integerSignIsUnique = false;
+
+    // Parse byte code
     return table.Parse(byteCode, byteLength);
 }
 

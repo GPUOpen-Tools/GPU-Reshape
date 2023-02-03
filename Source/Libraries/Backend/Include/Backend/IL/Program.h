@@ -19,8 +19,8 @@ namespace IL {
             allocators(allocators),
             functions(allocators, identifierMap),
             variables(allocators, identifierMap),
-            constants(allocators, identifierMap, typeMap),
-            typeMap(allocators, identifierMap),
+            constants(allocators, identifierMap, typeMap, capabilityTable),
+            typeMap(allocators, identifierMap, capabilityTable),
             shaderDataMap(identifierMap, typeMap),
             shaderGUID(shaderGUID) {
             /* */

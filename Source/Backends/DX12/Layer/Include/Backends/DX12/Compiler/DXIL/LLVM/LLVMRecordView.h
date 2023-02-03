@@ -13,6 +13,11 @@ struct LLVMRecordView {
         return &block->records[offset];
     }
 
+    /// Check for validity
+    operator bool() const {
+        return block != nullptr;
+    }
+
     /// Originating block
     LLVMBlock* block;
 
