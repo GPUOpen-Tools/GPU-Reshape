@@ -6,7 +6,7 @@ No application side integration is required.
 GPU Reshape is an open collaboration between **Miguel Petersen** (author), **Advanced Micro Devices** and **Avalanche Studios Group**.
 
 <p float="left" align="center">
-  <img src="/Documentation/Resources/Images/StudioD.png" width="600" /> 
+  <img src="/Documentation/Resources/Images/StudioD.png" width="500" /> 
 </p>
 
 <p float="left" align="center">
