@@ -9,7 +9,7 @@ using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Instrumentation;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Features.ResourceBounds.UIX.Contexts
+namespace GRS.Features.ResourceBounds.UIX.Contexts
 {
     public class ExportStabilityContextMenuItemViewModel : ReactiveObject, IContextMenuItemViewModel
     {

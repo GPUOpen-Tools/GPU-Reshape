@@ -6,7 +6,7 @@ Project_AddSchema(GeneratedLibSchema Schemas/PingPong.xml Include/Schemas)
 Project_AddSchema(GeneratedLibSchema Schemas/HostResolve.xml Include/Schemas)
 
 add_library(
-    Libraries.Bridge STATIC
+    GRS.Libraries.Bridge STATIC
     Source/MemoryBridge.cpp
     Source/HostServerBridge.cpp
     Source/RemoteClientBridge.cpp
@@ -20,27 +20,27 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Bridge CXX Include Source)
+SetSourceDiscovery(GRS.Libraries.Bridge CXX Include Source)
 
 # Includes
-target_include_directories(Libraries.Bridge PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
+target_include_directories(GRS.Libraries.Bridge PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Setup dependencies
-ExternalProject_Link(Libraries.Bridge Asio)
+ExternalProject_Link(GRS.Libraries.Bridge Asio)
 
 # Links
-target_link_libraries(Libraries.Bridge PUBLIC Libraries.Message)
+target_link_libraries(GRS.Libraries.Bridge PUBLIC GRS.Libraries.Message)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(Libraries.Bridge PRIVATE /EHa)
+    target_compile_options(GRS.Libraries.Bridge PRIVATE /EHa)
 endif()
 
 #----- Tests -----#
 
 # Create test layer
 add_executable(
-    Libraries.Bridge.Tests
+    GRS.Libraries.Bridge.Tests
     Tests/Source/Main.cpp
     Tests/Source/Emitter.cpp
     Tests/Source/Asio.cpp
@@ -48,20 +48,20 @@ add_executable(
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(Libraries.Bridge.Tests PRIVATE /EHa)
+    target_compile_options(GRS.Libraries.Bridge.Tests PRIVATE /EHa)
 endif()
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Bridge.Tests CXX Tests)
+SetSourceDiscovery(GRS.Libraries.Bridge.Tests CXX Tests)
 
 # Includes
-target_include_directories(Libraries.Bridge.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
+target_include_directories(GRS.Libraries.Bridge.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
 
 # Setup dependencies
-ExternalProject_Link(Libraries.Bridge.Tests Catch2)
+ExternalProject_Link(GRS.Libraries.Bridge.Tests Catch2)
 
 # Links
-target_link_libraries(Libraries.Bridge.Tests PUBLIC Libraries.Bridge)
+target_link_libraries(GRS.Libraries.Bridge.Tests PUBLIC GRS.Libraries.Bridge)
 
 #----- .Net bindings -----#
 

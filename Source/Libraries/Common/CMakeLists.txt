@@ -1,7 +1,7 @@
 
 # Create generator
 add_library(
-    Libraries.Common STATIC
+    GRS.Libraries.Common STATIC
     Source/Assert.cpp
     Source/FileSystem.cpp
     Source/CrashHandler.cpp
@@ -25,11 +25,11 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Common CXX Include Source)
+SetSourceDiscovery(GRS.Libraries.Common CXX Include Source)
 
 # Include directories
-target_include_directories(Libraries.Common PUBLIC Include)
+target_include_directories(GRS.Libraries.Common PUBLIC Include)
 
 # Links
-ExternalProject_Link(Libraries.Common TinyXML2 tinyxml2)
-ExternalProject_Link(Libraries.Common Fmt $<$<CONFIG:Debug>:fmtd> $<$<CONFIG:Release>:fmt> $<$<CONFIG:RelWithDebInfo>:fmt>)
+ExternalProject_Link(GRS.Libraries.Common TinyXML2 tinyxml2)
+ExternalProject_Link(GRS.Libraries.Common Fmt $<$<CONFIG:Debug>:fmtd> $<$<CONFIG:Release>:fmt> $<$<CONFIG:RelWithDebInfo>:fmt>)

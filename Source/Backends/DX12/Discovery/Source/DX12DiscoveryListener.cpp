@@ -149,7 +149,7 @@ bool UninstallService(const wchar_t *name) {
 
 DX12DiscoveryListener::DX12DiscoveryListener() {
     // Determine the service path
-    servicePath = GetCurrentExecutableDirectory() / "Backends.DX12.Service.exe";
+    servicePath = GetCurrentExecutableDirectory() / "GRS.Backends.DX12.Service.exe";
 
     // Get current status
     isGlobal |= QueryService(L"GPUOpenDX12Service", servicePath.wstring().c_str());
@@ -261,7 +261,7 @@ bool DX12DiscoveryListener::StopProcess() {
 
     // Now walk the snapshot of processes
     for (bool result = Process32First(snapshot, &entry); result; result = Process32Next(snapshot, &entry)) {
-        if (!std::strcmp(entry.szExeFile, "Backends.DX12.Service.exe")) {
+        if (!std::strcmp(entry.szExeFile, "GRS.Backends.DX12.Service.exe")) {
             // Attempt to open the process of interest at PID
             HANDLE processHandle = OpenProcess(PROCESS_TERMINATE, FALSE, entry.th32ProcessID);
             if (processHandle == nullptr) {
@@ -304,7 +304,7 @@ bool DX12DiscoveryListener::IsRunning() {
 
     // Now walk the snapshot of processes
     for (bool result = Process32First(snapshot, &entry); result; result = Process32Next(snapshot, &entry)) {
-        if (!std::strcmp(entry.szExeFile, "Backends.DX12.Service.exe")) {
+        if (!std::strcmp(entry.szExeFile, "GRS.Backends.DX12.Service.exe")) {
             CloseHandle(snapshot);
             return true;
         }

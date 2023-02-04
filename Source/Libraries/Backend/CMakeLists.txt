@@ -11,7 +11,7 @@ Project_AddSchema(GeneratedLibSchema Schemas/Feature.xml Include/Schemas)
 Project_AddSchema(GeneratedLibSchema Schemas/Object.xml Include/Schemas)
 
 add_library(
-    Libraries.Backend STATIC
+    GRS.Libraries.Backend STATIC
     Source/Backend.cpp
     Source/FeatureHost.cpp
     Source/Environment.cpp
@@ -25,34 +25,34 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Backend CXX Include Source Schemas)
+SetSourceDiscovery(GRS.Libraries.Backend CXX Include Source Schemas)
 
 # Includes
-target_include_directories(Libraries.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
+target_include_directories(GRS.Libraries.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(Libraries.Backend PUBLIC Libraries.Message Libraries.Bridge Services.HostResolver)
+target_link_libraries(GRS.Libraries.Backend PUBLIC GRS.Libraries.Message GRS.Libraries.Bridge GRS.Services.HostResolver)
 
 #----- Generators -----#
 
 add_library(
-    Libraries.Backend.Generator SHARED
+    GRS.Libraries.Backend.Generator SHARED
     Generator/Source/ShaderExportGenerator.cpp
     Generator/Source/Plugin.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Backend.Generator CXX Generator)
+SetSourceDiscovery(GRS.Libraries.Backend.Generator CXX Generator)
 
 # Includes
-target_include_directories(Libraries.Backend.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
+target_include_directories(GRS.Libraries.Backend.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
 
 # Links
-target_link_libraries(Libraries.Backend.Generator PUBLIC Libraries.Backend Libraries.Message.Generator.Lib)
+target_link_libraries(GRS.Libraries.Backend.Generator PUBLIC GRS.Libraries.Backend GRS.Libraries.Message.Generator.Lib)
 
 # Default schema helper
 macro(Project_AddShaderSchema OUT_GENERATED SCHEMA SCHEMA_OUT_PATH)
-    Project_AddSchemaEx(${OUT_GENERATED} Libraries.Backend.Generator ${SCHEMA} ${SCHEMA_OUT_PATH})
+    Project_AddSchemaEx(${OUT_GENERATED} GRS.Libraries.Backend.Generator ${SCHEMA} ${SCHEMA_OUT_PATH})
 endmacro()
 
 #----- Tests -----#
@@ -62,7 +62,7 @@ Project_AddSchema(GeneratedTestSchema Tests/Schemas/Feature.xml Tests/Include/Sc
 
 # Create test layer
 add_executable(
-    Libraries.Backend.Tests
+    GRS.Libraries.Backend.Tests
     Tests/Source/Main.cpp
     Tests/Source/Emitter.cpp
     Tests/Source/Feature.cpp
@@ -73,19 +73,19 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Backend.Tests CXX Tests)
+SetSourceDiscovery(GRS.Libraries.Backend.Tests CXX Tests)
 
 # Includes
-target_include_directories(Libraries.Backend.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
+target_include_directories(GRS.Libraries.Backend.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
 
 # Setup dependencies
-ExternalProject_Link(Libraries.Backend.Tests Catch2)
+ExternalProject_Link(GRS.Libraries.Backend.Tests Catch2)
 
 # Links
-target_link_libraries(Libraries.Backend.Tests PUBLIC Libraries.Backend)
+target_link_libraries(GRS.Libraries.Backend.Tests PUBLIC GRS.Libraries.Backend)
 
 #---- .Net Bindings ----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(Libraries.Backend.Schema.DotNet GeneratedLibSchemaCS)
+    Project_AddSchemaDotNet(GRS.Libraries.Backend.Schema.DotNet GeneratedLibSchemaCS)
 endif()

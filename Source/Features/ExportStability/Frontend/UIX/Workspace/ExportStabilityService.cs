@@ -9,7 +9,7 @@ using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Features.ResourceBounds.UIX.Workspace
+namespace GRS.Features.ResourceBounds.UIX.Workspace
 {
     public class ExportStabilityService : IPropertyService, Bridge.CLR.IBridgeListener
     {

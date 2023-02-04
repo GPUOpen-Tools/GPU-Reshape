@@ -1,8 +1,8 @@
 <spec>
     <backend>
-        <plugin name="Features.Initialization.Backend"/>
+        <plugin name="GRS.Features.Initialization.Backend"/>
     </backend>
     <uix>
-        <plugin name="Features.Initialization.UIX"/>
+        <plugin name="GRS.Features.Initialization.UIX"/>
     </uix>
 </spec>

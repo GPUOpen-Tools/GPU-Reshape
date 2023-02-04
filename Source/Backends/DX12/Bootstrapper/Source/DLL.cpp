@@ -40,7 +40,7 @@
 SYMBOL(D3D12ModuleName, "d3d12.dll");
 SYMBOL(DXGIModuleName, "dxgi.dll");
 SYMBOL(AMDAGSModuleName, "amd_ags_x64.dll");
-SYMBOL(LayerModuleName, "Backends.DX12.Layer.dll");
+SYMBOL(LayerModuleName, "GRS.Backends.DX12.Layer.dll");
 SYMBOL(Kernel32ModuleName, "kernel32.dll");
 
 /// Function types
@@ -150,7 +150,7 @@ void BootstrapLayer(const char* invoker, bool native) {
     AddDllDirectory(modulePath.wstring().c_str());
 
     // Process path
-    std::filesystem::path path = modulePath / "Backends.DX12.Layer.dll";
+    std::filesystem::path path = modulePath / "GRS.Backends.DX12.Layer.dll";
 #if ENABLE_LOGGING
     LogContext{} << invoker << " - Loading layer " << path << " ... ";
 #endif // ENABLE_LOGGING
@@ -159,7 +159,7 @@ void BootstrapLayer(const char* invoker, bool native) {
     std::filesystem::path sessionDir = GetCurrentModuleDirectory();
 
     // Create unique name
-    std::string sessionName = "Backends.DX12.Layer " + GlobalUID::New().ToString() + ".dll";
+    std::string sessionName = "GRS.Backends.DX12.Layer " + GlobalUID::New().ToString() + ".dll";
 
     // Copy the bootstrapper to a new session, makes handling unique sessions somewhat bearable (certain programs refuse to let go of handle)
     std::filesystem::path sessionPath = sessionDir / sessionName;
@@ -708,7 +708,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
 
 #if ENABLE_WHITELIST
     // Whitelist executable
-    if (!std::ends_with(filename, "Backends.DX12.Service.exe") && !std::ends_with(filename, "ModelViewer.exe")) {
+    if (!std::ends_with(filename, "GRS.Backends.DX12.Service.exe") && !std::ends_with(filename, "ModelViewer.exe")) {
         // Note: This is a terrible idea, hook will attempt to load over and over
         return FALSE;
     }

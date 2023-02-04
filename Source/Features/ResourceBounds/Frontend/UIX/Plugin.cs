@@ -1,14 +1,14 @@
 ﻿using System;
 using Avalonia;
 using DynamicData;
-using Features.ResourceBounds.UIX.Contexts;
-using Features.ResourceBounds.UIX.Workspace;
+using GRS.Features.ResourceBounds.UIX.Contexts;
+using GRS.Features.ResourceBounds.UIX.Workspace;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Workspace;
 
-namespace Features.ResourceBounds.UIX
+namespace GRS.Features.ResourceBounds.UIX
 {
     public class Plugin : IPlugin
     {

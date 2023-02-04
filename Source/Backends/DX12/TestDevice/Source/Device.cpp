@@ -13,7 +13,7 @@ Device::~Device() {
 }
 
 void Device::Install(const DeviceInfo &info) {
-    REQUIRE(LoadLibraryA("Backends.DX12.Layer.dll") != nullptr);
+    REQUIRE(LoadLibraryA("GRS.Backends.DX12.Layer.dll") != nullptr);
 
     // Create the underlying device
     CreateDevice();

@@ -1,6 +1,10 @@
 project(gpu-validation)
 
+# Requirements
 cmake_minimum_required(VERSION 3.17)
+
+# Policies
+cmake_policy(SET CMP0135 NEW)
 
 # Visual Studio
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

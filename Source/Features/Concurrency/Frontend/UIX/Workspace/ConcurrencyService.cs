@@ -9,7 +9,7 @@ using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Features.Concurrency.UIX.Workspace
+namespace GRS.Features.Concurrency.UIX.Workspace
 {
     public class ConcurrencyService : IPropertyService, Bridge.CLR.IBridgeListener
     {

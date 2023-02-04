@@ -1,8 +1,8 @@
 <spec>
     <backend>
-        <plugin name="Features.Descriptor.Backend"/>
+        <plugin name="GRS.Features.Descriptor.Backend"/>
     </backend>
     <uix>
-        <plugin name="Features.Descriptor.UIX"/>
+        <plugin name="GRS.Features.Descriptor.UIX"/>
     </uix>
 </spec>

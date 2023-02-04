@@ -4,14 +4,14 @@ add_subdirectory(Backend)
 add_subdirectory(Frontend)
 
 # Proxy object
-add_custom_target(Features.Initialization)
+add_custom_target(GRS.Features.Initialization)
 add_dependencies(
-    Features.Initialization
-    Features.Initialization.Backend
+    GRS.Features.Initialization
+    GRS.Features.Initialization.Backend
 )
 
 # IDE source discovery
-SetSourceDiscovery(Features.Initialization CXX)
+SetSourceDiscovery(GRS.Features.Initialization CXX)
 
 # Copy xml
 ConfigureOutput(Initialization.xml Plugins/Initialization.xml)

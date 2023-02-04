@@ -1,7 +1,7 @@
 
 # Create discovery
 Project_AddDotNetEx(
-    NAME Services.HostResolver.DotNet
+    NAME GRS.Services.HostResolver.DotNet
     LANG CXX
     SOURCE
         Source/Managed/HostResolverService.cpp
@@ -10,7 +10,7 @@ Project_AddDotNetEx(
         System.Core
         WindowsBase
     LIBS
-        Services.HostResolver
+        GRS.Services.HostResolver
     FLAGS
         /Zc:twoPhase-
 )

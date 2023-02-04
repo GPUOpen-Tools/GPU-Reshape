@@ -5,7 +5,7 @@ Project_AddShaderSchema(Generated Schemas/Descriptor.xml Include/Schemas/Feature
 
 # Create feature
 add_library(
-    Features.Descriptor.Backend SHARED
+    GRS.Features.Descriptor.Backend SHARED
     Source/Feature.cpp
     Source/Plugin.cpp
 
@@ -14,18 +14,18 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Features.Descriptor.Backend CXX Include Source Schemas)
+SetSourceDiscovery(GRS.Features.Descriptor.Backend CXX Include Source Schemas)
 
 # Includes
-target_include_directories(Features.Descriptor.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
+target_include_directories(GRS.Features.Descriptor.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(Features.Descriptor.Backend PUBLIC Libraries.Common Libraries.Backend)
+target_link_libraries(GRS.Features.Descriptor.Backend PUBLIC GRS.Libraries.Common GRS.Libraries.Backend)
 
 # Set all outputs to Plugins/.
 add_custom_command(
-    TARGET Features.Descriptor.Backend POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:Features.Descriptor.Backend> $<TARGET_FILE_DIR:Features.Descriptor.Backend>/Plugins/$<TARGET_FILE_NAME:Features.Descriptor.Backend>
+    TARGET GRS.Features.Descriptor.Backend POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:GRS.Features.Descriptor.Backend> $<TARGET_FILE_DIR:GRS.Features.Descriptor.Backend>/Plugins/$<TARGET_FILE_NAME:GRS.Features.Descriptor.Backend>
 )
 
 #----- Test Application -----#
@@ -35,13 +35,13 @@ Project_AddBackendTest_Common(GeneratedTest Descriptor)
 Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/SimpleTest.hlsl)
 
 Project_AddTest(
-        NAME Features.Descriptor.Tests
+        NAME GRS.Features.Descriptor.Tests
         SOURCE ${GeneratedTest}
-        LIBS Test.Device Features.Descriptor.Backend
+        LIBS GRS.Test.Device GRS.Features.Descriptor.Backend
 )
 
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(Features.Descriptor.Backend.DotNet GeneratedCS)
+    Project_AddSchemaDotNet(GRS.Features.Descriptor.Backend.DotNet GeneratedCS)
 endif()

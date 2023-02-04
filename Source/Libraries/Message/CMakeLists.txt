@@ -2,50 +2,50 @@
 
 # Create generator
 add_library(
-    Libraries.Message.Generator.Lib STATIC
+    GRS.Libraries.Message.Generator.Lib STATIC
     Generator/Source/Generators/PrimitiveTypeMap.cpp
     Generator/Source/Generators/MessageGenerator.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Message.Generator.Lib CXX Generator)
+SetSourceDiscovery(GRS.Libraries.Message.Generator.Lib CXX Generator)
 
 # Includes
-target_include_directories(Libraries.Message.Generator.Lib PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
+target_include_directories(GRS.Libraries.Message.Generator.Lib PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
 
 # Local links
-target_link_libraries(Libraries.Message.Generator.Lib PUBLIC Libraries.Common)
+target_link_libraries(GRS.Libraries.Message.Generator.Lib PUBLIC GRS.Libraries.Common)
 
 #----- Generator -----#
 
 # Create generator
 add_executable(
-    Libraries.Message.Generator
+    GRS.Libraries.Message.Generator
     Generator/Source/Generator.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Message.Generator CXX Generator)
+SetSourceDiscovery(GRS.Libraries.Message.Generator CXX Generator)
 
 # Includes
-target_include_directories(Libraries.Message.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
+target_include_directories(GRS.Libraries.Message.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
 
 # Local links
-target_link_libraries(Libraries.Message.Generator PUBLIC Libraries.Common Libraries.Message.Generator.Lib)
+target_link_libraries(GRS.Libraries.Message.Generator PUBLIC GRS.Libraries.Common GRS.Libraries.Message.Generator.Lib)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(Libraries.Message.Generator PRIVATE /EHa)
+    target_compile_options(GRS.Libraries.Message.Generator PRIVATE /EHa)
 endif()
 
 # Setup dependencies
-ExternalProject_Link(Libraries.Message.Generator ArgParse)
-ExternalProject_Link(Libraries.Message.Generator TinyXML2 tinyxml2)
+ExternalProject_Link(GRS.Libraries.Message.Generator ArgParse)
+ExternalProject_Link(GRS.Libraries.Message.Generator TinyXML2 tinyxml2)
 
 # Schema helper
 function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
     # Get the source directory of the generator
-    get_target_property(GeneratorSourceDir Libraries.Message.Generator SOURCE_DIR)
+    get_target_property(GeneratorSourceDir GRS.Libraries.Message.Generator SOURCE_DIR)
 
     if (NOT ${LIBS} STREQUAL "")
         set(LibPaths -libs ${LIBS})
@@ -69,11 +69,11 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
         add_custom_command(
             OUTPUT ${OutputPath}
             DEPENDS
-                Libraries.Message.Generator
+                GRS.Libraries.Message.Generator
                 ${LIBS}
                 ${Schema}
                 ${TemplateDependencies}
-            COMMAND Libraries.Message.Generator
+            COMMAND GRS.Libraries.Message.Generator
                 -schemaxml ${Schema}
                 -templates ${Templates}
                 ${LibPaths}
@@ -94,11 +94,11 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
         add_custom_command(
             OUTPUT ${OutputPath}.sham
             DEPENDS
-                Libraries.Message.Generator
+                GRS.Libraries.Message.Generator
                 ${LIBS}
                 ${Schema}
                 ${TemplateDependencies}
-            COMMAND Libraries.Message.Generator
+            COMMAND GRS.Libraries.Message.Generator
                 -schemaxml ${Schema}
                 -templates ${Templates}
                 ${LibPaths}
@@ -132,7 +132,7 @@ endmacro()
 Project_AddSchema(GeneratedSchema Schemas/Log.xml Include/Schemas)
 
 add_library(
-    Libraries.Message STATIC
+    GRS.Libraries.Message STATIC
     Source/Message.cpp
     Source/OrderedMessageStream.cpp
 
@@ -141,13 +141,13 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Message CXX Include Source)
+SetSourceDiscovery(GRS.Libraries.Message CXX Include Source)
 
 # Links
-target_link_libraries(Libraries.Message PUBLIC Libraries.Common)
+target_link_libraries(GRS.Libraries.Message PUBLIC GRS.Libraries.Common)
 
 # Includes
-target_include_directories(Libraries.Message PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
+target_include_directories(GRS.Libraries.Message PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 #----- Tests -----#
 
@@ -160,7 +160,7 @@ Project_AddSchema(Generated Tests/Schemas/Schema.xml Tests/Include/Schemas)
 
 # Create test layer
 add_executable(
-    Libraries.Message.Tests
+    GRS.Libraries.Message.Tests
     Tests/Source/Main.cpp
     Tests/Source/Message.cpp
 
@@ -169,16 +169,16 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Message.Tests CXX Tests)
+SetSourceDiscovery(GRS.Libraries.Message.Tests CXX Tests)
 
 # Include
-target_include_directories(Libraries.Message.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
+target_include_directories(GRS.Libraries.Message.Tests PUBLIC Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
 
 # Setup dependencies
-ExternalProject_Link(Libraries.Message.Tests Catch2)
+ExternalProject_Link(GRS.Libraries.Message.Tests Catch2)
 
 # Links
-target_link_libraries(Libraries.Message.Tests PUBLIC Libraries.Message)
+target_link_libraries(GRS.Libraries.Message.Tests PUBLIC GRS.Libraries.Message)
 
 #----- .Net bindings -----#
 

@@ -13,7 +13,7 @@ add_subdirectory(Initialization)
 add_custom_target(Features)
 add_dependencies(
     Features
-    Features.ResourceBounds
+    GRS.Features.ResourceBounds
 )
 
 # IDE source discovery

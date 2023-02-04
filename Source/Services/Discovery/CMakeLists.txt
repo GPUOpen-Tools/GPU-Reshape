@@ -1,43 +1,43 @@
 
 # Create library
 add_library(
-    Services.Discovery STATIC
+    GRS.Services.Discovery STATIC
     Source/DiscoveryService.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Services.Discovery CXX Include Source)
+SetSourceDiscovery(GRS.Services.Discovery CXX Include Source)
 
 # Include directories
-target_include_directories(Services.Discovery PUBLIC Include)
+target_include_directories(GRS.Services.Discovery PUBLIC Include)
 
 # Dependencies
-target_link_libraries(Services.Discovery PUBLIC Libraries.Discovery Libraries.Bridge Libraries.Backend)
+target_link_libraries(GRS.Services.Discovery PUBLIC GRS.Libraries.Discovery GRS.Libraries.Bridge GRS.Libraries.Backend)
 
 #------ Standalone ------#
 
 # Create standalone
 add_executable(
-    Services.Discovery.Standalone
+    GRS.Services.Discovery.Standalone
     Standalone/main.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Services.Discovery.Standalone CXX Standalone)
+SetSourceDiscovery(GRS.Services.Discovery.Standalone CXX Standalone)
 
 # Dependencies
-target_link_libraries(Services.Discovery.Standalone PUBLIC Services.Discovery)
+target_link_libraries(GRS.Services.Discovery.Standalone PUBLIC GRS.Services.Discovery)
 
 # Create dependencies on existing listeners, for convenience
 if (${ENABLE_BACKEND_VULKAN})
-    add_dependencies(Services.Discovery.Standalone Backends.Vulkan.Discovery)
+    add_dependencies(GRS.Services.Discovery.Standalone GRS.Backends.Vulkan.Discovery)
 endif()
 if (${ENABLE_BACKEND_DX12})
-    add_dependencies(Services.Discovery.Standalone Backends.DX12.Discovery)
+    add_dependencies(GRS.Services.Discovery.Standalone GRS.Backends.DX12.Discovery)
 endif()
 
 # Pull in all features, for convenience
-add_dependencies(Services.Discovery.Standalone Features)
+add_dependencies(GRS.Services.Discovery.Standalone Features)
 
 #----- .Net bindings -----#
 

@@ -3,51 +3,51 @@
 
 # Create standalone
 add_executable(
-    Services.HostResolver.Standalone
+    GRS.Services.HostResolver.Standalone
     Standalone/main.cpp
 )
 
 # Build convenience, kill the process
 if (WIN32)
     add_custom_command(
-        TARGET Services.HostResolver.Standalone
+        TARGET GRS.Services.HostResolver.Standalone
         PRE_BUILD COMMAND ${CMAKE_SOURCE_DIR}/Build/Utils/KillHostResolverService.bat
     )
 endif()
 
 # IDE source discovery
-SetSourceDiscovery(Services.HostResolver.Standalone CXX Standalone)
+SetSourceDiscovery(GRS.Services.HostResolver.Standalone CXX Standalone)
 
 # Include directories
-target_include_directories(Services.HostResolver.Standalone PUBLIC Include)
+target_include_directories(GRS.Services.HostResolver.Standalone PUBLIC Include)
 
 # Dependencies
-target_link_libraries(Services.HostResolver.Standalone PUBLIC Libraries.Bridge)
+target_link_libraries(GRS.Services.HostResolver.Standalone PUBLIC GRS.Libraries.Bridge)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(Services.HostResolver.Standalone PRIVATE /EHa)
+    target_compile_options(GRS.Services.HostResolver.Standalone PRIVATE /EHa)
 endif()
 
 #------ Service ------#
 
 # Create library
 add_library(
-    Services.HostResolver STATIC
+    GRS.Services.HostResolver STATIC
     Source/HostResolverService.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Services.HostResolver CXX Include Source)
+SetSourceDiscovery(GRS.Services.HostResolver CXX Include Source)
 
 # Include directories
-target_include_directories(Services.HostResolver PUBLIC Include)
+target_include_directories(GRS.Services.HostResolver PUBLIC Include)
 
 # Dependencies
-target_link_libraries(Services.HostResolver PUBLIC Libraries.Bridge)
+target_link_libraries(GRS.Services.HostResolver PUBLIC GRS.Libraries.Bridge)
 
 # Ensure the standalone is compiled
-add_dependencies(Services.HostResolver Services.HostResolver.Standalone)
+add_dependencies(GRS.Services.HostResolver GRS.Services.HostResolver.Standalone)
 
 #----- .Net bindings -----#
 

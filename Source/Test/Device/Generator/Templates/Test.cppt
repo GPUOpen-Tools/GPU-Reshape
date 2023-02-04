@@ -188,7 +188,7 @@ private:
 $CONSTRAINT_FIELDS
 };
 
-TEST_CASE("Features.$FEATURE_NAME.$TEST_NAME") {
+TEST_CASE("GRS.Features.$FEATURE_NAME.$TEST_NAME") {
 #ifdef ENABLE_BACKEND_VULKAN
     SECTION("Vulkan") {
         $TEST_NAMERunner<Vulkan::Device>{}.Run(ShaderCode {

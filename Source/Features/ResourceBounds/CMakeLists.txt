@@ -4,15 +4,15 @@ add_subdirectory(Backend)
 add_subdirectory(Frontend)
 
 # Proxy object
-add_custom_target(Features.ResourceBounds)
+add_custom_target(GRS.Features.ResourceBounds)
 add_dependencies(
-    Features.ResourceBounds
-    Features.ResourceBounds.Backend
-    Features.ResourceBounds.Frontend.Hub
+    GRS.Features.ResourceBounds
+    GRS.Features.ResourceBounds.Backend
+    GRS.Features.ResourceBounds.Frontend.Hub
 )
 
 # IDE source discovery
-SetSourceDiscovery(Features.ResourceBounds CXX)
+SetSourceDiscovery(GRS.Features.ResourceBounds CXX)
 
 # Copy xml
 ConfigureOutput(ResourceBounds.xml Plugins/ResourceBounds.xml)

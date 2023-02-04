@@ -1,14 +1,14 @@
 ﻿using System;
 using Avalonia;
 using DynamicData;
-using Features.Concurrency.UIX.Contexts;
-using Features.Concurrency.UIX.Workspace;
+using GRS.Features.Concurrency.UIX.Contexts;
+using GRS.Features.Concurrency.UIX.Workspace;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Workspace;
 
-namespace Features.Concurrency.UIX
+namespace GRS.Features.Concurrency.UIX
 {
     public class Plugin : IPlugin
     {

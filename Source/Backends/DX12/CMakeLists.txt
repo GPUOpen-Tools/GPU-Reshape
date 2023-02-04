@@ -6,7 +6,7 @@ set(DX12TableType OBJECTWRAPPER)
 
 # Create generator
 add_executable(
-    Backends.DX12.Generator
+    GRS.Backends.DX12.Generator
     Generator/Source/Generator.cpp
     Generator/Source/Specification.cpp
     Generator/Source/Detour.cpp
@@ -23,27 +23,27 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Generator CXX Generator)
+SetSourceDiscovery(GRS.Backends.DX12.Generator CXX Generator)
 
 # Local links
-target_link_libraries(Backends.DX12.Generator PUBLIC Libraries.Common)
+target_link_libraries(GRS.Backends.DX12.Generator PUBLIC GRS.Libraries.Common)
 
 # Private includes
 target_include_directories(
-    Backends.DX12.Generator PRIVATE
+    GRS.Backends.DX12.Generator PRIVATE
     Generator/Include
 )
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(Backends.DX12.Generator PRIVATE /EHa)
+    target_compile_options(GRS.Backends.DX12.Generator PRIVATE /EHa)
 endif()
 
 # Setup dependencies
-ExternalProject_Link(Backends.DX12.Generator ArgParse)
-ExternalProject_Link(Backends.DX12.Generator TinyXML2 tinyxml2)
-ExternalProject_Link(Backends.DX12.Generator JSON)
-ExternalProject_Link(Backends.DX12.Generator LibClang libclang)
+ExternalProject_Link(GRS.Backends.DX12.Generator ArgParse)
+ExternalProject_Link(GRS.Backends.DX12.Generator TinyXML2 tinyxml2)
+ExternalProject_Link(GRS.Backends.DX12.Generator JSON)
+ExternalProject_Link(GRS.Backends.DX12.Generator LibClang libclang)
 
 #----- Layer -----#
 
@@ -70,11 +70,11 @@ set(DXILRST      ${CMAKE_SOURCE_DIR}/ThirdParty/DXIL/DXIL.rst)
 # Generate the DXIL tables
 add_custom_command(
     OUTPUT Layer/Include/Backends/DX12/Compiler/DXIL/DXIL.Gen.h
-    DEPENDS Backends.DX12.Generator
+    DEPENDS GRS.Backends.DX12.Generator
     DEPENDS
         ${DXILTemplate}
         ${DXILRST}
-    COMMAND Backends.DX12.Generator
+    COMMAND GRS.Backends.DX12.Generator
         -template ${DXILTemplate}
         -dxilrst ${DXILRST}
         -hooksjson ${HooksSpec}
@@ -85,11 +85,11 @@ add_custom_command(
 # Generate the DXIL intrinsics
 add_custom_command(
     OUTPUT Layer/Include/Backends/DX12/Compiler/DXIL/Intrinsic/DXILIntrinsics.Gen.h
-    DEPENDS Backends.DX12.Generator
+    DEPENDS GRS.Backends.DX12.Generator
     DEPENDS
         ${DXILIntrinsicsTemplate}
         ${DXILRST}
-    COMMAND Backends.DX12.Generator
+    COMMAND GRS.Backends.DX12.Generator
         -template ${DXILIntrinsicsTemplate}
         -dxilrst ${DXILRST}
         -hooksjson ${HooksSpec}
@@ -100,11 +100,11 @@ add_custom_command(
 # Generate the specification
 add_custom_command(
     OUTPUT ${Specification}
-    DEPENDS Backends.DX12.Generator
+    DEPENDS GRS.Backends.DX12.Generator
     DEPENDS
         ${SpecificationTemplate}
         ${HooksSpec}
-    COMMAND Backends.DX12.Generator
+    COMMAND GRS.Backends.DX12.Generator
         -template ${SpecificationTemplate}
         -gentype specification
         -hooksjson ${HooksSpec}
@@ -115,12 +115,12 @@ add_custom_command(
 # Generate the feature proxies
 add_custom_command(
     OUTPUT Layer/Include/Backends/DX12/FeatureProxies.Gen.h
-    DEPENDS Backends.DX12.Generator
+    DEPENDS GRS.Backends.DX12.Generator
     DEPENDS
         ${FeatureProxiesTemplate}
         ${Specification}
         ${DXILRST}
-    COMMAND Backends.DX12.Generator
+    COMMAND GRS.Backends.DX12.Generator
         -template ${FeatureProxiesTemplate}
         -dxilrst ${DXILRST}
         -specjson ${Specification}
@@ -132,12 +132,12 @@ add_custom_command(
 # Generate the detour header
 add_custom_command(
     OUTPUT Layer/Include/Backends/DX12/Detour.Gen.h
-    DEPENDS Backends.DX12.Generator
+    DEPENDS GRS.Backends.DX12.Generator
     DEPENDS
         ${DetourTemplate}
         ${Specification}
         ${HooksSpec}
-    COMMAND Backends.DX12.Generator
+    COMMAND GRS.Backends.DX12.Generator
         -template ${DetourTemplate}
         -specjson ${Specification}
         -hooksjson ${HooksSpec}
@@ -149,12 +149,12 @@ add_custom_command(
 add_custom_command(
     OUTPUT
         Layer/Include/Backends/DX12/DeepCopy.Gen.h
-    DEPENDS Backends.DX12.Generator
+    DEPENDS GRS.Backends.DX12.Generator
     DEPENDS
         ${DeepCopyTemplate}
         ${Specification}
         ${DeepCopySpec}
-    COMMAND Backends.DX12.Generator
+    COMMAND GRS.Backends.DX12.Generator
         -template ${DeepCopyTemplate}
         -specjson ${Specification}
         -deepcopyjson ${DeepCopySpec}
@@ -166,12 +166,12 @@ add_custom_command(
 add_custom_command(
     OUTPUT
         Layer/Source/DeepCopy.Gen.cpp
-    DEPENDS Backends.DX12.Generator
+    DEPENDS GRS.Backends.DX12.Generator
     DEPENDS
         ${DeepCopyImplTemplate}
         ${Specification}
         ${DeepCopySpec}
-    COMMAND Backends.DX12.Generator
+    COMMAND GRS.Backends.DX12.Generator
         -template ${DeepCopyImplTemplate}
         -specjson ${Specification}
         -deepcopyjson ${DeepCopySpec}
@@ -185,12 +185,12 @@ if (${DX12TableType} STREQUAL OBJECTWRAPPER)
     add_custom_command(
         OUTPUT
             Layer/Source/ObjectWrappers.Gen.cpp
-        DEPENDS Backends.DX12.Generator
+        DEPENDS GRS.Backends.DX12.Generator
         DEPENDS
             ${ObjectWrappersImplTemplate}
             ${Specification}
             ${HooksSpec}
-        COMMAND Backends.DX12.Generator
+        COMMAND GRS.Backends.DX12.Generator
             -template ${ObjectWrappersImplTemplate}
             -specjson ${Specification}
             -hooksjson ${HooksSpec}
@@ -204,12 +204,12 @@ elseif (${DX12TableType} STREQUAL WRAPPER)
     add_custom_command(
         OUTPUT
             Layer/Include/Backends/DX12/Wrappers.Gen.h
-        DEPENDS Backends.DX12.Generator
+        DEPENDS GRS.Backends.DX12.Generator
         DEPENDS
             ${WrappersTemplate}
             ${Specification}
             ${HooksSpec}
-        COMMAND Backends.DX12.Generator
+        COMMAND GRS.Backends.DX12.Generator
             -template ${WrappersTemplate}
             -specjson ${Specification}
             -hooksjson ${HooksSpec}
@@ -221,12 +221,12 @@ elseif (${DX12TableType} STREQUAL WRAPPER)
     add_custom_command(
         OUTPUT
             Layer/Source/Wrappers.Gen.cpp
-        DEPENDS Backends.DX12.Generator
+        DEPENDS GRS.Backends.DX12.Generator
         DEPENDS
             ${WrappersImplTemplate}
             ${Specification}
             ${HooksSpec}
-        COMMAND Backends.DX12.Generator
+        COMMAND GRS.Backends.DX12.Generator
             -template ${WrappersImplTemplate}
             -specjson ${Specification}
             -hooksjson ${HooksSpec}
@@ -240,12 +240,12 @@ elseif (${DX12TableType} STREQUAL VIRTUAL)
     add_custom_command(
         OUTPUT
             Layer/Source/VTable.Gen.cpp
-        DEPENDS Backends.DX12.Generator
+        DEPENDS GRS.Backends.DX12.Generator
         DEPENDS
             ${VTableTemplate}
             ${Specification}
             ${HooksSpec}
-        COMMAND Backends.DX12.Generator
+        COMMAND GRS.Backends.DX12.Generator
             -template ${VTableTemplate}
             -specjson ${Specification}
             -hooksjson ${HooksSpec}
@@ -260,12 +260,12 @@ endif()
 add_custom_command(
     OUTPUT
         Layer/Include/Backends/DX12/Table.Gen.h
-    DEPENDS Backends.DX12.Generator
+    DEPENDS GRS.Backends.DX12.Generator
     DEPENDS
         ${TableTemplate}
         ${Specification}
         ${HooksSpec}
-    COMMAND Backends.DX12.Generator
+    COMMAND GRS.Backends.DX12.Generator
         -template ${TableTemplate}
         -specjson ${Specification}
         -hooksjson ${HooksSpec}
@@ -278,7 +278,7 @@ Project_AddHLSL(GeneratedInbuilt cs_6_0 "-Od" Layer/Modules/InbuiltTemplateModul
 
 # Create layer
 add_library(
-    Backends.DX12.Layer SHARED
+    GRS.Backends.DX12.Layer SHARED
     Layer/Source/DXGIFactory.cpp
     Layer/Source/Device.cpp
     Layer/Source/Resource.cpp
@@ -367,17 +367,17 @@ if (${DX12TableType} STREQUAL WRAPPER)
 endif()
 
 # Internal definitions
-target_compile_definitions(Backends.DX12.Layer PRIVATE DX12_PRIVATE=1)
+target_compile_definitions(GRS.Backends.DX12.Layer PRIVATE DX12_PRIVATE=1)
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Layer CXX Layer)
+SetSourceDiscovery(GRS.Backends.DX12.Layer CXX Layer)
 
 # Link against backend
 target_link_libraries(
-    Backends.DX12.Layer PUBLIC
-    Libraries.Backend
-    Libraries.Bridge
-    Libraries.Common
+    GRS.Backends.DX12.Layer PUBLIC
+    GRS.Libraries.Backend
+    GRS.Libraries.Bridge
+    GRS.Libraries.Common
 
     # d3d12
     d3d12.lib
@@ -387,13 +387,13 @@ target_link_libraries(
 )
 
 # Setup dependencies
-ExternalProject_Link(Backends.DX12.Layer Detour Detour)
-ExternalProject_Link(Backends.DX12.Layer DxbcSigner)
-ExternalProject_Link(Backends.DX12.Layer D3D12MA $<$<CONFIG:Debug>:D3D12MAd> $<$<CONFIG:Release>:D3D12MAr> $<$<CONFIG:RelWithDebInfo>:D3D12MAr>)
+ExternalProject_Link(GRS.Backends.DX12.Layer Detour Detour)
+ExternalProject_Link(GRS.Backends.DX12.Layer DxbcSigner)
+ExternalProject_Link(GRS.Backends.DX12.Layer D3D12MA $<$<CONFIG:Debug>:D3D12MAd> $<$<CONFIG:Release>:D3D12MAr> $<$<CONFIG:RelWithDebInfo>:D3D12MArd>)
 
 # Include directories
 target_include_directories(
-    Backends.DX12.Layer PUBLIC
+    GRS.Backends.DX12.Layer PUBLIC
     Layer/Include ${CMAKE_CURRENT_BINARY_DIR}/Layer/Include
 )
 
@@ -401,66 +401,66 @@ target_include_directories(
 
 # Create service
 add_library(
-    Backends.DX12.Bootstrapper SHARED
+    GRS.Backends.DX12.Bootstrapper SHARED
     Bootstrapper/Source/DLL.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Bootstrapper CXX Bootstrapper)
+SetSourceDiscovery(GRS.Backends.DX12.Bootstrapper CXX Bootstrapper)
 
 # Include directories
-target_include_directories(Backends.DX12.Bootstrapper PUBLIC Layer/Include Bootstrapper/Include)
+target_include_directories(GRS.Backends.DX12.Bootstrapper PUBLIC Layer/Include Bootstrapper/Include)
 
 # Dependencies
-target_link_libraries(Backends.DX12.Bootstrapper PUBLIC Libraries.Common)
+target_link_libraries(GRS.Backends.DX12.Bootstrapper PUBLIC GRS.Libraries.Common)
 
 # External dependencies
-ExternalProject_Link(Backends.DX12.Bootstrapper Detour Detour)
+ExternalProject_Link(GRS.Backends.DX12.Bootstrapper Detour Detour)
 
 # Binary dependencies
-add_dependencies(Backends.DX12.Bootstrapper Backends.DX12.Layer)
+add_dependencies(GRS.Backends.DX12.Bootstrapper GRS.Backends.DX12.Layer)
 
 #----- Service -----#
 
 # Create service
 add_executable(
-    Backends.DX12.Service
+    GRS.Backends.DX12.Service
     Service/Source/main.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Service CXX Service)
+SetSourceDiscovery(GRS.Backends.DX12.Service CXX Service)
 
 # Include directories
-target_include_directories(Backends.DX12.Service PUBLIC Service/Include)
+target_include_directories(GRS.Backends.DX12.Service PUBLIC Service/Include)
 
 # Dependencies
-target_link_libraries(Backends.DX12.Service PUBLIC Libraries.Common)
+target_link_libraries(GRS.Backends.DX12.Service PUBLIC GRS.Libraries.Common)
 
 # Binary dependencies
-add_dependencies(Backends.DX12.Service Backends.DX12.Bootstrapper)
+add_dependencies(GRS.Backends.DX12.Service GRS.Backends.DX12.Bootstrapper)
 
 #----- Discovery -----#
 
 # Create feature
 add_library(
-    Backends.DX12.Discovery SHARED
+    GRS.Backends.DX12.Discovery SHARED
     Discovery/Source/Plugin.cpp
     Discovery/Source/DX12DiscoveryListener.cpp
     DX12.xml
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Discovery CXX Discovery)
+SetSourceDiscovery(GRS.Backends.DX12.Discovery CXX Discovery)
 
 # Includes
-target_include_directories(Backends.DX12.Discovery PUBLIC Discovery/Include Service/Include)
+target_include_directories(GRS.Backends.DX12.Discovery PUBLIC Discovery/Include Service/Include)
 
 # Links
-target_link_libraries(Backends.DX12.Discovery PUBLIC Libraries.Discovery Backends.DX12.Layer)
+target_link_libraries(GRS.Backends.DX12.Discovery PUBLIC GRS.Libraries.Discovery GRS.Backends.DX12.Layer)
 
 # Set all outputs to Plugins/.
-PostBuildCopy(Backends.DX12.Discovery Plugins)
+PostBuildCopy(GRS.Backends.DX12.Discovery Plugins)
 
 # Copy spec xml
 ConfigureOutput(DX12.xml Plugins/DX12.xml)
@@ -469,18 +469,18 @@ ConfigureOutput(DX12.xml Plugins/DX12.xml)
 
 # Create test layer
 add_library(
-    Backends.DX12.TestDevice STATIC
+    GRS.Backends.DX12.TestDevice STATIC
     TestDevice/Source/Device.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.TestDevice CXX TestDevice)
+SetSourceDiscovery(GRS.Backends.DX12.TestDevice CXX TestDevice)
 
 # Include
-target_include_directories(Backends.DX12.TestDevice PUBLIC TestDevice/Include)
+target_include_directories(GRS.Backends.DX12.TestDevice PUBLIC TestDevice/Include)
 
 # Link
-target_link_libraries(Backends.DX12.TestDevice PUBLIC Backends.DX12.Layer Test.Device)
+target_link_libraries(GRS.Backends.DX12.TestDevice PUBLIC GRS.Backends.DX12.Layer GRS.Test.Device)
 
 #----- Test Application -----#
 
@@ -491,7 +491,7 @@ Project_AddHLSL(Generated ps_6_0 "-Od -E PSMain" Tests/Data/HelloTriangle.hlsl T
 
 # Create test app
 add_executable(
-    Backends.DX12.Tests
+    GRS.Backends.DX12.Tests
     Tests/Source/Main.cpp
     Tests/Source/HelloTriangle.cpp
     Tests/Source/WrappingBenchmark.cpp
@@ -501,19 +501,19 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.DX12.Tests CXX Tests)
+SetSourceDiscovery(GRS.Backends.DX12.Tests CXX Tests)
 
 # Includes
-target_include_directories(Backends.DX12.Tests PUBLIC Layer/Include Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
+target_include_directories(GRS.Backends.DX12.Tests PUBLIC Layer/Include Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
 
 # Links
-target_link_libraries(Backends.DX12.Tests PUBLIC Libraries.Common Backends.DX12.Layer)
+target_link_libraries(GRS.Backends.DX12.Tests PUBLIC GRS.Libraries.Common GRS.Backends.DX12.Layer)
 
 # Setup dependencies
-ExternalProject_Link(Backends.DX12.Tests Catch2)
+ExternalProject_Link(GRS.Backends.DX12.Tests Catch2)
 
 # Compiler definitions
 target_compile_definitions(
-    Backends.DX12.Tests PRIVATE
+    GRS.Backends.DX12.Tests PRIVATE
     CATCH_CONFIG_ENABLE_BENCHMARKING # Enable benchmarking
 )

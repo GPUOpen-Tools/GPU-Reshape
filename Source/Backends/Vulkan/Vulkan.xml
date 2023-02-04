@@ -1,5 +1,5 @@
 <spec>
     <discovery>
-        <plugin name="Backends.Vulkan.Discovery"/>
+        <plugin name="GRS.Backends.Vulkan.Discovery"/>
     </discovery>
 </spec>

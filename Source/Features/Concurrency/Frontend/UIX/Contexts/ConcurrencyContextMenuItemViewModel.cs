@@ -9,7 +9,7 @@ using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Instrumentation;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Features.Concurrency.UIX.Contexts
+namespace GRS.Features.Concurrency.UIX.Contexts
 {
     public class ConcurrencyContextMenuItemViewModel : ReactiveObject, IContextMenuItemViewModel
     {

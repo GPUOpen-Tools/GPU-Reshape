@@ -9,7 +9,7 @@ using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Instrumentation;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Features.Initialization.UIX.Contexts
+namespace GRS.Features.Initialization.UIX.Contexts
 {
     public class InitializationContextMenuItemViewModel : ReactiveObject, IContextMenuItemViewModel
     {

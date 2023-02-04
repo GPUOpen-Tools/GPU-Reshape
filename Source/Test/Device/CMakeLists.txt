@@ -1,7 +1,7 @@
 #----- Generator -----#
 
 add_executable(
-    Test.Device.Generator
+    GRS.Test.Device.Generator
     Generator/Source/Parser.cpp
     Generator/Source/Assembler.cpp
     Generator/Source/main.cpp
@@ -9,35 +9,35 @@ add_executable(
 
 # Enable vulkan?
 if (${ENABLE_BACKEND_VULKAN})
-    target_compile_definitions(Test.Device.Generator PRIVATE -DENABLE_BACKEND_VULKAN)
+    target_compile_definitions(GRS.Test.Device.Generator PRIVATE -DENABLE_BACKEND_VULKAN)
 endif()
 
 # Enable dx12?
 if (${ENABLE_BACKEND_DX12})
-    target_compile_definitions(Test.Device.Generator PRIVATE -DENABLE_BACKEND_DX12)
+    target_compile_definitions(GRS.Test.Device.Generator PRIVATE -DENABLE_BACKEND_DX12)
 endif()
 
 # IDE source discovery
-SetSourceDiscovery(Test.Device.Generator CXX Generator)
+SetSourceDiscovery(GRS.Test.Device.Generator CXX Generator)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(Test.Device.Generator PRIVATE /EHa)
+    target_compile_options(GRS.Test.Device.Generator PRIVATE /EHa)
 endif()
 
 # Includes
-target_include_directories(Test.Device.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
+target_include_directories(GRS.Test.Device.Generator PUBLIC Generator/Include ${CMAKE_CURRENT_BINARY_DIR}/Generator/Include)
 
 # Links
-target_link_libraries(Test.Device.Generator PUBLIC Libraries.Common)
+target_link_libraries(GRS.Test.Device.Generator PUBLIC GRS.Libraries.Common)
 
 # Setup additional dependencies
-ExternalProject_Link(Test.Device.Generator ArgParse)
+ExternalProject_Link(GRS.Test.Device.Generator ArgParse)
 
 # Test helper
 function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
     # Get the source directory of the generator
-    get_target_property(GeneratorSourceDir Libraries.Message.Generator SOURCE_DIR)
+    get_target_property(GeneratorSourceDir GRS.Libraries.Message.Generator SOURCE_DIR)
 
     # Schema
     if (NOT IS_ABSOLUTE ${TEST})
@@ -55,7 +55,7 @@ function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
     Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${Test} Source/Test/${TestName} kShaderCode)
 
     # Get the source directory of the generator
-    get_target_property(GeneratorSourceDir Test.Device.Generator SOURCE_DIR)
+    get_target_property(GeneratorSourceDir GRS.Test.Device.Generator SOURCE_DIR)
 
     # Template path
     set(Templates ${GeneratorSourceDir}/Generator/Templates)
@@ -64,12 +64,12 @@ function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
     add_custom_command(
         OUTPUT ${TestOutPath}
         DEPENDS
-            Test.Device.Generator
+            GRS.Test.Device.Generator
             ${Test}
             ${HlslGenerated}
             ${Templates}/MessageConstraint.cppt
             ${Templates}/Test.cppt
-        COMMAND Test.Device.Generator
+        COMMAND GRS.Test.Device.Generator
             -test ${Test}
             -feature ${FEATURE_NAME}
             -templates ${Templates}
@@ -84,36 +84,36 @@ endfunction()
 #----- Device -----#
 
 add_library(
-    Test.Device STATIC
+    GRS.Test.Device STATIC
     Source/main.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Test.Device CXX Include Source)
+SetSourceDiscovery(GRS.Test.Device CXX Include Source)
 
 # Includes
-target_include_directories(Test.Device PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
+target_include_directories(GRS.Test.Device PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # All tested backends
 target_link_libraries(
-    Test.Device PUBLIC
+    GRS.Test.Device PUBLIC
 
     # Libraries
-    Libraries.Common
-    Libraries.Backend
+    GRS.Libraries.Common
+    GRS.Libraries.Backend
 )
 
 # Enable vulkan?
 if (${ENABLE_BACKEND_VULKAN})
-    target_link_libraries(Test.Device PUBLIC Backends.Vulkan.Layer Backends.Vulkan.TestDevice)
+    target_link_libraries(GRS.Test.Device PUBLIC GRS.Backends.Vulkan.Layer GRS.Backends.Vulkan.TestDevice)
 endif()
 
 # Enable dx12?
 if (${ENABLE_BACKEND_DX12})
-    target_link_libraries(Test.Device PUBLIC Backends.DX12.Layer Backends.DX12.TestDevice)
+    target_link_libraries(GRS.Test.Device PUBLIC GRS.Backends.DX12.Layer GRS.Backends.DX12.TestDevice)
 endif()
 
 # Setup additional dependencies
-ExternalProject_Link(Test.Device Catch2)
-ExternalProject_Link(Test.Device VMA)
-ExternalProject_Link(Test.Device VulkanLoader vulkan-1)
+ExternalProject_Link(GRS.Test.Device Catch2)
+ExternalProject_Link(GRS.Test.Device VMA)
+ExternalProject_Link(GRS.Test.Device VulkanLoader vulkan-1)

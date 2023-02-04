@@ -4,14 +4,14 @@ add_subdirectory(Backend)
 add_subdirectory(Frontend)
 
 # Proxy object
-add_custom_target(Features.Concurrency)
+add_custom_target(GRS.Features.Concurrency)
 add_dependencies(
-    Features.Concurrency
-    Features.Concurrency.Backend
+    GRS.Features.Concurrency
+    GRS.Features.Concurrency.Backend
 )
 
 # IDE source discovery
-SetSourceDiscovery(Features.Concurrency CXX)
+SetSourceDiscovery(GRS.Features.Concurrency CXX)
 
 # Copy xml
 ConfigureOutput(Concurrency.xml Plugins/Concurrency.xml)

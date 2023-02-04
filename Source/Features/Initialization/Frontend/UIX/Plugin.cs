@@ -1,14 +1,14 @@
 ﻿using System;
 using Avalonia;
 using DynamicData;
-using Features.Initialization.UIX.Contexts;
-using Features.Initialization.UIX.Workspace;
+using GRS.Features.Initialization.UIX.Contexts;
+using GRS.Features.Initialization.UIX.Workspace;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Workspace;
 
-namespace Features.Initialization.UIX
+namespace GRS.Features.Initialization.UIX
 {
     public class Plugin : IPlugin
     {

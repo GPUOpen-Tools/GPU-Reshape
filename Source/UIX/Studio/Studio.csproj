@@ -139,26 +139,26 @@
       <None Remove="Resources\Icons\App.png" />
     </ItemGroup>
     <ItemGroup>
-      <Reference Include="Features.ResourceBounds.Backend.DotNet">
-        <HintPath>$(OutputPath)\Features.ResourceBounds.Backend.DotNet.dll</HintPath>
+      <Reference Include="GRS.Features.ResourceBounds.Backend.DotNet">
+        <HintPath>$(OutputPath)\GRS.Features.ResourceBounds.Backend.DotNet.dll</HintPath>
       </Reference>
-      <Reference Include="Libraries.Bridge.DotNet">
-        <HintPath>$(OutputPath)\Libraries.Bridge.DotNet.dll</HintPath>
+      <Reference Include="GRS.Libraries.Bridge.DotNet">
+        <HintPath>$(OutputPath)\GRS.Libraries.Bridge.DotNet.dll</HintPath>
       </Reference>
-      <Reference Include="Libraries.Message.DotNet">
-        <HintPath>$(OutputPath)\Libraries.Message.DotNet.dll</HintPath>
+      <Reference Include="GRS.Libraries.Message.DotNet">
+        <HintPath>$(OutputPath)\GRS.Libraries.Message.DotNet.dll</HintPath>
       </Reference>
-        <Reference Include="Services.HostResolver.DotNet">
-            <HintPath>$(OutputPath)\Services.HostResolver.DotNet.dll</HintPath>
+        <Reference Include="GRS.Services.HostResolver.DotNet">
+            <HintPath>$(OutputPath)\GRS.Services.HostResolver.DotNet.dll</HintPath>
         </Reference>
-        <Reference Include="Services.Discovery.DotNet">
-            <HintPath>$(OutputPath)\Services.Discovery.DotNet.dll</HintPath>
+        <Reference Include="GRS.Services.Discovery.DotNet">
+            <HintPath>$(OutputPath)\GRS.Services.Discovery.DotNet.dll</HintPath>
         </Reference>
-        <Reference Include="Libraries.Bridge.Schema.DotNet">
-            <HintPath>$(OutputPath)\Libraries.Bridge.Schema.DotNet.dll</HintPath>
+        <Reference Include="GRS.Libraries.Bridge.Schema.DotNet">
+            <HintPath>$(OutputPath)\GRS.Libraries.Bridge.Schema.DotNet.dll</HintPath>
         </Reference>
-        <Reference Include="Libraries.Backend.Schema.DotNet">
-            <HintPath>$(OutputPath)\Libraries.Backend.Schema.DotNet.dll</HintPath>
+        <Reference Include="GRS.Libraries.Backend.Schema.DotNet">
+            <HintPath>$(OutputPath)\GRS.Libraries.Backend.Schema.DotNet.dll</HintPath>
         </Reference>
     </ItemGroup>
     <ItemGroup>

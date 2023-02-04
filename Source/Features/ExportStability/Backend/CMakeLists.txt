@@ -5,7 +5,7 @@ Project_AddShaderSchema(Generated Schemas/ExportStability.xml Include/Schemas/Fe
 
 # Create feature
 add_library(
-    Features.ExportStability.Backend SHARED
+    GRS.Features.ExportStability.Backend SHARED
     Source/Feature.cpp
     Source/Plugin.cpp
 
@@ -14,18 +14,18 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Features.ExportStability.Backend CXX Include Source Schemas)
+SetSourceDiscovery(GRS.Features.ExportStability.Backend CXX Include Source Schemas)
 
 # Includes
-target_include_directories(Features.ExportStability.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
+target_include_directories(GRS.Features.ExportStability.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(Features.ExportStability.Backend PUBLIC Libraries.Common Libraries.Backend)
+target_link_libraries(GRS.Features.ExportStability.Backend PUBLIC GRS.Libraries.Common GRS.Libraries.Backend)
 
 # Set all outputs to Plugins/.
 add_custom_command(
-    TARGET Features.ExportStability.Backend POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:Features.ExportStability.Backend> $<TARGET_FILE_DIR:Features.ExportStability.Backend>/Plugins/$<TARGET_FILE_NAME:Features.ExportStability.Backend>
+    TARGET GRS.Features.ExportStability.Backend POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:GRS.Features.ExportStability.Backend> $<TARGET_FILE_DIR:GRS.Features.ExportStability.Backend>/Plugins/$<TARGET_FILE_NAME:GRS.Features.ExportStability.Backend>
 )
 
 #----- Test Application -----#
@@ -35,13 +35,13 @@ Project_AddBackendTest_Common(GeneratedTest ExportStability)
 Project_AddBackendTest(GeneratedTest "-Od" ExportStability Tests/Data/SimpleTest.hlsl)
 
 Project_AddTest(
-        NAME Features.ExportStability.Tests
+        NAME GRS.Features.ExportStability.Tests
         SOURCE ${GeneratedTest}
-        LIBS Test.Device Features.ExportStability.Backend
+        LIBS GRS.Test.Device GRS.Features.ExportStability.Backend
 )
 
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(Features.ExportStability.Backend.DotNet GeneratedCS)
+    Project_AddSchemaDotNet(GRS.Features.ExportStability.Backend.DotNet GeneratedCS)
 endif()

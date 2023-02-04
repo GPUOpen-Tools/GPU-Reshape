@@ -2,12 +2,12 @@
 #----- Unified tests -----#
 
 add_executable(
-    Test.Unified
+    GRS.Test.Unified
     Source/main.cpp
 )
 
 function(Project_AddUnifiedTestLibrary NAME)
-    target_link_libraries(Test.Unified PRIVATE ${NAME})
+    target_link_libraries(GRS.Test.Unified PRIVATE ${NAME})
 endfunction()
 
 function(Project_AddTest)
@@ -20,7 +20,7 @@ function(Project_AddTest)
     )
 
     # Get properties
-    get_target_property(SourceDir Test.Unified SOURCE_DIR)
+    get_target_property(SourceDir GRS.Test.Unified SOURCE_DIR)
 
     # Create test library
     add_library(

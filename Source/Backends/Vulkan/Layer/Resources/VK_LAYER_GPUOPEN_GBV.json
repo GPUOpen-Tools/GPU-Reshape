@@ -3,7 +3,7 @@
   "layer" : {
     "name": "VK_LAYER_GPUOPEN_GBV",
     "type": "GLOBAL",
-    "library_path": ".\\Backends.Vulkan.Layer.dll",
+    "library_path": ".\\GRS.Backends.Vulkan.Layer.dll",
     "api_version": "1.2.0",
     "implementation_version": "1",
     "description": "GPUOpen GPU-Based-Validation, https://github.com/GPUOpen-Tools/gpu-validation",

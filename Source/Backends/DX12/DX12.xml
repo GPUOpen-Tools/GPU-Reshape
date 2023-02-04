@@ -1,5 +1,5 @@
 <spec>
     <discovery>
-        <plugin name="Backends.DX12.Discovery"/>
+        <plugin name="GRS.Backends.DX12.Discovery"/>
     </discovery>
 </spec>

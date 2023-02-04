@@ -1,7 +1,7 @@
 
 # Create discovery
 Project_AddDotNetEx(
-    NAME Services.Discovery.DotNet
+    NAME GRS.Services.Discovery.DotNet
     LANG CXX
     SOURCE
         Source/Managed/DiscoveryService.cpp
@@ -10,7 +10,7 @@ Project_AddDotNetEx(
         System.Core
         WindowsBase
     LIBS
-        Services.Discovery
+        GRS.Services.Discovery
     FLAGS
         /Zc:twoPhase-
 )

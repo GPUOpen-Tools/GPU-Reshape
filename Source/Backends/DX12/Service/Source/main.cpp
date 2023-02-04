@@ -79,13 +79,13 @@ int main(int32_t argc, const char *const *argv) {
     }
 
     // Create unique name
-    std::string sessionName = "Backends.DX12.Bootstrapper " + GlobalUID::New().ToString() + ".dll";
+    std::string sessionName = "GRS.Backends.DX12.Bootstrapper " + GlobalUID::New().ToString() + ".dll";
 
     // Copy the bootstrapper to a new session, makes handling unique sessions somewhat bearable (certain programs refuse to let go of handle)
     std::filesystem::path sessionPath = sessionDir / sessionName;
 
     // Copy current bootstrapper
-    std::filesystem::copy(GetCurrentModuleDirectory() / "Backends.DX12.Bootstrapper.dll", sessionPath);
+    std::filesystem::copy(GetCurrentModuleDirectory() / "GRS.Backends.DX12.Bootstrapper.dll", sessionPath);
 
     // Load the boostrapper
     HMODULE bootstrapperModule = LoadLibraryW(sessionPath.wstring().c_str());

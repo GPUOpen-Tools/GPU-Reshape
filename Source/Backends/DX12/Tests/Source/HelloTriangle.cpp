@@ -97,7 +97,7 @@ struct AccumulatedValue {
 TEST_CASE("HelloTriangle") {
     UINT dxgiFactoryFlags = 0;
 
-    REQUIRE(LoadLibraryA("Backends.DX12.Layer.dll") != nullptr);
+    REQUIRE(LoadLibraryA("GRS.Backends.DX12.Layer.dll") != nullptr);
 
     // Initialize the window class.
     WNDCLASSEX windowClass = {0};

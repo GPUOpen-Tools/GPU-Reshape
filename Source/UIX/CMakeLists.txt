@@ -10,12 +10,12 @@ set_target_properties(UIX.Studio PROPERTIES FOLDER Source/UIX/Studio)
 # Add runtime dependencies
 add_dependencies(
     UIX.Runtime
-    Libraries.Bridge.DotNet
-    Libraries.Message.DotNet
-    Services.HostResolver.DotNet
-    Services.Discovery.DotNet
-    Libraries.Bridge.Schema.DotNet
-    Libraries.Backend.Schema.DotNet
+    GRS.Libraries.Bridge.DotNet
+    GRS.Libraries.Message.DotNet
+    GRS.Services.HostResolver.DotNet
+    GRS.Services.Discovery.DotNet
+    GRS.Libraries.Bridge.Schema.DotNet
+    GRS.Libraries.Backend.Schema.DotNet
 )
 
 # Add studio dependencies

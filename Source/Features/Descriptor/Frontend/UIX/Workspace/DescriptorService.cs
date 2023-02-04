@@ -9,7 +9,7 @@ using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Features.Descriptor.UIX.Workspace
+namespace GRS.Features.Descriptor.UIX.Workspace
 {
     public class DescriptorService : IPropertyService, Bridge.CLR.IBridgeListener
     {

@@ -1,11 +1,11 @@
 <spec>
     <backend>
-        <plugin name="Features.ResourceBounds.Backend"/>
+        <plugin name="GRS.Features.ResourceBounds.Backend"/>
     </backend>
     <frontend>
-        <plugin name="Features.ResourceBounds.Frontend"/>
+        <plugin name="GRS.Features.ResourceBounds.Frontend"/>
     </frontend>
     <uix>
-        <plugin name="Features.ResourceBounds.UIX"/>
+        <plugin name="GRS.Features.ResourceBounds.UIX"/>
     </uix>
 </spec>

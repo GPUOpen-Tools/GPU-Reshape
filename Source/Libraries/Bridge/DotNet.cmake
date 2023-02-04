@@ -1,10 +1,10 @@
 
 # Create schema
-Project_AddSchemaDotNet(Libraries.Bridge.Schema.DotNet GeneratedLibSchemaCS)
+Project_AddSchemaDotNet(GRS.Libraries.Bridge.Schema.DotNet GeneratedLibSchemaCS)
 
 # Create bridge
 Project_AddDotNetEx(
-    NAME Libraries.Bridge.DotNet
+    NAME GRS.Libraries.Bridge.DotNet
     LANG CXX
     SOURCE
         Source/Managed/IBridge.cpp
@@ -15,8 +15,8 @@ Project_AddDotNetEx(
         System.Core
         WindowsBase
     LIBS
-        Libraries.Bridge
-        Libraries.Message.DotNet
+        GRS.Libraries.Bridge
+        GRS.Libraries.Message.DotNet
     FLAGS
         /Zc:twoPhase-
 )

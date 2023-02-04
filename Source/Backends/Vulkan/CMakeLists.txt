@@ -2,7 +2,7 @@
 
 # Create generator
 add_executable(
-    Backends.Vulkan.Generator
+    GRS.Backends.Vulkan.Generator
     Generator/Source/Generator.cpp
     Generator/Source/CommandBuffer.cpp
     Generator/Source/CommandBufferDispatchTable.cpp
@@ -12,22 +12,22 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Generator CXX Generator)
+SetSourceDiscovery(GRS.Backends.Vulkan.Generator CXX Generator)
 
 # Local links
-target_link_libraries(Backends.Vulkan.Generator PUBLIC Libraries.Common)
+target_link_libraries(GRS.Backends.Vulkan.Generator PUBLIC GRS.Libraries.Common)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(Backends.Vulkan.Generator PRIVATE /EHa)
+    target_compile_options(GRS.Backends.Vulkan.Generator PRIVATE /EHa)
 endif()
 
 # Setup dependencies
-ExternalProject_Link(Backends.Vulkan.Generator ArgParse)
-ExternalProject_Link(Backends.Vulkan.Generator SPIRVHeaders)
-ExternalProject_Link(Backends.Vulkan.Generator VulkanHeaders)
-ExternalProject_Link(Backends.Vulkan.Generator TinyXML2 tinyxml2)
-ExternalProject_Link(Backends.Vulkan.Generator JSON)
+ExternalProject_Link(GRS.Backends.Vulkan.Generator ArgParse)
+ExternalProject_Link(GRS.Backends.Vulkan.Generator SPIRVHeaders)
+ExternalProject_Link(GRS.Backends.Vulkan.Generator VulkanHeaders)
+ExternalProject_Link(GRS.Backends.Vulkan.Generator TinyXML2 tinyxml2)
+ExternalProject_Link(GRS.Backends.Vulkan.Generator JSON)
 
 #----- Layer -----#
 
@@ -81,10 +81,10 @@ set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderM
 # Generate the deep copy objects
 add_custom_command(
     OUTPUT Layer/Include/Backends/Vulkan/DeepCopyObjects.Gen.h
-    DEPENDS Backends.Vulkan.Generator
+    DEPENDS GRS.Backends.Vulkan.Generator
     DEPENDS
         ${DeepCopyObjectsTemplate}
-    COMMAND Backends.Vulkan.Generator
+    COMMAND GRS.Backends.Vulkan.Generator
         -vkxml ${VKXML}
         -template ${DeepCopyObjectsTemplate}
         -gentype deepcopyobjects
@@ -95,10 +95,10 @@ add_custom_command(
 # Generate the deep copies
 add_custom_command(
     OUTPUT Layer/Source/DeepCopy.Gen.cpp
-    DEPENDS Backends.Vulkan.Generator
+    DEPENDS GRS.Backends.Vulkan.Generator
     DEPENDS
         ${DeepCopyTemplate}
-    COMMAND Backends.Vulkan.Generator
+    COMMAND GRS.Backends.Vulkan.Generator
         -vkxml ${VKXML}
         -template ${DeepCopyTemplate}
         -gentype deepcopy
@@ -109,10 +109,10 @@ add_custom_command(
 # Generate the command buffer dispatch table
 add_custom_command(
     OUTPUT Layer/Include/Backends/Vulkan/CommandBufferDispatchTable.Gen.h
-    DEPENDS Backends.Vulkan.Generator
+    DEPENDS GRS.Backends.Vulkan.Generator
     DEPENDS
         ${CommandBufferDispatchTableTemplate}
-    COMMAND Backends.Vulkan.Generator
+    COMMAND GRS.Backends.Vulkan.Generator
         -vkxml ${VKXML}
         -template ${CommandBufferDispatchTableTemplate}
         -gentype commandbufferdispatchtable
@@ -124,10 +124,10 @@ add_custom_command(
 # Generate the command buffer hooks
 add_custom_command(
     OUTPUT Layer/Source/CommandBuffer.Gen.cpp
-    DEPENDS Backends.Vulkan.Generator
+    DEPENDS GRS.Backends.Vulkan.Generator
     DEPENDS
         ${CommandBufferTemplate}
-    COMMAND Backends.Vulkan.Generator
+    COMMAND GRS.Backends.Vulkan.Generator
         -vkxml ${VKXML}
         -template ${CommandBufferTemplate}
         -gentype commandbuffer
@@ -139,10 +139,10 @@ add_custom_command(
 # Generate the spv utilities
 add_custom_command(
     OUTPUT Layer/Include/Backends/Vulkan/Compiler/Spv.Gen.h
-    DEPENDS Backends.Vulkan.Generator
+    DEPENDS GRS.Backends.Vulkan.Generator
     DEPENDS
         ${SpvTemplate}
-    COMMAND Backends.Vulkan.Generator
+    COMMAND GRS.Backends.Vulkan.Generator
         -vkxml ${VKXML}
         -spvjson ${CMAKE_SOURCE_DIR}/ThirdParty/SPIRVHeaders/include/spirv/unified1/spirv.core.grammar.json
         -template ${SpvTemplate}
@@ -155,7 +155,7 @@ Project_AddHLSL(GeneratedInbuilt cs_6_0 "-Od" Layer/Modules/InbuiltTemplateModul
 
 # Create layer
 add_library(
-    Backends.Vulkan.Layer SHARED
+    GRS.Backends.Vulkan.Layer SHARED
     Layer/Source/Layer.cpp
     Layer/Source/DeviceDispatchTable.cpp
     Layer/Source/InstanceDispatchTable.cpp
@@ -220,14 +220,14 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Layer CXX Layer)
+SetSourceDiscovery(GRS.Backends.Vulkan.Layer CXX Layer)
 
 # Link against backend
 target_link_libraries(
-    Backends.Vulkan.Layer PUBLIC
-    Libraries.Backend
-    Libraries.Bridge
-    Libraries.Common
+    GRS.Backends.Vulkan.Layer PUBLIC
+    GRS.Libraries.Backend
+    GRS.Libraries.Bridge
+    GRS.Libraries.Common
 
     # Win32
     $<$<PLATFORM_ID:Windows>:Dbghelp>
@@ -235,16 +235,16 @@ target_link_libraries(
 
 # Include directories
 target_include_directories(
-    Backends.Vulkan.Layer PUBLIC
+    GRS.Backends.Vulkan.Layer PUBLIC
     Layer/Include ${CMAKE_CURRENT_BINARY_DIR}/Layer/Include
 )
 
 # Setup dependencies
-ExternalProject_Link(Backends.Vulkan.Layer VulkanHeaders)
-ExternalProject_Link(Backends.Vulkan.Layer VMA)
+ExternalProject_Link(GRS.Backends.Vulkan.Layer VulkanHeaders)
+ExternalProject_Link(GRS.Backends.Vulkan.Layer VMA)
 
 # Validation dependencies
-ExternalProject_Link(Backends.Vulkan.Layer SPIRVTools SPIRV-Tools)
+ExternalProject_Link(GRS.Backends.Vulkan.Layer SPIRVTools SPIRV-Tools)
 
 # Copy layer definition (configuration time)
 ConfigureOutput(Layer/Resources/VK_LAYER_GPUOPEN_GBV.json VK_LAYER_GPUOPEN_GBV.json)
@@ -253,23 +253,23 @@ ConfigureOutput(Layer/Resources/VK_LAYER_GPUOPEN_GBV.json VK_LAYER_GPUOPEN_GBV.j
 
 # Create feature
 add_library(
-    Backends.Vulkan.Discovery SHARED
+    GRS.Backends.Vulkan.Discovery SHARED
     Discovery/Source/Plugin.cpp
     Discovery/Source/VulkanDiscoveryListener.cpp
     Vulkan.xml
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Discovery CXX Discovery)
+SetSourceDiscovery(GRS.Backends.Vulkan.Discovery CXX Discovery)
 
 # Includes
-target_include_directories(Backends.Vulkan.Discovery PUBLIC Discovery/Include)
+target_include_directories(GRS.Backends.Vulkan.Discovery PUBLIC Discovery/Include)
 
 # Links
-target_link_libraries(Backends.Vulkan.Discovery PUBLIC Libraries.Discovery Backends.Vulkan.Layer)
+target_link_libraries(GRS.Backends.Vulkan.Discovery PUBLIC GRS.Libraries.Discovery GRS.Backends.Vulkan.Layer)
 
 # Set all outputs to Plugins/.
-PostBuildCopy(Backends.Vulkan.Discovery Plugins)
+PostBuildCopy(GRS.Backends.Vulkan.Discovery Plugins)
 
 # Copy spec xml
 ConfigureOutput(Vulkan.xml Plugins/Vulkan.xml)
@@ -278,37 +278,37 @@ ConfigureOutput(Vulkan.xml Plugins/Vulkan.xml)
 
 # Create test layer
 add_library(
-    Backends.Vulkan.TestDevice STATIC
+    GRS.Backends.Vulkan.TestDevice STATIC
     TestDevice/Source/Device.cpp
     TestDevice/Source/VMA.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.TestDevice CXX TestDevice)
+SetSourceDiscovery(GRS.Backends.Vulkan.TestDevice CXX TestDevice)
 
 # Include
-target_include_directories(Backends.Vulkan.TestDevice PUBLIC TestDevice/Include)
+target_include_directories(GRS.Backends.Vulkan.TestDevice PUBLIC TestDevice/Include)
 
 # Link
-target_link_libraries(Backends.Vulkan.TestDevice PUBLIC Backends.Vulkan.Layer Test.Device)
+target_link_libraries(GRS.Backends.Vulkan.TestDevice PUBLIC GRS.Backends.Vulkan.Layer GRS.Test.Device)
 
 # Setup dependencies
-ExternalProject_Link(Backends.Vulkan.TestDevice VulkanHeaders)
-ExternalProject_Link(Backends.Vulkan.TestDevice VMA)
+ExternalProject_Link(GRS.Backends.Vulkan.TestDevice VulkanHeaders)
+ExternalProject_Link(GRS.Backends.Vulkan.TestDevice VMA)
 
 #----- Test Layer -----#
 
 # Create test layer
 add_library(
-    Backends.Vulkan.Tests.UserDataLayer SHARED
+    GRS.Backends.Vulkan.Tests.UserDataLayer SHARED
     Tests/Layer/UserDataLayer.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Tests.UserDataLayer CXX Tests/Layer)
+SetSourceDiscovery(GRS.Backends.Vulkan.Tests.UserDataLayer CXX Tests/Layer)
 
 # Setup dependencies
-ExternalProject_Link(Backends.Vulkan.Tests.UserDataLayer VulkanHeaders)
+ExternalProject_Link(GRS.Backends.Vulkan.Tests.UserDataLayer VulkanHeaders)
 
 # Copy layer definition (configuration time)
 ConfigureOutput(Tests/Resources/VK_GPUOpen_Test_UserDataLayer.json VK_GPUOpen_Test_UserDataLayer.json)
@@ -324,7 +324,7 @@ Project_AddShaderSchema(GeneratedTestSchema Tests/Schemas/WritingNegativeValue.x
 
 # Create test app
 add_executable(
-    Backends.Vulkan.Tests
+    GRS.Backends.Vulkan.Tests
     Tests/Source/Main.cpp
     Tests/Source/Loader.cpp
     Tests/Source/UserData.cpp
@@ -339,27 +339,27 @@ add_executable(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Backends.Vulkan.Tests CXX Tests)
+SetSourceDiscovery(GRS.Backends.Vulkan.Tests CXX Tests)
 
 # Includes
-target_include_directories(Backends.Vulkan.Tests PUBLIC Layer/Include Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
+target_include_directories(GRS.Backends.Vulkan.Tests PUBLIC Layer/Include Tests/Include ${CMAKE_CURRENT_BINARY_DIR}/Tests/Include)
 
 # Links
-target_link_libraries(Backends.Vulkan.Tests PUBLIC Libraries.Common Backends.Vulkan.Layer)
+target_link_libraries(GRS.Backends.Vulkan.Tests PUBLIC GRS.Libraries.Common GRS.Backends.Vulkan.Layer)
 
 # Setup dependencies
-ExternalProject_Link(Backends.Vulkan.Tests Catch2)
-ExternalProject_Link(Backends.Vulkan.Tests VMA)
-ExternalProject_Link(Backends.Vulkan.Tests VulkanLoader vulkan-1)
+ExternalProject_Link(GRS.Backends.Vulkan.Tests Catch2)
+ExternalProject_Link(GRS.Backends.Vulkan.Tests VMA)
+ExternalProject_Link(GRS.Backends.Vulkan.Tests VulkanLoader vulkan-1)
 
 # Compiler definitions
 target_compile_definitions(
-    Backends.Vulkan.Tests PRIVATE
+    GRS.Backends.Vulkan.Tests PRIVATE
     CATCH_CONFIG_ENABLE_BENCHMARKING # Enable benchmarking
 )
 
 # Add dependency on the layer
 add_dependencies(
-    Backends.Vulkan.Tests
-    Backends.Vulkan.Tests.UserDataLayer
+    GRS.Backends.Vulkan.Tests
+    GRS.Backends.Vulkan.Tests.UserDataLayer
 )

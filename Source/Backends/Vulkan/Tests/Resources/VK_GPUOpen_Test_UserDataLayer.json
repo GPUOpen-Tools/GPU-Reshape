@@ -3,7 +3,7 @@
   "layer" : {
     "name": "VK_GPUOpen_Test_UserDataLayer",
     "type": "GLOBAL",
-    "library_path": ".\\Backends.Vulkan.Tests.UserDataLayer.dll",
+    "library_path": ".\\GRS.Backends.Vulkan.Tests.UserDataLayer.dll",
     "api_version": "1.2.0",
     "implementation_version": "1",
     "description": "",

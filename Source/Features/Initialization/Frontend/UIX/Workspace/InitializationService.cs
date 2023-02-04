@@ -9,7 +9,7 @@ using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Features.Initialization.UIX.Workspace
+namespace GRS.Features.Initialization.UIX.Workspace
 {
     public class InitializationService : IPropertyService, Bridge.CLR.IBridgeListener
     {

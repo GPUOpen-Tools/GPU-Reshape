@@ -5,7 +5,7 @@ Project_AddShaderSchema(Generated Schemas/Initialization.xml Include/Schemas/Fea
 
 # Create feature
 add_library(
-    Features.Initialization.Backend SHARED
+    GRS.Features.Initialization.Backend SHARED
     Source/Feature.cpp
     Source/SRBMaskingShaderProgram.cpp
     Source/Plugin.cpp
@@ -15,18 +15,18 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Features.Initialization.Backend CXX Include Source Schemas)
+SetSourceDiscovery(GRS.Features.Initialization.Backend CXX Include Source Schemas)
 
 # Includes
-target_include_directories(Features.Initialization.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
+target_include_directories(GRS.Features.Initialization.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(Features.Initialization.Backend PUBLIC Libraries.Common Libraries.Backend)
+target_link_libraries(GRS.Features.Initialization.Backend PUBLIC GRS.Libraries.Common GRS.Libraries.Backend)
 
 # Set all outputs to Plugins/.
 add_custom_command(
-    TARGET Features.Initialization.Backend POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:Features.Initialization.Backend> $<TARGET_FILE_DIR:Features.Initialization.Backend>/Plugins/$<TARGET_FILE_NAME:Features.Initialization.Backend>
+    TARGET GRS.Features.Initialization.Backend POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:GRS.Features.Initialization.Backend> $<TARGET_FILE_DIR:GRS.Features.Initialization.Backend>/Plugins/$<TARGET_FILE_NAME:GRS.Features.Initialization.Backend>
 )
 
 #----- Test Application -----#
@@ -36,13 +36,13 @@ Project_AddBackendTest_Common(GeneratedTest Initialization)
 Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SimpleTest.hlsl)
 
 Project_AddTest(
-    NAME Features.Initialization.Tests
+    NAME GRS.Features.Initialization.Tests
     SOURCE ${GeneratedTest}
-    LIBS Test.Device Features.Initialization.Backend
+    LIBS GRS.Test.Device GRS.Features.Initialization.Backend
 )
 
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(Features.Initialization.Backend.DotNet GeneratedCS)
+    Project_AddSchemaDotNet(GRS.Features.Initialization.Backend.DotNet GeneratedCS)
 endif()

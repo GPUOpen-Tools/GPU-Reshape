@@ -5,7 +5,7 @@ Project_AddShaderSchema(Generated Schemas/Concurrency.xml Include/Schemas/Featur
 
 # Create feature
 add_library(
-    Features.Concurrency.Backend SHARED
+    GRS.Features.Concurrency.Backend SHARED
     Source/Feature.cpp
     Source/Plugin.cpp
 
@@ -14,18 +14,18 @@ add_library(
 )
 
 # IDE source discovery
-SetSourceDiscovery(Features.Concurrency.Backend CXX Include Source Schemas)
+SetSourceDiscovery(GRS.Features.Concurrency.Backend CXX Include Source Schemas)
 
 # Includes
-target_include_directories(Features.Concurrency.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
+target_include_directories(GRS.Features.Concurrency.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(Features.Concurrency.Backend PUBLIC Libraries.Common Libraries.Backend)
+target_link_libraries(GRS.Features.Concurrency.Backend PUBLIC GRS.Libraries.Common GRS.Libraries.Backend)
 
 # Set all outputs to Plugins/.
 add_custom_command(
-    TARGET Features.Concurrency.Backend POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:Features.Concurrency.Backend> $<TARGET_FILE_DIR:Features.Concurrency.Backend>/Plugins/$<TARGET_FILE_NAME:Features.Concurrency.Backend>
+    TARGET GRS.Features.Concurrency.Backend POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:GRS.Features.Concurrency.Backend> $<TARGET_FILE_DIR:GRS.Features.Concurrency.Backend>/Plugins/$<TARGET_FILE_NAME:GRS.Features.Concurrency.Backend>
 )
 
 #----- Test Application -----#
@@ -35,13 +35,13 @@ Project_AddBackendTest_Common(GeneratedTest Concurrency)
 Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/SimpleTest.hlsl)
 
 Project_AddTest(
-        NAME Features.Concurrency.Tests
+        NAME GRS.Features.Concurrency.Tests
         SOURCE ${GeneratedTest}
-        LIBS Test.Device Features.Concurrency.Backend
+        LIBS GRS.Test.Device GRS.Features.Concurrency.Backend
 )
 
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(Features.Concurrency.Backend.DotNet GeneratedCS)
+    Project_AddSchemaDotNet(GRS.Features.Concurrency.Backend.DotNet GeneratedCS)
 endif()

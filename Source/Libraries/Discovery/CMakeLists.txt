@@ -1,16 +1,16 @@
 
 # Create generator
 add_library(
-    Libraries.Discovery STATIC
+    GRS.Libraries.Discovery STATIC
     Source/Discovery.cpp
     Source/DiscoveryHost.cpp
 )
 
 # IDE source discovery
-SetSourceDiscovery(Libraries.Discovery CXX Include Source)
+SetSourceDiscovery(GRS.Libraries.Discovery CXX Include Source)
 
 # Include directories
-target_include_directories(Libraries.Discovery PUBLIC Include)
+target_include_directories(GRS.Libraries.Discovery PUBLIC Include)
 
 # Dependencies
-target_link_libraries(Libraries.Discovery PUBLIC Libraries.Common)
+target_link_libraries(GRS.Libraries.Discovery PUBLIC GRS.Libraries.Common)

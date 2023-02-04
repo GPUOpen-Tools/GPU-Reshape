@@ -1,6 +1,6 @@
 # Create DotNet project
 Project_AddDotNetEx(
-    NAME Libraries.Message.DotNet
+    NAME GRS.Libraries.Message.DotNet
     LANG CS
     UNSAFE
     GENERATED
@@ -28,6 +28,6 @@ function(Project_AddSchemaDotNet NAME SCHEMA_GEN)
             System
             System.Memory
         LIBS
-            Libraries.Message.DotNet
+            GRS.Libraries.Message.DotNet
     )
 endfunction()
