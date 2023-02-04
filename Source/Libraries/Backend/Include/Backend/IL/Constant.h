@@ -46,8 +46,8 @@ namespace IL {
 
         static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Unexposed;
 
-        auto SortKey(const ::IL::CapabilityTable& table, const Type* _type) const {
-            return _type->SortKey(table);
+        auto SortKey(const Type* _type) const {
+            return _type->SortKey();
         }
     };
 
@@ -56,8 +56,8 @@ namespace IL {
 
         static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Bool;
 
-        auto SortKey(const ::IL::CapabilityTable& table, const Type* _type) const {
-            return std::make_tuple(_type->SortKey(table), value);
+        auto SortKey(const Type* _type) const {
+            return std::make_tuple(_type->SortKey(), value);
         }
 
         bool value{false};
@@ -68,8 +68,8 @@ namespace IL {
 
         static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Int;
 
-        auto SortKey(const ::IL::CapabilityTable& table, const Type* _type) const {
-            return std::make_tuple(_type->SortKey(table), value);
+        auto SortKey(const Type* _type) const {
+            return std::make_tuple(_type->SortKey(), value);
         }
 
         int64_t value{0};
@@ -80,8 +80,8 @@ namespace IL {
 
         static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::FP;
 
-        auto SortKey(const ::IL::CapabilityTable& table, const Type* _type) const {
-            return std::make_tuple(_type->SortKey(table), value);
+        auto SortKey(const Type* _type) const {
+            return std::make_tuple(_type->SortKey(), value);
         }
 
         double value{0};
@@ -92,12 +92,12 @@ namespace IL {
 
         static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Undef;
 
-        auto SortKey(const ::IL::CapabilityTable&, const Type* _type) const {
+        auto SortKey(const Type* _type) const {
             return std::make_tuple(_type);
         }
     };
 
     /// Sort key helper
     template<typename T>
-    using ConstantSortKey = decltype(std::declval<T>().SortKey(::IL::CapabilityTable {}, nullptr));
+    using ConstantSortKey = decltype(std::declval<T>().SortKey(nullptr));
 }

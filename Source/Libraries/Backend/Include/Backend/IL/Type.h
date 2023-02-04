@@ -7,7 +7,6 @@
 #include "TextureDimension.h"
 #include "Format.h"
 #include "ResourceSamplerMode.h"
-#include "CapabilityTable.h"
 
 // Common
 #include <Common/Assert.h>
@@ -52,7 +51,7 @@ namespace Backend::IL {
     struct UnexposedType : public Type {
         static constexpr TypeKind kKind = TypeKind::Unexposed;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple();
         }
     };
@@ -60,7 +59,7 @@ namespace Backend::IL {
     struct BoolType : public Type {
         static constexpr TypeKind kKind = TypeKind::Bool;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple();
         }
     };
@@ -68,7 +67,7 @@ namespace Backend::IL {
     struct VoidType : public Type {
         static constexpr TypeKind kKind = TypeKind::Void;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple();
         }
     };
@@ -76,9 +75,8 @@ namespace Backend::IL {
     struct IntType : public Type {
         static constexpr TypeKind kKind = TypeKind::Int;
 
-        auto SortKey(const ::IL::CapabilityTable& table) const {
-            // If the program does not make use of signed integers in unique mappings, just assume true for sorting purposes
-            return std::make_tuple(bitWidth, table.integerSignIsUnique ? signedness : true);
+        auto SortKey() const {
+            return std::make_tuple(bitWidth, signedness);
         }
 
         uint8_t bitWidth{32};
@@ -89,7 +87,7 @@ namespace Backend::IL {
     struct FPType : public Type {
         static constexpr TypeKind kKind = TypeKind::FP;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(bitWidth);
         }
 
@@ -99,7 +97,7 @@ namespace Backend::IL {
     struct VectorType : public Type {
         static constexpr TypeKind kKind = TypeKind::Vector;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(containedType, dimension);
         }
 
@@ -111,7 +109,7 @@ namespace Backend::IL {
     struct MatrixType : public Type {
         static constexpr TypeKind kKind = TypeKind::Matrix;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(containedType, rows, columns);
         }
 
@@ -125,7 +123,7 @@ namespace Backend::IL {
     struct PointerType : public Type {
         static constexpr TypeKind kKind = TypeKind::Pointer;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(pointee, addressSpace);
         }
 
@@ -137,7 +135,7 @@ namespace Backend::IL {
     struct ArrayType : public Type {
         static constexpr TypeKind kKind = TypeKind::Array;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(elementType, count);
         }
 
@@ -149,7 +147,7 @@ namespace Backend::IL {
     struct TextureType : public Type {
         static constexpr TypeKind kKind = TypeKind::Texture;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(sampledType, dimension, multisampled, samplerMode, format);
         }
 
@@ -167,7 +165,7 @@ namespace Backend::IL {
     struct BufferType : public Type {
         static constexpr TypeKind kKind = TypeKind::Buffer;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(elementType, samplerMode, texelType);
         }
 
@@ -181,7 +179,7 @@ namespace Backend::IL {
     struct SamplerType : public Type {
         static constexpr TypeKind kKind = TypeKind::Sampler;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(0);
         }
     };
@@ -189,7 +187,7 @@ namespace Backend::IL {
     struct CBufferType : public Type {
         static constexpr TypeKind kKind = TypeKind::CBuffer;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(0);
         }
     };
@@ -197,7 +195,7 @@ namespace Backend::IL {
     struct FunctionType : public Type {
         static constexpr TypeKind kKind = TypeKind::Function;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(returnType, parameterTypes);
         }
 
@@ -210,7 +208,7 @@ namespace Backend::IL {
     struct StructType : public Type {
         static constexpr TypeKind kKind = TypeKind::Struct;
 
-        auto SortKey(const ::IL::CapabilityTable&) const {
+        auto SortKey() const {
             return std::make_tuple(memberTypes);
         }
 
@@ -220,5 +218,5 @@ namespace Backend::IL {
 
     /// Sort key helper
     template<typename T>
-    using SortKey = decltype(std::declval<T>().SortKey(::IL::CapabilityTable {}));
+    using SortKey = decltype(std::declval<T>().SortKey());
 }

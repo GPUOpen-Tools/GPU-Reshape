@@ -39,7 +39,7 @@ namespace Backend::IL {
         const T* FindConstant(const typename T::Type* type, const T &constant) {
             auto&& sortMap = GetSortMap<T>();
 
-            if (auto it = sortMap.find(constant.SortKey(capabilityTable, type)); it != sortMap.end()) {
+            if (auto it = sortMap.find(constant.SortKey(type)); it != sortMap.end()) {
                 return it->second;
             }
 
@@ -53,7 +53,7 @@ namespace Backend::IL {
         const T* FindConstantOrAdd(const typename T::Type* type, const T &constant) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &constantPtr = sortMap[constant.SortKey(capabilityTable, type)];
+            auto &constantPtr = sortMap[constant.SortKey(type)];
             if (!constantPtr) {
                 constantPtr = AllocateConstant<T>(identifierMap.AllocID(), type, constant);
             }
@@ -67,7 +67,7 @@ namespace Backend::IL {
         const Constant* AddConstant(ID id, const typename T::Type* type, const T &constant) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &constantPtr = sortMap[constant.SortKey(capabilityTable, type)];
+            auto &constantPtr = sortMap[constant.SortKey(type)];
             if (!constantPtr) {
                 constantPtr = AllocateConstant<T>(id, type, constant);
                 idMap[id] = constantPtr;

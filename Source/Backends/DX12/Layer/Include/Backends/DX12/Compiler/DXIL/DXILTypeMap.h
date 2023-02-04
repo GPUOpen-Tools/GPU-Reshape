@@ -102,7 +102,7 @@ public:
     uint32_t GetType(const Backend::IL::Type* type) {
         // Allocate if need be
         if (!HasType(type)) {
-            return CompileType(type);
+            return CompileCanonicalType(type);
         }
 
         uint32_t id = typeLookup.at(type->id);
@@ -171,6 +171,180 @@ public:
     }
 
 private:
+    /// Compile a given type, checked for non-canonical properties
+    /// \param type given type
+    /// \return DXIL id
+    uint32_t CompileCanonicalType(const Backend::IL::Type* type) {
+        // Check for non-canonical properties first, faster than out-right creating it
+        if (IsNonCanonical(type)) {
+            // Filter constraints on type
+            type = GetCanonicalType(type);
+
+            // Already exists?
+            if (HasType(type)) {
+                uint32_t id = typeLookup.at(type->id);
+                ASSERT(id != ~0u, "Unallocated type");
+                return id;
+            }
+        }
+
+        // Compile canonical type
+        return CompileType(type);
+    }
+
+    /// Check if a type has non-canonical proeprties
+    /// \param type given type
+    /// \return true if non-canonical
+    const bool IsNonCanonical(const Backend::IL::Type* type) {
+        switch (type->kind) {
+            default: {
+                return false;
+            }
+            case Backend::IL::TypeKind::Int: {
+                return !type->As<Backend::IL::IntType>()->signedness;
+            }
+            case Backend::IL::TypeKind::Vector: {
+                return IsNonCanonical(type->As<Backend::IL::VectorType>()->containedType);
+            }
+            case Backend::IL::TypeKind::Matrix: {
+                return IsNonCanonical(type->As<Backend::IL::MatrixType>()->containedType);
+            }
+            case Backend::IL::TypeKind::Pointer: {
+                return IsNonCanonical(type->As<Backend::IL::PointerType>()->pointee);
+            }
+            case Backend::IL::TypeKind::Array: {
+                return IsNonCanonical(type->As<Backend::IL::ArrayType>()->elementType);
+            }
+            case Backend::IL::TypeKind::Function: {
+                auto* fn = type->As<Backend::IL::FunctionType>();
+
+                for (const Backend::IL::Type* paramType : fn->parameterTypes) {
+                    if (IsNonCanonical(paramType)) {
+                        return true;
+                    }
+                }
+
+                return IsNonCanonical(fn->returnType);
+            }
+            case Backend::IL::TypeKind::Struct: {
+                auto *_struct = type->As<Backend::IL::StructType>();
+
+                for (const Backend::IL::Type *memberType: _struct->memberTypes) {
+                    if (IsNonCanonical(memberType)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
+    }
+
+    /// Get the canonical type
+    /// \param type source type
+    /// \return canonical type
+    const Backend::IL::Type* GetCanonicalType(const Backend::IL::Type* type) {
+        switch (type->kind) {
+            default: {
+                ASSERT(false, "Invalid type");
+                return nullptr;
+            }
+            case Backend::IL::TypeKind::Bool:
+            case Backend::IL::TypeKind::Void:
+            case Backend::IL::TypeKind::FP:
+            case Backend::IL::TypeKind::Sampler:
+            case Backend::IL::TypeKind::CBuffer:
+            case Backend::IL::TypeKind::Unexposed: {
+                return type;
+            }
+            case Backend::IL::TypeKind::Texture: {
+                auto* _type = type->As<Backend::IL::TextureType>();
+
+                return programMap.FindTypeOrAdd(Backend::IL::TextureType {
+                    .sampledType = _type->sampledType ? GetCanonicalType(_type->sampledType) : nullptr,
+                    .dimension = _type->dimension,
+                    .multisampled = _type->multisampled,
+                    .samplerMode = _type->samplerMode,
+                    .format = _type->format
+                });
+            }
+            case Backend::IL::TypeKind::Buffer:{
+                auto* _type = type->As<Backend::IL::BufferType>();
+
+                return programMap.FindTypeOrAdd(Backend::IL::BufferType {
+                    .elementType = _type->elementType ? GetCanonicalType(_type->elementType) : nullptr,
+                    .samplerMode = _type->samplerMode,
+                    .texelType = _type->texelType
+                });
+            }
+            case Backend::IL::TypeKind::Int: {
+                auto* _type = type->As<Backend::IL::IntType>();
+
+                return programMap.FindTypeOrAdd(Backend::IL::IntType {
+                    .bitWidth = _type->bitWidth,
+                    .signedness = true
+                });
+            }
+            case Backend::IL::TypeKind::Vector: {
+                auto* _type = type->As<Backend::IL::VectorType>();
+
+                return programMap.FindTypeOrAdd(Backend::IL::VectorType {
+                    .containedType = GetCanonicalType(_type->containedType),
+                    .dimension = _type->dimension
+                });
+            }
+            case Backend::IL::TypeKind::Matrix: {
+                auto* _type = type->As<Backend::IL::MatrixType>();
+
+                return programMap.FindTypeOrAdd(Backend::IL::MatrixType {
+                    .containedType = GetCanonicalType(_type->containedType),
+                    .rows = _type->rows,
+                    .columns = _type->columns
+                });
+            }
+            case Backend::IL::TypeKind::Pointer: {
+                auto* _type = type->As<Backend::IL::PointerType>();
+
+                return programMap.FindTypeOrAdd(Backend::IL::PointerType {
+                    .pointee = GetCanonicalType(_type->pointee),
+                    .addressSpace = _type->addressSpace
+                });
+            }
+            case Backend::IL::TypeKind::Array: {
+                auto* _type = type->As<Backend::IL::ArrayType>();
+
+                return programMap.FindTypeOrAdd(Backend::IL::ArrayType {
+                    .elementType = GetCanonicalType(_type->elementType),
+                    .count = _type->count
+                });
+            }
+            case Backend::IL::TypeKind::Function: {
+                auto* _type = type->As<Backend::IL::FunctionType>();
+
+                Backend::IL::FunctionType declaration;
+
+                declaration.returnType = GetCanonicalType(_type->returnType);
+
+                for (const Backend::IL::Type* paramType : _type->parameterTypes) {
+                    declaration.parameterTypes.push_back(GetCanonicalType(paramType));
+                }
+
+                return programMap.FindTypeOrAdd(declaration);
+            }
+            case Backend::IL::TypeKind::Struct: {
+                auto *_struct = type->As<Backend::IL::StructType>();
+
+                Backend::IL::StructType declaration;
+
+                for (const Backend::IL::Type *memberType: _struct->memberTypes) {
+                    declaration.memberTypes.push_back(GetCanonicalType(memberType));
+                }
+
+                return programMap.FindTypeOrAdd(declaration);
+            }
+        }
+    }
+
     /// Compile a given type
     /// \param type
     /// \return DXIL id

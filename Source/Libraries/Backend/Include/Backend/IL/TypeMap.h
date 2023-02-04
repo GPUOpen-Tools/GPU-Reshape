@@ -44,7 +44,7 @@ namespace Backend::IL {
         const T* FindType(const T &type) {
             auto&& sortMap = GetSortMap<T>();
 
-            if (auto it = sortMap.find(type.SortKey(capabilityTable)); it != sortMap.end()) {
+            if (auto it = sortMap.find(type.SortKey()); it != sortMap.end()) {
                 return it->second;
             }
 
@@ -58,7 +58,7 @@ namespace Backend::IL {
         const T* FindTypeOrAdd(const T &type) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &typePtr = sortMap[type.SortKey(capabilityTable)];
+            auto &typePtr = sortMap[type.SortKey()];
             if (!typePtr) {
                 typePtr = AllocateType<T>(identifierMap.AllocID(), type);
             }
@@ -72,7 +72,7 @@ namespace Backend::IL {
         const T* AddType(ID id, const T &type) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &typePtr = sortMap[type.SortKey(capabilityTable)];
+            auto &typePtr = sortMap[type.SortKey()];
             if (!typePtr) {
                 typePtr = AllocateType<T>(id, type);
             }
