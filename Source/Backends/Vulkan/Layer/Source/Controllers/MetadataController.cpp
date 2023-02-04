@@ -225,7 +225,29 @@ void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {
 
     // Pretty print to stream
     std::stringstream blockStream;
-    IL::PrettyPrintBlockJsonGraph(*shader->spirvModule->GetProgram()->GetEntryPoint(), blockStream);
+    
+    // Open function block
+    blockStream << "{";
+    blockStream << "\t\"functions\": \n";
+    blockStream << "\t[";
+
+    // Get functions
+    IL::FunctionList& functions = shader->spirvModule->GetProgram()->GetFunctionList();
+
+    // Print graph
+    for (auto it = functions.begin(); it != functions.end(); it++) {
+        IL::PrettyPrintBlockJsonGraph(**it, blockStream);
+        
+        if (it != functions.begin()) {
+            blockStream << ",\n\n";
+        } else {
+            blockStream << "\n";
+        }
+    }
+
+    // Close function block
+    blockStream << "\t]\n";
+    blockStream << "}";
 
     // Add graph file
     auto&& file = view.Add<ShaderBlockGraphMessage>(ShaderBlockGraphMessage::AllocationInfo { .nodesLength = static_cast<size_t>(blockStream.tellp()) });

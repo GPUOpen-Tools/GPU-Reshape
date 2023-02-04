@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -88,23 +89,36 @@ namespace Studio.Views.Shader
                 // Create graph
                 var graph = new Graph();
 
-                // Create all blocks
-                foreach (var block in blockStructure.blocks)
+                // Visit all functions
+                foreach (var function in blockStructure.functions)
                 {
-                    objects.Add(uint.Parse(block.Name), new Graphing.Block()
+                    // Create all blocks
+                    foreach (var block in function.blocks)
                     {
-                        Name = block.Value.name,
-                        Color = GetColor((string)block.Value.color),
-                    });
-                }
+                        objects.Add(uint.Parse(block.Name), new Graphing.Block()
+                        {
+                            Name = block.Value.name,
+                            Color = GetColor((string)block.Value.color),
+                        });
+                    }
 
-                // Create all edges
-                foreach (var edge in blockStructure.edges)
-                {
-                    graph.Edges.Add(new Graphing.Edge(objects[(uint)edge.from], objects[(uint)edge.to])
+                    // Create all edges
+                    foreach (var edge in function.edges)
                     {
-                        Color = GetColor((string)edge.color)
-                    });
+                        graph.Edges.Add(new Graphing.Edge(objects[(uint)edge.from], objects[(uint)edge.to])
+                        {
+                            Color = GetColor((string)edge.color)
+                        });
+                    }
+
+                    // Edge case
+                    if (function.edges.Count == 0)
+                    {
+                        graph.Edges.Add(new Graphing.Edge(objects.First().Value, objects.First().Value)
+                        {
+                            Color = Colors.White
+                        });
+                    }
                 }
             
                 // OK
