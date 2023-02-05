@@ -107,7 +107,7 @@ bool DiscoveryService::InstallGlobal() {
 bool DiscoveryService::UninstallGlobal() {
     bool anyFailed = false;
 
-    // Install all
+    // Uninstall all
     for (const ComRef<IDiscoveryListener>& listener : listeners) {
         if (!listener->UninstallGlobal()) {
             anyFailed = true;
@@ -116,4 +116,32 @@ bool DiscoveryService::UninstallGlobal() {
 
     // OK
     return !anyFailed;
+}
+
+bool DiscoveryService::HasConflictingInstances() {
+    bool anyBad = false;
+
+    // Check all
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
+        if (listener->HasConflictingInstances()) {
+            anyBad = true;
+        }
+    }
+
+    // OK
+    return anyBad;
+}
+
+bool DiscoveryService::UninstallConflictingInstances() {
+    bool anyFailed = false;
+
+    // Check all
+    for (const ComRef<IDiscoveryListener>& listener : listeners) {
+        if (!listener->UninstallConflictingInstances()) {
+            anyFailed = true;
+        }
+    }
+
+    // OK
+    return anyFailed;
 }

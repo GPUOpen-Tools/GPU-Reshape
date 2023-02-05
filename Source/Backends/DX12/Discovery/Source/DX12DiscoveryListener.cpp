@@ -8,8 +8,9 @@
 // System
 #include <process.h>
 #include <tlhelp32.h>
+#include <Psapi.h>
 
-bool QueryService(const wchar_t *name, const wchar_t *path) {
+inline bool QueryService(const wchar_t *name, const wchar_t *path) {
     // Create properties
     HKEY keyHandle{};
     DWORD dwDisposition;
@@ -50,7 +51,7 @@ bool QueryService(const wchar_t *name, const wchar_t *path) {
     return !std::wcscmp(buffer, path);
 }
 
-bool InstallService(const wchar_t *name, const wchar_t *path) {
+inline bool InstallService(const wchar_t *name, const wchar_t *path) {
     // Create properties
     HKEY keyHandle{};
     DWORD dwDisposition;
@@ -104,7 +105,48 @@ bool InstallService(const wchar_t *name, const wchar_t *path) {
     return true;
 }
 
-bool UninstallService(const wchar_t *name) {
+inline bool FindConflictingService(const wchar_t *name, const wchar_t *path) {
+    // Open properties
+    HKEY keyHandle{};
+    DWORD dwDisposition;
+
+    // Create or open the run key
+    DWORD error = RegCreateKeyExW(
+        HKEY_CURRENT_USER,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+        0, nullptr, 0,
+        KEY_ALL_ACCESS, nullptr,
+        &keyHandle, &dwDisposition
+    );
+    if (error != ERROR_SUCCESS) {
+        return false;
+    }
+
+    // Intermediate buffer
+    wchar_t buffer[2048];
+
+    // Size of data, replaced
+    DWORD bufferSize = sizeof(buffer);
+    
+    // Attempt to query key, if it doesn't exist, no service is present
+    error = RegGetValueW(
+        keyHandle,
+        nullptr,
+        name,
+        RRF_RT_REG_SZ,
+        nullptr,
+        reinterpret_cast<BYTE*>(buffer),
+        &bufferSize
+    );
+    if (error != ERROR_SUCCESS) {
+        return false;
+    }
+
+    // OK
+    return std::wcscmp(buffer, path) != 0;
+}
+
+inline bool UninstallService(const wchar_t *name) {
     // Open properties
     HKEY keyHandle{};
     DWORD dwDisposition;
@@ -188,6 +230,107 @@ bool DX12DiscoveryListener::UninstallGlobal() {
 
     // No longer attached
     isGlobal = false;
+
+    // OK
+    return true;
+}
+
+bool DX12DiscoveryListener::HasConflictingInstances() {
+    // Check startup service
+    if (FindConflictingService(L"GPUOpenDX12Service", servicePath.wstring().c_str())) {
+        return true;
+    }
+    
+    // Create snapshot
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    // Entry information
+    PROCESSENTRY32 entry{sizeof(PROCESSENTRY32)};
+
+    // Now walk the snapshot of processes
+    for (bool result = Process32First(snapshot, &entry); result; result = Process32Next(snapshot, &entry)) {
+        if (std::strcmp(entry.szExeFile, "GRS.Backends.DX12.Service.exe")) {
+            continue;
+        }
+        
+        // Attempt to open the process of interest at PID
+        HANDLE processHandle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, entry.th32ProcessID);
+        if (processHandle == nullptr) {
+            continue;
+        }
+
+        // Attempt to get path
+        char pathBuffer[1024];
+        if (!GetModuleFileNameEx(processHandle, nullptr, pathBuffer, sizeof(pathBuffer))) {
+            continue;
+        }
+
+        // Mismatched service?
+        if (servicePath != pathBuffer) {
+            return true;
+        }
+
+        // Cleanup
+        CloseHandle(processHandle);
+    }
+
+    // Cleanup
+    CloseHandle(snapshot);
+
+    // OK
+    return false;
+}
+
+bool DX12DiscoveryListener::UninstallConflictingInstances() {
+    // Remove bad service if needed
+    if (FindConflictingService(L"GPUOpenDX12Service", servicePath.wstring().c_str()) && !UninstallService(L"GPUOpenDX12Service")) {
+        return false;
+    }
+    
+    // Create snapshot
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    // Entry information
+    PROCESSENTRY32 entry{sizeof(PROCESSENTRY32)};
+
+    // Now walk the snapshot of processes
+    for (bool result = Process32First(snapshot, &entry); result; result = Process32Next(snapshot, &entry)) {
+        if (std::strcmp(entry.szExeFile, "GRS.Backends.DX12.Service.exe")) {
+            continue;
+        }
+        
+        // Attempt to open the process of interest at PID
+        HANDLE processHandle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_TERMINATE, FALSE, entry.th32ProcessID);
+        if (processHandle == nullptr) {
+            continue;
+        }
+
+        // Attempt to get path
+        char pathBuffer[1024];
+        if (!GetModuleFileNameEx(processHandle, nullptr, pathBuffer, sizeof(pathBuffer))) {
+            continue;
+        }
+
+        // Mismatched service?
+        if (servicePath != pathBuffer) {
+            // Attempt to terminate
+            if (!TerminateProcess(processHandle, 0u)) {
+                return false;
+            }
+        }
+
+        // Cleanup
+        CloseHandle(processHandle);
+    }
+
+    // Cleanup
+    CloseHandle(snapshot);
 
     // OK
     return true;

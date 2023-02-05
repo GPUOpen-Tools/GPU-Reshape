@@ -18,6 +18,8 @@ public:
     bool Stop() override;
     bool InstallGlobal() override;
     bool UninstallGlobal() override;
+    bool HasConflictingInstances() override;
+    bool UninstallConflictingInstances() override;
 
 private:
     /// Start the service process
@@ -27,7 +29,7 @@ private:
     /// Stop the service process
     /// \return success state
     bool StopProcess();
-
+    
 private:
     /// Is this listener presently globally installed?
     bool isGlobal{false};

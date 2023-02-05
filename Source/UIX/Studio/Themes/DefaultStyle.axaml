@@ -16,6 +16,7 @@
         <Color x:Key="SystemBaseHighColor">#D8D8D8</Color>
         
         <!-- Info colors -->
+        <Color x:Key="WarningColor">#8F892E</Color>
         <Color x:Key="ErrorColor">#8f2424</Color>
 
         <!-- Info brushes -->

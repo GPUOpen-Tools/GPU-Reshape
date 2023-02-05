@@ -50,6 +50,176 @@ bool QueryImplicitLayer(HKEY key, const wchar_t* path) {
     return true;
 }
 
+bool FindConflictingImplicitLayer(HKEY key, const wchar_t* path) {
+    // Determine the json path
+    std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
+    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GBV.json";
+
+    // Create properties
+    HKEY keyHandle{};
+    DWORD dwDisposition;
+
+    // Create or open the implicit layer key
+    DWORD error = RegCreateKeyExW(
+        key,
+        path,
+        0, nullptr, 0,
+        KEY_READ, nullptr,
+        &keyHandle, &dwDisposition
+    );
+    if (error != ERROR_SUCCESS) {
+        return false;
+    }
+
+    // Number of values
+    DWORD valueCount{0};
+
+    // Query key count
+    error = RegQueryInfoKey(
+        keyHandle,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        &valueCount,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
+    );
+    if (error != ERROR_SUCCESS) {
+        return false;
+    }
+
+    // For each key
+    for (uint32_t i = 0; i < valueCount; i++) {
+        char buffer[1024];
+
+        // Size of data, replaced
+        DWORD bufferSize = sizeof(buffer);
+
+        // Query key name
+        error = RegEnumValue(
+            keyHandle,
+            i,
+            buffer,
+            &bufferSize,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr
+        );
+
+        // OK?
+        if (error == ERROR_SUCCESS) {
+            std::string keyName(buffer, bufferSize / sizeof(char));
+
+            // Bad layer?
+            if (keyName.find("VK_LAYER_GPUOPEN_GBV.json") != std::string::npos && keyName != layerJsonPath) {
+                return true;
+            }
+        }
+    }
+
+    // No bad instance
+    return false;
+}
+
+bool UninstallConflictingImplicitLayer(HKEY key, const wchar_t* path) {
+    // Determine the json path
+    std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
+    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GBV.json";
+
+    // Create properties
+    HKEY keyHandle{};
+    DWORD dwDisposition;
+
+    // Create or open the implicit layer key
+    DWORD error = RegCreateKeyExW(
+        key,
+        path,
+        0, nullptr, 0,
+        KEY_ALL_ACCESS, nullptr,
+        &keyHandle, &dwDisposition
+    );
+    if (error != ERROR_SUCCESS) {
+        return true;
+    }
+
+    // Number of values
+    DWORD valueCount{0};
+
+    // Query key count
+    error = RegQueryInfoKey(
+        keyHandle,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        &valueCount,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
+    );
+    if (error != ERROR_SUCCESS) {
+        return false;
+    }
+
+    // Keys to remove
+    std::vector<std::string> bucket;
+
+    // For each key
+    for (uint32_t i = 0; i < valueCount; i++) {
+        char buffer[1024];
+
+        // Size of data, replaced
+        DWORD bufferSize = sizeof(buffer);
+
+        // Query key name
+        error = RegEnumValue(
+            keyHandle,
+            i,
+            buffer,
+            &bufferSize,
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr
+        );
+
+        // OK?
+        if (error == ERROR_SUCCESS) {
+            std::string keyName(buffer, bufferSize / sizeof(char));
+
+            // Bad layer?
+            if (keyName.find("VK_LAYER_GPUOPEN_GBV.json") != std::string::npos && keyName != layerJsonPath) {
+                bucket.push_back(keyName);
+            }
+        }
+    }
+
+    // Delete all keys
+    for (const std::string& key : bucket) {
+        error = RegDeleteValue(
+            keyHandle,
+            key.c_str()
+        );
+
+        // OK?
+        if (error != ERROR_SUCCESS) {
+            return false;
+        }
+    }
+
+    // OK
+    return true;
+}
+
 bool InstallImplicitLayer(HKEY key, const wchar_t* path) {
     // Determine the json path
     std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
@@ -189,6 +359,28 @@ bool VulkanDiscoveryListener::UninstallGlobal() {
 
     // OK
     return true;
+}
+
+bool VulkanDiscoveryListener::HasConflictingInstances() {
+    // Check user
+    if (FindConflictingImplicitLayer(HKEY_CURRENT_USER, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers")) {
+        return true;
+    }
+
+    // Check machine
+    if (FindConflictingImplicitLayer(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers")) {
+        return true;
+    }
+
+    // OK
+    return false;
+}
+
+bool VulkanDiscoveryListener::UninstallConflictingInstances() {
+    bool anyFailed = false;
+    anyFailed |= !UninstallConflictingImplicitLayer(HKEY_CURRENT_USER, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers");
+    anyFailed |= !UninstallConflictingImplicitLayer(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers");
+    return !anyFailed;
 }
 
 bool VulkanDiscoveryListener::Start() {

@@ -45,6 +45,14 @@ public:
     /// \return success state
     bool UninstallGlobal();
 
+    /// Check if conflicting instances are installed
+    /// \return true if any are installed
+    bool HasConflictingInstances();
+
+    /// Uninstall any conflicting instance
+    /// \return false if failed
+    bool UninstallConflictingInstances();
+    
     /// Get the registry
     Registry* GetRegistry() {
         return &registry;

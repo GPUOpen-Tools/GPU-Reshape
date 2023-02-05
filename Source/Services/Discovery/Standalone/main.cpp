@@ -183,6 +183,17 @@ int main(int32_t argc, const char *const *argv) {
             return 1;
         }
 
+        // Cleanup
+        if (service.HasConflictingInstances()) {
+            if (service.UninstallConflictingInstances()) {
+                std::cerr << "Failed to clean conflicting discovery services\n";
+                return 1;
+            } 
+
+            // OK
+            std::cerr << "Cleaned up to conflicting discovery services\n";
+        }
+
         // Install the host resolver
         //  ? Ensures that the host resolver is running on the system
         if (!hostResolverService.Install()) {

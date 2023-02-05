@@ -31,4 +31,12 @@ public:
     ///   ? Disables global hooking of respective discovery
     /// \return success state
     virtual bool UninstallGlobal() = 0;
+
+    /// Check if conflicting instances are installed
+    /// \return true if any are installed
+    virtual bool HasConflictingInstances() = 0;
+
+    /// Uninstall any conflicting instance
+    /// \return false if failed
+    virtual bool UninstallConflictingInstances() = 0;
 };

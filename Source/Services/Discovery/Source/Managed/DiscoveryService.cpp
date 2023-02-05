@@ -45,3 +45,13 @@ bool Discovery::CLR::DiscoveryService::UninstallGlobal()
 {
 	return service->UninstallGlobal();
 }
+
+bool Discovery::CLR::DiscoveryService::HasConflictingInstances()
+{
+	return service->HasConflictingInstances();
+}
+
+bool Discovery::CLR::DiscoveryService::UninstallConflictingInstances()
+{
+	return service->UninstallConflictingInstances();
+}

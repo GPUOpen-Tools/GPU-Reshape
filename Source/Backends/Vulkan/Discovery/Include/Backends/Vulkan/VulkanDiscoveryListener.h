@@ -17,6 +17,8 @@ public:
     bool Stop() override;
     bool InstallGlobal() override;
     bool UninstallGlobal() override;
+    bool HasConflictingInstances() override;
+    bool UninstallConflictingInstances() override;
 
 private:
     /// Is this listener presently globally installed?

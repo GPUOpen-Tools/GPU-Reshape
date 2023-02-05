@@ -35,7 +35,15 @@ namespace Discovery::CLR {
         /// Uninstall all listeners
         ///   ? Disables global hooking of respective discovery
         /// \return success state
-        bool UninstallGlobal();
+	    bool UninstallGlobal();
+
+        /// Check if conflicting instances are installed
+        /// \return true if any are installed
+	    bool HasConflictingInstances();
+
+        /// Uninstall any conflicting instance
+        /// \return false if failed
+	    bool UninstallConflictingInstances();
 
 	private:
 		::DiscoveryService* service{ nullptr };

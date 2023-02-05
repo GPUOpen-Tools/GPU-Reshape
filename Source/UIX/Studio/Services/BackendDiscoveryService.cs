@@ -1,4 +1,7 @@
+using Avalonia;
 using Discovery.CLR;
+using DynamicData;
+using Studio.Models.Logging;
 
 namespace Studio.Services
 {
@@ -18,6 +21,17 @@ namespace Studio.Services
             if (!Service.Install())
             {
                 Service = null;
+                return;
+            }
+
+            // Detect conflicting instances
+            if (Service.HasConflictingInstances())
+            {
+                App.Locator.GetService<ILoggingService>()?.ViewModel.Events.Add(new LogEvent()
+                {
+                    Severity = LogSeverity.Error,
+                    Message = "Detected conflicting discovery services / instances, typically indicant of mixed GPU-Reshape installations, see Settings"
+                });
             }
         }
     }

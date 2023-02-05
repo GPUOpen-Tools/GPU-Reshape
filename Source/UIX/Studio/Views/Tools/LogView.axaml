@@ -72,7 +72,10 @@
             <ListBox.DataTemplates>
                 <DataTemplate DataType="logging:LogEvent">
                     <Grid ColumnDefinitions="25,*">
-                        <PathIcon Data="{Binding Severity, Converter={StaticResource LogSeverityToIconConverter}}" Width="10" />
+                        <PathIcon 
+                            Data="{Binding Severity, Converter={StaticResource LogSeverityToIconConverter}}" 
+                            Foreground="{Binding Severity, Converter={StaticResource LogSeverityToIconConverter}}" 
+                            Width="10" />
                         <TextBlock Grid.Column="1" Text="{Binding Message}" VerticalAlignment="Center" Height="20" Padding="0 2" />
                     </Grid>
                 </DataTemplate>
