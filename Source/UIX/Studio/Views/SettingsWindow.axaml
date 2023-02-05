@@ -25,10 +25,6 @@
         <vm:SettingsViewModel />
     </Window.DataContext>
     
-    <!--
-        ! WILL BE MODULARIZED
-    -->
-    
     <Grid>
         <!-- Tool Header -->
         <StackPanel VerticalAlignment="Top" Orientation="Horizontal"  Margin="5">

@@ -3,6 +3,7 @@
 add_library(
     GRS.Services.Discovery STATIC
     Source/DiscoveryService.cpp
+    Source/NotifyIconDiscoveryListener.cpp
 )
 
 # IDE source discovery

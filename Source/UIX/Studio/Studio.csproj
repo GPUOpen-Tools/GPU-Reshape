@@ -12,6 +12,7 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <StartupObject>Studio.Program</StartupObject>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AssemblyName>GPUReshape</AssemblyName>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <DebugType>portable</DebugType>
@@ -43,7 +44,7 @@
         <PackageReference Include="Dock.Avalonia" Version="0.10.18" />
         <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.18" />
         <PackageReference Include="Markdown.Avalonia" Version="0.10.12" />
-        <PackageReference Include="MessageBox.Avalonia" Version="1.5.5" />
+        <PackageReference Include="MessageBox.Avalonia" Version="2.0.2" />
         <PackageReference Include="Microsoft.CodeAnalysis" Version="3.9.0" />
         <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="3.9.0" />
         <PackageReference Include="Microsoft.CodeAnalysis.Compilers" Version="3.9.0" />

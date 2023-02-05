@@ -14,3 +14,9 @@ Project_AddDotNetEx(
     FLAGS
         /Zc:twoPhase-
 )
+
+# Add external projects
+include_external_msproject(GRS.Services.Discovery.NotifyIcon ${CMAKE_CURRENT_SOURCE_DIR}/NotifyIcon/NotifyIcon.csproj)
+
+# IDE discovery
+set_target_properties(GRS.Services.Discovery.NotifyIcon PROPERTIES FOLDER Source/Services/Discovery)

@@ -1,4 +1,5 @@
 #include <Services/Discovery/DiscoveryService.h>
+#include <Services/Discovery/NotifyIconDiscoveryListener.h>
 
 // Discovery
 #include <Discovery/DiscoveryHost.h>
@@ -33,6 +34,9 @@ bool DiscoveryService::Install() {
     // Get all listeners
     listeners.resize(listenerCount);
     host->Enumerate(&listenerCount, listeners.data());
+
+    // Add notify icon listener
+    listeners.push_back(registry.New<NotifyIconDiscoveryListener>());
 
     // OK
     return true;

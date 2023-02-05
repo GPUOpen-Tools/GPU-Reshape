@@ -23,9 +23,9 @@ namespace Studio
         /// </summary>
         public static readonly Styles DefaultStyle = new Styles
         {
-            new StyleInclude(new Uri("avares://Studio/Styles"))
+            new StyleInclude(new Uri("avares://GPUReshape/Styles"))
             {
-                Source = new Uri("avares://Studio/Themes/DefaultStyle.axaml")
+                Source = new Uri("avares://GPUReshape/Themes/DefaultStyle.axaml")
             }
         };
 

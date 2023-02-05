@@ -10,8 +10,8 @@
     </Application.DataTemplates>
 
     <Application.Styles>
-        <StyleInclude Source="avares://Studio/Icons.axaml" />
-        <StyleInclude Source="avares://Studio/Themes/WorkspacePropertyView.axaml" />
+        <StyleInclude Source="avares://GPUReshape/Icons.axaml" />
+        <StyleInclude Source="avares://GPUReshape/Themes/WorkspacePropertyView.axaml" />
     </Application.Styles>
 
     <Application.Resources>
