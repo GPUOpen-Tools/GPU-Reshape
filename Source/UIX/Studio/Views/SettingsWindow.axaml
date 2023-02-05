@@ -8,6 +8,8 @@
         xmlns:views="using:Studio.Views"
         xmlns:vc="using:Studio.ValueConverters"
         xmlns:r="using:Studio.Resources"
+        xmlns:controls="clr-namespace:Studio.Views.Controls"
+        xmlns:sm="clr-namespace:Studio.ViewModels.Setting;assembly=UIX.Studio.Runtime"
         mc:Ignorable="d"
         d:DesignWidth="500" d:DesignHeight="300"
         Width="500" Height="300"
@@ -44,44 +46,31 @@
 
         <!-- Categories -->
         <Grid Margin="0,30,5,0" Width="200" HorizontalAlignment="Left" VerticalAlignment="Stretch">
-            <TreeView HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                <TreeViewItem Header="Discovery" IsSelected="True"/>
+            <TreeView 
+                x:Name="SettingTree" 
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                SelectedItem="{Binding SelectedSettingItem}"
+                Items="{Binding SettingItemViewModel.Items}">
+                <TreeView.Styles>
+                    <Style Selector="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding Path=(sm:ISettingItemViewModel).IsExpanded}"/>
+                    </Style>
+                </TreeView.Styles>
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate ItemsSource="{Binding Items}">
+                        <TextBlock Text="{Binding Header}"/>
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
             </TreeView>
         </Grid>
 
         <!-- View -->
         <Grid Margin="210,35,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-            <StackPanel Orientation="Vertical">
-                <TextBlock Text="Discovery"/>
-                
-                <Grid Margin="15,5,0,0" HorizontalAlignment="Stretch">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Status: "/>
-                        <TextBlock Text="{Binding Status, FallbackValue=[Status]}"/>
-                    </StackPanel>
-                    
-                    <Button 
-                        Margin="0,-5,0,0" 
-                        Command="{Binding LocalStateToggle}"
-                        Content="{Binding ButtonText, FallbackValue=[STATE]}" 
-                        HorizontalAlignment="Right"/>
-                </Grid>
-                
-                <Grid Margin="0,15,0,0" HorizontalAlignment="Stretch">
-                    <TextBlock Text="Global"/>
-                    <Separator
-                        Margin="45,0,0,0" 
-                        Background="{StaticResource DockThemeBorderLowBrush}" 
-                        HorizontalAlignment="Stretch" Height="1"/>
-                </Grid>
-                
-                <Grid Margin="15,5,0,0">
-                    <CheckBox 
-                        Command="{Binding GlobalStateToggle}"
-                        IsChecked="{Binding IsGloballyInstalled}"
-                        Content="Enable global hook"/>
-                </Grid>
-            </StackPanel>
+            <controls:LocatorViewHost 
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Stretch" 
+                DataContext="{Binding SelectedSettingItem}" />
         </Grid>
     </Grid>
 </Window>

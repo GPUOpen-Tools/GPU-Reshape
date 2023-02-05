@@ -59,8 +59,14 @@ namespace Studio
             // Hosts all live workspaces
             locator.BindToSelf<Services.IWorkspaceService>(new Services.WorkspaceService());
             
-            // Locator
+            // Provides general network diagnostics
             locator.BindToSelf<Services.NetworkDiagnosticService>(new Services.NetworkDiagnosticService());
+
+            // Initiates the host resolver if not already up and running
+            locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
+            
+            // Local discoverability
+            locator.BindToSelf<Services.IBackendDiscoveryService>(new Services.BackendDiscoveryService());
 
             // Hosts all status objects
             locator.BindToSelf<Services.IStatusService>(new Services.StatusService());
@@ -71,11 +77,8 @@ namespace Studio
             // Hosts all menu objects
             locator.BindToSelf<Services.IMenuService>(new Services.MenuService());
 
-            // Initiates the host resolver if not already up and running
-            locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
-            
-            // Local discoverability
-            locator.BindToSelf<Services.IBackendDiscoveryService>(new Services.BackendDiscoveryService());
+            // Hosts all settings objects
+            locator.BindToSelf<Services.ISettingsService>(new Services.SettingsService());
         }
 
         private void InstallPlugins()

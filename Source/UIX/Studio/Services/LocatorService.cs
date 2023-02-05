@@ -12,6 +12,9 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.Documents.WorkspaceOverviewDescriptor), typeof(ViewModels.Documents.WorkspaceOverviewViewModel));
             AddDerived(typeof(ViewModels.Documents.ShaderDescriptor), typeof(ViewModels.Documents.ShaderViewModel));
             
+            // Setting types
+            AddDerived(typeof(ViewModels.Setting.DiscoverySettingItemViewModel), typeof(Views.Setting.DiscoverySettingItemView));
+            
             // Window types
             AddDerived(typeof(ViewModels.SettingsViewModel), typeof(Views.SettingsWindow));
             AddDerived(typeof(ViewModels.AboutViewModel), typeof(Views.AboutWindow));

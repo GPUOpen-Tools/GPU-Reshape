@@ -130,6 +130,10 @@
       <AvaloniaResource Include="Resources\Icons\Icon.svg" />
       <AvaloniaResource Include="Resources\Icons\Icon_Frame.ico" />
       <AvaloniaResource Include="Resources\Icons\Icon_Frame.png" />
+      <Compile Update="Views\Controls\LocatorViewHost.axaml.cs">
+        <DependentUpon>LocatorViewHost.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
