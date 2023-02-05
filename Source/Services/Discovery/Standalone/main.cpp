@@ -185,7 +185,7 @@ int main(int32_t argc, const char *const *argv) {
 
         // Cleanup
         if (service.HasConflictingInstances()) {
-            if (service.UninstallConflictingInstances()) {
+            if (!service.UninstallConflictingInstances()) {
                 std::cerr << "Failed to clean conflicting discovery services\n";
                 return 1;
             } 

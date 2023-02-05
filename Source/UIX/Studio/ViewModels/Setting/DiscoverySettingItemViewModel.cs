@@ -3,7 +3,10 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Threading;
+using DynamicData;
 using ReactiveUI;
+using Studio.Models.Logging;
+using Studio.Services;
 using Studio.ViewModels.Setting;
 
 namespace Studio.ViewModels.Setting
@@ -63,6 +66,15 @@ namespace Studio.ViewModels.Setting
         }
 
         /// <summary>
+        /// Are there any conflicting instances running?
+        /// </summary>
+        public bool HasConflictingInstances
+        {
+            get => _hasConflictingInstances;
+            set => this.RaiseAndSetIfChanged(ref _hasConflictingInstances, value);
+        }
+
+        /// <summary>
         /// Is the service globally installed?
         /// </summary>
         public bool IsGloballyInstalled
@@ -88,6 +100,11 @@ namespace Studio.ViewModels.Setting
         /// Toggle the global state
         /// </summary>
         public ICommand GlobalStateToggle { get; }
+
+        /// <summary>
+        /// Toggle the local state
+        /// </summary>
+        public ICommand CleanConflictingInstances { get; }
         
         /// <summary>
         /// Items within
@@ -100,7 +117,11 @@ namespace Studio.ViewModels.Setting
             _discoveryService = App.Locator.GetService<Services.IBackendDiscoveryService>()?.Service;
             
             // Set status on failure
-            if (_discoveryService == null)
+            if (_discoveryService != null)
+            {
+                HasConflictingInstances = _discoveryService.HasConflictingInstances();
+            }
+            else
             {
                 Status = "Failed initialization";
                 ButtonText = "None";
@@ -109,9 +130,32 @@ namespace Studio.ViewModels.Setting
             // Create commands
             LocalStateToggle = ReactiveCommand.Create(OnLocalStateToggle);
             GlobalStateToggle = ReactiveCommand.Create(OnGlobalStateToggle);
+            CleanConflictingInstances = ReactiveCommand.Create(OnCleanConflictingInstances);
             
             // Subscribe tick
             _timer.Tick += OnTick;
+        }
+
+        /// <summary>
+        /// Invoked on conflict cleans
+        /// </summary>
+        private void OnCleanConflictingInstances()
+        {
+            // Try to uninstall
+            if (!(_discoveryService?.UninstallConflictingInstances() ?? false))
+            {
+                App.Locator.GetService<ILoggingService>()?.ViewModel.Events.Add(new LogEvent()
+                {
+                    Severity = LogSeverity.Error,
+                    Message = "Failed to uninstall conflicting discovery instances"
+                });
+
+                // Something went wrong...
+                return;
+            }
+
+            // Mark as OK
+            HasConflictingInstances = false;
         }
 
         /// <summary>
@@ -211,5 +255,10 @@ namespace Studio.ViewModels.Setting
         /// Internal enabled state
         /// </summary>
         private bool _isEnabled = true;
+
+        /// <summary>
+        /// Internal conflicting state
+        /// </summary>
+        private bool _hasConflictingInstances = false;
     }
 }

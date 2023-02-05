@@ -36,5 +36,28 @@
                 IsChecked="{Binding IsGloballyInstalled}"
                 Content="Enable global hook"/>
         </Grid>
+       
+        <StackPanel Orientation="Vertical" IsVisible="{Binding HasConflictingInstances}">
+            <Grid Margin="0,15,0,0" HorizontalAlignment="Stretch">
+                <TextBlock Text="Cleanup"/>
+                <Separator
+                    Margin="45,0,0,0" 
+                    Background="{StaticResource DockThemeBorderLowBrush}" 
+                    HorizontalAlignment="Stretch" Height="1"/>
+            </Grid>
+                
+            <StackPanel Orientation="Vertical" Margin="15,5,0,0">
+                <TextBlock TextWrapping="Wrap">
+                    Conflicting instances have been detected, typically indicant of mixed installations.
+                </TextBlock>
+                
+                <Button 
+                    Margin="0 5 0 0"
+                    HorizontalAlignment="Left"
+                    Command="{Binding CleanConflictingInstances}"
+                    Background="{StaticResource ErrorLowBrush}"
+                    Content="Clean"/>
+            </StackPanel>
+        </StackPanel>
     </StackPanel>
 </UserControl>

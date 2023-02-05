@@ -143,5 +143,5 @@ bool DiscoveryService::UninstallConflictingInstances() {
     }
 
     // OK
-    return anyFailed;
+    return !anyFailed;
 }
