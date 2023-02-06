@@ -20,3 +20,9 @@ include_external_msproject(GRS.Services.Discovery.NotifyIcon ${CMAKE_CURRENT_SOU
 
 # IDE discovery
 set_target_properties(GRS.Services.Discovery.NotifyIcon PROPERTIES FOLDER Source/Services/Discovery)
+
+# Add runtime dependencies
+add_dependencies(
+    GRS.Services.Discovery.NotifyIcon
+    GRS.Services.Discovery.DotNet
+)

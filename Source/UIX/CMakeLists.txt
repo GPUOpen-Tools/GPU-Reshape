@@ -22,4 +22,5 @@ add_dependencies(
 add_dependencies(
     UIX.Studio
     UIX.Runtime
+    GRS.Services.Discovery.NotifyIcon
 )
