@@ -1,15 +1,16 @@
 ﻿using System;
+using System.Windows.Input;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
 using Studio.ViewModels.Documents;
-using Studio.ViewModels.Instrumentation;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Listeners;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel, IInstrumentableObject, IDescriptorObject
+    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel, IInstrumentableObject, IClosableObject, IDescriptorObject
     {
         /// <summary>
         /// Name of this property
@@ -43,6 +44,11 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Document descriptor
         /// </summary>
         public IDescriptor? Descriptor { get; set; }
+
+        /// <summary>
+        /// Close command
+        /// </summary>
+        public ICommand? CloseCommand { get; set; }
 
         /// <summary>
         /// View model associated with this property

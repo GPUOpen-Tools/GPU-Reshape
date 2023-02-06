@@ -2,7 +2,7 @@
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace Studio.ViewModels.Instrumentation
+namespace Studio.ViewModels.Traits
 {
     public interface IInstrumentableObject
     {

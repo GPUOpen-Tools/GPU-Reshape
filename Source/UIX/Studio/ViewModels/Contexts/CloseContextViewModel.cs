@@ -3,12 +3,12 @@ using System.Reactive;
 using System.Windows.Input;
 using Message.CLR;
 using ReactiveUI;
-using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
-    public class InstrumentContextViewModel : ReactiveObject, IInstrumentContextViewModel
+    public class CloseContextViewModel : ReactiveObject, IContextMenuItemViewModel
     {
         /// <summary>
         /// Target view model of the context
@@ -19,14 +19,14 @@ namespace Studio.ViewModels.Contexts
             set
             {
                 this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsVisible = _targetViewModel is IInstrumentableObject;
+                IsVisible = _targetViewModel is IClosableObject;
             }
         }
 
         /// <summary>
         /// Display header of this context model
         /// </summary>
-        public string Header { get; set; } = "Instrument";
+        public string Header { get; set; } = "Close";
         
         /// <summary>
         /// All items within this context model
@@ -38,10 +38,22 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         public ICommand? Command { get; } = null;
 
-        public InstrumentContextViewModel()
+        public CloseContextViewModel()
         {
-            // Standard objects
-            Items.Add(new InstrumentAllContextViewModel());
+            Command = ReactiveCommand.Create(OnInvoked);
+        }
+
+        /// <summary>
+        /// Command implementation
+        /// </summary>
+        private void OnInvoked()
+        {
+            if (_targetViewModel is not IClosableObject closable)
+            {
+                return;
+            }
+            
+            closable.CloseCommand?.Execute(null);
         }
 
         /// <summary>
@@ -49,14 +61,14 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         public bool IsVisible
         {
-            get => _isVisible;
-            set => this.RaiseAndSetIfChanged(ref _isVisible, value);
+            get => _isEnabled;
+            set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
         }
 
         /// <summary>
         /// Internal enabled state
         /// </summary>
-        private bool _isVisible = false;
+        private bool _isEnabled = false;
 
         /// <summary>
         /// Internal target view model

@@ -2,7 +2,7 @@
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
-using Studio.ViewModels.Instrumentation;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
 

@@ -4,7 +4,7 @@ using System.Windows.Input;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
-using Studio.ViewModels.Instrumentation;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
@@ -20,7 +20,7 @@ namespace Studio.ViewModels.Contexts
             set
             {
                 this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsEnabled = _targetViewModel is IInstrumentableObject;
+                IsVisible = _targetViewModel is IInstrumentableObject;
             }
         }
 
@@ -42,7 +42,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Is this context enabled?
         /// </summary>
-        public bool IsEnabled
+        public bool IsVisible
         {
             get => _isEnabled;
             set => this.RaiseAndSetIfChanged(ref _isEnabled, value);

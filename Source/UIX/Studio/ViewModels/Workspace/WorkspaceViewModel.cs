@@ -1,7 +1,9 @@
 ﻿using System;
+using Avalonia;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
+using Studio.Services;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Listeners;
@@ -28,6 +30,20 @@ namespace Studio.ViewModels.Workspace
                 
                 OnConnectionChanged();
             }
+        }
+
+        public WorkspaceViewModel()
+        {
+            // Subscribe on collections behalf
+            _properties.CloseCommand = ReactiveCommand.Create(OnClose);
+        }
+
+        /// <summary>
+        /// Invoked on close
+        /// </summary>
+        private void OnClose()
+        {
+            App.Locator.GetService<IWorkspaceService>()?.Remove(this);
         }
 
         /// <summary>

@@ -23,7 +23,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// If this context menu is enabled
         /// </summary>
-        public bool IsEnabled { get; set; } = true;
+        public bool IsVisible { get; set; } = true;
         
         /// <summary>
         /// Underlying target view model for the context menu

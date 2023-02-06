@@ -6,7 +6,7 @@ using Runtime.Models.Objects;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.ViewModels.Contexts;
-using Studio.ViewModels.Instrumentation;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace GRS.Features.Concurrency.UIX.Contexts
@@ -29,7 +29,7 @@ namespace GRS.Features.Concurrency.UIX.Contexts
                     .GetProperty<IFeatureCollectionViewModel>()?
                     .GetFeature("Concurrency");
                 
-                IsEnabled = _featureInfo.HasValue;
+                IsVisible = _featureInfo.HasValue;
             }
         }
 
@@ -51,7 +51,7 @@ namespace GRS.Features.Concurrency.UIX.Contexts
         /// <summary>
         /// Is this context enabled?
         /// </summary>
-        public bool IsEnabled
+        public bool IsVisible
         {
             get => _isEnabled;
             set => this.RaiseAndSetIfChanged(ref _isEnabled, value);

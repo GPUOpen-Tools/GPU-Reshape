@@ -19,12 +19,12 @@ namespace Studio.ViewModels.Contexts
         /// Target command
         /// </summary>
         public ICommand? Command { get; }
-        
+
         /// <summary>
         /// Is this menu item enabled?
         /// </summary>
-        public bool IsEnabled { get; set; }
-        
+        public bool IsVisible { get; set; }
+
         /// <summary>
         /// Target view model of the context
         /// </summary>

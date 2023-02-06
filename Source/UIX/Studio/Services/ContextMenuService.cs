@@ -21,7 +21,8 @@ namespace Studio.Services
             // Standard context menus
             ViewModel.Items.AddRange(new IContextMenuItemViewModel[]
             {
-                new InstrumentContextViewModel()
+                new InstrumentContextViewModel(),
+                new CloseContextViewModel()
             });
         }
     }
