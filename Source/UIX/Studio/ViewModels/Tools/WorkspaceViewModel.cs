@@ -36,6 +36,11 @@ namespace Studio.ViewModels.Tools
         /// Connect to new workspace
         /// </summary>
         public ICommand Collapse { get; }
+        
+        /// <summary>
+        /// Connect to new workspace
+        /// </summary>
+        public ICommand ClearAll { get; }
 
         /// <summary>
         /// All workspaces
@@ -57,6 +62,7 @@ namespace Studio.ViewModels.Tools
             Refresh = ReactiveCommand.Create(OnRefresh);
             Expand = ReactiveCommand.Create(OnExpand);
             Collapse = ReactiveCommand.Create(OnCollapse);
+            ClearAll = ReactiveCommand.Create(OnClearAll);
 
             // Get service
             _workspaceService = App.Locator.GetService<Services.IWorkspaceService>() ?? throw new InvalidOperationException();
@@ -125,6 +131,14 @@ namespace Studio.ViewModels.Tools
             {
                 ExpandWorkspace(workspace, true);
             }
+        }
+
+        /// <summary>
+        /// Invoked on workspace clears
+        /// </summary>
+        private void OnClearAll()
+        {
+            _workspaceService.Clear();
         }
 
         /// <summary>

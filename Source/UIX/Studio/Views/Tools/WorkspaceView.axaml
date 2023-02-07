@@ -31,6 +31,12 @@
                     <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}" Command="{Binding Collapse}">
                         <PathIcon Data="{StaticResource Collapse}" Width="13" />
                     </Button>
+                    
+                    <Separator Width="1" Margin="3 3 3 3" Background="{StaticResource DockThemeBorderLowBrush}"/>
+                    
+                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}" Command="{Binding ClearAll}">
+                        <PathIcon Data="{StaticResource TrashAll}" Width="13" />
+                    </Button>
                 </StackPanel>
                 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
