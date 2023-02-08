@@ -9,6 +9,7 @@
         Width="425" Height="230"
         UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
         WindowState="Normal" WindowStartupLocation="CenterScreen"
+        CanResize="False"
         TransparencyLevelHint="None"
         Foreground="{DynamicResource DockThemeForegroundBrush}"
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
@@ -45,8 +46,8 @@
 
         <!-- Tool Result -->
         <Grid VerticalAlignment="Bottom">
-            <StackPanel Margin="0,0,5,0" HorizontalAlignment="Right" Orientation="Horizontal">
-                <Button HorizontalAlignment="Right" Content="Close"/>
+            <StackPanel Margin="0,0,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button HorizontalAlignment="Right" Content="Close" x:Name="CloseButton"/>
             </StackPanel>
         </Grid>
     </Grid>

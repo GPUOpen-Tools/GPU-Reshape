@@ -1,4 +1,5 @@
-﻿using System.Reactive;
+﻿using System;
+using System.Reactive;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -17,6 +18,9 @@ namespace Studio.Views
 #if DEBUG
             this.AttachDevTools();
 #endif
+
+            // Bind
+            CloseButton.Events().Click.Subscribe(_ => Close());
         }
     }
 }

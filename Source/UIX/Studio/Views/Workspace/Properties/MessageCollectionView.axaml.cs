@@ -3,6 +3,8 @@ using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using DynamicData;
+using DynamicData.Binding;
 using ReactiveUI;
 using Studio.Extensions;
 using Studio.ViewModels.Workspace.Objects;
@@ -22,20 +24,15 @@ namespace Studio.Views.Workspace.Properties
             InitializeComponent();
 
             this.WhenAnyValue(x => x.DataContext)
-                .WhereNotNull()
-                .Subscribe(x =>
+                .CastNullable<MessageCollectionViewModel>()
+                .Subscribe(viewModel =>
                 {
                     // Bind signals
                     MessageDataGrid.Events().DoubleTapped
                         .Select(_ => MessageDataGrid.SelectedItem as ValidationObject)
                         .WhereNotNull()
-                        .InvokeCommand(this, x => x._viewModel!.OpenShaderDocument);
+                        .Subscribe(x => viewModel.OpenShaderDocument.Execute(x));
                 });
         }
-
-        /// <summary>
-        /// Internal view model
-        /// </summary>
-        private MessageCollectionViewModel? _viewModel => ViewModel as MessageCollectionViewModel;
     }
 }

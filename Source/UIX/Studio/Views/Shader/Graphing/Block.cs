@@ -12,6 +12,6 @@ namespace Studio.Views.Shader.Graphing
         /// <summary>
         /// Color of this block
         /// </summary>
-        public Color Color { get; set; }
+        public IBrush Color { get; set; }
     }
 }

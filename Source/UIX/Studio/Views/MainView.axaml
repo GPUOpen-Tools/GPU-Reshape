@@ -19,7 +19,7 @@
         <vm:MainWindowViewModel />
     </Design.DataContext>
     <Grid RowDefinitions="30,*,25" ColumnDefinitions="Auto,*" Name="MainGrid">
-        <Grid Grid.Row="0" Grid.Column="0">
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0">
             <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="20" Margin="5,0,0,0" HorizontalAlignment="Left" />
 
             <Menu 
@@ -27,7 +27,7 @@
                 Grid.Column="0" 
                 VerticalAlignment="Center" 
                 Height="30" 
-                Margin="30,0,0,0"
+                Margin="5,0,0,0"
                 Items="{Binding Menu}">
                 <Menu.Styles>
                     <Style Selector="MenuItem">
@@ -38,7 +38,13 @@
                     </Style>
                 </Menu.Styles>
             </Menu>
-        </Grid>
+            
+            <TextBlock 
+                Margin="25 0 0 0"
+                VerticalAlignment="Center"
+                Foreground="{StaticResource InfoMediumForeground}"
+                Text="{Binding WorkspaceLabel}"/>
+        </StackPanel>
 
         <DockControl 
             x:Name="DockControl" 

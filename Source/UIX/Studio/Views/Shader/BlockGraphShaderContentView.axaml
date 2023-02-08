@@ -29,7 +29,8 @@
                     <avaloniaGraphControl:GraphPanel.DataTemplates>
                         <DataTemplate DataType="{x:Type graph:Block}">
                             <avaloniaGraphControl:TextSticker Text="{Binding Name}"
-                                                              BorderForeground="{Binding Color}"
+                                                              BorderForeground="Black"
+                                                              Background="{Binding Color}"
                                                               Shape="Ellipse"
                                                               Padding="30,10" />
                         </DataTemplate>

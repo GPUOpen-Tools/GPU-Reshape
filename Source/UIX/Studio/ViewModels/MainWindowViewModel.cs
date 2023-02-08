@@ -62,6 +62,15 @@ namespace Studio.ViewModels
         /// </summary>
         public IEnumerable<IStatusViewModel>? StatusRight => Status?.Where(s => s.Orientation == StatusOrientation.Right);
 
+        /// <summary>
+        /// Current workspace name
+        /// </summary>
+        public string WorkspaceLabel
+        {
+            get => _workspaceLabel;
+            set => this.RaiseAndSetIfChanged(ref _workspaceLabel, value);
+        }
+
         public MainWindowViewModel()
         {
             // Attach to window service
@@ -100,6 +109,15 @@ namespace Studio.ViewModels
                 this.RaisePropertyChanged(nameof(StatusLeft));
                 this.RaisePropertyChanged(nameof(StatusRight));
             });
+            
+            // Bind workspace
+            if (App.Locator.GetService<IWorkspaceService>() is { } workspaceService)
+            {
+                workspaceService.WhenAnyValue(x => x.SelectedWorkspace).WhereNotNull().Subscribe(x =>
+                {
+                    WorkspaceLabel = x.Connection?.Application?.DecoratedName ?? "";
+                });
+            }
         }
 
         /// <summary>
@@ -161,5 +179,10 @@ namespace Studio.ViewModels
         /// Internal layout state
         /// </summary>
         private IRootDock? _layout;
+
+        /// <summary>
+        /// Internal workspace name
+        /// </summary>
+        private string _workspaceLabel;
     }
 }

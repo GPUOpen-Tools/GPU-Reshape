@@ -98,7 +98,7 @@ namespace Studio.Views.Shader
                         objects.Add(uint.Parse(block.Name), new Graphing.Block()
                         {
                             Name = block.Value.name,
-                            Color = GetColor((string)block.Value.color),
+                            Color = new SolidColorBrush(GetColor((string)block.Value.color)),
                         });
                     }
 
@@ -107,7 +107,7 @@ namespace Studio.Views.Shader
                     {
                         graph.Edges.Add(new Graphing.Edge(objects[(uint)edge.from], objects[(uint)edge.to])
                         {
-                            Color = GetColor((string)edge.color)
+                            Color = new SolidColorBrush(GetColor((string)edge.color))
                         });
                     }
 
@@ -116,7 +116,7 @@ namespace Studio.Views.Shader
                     {
                         graph.Edges.Add(new Graphing.Edge(objects.First().Value, objects.First().Value)
                         {
-                            Color = Colors.White
+                            Color = new SolidColorBrush(Colors.White)
                         });
                     }
                 }

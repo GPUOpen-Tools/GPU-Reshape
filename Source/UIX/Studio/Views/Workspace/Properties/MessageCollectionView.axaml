@@ -12,7 +12,8 @@
             Items="{Binding ValidationObjects}" 
             IsReadOnly="True"
             VerticalAlignment="Stretch"
-            HorizontalAlignment="Stretch">
+            HorizontalAlignment="Stretch"
+            Height="150">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Message" Binding="{Binding Content}" Width="40*"/>
                 <DataGridTextColumn Header="Shader Extract" Binding="{Binding Extract}" Width="40*"/>
