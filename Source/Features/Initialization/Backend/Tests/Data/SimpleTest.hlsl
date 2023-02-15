@@ -22,6 +22,6 @@ void main(uint dtid : SV_DispatchThreadID) {
     //! MESSAGE UninitializedResource[64] LUID:3
     data += textureRO.Load(dtid.x);
 
-    //! MESSAGE UninitializedResource[64] LUID:2
+    //! MESSAGE UninitializedResource[0] LUID:2
 	bufferRW2[dtid.x] = data;
 }

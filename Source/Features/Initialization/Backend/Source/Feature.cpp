@@ -87,6 +87,9 @@ void InitializationFeature::Inject(IL::Program &program) {
         // Pooled resource id
         IL::ID resource;
 
+        // Write operation?
+        bool isWrite = false;
+
         // Instruction of interest?
         switch (it->opCode) {
             default:
@@ -96,13 +99,43 @@ void InitializationFeature::Inject(IL::Program &program) {
                 break;
             case IL::OpCode::StoreBuffer:
                 resource = it->As<IL::StoreBufferInstruction>()->buffer;
+                isWrite = true;
                 break;
             case IL::OpCode::StoreTexture:
                 resource = it->As<IL::StoreTextureInstruction>()->texture;
+                isWrite = true;
                 break;
             case IL::OpCode::LoadTexture:
                 resource = it->As<IL::LoadTextureInstruction>()->texture;
                 break;
+            case IL::OpCode::SampleTexture:
+                resource = it->As<IL::SampleTextureInstruction>()->texture;
+                break;
+        }
+
+        // Write operations just assign the new mask
+        if (isWrite) {
+            // Insert prior to IOI
+            IL::Emitter<> emitter(program, context.basicBlock, it);
+
+            // Get global id of resource
+            IL::ResourceTokenEmitter token(emitter, resource);
+
+            // Get token details
+            IL::ID SRB = token.GetSRB();
+            IL::ID PUID = token.GetPUID();
+
+            // Load buffer pointer
+            IL::ID bufferID = emitter.Load(initializationMaskBufferDataID);
+
+            // Get current mask
+            IL::ID srbMask = emitter.Extract(emitter.LoadBuffer(bufferID, PUID), 0u);
+
+            // Bit-Or with resource mask
+            emitter.StoreBuffer(bufferID, PUID, emitter.BitOr(srbMask, SRB));
+
+            // Resume on next
+            return emitter.GetIterator();
         }
 
         // Bind the SGUID

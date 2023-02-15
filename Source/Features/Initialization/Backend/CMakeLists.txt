@@ -34,6 +34,7 @@ add_custom_command(
 # Test files
 Project_AddBackendTest_Common(GeneratedTest Initialization)
 Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SampledTest.hlsl)
 
 Project_AddTest(
     NAME GRS.Features.Initialization.Tests
