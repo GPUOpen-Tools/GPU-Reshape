@@ -25,16 +25,16 @@ struct ProgramCheck {
     std::string_view str;
 };
 
+struct Generator {
+    std::string contents;
+};
+
 struct ProgramMessageAttribute {
     /// Name of the attribute
     std::string_view name;
 
-    // Expected value of the attribute
-    int64_t value;
-};
-
-struct Generator {
-    std::string contents;
+    /// Expected value generator
+    Generator checkGenerator{"1"};
 };
 
 struct ProgramMessage {
@@ -43,9 +43,6 @@ struct ProgramMessage {
 
     /// Message check generator
     Generator checkGenerator{"1"};
-
-    /// Message check mode
-    MessageCheckMode checkMode{MessageCheckMode::Equal};
 
     /// Line in which it occurs
     int64_t line{0};

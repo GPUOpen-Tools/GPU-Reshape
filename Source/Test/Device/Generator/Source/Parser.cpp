@@ -381,56 +381,9 @@ bool Parser::ParseMessage(Parser::Context &context) {
         return false;
     }
 
-    // Optional comparison mode
-    if (context.TryNext("==")) {
-        message.checkMode = MessageCheckMode::Equal;
-    } else if (context.TryNext("!=")) {
-        message.checkMode = MessageCheckMode::NotEqual;
-    } else if (context.TryNext(">")) {
-        message.checkMode = MessageCheckMode::Greater;
-    } else if (context.TryNext(">=")) {
-        message.checkMode = MessageCheckMode::GreaterEqual;
-    } else if (context.TryNext("<")) {
-        message.checkMode = MessageCheckMode::Less;
-    } else if (context.TryNext("<=")) {
-        message.checkMode = MessageCheckMode::LessEqual;
+    if (!ParseLiteralGenerator(context, &message.checkGenerator)) {
+        return false;
     }
-
-    // Generator is pass through
-    if (context.Tok().type == TokenType::Generator) {
-        message.checkMode = MessageCheckMode::Generator;
-        message.checkGenerator.contents = context.Next().str;
-    } else {
-        // Parse as integer
-        int64_t value;
-        if (!ParseInt(context, &value)) {
-            return false;
-        }
-
-        switch (message.checkMode) {
-            default:
-                ASSERT(false, "Invalid check mode");
-            case MessageCheckMode::Equal:
-                message.checkGenerator.contents = "x == " + std::to_string(value);
-                break;
-            case MessageCheckMode::NotEqual:
-                message.checkGenerator.contents = "x != " + std::to_string(value);
-                break;
-            case MessageCheckMode::Greater:
-                message.checkGenerator.contents = "x > " + std::to_string(value);
-                break;
-            case MessageCheckMode::GreaterEqual:
-                message.checkGenerator.contents = "x >= " + std::to_string(value);
-                break;
-            case MessageCheckMode::Less:
-                message.checkGenerator.contents = "x < " + std::to_string(value);
-                break;
-            case MessageCheckMode::LessEqual:
-                message.checkGenerator.contents = "x <= " + std::to_string(value);
-                break;
-        }
-    }
-
 
     if (!context.TryNext("]")) {
         context.Error("Expected start of count ]");
@@ -455,7 +408,7 @@ bool Parser::ParseMessage(Parser::Context &context) {
             return false;
         }
 
-        if (!ParseInt(context, &attr.value)) {
+        if (!ParseLiteralGenerator(context, &attr.checkGenerator)) {
             return false;
         }
     }
@@ -528,20 +481,59 @@ bool Parser::ParseResourceType(Parser::Context &context, ResourceType *out) {
 }
 
 bool Parser::ParseLiteralGenerator(Parser::Context &context, Generator *out) {
-    if (context.Tok().type != TokenType::Generator) {
+    MessageCheckMode checkMode = MessageCheckMode::Equal;
+    
+    // Optional comparison mode
+    if (context.TryNext("==")) {
+        checkMode = MessageCheckMode::Equal;
+    } else if (context.TryNext("!=")) {
+        checkMode = MessageCheckMode::NotEqual;
+    } else if (context.TryNext(">")) {
+        checkMode = MessageCheckMode::Greater;
+    } else if (context.TryNext(">=")) {
+        checkMode = MessageCheckMode::GreaterEqual;
+    } else if (context.TryNext("<")) {
+        checkMode = MessageCheckMode::Less;
+    } else if (context.TryNext("<=")) {
+        checkMode = MessageCheckMode::LessEqual;
+    }
+
+    // Generator is pass through
+    if (context.Tok().type == TokenType::Generator) {
+        checkMode = MessageCheckMode::Generator;
+        out->contents = context.Next().str;
+    } else {
         // Parse as integer
         int64_t value;
         if (!ParseInt(context, &value)) {
             return false;
         }
 
-        // As generator
-        out->contents = std::to_string(value);
-        return true;
+        switch (checkMode) {
+            default:
+            ASSERT(false, "Invalid check mode");
+            case MessageCheckMode::Equal:
+                out->contents = "x == " + std::to_string(value);
+                break;
+            case MessageCheckMode::NotEqual:
+                out->contents = "x != " + std::to_string(value);
+                break;
+            case MessageCheckMode::Greater:
+                out->contents = "x > " + std::to_string(value);
+                break;
+            case MessageCheckMode::GreaterEqual:
+                out->contents = "x >= " + std::to_string(value);
+                break;
+            case MessageCheckMode::Less:
+                out->contents = "x < " + std::to_string(value);
+                break;
+            case MessageCheckMode::LessEqual:
+                out->contents = "x <= " + std::to_string(value);
+                break;
+        }
     }
 
     // OK
-    out->contents = context.Next().str;
     return true;
 }
 

@@ -78,9 +78,10 @@ void Assembler::AssembleConstraints() {
 
         // Generate attributes
         for (const ProgramMessageAttribute &attr: kv.second[0].attributes) {
-            fields << "\tint32_t " << attr.name << ";\n";
+            fields << "\tstd::string " << attr.name << "Policy;\n";
+            fields << "\tstd::function<bool(uint32_t)> " << attr.name << "Comparator;\n";
 
-            tests << "\t\t\t\tREQUIRE_FORMAT(bucket->" << attr.name << " == it->" << attr.name << ", \"Message attribute " << attr.name << " is \" << it->" << attr.name << " << \" but expected \" << bucket->" << attr.name << ");\n";
+            tests << "\t\t\t\tREQUIRE_FORMAT(bucket->" << attr.name << "Comparator(it->" << attr.name << "), \"Message attribute comparison policy '\" << bucket->" << attr.name << "Policy << \"' failed on line \" << line);\n";
         }
 
         // Generate messages
@@ -92,7 +93,8 @@ void Assembler::AssembleConstraints() {
             inits << "\t\t\tmsg.comparator = [](uint32_t x) { return " << message.checkGenerator.contents << "; };\n";
 
             for (const ProgramMessageAttribute &attr: message.attributes) {
-                inits << "\t\t\tmsg." << attr.name << " = " << attr.value << ";\n";
+                inits << "\t\t\tmsg." << attr.name << "Policy = \"" << attr.checkGenerator.contents << "\";\n";
+                inits << "\t\t\tmsg." << attr.name << "Comparator = [](uint32_t x) { return " << attr.checkGenerator.contents << "; };\n";
             }
 
             inits << "\t\t}\n";
