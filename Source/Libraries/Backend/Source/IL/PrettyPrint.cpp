@@ -117,6 +117,60 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
             line << "Store address:%" << store->address << " value:%" << store->value;
             break;
         }
+        case OpCode::SampleTexture: {
+            auto load = instr->As<IL::SampleTextureInstruction>();
+            line << "SampleTexture";
+
+            switch (load->sampleMode) {
+                default:
+                    ASSERT(false, "Invalid sampler mode");
+                    break;
+                case Backend::IL::TextureSampleMode::Default:
+                    break;
+                case Backend::IL::TextureSampleMode::DepthComparison:
+                    line << " DepthComparison";
+                    break;
+                case Backend::IL::TextureSampleMode::Projection:
+                    line << " Projection";
+                    break;
+                case Backend::IL::TextureSampleMode::ProjectionDepthComparison:
+                    line << " ProjectionDepthComparison";
+                    break;
+                case Backend::IL::TextureSampleMode::Unexposed:
+                    line << " Unexposed";
+                    break;
+            }
+            
+            line << " texture:%" << load->texture;
+
+            if (load->sampler != InvalidID) {
+                line << " sampler:%" << load->sampler;
+            }
+
+            line << " coordinate:%" << load->coordinate;
+
+            if (load->sampler != InvalidID) {
+                line << " sampler:%" << load->sampler;
+            }
+
+            if (load->reference != InvalidID) {
+                line << " sampler:%" << load->reference;
+            }
+
+            if (load->lod != InvalidID) {
+                line << " sampler:%" << load->lod;
+            }
+
+            if (load->bias != InvalidID) {
+                line << " sampler:%" << load->bias;
+            }
+
+            if (load->ddx != InvalidID) {
+                line << " ddx:%" << load->ddx;
+                line << " ddy:%" << load->ddy;
+            }
+            break;
+        }
         case OpCode::LoadTexture: {
             auto load = instr->As<IL::LoadTextureInstruction>();
             line << "LoadTexture texture:%" << load->texture << " index:%" << load->index;
