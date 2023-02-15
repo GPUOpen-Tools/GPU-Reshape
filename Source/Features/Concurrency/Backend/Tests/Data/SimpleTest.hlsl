@@ -13,10 +13,10 @@
 [numthreads(1, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
     if (dtid.x >= 128) {
-        //! MESSAGE ResourceRaceCondition[{x > 0 && x <= 128}] LUID:721
+        //! MESSAGE ResourceRaceCondition[{x > 0 && x <= 128}] LUID:{x==720 || x==721}
     	bufferRW[dtid.x] = 1.0f;
     }
 
-    //! MESSAGE ResourceRaceCondition[>0] LUID:721
+    //! MESSAGE ResourceRaceCondition[>0] LUID:{x==720 || x==721}
 	bufferRW2[dtid.x] = 1.0f;
 }

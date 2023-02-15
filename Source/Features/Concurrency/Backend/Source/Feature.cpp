@@ -125,18 +125,24 @@ void ConcurrencyFeature::Inject(IL::Program &program) {
         IL::Emitter<> pre(program, context.basicBlock);
 
         // Get global id of resource
-        IL::ResourceTokenEmitter token(pre, resource);
+        IL::ID puid = IL::ResourceTokenEmitter(pre, resource).GetPUID();
+
+        // Load buffer
+        IL::ID bufferValue = pre.Load(lockBufferDataID);
+
+        // Default unlocked value
+        IL::ID unlockedConstant = pre.UInt32(0);
 
         // Get previous lock
         IL::ID previousLock;
         if (isWrite) {
             // Compare exchange at PUID with the event
             // ! Single producer
-            previousLock = pre.AtomicCompareExchange(pre.AddressOf(lockBufferDataID, token.GetPUID()), pre.UInt32(0), eventDataID);
+            previousLock = pre.AtomicCompareExchange(pre.AddressOf(lockBufferDataID, puid), unlockedConstant, eventDataID);
         } else {
             // Read the current lock at PUID
             // ! Multiple consumers
-            previousLock = pre.Extract(pre.LoadBuffer(pre.Load(lockBufferDataID), token.GetPUID()), 0);
+            previousLock = pre.Extract(pre.LoadBuffer(bufferValue, puid), 0);
         }
 
         // If either unacquired or by the current event
@@ -147,7 +153,18 @@ void ConcurrencyFeature::Inject(IL::Program &program) {
 
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(cond, oob.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
-        return instr;
+
+        // Reads have no lock
+        if (!isWrite) {
+            return instr;
+        }
+
+        // Writes release lock after IOI
+        IL::Emitter<> resumeEmitter(program, *resumeBlock, ++resumeBlock->begin());
+        resumeEmitter.StoreBuffer(bufferValue, puid, unlockedConstant);
+
+        // Resume after unlock
+        return resumeEmitter.GetIterator();
     });
 }
 
