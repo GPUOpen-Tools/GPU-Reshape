@@ -71,6 +71,9 @@ void ConcurrencyFeature::Inject(IL::Program &program) {
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
+        // Is write operation?
+        bool isWrite = false;
+
         // Instruction of interest?
         IL::ID resource;
         switch (it->opCode) {
@@ -81,12 +84,17 @@ void ConcurrencyFeature::Inject(IL::Program &program) {
                 break;
             case IL::OpCode::StoreBuffer:
                 resource = it->As<IL::StoreBufferInstruction>()->buffer;
+                isWrite = true;
                 break;
             case IL::OpCode::StoreTexture:
                 resource = it->As<IL::StoreTextureInstruction>()->texture;
+                isWrite = true;
                 break;
             case IL::OpCode::LoadTexture:
                 resource = it->As<IL::LoadTextureInstruction>()->texture;
+                break;
+            case IL::OpCode::SampleTexture:
+                resource = it->As<IL::SampleTextureInstruction>()->texture;
                 break;
         }
 
@@ -119,10 +127,19 @@ void ConcurrencyFeature::Inject(IL::Program &program) {
         // Get global id of resource
         IL::ResourceTokenEmitter token(pre, resource);
 
-        // Compare exchange at PUID with the event
-        IL::ID previousLock = pre.AtomicCompareExchange(pre.AddressOf(lockBufferDataID, token.GetPUID()), pre.UInt32(0), eventDataID);
+        // Get previous lock
+        IL::ID previousLock;
+        if (isWrite) {
+            // Compare exchange at PUID with the event
+            // ! Single producer
+            previousLock = pre.AtomicCompareExchange(pre.AddressOf(lockBufferDataID, token.GetPUID()), pre.UInt32(0), eventDataID);
+        } else {
+            // Read the current lock at PUID
+            // ! Multiple consumers
+            previousLock = pre.Extract(pre.LoadBuffer(pre.Load(lockBufferDataID), token.GetPUID()), 0);
+        }
 
-        // Is any of the indices larger than the resource size
+        // If either unacquired or by the current event
         IL::ID cond = pre.And(
             pre.NotEqual(previousLock, pre.UInt32(0)),
             pre.NotEqual(previousLock, eventDataID)
