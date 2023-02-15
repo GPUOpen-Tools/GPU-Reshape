@@ -37,7 +37,7 @@ $INITS
                     }
                 }
 
-                REQUIRE_FORMAT(bucket != nullptr, "Message $MESSAGE_TYPE reported, but no match found");
+                REQUIRE_FORMAT(bucket != nullptr, "Message $MESSAGE_TYPE reported, but no match found on line " << line);
 
 $TESTS
 

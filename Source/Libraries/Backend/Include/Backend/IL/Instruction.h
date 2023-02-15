@@ -11,6 +11,7 @@
 #include "LiteralType.h"
 #include "ID.h"
 #include "ComponentMask.h"
+#include "TextureSampleMode.h"
 
 namespace IL {
     struct Instruction {
@@ -179,6 +180,29 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::ResourceToken;
 
         ID resource;
+    };
+
+    struct SampleTextureInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::SampleTexture;
+
+        Backend::IL::TextureSampleMode sampleMode;
+
+        ID texture;
+        ID sampler;
+        ID coordinate;
+
+        /// Value reference to sampling mode, optional
+        ID reference;
+
+        /// Explicit lod, optional
+        ID lod;
+
+        /// Lod bias, optional
+        ID bias;
+
+        /// Explicit gradients, optional
+        ID ddx;
+        ID ddy;
     };
 
     struct LoadTextureInstruction : public Instruction {
@@ -547,6 +571,8 @@ namespace IL {
                 return sizeof(LoadInstruction);
             case OpCode::Store:
                 return sizeof(StoreInstruction);
+            case OpCode::SampleTexture:
+                return sizeof(SampleTextureInstruction);
             case OpCode::LoadTexture:
                 return sizeof(LoadTextureInstruction);
             case OpCode::StoreBuffer:

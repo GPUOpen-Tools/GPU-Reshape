@@ -79,13 +79,18 @@ namespace IL {
         Alloca,
         Load,
         Store,
+
+        /// Program
         StoreOutput,
 
         /// Resource
+        SampleTexture,
         StoreTexture,
         LoadTexture,
         StoreBuffer,
         LoadBuffer,
+
+        /// Resource queries
         ResourceToken,
         ResourceSize
     };

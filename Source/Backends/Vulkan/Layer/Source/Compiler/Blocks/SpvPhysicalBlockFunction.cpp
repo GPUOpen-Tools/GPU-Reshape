@@ -13,6 +13,9 @@
 void SpvPhysicalBlockFunction::Parse() {
     block = table.scan.GetPhysicalBlock(SpvPhysicalBlockType::Function);
 
+    // All metadata
+    identifierMetadata.resize(table.scan.header.bound);
+
     // Parse instructions
     SpvParseContext ctx(block->source);
     while (ctx) {
@@ -571,7 +574,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 break;
             }
 
-                // Image store operation, fx. texture & buffer writes
+            // Image store operation, fx. texture & buffer writes
             case SpvOpImageRead:
             case SpvOpImageFetch: {
                 uint32_t image = ctx++;
@@ -601,7 +604,97 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 break;
             }
 
-                // Image store operation, fx. texture & buffer writes
+            case SpvOpSampledImage: {
+                // Emit as unexposed
+                IL::UnexposedInstruction instr{};
+                instr.opCode = IL::OpCode::Unexposed;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.backendOpCode = ctx->GetOp();
+                basicBlock->Append(instr);
+
+                // Create metadata
+                IdentifierMetadata& md = identifierMetadata.at(instr.result);
+                md.type = IdentifierType::CombinedImageSampler;
+                md.combinedImageSampler.image = ctx++;
+                md.combinedImageSampler.sampler = ctx++;
+                break;
+            }
+
+            // Image sampling operations
+            case SpvOpImageSampleImplicitLod:
+            case SpvOpImageSampleExplicitLod:
+            case SpvOpImageSampleDrefImplicitLod:
+            case SpvOpImageSampleDrefExplicitLod:
+            case SpvOpImageSampleProjImplicitLod:
+            case SpvOpImageSampleProjExplicitLod:
+            case SpvOpImageSampleProjDrefImplicitLod:
+            case SpvOpImageSampleProjDrefExplicitLod: {
+                IL::SampleTextureInstruction instr{};
+                instr.opCode = IL::OpCode::SampleTexture;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.texture = ctx++;
+                instr.coordinate = ctx++;
+                instr.sampler = IL::InvalidID;
+                instr.reference = IL::InvalidID;
+                instr.bias = IL::InvalidID;
+                instr.lod = IL::InvalidID;
+                instr.ddx = IL::InvalidID;
+                instr.ddy = IL::InvalidID;
+
+                // Extract combined types if needed
+                if (IdentifierMetadata& md = identifierMetadata.at(instr.texture); md.type == IdentifierType::CombinedImageSampler) {
+                    instr.texture = md.combinedImageSampler.image;
+                    instr.sampler = md.combinedImageSampler.sampler;
+                }
+
+                // Optional reference
+                switch (ctx->GetOp()) {
+                    default:
+                        instr.sampleMode = Backend::IL::TextureSampleMode::Default;
+                        break;
+                    case SpvOpImageSampleProjImplicitLod:
+                    case SpvOpImageSampleProjExplicitLod:
+                        instr.sampleMode = Backend::IL::TextureSampleMode::Projection;
+                        break;
+                    case SpvOpImageSampleDrefImplicitLod:
+                    case SpvOpImageSampleDrefExplicitLod:
+                        instr.sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
+                        instr.reference = ctx++;
+                        break;
+                    case SpvOpImageSampleProjDrefImplicitLod:
+                    case SpvOpImageSampleProjDrefExplicitLod:
+                        instr.sampleMode = Backend::IL::TextureSampleMode::ProjectionDepthComparison;
+                        instr.reference = ctx++;
+                        break;
+                }
+
+                // Get mask, succeeding operands parsed in-order
+                uint32_t operandMask = ctx++;
+
+                // Implicit bias?
+                if (operandMask & SpvImageOperandsBiasMask) {
+                    instr.bias = ctx++;
+                }
+
+                // Explicit LOD?
+                if (operandMask & SpvImageOperandsLodMask) {
+                    instr.lod = ctx++;
+                }
+
+                // Explicit gradient?
+                if (operandMask & SpvImageOperandsGradMask) {
+                    instr.ddx = ctx++;
+                    instr.ddy = ctx++;
+                }
+
+                // Note: Ignore remaining parameters
+                basicBlock->Append(instr);
+                break;
+            }
+
+            // Image store operation, fx. texture & buffer writes
             case SpvOpImageWrite: {
                 uint32_t image = ctx++;
                 uint32_t coordinate = ctx++;
@@ -1771,6 +1864,9 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
         spvCounterBinding[1] = variable->id;
         spvCounterBinding[2] = SpvDecorationBinding;
         spvCounterBinding[3] = job.bindingInfo.shaderDataDescriptorOffset + shaderDataOffset;
+
+        // Next!
+        shaderDataOffset++;
     }
 }
 
@@ -1904,4 +2000,5 @@ void SpvPhysicalBlockFunction::CreateDataLookups(SpvStream& stream, SpvIdMap& id
 
 void SpvPhysicalBlockFunction::CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockFunction &out) {
     out.block = remote.scan.GetPhysicalBlock(SpvPhysicalBlockType::Function);
+    out.identifierMetadata = identifierMetadata;
 }

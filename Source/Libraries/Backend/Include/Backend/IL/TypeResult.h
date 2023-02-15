@@ -191,6 +191,16 @@ namespace Backend::IL {
         return texture->As<TextureType>()->sampledType;
     }
 
+    inline const Type* ResultOf(Program& program, const SampleTextureInstruction* instr) {
+        const Type* texture = program.GetTypeMap().GetType(instr->texture);
+        if (!texture) {
+            ASSERT(false, "Failed to determine type");
+            return nullptr;
+        }
+
+        return texture->As<TextureType>()->sampledType;
+    }
+
     inline const Type* ResultOf(Program& program, const LoadBufferInstruction* instr) {
         const Type* buffer = program.GetTypeMap().GetType(instr->buffer);
         if (!buffer) {

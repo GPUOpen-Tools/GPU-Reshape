@@ -1364,6 +1364,142 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             return true;
         }
 
+        /*
+         * DXIL Specification
+         *  declare %dx.types.ResRet.f32 @dx.op.sample.f32(
+         *      i32,                      ; opcode
+         *      %dx.types.ResHandle,      ; texture handle
+         *      %dx.types.SamplerHandle,  ; sampler handle
+         *      float,                    ; coordinate c0
+         *      float,                    ; coordinate c1
+         *      float,                    ; coordinate c2
+         *      float,                    ; coordinate c3
+         *      i32,                      ; offset o0
+         *      i32,                      ; offset o1
+         *      i32,                      ; offset o2
+         */
+        case CRC64("dx.op.sample.f32"):
+        case CRC64("dx.op.sample.f16"):
+        case CRC64("dx.op.sampleBias.f32"):
+        case CRC64("dx.op.sampleBias.f16"):
+        case CRC64("dx.op.sampleLevel.f32"):
+        case CRC64("dx.op.sampleLevel.f16"):
+        case CRC64("dx.op.sampleGrad.f32"):
+        case CRC64("dx.op.sampleGrad.f16"): {
+            if (!view.StartsWith("dx.op.sample")) {
+                return false;
+            }
+
+            // Get op-code
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+
+            // Get operands, ignore offset for now
+            uint32_t resource = reader.GetMappedRelative(anchor);
+            uint32_t sampler = reader.GetMappedRelative(anchor);
+            uint32_t cx = reader.GetMappedRelative(anchor);
+            uint32_t cy = reader.GetMappedRelative(anchor);
+            uint32_t cz = reader.GetMappedRelative(anchor);
+            uint32_t cw = reader.GetMappedRelative(anchor);
+            uint32_t ox = reader.GetMappedRelative(anchor);
+            uint32_t oy = reader.GetMappedRelative(anchor);
+            uint32_t oz = reader.GetMappedRelative(anchor);
+
+            // Unused
+            GRS_SINK(ox, oy, oz);
+
+            // Get type
+            const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
+
+            // Number of dimensions
+            uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
+
+            // Vectorize
+            IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz, cw);
+
+            // Emit as sample
+            IL::SampleTextureInstruction instr{};
+            instr.opCode = IL::OpCode::SampleTexture;
+            instr.sampleMode = Backend::IL::TextureSampleMode::Default;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.texture = resource;
+            instr.sampler = sampler;
+            instr.coordinate = svoxCoordinate;
+            instr.lod = IL::InvalidID;
+            instr.bias = IL::InvalidID;
+            instr.reference = IL::InvalidID;
+            instr.ddx = IL::InvalidID;
+            instr.ddy = IL::InvalidID;
+
+            // Handle additional operands
+            switch (static_cast<DXILOpcodes>(opCode)) {
+                default:
+                    ASSERT(false, "Unexpected sampling opcode");
+                    break;
+                case DXILOpcodes::Sample: {
+                    instr.sampleMode = Backend::IL::TextureSampleMode::Default;
+
+                    // Unused
+                    uint32_t clamp = reader.GetMappedRelative(anchor);
+                    GRS_SINK(clamp);
+                    break;
+                }
+                case DXILOpcodes::SampleBias: {
+                    instr.sampleMode = Backend::IL::TextureSampleMode::Default;
+                    instr.bias = reader.GetMappedRelative(anchor);
+
+                    // Unused
+                    uint32_t clamp = reader.GetMappedRelative(anchor);
+                    GRS_SINK(clamp);
+                    break;
+                }
+                case DXILOpcodes::SampleCmp: {
+                    instr.sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
+                    instr.reference = reader.GetMappedRelative(anchor);
+
+                    // Unused
+                    uint32_t clamp = reader.GetMappedRelative(anchor);
+                    GRS_SINK(clamp);
+                    break;
+                }
+                case DXILOpcodes::SampleCmpLevelZero: {
+                    instr.sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
+                    instr.reference = reader.GetMappedRelative(anchor);
+                    break;
+                }
+                case DXILOpcodes::SampleGrad: {
+                    instr.sampleMode = Backend::IL::TextureSampleMode::Default;
+
+                    // DDX
+                    uint32_t ddx0 = reader.GetMappedRelative(anchor);
+                    uint32_t ddx1 = reader.GetMappedRelative(anchor);
+                    uint32_t ddx2 = reader.GetMappedRelative(anchor);
+
+                    // DDY
+                    uint32_t ddy0 = reader.GetMappedRelative(anchor);
+                    uint32_t ddy1 = reader.GetMappedRelative(anchor);
+                    uint32_t ddy2 = reader.GetMappedRelative(anchor);
+
+                    // Vectorize
+                    instr.ddx = AllocateSVOSequential(textureDimensionCount, ddx0, ddx1, ddx2);
+                    instr.ddy = AllocateSVOSequential(textureDimensionCount, ddy0, ddy1, ddy2);
+
+                    // Unused
+                    uint32_t clamp = reader.GetMappedRelative(anchor);
+                    GRS_SINK(clamp);
+                    break;
+                }
+                case DXILOpcodes::SampleLevel: {
+                    instr.sampleMode = Backend::IL::TextureSampleMode::Default;
+                    instr.lod = reader.GetMappedRelative(anchor);
+                    break;
+                }
+            }
+
+            basicBlock->Append(instr);
+            return true;
+        }
+
             /*
              * DXIL Specification
              *   ; overloads: SM5.1: f32|i32,  SM6.0: f16|f32|i16|i32

@@ -86,6 +86,30 @@ private:
     void CreateDataLookups(SpvStream& stream, SpvIdMap& idMap);
 
 private:
+    /// Identifier type
+    enum class IdentifierType {
+        None,
+        CombinedImageSampler,
+    };
+
+    /// Single identifier metadata
+    struct IdentifierMetadata {
+        /// Given type
+        IdentifierType type = IdentifierType::None;
+
+        /// Payload
+        union {
+            struct {
+                IL::ID image;
+                IL::ID sampler;
+            } combinedImageSampler;
+        };
+    };
+
+    /// All metadata
+    std::vector<IdentifierMetadata> identifierMetadata;
+
+private:
     struct LoopContinueBlock {
         IL::InstructionRef<> instruction;
         IL::ID block;

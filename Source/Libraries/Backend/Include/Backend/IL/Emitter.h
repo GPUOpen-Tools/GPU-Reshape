@@ -920,6 +920,11 @@ namespace IL {
             return basicBlock;
         }
 
+        /// Get the current iterator
+        BasicBlock::Iterator GetIterator() const {
+            return basicBlock->GetIterator(insertionPoint);
+        }
+
     private:
         /// Check if an id is mapped
         bool IsMapped(ID id) const {
