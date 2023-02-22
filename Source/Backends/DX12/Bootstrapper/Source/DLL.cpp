@@ -88,7 +88,9 @@ D3D12GPUOpenFunctionTable LayerFunctionTable;
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 /// Prototypes
-void DetourInitialAMDAGS(HMODULE, bool);
+void DetourAMDAGSModule(HMODULE handle, bool insideTransaction);
+void DetourD3D12Module(HMODULE handle, bool insideTransaction); 
+void DetourDXGIModule(HMODULE handle, bool insideTransaction);
 
 #if ENABLE_LOGGING
 std::mutex LoggingLock;
@@ -120,10 +122,10 @@ struct LogContext {
 };
 #endif // ENABLE_LOGGING
 
-void BootstrapCheckLibrary(HMODULE& handle, const wchar_t* name, bool native) {
+bool BootstrapCheckLibrary(HMODULE& handle, const wchar_t* name, bool native) {
     // Early out if already loaded
     if (handle) {
-        return;
+        return false;
     }
 
     // Get actual module handle
@@ -132,6 +134,61 @@ void BootstrapCheckLibrary(HMODULE& handle, const wchar_t* name, bool native) {
     } else {
         handle = Kernel32LoadLibraryExWOriginal(name, nullptr, 0x0);
     }
+
+    // Check
+    return handle != nullptr;
+}
+
+void ConditionallyBeginDetour(bool insideTransaction) {
+    if (insideTransaction) {
+        return;
+    }
+
+    // Begin
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+}
+
+void ConditionallyEndDetour(bool insideTransaction) {
+    // Commit if needed
+    if (!insideTransaction) {
+        if (FAILED(DetourTransactionCommit())) {
+            return;
+        }
+    }
+
+    // May be loaded after the bootstrapper has initialized, update the function table if needed
+    if (LayerModule) {
+        auto* gpaSetFunctionTable = reinterpret_cast<PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN>(Kernel32GetProcAddressOriginal(LayerModule, "D3D12SetFunctionTableGPUOpen"));
+        if (!gpaSetFunctionTable || FAILED(gpaSetFunctionTable(&DetourFunctionTable))) {
+#if ENABLE_LOGGING
+            LogContext{} << "Failed to update layer function table\n";
+#endif // ENABLE_LOGGING
+        }
+    }
+}
+
+void LazyLoadDependentLibraries(bool native) {
+    // Begin batch
+    ConditionallyBeginDetour(false);
+
+    // D3D12
+    if (BootstrapCheckLibrary(D3D12Module, kD3D12ModuleNameW, native)) {
+        DetourD3D12Module(D3D12Module, true);
+    }
+
+    // DXGI
+    if (BootstrapCheckLibrary(DXGIModule, kDXGIModuleNameW, native)) {
+        DetourDXGIModule(DXGIModule, true);
+    }
+
+    // AGS
+    if (BootstrapCheckLibrary(AMDAGSModule, kAMDAGSModuleNameW, native)) {
+        DetourAMDAGSModule(DXGIModule, true);
+    }
+
+    // End batch
+    ConditionallyEndDetour(false);
 }
 
 void BootstrapLayer(const char* invoker, bool native) {
@@ -167,10 +224,8 @@ void BootstrapLayer(const char* invoker, bool native) {
     // Copy current bootstrapper
     std::filesystem::copy(path, sessionPath);
 
-    // Get actual module handles
-    BootstrapCheckLibrary(D3D12Module, kD3D12ModuleNameW, native);
-    BootstrapCheckLibrary(DXGIModule, kDXGIModuleNameW, native);
-    BootstrapCheckLibrary(AMDAGSModule, kAMDAGSModuleNameW, native);
+    // Load modules on demand
+    LazyLoadDependentLibraries(native);
 
     // Failed?
     // Note: AMDAGSModule is optional, extension service
@@ -284,6 +339,8 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
     }
 
     // Query against layer?
+    // ! Disabled for the time being, warrants investigation
+#if 0
     if (LayerModule) {
         // Non-ordinal?
         if (HIWORD(lpProcName)) {
@@ -337,6 +394,7 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
             }
         }
     }
+#endif // 0
 
     // Pass down callchain
     return Kernel32GetProcAddressOriginal(hModule, lpProcName);
@@ -344,7 +402,7 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
 
 void TryLoadEmbeddedAMDAGS(HMODULE handle) {
     if (!DetourFunctionTable.next_AMDAGSCreateDevice && Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr) {
-        DetourInitialAMDAGS(handle, false);
+        DetourAMDAGSModule(handle, false);
     }
 }
 
@@ -549,12 +607,9 @@ HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void
     return LayerFunctionTable.next_CreateDXGIFactory2Original(flags, riid, ppFactory);
 }
 
-void DetourInitialAMDAGS(HMODULE handle, bool insideTransaction) {
+void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
     // Open transaction if needed
-    if (!insideTransaction) {
-        DetourTransactionBegin();
-        DetourUpdateThread(GetCurrentThread());
-    }
+    ConditionallyBeginDetour(insideTransaction);
 
     // Attach against original address
     DetourFunctionTable.next_AMDAGSCreateDevice = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice"));
@@ -576,58 +631,64 @@ void DetourInitialAMDAGS(HMODULE handle, bool insideTransaction) {
     DetourFunctionTable.next_AMDAGSSetMarker = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_SetMarker"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSSetMarker), reinterpret_cast<void*>(HookAMDAGSSetMarker));
 
-    // Commit if needed
-    if (!insideTransaction) {
-        if (FAILED(DetourTransactionCommit())) {
-            return;
-        }
+    // End and update
+    ConditionallyEndDetour(insideTransaction);
+}
+
+void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
+    // Open transaction if needed
+    ConditionallyBeginDetour(insideTransaction);
+
+    // Attach against original address
+    DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(handle, "D3D12CreateDevice"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
+
+    // Attach against original address
+    DetourFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(Kernel32GetProcAddressOriginal(handle, "D3D12EnableExperimentalFeatures"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
+
+    // End and update
+    ConditionallyEndDetour(insideTransaction);
+}
+
+void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
+    // Open transaction if needed
+    ConditionallyBeginDetour(insideTransaction);
+
+    // Attach against original address
+    DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
+
+    // Attach against original address
+    DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory1"));
+    if (DetourFunctionTable.next_CreateDXGIFactory1Original) {
+        DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
     }
 
-    // AGS may be loaded after the bootstrapper has initialized, update the function table if needed
-    if (LayerModule) {
-        auto* gpaSetFunctionTable = reinterpret_cast<PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN>(Kernel32GetProcAddressOriginal(LayerModule, "D3D12SetFunctionTableGPUOpen"));
-        if (!gpaSetFunctionTable || FAILED(gpaSetFunctionTable(&DetourFunctionTable))) {
-#if ENABLE_LOGGING
-            LogContext{} << "Failed to update layer function table\n";
-#endif // ENABLE_LOGGING
-        }
+    // Attach against original address
+    DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory2"));
+    if (DetourFunctionTable.next_CreateDXGIFactory2Original) {
+        DetourAttach(&reinterpret_cast<void *&>(DetourFunctionTable.next_CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
     }
+
+    // End and update
+    ConditionallyEndDetour(insideTransaction);
 }
 
 void DetourInitialCreation() {
     // Attempt to find d3d12 module
     if (GetModuleHandleExW(0x0, kD3D12ModuleNameW, &D3D12Module)) {
-        // Attach against original address
-        DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12CreateDevice"));
-        DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
-
-        // Attach against original address
-        DetourFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12EnableExperimentalFeatures"));
-        DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
+        DetourD3D12Module(D3D12Module, true);
     }
 
     // Attempt to find dxgi module
     if (GetModuleHandleExW(0x0, kDXGIModuleNameW, &DXGIModule)) {
-        // Attach against original address
-        DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory"));
-        DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
-
-        // Attach against original address
-        DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory1"));
-        if (DetourFunctionTable.next_CreateDXGIFactory1Original) {
-            DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
-        }
-
-        // Attach against original address
-        DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory2"));
-        if (DetourFunctionTable.next_CreateDXGIFactory2Original) {
-            DetourAttach(&reinterpret_cast<void *&>(DetourFunctionTable.next_CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
-        }
+        DetourDXGIModule(DXGIModule, true);
     }
 
     // Attempt to find amd ags module
     if (GetModuleHandleExW(0x0, kAMDAGSModuleNameW, &AMDAGSModule)) {
-        DetourInitialAMDAGS(AMDAGSModule, true);
+        DetourAMDAGSModule(AMDAGSModule, true);
     }
 }
 
