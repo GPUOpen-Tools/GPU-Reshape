@@ -47,7 +47,12 @@
       "state": "DeviceState",
       "hooks": [
         "CreateCommittedResource",
+        "CreateCommittedResource1",
+        "CreateCommittedResource2",
+        "CreateCommittedResource3",
         "CreatePlacedResource",
+        "CreatePlacedResource1",
+        "CreatePlacedResource2",
         "CreateReservedResource",
         "CreateCommandQueue",
         "CreateCommandAllocator",
