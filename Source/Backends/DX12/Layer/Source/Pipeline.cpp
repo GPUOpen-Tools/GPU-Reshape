@@ -252,15 +252,11 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     // Get root signature
     auto rootSignatureTable = GetTable(desc->pRootSignature);
 
-    // Object
-    ID3D12PipelineState *pipeline{nullptr};
-
     // Create state
     auto *state = new GraphicsPipelineState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Graphics;
-    state->object = pipeline;
 
     // Perform deep copy
     state->deepCopy.DeepCopy(Allocators{}, *desc);
@@ -269,7 +265,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     state->deepCopy->pRootSignature = rootSignatureTable.next;
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateGraphicsPipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
+    HRESULT hr = table.bottom->next_CreateGraphicsPipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
         delete state;
         return hr;
@@ -323,18 +319,18 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     table.state->states_Pipelines.Add(state);
 
     // Create detours
-    pipeline = CreateDetour(Allocators{}, pipeline, state);
+    state->object = CreateDetour(Allocators{}, state->object, state);
 
     // Query to external object if requested
     if (pPipeline) {
-        hr = pipeline->QueryInterface(riid, pPipeline);
+        hr = state->object->QueryInterface(riid, pPipeline);
         if (FAILED(hr)) {
             return hr;
         }
     }
 
     // Cleanup
-    pipeline->Release();
+    state->object->Release();
 
     // OK
     return S_OK;
@@ -346,15 +342,11 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     // Get root signature
     auto rootSignatureTable = GetTable(desc->pRootSignature);
 
-    // Object
-    ID3D12PipelineState *pipeline{nullptr};
-
     // Create state
     auto *state = new ComputePipelineState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Compute;
-    state->object = pipeline;
 
     // Perform deep copy
     state->deepCopy.DeepCopy(Allocators{}, *desc);
@@ -363,7 +355,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     state->deepCopy->pRootSignature = rootSignatureTable.next;
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateComputePipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
+    HRESULT hr = table.bottom->next_CreateComputePipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
         delete state;
         return hr;
@@ -385,18 +377,18 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     table.state->states_Pipelines.Add(state);
 
     // Create detours
-    pipeline = CreateDetour(Allocators{}, pipeline, state);
+    state->object = CreateDetour(Allocators{}, state->object, state);
 
     // Query to external object if requested
     if (pPipeline) {
-        hr = pipeline->QueryInterface(riid, pPipeline);
+        hr = state->object->QueryInterface(riid, pPipeline);
         if (FAILED(hr)) {
             return hr;
         }
     }
 
     // Cleanup
-    pipeline->Release();
+    state->object->Release();
 
     // OK
     return S_OK;
@@ -429,6 +421,7 @@ PipelineState::~PipelineState() {
 
     // Creation may have failed
     if (!object) {
+        ASSERT(shaders.empty(), "Unexpected pipeline state on destruction");
         return;
     }
 
