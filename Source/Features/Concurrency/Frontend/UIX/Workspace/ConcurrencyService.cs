@@ -78,7 +78,7 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Race condition detected",
+                        Content = $"Potential race condition detected",
                         Count = kv.Value
                     };
 
