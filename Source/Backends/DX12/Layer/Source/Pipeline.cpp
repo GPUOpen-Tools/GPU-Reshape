@@ -18,7 +18,7 @@
 #   include <iostream>
 #endif
 
-static ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTECODE &byteCode) {
+ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTECODE &byteCode) {
     // Create key
     ShaderStateKey key;
     key.byteCode = byteCode;
@@ -426,6 +426,11 @@ HRESULT WINAPI HookID3D12PipelineStateSetName(ID3D12PipelineState* _this, LPCWST
 
 PipelineState::~PipelineState() {
     auto device = GetTable(parent);
+
+    // Creation may have failed
+    if (!object) {
+        return;
+    }
 
     // Remove state lookup
     device.state->states_Pipelines.Remove(this);

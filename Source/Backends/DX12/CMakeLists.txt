@@ -287,6 +287,7 @@ add_library(
     Layer/Source/RootSignature.cpp
     Layer/Source/DescriptorHeap.cpp
     Layer/Source/Pipeline.cpp
+    Layer/Source/PipelineLibrary.cpp
     Layer/Source/SwapChain.cpp
     Layer/Source/DLL.cpp
     Layer/Source/Layer.cpp

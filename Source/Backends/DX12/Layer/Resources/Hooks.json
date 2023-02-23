@@ -5,6 +5,7 @@
     "RootSignature.h",
     "DescriptorHeap.h",
     "Pipeline.h",
+    "PipelineLibrary.h",
     "Fence.h",
     "CommandList.h",
     "SwapChain.h",
@@ -20,7 +21,8 @@
     "States/DXGIFactoryState.h",
     "States/CommandAllocatorState.h",
     "States/CommandQueueState.h",
-    "States/CommandSignatureState.h"
+    "States/CommandSignatureState.h",
+    "States/PipelineLibraryState.h"
   ],
   "files": [
     "d3d12.h",
@@ -67,7 +69,8 @@
         "CreateComputePipelineState",
         "CreateShaderResourceView",
         "CreateUnorderedAccessView",
-        "CreateCommandSignature"
+        "CreateCommandSignature",
+        "CreatePipelineLibrary"
       ]
     },
     "ID3D12CommandQueue": {
@@ -181,6 +184,16 @@
         "ResizeBuffers1",
         "Present",
         "Present1",
+        "GetDevice"
+      ]
+    },
+    "ID3D12PipelineLibrary": {
+      "name": "PipelineLibrary",
+      "state": "PipelineLibraryState",
+      "hooks": [
+        "StorePipeline",
+        "LoadGraphicsPipeline",
+        "LoadComputePipeline",
         "GetDevice"
       ]
     }
