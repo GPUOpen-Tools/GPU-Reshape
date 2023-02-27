@@ -27,6 +27,7 @@ struct LLVMBlockMetadata;
 struct DXILPhysicalBlockScan {
 public:
     DXILPhysicalBlockScan(const Allocators& allocators);
+    ~DXILPhysicalBlockScan();
 
     /// Set the block filter
     /// \param shlBitMask
@@ -65,6 +66,10 @@ public:
     }
 
 private:
+    /// Destroy a block
+    /// \param block source block
+    void DestroyBlockContents(const LLVMBlock* block);
+    
     /// Copy a block
     /// \param block source block
     /// \param out destination block

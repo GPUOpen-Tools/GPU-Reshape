@@ -19,6 +19,16 @@ DXBCPhysicalBlockTable::DXBCPhysicalBlockTable(const Allocators &allocators, IL:
     /* */
 }
 
+DXBCPhysicalBlockTable::~DXBCPhysicalBlockTable() {
+    if (dxilModule) {
+        destroy(dxilModule, allocators);
+    }
+    
+    if (debugModule) {
+        destroy(dxilModule, allocators);
+    }
+}
+
 bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     if (!scan.Scan(byteCode, byteLength)) {
         return false;

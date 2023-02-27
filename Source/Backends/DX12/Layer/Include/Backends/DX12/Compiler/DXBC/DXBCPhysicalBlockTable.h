@@ -17,6 +17,7 @@ class IDXDebugModule;
 /// Complete physical block table
 struct DXBCPhysicalBlockTable {
     DXBCPhysicalBlockTable(const Allocators &allocators, IL::Program &program);
+    ~DXBCPhysicalBlockTable();
 
     /// Scan the DXBC bytecode
     /// \param byteCode code start

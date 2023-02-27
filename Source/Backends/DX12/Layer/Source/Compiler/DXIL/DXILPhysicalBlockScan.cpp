@@ -33,6 +33,10 @@ DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : rec
 
 }
 
+DXILPhysicalBlockScan::~DXILPhysicalBlockScan() {
+    DestroyBlockContents(&root);
+}
+
 void DXILPhysicalBlockScan::SetBlockFilter(uint64_t shlBitMask) {
     shlBlockFilter = shlBitMask;
 }
@@ -735,6 +739,16 @@ void DXILPhysicalBlockScan::CopyTo(DXILPhysicalBlockScan &out) {
 
     // Copy root block
     CopyBlock(&root, out.root);
+}
+
+void DXILPhysicalBlockScan::DestroyBlockContents(const LLVMBlock *block) {
+    for (LLVMBlock *child : block->blocks) {
+        // Destroy all child containers
+        DestroyBlockContents(child);
+
+        // Release block
+        destroy(child, allocators);
+    }
 }
 
 void DXILPhysicalBlockScan::CopyBlock(const LLVMBlock *block, LLVMBlock &out) {
