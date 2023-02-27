@@ -87,6 +87,11 @@ namespace IL {
             }
         }
 
+        /// Get function by index
+        Function* operator[](uint32_t i) const {
+            return functions[i];
+        }
+
         /// Iterator accessors
         Container::iterator begin() { return functions.begin(); }
         Container::reverse_iterator rbegin() { return functions.rbegin(); }

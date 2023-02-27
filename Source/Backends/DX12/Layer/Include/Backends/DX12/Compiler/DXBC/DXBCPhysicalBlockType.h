@@ -23,6 +23,8 @@ enum class DXBCPhysicalBlockType : uint32_t {
     /// SM6
     ILDB = 'BDLI',
     DXIL = 'LIXD',
+    InputSignature = '1GSI',
+    OutputSignature = '1GSO',
 
     /// Unknown block
     Unexposed = ~0u

@@ -29,6 +29,9 @@ public:
     /// \param block source block
     void ParseFunction(struct LLVMBlock *block);
 
+    /// Migrate all constant blocks to global
+    void MigrateConstantBlocks();
+
     /// Parse a module function
     /// \param record source record
     void ParseModuleFunction(struct LLVMRecord& record);
@@ -194,6 +197,12 @@ private:
     /// \param declaration pulled declaration
     /// \return true if recognized intrinsic
     bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
+
+private:
+    /// Returns true if the program requires value map segmentation, i.e. branching over value data
+    bool RequiresValueMapSegmentation() const {
+        return internalLinkedFunctions.Size() > 1u;
+    }
 
 private:
     struct FunctionBlock {

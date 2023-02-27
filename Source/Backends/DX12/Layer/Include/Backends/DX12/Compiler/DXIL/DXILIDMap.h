@@ -14,35 +14,36 @@ struct DXILIDMap {
 
     }
 
-    /// Copy this map
+    /// Copy this id map
     /// \param out destination map
     void CopyTo(DXILIDMap& out) {
-        out.allocationOffset = allocationOffset;
-        out.map = map;
+        out.segment = segment;
+        out.bound = bound;
     }
 
-    /// Allocate a new mapped identifier for program <-> dxil mapping
+    /// Allocate a new mapped identifier for program <-> dxil mapping 
     /// \param type type of this mapping
-    /// \param dataIndex internal data index
+    /// \param dataIndex internal data index 
     /// \return backend id
     IL::ID AllocMappedID(DXILIDType type, uint32_t dataIndex = ~0u) {
         // New unmapped?
-        if (allocationOffset == map.Size()) {
+        if (segment.allocationOffset == segment.map.Size()) {
             IL::ID id = program.GetIdentifierMap().AllocID();
 
-            map.Add(NativeState {
+            segment.map.Add(NativeState {
                 .mapped = id,
                 .type = type,
                 .dataIndex = dataIndex
             });
 
             // Increment
-            allocationOffset++;
+            segment.allocationOffset++;
+            bound++;
 
-            // OK
+            // OK 
             return id;
         } else {
-            NativeState& state = map[allocationOffset++];
+            NativeState& state = segment.map[segment.allocationOffset++];
 
             // May be forward declared, don't stomp it!
             if (state.mapped == IL::InvalidID) {
@@ -66,30 +67,33 @@ struct DXILIDMap {
 
     /// Remap an allocated id
     void SetMapped(uint32_t anchor, IL::ID id) {
-        map[anchor].mapped = id;
+        segment.map[anchor].mapped = id;
     }
 
     /// Reserve forward allocations
     /// \param count number of allocations
     void ReserveForward(size_t count) {
-        size_t end = map.Size() + count;
+        size_t end = segment.map.Size() + count;
 
-        size_t size = map.Size();
-        map.Resize(end);
+        size_t size = segment.map.Size();
+        segment.map.Resize(end);
 
-        std::fill(map.begin() + size, map.begin() + end, NativeState {
+        std::fill(segment.map.begin() + size, segment.map.begin() + end, NativeState {
             .mapped = IL::InvalidID
         });
+
+        // Increment bound
+        bound += count;
     }
 
     /// Get the current record anchor
     uint32_t GetAnchor() const {
-        return allocationOffset;
+        return segment.allocationOffset;
     }
 
     /// Is an ID mapped?
     bool IsMapped(uint32_t id) const {
-        return allocationOffset > id;
+        return segment.allocationOffset > id;
     }
 
     /// Get the relative id
@@ -119,13 +123,13 @@ struct DXILIDMap {
 
     /// Get a mapped value
     IL::ID GetMapped(uint64_t id) const {
-        return map[id].mapped;
+        return segment.map[id].mapped;
     }
 
     /// Get a mapped value
     IL::ID GetMappedCheckType(uint64_t id, DXILIDType type) const {
-        ASSERT(map[id].type == type, "Unexpected type");
-        return map[id].mapped;
+        ASSERT(segment.map[id].type == type, "Unexpected type");
+        return segment.map[id].mapped;
     }
 
     /// Get a forward mapped value
@@ -133,7 +137,7 @@ struct DXILIDMap {
     /// \param id forward id
     /// \return absolute id
     IL::ID GetMappedForward(uint32_t anchor, uint32_t id) {
-        NativeState& state = map[anchor + id];
+        NativeState& state = segment.map[anchor + id];
 
         if (state.mapped == IL::InvalidID) {
             state = NativeState {
@@ -148,29 +152,24 @@ struct DXILIDMap {
 
     /// Get the type of an id
     DXILIDType GetType(uint64_t id) {
-        return map[id].type;
+        return segment.map[id].type;
     }
 
     /// Get the internal data index of an id
     IL::ID GetDataIndex(uint64_t id) {
-        return map[id].dataIndex;
+        return segment.map[id].dataIndex;
     }
 
     /// Get the allocation bound
     uint32_t GetBound() const {
-        return static_cast<uint32_t>(map.Size());
+        return static_cast<uint32_t>(bound);
     }
 
-private:
-    IL::Program& program;
-
-private:
+public:
+    /// Single state
     struct NativeState {
         /// Program ID
         IL::ID mapped;
-
-        /// Stitched allocation index
-        uint32_t stitchIndex;
 
         /// Identifier type
         DXILIDType type;
@@ -179,9 +178,87 @@ private:
         uint32_t dataIndex;
     };
 
-    /// Current allocation offset
-    uint32_t allocationOffset{0};
+    /// Snapshot of the map
+    struct Snapshot {
+        /// Current allocation offset
+        uint32_t allocationOffset{0};
 
-    /// All mappings
-    TrivialStackVector<NativeState, 256> map;
+        /// Size of map
+        uint64_t mapOffset{0};
+    };
+
+    /// Extracted segment of the map
+    struct Segment {
+        /// Snapshot used for segment branching
+        Snapshot head;
+        
+        /// Current allocation offset
+        uint32_t allocationOffset{0};
+
+        /// All mappings
+        TrivialStackVector<NativeState, 256> map;
+    };
+
+    /// Create a new snapshot, signifies a point in time for id mapping
+    /// \return snapshot
+    Snapshot CreateSnapshot() {
+        return Snapshot {
+            .allocationOffset = segment.allocationOffset,
+            .mapOffset = segment.map.Size()
+        };
+    }
+
+    /// Branch from a given snapshot
+    /// \param from snapshot to be branched from
+    /// \return segment
+    Segment Branch(const Snapshot& from) {
+        Segment remote;
+        remote.head = from;
+
+        // Base offset
+        remote.allocationOffset = segment.allocationOffset;
+
+        // Move allocation map
+        ASSERT(segment.map.Size() >= from.mapOffset, "Remote snapshot ahead of root");
+        remote.map.Resize(segment.map.Size() - from.mapOffset);
+        std::memcpy(remote.map.Data(), segment.map.Data() + from.mapOffset, sizeof(NativeState) * remote.map.Size());
+
+        // Set current state
+        segment.allocationOffset = from.allocationOffset;
+        segment.map.Resize(from.mapOffset);
+
+        // OK!
+        return remote;
+    }
+
+    /// Revert to a snapshot
+    /// \param from snapshot to be reverted to
+    void Revert(const Snapshot& from) {
+        segment.allocationOffset = from.allocationOffset;
+        segment.map.Resize(from.mapOffset);
+    }
+
+    /// Merge a branch
+    /// \param remote branch to be merged from, heads must match
+    void Merge(const Segment& remote) {
+        ASSERT(segment.allocationOffset == remote.head.allocationOffset, "Invalid remote, allocation offset mismatch");
+        ASSERT(segment.map.Size() == remote.head.mapOffset, "Invalid remote, map length mismatch");
+
+        // Set new offset
+        segment.allocationOffset = remote.allocationOffset;
+
+        // Move entries
+        segment.map.Resize(remote.head.mapOffset + remote.map.Size());
+        std::memcpy(segment.map.Data() + remote.head.mapOffset, remote.map.Data(), sizeof(NativeState) * remote.map.Size());
+    }
+
+private:
+    IL::Program& program;
+
+private:
+    /// Root segment
+    Segment segment;
+
+    /// Number of bound allocations
+    uint64_t bound{0};
 };

@@ -13,6 +13,7 @@ DXBCPhysicalBlockTable::DXBCPhysicalBlockTable(const Allocators &allocators, IL:
     pipelineStateValidation(allocators, program, *this),
     rootSignature(allocators, program, *this),
     featureInfo(allocators, program, *this),
+    inputSignature(allocators, program, *this),
     allocators(allocators),
     program(program) {
     /* */
@@ -28,6 +29,7 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     pipelineStateValidation.Parse();
     rootSignature.Parse();
     featureInfo.Parse();
+    inputSignature.Parse();
 
     // Parse canonical program
     if (DXBCPhysicalBlock *dxilBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
@@ -73,6 +75,7 @@ bool DXBCPhysicalBlockTable::Compile(const DXJob &job) {
     pipelineStateValidation.Compile();
     rootSignature.Compile();
     featureInfo.Compile();
+    inputSignature.Compile();
 
     // OK
     return true;
@@ -89,6 +92,7 @@ void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {
     pipelineStateValidation.CopyTo(out.pipelineStateValidation);
     rootSignature.CopyTo(out.rootSignature);
     featureInfo.CopyTo(out.featureInfo);
+    inputSignature.CopyTo(out.inputSignature);
 
     // Keep the debug interface
     out.debugModule = debugModule;

@@ -56,6 +56,10 @@ static DXBCPhysicalBlockType FilterChunkType(uint32_t type) {
             return DXBCPhysicalBlockType::PipelineStateValidation;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::RootSignature):
             return DXBCPhysicalBlockType::RootSignature;
+        case static_cast<uint32_t>(DXBCPhysicalBlockType::InputSignature):
+            return DXBCPhysicalBlockType::InputSignature;
+        case static_cast<uint32_t>(DXBCPhysicalBlockType::OutputSignature):
+            return DXBCPhysicalBlockType::OutputSignature;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::Unexposed):
             return DXBCPhysicalBlockType::Unexposed;
     }

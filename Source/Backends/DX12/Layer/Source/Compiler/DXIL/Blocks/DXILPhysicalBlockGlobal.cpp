@@ -65,7 +65,7 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
                         break;
                     case Backend::IL::TypeKind::FP:
                         constant = constantMap.AddConstant(id, type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
-                            .value = 0.0f
+                            .value = 0.0
                         });
                         break;
                 }

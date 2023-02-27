@@ -301,6 +301,7 @@ add_library(
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockShader.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockPipelineStateValidation.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockRootSignature.cpp
+    Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockInputSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockFeatureInfo.cpp
     Layer/Source/Compiler/DXBC/DXBCSigner.cpp
     Layer/Source/Compiler/DXIL/DXILModule.cpp

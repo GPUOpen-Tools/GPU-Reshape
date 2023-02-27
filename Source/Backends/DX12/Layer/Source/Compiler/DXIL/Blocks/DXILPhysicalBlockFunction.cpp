@@ -36,6 +36,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     // Get function definition
     DXILFunctionDeclaration *declaration = functions[linkedIndex];
 
+    // Create snapshot
+    DXILIDMap::Snapshot idMapSnapshot = table.idMap.CreateSnapshot();
+
     // Get type map
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
@@ -56,29 +59,6 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             }
             case LLVMReservedBlock::Constants: {
                 table.global.ParseConstants(fnBlock);
-
-                /*
-                 * Migrate all in-function constants to global constant map due to an
-                 * LLVM bug with metadata value forward references. The LLVM bit-decoder
-                 * reallocates the value lookup map to the forward bound, however, sets the initial
-                 * value index during function reading to the array bound, not the *current* value bound.
-                 */
-
-                // Get the destination migration block
-                LLVMBlock* migrationBlock = table.scan.GetRoot().GetBlock(LLVMReservedBlock::Constants);
-
-                // Move all records
-                for (const LLVMBlockElement& element : fnBlock->elements) {
-                    if (element.Is(LLVMBlockElementType::Record)) {
-                        LLVMRecord record = fnBlock->records[element.id];
-                        record.abbreviation.type = LLVMRecordAbbreviationType::None;
-                        migrationBlock->AddRecord(record);
-                    }
-                }
-
-                // Flush block
-                fnBlock->elements.Resize(0);
-                fnBlock->records.Resize(0);
                 break;
             }
         }
@@ -1040,6 +1020,94 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
         }
     }
 #endif // NDEBUG
+
+    // Only create value segments if there's more than one function, no need to branch if not
+    if (RequiresValueMapSegmentation()) {
+        // Create id map segment
+        declaration->segments.idSegment = table.idMap.Branch(idMapSnapshot);
+    }
+}
+
+void DXILPhysicalBlockFunction::MigrateConstantBlocks() {
+    LLVMBlock& root = table.scan.GetRoot();
+
+    /*
+     * Migrate all in-function constants to global constant map due to an
+     * LLVM bug with metadata value forward references. The LLVM bit-decoder
+     * reallocates the value lookup map to the forward bound, however, sets the initial
+     * value index during function reading to the array bound, not the *current* value bound.
+     */
+
+    // Function counter
+    uint32_t functionIndex = 0;
+
+    // For all functions
+    for (LLVMBlock* block : root.blocks) {
+        if (static_cast<LLVMReservedBlock>(block->id) != LLVMReservedBlock::Function) {
+            continue;
+        }
+        
+        // Definition order is linear to the internally linked functions
+        uint32_t linkedIndex = internalLinkedFunctions[functionIndex++];
+
+        // Get function definition
+        DXILFunctionDeclaration *declaration = functions[linkedIndex];
+
+        // Constant offset
+        uint32_t constantOffset = 0;
+        
+        // Move all constant data
+        for (LLVMBlock *fnBlock: block->blocks) {
+            switch (static_cast<LLVMReservedBlock>(fnBlock->id)) {
+                default: {
+                    break;
+                }
+                case LLVMReservedBlock::Constants: {
+                    // Get the destination migration block
+                    LLVMBlock* migrationBlock = table.scan.GetRoot().GetBlock(LLVMReservedBlock::Constants);
+
+                    // Move all records
+                    for (const LLVMBlockElement& element : fnBlock->elements) {
+                        if (element.Is(LLVMBlockElementType::Record)) {
+                            LLVMRecord record = fnBlock->records[element.id];
+
+                            // Remove abbreviation
+                            //   All records are unabbreviated at this point, abbreviations may be block local which is
+                            //   unsafe after moving. Always assume unabbreviated exports.
+                            record.abbreviation.type = LLVMRecordAbbreviationType::None;
+
+                            // Handle segmentation remapping if needed
+                            if (RequiresValueMapSegmentation() && record.hasValue) {
+                                // Not expecting user data right now
+                                ASSERT(record.result == IL::InvalidID, "Unexpected record state");
+
+                                // Get the original state
+                                const DXILIDMap::NativeState& state = declaration->segments.idSegment.map[constantOffset++];
+                                ASSERT(state.type == DXILIDType::Constant, "Unexpected native state");
+
+                                // Add for later value remapping
+                                declaration->segments.constantRelocationTable.push_back(DXILFunctionConstantRelocation {
+                                    .sourceAnchor = record.sourceAnchor,
+                                    .mapped = state.mapped
+                                });
+
+                                // Mark record as "user", value stitched to the user IL id
+                                record.SetUser(true, ~0u, state.mapped);
+                            }
+
+                            // Add to new block
+                            migrationBlock->AddRecord(record);
+                        }
+                    }
+
+                    // Flush block
+                    fnBlock->elements.Resize(0);
+                    fnBlock->records.Resize(0);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 bool DXILPhysicalBlockFunction::HasResult(const struct LLVMRecord &record) {
@@ -1817,6 +1885,20 @@ static bool IsFunctionPostRecordDependentBlock(LLVMReservedBlock block) {
 }
 
 void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlock *block) {
+    const uint32_t functionIndex = static_cast<uint32_t>(functionBlocks.Size());
+    
+    // Definition order is linear to the function blocks
+    uint32_t linkedIndex = internalLinkedFunctions[functionIndex];
+
+    // Get function definition
+    DXILFunctionDeclaration *declaration = functions[linkedIndex];
+
+    // Branching handling for multi function setups
+    if (RequiresValueMapSegmentation()) {
+        // Merge the id value segment
+        table.idMap.Merge(declaration->segments.idSegment);
+    }
+    
     // Create a new function block
     FunctionBlock& functionBlock = functionBlocks.Add();
     functionBlock.uid = block->uid;
@@ -1825,11 +1907,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
     // Default to no relocation
     std::fill_n(functionBlock.recordRelocation.Data(), functionBlock.recordRelocation.Size(), IL::InvalidID);
 
+    // Get function
+    IL::Function *fn = program.GetFunctionList()[functionIndex];
+
     // Remap all blocks by dominance
-    for (IL::Function* fn : program.GetFunctionList()) {
-        if (!fn->ReorderByDominantBlocks(false)) {
-            return;
-        }
+    if (!fn->ReorderByDominantBlocks(false)) {
+        return;
     }
 
     LLVMBlock *constantBlock{nullptr};
@@ -1862,13 +1945,6 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
 
     // Get the program map
     Backend::IL::TypeMap &typeMap = program.GetTypeMap();
-
-    // Get functions
-    IL::FunctionList &ilFunctions = program.GetFunctionList();
-
-    // Not supported for the time being
-    ASSERT(ilFunctions.GetCount() == 1, "More than one function present in program");
-    IL::Function *fn = *ilFunctions.begin();
 
     // Swap source data
     TrivialStackVector<LLVMRecord, 32> source;
@@ -3129,6 +3205,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
             }
         }
     }
+    
+    // Only create value segments if there's more than one function, no need to branch if not
+    if (RequiresValueMapSegmentation()) {
+        // Revert previous value
+        table.idMap.Revert(declaration->segments.idSegment.head);
+    }
 }
 
 void DXILPhysicalBlockFunction::CompileModuleFunction(LLVMRecord &record) {
@@ -3139,13 +3221,32 @@ void DXILPhysicalBlockFunction::StitchModuleFunction(LLVMRecord &record) {
     table.idRemapper.AllocRecordMapping(record);
 }
 
-void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {    
     // Get block
     FunctionBlock* functionBlock = GetFunctionBlock(block->uid);
     ASSERT(functionBlock, "Failed to deduce function block");
 
     // Definition order is linear to the internally linked functions
-    const DXILFunctionDeclaration *declaration = functions[internalLinkedFunctions[stitchFunctionIndex++]];
+    DXILFunctionDeclaration *declaration = functions[internalLinkedFunctions[stitchFunctionIndex++]];
+
+    // Branching handling for multi function setups
+    if (RequiresValueMapSegmentation()) {
+        // Merge the id value segment
+        table.idMap.Merge(declaration->segments.idSegment);
+    }
+
+    // Handle constant relocation
+    for (const DXILFunctionConstantRelocation& kv : declaration->segments.constantRelocationTable) {
+        // Get stitched value index
+        uint32_t stitchedConstant = table.idRemapper.GetUserMapping(kv.mapped);
+        ASSERT(stitchedConstant != ~0u, "Invalid constant");
+
+        // Set relocated source index
+        table.idRemapper.SetSourceMapping(kv.sourceAnchor, stitchedConstant);
+    }
+
+    // Create snapshot
+    DXILIDRemapper::StitchSnapshot idRemapperSnapshot = table.idRemapper.CreateStitchSnapshot();
 
     // Visit child blocks
     for (LLVMBlock *fnBlock: block->blocks) {
@@ -3315,6 +3416,18 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
         }
 
         writer.Finalize();
+    }
+
+    // Fixup all forward references to their new value indices
+    table.idRemapper.ResolveForwardReferences();
+    
+    // Branching handling for multi function setups
+    if (RequiresValueMapSegmentation()) {
+        // Revert previous value
+        table.idMap.Revert(declaration->segments.idSegment.head);
+
+        // Create id map segment
+        declaration->segments.idRemapperStitchSegment = table.idRemapper.Branch(idRemapperSnapshot);
     }
 }
 

@@ -324,3 +324,75 @@ struct DXBCRootSignatureSamplerStub {
     uint32_t space;
     uint32_t visibility;
 };
+
+enum class DXILSignatureElementSemantic : uint32_t {
+    Undefined = 0,
+    Position = 1,
+    ClipDistance = 2,
+    CullDistance = 3,
+    RenderTargetArrayIndex = 4,
+    ViewPortArrayIndex = 5,
+    VertexID = 6,
+    PrimitiveID = 7,
+    InstanceID = 8,
+    IsFrontFace = 9,
+    SampleIndex = 10,
+    FinalQuadEdgeTessFactor = 11,
+    FinalQuadInsideTessFactor = 12,
+    FinalTriEdgeTessFactor = 13,
+    FinalTriInsideTessFactor = 14,
+    FinalLineDetailTessFactor = 15,
+    FinalLineDensityTessFactor = 16,
+    Barycentrics = 23,
+    ShadingRate = 24,
+    CullPrimitive = 25,
+    Target = 64,
+    Depth = 65,
+    Coverage = 66,
+    DepthGreaterEqual = 67,
+    DepthLessEqual = 68,
+    StencilRef = 69,
+    InnerCoverage = 70,
+};
+
+enum class DXILSignatureElementComponentType : uint32_t {
+    Unknown = 0,
+    UInt32 = 1,
+    Int32 = 2,
+    Float32 = 3,
+    UInt16 = 4,
+    Int16 = 5,
+    Float16 = 6,
+    UInt64 = 7,
+    Int64 = 8,
+    Float64 = 9,
+};
+
+enum class DXILSignatureElementPrecision : uint32_t {
+    Default = 0,
+    Float16 = 1,
+    Float2_8 = 2,
+    Reserved = 3,
+    Int16 = 4,
+    UInt16 = 5,
+    Any16 = 0xf0,
+    Any10 = 0xf1
+};
+
+struct DXILInputSignature {
+    uint32_t count;
+    uint32_t offset;
+};
+
+struct DXILSignatureElement {
+    uint32_t streamIndex;
+    uint32_t semanticNameOffset;
+    uint32_t semanticIndex;
+    DXILSignatureElementSemantic semantic;
+    DXILSignatureElementComponentType componentType;
+    uint32_t _register;
+    uint8_t mask;
+    uint8_t writeMask;
+    uint16_t pad;
+    DXILSignatureElementPrecision precision;
+};

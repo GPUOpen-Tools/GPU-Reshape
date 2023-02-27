@@ -46,7 +46,7 @@ struct DXILIDRemapper {
     static uint32_t DecodeForward(uint32_t id) {
         return static_cast<uint32_t>(-static_cast<int32_t>(id));
     }
-
+ 
     DXILIDRemapper(DXILIDMap& idMap) : idMap(idMap) {
 
     }
@@ -54,33 +54,40 @@ struct DXILIDRemapper {
     /// Partial source to instrumented copy
     /// \param out destination map
     void CopyTo(DXILIDRemapper& out) {
-        out.userMappings = userMappings;
+        out.compileSegment.userMappings = compileSegment.userMappings;
     }
 
     /// Set the remap bound
     /// \param source source program bound
     /// \param user user modified program bound
     void SetBound(uint32_t source, uint32_t user) {
-        sourceMappings.resize(source, ~0u);
-        userMappings.resize(user, UserMapping {.index = ~0u, .type = DXILIDUserType::Singular});
+        stitchSegment.sourceMappings.resize(source, ~0u);
+        compileSegment.userMappings.resize(user, UserMapping {.index = ~0u, .type = DXILIDUserType::Singular});
     }
 
     /// Allocate a source record value
     uint32_t AllocSourceMapping(uint32_t sourceResult) {
-        uint32_t valueId = allocationIndex++;
-        sourceMappings.at(sourceResult) = valueId;
+        uint32_t valueId = stitchSegment.allocationIndex++;
+        stitchSegment.sourceMappings.at(sourceResult) = valueId;
         return valueId;
+    }
+
+    /// Set a source record value
+    /// \param sourceResult original source index
+    /// \param valueId stitched value index
+    void SetSourceMapping(uint32_t sourceResult, uint32_t valueId) {
+        stitchSegment.sourceMappings.at(sourceResult) = valueId;
     }
 
     /// Allocate a user mapping
     /// \param id the IL id
     uint32_t AllocUserMapping(IL::ID id) {
-        if (userMappings.size() <= id) {
-            userMappings.resize(id + 1);
+        if (compileSegment.userMappings.size() <= id) {
+            compileSegment.userMappings.resize(id + 1);
         }
 
-        uint32_t valueId = allocationIndex++;
-        userMappings.at(id).index = valueId;
+        uint32_t valueId = stitchSegment.allocationIndex++;
+        compileSegment.userMappings.at(id).index = valueId;
         return valueId;
     }
 
@@ -89,11 +96,11 @@ struct DXILIDRemapper {
     /// \param type user type
     /// \param index index mapping
     void AllocSourceUserMapping(IL::ID id, DXILIDUserType type, uint32_t index) {
-        if (userMappings.size() <= id) {
-            userMappings.resize(id + 1);
+        if (compileSegment.userMappings.size() <= id) {
+            compileSegment.userMappings.resize(id + 1);
         }
 
-        UserMapping& mapping = userMappings.at(id);
+        UserMapping& mapping = compileSegment.userMappings.at(id);
         mapping.type = type;
         mapping.index = index;
     }
@@ -102,11 +109,11 @@ struct DXILIDRemapper {
     /// \param user source user operand
     /// \param source destination LLVM value index
     void SetUserMapping(IL::ID user, uint32_t source) {
-        if (userMappings.size() <= user) {
-            userMappings.resize(user + 1);
+        if (compileSegment.userMappings.size() <= user) {
+            compileSegment.userMappings.resize(user + 1);
         }
 
-        userMappings.at(user).index = source;
+        compileSegment.userMappings.at(user).index = source;
     }
 
     /// Allocate a user or source record mapping
@@ -170,7 +177,7 @@ struct DXILIDRemapper {
         if (IsSourceOperand(source)) {
             uint64_t unmapped = RemoveRemapRule(source, rule);
 
-            uint32_t mapping = sourceMappings.at(unmapped);
+            uint32_t mapping = stitchSegment.sourceMappings.at(unmapped);
             if (mapping == ~0u) {
                 // Mapping doesn't exist yet, add as unresolved
                 unresolvedReferences.Add(UnresolvedReferenceEntry{
@@ -190,7 +197,7 @@ struct DXILIDRemapper {
             // Assign source to new mapping
             source = ApplyRemapRule(mapping, rule);
         } else {
-            uint32_t mapping = userMappings.at(DecodeUserOperand(source)).index;
+            uint32_t mapping = compileSegment.userMappings.at(DecodeUserOperand(source)).index;
             if (mapping == ~0u) {
                 // Mapping doesn't exist yet, add as unresolved
                 unresolvedReferences.Add(UnresolvedReferenceEntry{
@@ -240,9 +247,9 @@ struct DXILIDRemapper {
             // Forward?
             uint32_t mapping;
             if (source <= record.sourceAnchor) {
-                mapping = sourceMappings.at(record.sourceAnchor - source);
+                mapping = stitchSegment.sourceMappings.at(record.sourceAnchor - source);
             } else {
-                mapping = sourceMappings.at(record.sourceAnchor + DXILIDRemapper::DecodeForward(static_cast<uint32_t>(source)));
+                mapping = stitchSegment.sourceMappings.at(record.sourceAnchor + DXILIDRemapper::DecodeForward(static_cast<uint32_t>(source)));
             }
 
             // Valid?
@@ -288,7 +295,7 @@ struct DXILIDRemapper {
             }
 
             // Must be within the source range
-            ASSERT(absoluteRemap < sourceMappings.size(), "Unmapped source operand beyond source range");
+            ASSERT(absoluteRemap < stitchSegment.sourceMappings.size(), "Unmapped source operand beyond source range");
 
             // Add as unresolved
             unresolvedForwardReferences.Add(UnresolvedForwardReferenceEntry{
@@ -323,11 +330,11 @@ struct DXILIDRemapper {
 
             // Original source mappings are allocated at a given range
             if (IsSourceOperand(entry.absolute)) {
-                uint32_t mapping = sourceMappings.at(entry.absolute);
+                uint32_t mapping = stitchSegment.sourceMappings.at(entry.absolute);
                 ASSERT(mapping != ~0u, "Remapped not found on source operand");
                 absoluteRemap = mapping;
             } else {
-                uint32_t mapping = userMappings.at(DecodeUserOperand(entry.absolute)).index;
+                uint32_t mapping = compileSegment.userMappings.at(DecodeUserOperand(entry.absolute)).index;
                 ASSERT(mapping != ~0u, "Remapped not found on user operand");
                 absoluteRemap = mapping;
             }
@@ -341,11 +348,11 @@ struct DXILIDRemapper {
 
             // Original source mappings are allocated at a given range
             if (IsSourceOperand(entry.absolute)) {
-                uint32_t mapping = sourceMappings.at(entry.absolute);
+                uint32_t mapping = stitchSegment.sourceMappings.at(entry.absolute);
                 ASSERT(mapping != ~0u, "Remapped not found on source operand");
                 absoluteRemap = mapping;
             } else {
-                uint32_t mapping = userMappings.at(DecodeUserOperand(entry.absolute)).index;
+                uint32_t mapping = compileSegment.userMappings.at(DecodeUserOperand(entry.absolute)).index;
                 ASSERT(mapping != ~0u, "Remapped not found on user operand");
                 absoluteRemap = mapping;
             }
@@ -369,28 +376,34 @@ struct DXILIDRemapper {
     /// \param source source DXIL value
     /// \return remapped value, UINT32_MAX if not found
     uint32_t TryGetSourceMapping(uint32_t source) {
-        return source < sourceMappings.size() ? sourceMappings.at(source) : ~0u;
+        return source < stitchSegment.sourceMappings.size() ? stitchSegment.sourceMappings.at(source) : ~0u;
     }
 
     /// Try to remap a DXIL value
     /// \param source source DXIL value
     /// \return remapped value, UINT32_MAX if not found
     uint32_t TryGetUserMapping(uint32_t user) {
-        return user < userMappings.size() ? userMappings.at(user).index : ~0u;
+        return user < compileSegment.userMappings.size() ? compileSegment.userMappings.at(user).index : ~0u;
+    }
+
+    /// Get the user mapping
+    /// \param user given user, must exist
+    uint32_t GetUserMapping(uint32_t user) {
+        return compileSegment.userMappings.at(user).index;
     }
 
     /// Set the user mapping type
     /// \param user given user, must exist
     /// \param type final type
     void SetUserMappingType(uint32_t user, DXILIDUserType type) {
-        userMappings.at(user).type = type;
+        compileSegment.userMappings.at(user).type = type;
     }
 
     /// Get the user type
     /// \param user given user, must exist
     /// \return type
     DXILIDUserType GetUserMappingType(uint32_t user) {
-        return userMappings.at(user).type;
+        return compileSegment.userMappings.at(user).type;
     }
 
     /// Set a redirected value
@@ -398,33 +411,33 @@ struct DXILIDRemapper {
     /// \param operand the redirected operand
     void SetUserRedirect(IL::ID user, IL::ID redirect) {
         // Ensure space
-        if (userRedirects.size() <= user) {
-            userRedirects.resize(user + 1, ~0u);
+        if (compileSegment.userRedirects.size() <= user) {
+            compileSegment.userRedirects.resize(user + 1, ~0u);
         }
 
         // Unfold redirects
-        while(redirect < userRedirects.size() && userRedirects.at(redirect) != ~0u) {
-            redirect = static_cast<IL::ID>(userRedirects.at(redirect));
+        while(redirect < compileSegment.userRedirects.size() && compileSegment.userRedirects.at(redirect) != ~0u) {
+            redirect = static_cast<IL::ID>(compileSegment.userRedirects.at(redirect));
         }
 
         // Preserve user mappings
-        if (redirect < userMappings.size()) {
-            if (userMappings.size() <= user) {
-                userMappings.resize(user + 1);
+        if (redirect < compileSegment.userMappings.size()) {
+            if (compileSegment.userMappings.size() <= user) {
+                compileSegment.userMappings.resize(user + 1);
             }
 
-            userMappings.at(user) = userMappings.at(redirect);
+            compileSegment.userMappings.at(user) = compileSegment.userMappings.at(redirect);
         }
 
         // Set final redirect
-        userRedirects.at(user) = redirect;
+        compileSegment.userRedirects.at(user) = redirect;
     }
 
     /// Try to get a redirect
     /// \param id user id
     /// \return UINT32_MAX if invalid
     uint64_t TryGetUserRedirect(IL::ID id) {
-        return id < userRedirects.size() ? userRedirects.at(id) : ~0u;
+        return id < compileSegment.userRedirects.size() ? compileSegment.userRedirects.at(id) : ~0u;
     }
 
     /// Encode a potentially redirected user operand
@@ -444,8 +457,169 @@ struct DXILIDRemapper {
     /// Get the current record anchor
     Anchor GetAnchor() const {
         Anchor anchor;
-        anchor.stitchAnchor = allocationIndex;
+        anchor.stitchAnchor = stitchSegment.allocationIndex;
         return anchor;
+    }
+
+public:
+    /// Single mapping
+    struct UserMapping {
+        /// Mapped index
+        uint32_t index;
+
+        /// Underlying type
+        DXILIDUserType type;
+    };
+
+    /// Snapshot of the map, compilation data
+    struct CompileSnapshot {
+        /// Current offset in user mappings
+        uint64_t userMappingOffset{0};
+
+        /// Current offset in user redirects
+        uint64_t userRedirectsOffset{0};
+    };
+
+    /// Snapshot of the map, stitch data
+    struct StitchSnapshot {
+        /// Value allocation index
+        uint32_t allocationIndex{0};
+
+        /// Current offset in source mappings
+        uint64_t sourceMappingOffset{0};
+    };
+
+    /// Extracted segment of the map, compile data
+    struct CompileSegment {
+        CompileSnapshot head;
+        
+        /// All present user mappings
+        std::vector<UserMapping> userMappings;
+
+        /// All present user redirects
+        std::vector<uint64_t> userRedirects;
+    };
+
+    /// Extracted segment of the map, stitch data
+    struct StitchSegment {
+        StitchSnapshot head;
+        
+        /// Current user allocation index
+        uint32_t allocationIndex{0};
+
+        /// All present source mappings
+        std::vector<uint32_t> sourceMappings;
+    };
+
+    /// Create a new compilation snapshot, signifies a point in time for id mapping
+    /// \return snapshot
+    CompileSnapshot CreateCompileSnapshot() {
+        return CompileSnapshot {
+            .userMappingOffset = compileSegment.userMappings.size(),
+            .userRedirectsOffset = compileSegment.userRedirects.size()
+        };
+    }
+
+    /// Create a new stitching snapshot, signifies a point in time for id mapping
+    /// \return snapshot
+    StitchSnapshot CreateStitchSnapshot() {
+        return StitchSnapshot {
+            .allocationIndex = stitchSegment.allocationIndex,
+            .sourceMappingOffset = stitchSegment.sourceMappings.size()
+        };
+    }
+
+    /// Branch from a given snapshot
+    /// \param from snapshot to be branched from
+    /// \return segment
+    CompileSegment Branch(const CompileSnapshot& from) {
+        CompileSegment remote;
+        remote.head = from;
+
+        // Validate
+        ASSERT(compileSegment.userMappings.size() >= from.userMappingOffset, "Remote snapshot ahead of root");
+        ASSERT(compileSegment.userRedirects.size() >= from.userRedirectsOffset, "Remote snapshot ahead of root");
+
+        // Move user map
+        remote.userMappings.resize(compileSegment.userMappings.size() - from.userMappingOffset);
+        std::memcpy(remote.userMappings.data(), compileSegment.userMappings.data() + from.userMappingOffset, sizeof(UserMapping) * remote.userMappings.size());
+
+        // Move redirect map
+        remote.userRedirects.resize(compileSegment.userRedirects.size() - from.userRedirectsOffset);
+        std::memcpy(remote.userRedirects.data(), compileSegment.userRedirects.data() + from.userRedirectsOffset, sizeof(uint64_t) * remote.userRedirects.size());
+
+        // Set current state
+        Revert(from);
+
+        // OK!
+        return remote;
+    }
+
+    /// Branch from a given snapshot
+    /// \param from snapshot to be branched from
+    /// \return segment
+    StitchSegment Branch(const StitchSnapshot& from) {
+        StitchSegment remote;
+        remote.head = from;
+
+        // Base index
+        remote.allocationIndex = stitchSegment.allocationIndex;
+
+        // Validate
+        ASSERT(stitchSegment.sourceMappings.size() >= from.sourceMappingOffset, "Remote snapshot ahead of root");
+
+        // Move source map
+        remote.sourceMappings.resize(stitchSegment.sourceMappings.size() - from.sourceMappingOffset);
+        std::memcpy(remote.sourceMappings.data(), stitchSegment.sourceMappings.data() + from.sourceMappingOffset, sizeof(uint32_t) * remote.sourceMappings.size());
+
+        // Set current state
+        Revert(from);
+
+        // OK!
+        return remote;
+    }
+
+    /// Revert to a snapshot
+    /// \param from snapshot to be reverted to
+    void Revert(const CompileSnapshot& from) {
+        compileSegment.userMappings.resize(from.userMappingOffset);
+        compileSegment.userRedirects.resize(from.userRedirectsOffset);
+    }
+
+    /// Revert to a snapshot
+    /// \param from snapshot to be reverted to
+    void Revert(const StitchSnapshot& from) {
+        stitchSegment.allocationIndex = from.allocationIndex;
+        stitchSegment.sourceMappings.resize(from.sourceMappingOffset);
+    }
+
+    /// Merge a branch
+    /// \param remote branch to be merged from, heads must match
+    void Merge(const CompileSegment& remote) {
+        ASSERT(compileSegment.userMappings.size() == remote.head.userMappingOffset, "Invalid remote, length mismatch");
+        ASSERT(compileSegment.userRedirects.size() == remote.head.userRedirectsOffset, "Invalid remote, length mismatch");
+
+        // Move user
+        compileSegment.userMappings.resize(remote.head.userMappingOffset + remote.userMappings.size());
+        std::memcpy(compileSegment.userMappings.data() + remote.head.userMappingOffset, remote.userMappings.data(), sizeof(uint32_t) * remote.userMappings.size());
+
+        // Move redirect
+        compileSegment.userRedirects.resize(remote.head.userRedirectsOffset + remote.userRedirects.size());
+        std::memcpy(compileSegment.userRedirects.data() + remote.head.userRedirectsOffset, remote.userRedirects.data(), sizeof(uint32_t) * remote.userRedirects.size());
+    }
+
+    /// Merge a branch
+    /// \param remote branch to be merged from, heads must match
+    void Merge(const StitchSegment& remote) {
+        ASSERT(stitchSegment.allocationIndex == remote.head.allocationIndex, "Invalid remote, allocation offset mismatch");
+        ASSERT(stitchSegment.sourceMappings.size() == remote.head.sourceMappingOffset, "Invalid remote, length mismatch");
+
+        // Set new offset
+        stitchSegment.allocationIndex = remote.allocationIndex;
+
+        // Move source
+        stitchSegment.sourceMappings.resize(remote.head.sourceMappingOffset + remote.sourceMappings.size());
+        std::memcpy(stitchSegment.sourceMappings.data() + remote.head.sourceMappingOffset, remote.sourceMappings.data(), sizeof(uint32_t) * remote.sourceMappings.size());
     }
 
 private:
@@ -466,26 +640,9 @@ private:
     TrivialStackVector<UnresolvedForwardReferenceEntry, 64> unresolvedForwardReferences;
 
 private:
-    struct UserMapping {
-        /// Mapped index
-        uint32_t index;
-
-        /// Underlying type
-        DXILIDUserType type;
-    };
-
-private:
-    /// Current user allocation index
-    uint32_t allocationIndex{0};
-
-    /// All present source mappings
-    std::vector<uint32_t> sourceMappings;
-
-    /// All present user mappings
-    std::vector<UserMapping> userMappings;
-
-    /// All present user redirects
-    std::vector<uint64_t> userRedirects;
+    /// Root segments
+    CompileSegment compileSegment;
+    StitchSegment stitchSegment;
 
     /// Shared id map
     DXILIDMap& idMap;

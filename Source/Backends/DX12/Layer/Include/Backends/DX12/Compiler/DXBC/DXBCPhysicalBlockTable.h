@@ -6,6 +6,7 @@
 #include "Blocks/DXBCPhysicalBlockPipelineStateValidation.h"
 #include "Blocks/DXBCPhysicalBlockRootSignature.h"
 #include "Blocks/DXBCPhysicalBlockFeatureInfo.h"
+#include "Blocks/DXBCPhysicalBlockInputSignature.h"
 
 // Forward declarations
 struct DXJob;
@@ -44,6 +45,7 @@ struct DXBCPhysicalBlockTable {
     DXBCPhysicalBlockPipelineStateValidation pipelineStateValidation;
     DXBCPhysicalBlockRootSignature rootSignature;
     DXBCPhysicalBlockFeatureInfo featureInfo;
+    DXBCPhysicalBlockInputSignature inputSignature;
 
     /// DXBC containers can host DXIL data
     DXILModule* dxilModule{nullptr};

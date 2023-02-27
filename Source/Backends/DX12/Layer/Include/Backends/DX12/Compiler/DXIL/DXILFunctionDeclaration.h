@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h>
+#include <Backends/DX12/Compiler/DXIL/DXILFunctionSegments.h>
 
 // Backend
 #include <Backend/IL/Type.h>
@@ -10,7 +11,7 @@
 #include <Common/Containers/TrivialStackVector.h>
 
 // Std
-#include <string_View>
+#include <string_view>
 
 struct DXILFunctionDeclaration {
     /// DXIL anchor of this declaration
@@ -33,4 +34,7 @@ struct DXILFunctionDeclaration {
 
     /// All parameter values
     TrivialStackVector<uint32_t, 8> parameters;
+
+    /// All segments
+    DXILFunctionSegments segments;
 };
