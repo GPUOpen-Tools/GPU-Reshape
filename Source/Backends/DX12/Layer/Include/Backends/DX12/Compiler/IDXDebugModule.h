@@ -8,6 +8,8 @@
 
 class IDXDebugModule {
 public:
+    virtual ~IDXDebugModule() = default;
+
     /// Get the source association from a given code offset
     /// \param codeOffset the instruction (i.e. record) code offset
     /// \return default if failed

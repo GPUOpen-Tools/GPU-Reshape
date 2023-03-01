@@ -19,7 +19,6 @@
 // Common
 #include <Common/ComRef.h>
 #include <Common/Registry.h>
-#include <Common/Containers/SlotArray.h>
 #include <Common/Allocators.h>
 
 // Forward declarations
@@ -44,7 +43,7 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Owned object
     ID3D12Device* object{nullptr};
-
+    
     /// Shared allocators
     Allocators allocators;
 

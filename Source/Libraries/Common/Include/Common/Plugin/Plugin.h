@@ -1,7 +1,7 @@
 #pragma once
 
 // Common
-#include <Common/Linkage.h>
+#include <Common/Common.h>
 
 // Forward declarations
 class Registry;

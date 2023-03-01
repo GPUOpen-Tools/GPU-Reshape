@@ -1,5 +1,6 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 #include <Backends/DX12/Config.h>
+#include <Backends/DX12/Compiler/Tags.h>
 
 // Common
 #include <Common/FileSystem.h>
@@ -7,7 +8,7 @@
 // Std
 #include <fstream>
 
-DXBCModule::DXBCModule(const Allocators &allocators, uint64_t shaderGUID, const GlobalUID &instrumentationGUID) : DXBCModule(allocators, new(allocators) IL::Program(allocators, shaderGUID), instrumentationGUID) {
+DXBCModule::DXBCModule(const Allocators &allocators, uint64_t shaderGUID, const GlobalUID &instrumentationGUID) : DXBCModule(allocators, new(allocators, kAllocModuleILProgram) IL::Program(allocators, shaderGUID), instrumentationGUID) {
     nested = false;
 
 #if SHADER_COMPILER_DEBUG
@@ -34,7 +35,8 @@ DXModule *DXBCModule::Copy() {
     IL::Program *programCopy = program->Copy();
 
     // Create module copy
-    auto module = new(allocators) DXBCModule(allocators, programCopy, instrumentationGUID);
+    auto module = new(allocators, kAllocModuleDXIL) DXBCModule(allocators, programCopy, instrumentationGUID);
+    module->nested = nested;
 
     // Copy table
     table.CopyTo(module->table);

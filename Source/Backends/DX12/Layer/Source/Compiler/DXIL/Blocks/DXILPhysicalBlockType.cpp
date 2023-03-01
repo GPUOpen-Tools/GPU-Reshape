@@ -172,7 +172,7 @@ void DXILPhysicalBlockType::ParseType(const LLVMBlock *block) {
                 }
 
                 // Temporary contiguous name
-                TrivialStackVector<char, 128> name;
+                TrivialStackVector<char, 128> name(allocators);
                 name.Resize(nameConsumeRecord->opCount + 1);
 
                 // Fill name

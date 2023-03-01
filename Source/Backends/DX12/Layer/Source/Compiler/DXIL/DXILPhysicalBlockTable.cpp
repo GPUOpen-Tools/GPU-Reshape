@@ -15,7 +15,7 @@ DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL:
     program(program),
     idMap(program),
     idRemapper(idMap),
-    recordAllocator(allocators) {
+    recordAllocator(allocators, kAllocModuleLLVMRecordAllocator) {
 
 }
 

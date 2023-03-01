@@ -42,13 +42,13 @@ void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
     metadataBlock.uid = block->uid;
 
     // Empty out previous block data
-    metadataBlock.metadata.resize(block->records.Size());
+    metadataBlock.metadata.resize(block->records.size());
 
     // Current name
     LLVMRecordStringView recordName;
 
     // Visit records
-    for (uint32_t i = 0; i < static_cast<uint32_t>(block->records.Size()); i++) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(block->records.size()); i++) {
         const LLVMRecord &record = block->records[i];
 
         // Get metadata
@@ -67,7 +67,7 @@ void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
                 recordName = LLVMRecordStringView(record, 0);
 
                 // Validate next
-                ASSERT(i + 1 != block->records.Size(), "Expected succeeding metadata record");
+                ASSERT(i + 1 != block->records.size(), "Expected succeeding metadata record");
                 ASSERT(block->records[i + 1].Is(LLVMMetadataRecord::NamedNode), "Succeeding record to Name must be NamedNode");
                 break;
             }
@@ -794,7 +794,7 @@ void DXILPhysicalBlockMetadata::CompileMetadata(const DXJob& job) {
 
 void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
     // Set source result for stitching
-    for (uint32_t i = 0; i < static_cast<uint32_t>(block->records.Size()); i++) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(block->records.size()); i++) {
         LLVMRecord &record = block->records[i];
         record.result = i;
     }
@@ -803,23 +803,26 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
     MetadataBlock* metadataBlock = GetMetadataBlock(block->uid);
     
     // Source to stitched mappings
-    metadataBlock->sourceMappings.resize(block->records.Size(), ~0u);
+    metadataBlock->sourceMappings.resize(block->records.size(), ~0u);
+
+    // Local resource
+    PolyAllocator polyAllocator(allocators);
 
     // Swap source data
-    TrivialStackVector<LLVMRecord, 32> source;
-    block->records.Swap(source);
+    std::pmr::vector<LLVMRecord> source(&polyAllocator);
+    block->records.swap(source);
 
     // Swap element data
-    TrivialStackVector<LLVMBlockElement, 128> elements;
-    block->elements.Swap(elements);
+    std::pmr::vector<LLVMBlockElement> elements(&polyAllocator);
+    block->elements.swap(elements);
 
     // Reserve
-    block->elements.Reserve(elements.Size());
+    block->elements.reserve(elements.size());
 
     // Filter all records
     for (const LLVMBlockElement &element: elements) {
         if (!element.Is(LLVMBlockElementType::Record)) {
-            block->elements.Add(element);
+            block->elements.push_back(element);
         }
     }
 
@@ -827,7 +830,7 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
     for (;;) {
         bool mutated = false;
 
-        for (size_t i = 0; i < source.Size(); i++) {
+        for (size_t i = 0; i < source.size(); i++) {
             LLVMRecord &record = source[i];
 
             if (record.result == ~0u) {
@@ -838,7 +841,7 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
             switch (static_cast<LLVMMetadataRecord>(record.id)) {
                 default: {
                     // Set new mapping
-                    metadataBlock->sourceMappings.at(record.result) = block->records.Size();
+                    metadataBlock->sourceMappings.at(record.result) = block->records.size();
 
                     // Append
                     block->AddRecord(record);
@@ -870,7 +873,7 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
                     // Ready?
                     if (resolved) {
                         // Set new mapping
-                        metadataBlock->sourceMappings.at(record.result) = block->records.Size();
+                        metadataBlock->sourceMappings.at(record.result) = block->records.size();
 
                         // Stitch ops
                         for (uint32_t opId = 0; opId < record.opCount; opId++) {
@@ -895,7 +898,7 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
                     table.idRemapper.Remap(record.Op(1));
 
                     // Set new mapping
-                    metadataBlock->sourceMappings.at(record.result) = block->records.Size();
+                    metadataBlock->sourceMappings.at(record.result) = block->records.size();
 
                     // Append
                     block->AddRecord(record);
@@ -915,7 +918,7 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
     }
 
     // Append named blocks
-    for (size_t i = 0; i < source.Size(); i++) {
+    for (size_t i = 0; i < source.size(); i++) {
         // Name?
         if (!source[i].Is(LLVMMetadataRecord::Name)) {
             continue;
@@ -941,7 +944,7 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
     }
 
     // Must have resolved all
-    if (block->records.Size() != source.Size()) {
+    if (block->records.size() != source.size()) {
         ASSERT(false, "Failed to resolve metadata");
     }
 }
@@ -960,7 +963,7 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddString(DXILPhysicalBlockMetadata::M
 
     // Add value md
     Metadata& md = metadata.metadata.emplace_back();
-    md.source = static_cast<uint32_t>(block->records.Size());
+    md.source = static_cast<uint32_t>(block->records.size());
     md.name = str;
 
     // Insert value record
@@ -989,7 +992,7 @@ uint32_t DXILPhysicalBlockMetadata::FindOrAddOperandConstant(DXILPhysicalBlockMe
 
     // Add value md
     Metadata& md = metadata.metadata.emplace_back();
-    md.source = static_cast<uint32_t>(block->records.Size());
+    md.source = static_cast<uint32_t>(block->records.size());
     md.value.type = constant->type;
     md.value.constant = constant;
 
@@ -1041,7 +1044,7 @@ void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job)
 
     // Class identifier (+1 for nullability)
     Metadata& classMd = metadataBlock->metadata.emplace_back();
-    classMd.source = static_cast<uint32_t>(mdBlock->records.Size());
+    classMd.source = static_cast<uint32_t>(mdBlock->records.size());
     uint32_t classId = classMd.source + 1;
 
     // Class list, points to the individual class handles
@@ -1055,7 +1058,7 @@ void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job)
     mdBlock->AddRecord(classRecord);
 
     // Set source for later lookup
-    resources.source = static_cast<uint32_t>(mdBlock->records.Size() - 1);
+    resources.source = static_cast<uint32_t>(mdBlock->records.size() - 1);
 
     // Get the program block
     LLVMRecord& programRecord = declarationBlock->GetBlockWithUID(entryPoint.uid)->records[entryPoint.program];
@@ -1068,7 +1071,7 @@ void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job)
     const char* name = "dx.resources";
 
     // Add md
-    metadataBlock->metadata.emplace_back().source = static_cast<uint32_t>(mdBlock->records.Size());
+    metadataBlock->metadata.emplace_back().source = static_cast<uint32_t>(mdBlock->records.size());
 
     // Name dx.resources
     LLVMRecord nameRecord(LLVMMetadataRecord::Name);
@@ -1078,7 +1081,7 @@ void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job)
     mdBlock->AddRecord(nameRecord);
 
     // Add md
-    metadataBlock->metadata.emplace_back().source = static_cast<uint32_t>(mdBlock->records.Size());
+    metadataBlock->metadata.emplace_back().source = static_cast<uint32_t>(mdBlock->records.size());
 
     // Insert dx.resources, points to the class list
     LLVMRecord dxResourceRecord(LLVMMetadataRecord::NamedNode);
@@ -1371,20 +1374,20 @@ LLVMRecordView DXILPhysicalBlockMetadata::CompileResourceClassRecord(const Mappe
         classRecord->ops = ops;
     } else {
         // Emplace record
-        block->records.Add();
+        block->records.emplace_back();
 
         // Allocate new list record
-        classRecord = LLVMRecordView(block, static_cast<uint32_t>(block->records.Size()) - 1);
+        classRecord = LLVMRecordView(block, static_cast<uint32_t>(block->records.size()) - 1);
         classRecord->id = static_cast<uint32_t>(LLVMMetadataRecord::Node);
         classRecord->ops = table.recordAllocator.AllocateArray<uint64_t>(static_cast<uint32_t>(mapped.handles.size()));
         classRecord->opCount = static_cast<uint32_t>(mapped.handles.size());
 
         // Set new UAV node, +1 for nullability
-        resources.lists[static_cast<uint32_t>(mapped._class)] = static_cast<uint32_t>(block->records.Size());
+        resources.lists[static_cast<uint32_t>(mapped._class)] = static_cast<uint32_t>(block->records.size());
 
         // Create resource metadata row
         Metadata& uavMd = metadataBlock->metadata.emplace_back();
-        uavMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
+        uavMd.source = static_cast<uint32_t>(block->records.size()) - 1;
 
         // Get class record
         LLVMRecord& classListRecord = block->records[resources.source];
@@ -1435,7 +1438,7 @@ void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXJob &job) {
 
         // Create extended metadata row
         Metadata& extendedMd = metadataBlock->metadata.emplace_back();
-        extendedMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
+        extendedMd.source = static_cast<uint32_t>(block->records.size()) - 1;
 
         // Index of extended node
         uint32_t extendedMdIndex = static_cast<uint32_t>(metadataBlock->metadata.size());
@@ -1458,7 +1461,7 @@ void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXJob &job) {
 
         // Create resource metadata row
         Metadata& resourceMd = metadataBlock->metadata.emplace_back();
-        resourceMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
+        resourceMd.source = static_cast<uint32_t>(block->records.size()) - 1;
 
         // Insert handle
         classRecord->ops[i] = metadataBlock->metadata.size();
@@ -1531,7 +1534,7 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXJob &job) {
 
         // Create extended metadata row
         Metadata& extendedMd = metadataBlock->metadata.emplace_back();
-        extendedMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
+        extendedMd.source = static_cast<uint32_t>(block->records.size()) - 1;
 
         // Index of extended node
         uint32_t extendedMdIndex = static_cast<uint32_t>(metadataBlock->metadata.size());
@@ -1556,7 +1559,7 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXJob &job) {
 
         // Create resource metadata row
         Metadata& resourceMd = metadataBlock->metadata.emplace_back();
-        resourceMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
+        resourceMd.source = static_cast<uint32_t>(block->records.size()) - 1;
 
         // Insert handle
         classRecord->ops[i] = metadataBlock->metadata.size();
@@ -1607,7 +1610,7 @@ void DXILPhysicalBlockMetadata::CompileCBVResourceClass(const DXJob &job) {
 
         // Create resource metadata row
         Metadata& resourceMd = metadataBlock->metadata.emplace_back();
-        resourceMd.source = static_cast<uint32_t>(block->records.Size()) - 1;
+        resourceMd.source = static_cast<uint32_t>(block->records.size()) - 1;
 
         // Insert handle
         classRecord->ops[i] = metadataBlock->metadata.size();
@@ -1661,7 +1664,7 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
 
         // KV identifier
         Metadata& uavMd = metadataBlock->metadata.emplace_back();
-        uavMd.source = static_cast<uint32_t>(mdBlock->records.Size()) - 1;
+        uavMd.source = static_cast<uint32_t>(mdBlock->records.size()) - 1;
         programRecord->Op(4) = uavMd.source + 1;
     }
 

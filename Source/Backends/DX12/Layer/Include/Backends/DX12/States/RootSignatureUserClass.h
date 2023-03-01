@@ -8,5 +8,5 @@
 
 struct RootSignatureUserClass {
     /// All user spaces within this class
-    TrivialStackVector<RootSignatureUserSpace, 4u> spaces;
+    std::vector<RootSignatureUserSpace> spaces;
 };

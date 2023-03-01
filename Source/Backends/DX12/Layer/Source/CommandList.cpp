@@ -54,14 +54,14 @@ static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue*
     auto table = GetTable(device);
 
     // Create state
-    auto *state = new CommandQueueState();
+    auto *state = new (table.state->allocators, kAllocState) CommandQueueState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->desc = *desc;
     state->object = commandQueue;
 
     // Create detours
-    commandQueue = CreateDetour(Allocators{}, commandQueue, state);
+    commandQueue = CreateDetour(state->allocators, commandQueue, state);
 
     // Query to external object if requested
     if (pCommandQueue) {
@@ -71,7 +71,7 @@ static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue*
         }
 
         // Create shared fence
-        state->sharedFence = new (table.state->allocators) IncrementalFence();
+        state->sharedFence = new (table.state->allocators, kAllocState) IncrementalFence();
         if (!state->sharedFence->Install(table.next, state->object)) {
             return E_FAIL;
         }
@@ -143,7 +143,7 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
     }
 
     // Create state
-    auto *state = new CommandSignatureState();
+    auto *state = new (table.state->allocators, kAllocState) CommandSignatureState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->object = commandSignature;
@@ -172,7 +172,7 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
     }
 
     // Create detours
-    commandSignature = CreateDetour(Allocators{}, commandSignature, state);
+    commandSignature = CreateDetour(state->allocators, commandSignature, state);
 
     // Query to external object if requested
     if (ppvCommandSignature) {
@@ -216,13 +216,13 @@ HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMA
     }
 
     // Create state
-    auto *state = new CommandAllocatorState();
+    auto *state = new (table.state->allocators, kAllocState) CommandAllocatorState();
     state->allocators = table.state->allocators;
     state->userType = type;
     state->parent = device;
 
     // Create detours
-    commandAllocator = CreateDetour(Allocators{}, commandAllocator, state);
+    commandAllocator = CreateDetour(state->allocators, commandAllocator, state);
 
     // Query to external object if requested
     if (pCommandAllocator) {
@@ -277,14 +277,14 @@ HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandL
     auto table = GetTable(device);
 
     // Create state
-    auto *state = new CommandListState();
+    auto *state = new (table.state->allocators, kAllocState) CommandListState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->userType = type;
     state->object = static_cast<ID3D12GraphicsCommandList*>(commandList);
 
     // Create detours
-    commandList = CreateDetour(Allocators{}, commandList, state);
+    commandList = CreateDetour(state->allocators, commandList, state);
 
     // Query to external object if requested
     if (pCommandList) {

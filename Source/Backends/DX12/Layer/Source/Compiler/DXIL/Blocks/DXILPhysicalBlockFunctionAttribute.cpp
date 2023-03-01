@@ -1,9 +1,7 @@
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockFunctionAttribute.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordReader.h>
-#include <Backends/DX12/Compiler/DXIL/DXILIDMap.h>
-#include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
-#include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
+#include <Backends/DX12/Compiler/Tags.h>
 
 // Common
 #include <Common/Sink.h>
@@ -32,7 +30,7 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterAttributeGroup(struct LLV
                  *   [ENTRY, grpid, paramidx, attr0, attr1, ...]
                  * */
 
-                ParameterAttributeGroup& group = parameterAttributeGroups.Add();
+                ParameterAttributeGroup& group = parameterAttributeGroups.emplace_back();
 
                 uint32_t id = reader.ConsumeOp32();
                 uint64_t parameter = reader.ConsumeOp();
@@ -103,7 +101,7 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterBlock(struct LLVMBlock *b
                  *   [ENTRY, attrgrp0, attrgrp1, ...]
                  */
 
-                ParameterGroup& group = parameterGroups.Add();
+                ParameterGroup& group = parameterGroups.emplace_back();
 
                 while (reader.Any()) {
                     uint32_t index = reader.ConsumeOp32();
@@ -120,7 +118,7 @@ void DXILPhysicalBlockFunctionAttribute::ParseParameterBlock(struct LLVMBlock *b
 }
 
 uint32_t DXILPhysicalBlockFunctionAttribute::FindOrCompileAttributeList(uint32_t count, const LLVMParameterGroupValue *values) {
-    for (uint32_t groupIdx = 0; groupIdx < parameterGroups.Size(); groupIdx++) {
+    for (uint32_t groupIdx = 0; groupIdx < parameterGroups.size(); groupIdx++) {
         const ParameterGroup& group = parameterGroups[groupIdx];
 
         // Count mismatch?
@@ -144,16 +142,16 @@ uint32_t DXILPhysicalBlockFunctionAttribute::FindOrCompileAttributeList(uint32_t
     }
 
     // Destination group index
-    uint32_t groupIndex = static_cast<uint32_t>(parameterAttributeGroups.Size());
+    uint32_t groupIndex = static_cast<uint32_t>(parameterAttributeGroups.size());
 
     // Allocate group
-    ParameterAttributeGroup& group = parameterAttributeGroups.Add();
+    ParameterAttributeGroup& group = parameterAttributeGroups.emplace_back();
 
     // Group record
     LLVMRecord groupRecord(LLVMParameterGroupRecord::Entry);
     groupRecord.opCount = 2 + 2 * count;
     groupRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(groupRecord.opCount);
-    groupRecord.ops[0] = parameterAttributeGroups.Size();
+    groupRecord.ops[0] = parameterAttributeGroups.size();
     groupRecord.ops[1] = static_cast<uint64_t>(LLVMParameterGroupRecordIndex::FunctionAttribute);
 
     // Add attributes
@@ -169,7 +167,7 @@ uint32_t DXILPhysicalBlockFunctionAttribute::FindOrCompileAttributeList(uint32_t
     groupDeclarationBlock->AddRecord(groupRecord);
 
     // Destination parameter index
-    uint32_t parameterIndex = static_cast<uint32_t>(parameterGroups.Size());
+    uint32_t parameterIndex = static_cast<uint32_t>(parameterGroups.size());
 
     // Parameter record
     LLVMRecord parameterRecord(LLVMParameterRecord::Entry);
@@ -185,14 +183,14 @@ uint32_t DXILPhysicalBlockFunctionAttribute::FindOrCompileAttributeList(uint32_t
 void DXILPhysicalBlockFunctionAttribute::SetDeclarationBlock(struct LLVMBlock *block) {
     parameterDeclarationBlock = block->GetBlock(LLVMReservedBlock::Parameter);
     if (!parameterDeclarationBlock) {
-        parameterDeclarationBlock = new (allocators) LLVMBlock(LLVMReservedBlock::Parameter);
+        parameterDeclarationBlock = new (allocators, kAllocModuleDXIL) LLVMBlock(allocators, LLVMReservedBlock::Parameter);
         parameterDeclarationBlock->abbreviationSize = 4u;
         block->InsertBlock(block->FindPlacement(LLVMBlockElementType::Block), parameterDeclarationBlock);
     }
 
     groupDeclarationBlock = block->GetBlock(LLVMReservedBlock::ParameterGroup);
     if (!groupDeclarationBlock) {
-        groupDeclarationBlock = new (allocators) LLVMBlock(LLVMReservedBlock::ParameterGroup);
+        groupDeclarationBlock = new (allocators, kAllocModuleDXIL) LLVMBlock(allocators, LLVMReservedBlock::ParameterGroup);
         groupDeclarationBlock->abbreviationSize = 4u;
         block->InsertBlock(block->FindPlacement(LLVMBlockElementType::Block), groupDeclarationBlock);
     }

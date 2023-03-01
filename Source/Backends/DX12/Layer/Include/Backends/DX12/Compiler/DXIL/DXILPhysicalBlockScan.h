@@ -73,7 +73,7 @@ private:
     /// Copy a block
     /// \param block source block
     /// \param out destination block
-    void CopyBlock(const LLVMBlock* block, LLVMBlock& out);
+    void CopyBlock(const LLVMBlock* block, LinearBlockAllocator<sizeof(uint64_t) * 1024u>& outRecordAllocator, LLVMBlock& out);
 
 private:
     /// Result of a scanning operation

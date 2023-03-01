@@ -119,6 +119,6 @@ inline bool destroyRef(IComponentBase *object) {
     Allocators allocators = object->allocators;
 
     object->~IComponentBase();
-    allocators.free(object->address);
+    allocators.free(allocators.userData, object->address, kDefaultAlign);
     return true;
 }

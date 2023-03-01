@@ -17,19 +17,19 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
         }
 
         // Create state
-        auto* bufferState = new ResourceState();
+        auto* bufferState = new (state->allocators, kAllocState) ResourceState();
         state->allocators = state->allocators;
         bufferState->parent = state->parent;
 
         // Create detours
-        state->buffers[i] = CreateDetour(Allocators{}, bottomBuffer, bufferState);
+        state->buffers[i] = CreateDetour(state->allocators, bottomBuffer, bufferState);
     }
 }
 
 template<typename T, typename U>
 static T* CreateSwapChainState(const DXGIFactoryTable& table, ID3D12Device* device, T* swapChain, U* desc) {
     // Create state
-    auto* state = new SwapChainState();
+    auto* state = new (table.state->allocators, kAllocState) SwapChainState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->object = swapChain;
@@ -39,7 +39,7 @@ static T* CreateSwapChainState(const DXGIFactoryTable& table, ID3D12Device* devi
     CreateSwapchainBufferWrappers(state, desc->BufferCount);
 
     // Create detours
-    return static_cast<T*>(CreateDetour(Allocators{}, swapChain, state));
+    return static_cast<T*>(CreateDetour(state->allocators, swapChain, state));
 }
 
 struct OpaqueDeviceInfo {

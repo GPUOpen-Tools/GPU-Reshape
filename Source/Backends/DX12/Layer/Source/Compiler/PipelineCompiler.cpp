@@ -69,11 +69,11 @@ void PipelineCompiler::AddBatchOfType(const std::vector<PipelineJob> &jobs, Pipe
         const uint32_t count = std::min(static_cast<uint32_t>(jobs.size()) - offset, batchSize);
 
         // Create a copy of the states
-        auto copy = new(allocators) PipelineJob[count];
+        auto copy = new(allocators, kAllocInstrumentation) PipelineJob[count];
         std::memcpy(copy, &jobs[offset], sizeof(PipelineJob) * count);
 
         // Create the job data
-        auto data = new(registry->GetAllocators()) PipelineJobBatch{
+        auto data = new(registry->GetAllocators(), kAllocInstrumentation) PipelineJobBatch{
             .jobs = copy,
             .count = count
         };
@@ -109,7 +109,7 @@ void PipelineCompiler::WorkerCompute(void *data) {
 }
 
 void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
-    TrivialStackVector<uint8_t, 64'000> streamStack;
+    TrivialStackVector<uint8_t, 64'000> streamStack(allocators);
 
     // Device used for stream creates
     ID3D12Device2* streamDevice;
@@ -286,7 +286,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 }
 
 void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
-    TrivialStackVector<uint8_t, 64'000> streamStack;
+    TrivialStackVector<uint8_t, 64'000> streamStack(allocators);
 
     // Device used for stream creates
     ID3D12Device2* streamDevice;

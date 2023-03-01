@@ -5,6 +5,7 @@
 
 // Common
 #include <Common/Alloca.h>
+#include <Common/Allocators.h>
 #include <Common/Assert.h>
 
 // System
@@ -32,3 +33,9 @@ template<typename T = void>
 inline T *&GetVTableRawRef(void* object) {
     return *(T **) object;
 }
+
+/// Common allocation tags
+static constexpr AllocationTag kAllocState = "State"_AllocTag;
+static constexpr AllocationTag kAllocShaderExport = "ShaderExport"_AllocTag;
+static constexpr AllocationTag kAllocInstrumentation = "Instrumentation"_AllocTag;
+static constexpr AllocationTag kAllocPRMT = "PRMT"_AllocTag;

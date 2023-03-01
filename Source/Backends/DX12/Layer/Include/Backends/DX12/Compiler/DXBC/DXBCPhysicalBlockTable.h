@@ -55,6 +55,10 @@ struct DXBCPhysicalBlockTable {
     IDXDebugModule* debugModule{nullptr};
 
 private:
+    /// Is the debugging module owned?
+    bool shallowDebug{false};
+
+private:
     Allocators allocators;
 
     /// IL program

@@ -20,11 +20,11 @@ HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory)
     Allocators allocators = {};
 
     // Create state
-    auto *state = new (allocators) DXGIFactoryState();
+    auto *state = new (allocators, kAllocState) DXGIFactoryState();
     state->allocators = allocators;
 
     // Create detours
-    factory = CreateDetour(Allocators{}, factory, state);
+    factory = CreateDetour(state->allocators, factory, state);
 
     // Query to external object if requested
     if (ppFactory) {
@@ -55,11 +55,11 @@ HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory
     Allocators allocators = {};
 
     // Create state
-    auto *state = new (allocators) DXGIFactoryState();
+    auto *state = new (allocators, kAllocState) DXGIFactoryState();
     state->allocators = allocators;
     
     // Create detours
-    factory = CreateDetour(Allocators{}, factory, state);
+    factory = CreateDetour(state->allocators, factory, state);
 
     // Query to external object if requested
     if (ppFactory) {
@@ -90,11 +90,11 @@ HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void
     Allocators allocators = {};
 
     // Create state
-    auto *state = new (allocators) DXGIFactoryState();
+    auto *state = new (allocators, kAllocState) DXGIFactoryState();
     state->allocators = allocators;
 
     // Create detours
-    factory = CreateDetour(Allocators{}, factory, state);
+    factory = CreateDetour(state->allocators, factory, state);
 
     // Query to external object if requested
     if (ppFactory) {

@@ -7,6 +7,7 @@
 #include <Backends/DX12/Compiler/DXStream.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
+#include <Backends/DX12/Compiler/Tags.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 
 // Backend
@@ -64,7 +65,7 @@ bool ShaderCompiler::Install() {
 }
 
 void ShaderCompiler::Add(ShaderState *state, const ShaderInstrumentationKey& instrumentationKey, DispatcherBucket *bucket) {
-    auto data = new(registry->GetAllocators()) ShaderJob{
+    auto data = new(registry->GetAllocators(), kAllocInstrumentation) ShaderJob{
         .state = state,
         .instrumentationKey = instrumentationKey
     };
@@ -94,7 +95,7 @@ void ShaderCompiler::InitializeModule(ShaderState *state) {
                 return;
             }
             case 'CBXD': {
-                state->module = new (allocators) DXBCModule(allocators, state->uid, GlobalUID::New());
+                state->module = new (allocators, kAllocModule) DXBCModule(allocators, state->uid, GlobalUID::New());
                 break;
             }
         }

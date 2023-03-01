@@ -7,6 +7,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILIDMap.h>
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
+#include <Backends/DX12/Compiler/Tags.h>
 #include <Backends/DX12/Compiler/DXJob.h>
 
 // Backend
@@ -74,17 +75,17 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     IL::BasicBlock *basicBlock = fn->GetBasicBlocks().AllocBlock();
 
     // Local block mappings
-    TrivialStackVector<IL::BasicBlock *, 32> blockMapping;
+    TrivialStackVector<IL::BasicBlock *, 32> blockMapping(allocators);
     blockMapping.Add(basicBlock);
 
     // Current block index
     uint32_t blockIndex{0};
 
     // Reserve forward allocations
-    table.idMap.ReserveForward(block->records.Size());
+    table.idMap.ReserveForward(block->records.size());
 
     // Visit function records
-    for (uint32_t recordIdx = 0; recordIdx < static_cast<uint32_t>(block->records.Size()); recordIdx++) {
+    for (uint32_t recordIdx = 0; recordIdx < static_cast<uint32_t>(block->records.size()); recordIdx++) {
         LLVMRecord &record = block->records[recordIdx];
 
         DXILValueReader reader(table, record);
@@ -1101,8 +1102,8 @@ void DXILPhysicalBlockFunction::MigrateConstantBlocks() {
                     }
 
                     // Flush block
-                    fnBlock->elements.Resize(0);
-                    fnBlock->records.Resize(0);
+                    fnBlock->elements.resize(0);
+                    fnBlock->records.resize(0);
                     break;
                 }
             }
@@ -1130,7 +1131,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
     IL::ID id = table.idMap.AllocMappedID(DXILIDType::Function, static_cast<uint32_t>(functions.Size()));
 
     // Create function
-    auto *function = functions.Add(new (allocators) DXILFunctionDeclaration);
+    auto *function = functions.Add(new (allocators, kAllocModuleDXIL) DXILFunctionDeclaration);
 
     // Set id
     function->anchor = record.sourceAnchor;
@@ -1902,7 +1903,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
     // Create a new function block
     FunctionBlock& functionBlock = functionBlocks.Add();
     functionBlock.uid = block->uid;
-    functionBlock.recordRelocation.Resize(block->records.Size());
+    functionBlock.recordRelocation.Resize(block->records.size());
 
     // Default to no relocation
     std::fill_n(functionBlock.recordRelocation.Data(), functionBlock.recordRelocation.Size(), IL::InvalidID);
@@ -1936,7 +1937,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
         LLVMBlock& root = table.scan.GetRoot();
 
         // Allocate block
-        constantBlock = new(allocators) LLVMBlock(LLVMReservedBlock::Constants);
+        constantBlock = new(allocators, kAllocModuleLLVMBlock) LLVMBlock(allocators, LLVMReservedBlock::Constants);
         constantBlock->abbreviationSize = 4;
 
         // Insert before metadata
@@ -1946,16 +1947,19 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
     // Get the program map
     Backend::IL::TypeMap &typeMap = program.GetTypeMap();
 
+    // Local resource
+    PolyAllocator polyAllocator(allocators);
+
     // Swap source data
-    TrivialStackVector<LLVMRecord, 32> source;
-    block->records.Swap(source);
+    std::pmr::vector<LLVMRecord> source(&polyAllocator);
+    block->records.swap(source);
 
     // Swap element data
-    TrivialStackVector<LLVMBlockElement, 128> elements;
-    block->elements.Swap(elements);
+    std::pmr::vector<LLVMBlockElement> elements(&polyAllocator);
+    block->elements.swap(elements);
 
     // Reserve
-    block->elements.Reserve(elements.Size());
+    block->elements.reserve(elements.size());
 
     // Filter all records
     for (const LLVMBlockElement &element: elements) {
@@ -1964,12 +1968,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                 break;
             }
             case LLVMBlockElementType::Abbreviation: {
-                block->elements.Add(element);
+                block->elements.push_back(element);
                 break;
             }
             case LLVMBlockElementType::Block: {
                 if (!IsFunctionPostRecordDependentBlock(static_cast<LLVMReservedBlock>(block->blocks[element.id]->id))) {
-                    block->elements.Add(element);
+                    block->elements.push_back(element);
                 }
                 break;
             }
@@ -1989,7 +1993,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
     declareBlocks.opCount = 1;
     declareBlocks.ops = table.recordAllocator.AllocateArray<uint64_t>(1);
     declareBlocks.ops[0] = fn->GetBasicBlocks().GetBlockCount();
-    block->InsertRecord(block->elements.begin(), declareBlocks);
+    block->InsertRecord(block->elements.data(), declareBlocks);
 
     // Add binding handles
     CreateHandles(job, block);
@@ -2003,7 +2007,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
             // If it's valid, copy record
             if (instr->source.IsValid()) {
                 // Set relocation index
-                functionBlock.recordRelocation[instr->source.codeOffset] = static_cast<uint32_t>(block->records.Size());
+                functionBlock.recordRelocation[instr->source.codeOffset] = static_cast<uint32_t>(block->records.size());
 
                 // Copy the source
                 record = source[instr->source.codeOffset];
@@ -3199,7 +3203,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
             }
             case LLVMBlockElementType::Block: {
                 if (IsFunctionPostRecordDependentBlock(static_cast<LLVMReservedBlock>(block->blocks[element.id]->id))) {
-                    block->elements.Add(element);
+                    block->elements.push_back(element);
                 }
                 break;
             }
@@ -3272,7 +3276,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
 
     // Visit function records
     //   ? +1, Skip DeclareBlocks
-    for (size_t recordIdx = 1; recordIdx < block->records.Size(); recordIdx++) {
+    for (size_t recordIdx = 1; recordIdx < block->records.size(); recordIdx++) {
         LLVMRecord &record = block->records[recordIdx];
 
         // Setup writer
@@ -3534,7 +3538,7 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::FindDeclaration(const 
 }
 
 DXILFunctionDeclaration *DXILPhysicalBlockFunction::AddDeclaration(const DXILFunctionDeclaration &declaration) {
-    return functions.Add(new (allocators) DXILFunctionDeclaration(declaration));
+    return functions.Add(new (allocators, kAllocModuleDXIL) DXILFunctionDeclaration(declaration));
 }
 
 void DXILPhysicalBlockFunction::CreateHandles(const DXJob &job, struct LLVMBlock *block) {
@@ -3707,7 +3711,7 @@ void DXILPhysicalBlockFunction::CreateEventHandle(const DXJob &job, struct LLVMB
     uint32_t rowCount = (dwordCount + 3) / 4;
 
     // All rows for later swizzling
-    TrivialStackVector<uint32_t, 16u> legacyRows;
+    TrivialStackVector<uint32_t, 16u> legacyRows(allocators);
 
     // Create all row loads
     for (uint32_t row = 0; row < rowCount; row++) {
@@ -3833,7 +3837,7 @@ void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXJob &job, struct 
     }
 }
 
-const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUserMapping(const DXJob& job, const TrivialStackVector<LLVMRecord, 32>& source, IL::ID resource) {
+const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUserMapping(const DXJob& job, const std::pmr::vector<LLVMRecord>& source, IL::ID resource) {
     // TODO: This will not hold true for everything
 
     // Get resource instruction
@@ -3895,7 +3899,7 @@ const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUse
     return &userSpace.mappings[rangeIndex];
 }
 
-void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const TrivialStackVector<LLVMRecord, 32>& source, const IL::ResourceTokenInstruction* _instr) {
+void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const std::pmr::vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
     const RootSignatureUserMapping* userMapping = GetResourceUserMapping(job, source, _instr->resource);
     ASSERT(userMapping, "Fallback user mappings not supported yet");
 

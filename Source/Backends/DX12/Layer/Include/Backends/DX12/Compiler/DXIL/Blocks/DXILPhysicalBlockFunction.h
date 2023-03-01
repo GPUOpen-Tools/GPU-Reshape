@@ -170,7 +170,7 @@ private:
     /// \param source source records
     /// \param resource resource to be fetched
     /// \return nullptr if not found
-    const struct RootSignatureUserMapping* GetResourceUserMapping(const DXJob& job, const TrivialStackVector<LLVMRecord, 32>& source, IL::ID resource);
+    const struct RootSignatureUserMapping* GetResourceUserMapping(const DXJob& job, const std::pmr::vector<LLVMRecord>& source, IL::ID resource);
 
 private:
     /// Compile an export instruction
@@ -183,7 +183,7 @@ private:
     /// \param block destination block
     /// \param source all source instructions
     /// \param _instr instruction to be compiled
-    void CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const TrivialStackVector<LLVMRecord, 32>& source , const IL::ResourceTokenInstruction* _instr);
+    void CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const std::pmr::vector<LLVMRecord>& source , const IL::ResourceTokenInstruction* _instr);
 
 private:
     /// Does the record have a result?

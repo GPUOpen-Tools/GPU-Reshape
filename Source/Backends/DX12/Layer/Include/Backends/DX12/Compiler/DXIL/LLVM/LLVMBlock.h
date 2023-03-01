@@ -4,19 +4,27 @@
 #include "LLVMRecord.h"
 #include "LLVMAbbreviation.h"
 #include "LLVMBlockElement.h"
+#include <Backends/DX12/Compiler/Tags.h>
 
 // Std
 #include <cstdint>
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
+#include <Common/Allocator/PolyAllocator.h>
 
 // Forward declarations
 struct LLVMBlockMetadata;
 
 struct LLVMBlock {
-    LLVMBlock(LLVMReservedBlock id = {}) : id(static_cast<uint32_t>(id)) {
-
+    LLVMBlock(const Allocators& allocators, LLVMReservedBlock id = {}) :
+        polyAllocator(allocators, kAllocModuleLLVMBlockElements),
+        id(static_cast<uint32_t>(id)),
+        blocks(&polyAllocator),
+        records(&polyAllocator),
+        abbreviations(&polyAllocator),
+        elements(&polyAllocator) {
+        /** */
     }
 
     /// Check if this block is of reserved id
@@ -107,7 +115,7 @@ struct LLVMBlock {
     /// \return nullptr if none found
     template<typename T>
     const LLVMBlockElement* FindPlacementReverse(LLVMBlockElementType type, const T& rid) {
-        for (int64_t i = elements.Size() - 1; i >= 0; i--) {
+        for (int64_t i = elements.size() - 1; i >= 0; i--) {
             const LLVMBlockElement& element = elements[i];
 
             if (!element.Is(type)) {
@@ -139,34 +147,37 @@ struct LLVMBlock {
     /// Add a record to the end of this block
     /// \param record record to be added
     void AddRecord(const LLVMRecord& record) {
-        elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(records.Size())));
-        records.Add(record);
+        elements.push_back(LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(records.size())));
+        records.push_back(record);
     }
 
     /// Add a block to the end of this block
     /// \param record block to be added
     void AddBlock(LLVMBlock* block) {
-        elements.Add(LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(blocks.Size())));
-        blocks.Add(block);
+        elements.push_back(LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(blocks.size())));
+        blocks.push_back(block);
     }
 
     /// Add a record at a location
     /// \param record record to be added
     void InsertRecord(const LLVMBlockElement* location, const LLVMRecord& record) {
-        elements.Insert(location, LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(records.Size())));
-        records.Add(record);
+        elements.insert(AsIterator(location), LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(records.size())));
+        records.push_back(record);
     }
 
     /// Add a block at a location
     /// \param record block to be added
     void InsertBlock(const LLVMBlockElement* location, LLVMBlock* block) {
-        elements.Insert(location, LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(blocks.Size())));
-        blocks.Add(block);
+        elements.insert(AsIterator(location), LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(blocks.size())));
+        blocks.push_back(block);
     }
+
+    /// Shared allocator
+    PolyAllocator polyAllocator;
 
     /// Identifier of this block, may be reserved
     uint32_t id{~0u};
-
+    
     /// Unique identifier of this block
     uint32_t uid{~0u};
 
@@ -177,17 +188,23 @@ struct LLVMBlock {
     uint32_t blockLength{~0u};
 
     /// All child blocks
-    TrivialStackVector<LLVMBlock*, 32> blocks;
+    std::pmr::vector<LLVMBlock*> blocks;
 
     /// All records within this block
-    TrivialStackVector<LLVMRecord, 32> records;
+    std::pmr::vector<LLVMRecord> records;
 
     /// All abbreviations local to this block
-    TrivialStackVector<LLVMAbbreviation, 32> abbreviations;
+    std::pmr::vector<LLVMAbbreviation> abbreviations;
 
     /// Elements in declaration order
-    TrivialStackVector<LLVMBlockElement, 128> elements;
+    std::pmr::vector<LLVMBlockElement> elements;
 
     /// Optional metadata
     LLVMBlockMetadata* metadata{nullptr};
+
+private:
+    /// Element to iterator
+    std::pmr::vector<LLVMBlockElement>::const_iterator AsIterator(const LLVMBlockElement* element) const {
+        return elements.begin() + std::distance(elements.data(), element);
+    }
 };

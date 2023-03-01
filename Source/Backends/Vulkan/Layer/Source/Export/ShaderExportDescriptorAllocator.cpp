@@ -44,12 +44,12 @@ bool ShaderExportDescriptorAllocator::Install() {
     dataHost->Enumerate(&dataResourceBound, dataResources.data(), ShaderDataType::DescriptorMask);
 
     // Descriptors for writing
-    TrivialStackVector<VkDescriptorSetLayoutBinding, 16u> bindings;
+    TrivialStackVector<VkDescriptorSetLayoutBinding, 16u> bindings(allocators);
 
     // Binding flags
     //  ? Descriptors are updated latent, during recording we do not know what segment
     //    is appropriate until submission.
-    TrivialStackVector<VkDescriptorBindingFlags, 16u> bindingFlags;
+    TrivialStackVector<VkDescriptorBindingFlags, 16u> bindingFlags(allocators);
 
     // Create the binding layout
     CreateBindingLayout();
@@ -322,7 +322,7 @@ void ShaderExportDescriptorAllocator::Free(const ShaderExportSegmentDescriptorIn
 }
 
 void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentDescriptorInfo &info, VkBuffer descriptorChunk) {
-    TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites;
+    TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites(allocators);
 
     // Get prmt view
     VkBufferView prmtBufferView = table->prmTable->GetDeviceView();
@@ -362,7 +362,7 @@ void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentD
 }
 
 void ShaderExportDescriptorAllocator::Update(const ShaderExportSegmentDescriptorInfo &info, const ShaderExportSegmentInfo *segment) {
-    TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites;
+    TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites(allocators);
 
     // Single counter
     VkWriteDescriptorSet& counterWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});

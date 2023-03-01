@@ -79,8 +79,8 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
 RootSignatureUserMapping& GetRootMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserClassType type, uint32_t space, uint32_t offset) {
     RootSignatureUserClass& _class = mapping->spaces[static_cast<uint32_t>(type)];
 
-    if (_class.spaces.Size() <= space) {
-        _class.spaces.Resize(space + 1);
+    if (_class.spaces.size() <= space) {
+        _class.spaces.resize(space + 1);
     }
 
     RootSignatureUserSpace& userSpace = _class.spaces[space];
@@ -94,7 +94,7 @@ RootSignatureUserMapping& GetRootMapping(RootSignaturePhysicalMapping* mapping, 
 
 template<typename T>
 static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount) {
-    auto* mapping = new (state->allocators) RootSignaturePhysicalMapping();
+    auto* mapping = new (state->allocators, kAllocState) RootSignaturePhysicalMapping();
 
     // TODO: Could do a pre-pass
 
@@ -395,7 +395,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     serialized->Release();
 
     // Create state
-    auto* state = new RootSignatureState();
+    auto* state = new (table.state->allocators, kAllocState) RootSignatureState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->rootBindingInfo = bindingInfo;
@@ -404,7 +404,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     state->object = rootSignature;
 
     // Create detours
-    rootSignature = CreateDetour(Allocators{}, rootSignature, state);
+    rootSignature = CreateDetour(state->allocators, rootSignature, state);
 
     // Query to external object if requested
     if (pRootSignature) {

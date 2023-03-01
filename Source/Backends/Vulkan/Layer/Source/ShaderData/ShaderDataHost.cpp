@@ -30,7 +30,7 @@ bool ShaderDataHost::Install() {
 }
 
 void ShaderDataHost::CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffset) {
-    TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites;
+    TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites(allocators);
 
     // Add all relevant resources
     for (uint32_t i = 0; i < resources.size(); i++) {

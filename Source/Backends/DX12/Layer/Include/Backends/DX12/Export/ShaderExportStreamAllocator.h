@@ -22,12 +22,13 @@
 struct CommandListObject;
 struct DeviceDispatchTable;
 class DeviceAllocator;
+struct DeviceState;
 
 class ShaderExportStreamAllocator : public TComponent<ShaderExportStreamAllocator> {
 public:
     COMPONENT(ShaderExportStreamAllocator);
 
-    ShaderExportStreamAllocator();
+    ShaderExportStreamAllocator(DeviceState *device);
     ~ShaderExportStreamAllocator();
 
     /// Install this allocator

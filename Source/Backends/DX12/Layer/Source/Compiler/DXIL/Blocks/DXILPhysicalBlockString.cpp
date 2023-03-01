@@ -9,13 +9,13 @@
 
 void DXILPhysicalBlockString::ParseStrTab(const LLVMBlock* block) {
     // By specification, must have a single record
-    if (block->records.Size() != 1) {
+    if (block->records.size() != 1) {
         ASSERT(false, "Unexpected record count");
         return;
     }
 
     // Get record
-    blobRecord = block->records.Data();
+    blobRecord = block->records.data();
 }
 
 std::string_view DXILPhysicalBlockString::GetString(uint64_t offset, uint64_t length) {

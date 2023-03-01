@@ -21,7 +21,7 @@ HRESULT HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const 
 
 static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTable& table, ID3D12Resource* resource, const D3D12_RESOURCE_DESC* desc) {
     // Create state
-    auto* state = new ResourceState();
+    auto* state = new (table.state->allocators, kAllocState) ResourceState();
     state->allocators = table.state->allocators;
     state->parent = parent;
 
@@ -47,7 +47,7 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     state->virtualMapping.srb = ~0u;
 
     // Create detours
-    return CreateDetour(Allocators{}, resource, state);
+    return CreateDetour(state->allocators, resource, state);
 }
 
 HRESULT HookID3D12DeviceCreateCommittedResource(ID3D12Device* device, const D3D12_HEAP_PROPERTIES* heap, D3D12_HEAP_FLAGS heapFlags, const D3D12_RESOURCE_DESC* desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE* clearValue, const IID& riid, void** pResource) {

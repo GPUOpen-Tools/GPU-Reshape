@@ -1,5 +1,6 @@
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
+#include <Backends/DX12/States/DeviceState.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -14,7 +15,8 @@
 // Std
 #include <algorithm>
 
-ShaderExportStreamAllocator::ShaderExportStreamAllocator() {
+ShaderExportStreamAllocator::ShaderExportStreamAllocator(DeviceState *device) :
+    segmentPool(device->allocators) {
 
 }
 
@@ -64,7 +66,7 @@ ShaderExportSegmentInfo *ShaderExportStreamAllocator::AllocateSegment() {
     }
 
     // Allocate new allocation
-    auto segment = new (allocators) ShaderExportSegmentInfo();
+    auto segment = new (allocators, kAllocShaderExport) ShaderExportSegmentInfo();
 
     // Allocate counters
     segment->counter = AllocateCounterInfo();

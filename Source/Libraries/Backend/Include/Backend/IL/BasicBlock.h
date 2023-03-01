@@ -1,13 +1,16 @@
 #pragma once
 
-// Std
-#include <vector>
-
 // Backend
 #include "RelocationAllocator.h"
 #include "Instruction.h"
 #include "IdentifierMap.h"
 #include "BasicBlockFlags.h"
+
+// Common
+#include <Common/Allocator/PolyAllocator.h>
+
+// Std
+#include <vector>
 
 namespace IL {
     /// Instruction reference
@@ -356,7 +359,12 @@ namespace IL {
         };
 
         /// Constructor
-        BasicBlock(const Allocators &allocators, IdentifierMap &map, ID id) : allocators(allocators), id(id), map(map), relocationAllocator(allocators) {
+        BasicBlock(const Allocators &allocators, IdentifierMap &map, ID id) :
+            allocators(allocators), polyAllocator(allocators, "BasicBlock"_AllocTag),
+            id(id), map(map),
+            data(&polyAllocator),
+            relocationTable(&polyAllocator),
+            relocationAllocator(allocators) {
 
         }
 
@@ -841,6 +849,9 @@ namespace IL {
     private:
         Allocators allocators;
 
+        /// Allocator resource
+        PolyAllocator polyAllocator;
+
         /// Label id
         ID id;
 
@@ -854,10 +865,10 @@ namespace IL {
         IdentifierMap &map;
 
         /// Instruction stream
-        std::vector<uint8_t> data;
+        std::pmr::vector<uint8_t> data;
 
         /// The current relocation table for resummarization
-        std::vector<RelocationOffset *> relocationTable;
+        std::pmr::vector<RelocationOffset *> relocationTable;
 
         /// Relocation block allocator
         RelocationAllocator relocationAllocator;

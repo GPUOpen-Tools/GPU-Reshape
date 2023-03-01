@@ -58,10 +58,10 @@ private:
     };
 
     /// All attribute groups
-    TrivialStackVector<ParameterAttributeGroup, 16> parameterAttributeGroups;
+    std::vector<ParameterAttributeGroup> parameterAttributeGroups;
 
     /// All parameter groups
-    TrivialStackVector<ParameterGroup, 16> parameterGroups;
+    std::vector<ParameterGroup> parameterGroups;
 
 private:
     /// Declaration blocks

@@ -35,12 +35,12 @@ ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTE
     }
 
     // Create new shader
-    shaderState = new(device->allocators) ShaderState();
+    shaderState = new(device->allocators, kAllocState) ShaderState();
     shaderState->parent = device;
     shaderState->key = key;
 
     // Copy key memory
-    auto shader = new (device->allocators) uint8_t[key.byteCode.BytecodeLength];
+    auto shader = new (device->allocators, kAllocState) uint8_t[key.byteCode.BytecodeLength];
     std::memcpy(shader, key.byteCode.pShaderBytecode, key.byteCode.BytecodeLength);
     shaderState->key.byteCode.pShaderBytecode = shader;
 
@@ -79,7 +79,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
             return E_FAIL;
         case PipelineType::Graphics: {
             // Create state
-            auto state = new GraphicsPipelineState();
+            auto state = new (table.state->allocators, kAllocState) GraphicsPipelineState();
             state->allocators = table.state->allocators;
             state->parent = device;
             state->type = PipelineType::Graphics;
@@ -174,7 +174,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
         }
         case PipelineType::Compute: {
             // Create state
-            auto *state = new ComputePipelineState();
+            auto *state = new (table.state->allocators, kAllocState) ComputePipelineState();
             state->allocators = table.state->allocators;
             state->parent = device;
             state->type = PipelineType::Compute;
@@ -229,7 +229,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
     table.state->states_Pipelines.Add(opaqueState);
 
     // Create detours
-    pipeline = CreateDetour(Allocators{}, pipeline, opaqueState);
+    pipeline = CreateDetour(opaqueState->allocators, pipeline, opaqueState);
 
     // Query to external object if requested
     if (pPipeline) {
@@ -253,13 +253,13 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     auto rootSignatureTable = GetTable(desc->pRootSignature);
 
     // Create state
-    auto *state = new GraphicsPipelineState();
+    auto *state = new (table.state->allocators, kAllocState) GraphicsPipelineState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Graphics;
 
     // Perform deep copy
-    state->deepCopy.DeepCopy(Allocators{}, *desc);
+    state->deepCopy.DeepCopy(state->allocators, *desc);
 
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;
@@ -267,7 +267,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     // Pass down callchain
     HRESULT hr = table.bottom->next_CreateGraphicsPipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
-        delete state;
+        destroy(state, state->allocators);
         return hr;
     }
 
@@ -319,7 +319,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     table.state->states_Pipelines.Add(state);
 
     // Create detours
-    state->object = CreateDetour(Allocators{}, state->object, state);
+    state->object = CreateDetour(state->allocators, state->object, state);
 
     // Query to external object if requested
     if (pPipeline) {
@@ -343,13 +343,13 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     auto rootSignatureTable = GetTable(desc->pRootSignature);
 
     // Create state
-    auto *state = new ComputePipelineState();
+    auto *state = new (table.state->allocators, kAllocState) ComputePipelineState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Compute;
 
     // Perform deep copy
-    state->deepCopy.DeepCopy(Allocators{}, *desc);
+    state->deepCopy.DeepCopy(state->allocators, *desc);
 
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;
@@ -357,7 +357,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     // Pass down callchain
     HRESULT hr = table.bottom->next_CreateComputePipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
-        delete state;
+        destroy(state, state->allocators);
         return hr;
     }
 
@@ -377,7 +377,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     table.state->states_Pipelines.Add(state);
 
     // Create detours
-    state->object = CreateDetour(Allocators{}, state->object, state);
+    state->object = CreateDetour(state->allocators, state->object, state);
 
     // Query to external object if requested
     if (pPipeline) {
@@ -409,7 +409,7 @@ HRESULT WINAPI HookID3D12PipelineStateSetName(ID3D12PipelineState* _this, LPCWST
     size_t length = std::wcslen(name) + 1;
 
     // Copy string
-    table.state->debugName = new (device.state->allocators) char[length];
+    table.state->debugName = new (device.state->allocators, kAllocState) char[length];
     wcstombs_s(&length, table.state->debugName, length * sizeof(char), name, length * sizeof(wchar_t));
 
     // Pass to down the call chain

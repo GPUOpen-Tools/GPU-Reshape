@@ -6,6 +6,7 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecord.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMAbbreviation.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBlockMetadata.h>
+#include <Backends/DX12/Compiler/Tags.h>
 
 // Common
 #include <Common/Allocators.h>
@@ -29,7 +30,7 @@
  *   https://llvm.org/docs/BitCodeFormat.html#module-code-version-record
  * */
 
-DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : recordAllocator(allocators), allocators(allocators) {
+DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : root(allocators), recordAllocator(allocators), allocators(allocators) {
 
 }
 
@@ -163,10 +164,10 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMB
 
             case static_cast<uint32_t>(LLVMReservedAbbreviation::EnterSubBlock): {
                 // Add element
-                block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(block->blocks.Size())));
+                block->elements.push_back(LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(block->blocks.size())));
 
                 // Scan child tree
-                if (ScanEnterSubBlock(stream, block->blocks.Add(new(Allocators{}) LLVMBlock)) != ScanResult::OK) {
+                if (ScanEnterSubBlock(stream, block->blocks.emplace_back(new(allocators, kAllocModuleLLVMBlock) LLVMBlock(allocators))) != ScanResult::OK) {
                     return ScanResult::Error;
                 }
                 break;
@@ -199,10 +200,10 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanAbbreviation(LLVMBi
      * */
 
     // Add element
-    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Abbreviation, static_cast<uint32_t>(block->abbreviations.Size())));
+    block->elements.push_back(LLVMBlockElement(LLVMBlockElementType::Abbreviation, static_cast<uint32_t>(block->abbreviations.size())));
 
     // Create new abbreviation
-    LLVMAbbreviation &abbreviation = block->abbreviations.Add();
+    LLVMAbbreviation &abbreviation = block->abbreviations.emplace_back();
 
     // Get number of ops
     auto opCount = stream.VBR<uint32_t>(5);
@@ -259,10 +260,10 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedRecord
      * */
 
     // Add element
-    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(block->records.Size())));
+    block->elements.push_back(LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(block->records.size())));
 
     // Add record
-    LLVMRecord &record = block->records.Add();
+    LLVMRecord &record = block->records.emplace_back();
 
     // Get id
     record.id = stream.VBR<uint32_t>(6);
@@ -323,7 +324,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanBlockInfo(LLVMBitSt
 
                 // Add as child if new BID
                 if (current != metadata) {
-                    block->blocks.Add(metadata);
+                    block->blocks.push_back(metadata);
                 }
                 break;
             }
@@ -364,7 +365,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedInfoRe
         }
         case static_cast<uint32_t>(LLVMBlockInfoRecord::SetBID): {
             // Allocate meta
-            auto *meta = new(Allocators{}) LLVMBlockMetadata;
+            auto *meta = new(allocators, kAllocModuleLLVMMetadata) LLVMBlockMetadata(allocators);
 
             // Set id
             meta->id = record.Op32(0);
@@ -390,7 +391,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedInfoRe
     }
 
     // Must have metadata
-    (*metadata)->records.Add(record);
+    (*metadata)->records.push_back(record);
 
     // OK
     return ScanResult::OK;
@@ -409,10 +410,10 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
     }
 
     // Add element
-    block->elements.Add(LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(block->records.Size())));
+    block->elements.push_back(LLVMBlockElement(LLVMBlockElementType::Record, static_cast<uint32_t>(block->records.size())));
 
     // Add record
-    LLVMRecord &record = block->records.Add();
+    LLVMRecord &record = block->records.emplace_back();
 
     // To index
     uint32_t abbreviationIndex = encodedAbbreviationId - 4;
@@ -429,14 +430,14 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanRecord(LLVMBitStrea
          * */
 
         // Part of the BLOCKINFO's set?
-        if (abbreviationIndex < block->metadata->abbreviations.Size()) {
+        if (abbreviationIndex < block->metadata->abbreviations.size()) {
             abbreviation = &block->metadata->abbreviations[abbreviationIndex];
 
             // Set as metadata
             record.abbreviation.type = LLVMRecordAbbreviationType::BlockMetadata;
             record.abbreviation.abbreviationId = abbreviationIndex;
         } else {
-            abbreviationIndex -= static_cast<uint32_t>(block->metadata->abbreviations.Size());
+            abbreviationIndex -= static_cast<uint32_t>(block->metadata->abbreviations.size());
         }
     }
 
@@ -738,7 +739,7 @@ void DXILPhysicalBlockScan::CopyTo(DXILPhysicalBlockScan &out) {
     out.metadataLookup = metadataLookup;
 
     // Copy root block
-    CopyBlock(&root, out.root);
+    CopyBlock(&root, out.recordAllocator, out.root);
 }
 
 void DXILPhysicalBlockScan::DestroyBlockContents(const LLVMBlock *block) {
@@ -751,7 +752,7 @@ void DXILPhysicalBlockScan::DestroyBlockContents(const LLVMBlock *block) {
     }
 }
 
-void DXILPhysicalBlockScan::CopyBlock(const LLVMBlock *block, LLVMBlock &out) {
+void DXILPhysicalBlockScan::CopyBlock(const LLVMBlock *block, LinearBlockAllocator<sizeof(uint64_t) * 1024u>& outRecordAllocator, LLVMBlock &out) {
     // Immutable data
     out.id = block->id;
     out.uid = block->uid;
@@ -771,16 +772,16 @@ void DXILPhysicalBlockScan::CopyBlock(const LLVMBlock *block, LLVMBlock &out) {
         }
 
         // Copy operands
-        auto* ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
+        auto* ops = outRecordAllocator.AllocateArray<uint64_t>(record.opCount);
         std::memcpy(ops, record.ops, sizeof(uint64_t) * record.opCount);
         record.ops = ops;
     }
     
     // Mutable blocks
     for (const LLVMBlock *child: block->blocks) {
-        auto copy = new(Allocators{}) LLVMBlock;
-        CopyBlock(child, *copy);
-        out.blocks.Add(copy);
+        auto copy = new(allocators, kAllocModuleLLVMBlock) LLVMBlock(allocators);
+        CopyBlock(child, outRecordAllocator, *copy);
+        out.blocks.push_back(copy);
     }
 }
 
@@ -861,7 +862,7 @@ DXILPhysicalBlockScan::WriteResult DXILPhysicalBlockScan::WriteSubBlock(LLVMBitS
                         case LLVMRecordAbbreviationType::BlockLocal: {
                             // Index after metadata abbreviations
                             if (block->metadata) {
-                                encodedAbbreviationId += static_cast<uint32_t>(block->metadata->abbreviations.Size());
+                                encodedAbbreviationId += static_cast<uint32_t>(block->metadata->abbreviations.size());
                             }
 
                             // Local indexc

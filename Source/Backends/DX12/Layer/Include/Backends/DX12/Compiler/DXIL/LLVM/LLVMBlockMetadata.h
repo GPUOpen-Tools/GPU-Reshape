@@ -7,5 +7,7 @@
 #include <map>
 
 struct LLVMBlockMetadata : public LLVMBlock {
+    using LLVMBlock::LLVMBlock;
+
     // TODO: Name records
 };

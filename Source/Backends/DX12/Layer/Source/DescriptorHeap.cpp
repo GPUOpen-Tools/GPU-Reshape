@@ -9,7 +9,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     auto table = GetTable(device);
 
     // Create state
-    auto* state = new DescriptorHeapState();
+    auto* state = new (table.state->allocators, kAllocState) DescriptorHeapState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = desc->Type;
@@ -57,10 +57,10 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
             }
 
             // Create unique allocator
-            state->allocator = new (table.state->allocators) ShaderExportDescriptorAllocator(table.next, heap, bound);
+            state->allocator = new (table.state->allocators, kAllocState) ShaderExportDescriptorAllocator(table.next, heap, bound);
 
             // Create prm
-            state->prmTable = new (table.state->allocators) PhysicalResourceMappingTable(table.state->deviceAllocator);
+            state->prmTable = new (table.state->allocators, kAllocState) PhysicalResourceMappingTable(table.state->deviceAllocator);
 
             // Initialize table with count
             state->prmTable->Install(desc->NumDescriptors);
@@ -87,7 +87,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     }
 
     // Create detours
-    heap = CreateDetour(Allocators{}, heap, state);
+    heap = CreateDetour(state->allocators, heap, state);
 
     // Query to external object if requested
     if (pHeap) {

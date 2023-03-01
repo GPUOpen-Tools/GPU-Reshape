@@ -3,7 +3,7 @@
 #include <Generators/MessageGenerator.h>
 
 // Common
-#include <Common/Linkage.h>
+#include <Common/Common.h>
 
 ComRef<ShaderExportGenerator> generator;
 

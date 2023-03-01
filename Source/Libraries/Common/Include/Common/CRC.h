@@ -24,6 +24,10 @@ SOFTWARE.
 #ifndef COMPILE_TIME_CRC_H
 #define COMPILE_TIME_CRC_H
 
+// Common
+#include "Common.h"
+
+// Std
 #include <cstdint>
 #include <type_traits>
 
@@ -103,10 +107,8 @@ namespace crcdetail
     }
 }  // namespace crcdetail
 
-namespace crcliteral {
-    constexpr uint64_t operator "" _crc64(const char* data, size_t len) {
-        return crcdetail::compute(data, len);
-    }
+GRS_CONSTEVAL uint64_t operator "" _crc64(const char* data, size_t len) {
+    return crcdetail::compute(data, len);
 }
 
 inline uint64_t BufferCRC64(const void* data, uint64_t len, uint32_t crc = 0) {

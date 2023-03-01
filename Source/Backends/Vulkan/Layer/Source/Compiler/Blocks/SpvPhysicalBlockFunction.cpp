@@ -1747,7 +1747,7 @@ void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
         IL::ID bridgeBlockId = program.GetIdentifierMap().AllocID();
 
         // All removed users
-        TrivialStackVector<IL::OpaqueInstructionRef, 128> removed;
+        TrivialStackVector<IL::OpaqueInstructionRef, 128> removed(allocators);
 
         // Change all users
         for (const IL::OpaqueInstructionRef& ref : program.GetIdentifierMap().GetBlockUsers(block.block)) {

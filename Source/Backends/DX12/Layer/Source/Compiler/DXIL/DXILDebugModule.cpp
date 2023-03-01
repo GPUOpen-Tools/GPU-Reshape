@@ -254,7 +254,7 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
     LLVMRecordStringView recordName;
 
     // Visit records
-    for (size_t i = 0; i < block->records.Size(); i++) {
+    for (size_t i = 0; i < block->records.size(); i++) {
         const LLVMRecord &record = block->records[i];
 
         // Handle record
@@ -269,7 +269,7 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                 recordName = LLVMRecordStringView(record, 0);
 
                 // Validate next
-                ASSERT(i + 1 != block->records.Size(), "Expected succeeding metadata record");
+                ASSERT(i + 1 != block->records.size(), "Expected succeeding metadata record");
                 ASSERT(block->records[i + 1].Is(LLVMMetadataRecord::NamedNode), "Succeeding record to Name must be NamedNode");
                 break;
             }

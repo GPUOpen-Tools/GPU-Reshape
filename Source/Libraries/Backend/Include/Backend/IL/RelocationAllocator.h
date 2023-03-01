@@ -1,12 +1,14 @@
 #pragma once
 
-#include <cstdint>
-
 // Backend
 #include "RelocationOffset.h"
 
 // Common
 #include <Common/Allocators.h>
+
+// Std
+#include <cstdint>
+#include <vector>
 
 namespace IL {
     /// Block relocation allocator, for safe references to contiguous instruction streams

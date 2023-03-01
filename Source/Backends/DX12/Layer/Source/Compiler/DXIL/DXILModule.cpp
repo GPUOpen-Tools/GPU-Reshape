@@ -1,6 +1,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
+#include <Backends/DX12/Compiler/Tags.h>
 
-DXILModule::DXILModule(const Allocators &allocators) : DXILModule(allocators, new(allocators) IL::Program(allocators, 0x0)) {
+DXILModule::DXILModule(const Allocators &allocators) : DXILModule(allocators, new(allocators, kAllocModuleDXIL) IL::Program(allocators, 0x0)) {
     nested = false;
 }
 

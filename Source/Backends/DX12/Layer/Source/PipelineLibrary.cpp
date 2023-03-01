@@ -17,13 +17,13 @@ HRESULT WINAPI HookID3D12DeviceCreatePipelineLibrary(ID3D12Device* device, const
     }
 
     // Create state
-    auto *state = new (table.state->allocators) PipelineLibraryState();
+    auto *state = new (table.state->allocators, kAllocState) PipelineLibraryState();
     state->parent = device;
     state->allocators = table.state->allocators;
     state->object = library;
 
     // Create detours
-    library = CreateDetour(Allocators{}, library, state);
+    library = CreateDetour(state->allocators, library, state);
     
     // Query to external object if requested
     if (ppPipelineLibrary) {
@@ -63,14 +63,14 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     auto rootSignatureTable = GetTable(pDesc->pRootSignature);
 
     // Create state
-    auto *state = new GraphicsPipelineState();
+    auto *state = new (table.state->allocators, kAllocState) GraphicsPipelineState();
     state->allocators = deviceTable.state->allocators;
     state->parent = table.state->parent;
     state->type = PipelineType::Graphics;
     state->object = state->object;
 
     // Perform deep copy
-    state->deepCopy.DeepCopy(Allocators{}, *pDesc);
+    state->deepCopy.DeepCopy(state->allocators, *pDesc);
 
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;
@@ -78,7 +78,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     // Pass down callchain
     HRESULT hr = table.bottom->next_LoadGraphicsPipeline(table.next, pName, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
-        delete state;
+        destroy(state, state->allocators);
         return hr;
     }
 
@@ -130,7 +130,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     deviceTable.state->states_Pipelines.Add(state);
 
     // Create detours
-    state->object = CreateDetour(Allocators{}, state->object, state);
+    state->object = CreateDetour(state->allocators, state->object, state);
 
     // Query to external object if requested
     if (ppPipelineState) {
@@ -157,13 +157,13 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     auto rootSignatureTable = GetTable(pDesc->pRootSignature);
 
     // Create state
-    auto *state = new ComputePipelineState();
+    auto *state = new (table.state->allocators, kAllocState) ComputePipelineState();
     state->allocators = deviceTable.state->allocators;
     state->parent = table.state->parent;
     state->type = PipelineType::Compute;
 
     // Perform deep copy
-    state->deepCopy.DeepCopy(Allocators{}, *pDesc);
+    state->deepCopy.DeepCopy(state->allocators, *pDesc);
 
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;
@@ -171,7 +171,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     // Pass down callchain
     HRESULT hr = table.bottom->next_LoadComputePipeline(table.next, pName, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
-        delete state;
+        destroy(state, state->allocators);
         return hr;
     }
 
@@ -191,7 +191,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     deviceTable.state->states_Pipelines.Add(state);
 
     // Create detours
-    state->object = CreateDetour(Allocators{}, state->object, state);
+    state->object = CreateDetour(state->allocators, state->object, state);
 
     // Query to external object if requested
     if (ppPipelineState) {

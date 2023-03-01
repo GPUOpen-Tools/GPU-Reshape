@@ -82,7 +82,7 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
 
     // Redirect all branch users if requested
     if (splitFlags & BasicBlockSplitFlag::RedirectBranchUsers) {
-        TrivialStackVector<IL::OpaqueInstructionRef, 128> removed;
+        TrivialStackVector<IL::OpaqueInstructionRef, 128> removed(allocators);
 
         for (const OpaqueInstructionRef& ref : map.GetBlockUsers(GetID())) {
             IL::Instruction* instruction = ref.basicBlock->GetRelocationInstruction(ref.relocationOffset);

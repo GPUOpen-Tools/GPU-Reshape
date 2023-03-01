@@ -191,7 +191,7 @@ void InstrumentationController::CommitInstrumentation() {
 #endif
 
     // Copy batch
-    auto* batch = new (registry->GetAllocators()) Batch(immediateBatch);
+    auto* batch = new (registry->GetAllocators(), kAllocInstrumentation) Batch(immediateBatch);
     batch->stampBegin = std::chrono::high_resolution_clock::now();
 
     // Summarize the needed feature set
@@ -275,7 +275,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
     std::vector<std::pair<ShaderState*, ShaderInstrumentationKey>> rejectedKeys;
 
     // Allocate batch
-    auto jobs = new (registry->GetAllocators()) PipelineJob[batch->dirtyPipelines.size()];
+    auto jobs = new (registry->GetAllocators(), kAllocInstrumentation) PipelineJob[batch->dirtyPipelines.size()];
 
     // Enqueued jobs
     uint32_t enqueuedJobs{0};
@@ -290,7 +290,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         job.featureBitSet = globalInstrumentationInfo.featureBitSet | state->instrumentationInfo.featureBitSet;
 
         // Allocate feature bit sets
-        job.shaderInstrumentationKeys = new (registry->GetAllocators()) ShaderInstrumentationKey[state->shaders.size()];
+        job.shaderInstrumentationKeys = new (registry->GetAllocators(), kAllocInstrumentation) ShaderInstrumentationKey[state->shaders.size()];
 
         // Set the module feature bit sets
         for (uint32_t shaderIndex = 0; shaderIndex < state->shaders.size(); shaderIndex++) {

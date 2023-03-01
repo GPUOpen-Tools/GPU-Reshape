@@ -1,4 +1,5 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockTable.h>
+#include <Backends/DX12/Compiler/Tags.h>
 
 // DXIL Extension
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
@@ -24,8 +25,8 @@ DXBCPhysicalBlockTable::~DXBCPhysicalBlockTable() {
         destroy(dxilModule, allocators);
     }
     
-    if (debugModule) {
-        destroy(dxilModule, allocators);
+    if (debugModule && !shallowDebug) {
+        destroy(debugModule, allocators);
     }
 }
 
@@ -43,7 +44,7 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 
     // Parse canonical program
     if (DXBCPhysicalBlock *dxilBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
-        dxilModule = new(Allocators{}) DXILModule(allocators, &program);
+        dxilModule = new(allocators, kAllocModuleDXIL) DXILModule(allocators, &program);
 
         // Attempt to parse the module
         if (!dxilModule->Parse(dxilBlock->ptr, dxilBlock->length)) {
@@ -55,7 +56,7 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     // Unfortunately basing the main program off the ILDB is more trouble than it's worth,
     // as stripping the debug data after recompilation is quite troublesome.
     if (DXBCPhysicalBlock *ildbBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::ILDB)) {
-        auto* dxilDebugModule = new(Allocators{}) DXILDebugModule(allocators);
+        auto* dxilDebugModule = new(allocators, kAllocModuleDXIL) DXILDebugModule(allocators);
 
         // Attempt to parse the module
         if (!dxilDebugModule->Parse(ildbBlock->ptr, ildbBlock->length)) {
@@ -106,10 +107,11 @@ void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {
 
     // Keep the debug interface
     out.debugModule = debugModule;
+    out.shallowDebug = true;
 
     // Copy submodule if present
     if (dxilModule) {
-        out.dxilModule = new(Allocators{}) DXILModule(allocators, &out.program);
+        out.dxilModule = new(allocators, kAllocModuleDXIL) DXILModule(allocators, &out.program);
 
         // Copy to new module
         dxilModule->CopyTo(out.dxilModule);

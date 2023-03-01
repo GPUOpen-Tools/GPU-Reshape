@@ -34,11 +34,25 @@
 #include <Bridge/IBridge.h>
 
 // Common
+#ifndef NDEBUG
+#include <Common/Allocator/TrackedAllocator.h>
+#endif // NDEBUG
 #include <Common/IComponentTemplate.h>
 #include <Common/GlobalUID.h>
 
 // Detour
 #include <Detour/detours.h>
+
+// Std
+#ifndef NDEBUG
+#include <iostream>
+#include <sstream>
+#endif // NDEBUG
+
+// Debugging allocator
+#ifndef NDEBUG
+TrackedAllocator trackedAllocator;
+#endif // NDEBUG
 
 static bool PoolAndInstallFeatures(DeviceState* state) {
     // Get the feature host
@@ -106,13 +120,20 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     REFIID riid, void **ppDevice,
     const D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info
 ) {
+    // Set allocators
+#ifndef NDEBUG
+    Allocators allocators = trackedAllocator.GetAllocators();
+#else // NDEBUG
+    Allocators allocators = {};
+#endif // NDEBUG
+
     // Create state
-    auto *state = new DeviceState();
-    state->allocators = {};
+    auto *state = new (allocators) DeviceState();
     state->object = device;
+    state->allocators = allocators;
 
     // Create detours
-    device = CreateDetour(Allocators{}, device, state);
+    device = CreateDetour(state->allocators, device, state);
 
     // Query to external object if requested
     if (ppDevice) {
@@ -138,6 +159,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
             // Reparent
             state->registry.SetParent(state->environment.GetRegistry());
         }
+
+        // Set registry allocator
+        state->registry.SetAllocators(state->allocators);
 
         // Get common components
         state->bridge = state->registry.Get<IBridge>();
@@ -224,7 +248,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         ENSURE(state->shaderProgramHost->InstallPrograms(), "Failed to install shader program host programs");
 
         // Install the streamer
-        auto streamAllocator = state->registry.AddNew<ShaderExportStreamAllocator>();
+        auto streamAllocator = state->registry.AddNew<ShaderExportStreamAllocator>(state);
         ENSURE(streamAllocator->Install(), "Failed to install shader export stream allocator");
 
         // Install the streamer
@@ -526,4 +550,16 @@ void BridgeDeviceSyncPoint(DeviceState *device) {
 
     // Commit bridge
     device->bridge->Commit();
+
+    // Debugging helper
+#ifndef NDEBUG
+    if (false) {
+        // Format
+        std::stringstream stream;
+        trackedAllocator.Dump(stream);
+
+        // Dump to console
+        OutputDebugStringA(stream.str().c_str());
+    }
+#endif // NDEBUG
 }
