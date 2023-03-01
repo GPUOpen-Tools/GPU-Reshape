@@ -53,7 +53,6 @@
         "CreateCommittedResource2",
         "CreatePlacedResource",
         "CreatePlacedResource1",
-        "CreatePlacedResource2",
         "CreateReservedResource",
         "CreateCommandQueue",
         "CreateCommandAllocator",
