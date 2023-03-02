@@ -477,3 +477,14 @@ bool ShaderState::Reserve(const ShaderInstrumentationKey &instrumentationKey) {
 
     return false;
 }
+
+void ShaderState::AddInstrument(const ShaderInstrumentationKey &instrumentationKey, const DXStream &instrument) {
+    std::lock_guard lock(mutex);
+
+    // Replace or add
+    if (auto it = instrumentObjects.find(instrumentationKey); it != instrumentObjects.end()) {
+        it->second = instrument;
+    } else {
+        instrumentObjects.emplace(instrumentationKey, instrument);
+    }
+}

@@ -24,10 +24,7 @@ struct ShaderState : public ReferenceObject {
     /// Add an instrument to this shader
     /// \param featureBitSet the enabled feature set
     /// \param byteCode the byteCode in question
-    void AddInstrument(const ShaderInstrumentationKey& instrumentationKey, const DXStream& instrument) {
-        std::lock_guard lock(mutex);
-        instrumentObjects.emplace(instrumentationKey, instrument);
-    }
+    void AddInstrument(const ShaderInstrumentationKey& instrumentationKey, const DXStream& instrument);
 
     /// Get an instrument
     /// \param featureBitSet the enabled feature set
@@ -42,6 +39,9 @@ struct ShaderState : public ReferenceObject {
         return instrumentObjects.count(instrumentationKey) > 0;
     }
 
+    /// Reverse a future instrument
+    /// \param instrumentationKey key to be used
+    /// \return true if reserved
     bool Reserve(const ShaderInstrumentationKey& instrumentationKey);
 
     /// Originating key
