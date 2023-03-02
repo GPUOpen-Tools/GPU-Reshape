@@ -4,6 +4,10 @@
 #include "RootSignatureUserClassType.h"
 
 struct RootSignaturePhysicalMapping {
+    RootSignaturePhysicalMapping(const Allocators& allocators) : spaces{allocators, allocators, allocators, allocators} {
+        
+    }
+    
     /// Signature hash
     uint64_t signatureHash{0};
 

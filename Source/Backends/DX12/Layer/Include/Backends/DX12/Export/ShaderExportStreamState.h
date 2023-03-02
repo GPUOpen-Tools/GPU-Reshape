@@ -121,6 +121,10 @@ struct ShaderExportStreamBindState {
 
 /// Single stream state
 struct ShaderExportStreamState {
+    ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators) {
+        
+    }
+    
     /// Currently bound (SRV, UAV, CBV) heap
     const DescriptorHeapState* heap{nullptr};
 
@@ -134,11 +138,15 @@ struct ShaderExportStreamState {
     ShaderExportStreamBindState bindStates[static_cast<uint32_t>(PipelineType::Count)];
 
     /// All segment descriptors, lifetime bound to deferred segment
-    std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
+    Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
 };
 
 /// Single stream segment, i.e. submission
 struct ShaderExportStreamSegment {
+    ShaderExportStreamSegment(const Allocators& allocators) : segmentDescriptors(allocators), descriptorDataSegments(allocators) {
+        
+    }
+    
     /// Allocation for this segment
     ShaderExportSegmentInfo* allocation{nullptr};
 
@@ -150,10 +158,10 @@ struct ShaderExportStreamSegment {
     ShaderExportSegmentDescriptorInfo patchDeviceGPUDescriptor;
 
     /// Combined segment descriptors, lifetime bound to this segment
-    std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
+    Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
 
     /// Combined descriptor data segments, lifetime bound to this segment
-    std::vector<DescriptorDataSegment> descriptorDataSegments;
+    Vector<DescriptorDataSegment> descriptorDataSegments;
 
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{UINT64_MAX};
@@ -164,8 +172,12 @@ struct ShaderExportStreamSegment {
 
 /// The queue state
 struct ShaderExportQueueState {
+    ShaderExportQueueState(const Allocators& allocators) : liveSegments(allocators) {
+        
+    }
+    
     ID3D12CommandQueue* queue{nullptr};
 
     /// All submitted segments
-    std::vector<ShaderExportStreamSegment*> liveSegments;
+    Vector<ShaderExportStreamSegment*> liveSegments;
 };

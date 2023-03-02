@@ -1,5 +1,8 @@
 #pragma once
 
+// Common
+#include <Common/Allocator/Vector.h>
+
 // Std
 #include <map>
 #include <vector>
@@ -11,7 +14,7 @@
 template<typename T>
 struct TrackedObject {
     struct LinearView {
-        LinearView(std::mutex &mutex, std::vector<T*>& object) : mutex(mutex), object(object) {
+        LinearView(std::mutex &mutex, Vector<T*>& object) : mutex(mutex), object(object) {
             mutex.lock();
         }
 
@@ -23,19 +26,19 @@ struct TrackedObject {
         LinearView(const LinearView&) = delete;
         LinearView(LinearView&&) = delete;
 
-        typename std::vector<T*>::iterator begin() {
+        typename Vector<T*>::iterator begin() {
             return object.begin();
         }
 
-        typename std::vector<T*>::iterator end() {
+        typename Vector<T*>::iterator end() {
             return object.end();
         }
 
-        typename std::vector<T*>::const_iterator begin() const {
+        typename Vector<T*>::const_iterator begin() const {
             return object.begin();
         }
 
-        typename std::vector<T*>::const_iterator end() const {
+        typename Vector<T*>::const_iterator end() const {
             return object.end();
         }
 
@@ -44,8 +47,12 @@ struct TrackedObject {
         }
 
         std::mutex &mutex;
-        std::vector<T*>& object;
+        Vector<T*>& object;
     };
+
+    TrackedObject(const Allocators& allocators) : linear(allocators) {
+        
+    }
 
     /// Add a new tracked object
     T* Add(T* object) {
@@ -118,7 +125,7 @@ private:
     std::map<uint64_t, MapEntry> uidMap;
 
     /// Linear traversal
-    std::vector<T*> linear;
+    Vector<T*> linear;
 
     /// My data! The data!
     std::mutex mutex;

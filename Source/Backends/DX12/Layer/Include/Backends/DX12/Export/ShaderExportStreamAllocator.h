@@ -2,6 +2,7 @@
 
 // Common
 #include <Common/IComponent.h>
+#include <Common/Allocator/Vector.h>
 #include <Common/Containers/ObjectPool.h>
 #include <Common/Containers/TrivialObjectPool.h>
 #include <Common/ComRef.h>
@@ -72,7 +73,7 @@ private:
     };
 
     /// All exports
-    std::vector<ExportInfo> exportInfos;
+    Vector<ExportInfo> exportInfos;
 
 private:
     ComRef<DeviceAllocator> deviceAllocator{};

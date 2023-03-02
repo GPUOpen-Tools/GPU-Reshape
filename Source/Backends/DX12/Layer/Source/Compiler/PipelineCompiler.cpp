@@ -11,7 +11,10 @@
 #undef min
 #undef max
 
-PipelineCompiler::PipelineCompiler(DeviceState *device) : device(device) {
+PipelineCompiler::PipelineCompiler(DeviceState *device)
+    : device(device),
+      graphicsJobs(device->allocators.Tag(kAllocInstrumentation)),
+      computeJobs(device->allocators.Tag(kAllocInstrumentation)) {
 
 }
 
@@ -48,7 +51,7 @@ void PipelineCompiler::AddBatch(PipelineJob *jobs, uint32_t count, DispatcherBuc
     computeJobs.clear();
 }
 
-void PipelineCompiler::AddBatchOfType(const std::vector<PipelineJob> &jobs, PipelineType type, DispatcherBucket *bucket) {
+void PipelineCompiler::AddBatchOfType(const Vector<PipelineJob> &jobs, PipelineType type, DispatcherBucket *bucket) {
     if (jobs.empty()) {
         return;
     }

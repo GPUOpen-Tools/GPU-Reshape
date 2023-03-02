@@ -89,6 +89,10 @@ private:
 
 private:
     struct Batch {
+        Batch(const Allocators& allocators) : dirtyShaders(allocators), dirtyPipelines(allocators) {
+            
+        }
+        
         uint64_t featureBitSet;
 
         std::chrono::high_resolution_clock::time_point stampBegin;
@@ -96,8 +100,8 @@ private:
         std::chrono::high_resolution_clock::time_point stampBeginPipelines;
 
         std::set<ReferenceObject*> dirtyObjects;
-        std::vector<ShaderState*> dirtyShaders;
-        std::vector<PipelineState*> dirtyPipelines;
+        Vector<ShaderState*> dirtyShaders;
+        Vector<PipelineState*> dirtyPipelines;
     };
 
     /// Dirty states

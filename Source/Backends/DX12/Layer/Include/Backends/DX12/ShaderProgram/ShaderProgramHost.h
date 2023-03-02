@@ -62,14 +62,14 @@ private:
     };
 
     /// All programs, may contain empty slots
-    std::vector<ProgramEntry> programs;
+    Vector<ProgramEntry> programs;
 
     /// All free indices
-    std::vector<ShaderProgramID> freeIndices;
+    Vector<ShaderProgramID> freeIndices;
 
 private:
     /// All exposed shader data
-    std::vector<ShaderDataInfo> shaderData;
+    Vector<ShaderDataInfo> shaderData;
 
 private:
     /// Shared root signature

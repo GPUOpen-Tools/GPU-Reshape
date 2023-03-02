@@ -10,6 +10,7 @@
 #include <Common/ComRef.h>
 
 // Common
+#include <Common/Allocator/Vector.h>
 #include <Common/Containers/ObjectPool.h>
 #include <Common/Containers/TrivialObjectPool.h>
 
@@ -245,7 +246,7 @@ private:
     ShaderExportDescriptorLayout descriptorLayout;
 
     /// All free descriptor segments
-    std::vector<DescriptorDataSegmentEntry> freeDescriptorDataSegmentEntries;
+    Vector<DescriptorDataSegmentEntry> freeDescriptorDataSegmentEntries;
 
     /// Components
     ComRef<DeviceAllocator> deviceAllocator{nullptr};

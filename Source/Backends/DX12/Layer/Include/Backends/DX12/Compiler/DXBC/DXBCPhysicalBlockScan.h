@@ -7,10 +7,8 @@
 #include "DXBCHeader.h"
 
 // Common
+#include <Common/Allocator/Vector.h>
 #include <Common/Allocators.h>
-
-// Std
-#include <vector>
 
 // Forward declarations
 struct DXStream;
@@ -53,13 +51,17 @@ public:
 
 private:
     struct Section {
+        Section(const Allocators& allocators) : block(allocators) {
+            
+        }
+    
         uint32_t unexposedType;
         DXBCPhysicalBlockType type;
         DXBCPhysicalBlock block;
     };
 
     /// All sections
-    std::vector<Section> sections;
+    Vector<Section> sections;
 
 private:
     Allocators allocators;

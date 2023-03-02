@@ -13,7 +13,7 @@ public:
     TrackedAllocator() {
         // Create untagged entry
         auto&& _default = taggedEntries[0];
-        _default.name = "Untagged";
+        _default.name = "Default";
     }
     
     void* Allocate(size_t size, size_t align, AllocationTag tag) {
@@ -28,7 +28,7 @@ public:
                 it = taggedEntries.emplace(tag.crc64, MappedEntry{}).first;
 
                 // Set name
-                it->second.name = tag.view;
+                it->second.name = tag.name;
             }
 
             // Track
@@ -67,6 +67,7 @@ public:
     }
 
     void Dump(std::ostream& out) {
+        std::lock_guard guard(mutex);
         out << "TrackedAllocator\n";
 
         // Simple punctuator
@@ -81,10 +82,41 @@ public:
         // Set punctuated locale
         out.imbue(std::locale(out.getloc(), std::make_unique <Punctuator>().release()));
 
-        // Pretty print contents
+        // Sort entries
+        std::vector<MappedEntry> sortedEntries;
         for (std::pair<const unsigned long long, MappedEntry> &it: taggedEntries) {
-            out << "\t'" << it.second.name << "' length:" << it.second.length << " count:" << it.second.count << "\n";
+            sortedEntries.insert(std::ranges::lower_bound(sortedEntries, it.second, [](const MappedEntry& lhs, const MappedEntry& rhs) {
+                return lhs.length > rhs.length;
+            }), it.second);
         }
+
+        // Default padding
+        constexpr uint32_t kPadding = 45;
+
+        // Total byte size
+        size_t total = 0ull;
+
+        // Pretty print contents
+        for (const MappedEntry& entry: sortedEntries) {
+            // Print padded name
+            out << "\t'" << entry.name << "' ";
+            Pad(out, entry.name.length(), kPadding);
+
+            // Print size
+            PostFix(out, entry.length);
+
+            // Print allocation count
+            out << " [" << entry.count << "]\n";
+
+            // Count
+            total += entry.length;
+        }
+
+        // Total counter
+        out << "\n";
+        out << "Total: ";
+        PostFix(out, total);
+        out << "\n";
 
         // Cleanup
         out.imbue(restore);
@@ -108,6 +140,31 @@ private:
     }
 
 private:
+    /// Postfix a number
+    /// \param out destination stream
+    /// \param bytes byte count
+    void PostFix(std::ostream& out, size_t bytes) {
+        const auto length = static_cast<float>(bytes);
+            
+        if (length > 1e6f) {
+            out << length / 1e6f << "mb";
+        } else if (length > 1e3f) {
+            out << length / 1e6f << "kb";
+        } else {
+            out << bytes << "b";
+        }
+    }
+
+    /// Pad stream
+    /// \param out destination stream
+    /// \param length current length
+    /// \param count expected length
+    void Pad(std::ostream& out, size_t length, size_t count) {
+        for (uint32_t i = 0; length < count && i < count - length; i++) {
+            out << " ";
+        }
+    }
+    
     size_t AlignedOffset(size_t align) {
         return align * ((HeaderSize + (align - 1)) / align);
     }

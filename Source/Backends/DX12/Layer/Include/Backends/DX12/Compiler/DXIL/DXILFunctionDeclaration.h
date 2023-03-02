@@ -14,6 +14,10 @@
 #include <string_view>
 
 struct DXILFunctionDeclaration {
+    DXILFunctionDeclaration(const Allocators& allocators) : parameters(allocators), segments(allocators) {
+        
+    }
+    
     /// DXIL anchor of this declaration
     uint64_t anchor;
 

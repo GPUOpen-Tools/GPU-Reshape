@@ -7,9 +7,11 @@
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/DXIL.rst
  */
 
-DXILPhysicalBlockSymbol::DXILPhysicalBlockSymbol(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table) :
-    DXILPhysicalBlockSection(allocators, program, table),
-    blockAllocator(allocators) {
+DXILPhysicalBlockSymbol::DXILPhysicalBlockSymbol(const Allocators &allocators, IL::Program &program, DXILPhysicalBlockTable &table)
+    : DXILPhysicalBlockSection(allocators, program, table),
+      valueStrings(allocators.Tag(kAllocModuleDXILSymbols)),
+      valueAllocations(allocators.Tag(kAllocModuleDXILSymbols)),
+      blockAllocator(allocators.Tag(kAllocModuleDXILSymbols)) {
     /* */
 }
 

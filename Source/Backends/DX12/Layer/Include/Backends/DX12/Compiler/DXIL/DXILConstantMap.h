@@ -18,8 +18,10 @@ public:
     DXILConstantMap(const Allocators& allocators, Backend::IL::ConstantMap& programMap, Backend::IL::IdentifierMap& identifierMap, DXILTypeMap& typeMap) :
         programMap(programMap),
         identifierMap(identifierMap),
+        constants(allocators.Tag(kAllocModuleDXILConstants)),
+        constantLookup(allocators.Tag(kAllocModuleDXILConstants)),
         typeMap(typeMap),
-        recordAllocator(allocators) {
+        recordAllocator(allocators.Tag(kAllocModuleDXILRecOps)) {
 
     }
 
@@ -190,10 +192,10 @@ private:
     Backend::IL::IdentifierMap& identifierMap;
 
     /// All constants
-    std::vector<const IL::Constant*> constants;
+    Vector<const IL::Constant*> constants;
 
     /// IL type to DXIL type table
-    std::vector<uint64_t> constantLookup;
+    Vector<uint64_t> constantLookup;
 
     /// Shared type map
     DXILTypeMap& typeMap;

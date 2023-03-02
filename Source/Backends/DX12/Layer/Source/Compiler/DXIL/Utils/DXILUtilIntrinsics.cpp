@@ -166,11 +166,11 @@ const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrin
     symTab->AddRecord(syRecord);
 
     // Create function declaration
-    auto* decl = table.function.AddDeclaration(DXILFunctionDeclaration {
-        .id = DXILIDRemapper::EncodeUserOperand(record.result),
-        .type = fnType,
-        .linkage = LLVMLinkage::CommonLinkage
-    });
+    DXILFunctionDeclaration declaration(allocators);
+    declaration.id = DXILIDRemapper::EncodeUserOperand(record.result);
+    declaration.type = fnType;
+    declaration.linkage = LLVMLinkage::CommonLinkage;
+    auto* decl = table.function.AddDeclaration(declaration);
 
     // Cache declaration
     intrinsics[spec.uid].declaration = decl;

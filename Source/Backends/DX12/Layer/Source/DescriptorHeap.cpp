@@ -57,7 +57,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
             }
 
             // Create unique allocator
-            state->allocator = new (table.state->allocators, kAllocState) ShaderExportDescriptorAllocator(table.next, heap, bound);
+            state->allocator = new (table.state->allocators, kAllocState) ShaderExportDescriptorAllocator(table.state->allocators, table.next, heap, bound);
 
             // Create prm
             state->prmTable = new (table.state->allocators, kAllocState) PhysicalResourceMappingTable(table.state->deviceAllocator);

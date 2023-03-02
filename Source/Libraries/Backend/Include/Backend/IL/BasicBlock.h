@@ -7,7 +7,7 @@
 #include "BasicBlockFlags.h"
 
 // Common
-#include <Common/Allocator/PolyAllocator.h>
+#include <Common/Allocator/Vector.h>
 
 // Std
 #include <vector>
@@ -360,10 +360,10 @@ namespace IL {
 
         /// Constructor
         BasicBlock(const Allocators &allocators, IdentifierMap &map, ID id) :
-            allocators(allocators), polyAllocator(allocators, "BasicBlock"_AllocTag),
+            allocators(allocators),
             id(id), map(map),
-            data(&polyAllocator),
-            relocationTable(&polyAllocator),
+            data(allocators.Tag("BasicBlock"_AllocTag)),
+            relocationTable(allocators.Tag("BasicBlock"_AllocTag)),
             relocationAllocator(allocators) {
 
         }
@@ -849,9 +849,6 @@ namespace IL {
     private:
         Allocators allocators;
 
-        /// Allocator resource
-        PolyAllocator polyAllocator;
-
         /// Label id
         ID id;
 
@@ -865,10 +862,10 @@ namespace IL {
         IdentifierMap &map;
 
         /// Instruction stream
-        std::pmr::vector<uint8_t> data;
+        Vector<uint8_t> data;
 
         /// The current relocation table for resummarization
-        std::pmr::vector<RelocationOffset *> relocationTable;
+        Vector<RelocationOffset *> relocationTable;
 
         /// Relocation block allocator
         RelocationAllocator relocationAllocator;

@@ -54,7 +54,7 @@ static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue*
     auto table = GetTable(device);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) CommandQueueState();
+    auto *state = new (table.state->allocators, kAllocState) CommandQueueState(table.state->allocators);
     state->allocators = table.state->allocators;
     state->parent = device;
     state->desc = *desc;

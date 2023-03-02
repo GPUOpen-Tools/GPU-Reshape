@@ -14,6 +14,13 @@
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/lib/Bitcode/Writer/BitcodeWriter.cpp
  */
 
+DXILPhysicalBlockFunctionAttribute::DXILPhysicalBlockFunctionAttribute(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table):
+    DXILPhysicalBlockSection(allocators.Tag(kAllocModuleDXILFunctionAttributes), program, table),
+    parameterAttributeGroups(allocators.Tag(kAllocModuleDXILFunctionAttributes)),
+    parameterGroups(allocators.Tag(kAllocModuleDXILFunctionAttributes)) {
+    /* */
+}
+
 void DXILPhysicalBlockFunctionAttribute::CopyTo(DXILPhysicalBlockFunctionAttribute &out) {
     out.parameterAttributeGroups = parameterAttributeGroups;
     out.parameterGroups = parameterGroups;

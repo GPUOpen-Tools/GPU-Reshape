@@ -3,7 +3,7 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Translation.h>
 
-ShaderDataHost::ShaderDataHost(DeviceState *device) : device(device) {
+ShaderDataHost::ShaderDataHost(DeviceState *device) : device(device), freeIndices(device->allocators), indices(device->allocators), resources(device->allocators) {
 
 }
 

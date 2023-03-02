@@ -10,6 +10,10 @@
 #include <vector>
 
 struct __declspec(uuid("664ECE39-6CD9-49E1-9790-21464F3F450A")) SwapChainState {
+    SwapChainState(const Allocators& allocators) : buffers(allocators) {
+        
+    }
+    
     ~SwapChainState();
 
     /// Parent state
@@ -22,5 +26,5 @@ struct __declspec(uuid("664ECE39-6CD9-49E1-9790-21464F3F450A")) SwapChainState {
     IDXGISwapChain* object{};
 
     /// Wrapped buffers
-    std::vector<ID3D12Resource*> buffers;
+    Vector<ID3D12Resource*> buffers;
 };

@@ -7,6 +7,10 @@
 #include <Common/Containers/TrivialStackVector.h>
 
 struct RootSignatureUserClass {
+    RootSignatureUserClass(const Allocators& allocators) : spaces(allocators) {
+        
+    }
+    
     /// All user spaces within this class
-    std::vector<RootSignatureUserSpace> spaces;
+    Vector<RootSignatureUserSpace> spaces;
 };

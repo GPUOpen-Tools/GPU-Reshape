@@ -85,14 +85,18 @@ private:
     };
 
     struct MetadataBlock {
+        MetadataBlock(const Allocators& allocators) : metadata(allocators), sourceMappings(allocators) {
+            /** */
+        }
+        
         /// Owning uid
         uint32_t uid{~0u};
 
         /// All hosted metadata
-        std::vector<Metadata> metadata;
+        Vector<Metadata> metadata;
 
         /// All resolved source mappings
-        std::vector<uint64_t> sourceMappings;
+        Vector<uint64_t> sourceMappings;
     };
 
 private:
@@ -245,23 +249,31 @@ public:
 
     /// A mapped register class
     struct MappedRegisterClass {
+        MappedRegisterClass(const Allocators& allocators) : handles(allocators), resourceLookup(allocators) {
+            /** */
+        }
+        
         /// Class of this space
         DXILShaderResourceClass _class;
 
         /// All handles within this space
-        std::vector<uint32_t> handles;
+        Vector<uint32_t> handles;
 
         /// All handles within this space
-        std::vector<uint32_t> resourceLookup;
+        Vector<uint32_t> resourceLookup;
     };
 
     /// A user register space
     struct UserRegisterSpace {
+        UserRegisterSpace(const Allocators& allocators) : handles(allocators) {
+            /** */
+        }
+        
         /// Space index
         uint32_t space{~0u};
 
         /// All handles within this space
-        std::vector<uint32_t> handles;
+        Vector<uint32_t> handles;
 
         /// Current register bound
         uint32_t registerBound{0};
@@ -274,19 +286,19 @@ public:
 
 private:
     /// All handles
-    std::vector<MappedRegisterClass> registerClasses;
+    Vector<MappedRegisterClass> registerClasses;
 
     /// All handles
-    std::vector<UserRegisterSpace> registerSpaces;
+    Vector<UserRegisterSpace> registerSpaces;
 
     /// All handles within this space
-    std::vector<HandleEntry> handles;
+    Vector<HandleEntry> handles;
 
     /// Current register space bound
     uint32_t registerSpaceBound{0};
 
     /// All hosted metadata blocks
-    std::vector<MetadataBlock> metadataBlocks;
+    Vector<MetadataBlock> metadataBlocks;
 
 private:
     /// Find a register class, allocate if missing

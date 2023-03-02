@@ -8,7 +8,8 @@
 // Std
 #include <fstream>
 
-DXBCModule::DXBCModule(const Allocators &allocators, uint64_t shaderGUID, const GlobalUID &instrumentationGUID) : DXBCModule(allocators, new(allocators, kAllocModuleILProgram) IL::Program(allocators, shaderGUID), instrumentationGUID) {
+DXBCModule::DXBCModule(const Allocators &allocators, uint64_t shaderGUID, const GlobalUID &instrumentationGUID) :
+DXBCModule(allocators, new(allocators, kAllocModuleILProgram) IL::Program(allocators, shaderGUID), instrumentationGUID) {
     nested = false;
 
 #if SHADER_COMPILER_DEBUG
@@ -16,11 +17,12 @@ DXBCModule::DXBCModule(const Allocators &allocators, uint64_t shaderGUID, const 
 #endif // SHADER_COMPILER_DEBUG
 }
 
-DXBCModule::DXBCModule(const Allocators &allocators, IL::Program *program, const GlobalUID& instrumentationGUID) :
-    allocators(allocators),
-    table(allocators, *program),
-    program(program),
-    instrumentationGUID(instrumentationGUID) {
+DXBCModule::DXBCModule(const Allocators &allocators, IL::Program *program, const GlobalUID &instrumentationGUID)
+    : allocators(allocators),
+      table(allocators, *program),
+      program(program),
+      instrumentationGUID(instrumentationGUID),
+      dxStream(allocators) {
     /* */
 }
 

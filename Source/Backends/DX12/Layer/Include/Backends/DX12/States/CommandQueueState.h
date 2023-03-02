@@ -15,6 +15,10 @@ struct ShaderExportQueueState;
 struct IncrementalFence;
 
 struct __declspec(uuid("0808310A-9E0B-41B6-81E5-4840CDF1EDAA")) CommandQueueState {
+    CommandQueueState(const Allocators& allocators) : commandLists(allocators) {
+        
+    }
+    
     ~CommandQueueState();
 
     /// Pop a new command list
@@ -41,7 +45,7 @@ struct __declspec(uuid("0808310A-9E0B-41B6-81E5-4840CDF1EDAA")) CommandQueueStat
     ShaderExportQueueState* exportState{nullptr};
 
     /// On demand command lists
-    std::vector<ImmediateCommandList> commandLists;
+    Vector<ImmediateCommandList> commandLists;
 
     /// Shared fence
     IncrementalFence* sharedFence{nullptr};

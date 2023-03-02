@@ -1,7 +1,7 @@
 #include <Backends/DX12/Export/ShaderExportDescriptorAllocator.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 
-ShaderExportDescriptorAllocator::ShaderExportDescriptorAllocator(ID3D12Device* device, ID3D12DescriptorHeap *heap, uint32_t bound) : bound(bound), heap(heap) {
+ShaderExportDescriptorAllocator::ShaderExportDescriptorAllocator(const Allocators& allocators, ID3D12Device* device, ID3D12DescriptorHeap *heap, uint32_t bound) : freeDescriptors(allocators), bound(bound), heap(heap) {
     D3D12_DESCRIPTOR_HEAP_DESC desc = heap->GetDesc();
 
     // CPU base

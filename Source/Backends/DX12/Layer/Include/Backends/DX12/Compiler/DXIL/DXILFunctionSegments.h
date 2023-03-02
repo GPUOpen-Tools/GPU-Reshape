@@ -13,8 +13,13 @@ struct DXILFunctionConstantRelocation {
 };
 
 struct DXILFunctionSegments {
+    DXILFunctionSegments(const Allocators &allocators)
+        : constantRelocationTable(allocators),
+          idSegment(allocators),
+          idRemapperStitchSegment(allocators) { }
+
     /// All constant relocations
-    std::vector<DXILFunctionConstantRelocation> constantRelocationTable;
+    Vector<DXILFunctionConstantRelocation> constantRelocationTable;
 
     /// Identifier segment
     DXILIDMap::Segment idSegment;

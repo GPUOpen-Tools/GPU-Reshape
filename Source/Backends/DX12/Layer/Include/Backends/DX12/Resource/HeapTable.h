@@ -1,5 +1,8 @@
 #pragma once
 
+// Common
+#include <Common/Allocator/Vector.h>
+
 // Std
 #include <vector>
 #include <algorithm>
@@ -9,6 +12,10 @@ struct DescriptorHeapState;
 
 class HeapTable {
 public:
+    HeapTable(const Allocators& allocators) : entries(allocators) {
+        
+    }
+    
     /// Add a new heap for tracking
     /// \param heap heap address
     /// \param base base descriptor offset
@@ -58,5 +65,5 @@ private:
     };
 
     /// All heaps tracked
-    std::vector<HeapEntry> entries;
+    Vector<HeapEntry> entries;
 };

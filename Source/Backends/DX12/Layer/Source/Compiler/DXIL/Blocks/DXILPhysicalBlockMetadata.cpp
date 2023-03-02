@@ -16,8 +16,11 @@
  */
 
 DXILPhysicalBlockMetadata::DXILPhysicalBlockMetadata(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table) :
-    DXILPhysicalBlockSection(allocators, program, table) {
-
+    DXILPhysicalBlockSection(allocators.Tag(kAllocModuleDXILMetadata), program, table),
+    registerClasses(allocators.Tag(kAllocModuleDXILMetadata)),
+    registerSpaces(allocators.Tag(kAllocModuleDXILMetadata)),
+    handles(allocators.Tag(kAllocModuleDXILMetadata)),
+    metadataBlocks(allocators.Tag(kAllocModuleDXILMetadata)) {
     // Reset resources
     for (uint32_t i = 0; i < static_cast<uint32_t>(DXILShaderResourceClass::Count); i++) {
         resources.lists[i] = 0u;
@@ -38,7 +41,7 @@ void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
 }
 
 void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
-    MetadataBlock& metadataBlock = metadataBlocks.emplace_back();
+    MetadataBlock& metadataBlock = metadataBlocks.emplace_back(allocators);
     metadataBlock.uid = block->uid;
 
     // Empty out previous block data
@@ -805,15 +808,12 @@ void DXILPhysicalBlockMetadata::StitchMetadata(struct LLVMBlock *block) {
     // Source to stitched mappings
     metadataBlock->sourceMappings.resize(block->records.size(), ~0u);
 
-    // Local resource
-    PolyAllocator polyAllocator(allocators);
-
     // Swap source data
-    std::pmr::vector<LLVMRecord> source(&polyAllocator);
+    Vector<LLVMRecord> source(allocators);
     block->records.swap(source);
 
     // Swap element data
-    std::pmr::vector<LLVMBlockElement> elements(&polyAllocator);
+    Vector<LLVMBlockElement> elements(allocators);
     block->elements.swap(elements);
 
     // Reserve
@@ -1624,7 +1624,7 @@ DXILPhysicalBlockMetadata::MappedRegisterClass &DXILPhysicalBlockMetadata::FindO
         }
     }
 
-    MappedRegisterClass& space = registerClasses.emplace_back();
+    MappedRegisterClass& space = registerClasses.emplace_back(allocators);
     space._class = _class;
     return space;
 }
@@ -1638,7 +1638,7 @@ DXILPhysicalBlockMetadata::UserRegisterSpace &DXILPhysicalBlockMetadata::FindOrA
 
     registerSpaceBound = std::max<uint32_t>(registerSpaceBound, space + 1);
 
-    UserRegisterSpace& registerSpace = registerSpaces.emplace_back();
+    UserRegisterSpace& registerSpace = registerSpaces.emplace_back(allocators);
     registerSpace.space = space;
     return registerSpace;
 }

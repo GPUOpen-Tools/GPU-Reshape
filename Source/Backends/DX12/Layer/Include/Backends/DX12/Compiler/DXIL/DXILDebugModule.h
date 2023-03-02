@@ -66,6 +66,10 @@ private:
 
 private:
     struct SourceFragment {
+        SourceFragment(const Allocators& allocators) : lineOffsets(allocators) {
+            /** */
+        }
+        
         /// Filename of this fragment
         std::string filename;
 
@@ -73,11 +77,11 @@ private:
         std::string contents;
 
         /// All summarized line offsets, including base (0) line
-        std::vector<uint32_t> lineOffsets;
+        Vector<uint32_t> lineOffsets;
     };
 
     /// All source fragments within a module
-    std::vector<SourceFragment> sourceFragments;
+    Vector<SourceFragment> sourceFragments;
 
 private:
     struct InstructionMetadata {
@@ -86,7 +90,7 @@ private:
     };
 
     /// All instruction data, used for cross referencing
-    std::vector<InstructionMetadata> instructionMetadata;
+    Vector<InstructionMetadata> instructionMetadata;
 
 private:
     /// Lightweight type definition
@@ -115,8 +119,11 @@ private:
     };
 
     /// All types
-    std::vector<ThinType> thinTypes;
+    Vector<ThinType> thinTypes;
 
     /// All values
-    std::vector<ThinValue> thinValues;
+    Vector<ThinValue> thinValues;
+
+private:
+    Allocators allocators;
 };

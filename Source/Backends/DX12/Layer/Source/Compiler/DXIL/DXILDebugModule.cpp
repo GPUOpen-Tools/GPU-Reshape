@@ -2,9 +2,13 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordStringView.h>
 
-DXILDebugModule::DXILDebugModule(const Allocators &allocators) : scan(allocators) {
-
-}
+DXILDebugModule::DXILDebugModule(const Allocators &allocators)
+    : scan(allocators),
+      sourceFragments(allocators),
+      instructionMetadata(allocators),
+      thinTypes(allocators),
+      thinValues(allocators),
+      allocators(allocators) { }
 
 DXSourceAssociation DXILDebugModule::GetSourceAssociation(uint32_t codeOffset) {
     if (codeOffset >= instructionMetadata.size()) {
@@ -310,7 +314,7 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, const LLVMRecord& record) 
     LLVMRecordStringView contents(block->records[record.Op(1) - 1], 0);
 
     // Create fragment
-    SourceFragment& fragment = sourceFragments.emplace_back();
+    SourceFragment& fragment = sourceFragments.emplace_back(allocators);
 
     // Allocate
     fragment.filename.resize(filename.Length());

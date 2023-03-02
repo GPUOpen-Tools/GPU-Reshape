@@ -1,5 +1,8 @@
 #pragma once
 
+// Common
+#include <Common/Allocator/Vector.h>
+
 // Std
 #include <cstdint>
 #include <vector>
@@ -11,7 +14,11 @@
 template<typename T, typename U>
 struct DependentObject {
     struct Object {
-        std::vector<U*> dependencies;
+        Object(const Allocators& allocators) : dependencies(allocators) {
+            
+        }
+        
+        Vector<U*> dependencies;
     };
 
     struct ObjectView {
@@ -27,19 +34,19 @@ struct DependentObject {
         ObjectView(const ObjectView&) = delete;
         ObjectView(ObjectView&&) = delete;
 
-        typename std::vector<U*>::iterator begin() {
+        typename Vector<U*>::iterator begin() {
             return object.dependencies.begin();
         }
 
-        typename std::vector<U*>::iterator end() {
+        typename Vector<U*>::iterator end() {
             return object.dependencies.end();
         }
 
-        typename std::vector<U*>::const_iterator begin() const {
+        typename Vector<U*>::const_iterator begin() const {
             return object.dependencies.begin();
         }
 
-        typename std::vector<U*>::const_iterator end() const {
+        typename Vector<U*>::const_iterator end() const {
             return object.dependencies.end();
         }
 
@@ -47,13 +54,17 @@ struct DependentObject {
         Object& object;
     };
 
+    DependentObject(const Allocators& allocators) : allocators(allocators) {
+        
+    }
+
     /// Add an object dependency
     /// \param key the dependent object
     /// \param value the dependency
     void Add(T* key, U* value) {
         std::lock_guard<std::mutex> guard(mutex);
 
-        Object& obj = map[key];
+        Object& obj = GetObj(key);
         obj.dependencies.push_back(value);
     }
 
@@ -62,7 +73,7 @@ struct DependentObject {
     /// \param value the dependency
     void Remove(T* key, U* value) {
         std::lock_guard<std::mutex> guard(mutex);
-        Object& obj = map[key];
+        Object& obj = GetObj(key);
 
         // Find the value
         auto&& it = std::find(obj.dependencies.begin(), obj.dependencies.end(), value);
@@ -81,15 +92,28 @@ struct DependentObject {
 
     /// Get all dependencies
     ObjectView Get(T* key) {
-        return ObjectView(mutex, map[key]);
+        return ObjectView(mutex, GetObj(key));
     }
 
     /// Get the number of dependencies
     uint32_t Count(T* key) {
-        return static_cast<uint32_t>(map[key].dependencies.size());
+        return static_cast<uint32_t>(GetObj(key).dependencies.size());
+    }
+
+private:
+    Object& GetObj(T* key) {
+        auto it = map.find(key);
+        if (it == map.end()) {
+            it = map.emplace(key, allocators).first;
+        }
+
+        return it->second;
     }
 
 private:
     std::mutex           mutex;
     std::map<T*, Object> map;
+
+private:
+    Allocators allocators;
 };

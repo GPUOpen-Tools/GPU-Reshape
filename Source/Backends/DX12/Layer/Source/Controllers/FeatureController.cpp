@@ -13,7 +13,7 @@
 // Schemas
 #include <Schemas/Feature.h>
 
-FeatureController::FeatureController(DeviceState* device) : device(device) {
+FeatureController::FeatureController(DeviceState* device) : device(device), featureInfos(device->allocators) {
 
 }
 

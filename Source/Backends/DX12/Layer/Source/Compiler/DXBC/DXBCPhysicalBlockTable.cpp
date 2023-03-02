@@ -44,7 +44,7 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 
     // Parse canonical program
     if (DXBCPhysicalBlock *dxilBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
-        dxilModule = new(allocators, kAllocModuleDXIL) DXILModule(allocators, &program);
+        dxilModule = new(allocators, kAllocModuleDXBC) DXILModule(allocators.Tag(kAllocModuleDXBC), &program);
 
         // Attempt to parse the module
         if (!dxilModule->Parse(dxilBlock->ptr, dxilBlock->length)) {
@@ -56,7 +56,7 @@ bool DXBCPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     // Unfortunately basing the main program off the ILDB is more trouble than it's worth,
     // as stripping the debug data after recompilation is quite troublesome.
     if (DXBCPhysicalBlock *ildbBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::ILDB)) {
-        auto* dxilDebugModule = new(allocators, kAllocModuleDXIL) DXILDebugModule(allocators);
+        auto* dxilDebugModule = new(allocators, kAllocModuleDXILDebug) DXILDebugModule(allocators.Tag(kAllocModuleDXILDebug));
 
         // Attempt to parse the module
         if (!dxilDebugModule->Parse(ildbBlock->ptr, ildbBlock->length)) {
@@ -111,7 +111,7 @@ void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {
 
     // Copy submodule if present
     if (dxilModule) {
-        out.dxilModule = new(allocators, kAllocModuleDXIL) DXILModule(allocators, &out.program);
+        out.dxilModule = new(allocators, kAllocModuleDXIL) DXILModule(allocators.Tag(kAllocModuleDXIL), &out.program);
 
         // Copy to new module
         dxilModule->CopyTo(out.dxilModule);

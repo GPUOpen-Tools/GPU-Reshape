@@ -12,7 +12,7 @@
 
 class DescriptorDataAppendAllocator {
 public:
-    DescriptorDataAppendAllocator(const ComRef<DeviceAllocator>& allocator) : allocator(allocator) {
+    DescriptorDataAppendAllocator(const Allocators& allocators, const ComRef<DeviceAllocator>& allocator) : allocator(allocator), segment(allocators) {
 
     }
 

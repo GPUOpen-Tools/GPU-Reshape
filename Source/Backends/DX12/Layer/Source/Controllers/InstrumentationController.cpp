@@ -30,7 +30,7 @@
 // Std
 #include <sstream>
 
-InstrumentationController::InstrumentationController(DeviceState *device) : device(device) {
+InstrumentationController::InstrumentationController(DeviceState *device) : device(device), immediateBatch(allocators) {
 
 }
 

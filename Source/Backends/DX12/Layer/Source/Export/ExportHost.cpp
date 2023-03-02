@@ -1,5 +1,9 @@
 #include <Backends/DX12/Export/ShaderExportHost.h>
 
+ShaderExportHost::ShaderExportHost(const Allocators &allocators) : exports(allocators) {
+    
+}
+
 ShaderExportID ShaderExportHost::Allocate(const ShaderExportTypeInfo &typeInfo) {
     ShaderExportInfo& info = exports.emplace_back();
     info.typeInfo = typeInfo;

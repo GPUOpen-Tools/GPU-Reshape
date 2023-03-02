@@ -63,7 +63,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     auto rootSignatureTable = GetTable(pDesc->pRootSignature);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) GraphicsPipelineState();
+    auto *state = new (table.state->allocators, kAllocState) GraphicsPipelineState(table.state->allocators);
     state->allocators = deviceTable.state->allocators;
     state->parent = table.state->parent;
     state->type = PipelineType::Graphics;
@@ -157,7 +157,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     auto rootSignatureTable = GetTable(pDesc->pRootSignature);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) ComputePipelineState();
+    auto *state = new (table.state->allocators, kAllocState) ComputePipelineState(table.state->allocators);
     state->allocators = deviceTable.state->allocators;
     state->parent = table.state->parent;
     state->type = PipelineType::Compute;

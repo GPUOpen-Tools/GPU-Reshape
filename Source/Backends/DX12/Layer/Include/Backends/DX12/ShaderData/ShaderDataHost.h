@@ -7,6 +7,9 @@
 #include <Backend/ShaderData/IShaderDataHost.h>
 #include <Backend/ShaderData/ShaderDataInfo.h>
 
+// Common
+#include <Common/Allocator/Vector.h>
+
 // Std
 #include <vector>
 #include <mutex>
@@ -48,11 +51,11 @@ private:
     std::mutex mutex;
 
     /// Free indices to be used immediately
-    std::vector<ShaderDataID> freeIndices;
+    Vector<ShaderDataID> freeIndices;
 
     /// All indices, sparsely populated
-    std::vector<uint32_t> indices;
+    Vector<uint32_t> indices;
 
     /// Linear resources
-    std::vector<ResourceEntry> resources;
+    Vector<ResourceEntry> resources;
 };

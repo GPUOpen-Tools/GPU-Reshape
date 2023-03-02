@@ -3,6 +3,13 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
 
+DXBCPhysicalBlockRootSignature::DXBCPhysicalBlockRootSignature(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table):
+    DXBCPhysicalBlockSection(allocators, program, table),
+    parameters(allocators),
+    samplers(allocators) {
+    /* */
+}
+
 void DXBCPhysicalBlockRootSignature::Parse() {
     // Block is optional
     DXBCPhysicalBlock *block = table.scan.GetPhysicalBlock(DXBCPhysicalBlockType::RootSignature);
@@ -24,7 +31,7 @@ void DXBCPhysicalBlockRootSignature::Parse() {
         const DXILRootSignatureParameter &source = parameterStart[i];
 
         // Create parameter
-        RootParameter &parameter = parameters.emplace_back();
+        RootParameter &parameter = parameters.emplace_back(allocators);
         parameter.type = source.type;
         parameter.visibility = source.visibility;
 
@@ -87,7 +94,7 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
     // Shader export
     {
         // Create parameter
-        RootParameter& parameter = parameters.emplace_back();
+        RootParameter& parameter = parameters.emplace_back(allocators);
         parameter.type = DXBCRootSignatureParameterType::DescriptorTable;
         parameter.visibility = DXBCRootSignatureVisibility::All;
 
@@ -122,17 +129,18 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
     // Descriptor data
     {
         // Create parameter
-        RootParameter& parameter = parameters.emplace_back();
+        RootParameter& parameter = parameters.emplace_back(allocators);
         parameter.type = DXBCRootSignatureParameterType::CBV;
         parameter.visibility = DXBCRootSignatureVisibility::All;
         parameter.parameter1.space = bindingInfo.space;
         parameter.parameter1._register = bindingInfo.descriptorConstantBaseRegister;
+        parameter.parameter1.flags = 0x0;
     }
 
     // Event data
     {
         // Create parameter
-        RootParameter& parameter = parameters.emplace_back();
+        RootParameter& parameter = parameters.emplace_back(allocators);
         parameter.type = DXBCRootSignatureParameterType::Constant32;
         parameter.visibility = DXBCRootSignatureVisibility::All;
         parameter.constant.space = bindingInfo.space;

@@ -20,7 +20,10 @@
 #include <Common/Dispatcher/Dispatcher.h>
 #include <Common/Registry.h>
 
-ShaderCompiler::ShaderCompiler(DeviceState* device) : device(device) {
+ShaderCompiler::ShaderCompiler(DeviceState *device)
+    : device(device),
+      shaderFeatures(device->allocators.Tag(kAllocInstrumentation)),
+      shaderData(device->allocators.Tag(kAllocInstrumentation)) {
 
 }
 
@@ -95,7 +98,7 @@ void ShaderCompiler::InitializeModule(ShaderState *state) {
                 return;
             }
             case 'CBXD': {
-                state->module = new (allocators, kAllocModule) DXBCModule(allocators, state->uid, GlobalUID::New());
+                state->module = new (allocators, kAllocModuleDXBC) DXBCModule(allocators.Tag(kAllocModuleDXBC), state->uid, GlobalUID::New());
                 break;
             }
         }
@@ -155,7 +158,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     compileJob.dxbcSigner = dxbcSigner;
 
     // Instrumented data
-    DXStream stream;
+    DXStream stream(allocators);
 
     // Debugging
     if (!debugPath.empty()) {

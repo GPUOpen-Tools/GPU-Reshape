@@ -10,6 +10,10 @@
 #include <vector>
 
 struct PhysicalResourceIdentifierMap {
+    PhysicalResourceIdentifierMap(const Allocators& allocators) : freePUIDs(allocators) {
+        
+    }
+    
     /// Allocate a new PUID
     /// \return
     uint32_t AllocatePUID() {
@@ -34,5 +38,5 @@ private:
     uint32_t puidHead{0};
 
     /// All free indices
-    std::vector<uint32_t> freePUIDs;
+    Vector<uint32_t> freePUIDs;
 };

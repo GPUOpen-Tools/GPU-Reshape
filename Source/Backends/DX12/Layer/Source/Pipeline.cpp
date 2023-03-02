@@ -79,7 +79,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
             return E_FAIL;
         case PipelineType::Graphics: {
             // Create state
-            auto state = new (table.state->allocators, kAllocState) GraphicsPipelineState();
+            auto state = new (table.state->allocators, kAllocState) GraphicsPipelineState(table.state->allocators);
             state->allocators = table.state->allocators;
             state->parent = device;
             state->type = PipelineType::Graphics;
@@ -174,7 +174,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
         }
         case PipelineType::Compute: {
             // Create state
-            auto *state = new (table.state->allocators, kAllocState) ComputePipelineState();
+            auto *state = new (table.state->allocators, kAllocState) ComputePipelineState(table.state->allocators);
             state->allocators = table.state->allocators;
             state->parent = device;
             state->type = PipelineType::Compute;
@@ -253,7 +253,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     auto rootSignatureTable = GetTable(desc->pRootSignature);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) GraphicsPipelineState();
+    auto *state = new (table.state->allocators, kAllocState) GraphicsPipelineState(table.state->allocators);
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Graphics;
@@ -343,7 +343,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     auto rootSignatureTable = GetTable(desc->pRootSignature);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) ComputePipelineState();
+    auto *state = new (table.state->allocators, kAllocState) ComputePipelineState(table.state->allocators);
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Compute;
@@ -451,4 +451,29 @@ PipelineState::~PipelineState() {
 ShaderState::~ShaderState() {
     // Remove tracked object
     parent->states_Shaders.Remove(this);
+}
+
+D3D12_SHADER_BYTECODE ShaderState::GetInstrument(const ShaderInstrumentationKey &instrumentationKey) {
+    std::lock_guard lock(mutex);
+    auto&& it = instrumentObjects.find(instrumentationKey);
+    if (it == instrumentObjects.end()) {
+        return {};
+    }
+
+    // To bytecode
+    D3D12_SHADER_BYTECODE byteCode;
+    byteCode.pShaderBytecode = it->second.GetData();
+    byteCode.BytecodeLength = it->second.GetByteSize();
+    return byteCode;
+}
+
+bool ShaderState::Reserve(const ShaderInstrumentationKey &instrumentationKey) {
+    std::lock_guard lock(mutex);
+    auto&& it = instrumentObjects.find(instrumentationKey);
+    if (it == instrumentObjects.end()) {
+        instrumentObjects.emplace(instrumentationKey, parent->allocators);
+        return true;
+    }
+
+    return false;
 }

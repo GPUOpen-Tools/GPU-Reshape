@@ -11,7 +11,7 @@
 
 /// Function block
 struct DXILPhysicalBlockFunctionAttribute : public DXILPhysicalBlockSection {
-    using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
+    DXILPhysicalBlockFunctionAttribute(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
 
     /// Copy this block
     /// \param out destination block
@@ -58,10 +58,10 @@ private:
     };
 
     /// All attribute groups
-    std::vector<ParameterAttributeGroup> parameterAttributeGroups;
+    Vector<ParameterAttributeGroup> parameterAttributeGroups;
 
     /// All parameter groups
-    std::vector<ParameterGroup> parameterGroups;
+    Vector<ParameterGroup> parameterGroups;
 
 private:
     /// Declaration blocks

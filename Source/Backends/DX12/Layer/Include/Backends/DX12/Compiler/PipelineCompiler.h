@@ -52,7 +52,7 @@ protected:
     /// \param states all pipeline states
     /// \param count the number of states
     /// \param bucket optional, dispatcher bucket
-    void AddBatchOfType(const std::vector<PipelineJob>& jobs, PipelineType type, DispatcherBucket* bucket);
+    void AddBatchOfType(const Vector<PipelineJob>& jobs, PipelineType type, DispatcherBucket* bucket);
 
     /// Compile a given job
     void CompileGraphics(const PipelineJobBatch& job);
@@ -66,8 +66,8 @@ private:
     DeviceState *device;
 
     /// Job buckets
-    std::vector<PipelineJob> graphicsJobs;
-    std::vector<PipelineJob> computeJobs;
+    Vector<PipelineJob> graphicsJobs;
+    Vector<PipelineJob> computeJobs;
 
     /// Async dispatcher
     ComRef<Dispatcher> dispatcher{nullptr};

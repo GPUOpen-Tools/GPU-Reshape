@@ -3,6 +3,9 @@
 // Backend
 #include <Backend/IShaderSGUIDHost.h>
 
+// Common
+#include <Common/Allocator/Vector.h>
+
 // Std
 #include <vector>
 #include <unordered_map>
@@ -51,11 +54,11 @@ private:
     ShaderSGUID counter{0};
 
     /// Free'd indices to be used immediately
-    std::vector<ShaderSGUID> freeIndices;
+    Vector<ShaderSGUID> freeIndices;
 
     /// Reverse sguid lookup
-    std::vector<ShaderSourceMapping> sguidLookup;
+    Vector<ShaderSourceMapping> sguidLookup;
 
     /// All pending bridge submissions
-    std::vector<ShaderSGUID> pendingSubmissions;
+    Vector<ShaderSGUID> pendingSubmissions;
 };

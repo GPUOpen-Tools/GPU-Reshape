@@ -68,10 +68,10 @@ private:
     ComRef<DXBCSigner> dxbcSigner;
 
     /// All features
-    std::vector<ComRef<IShaderFeature>> shaderFeatures;
+    Vector<ComRef<IShaderFeature>> shaderFeatures;
 
     /// All data
-    std::vector<ShaderDataInfo> shaderData;
+    Vector<ShaderDataInfo> shaderData;
 
     /// Number of exports
     uint32_t exportCount{0};

@@ -189,7 +189,7 @@ private:
     bool enableDebugging = true;
 
     /// Cache for flat operand scanning
-    std::vector<uint64_t> recordOperandCache;
+    Vector<uint64_t> recordOperandCache;
 
     /// Lookup for out-of-place BLOCKINFO association
     std::unordered_map<uint32_t, LLVMBlockMetadata*> metadataLookup;

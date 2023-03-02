@@ -30,7 +30,11 @@
  *   https://llvm.org/docs/BitCodeFormat.html#module-code-version-record
  * */
 
-DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators) : root(allocators), recordAllocator(allocators), allocators(allocators) {
+DXILPhysicalBlockScan::DXILPhysicalBlockScan(const Allocators &allocators)
+    : root(allocators),
+      recordOperandCache(allocators.Tag(kAllocModuleDXILRecOps)),
+      recordAllocator(allocators.Tag(kAllocModuleDXILRecOps)),
+      allocators(allocators) {
 
 }
 
@@ -167,7 +171,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanEnterSubBlock(LLVMB
                 block->elements.push_back(LLVMBlockElement(LLVMBlockElementType::Block, static_cast<uint32_t>(block->blocks.size())));
 
                 // Scan child tree
-                if (ScanEnterSubBlock(stream, block->blocks.emplace_back(new(allocators, kAllocModuleLLVMBlock) LLVMBlock(allocators))) != ScanResult::OK) {
+                if (ScanEnterSubBlock(stream, block->blocks.emplace_back(new(allocators, kAllocModuleDXILLLVMBlock) LLVMBlock(allocators))) != ScanResult::OK) {
                     return ScanResult::Error;
                 }
                 break;
@@ -365,7 +369,7 @@ DXILPhysicalBlockScan::ScanResult DXILPhysicalBlockScan::ScanUnabbreviatedInfoRe
         }
         case static_cast<uint32_t>(LLVMBlockInfoRecord::SetBID): {
             // Allocate meta
-            auto *meta = new(allocators, kAllocModuleLLVMMetadata) LLVMBlockMetadata(allocators);
+            auto *meta = new(allocators, kAllocModuleDXILLLVMBlockMetadata) LLVMBlockMetadata(allocators);
 
             // Set id
             meta->id = record.Op32(0);
@@ -779,7 +783,7 @@ void DXILPhysicalBlockScan::CopyBlock(const LLVMBlock *block, LinearBlockAllocat
     
     // Mutable blocks
     for (const LLVMBlock *child: block->blocks) {
-        auto copy = new(allocators, kAllocModuleLLVMBlock) LLVMBlock(allocators);
+        auto copy = new(allocators, kAllocModuleDXILLLVMBlock) LLVMBlock(allocators);
         CopyBlock(child, outRecordAllocator, *copy);
         out.blocks.push_back(copy);
     }

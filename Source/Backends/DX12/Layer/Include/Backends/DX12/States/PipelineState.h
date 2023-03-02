@@ -7,6 +7,7 @@
 #include "PipelineType.h"
 
 // Common
+#include <Common/Allocator/Vector.h>
 #include <Common/Containers/ReferenceObject.h>
 #include <Common/Enum.h>
 #include <Common/Allocators.h>
@@ -22,6 +23,10 @@ struct RootSignatureState;
 struct ShaderState;
 
 struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : public ReferenceObject {
+    PipelineState(const Allocators& allocators) : shaders(allocators), subObjectStreamBlob(allocators) {
+        
+    }
+    
     /// Reference counted destructor
     virtual ~PipelineState();
 
@@ -66,7 +71,7 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
     RootSignatureState* signature{nullptr};
 
     /// Referenced shaders
-    std::vector<ShaderState*> shaders;
+    Vector<ShaderState*> shaders;
 
     /// Optional debug name
     char* debugName{nullptr};
@@ -79,7 +84,7 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
     std::map<uint64_t, ID3D12PipelineState*> instrumentObjects;
 
     /// Optional pipeline stream blob
-    std::vector<uint8_t> subObjectStreamBlob;
+    Vector<uint8_t> subObjectStreamBlob;
 
     /// Unique ID
     uint64_t uid{0};
@@ -89,6 +94,8 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
 };
 
 struct GraphicsPipelineState : public PipelineState {
+    using PipelineState::PipelineState;
+    
     /// Creation deep copy, if invalid, present in stream blob
     D3D12GraphicsPipelineStateDescDeepCopy deepCopy;
 
@@ -108,6 +115,8 @@ struct GraphicsPipelineState : public PipelineState {
 };
 
 struct ComputePipelineState : public PipelineState {
+    using PipelineState::PipelineState;
+    
     /// Creation deep copy, if invalid, present in stream blob
     D3D12ComputePipelineStateDescDeepCopy deepCopy;
 

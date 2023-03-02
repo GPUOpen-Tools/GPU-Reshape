@@ -29,7 +29,7 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
 template<typename T, typename U>
 static T* CreateSwapChainState(const DXGIFactoryTable& table, ID3D12Device* device, T* swapChain, U* desc) {
     // Create state
-    auto* state = new (table.state->allocators, kAllocState) SwapChainState();
+    auto* state = new (table.state->allocators, kAllocState) SwapChainState(table.state->allocators);
     state->allocators = table.state->allocators;
     state->parent = device;
     state->object = swapChain;

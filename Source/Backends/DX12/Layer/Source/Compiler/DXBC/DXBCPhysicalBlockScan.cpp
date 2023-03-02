@@ -15,7 +15,7 @@
 #   include <fstream>
 #endif // DXBC_DUMP_STREAM
 
-DXBCPhysicalBlockScan::DXBCPhysicalBlockScan(const Allocators &allocators) : allocators(allocators) {
+DXBCPhysicalBlockScan::DXBCPhysicalBlockScan(const Allocators &allocators) : sections(allocators), allocators(allocators) {
 
 }
 
@@ -85,7 +85,7 @@ bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
     }
 
     // Preallocate
-    sections.resize(header.chunkCount);
+    sections.resize(header.chunkCount, allocators);
 
     // Populate chunks
     for (uint32_t chunkIndex = 0; chunkIndex < header.chunkCount; chunkIndex++) {

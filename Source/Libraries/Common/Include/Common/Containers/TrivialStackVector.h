@@ -1,7 +1,7 @@
 #pragma once
 
 // Common
-#include <Common/Allocator/PolyAllocator.h>
+#include <Common/Allocator/Vector.h>
 #include <Common/Assert.h>
 
 // Std
@@ -11,20 +11,18 @@
 template<typename T, size_t STACK_LENGTH>
 struct TrivialStackVector {
     /// Initialize to size
-    TrivialStackVector(const Allocators& allocators = {}, const AllocationTag& tag = {}) : data(stack), polyAllocator(allocators, tag), fallback(&polyAllocator) {
+    TrivialStackVector(const Allocators& allocators = {}) : data(stack), fallback(allocators) {
         /** */
     }
 
     /// Copy from other
-    TrivialStackVector(const TrivialStackVector& other) : TrivialStackVector(other.polyAllocator.GetAllocators(), other.polyAllocator.GetTag()) {
+    TrivialStackVector(const TrivialStackVector& other) : data(stack), fallback(other.fallback.get_allocator()) {
         Resize(other.size);
         std::memcpy(data, other.Data(), sizeof(T) * size);
     }
 
     /// Move from other
-    TrivialStackVector(TrivialStackVector&& other) noexcept : size(other.size), polyAllocator(other.polyAllocator), fallback(&polyAllocator) {
-        fallback = std::move(other.fallback);
-        
+    TrivialStackVector(TrivialStackVector&& other) noexcept : size(other.size), fallback(other.fallback) {
         if (other.data != other.stack) {
             data = fallback.data();
         } else {
@@ -69,12 +67,6 @@ struct TrivialStackVector {
         }
 
         return *this;
-    }
-
-    /// Set the underlying allocators
-    void SetAllocators(const Allocators& allocators, const AllocationTag& tag) {
-        ASSERT(!size && !fallback.capacity(), "Cannot reassign allocator");
-        polyAllocator.Assign(allocators, tag);
     }
 
     /// Create a detached allocation
@@ -212,9 +204,6 @@ private:
     /// Initial stack data
     T stack[STACK_LENGTH];
 
-    /// Allocator resource
-    PolyAllocator polyAllocator;
-
     /// Heap fallback
-    std::pmr::vector<T> fallback;
+    Vector<T> fallback;
 };

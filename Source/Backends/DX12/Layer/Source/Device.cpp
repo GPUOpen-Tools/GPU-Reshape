@@ -121,14 +121,14 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     const D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info
 ) {
     // Set allocators
-#ifndef NDEBUG
+#if !defined(NDEBUG)
     Allocators allocators = trackedAllocator.GetAllocators();
-#else // NDEBUG
+#else // !defined(NDEBUG)
     Allocators allocators = {};
-#endif // NDEBUG
+#endif // !defined(NDEBUG)
 
     // Create state
-    auto *state = new (allocators) DeviceState();
+    auto *state = new (allocators) DeviceState(allocators);
     state->object = device;
     state->allocators = allocators;
 
@@ -167,7 +167,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         state->bridge = state->registry.Get<IBridge>();
 
         // Install the shader export host
-        state->exportHost = state->registry.AddNew<ShaderExportHost>();
+        state->exportHost = state->registry.AddNew<ShaderExportHost>(state->allocators);
 
         // Specifying an adapter is optional
         IDXGIAdapter* dxgiAdapter{nullptr};

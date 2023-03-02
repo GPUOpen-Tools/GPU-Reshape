@@ -13,9 +13,9 @@ DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL:
     metadata(allocators, program, *this),
     intrinsics(allocators, program, *this),
     program(program),
-    idMap(program),
-    idRemapper(idMap),
-    recordAllocator(allocators, kAllocModuleLLVMRecordAllocator) {
+    idMap(allocators, program),
+    idRemapper(allocators, idMap),
+    recordAllocator(allocators, kAllocModuleDXILRecOps) {
 
 }
 

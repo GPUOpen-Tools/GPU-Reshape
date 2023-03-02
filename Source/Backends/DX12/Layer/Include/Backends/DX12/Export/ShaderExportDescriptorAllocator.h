@@ -4,6 +4,9 @@
 #include <Backends/DX12/DX12.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorInfo.h>
 
+// Common
+#include <Common/Allocator/Vector.h>
+
 // Std
 #include <vector>
 
@@ -16,7 +19,7 @@ public:
     /// \param device parent device
     /// \param heap target heap
     /// \param bound expected bound
-    ShaderExportDescriptorAllocator(ID3D12Device* device, ID3D12DescriptorHeap* heap, uint32_t bound);
+    ShaderExportDescriptorAllocator(const Allocators& allocators, ID3D12Device* device, ID3D12DescriptorHeap* heap, uint32_t bound);
 
     /// Allocate a new descriptor
     /// \param count number of descriptors to allocate
@@ -53,7 +56,7 @@ private:
     uint32_t slotAllocationCounter{0};
 
     /// Currently free descriptors
-    std::vector<uint32_t> freeDescriptors;
+    Vector<uint32_t> freeDescriptors;
 
     /// Parent bound
     uint32_t bound;

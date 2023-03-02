@@ -39,6 +39,15 @@ class DeviceAllocator;
 class ShaderProgramHost;
 
 struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
+    DeviceState(const Allocators& allocators)
+        : states_Shaders(allocators),
+          states_Pipelines(allocators),
+          states_Queues(allocators),
+          heapTable(allocators),
+          physicalResourceIdentifierMap(allocators),
+          dependencies_shaderPipelines(allocators),
+          features(allocators) { }
+    
     ~DeviceState();
 
     /// Owned object
@@ -104,5 +113,5 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     Backend::Environment environment;
 
     /// All features
-    std::vector<ComRef<IFeature>> features;
+    Vector<ComRef<IFeature>> features;
 };

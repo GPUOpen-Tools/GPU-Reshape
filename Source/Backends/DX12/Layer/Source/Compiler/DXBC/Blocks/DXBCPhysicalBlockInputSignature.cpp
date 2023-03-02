@@ -6,6 +6,11 @@
 // Common
 #include <Common/Sink.h>
 
+DXBCPhysicalBlockInputSignature::DXBCPhysicalBlockInputSignature(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table)
+    : DXBCPhysicalBlockSection(allocators, program, table), entries(allocators) {
+    /* */
+}
+
 void DXBCPhysicalBlockInputSignature::Parse() {
     // Block is optional
     DXBCPhysicalBlock *block = table.scan.GetPhysicalBlock(DXBCPhysicalBlockType::InputSignature);

@@ -39,10 +39,10 @@ public:
 
 private:
     /// Raw values
-    std::vector<LLVMRecordStringView> valueStrings;
+    Vector<LLVMRecordStringView> valueStrings;
 
     /// String values, allocated on demand
-    std::vector<char*> valueAllocations;
+    Vector<char*> valueAllocations;
 
     /// Generic allocator
     LinearBlockAllocator<16384> blockAllocator;

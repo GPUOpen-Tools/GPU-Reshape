@@ -34,7 +34,8 @@ ShaderExportStreamer::ShaderExportStreamer(DeviceState *device)
     : device(device), dynamicOffsetAllocator(device->allocators),
       streamStatePool(device->allocators),
       segmentPool(device->allocators),
-      queuePool(device->allocators) {
+      queuePool(device->allocators),
+      freeDescriptorDataSegmentEntries(allocators) {
 
 }
 
@@ -65,8 +66,8 @@ bool ShaderExportStreamer::Install() {
     }
 
     // Create allocators
-    sharedCPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportDescriptorAllocator(device->object, sharedCPUHeap, kSharedHeapBound);
-    sharedGPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportDescriptorAllocator(device->object, sharedGPUHeap, kSharedHeapBound);
+    sharedCPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportDescriptorAllocator(allocators, device->object, sharedCPUHeap, kSharedHeapBound);
+    sharedGPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportDescriptorAllocator(allocators, device->object, sharedGPUHeap, kSharedHeapBound);
 
     // Create the shared layout
     descriptorLayout.Install(device, sharedCPUHeapAllocator->GetAdvance());
@@ -97,7 +98,7 @@ ShaderExportQueueState *ShaderExportStreamer::AllocateQueueState(ID3D12CommandQu
     }
 
     // Create a new state
-    auto* state = new (allocators, kAllocShaderExport) ShaderExportQueueState();
+    auto* state = new (allocators, kAllocShaderExport) ShaderExportQueueState(allocators);
     state->queue = queue;
 
     // OK
@@ -110,14 +111,14 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
     }
 
     // Create a new state
-    auto* state = new (allocators, kAllocShaderExport) ShaderExportStreamState();
+    auto* state = new (allocators, kAllocShaderExport) ShaderExportStreamState(allocators);
 
     // Setup bind states
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
         ShaderExportStreamBindState& bindState = state->bindStates[i];
 
         // Create descriptor data allocator
-        bindState.descriptorDataAllocator = new (allocators, kAllocShaderExport) DescriptorDataAppendAllocator(deviceAllocator);
+        bindState.descriptorDataAllocator = new (allocators, kAllocShaderExport) DescriptorDataAppendAllocator(allocators, deviceAllocator);
     }
 
     // OK
@@ -147,7 +148,7 @@ ShaderExportStreamSegment *ShaderExportStreamer::AllocateSegment() {
     }
 
     // Create new allocation
-    auto* segment = new (allocators, kAllocShaderExport) ShaderExportStreamSegment();
+    auto* segment = new (allocators, kAllocShaderExport) ShaderExportStreamSegment(allocators);
     segment->allocation = streamAllocator->AllocateSegment();
 
     // OK

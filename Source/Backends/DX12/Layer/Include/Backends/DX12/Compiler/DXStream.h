@@ -1,9 +1,13 @@
 #pragma once
 
+// Layer
+#include "Tags.h"
+
 // Backend
 #include <Backend/IL/Source.h>
 
 // Common
+#include <Common/Allocator/Vector.h>
 #include <Common/Assert.h>
 
 // Std
@@ -13,7 +17,7 @@
 struct DXStream {
     /// Constructor
     /// \param code the source data
-    DXStream(const uint8_t* code = nullptr) : code(code) {
+    DXStream(const Allocators& allocators, const uint8_t* code = nullptr) : code(code), stream(allocators.Tag(kAllocModuleDXStream)) {
 
     }
 
@@ -112,5 +116,5 @@ private:
     const uint8_t* code{nullptr};
 
     /// Stream data
-    std::vector<uint8_t> stream;
+    Vector<uint8_t> stream;
 };

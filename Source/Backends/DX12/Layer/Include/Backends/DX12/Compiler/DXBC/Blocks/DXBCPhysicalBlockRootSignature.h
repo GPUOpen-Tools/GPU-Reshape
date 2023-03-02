@@ -6,7 +6,7 @@
 
 /// Shader block
 struct DXBCPhysicalBlockRootSignature : public DXBCPhysicalBlockSection {
-    using DXBCPhysicalBlockSection::DXBCPhysicalBlockSection;
+    DXBCPhysicalBlockRootSignature(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table);
 
     /// Parse validation
     void Parse();
@@ -23,11 +23,19 @@ private:
 
 private:
     struct DescriptorTable {
+        DescriptorTable(const Allocators& allocators) : ranges(allocators) {
+
+        }
+
         /// All ranges within this table
-        std::vector<DXBCRootSignatureDescriptorRange1> ranges;
+        Vector<DXBCRootSignatureDescriptorRange1> ranges;
     };
 
     struct RootParameter {
+        RootParameter(const Allocators& allocators) : descriptorTable(allocators) {
+
+        }
+
         /// Type of this parameter
         DXBCRootSignatureParameterType type;
 
@@ -45,8 +53,8 @@ private:
     DXBCRootSignatureHeader header;
 
     /// All parameters within this root signature
-    std::vector<RootParameter> parameters;
+    Vector<RootParameter> parameters;
 
     /// All samplers within this root signature
-    std::vector<DXBCRootSignatureSamplerStub> samplers;
+    Vector<DXBCRootSignatureSamplerStub> samplers;
 };

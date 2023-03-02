@@ -13,6 +13,7 @@
 #include <Bridge/IBridgeListener.h>
 
 // Common
+#include <Common/Allocator/Vector.h>
 #include <Common/ComRef.h>
 
 // Std
@@ -55,7 +56,7 @@ private:
     MessageStream stream;
 
     /// Pooled info
-    std::vector<FeatureInfo> featureInfos;
+    Vector<FeatureInfo> featureInfos;
 
     /// Shared lock
     std::mutex mutex;

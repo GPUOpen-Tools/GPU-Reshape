@@ -19,14 +19,16 @@
 
 class DXILTypeMap {
 public:
-    DXILTypeMap(const Allocators& allocators,
-                DXILIDRemapper& remapper,
-                Backend::IL::TypeMap& programMap,
-                Backend::IL::IdentifierMap& identifierMap) :
-                programMap(programMap),
-                remapper(remapper),
-                identifierMap(identifierMap),
-                recordAllocator(allocators) {
+    DXILTypeMap(const Allocators &allocators,
+                DXILIDRemapper &remapper,
+                Backend::IL::TypeMap &programMap,
+                Backend::IL::IdentifierMap &identifierMap)
+        : programMap(programMap),
+          remapper(remapper),
+          identifierMap(identifierMap),
+          indexLookup(allocators.Tag(kAllocModuleDXILTypeMap)),
+          typeLookup(allocators.Tag(kAllocModuleDXILTypeMap)),
+          recordAllocator(allocators.Tag(kAllocModuleDXILTypeMap)) {
 
     }
 
@@ -592,13 +594,13 @@ private:
     Backend::IL::IdentifierMap& identifierMap;
 
     /// Local lookup table
-    std::vector<const Backend::IL::Type*> indexLookup;
+    Vector<const Backend::IL::Type*> indexLookup;
 
     /// Named lookup table
     std::map<std::string, const Backend::IL::Type*> namedLookup;
 
     /// IL type to DXIL type table
-    std::vector<uint32_t> typeLookup;
+    Vector<uint32_t> typeLookup;
 
     /// Shared allocator for records
     LinearBlockAllocator<sizeof(uint64_t) * 1024u> recordAllocator;

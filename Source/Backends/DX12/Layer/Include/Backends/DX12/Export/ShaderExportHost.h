@@ -3,11 +3,16 @@
 // Backend
 #include <Backend/IShaderExportHost.h>
 
+// Common
+#include <Common/Allocator/Vector.h>
+
 // Std
 #include <vector>
 
 class ShaderExportHost : public IShaderExportHost {
 public:
+    ShaderExportHost(const Allocators &allocators);
+
     ShaderExportID Allocate(const ShaderExportTypeInfo &typeInfo) override;
     void Enumerate(uint32_t *count, ShaderExportID *out) override;
     ShaderExportTypeInfo GetTypeInfo(ShaderExportID id) override;
@@ -19,5 +24,5 @@ private:
     };
 
     /// All exports
-    std::vector<ShaderExportInfo> exports;
+    Vector<ShaderExportInfo> exports;
 };

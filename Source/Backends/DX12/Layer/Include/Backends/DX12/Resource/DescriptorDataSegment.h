@@ -12,6 +12,10 @@ struct DescriptorDataSegmentEntry {
 };
 
 struct DescriptorDataSegment {
+    DescriptorDataSegment(const Allocators& allocators) : entries(allocators) {
+        
+    }
+    
     /// All entries within this segment
-    std::vector<DescriptorDataSegmentEntry> entries;
+    Vector<DescriptorDataSegmentEntry> entries;
 };

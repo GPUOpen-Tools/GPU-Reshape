@@ -41,8 +41,12 @@ struct ShaderExportSegmentCounterInfo {
 
 /// A single allocation, partitioning is up to the allocation modes
 struct ShaderExportSegmentInfo {
+    ShaderExportSegmentInfo(const Allocators& allocators) : streams(allocators) {
+        
+    }
+    
     /// Stream container, will reach stable size after a set submissions
-    std::vector<ShaderExportStreamInfo> streams;
+    Vector<ShaderExportStreamInfo> streams;
 
     /// Counter batch
     ShaderExportSegmentCounterInfo counter;

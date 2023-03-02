@@ -18,12 +18,12 @@
 #include <Common/Registry.h>
 #include <Common/GlobalUID.h>
 
-ShaderProgramHost::ShaderProgramHost(DeviceState* device) : device(device) {
+ShaderProgramHost::ShaderProgramHost(DeviceState* device) : programs(device->allocators), freeIndices(device->allocators), shaderData(device->allocators), device(device) {
 
 }
 
 bool ShaderProgramHost::Install() {
-    templateModule = new(registry->GetAllocators()) DXBCModule(allocators, 0ull, GlobalUID::New());
+    templateModule = new(registry->GetAllocators(), kAllocInstrumentation) DXBCModule(allocators, 0ull, GlobalUID::New());
 
     // Attempt to parse template data
     if (!templateModule->Parse(
@@ -114,7 +114,7 @@ bool ShaderProgramHost::InstallPrograms() {
         compileJob.dxbcSigner = dxbcSigner;
 
         // Attempt to recompile the module
-        DXStream stream;
+        DXStream stream(allocators);
         if (!entry.module->Compile(compileJob, stream)) {
             return false;
         }

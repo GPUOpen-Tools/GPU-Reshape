@@ -10,20 +10,18 @@
 #include <cstdint>
 
 // Common
-#include <Common/Containers/TrivialStackVector.h>
-#include <Common/Allocator/PolyAllocator.h>
+#include <Common/Allocator/Vector.h>
 
 // Forward declarations
 struct LLVMBlockMetadata;
 
 struct LLVMBlock {
     LLVMBlock(const Allocators& allocators, LLVMReservedBlock id = {}) :
-        polyAllocator(allocators, kAllocModuleLLVMBlockElements),
         id(static_cast<uint32_t>(id)),
-        blocks(&polyAllocator),
-        records(&polyAllocator),
-        abbreviations(&polyAllocator),
-        elements(&polyAllocator) {
+        blocks(allocators.Tag(kAllocModuleDXILLLVMBlockBlocks)),
+        records(allocators.Tag(kAllocModuleDXILLLVMBlockRecords)),
+        abbreviations(allocators.Tag(kAllocModuleDXILLLVMBlockAbbreviations)),
+        elements(allocators.Tag(kAllocModuleDXILLLVMBlockElements)) {
         /** */
     }
 
@@ -172,9 +170,6 @@ struct LLVMBlock {
         blocks.push_back(block);
     }
 
-    /// Shared allocator
-    PolyAllocator polyAllocator;
-
     /// Identifier of this block, may be reserved
     uint32_t id{~0u};
     
@@ -188,23 +183,23 @@ struct LLVMBlock {
     uint32_t blockLength{~0u};
 
     /// All child blocks
-    std::pmr::vector<LLVMBlock*> blocks;
+    Vector<LLVMBlock*> blocks;
 
     /// All records within this block
-    std::pmr::vector<LLVMRecord> records;
+    Vector<LLVMRecord> records;
 
     /// All abbreviations local to this block
-    std::pmr::vector<LLVMAbbreviation> abbreviations;
+    Vector<LLVMAbbreviation> abbreviations;
 
     /// Elements in declaration order
-    std::pmr::vector<LLVMBlockElement> elements;
+    Vector<LLVMBlockElement> elements;
 
     /// Optional metadata
     LLVMBlockMetadata* metadata{nullptr};
 
 private:
     /// Element to iterator
-    std::pmr::vector<LLVMBlockElement>::const_iterator AsIterator(const LLVMBlockElement* element) const {
+    Vector<LLVMBlockElement>::const_iterator AsIterator(const LLVMBlockElement* element) const {
         return elements.begin() + std::distance(elements.data(), element);
     }
 };

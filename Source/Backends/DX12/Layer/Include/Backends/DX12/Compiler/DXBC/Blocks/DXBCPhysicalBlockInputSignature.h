@@ -6,7 +6,7 @@
 
 /// Input signature block
 struct DXBCPhysicalBlockInputSignature : public DXBCPhysicalBlockSection {
-    using DXBCPhysicalBlockSection::DXBCPhysicalBlockSection;
+    DXBCPhysicalBlockInputSignature(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table);
 
     /// Parse signature
     void Parse();
@@ -15,7 +15,7 @@ struct DXBCPhysicalBlockInputSignature : public DXBCPhysicalBlockSection {
     void Compile();
 
     /// Copy this block
-    void CopyTo(DXBCPhysicalBlockInputSignature& out);
+    void CopyTo(DXBCPhysicalBlockInputSignature &out);
 
 private:
     /// Signature header
@@ -27,9 +27,9 @@ private:
         DXILSignatureElement scan;
 
         /// Name string
-        const char* semanticName{nullptr};
+        const char *semanticName{nullptr};
     };
 
     /// All entries
-    std::vector<ElementEntry> entries;
+    Vector<ElementEntry> entries;
 };

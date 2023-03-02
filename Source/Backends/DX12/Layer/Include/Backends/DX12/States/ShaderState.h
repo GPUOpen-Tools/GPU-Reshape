@@ -26,25 +26,13 @@ struct ShaderState : public ReferenceObject {
     /// \param byteCode the byteCode in question
     void AddInstrument(const ShaderInstrumentationKey& instrumentationKey, const DXStream& instrument) {
         std::lock_guard lock(mutex);
-        instrumentObjects[instrumentationKey] = instrument;
+        instrumentObjects.emplace(instrumentationKey, instrument);
     }
 
     /// Get an instrument
     /// \param featureBitSet the enabled feature set
     /// \return nullptr if not found
-    D3D12_SHADER_BYTECODE GetInstrument(const ShaderInstrumentationKey& instrumentationKey) {
-        std::lock_guard lock(mutex);
-        auto&& it = instrumentObjects.find(instrumentationKey);
-        if (it == instrumentObjects.end()) {
-            return {};
-        }
-
-        // To bytecode
-        D3D12_SHADER_BYTECODE byteCode;
-        byteCode.pShaderBytecode = it->second.GetData();
-        byteCode.BytecodeLength = it->second.GetByteSize();
-        return byteCode;
-    }
+    D3D12_SHADER_BYTECODE GetInstrument(const ShaderInstrumentationKey& instrumentationKey);
 
     /// Check if instrument is present
     /// \param featureBitSet the enabled feature set
@@ -54,16 +42,7 @@ struct ShaderState : public ReferenceObject {
         return instrumentObjects.count(instrumentationKey) > 0;
     }
 
-    bool Reserve(const ShaderInstrumentationKey& instrumentationKey) {
-        std::lock_guard lock(mutex);
-        auto&& it = instrumentObjects.find(instrumentationKey);
-        if (it == instrumentObjects.end()) {
-            instrumentObjects[instrumentationKey] = {};
-            return true;
-        }
-
-        return false;
-    }
+    bool Reserve(const ShaderInstrumentationKey& instrumentationKey);
 
     /// Originating key
     ///   ! Shader memory owned

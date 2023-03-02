@@ -15,8 +15,8 @@
 // Std
 #include <algorithm>
 
-ShaderExportStreamAllocator::ShaderExportStreamAllocator(DeviceState *device) :
-    segmentPool(device->allocators) {
+ShaderExportStreamAllocator::ShaderExportStreamAllocator(DeviceState *device)
+    : exportInfos(device->allocators), segmentPool(device->allocators) {
 
 }
 
@@ -66,7 +66,7 @@ ShaderExportSegmentInfo *ShaderExportStreamAllocator::AllocateSegment() {
     }
 
     // Allocate new allocation
-    auto segment = new (allocators, kAllocShaderExport) ShaderExportSegmentInfo();
+    auto segment = new (allocators, kAllocShaderExport) ShaderExportSegmentInfo(allocators);
 
     // Allocate counters
     segment->counter = AllocateCounterInfo();

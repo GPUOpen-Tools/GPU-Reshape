@@ -7,6 +7,10 @@
 #include <cstdint>
 
 struct DXBCPhysicalBlock {
+    DXBCPhysicalBlock(const Allocators& allocators) : stream(allocators) {
+        
+    }
+    
     /// Block starting address
     const uint8_t* ptr{nullptr};
 

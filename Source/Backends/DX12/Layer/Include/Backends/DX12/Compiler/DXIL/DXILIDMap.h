@@ -2,6 +2,7 @@
 
 // Layer
 #include "DXILIDType.h"
+#include <Backends/DX12/Compiler/Tags.h>
 
 // Backend
 #include <Backend/IL/Program.h>
@@ -10,7 +11,7 @@
 #include <Common/Containers/TrivialStackVector.h>
 
 struct DXILIDMap {
-    DXILIDMap(IL::Program& program) : program(program) {
+    DXILIDMap(const Allocators& allocators, IL::Program& program) : allocators(allocators.Tag(kAllocModuleDXILIDRemapper)), program(program), segment(allocators.Tag(kAllocModuleDXILIDMap)) {
 
     }
 
@@ -189,6 +190,10 @@ public:
 
     /// Extracted segment of the map
     struct Segment {
+        Segment(const Allocators& allocators) : map(allocators) {
+            
+        }
+        
         /// Snapshot used for segment branching
         Snapshot head;
         
@@ -212,7 +217,7 @@ public:
     /// \param from snapshot to be branched from
     /// \return segment
     Segment Branch(const Snapshot& from) {
-        Segment remote;
+        Segment remote(allocators);
         remote.head = from;
 
         // Base offset
@@ -253,6 +258,10 @@ public:
     }
 
 private:
+    /// Given allocators
+    Allocators allocators;
+
+    /// Program
     IL::Program& program;
 
 private:

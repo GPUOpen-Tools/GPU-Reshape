@@ -94,7 +94,7 @@ RootSignatureUserMapping& GetRootMapping(RootSignaturePhysicalMapping* mapping, 
 
 template<typename T>
 static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount) {
-    auto* mapping = new (state->allocators, kAllocState) RootSignaturePhysicalMapping();
+    auto* mapping = new (state->allocators, kAllocState) RootSignaturePhysicalMapping(state->allocators);
 
     // TODO: Could do a pre-pass
 

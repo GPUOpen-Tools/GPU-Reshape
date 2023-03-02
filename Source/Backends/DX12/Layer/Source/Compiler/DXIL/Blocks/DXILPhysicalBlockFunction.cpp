@@ -1131,7 +1131,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
     IL::ID id = table.idMap.AllocMappedID(DXILIDType::Function, static_cast<uint32_t>(functions.Size()));
 
     // Create function
-    auto *function = functions.Add(new (allocators, kAllocModuleDXIL) DXILFunctionDeclaration);
+    auto *function = functions.Add(new (allocators, kAllocModuleDXIL) DXILFunctionDeclaration(allocators));
 
     // Set id
     function->anchor = record.sourceAnchor;
@@ -1937,7 +1937,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
         LLVMBlock& root = table.scan.GetRoot();
 
         // Allocate block
-        constantBlock = new(allocators, kAllocModuleLLVMBlock) LLVMBlock(allocators, LLVMReservedBlock::Constants);
+        constantBlock = new(allocators, kAllocModuleDXILLLVMBlock) LLVMBlock(allocators, LLVMReservedBlock::Constants);
         constantBlock->abbreviationSize = 4;
 
         // Insert before metadata
@@ -1947,15 +1947,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
     // Get the program map
     Backend::IL::TypeMap &typeMap = program.GetTypeMap();
 
-    // Local resource
-    PolyAllocator polyAllocator(allocators);
-
     // Swap source data
-    std::pmr::vector<LLVMRecord> source(&polyAllocator);
+    Vector<LLVMRecord> source(allocators);
     block->records.swap(source);
 
     // Swap element data
-    std::pmr::vector<LLVMBlockElement> elements(&polyAllocator);
+    Vector<LLVMBlockElement> elements(allocators);
     block->elements.swap(elements);
 
     // Reserve
@@ -3837,7 +3834,7 @@ void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXJob &job, struct 
     }
 }
 
-const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUserMapping(const DXJob& job, const std::pmr::vector<LLVMRecord>& source, IL::ID resource) {
+const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUserMapping(const DXJob& job, const Vector<LLVMRecord>& source, IL::ID resource) {
     // TODO: This will not hold true for everything
 
     // Get resource instruction
@@ -3899,7 +3896,7 @@ const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUse
     return &userSpace.mappings[rangeIndex];
 }
 
-void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const std::pmr::vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
+void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
     const RootSignatureUserMapping* userMapping = GetResourceUserMapping(job, source, _instr->resource);
     ASSERT(userMapping, "Fallback user mappings not supported yet");
 

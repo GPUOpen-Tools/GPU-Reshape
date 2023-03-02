@@ -47,7 +47,13 @@ struct DXILIDRemapper {
         return static_cast<uint32_t>(-static_cast<int32_t>(id));
     }
  
-    DXILIDRemapper(DXILIDMap& idMap) : idMap(idMap) {
+    DXILIDRemapper(const Allocators& allocators, DXILIDMap &idMap)
+        : allocators(allocators.Tag(kAllocModuleDXILIDRemapper)),
+          unresolvedReferences(allocators.Tag(kAllocModuleDXILIDRemapper)),
+          unresolvedForwardReferences(allocators.Tag(kAllocModuleDXILIDRemapper)),
+          compileSegment(allocators.Tag(kAllocModuleDXILIDRemapper)),
+          stitchSegment(allocators.Tag(kAllocModuleDXILIDRemapper)),
+          idMap(idMap) {
 
     }
 
@@ -491,24 +497,32 @@ public:
 
     /// Extracted segment of the map, compile data
     struct CompileSegment {
+        CompileSegment(const Allocators& allocators) : userMappings(allocators), userRedirects(allocators) {
+            
+        }
+        
         CompileSnapshot head;
         
         /// All present user mappings
-        std::vector<UserMapping> userMappings;
+        Vector<UserMapping> userMappings;
 
         /// All present user redirects
-        std::vector<uint64_t> userRedirects;
+        Vector<uint64_t> userRedirects;
     };
 
     /// Extracted segment of the map, stitch data
     struct StitchSegment {
+        StitchSegment(const Allocators& allocators) : sourceMappings(allocators) {
+            
+        }
+        
         StitchSnapshot head;
         
         /// Current user allocation index
         uint32_t allocationIndex{0};
 
         /// All present source mappings
-        std::vector<uint32_t> sourceMappings;
+        Vector<uint32_t> sourceMappings;
     };
 
     /// Create a new compilation snapshot, signifies a point in time for id mapping
@@ -533,7 +547,7 @@ public:
     /// \param from snapshot to be branched from
     /// \return segment
     CompileSegment Branch(const CompileSnapshot& from) {
-        CompileSegment remote;
+        CompileSegment remote(allocators);
         remote.head = from;
 
         // Validate
@@ -559,7 +573,7 @@ public:
     /// \param from snapshot to be branched from
     /// \return segment
     StitchSegment Branch(const StitchSnapshot& from) {
-        StitchSegment remote;
+        StitchSegment remote(allocators);
         remote.head = from;
 
         // Base index
@@ -621,6 +635,9 @@ public:
         stitchSegment.sourceMappings.resize(remote.head.sourceMappingOffset + remote.sourceMappings.size());
         std::memcpy(stitchSegment.sourceMappings.data() + remote.head.sourceMappingOffset, remote.sourceMappings.data(), sizeof(uint32_t) * remote.sourceMappings.size());
     }
+
+private:
+    Allocators allocators;
 
 private:
     struct UnresolvedReferenceEntry {
