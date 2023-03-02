@@ -21,7 +21,7 @@ HRESULT HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const 
 
 static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTable& table, ID3D12Resource* resource, const D3D12_RESOURCE_DESC* desc) {
     // Create state
-    auto* state = new (table.state->allocators, kAllocState) ResourceState();
+    auto* state = new (table.state->allocators, kAllocStateResource) ResourceState();
     state->allocators = table.state->allocators;
     state->parent = parent;
 

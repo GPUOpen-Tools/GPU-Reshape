@@ -20,7 +20,7 @@ HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory)
     Allocators allocators = {};
 
     // Create state
-    auto *state = new (allocators, kAllocState) DXGIFactoryState();
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIFactoryState();
     state->allocators = allocators;
 
     // Create detours
@@ -55,7 +55,7 @@ HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory
     Allocators allocators = {};
 
     // Create state
-    auto *state = new (allocators, kAllocState) DXGIFactoryState();
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIFactoryState();
     state->allocators = allocators;
     
     // Create detours
@@ -90,7 +90,7 @@ HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void
     Allocators allocators = {};
 
     // Create state
-    auto *state = new (allocators, kAllocState) DXGIFactoryState();
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIFactoryState();
     state->allocators = allocators;
 
     // Create detours

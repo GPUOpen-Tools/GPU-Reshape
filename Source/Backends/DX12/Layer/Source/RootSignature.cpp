@@ -94,7 +94,7 @@ RootSignatureUserMapping& GetRootMapping(RootSignaturePhysicalMapping* mapping, 
 
 template<typename T>
 static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount) {
-    auto* mapping = new (state->allocators, kAllocState) RootSignaturePhysicalMapping(state->allocators);
+    auto* mapping = new (state->allocators, kAllocStateRootSignature) RootSignaturePhysicalMapping(state->allocators.Tag(kAllocStateRootSignature));
 
     // TODO: Could do a pre-pass
 
@@ -395,7 +395,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     serialized->Release();
 
     // Create state
-    auto* state = new (table.state->allocators, kAllocState) RootSignatureState();
+    auto* state = new (table.state->allocators, kAllocStateRootSignature) RootSignatureState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->rootBindingInfo = bindingInfo;

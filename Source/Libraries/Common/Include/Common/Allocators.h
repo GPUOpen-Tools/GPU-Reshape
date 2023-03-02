@@ -8,12 +8,12 @@ static constexpr uint32_t kDefaultAlign = sizeof(void*);
 
 /// Allocation overload
 inline void* operator new (size_t size, const Allocators& allocators) {
-    return allocators.alloc(allocators.userData, size, kDefaultAlign, {});
+    return allocators.alloc(allocators.userData, size, kDefaultAlign, allocators.tag);
 }
 
 /// Allocation overload
 inline void* operator new[](size_t size, const Allocators& allocators) {
-    return allocators.alloc(allocators.userData, size, kDefaultAlign, {});
+    return allocators.alloc(allocators.userData, size, kDefaultAlign, allocators.tag);
 }
 
 /// Allocation overload

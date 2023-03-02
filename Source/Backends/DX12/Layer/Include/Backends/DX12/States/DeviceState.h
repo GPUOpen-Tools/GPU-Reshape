@@ -40,12 +40,13 @@ class ShaderProgramHost;
 
 struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     DeviceState(const Allocators& allocators)
-        : states_Shaders(allocators),
-          states_Pipelines(allocators),
-          states_Queues(allocators),
-          heapTable(allocators),
-          physicalResourceIdentifierMap(allocators),
-          dependencies_shaderPipelines(allocators),
+        : allocators(allocators),
+          states_Shaders(allocators.Tag(kAllocTracking)),
+          states_Pipelines(allocators.Tag(kAllocTracking)),
+          states_Queues(allocators.Tag(kAllocTracking)),
+          heapTable(allocators.Tag(kAllocTracking)),
+          physicalResourceIdentifierMap(allocators.Tag(kAllocPRMT)),
+          dependencies_shaderPipelines(allocators.Tag(kAllocTracking)),
           features(allocators) { }
     
     ~DeviceState();

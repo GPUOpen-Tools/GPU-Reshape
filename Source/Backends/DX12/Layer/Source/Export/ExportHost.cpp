@@ -1,6 +1,7 @@
 #include <Backends/DX12/Export/ShaderExportHost.h>
+#include <Backends/DX12/DX12.h>
 
-ShaderExportHost::ShaderExportHost(const Allocators &allocators) : exports(allocators) {
+ShaderExportHost::ShaderExportHost(const Allocators &allocators) : exports(allocators.Tag(kAllocShaderExport)) {
     
 }
 

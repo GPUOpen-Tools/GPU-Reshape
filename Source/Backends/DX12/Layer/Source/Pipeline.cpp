@@ -35,12 +35,12 @@ ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTE
     }
 
     // Create new shader
-    shaderState = new(device->allocators, kAllocState) ShaderState();
+    shaderState = new(device->allocators, kAllocStateShader) ShaderState();
     shaderState->parent = device;
     shaderState->key = key;
 
     // Copy key memory
-    auto shader = new (device->allocators, kAllocState) uint8_t[key.byteCode.BytecodeLength];
+    auto shader = new (device->allocators, kAllocStateShader) uint8_t[key.byteCode.BytecodeLength];
     std::memcpy(shader, key.byteCode.pShaderBytecode, key.byteCode.BytecodeLength);
     shaderState->key.byteCode.pShaderBytecode = shader;
 
@@ -79,7 +79,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
             return E_FAIL;
         case PipelineType::Graphics: {
             // Create state
-            auto state = new (table.state->allocators, kAllocState) GraphicsPipelineState(table.state->allocators);
+            auto state = new (table.state->allocators, kAllocStatePipeline) GraphicsPipelineState(table.state->allocators.Tag(kAllocStatePipeline));
             state->allocators = table.state->allocators;
             state->parent = device;
             state->type = PipelineType::Graphics;
@@ -174,7 +174,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
         }
         case PipelineType::Compute: {
             // Create state
-            auto *state = new (table.state->allocators, kAllocState) ComputePipelineState(table.state->allocators);
+            auto *state = new (table.state->allocators, kAllocStatePipeline) ComputePipelineState(table.state->allocators.Tag(kAllocStatePipeline));
             state->allocators = table.state->allocators;
             state->parent = device;
             state->type = PipelineType::Compute;
@@ -253,7 +253,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     auto rootSignatureTable = GetTable(desc->pRootSignature);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) GraphicsPipelineState(table.state->allocators);
+    auto *state = new (table.state->allocators, kAllocStatePipeline) GraphicsPipelineState(table.state->allocators.Tag(kAllocStatePipeline));
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Graphics;
@@ -343,7 +343,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     auto rootSignatureTable = GetTable(desc->pRootSignature);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) ComputePipelineState(table.state->allocators);
+    auto *state = new (table.state->allocators, kAllocStatePipeline) ComputePipelineState(table.state->allocators.Tag(kAllocStatePipeline));
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Compute;
@@ -409,7 +409,7 @@ HRESULT WINAPI HookID3D12PipelineStateSetName(ID3D12PipelineState* _this, LPCWST
     size_t length = std::wcslen(name) + 1;
 
     // Copy string
-    table.state->debugName = new (device.state->allocators, kAllocState) char[length];
+    table.state->debugName = new (device.state->allocators, kAllocStatePipeline) char[length];
     wcstombs_s(&length, table.state->debugName, length * sizeof(char), name, length * sizeof(wchar_t));
 
     // Pass to down the call chain

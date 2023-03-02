@@ -17,7 +17,7 @@ HRESULT WINAPI HookID3D12DeviceCreatePipelineLibrary(ID3D12Device* device, const
     }
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) PipelineLibraryState();
+    auto *state = new (table.state->allocators, kAllocStatePipelineLibrary) PipelineLibraryState();
     state->parent = device;
     state->allocators = table.state->allocators;
     state->object = library;
@@ -63,7 +63,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     auto rootSignatureTable = GetTable(pDesc->pRootSignature);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) GraphicsPipelineState(table.state->allocators);
+    auto *state = new (table.state->allocators, kAllocStatePipeline) GraphicsPipelineState(table.state->allocators.Tag(kAllocStatePipeline));
     state->allocators = deviceTable.state->allocators;
     state->parent = table.state->parent;
     state->type = PipelineType::Graphics;
@@ -157,7 +157,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     auto rootSignatureTable = GetTable(pDesc->pRootSignature);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) ComputePipelineState(table.state->allocators);
+    auto *state = new (table.state->allocators, kAllocStatePipeline) ComputePipelineState(table.state->allocators.Tag(kAllocStatePipeline));
     state->allocators = deviceTable.state->allocators;
     state->parent = table.state->parent;
     state->type = PipelineType::Compute;

@@ -18,7 +18,11 @@
 #include <Common/Registry.h>
 #include <Common/GlobalUID.h>
 
-ShaderProgramHost::ShaderProgramHost(DeviceState* device) : programs(device->allocators), freeIndices(device->allocators), shaderData(device->allocators), device(device) {
+ShaderProgramHost::ShaderProgramHost(DeviceState* device) :
+    programs(device->allocators.Tag(kAllocShaderProgram)),
+    freeIndices(device->allocators.Tag(kAllocShaderProgram)),
+    shaderData(device->allocators.Tag(kAllocShaderProgram)),
+    device(device) {
 
 }
 

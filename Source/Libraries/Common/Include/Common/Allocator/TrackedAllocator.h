@@ -121,6 +121,21 @@ public:
         // Cleanup
         out.imbue(restore);
     }
+
+    /// Count the total byte count
+    /// \return number of bytes
+    size_t CountTotal() {
+        std::lock_guard guard(mutex);
+
+        // Summarize
+        size_t total = 0ull;
+        for (auto&& it : taggedEntries) {
+            total += it.second.length;
+        }
+
+        // OK
+        return total;
+    }
     
     Allocators GetAllocators() {
         return Allocators {

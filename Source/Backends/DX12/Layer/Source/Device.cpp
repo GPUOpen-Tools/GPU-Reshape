@@ -128,9 +128,8 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 #endif // !defined(NDEBUG)
 
     // Create state
-    auto *state = new (allocators) DeviceState(allocators);
+    auto *state = new (allocators, kAllocStateDevice) DeviceState(allocators.Tag(kAllocStateDevice));
     state->object = device;
-    state->allocators = allocators;
 
     // Create detours
     device = CreateDetour(state->allocators, device, state);
@@ -161,7 +160,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         }
 
         // Set registry allocator
-        state->registry.SetAllocators(state->allocators);
+        state->registry.SetAllocators(state->allocators.Tag(kAllocRegistry));
 
         // Get common components
         state->bridge = state->registry.Get<IBridge>();

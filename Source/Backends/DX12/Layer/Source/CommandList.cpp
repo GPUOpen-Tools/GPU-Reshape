@@ -54,7 +54,7 @@ static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue*
     auto table = GetTable(device);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) CommandQueueState(table.state->allocators);
+    auto *state = new (table.state->allocators, kAllocStateCommandQueue) CommandQueueState(table.state->allocators.Tag(kAllocStateCommandQueue));
     state->allocators = table.state->allocators;
     state->parent = device;
     state->desc = *desc;
@@ -71,7 +71,7 @@ static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue*
         }
 
         // Create shared fence
-        state->sharedFence = new (table.state->allocators, kAllocState) IncrementalFence();
+        state->sharedFence = new (table.state->allocators, kAllocStateIncrementalFence) IncrementalFence();
         if (!state->sharedFence->Install(table.next, state->object)) {
             return E_FAIL;
         }
@@ -143,7 +143,7 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
     }
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) CommandSignatureState();
+    auto *state = new (table.state->allocators, kAllocStateCommandSignatureState) CommandSignatureState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->object = commandSignature;
@@ -216,7 +216,7 @@ HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMA
     }
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) CommandAllocatorState();
+    auto *state = new (table.state->allocators, kAllocStateCommandAllocator) CommandAllocatorState();
     state->allocators = table.state->allocators;
     state->userType = type;
     state->parent = device;
@@ -277,7 +277,7 @@ HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandL
     auto table = GetTable(device);
 
     // Create state
-    auto *state = new (table.state->allocators, kAllocState) CommandListState();
+    auto *state = new (table.state->allocators, kAllocStateCommandList) CommandListState();
     state->allocators = table.state->allocators;
     state->parent = device;
     state->userType = type;

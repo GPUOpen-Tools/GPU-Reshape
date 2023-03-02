@@ -11,18 +11,13 @@
 template<size_t BLOCK_SIZE>
 struct LinearBlockAllocator {
     /// Constructor
-    LinearBlockAllocator(const Allocators& allocators = {}, const AllocationTag& tag = {}) : allocators(allocators), tag(tag) {
+    LinearBlockAllocator(const Allocators& allocators = {}) : allocators(allocators) {
 
     }
 
     /// Destructor
     ~LinearBlockAllocator() {
         Clear();
-    }
-
-    /// Set the allocation tag
-    void SetTag(AllocationTag value) {
-        tag = value;
     }
 
     /// Allocate a type, type must be trivially destructible
@@ -136,7 +131,7 @@ private:
         // Create block
         Block& block = blocks.emplace_back();
         block.tail = length;
-        block.data = new (allocators, tag) uint8_t[block.tail];
+        block.data = new (allocators) uint8_t[block.tail];
         return block;
     }
     
@@ -149,8 +144,6 @@ private:
 
     /// Current block visitation head
     uint32_t freeBlockHead{0};
-
-    AllocationTag tag;
 
     /// Loose allocations, free'd manually
     std::vector<void*> freeAllocations;

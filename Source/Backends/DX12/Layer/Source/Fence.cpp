@@ -16,7 +16,7 @@ HRESULT HookID3D12DeviceCreateFence(ID3D12Device* device, UINT64 nodeMask, D3D12
     }
 
     // Create state
-    auto* state = new (table.state->allocators, kAllocState) FenceState();
+    auto* state = new (table.state->allocators, kAllocStateFence) FenceState();
     state->allocators = table.state->allocators;
     state->parent = device;
 

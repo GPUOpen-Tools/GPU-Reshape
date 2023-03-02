@@ -18,7 +18,11 @@
 // Schemas
 #include <Schemas/SGUID.h>
 
-ShaderSGUIDHost::ShaderSGUIDHost(DeviceState *device) : device(device), freeIndices(device->allocators), sguidLookup(device->allocators), pendingSubmissions(device->allocators) {
+ShaderSGUIDHost::ShaderSGUIDHost(DeviceState *device) :
+    device(device),
+    freeIndices(device->allocators.Tag(kAllocSGUID)),
+    sguidLookup(device->allocators.Tag(kAllocSGUID)),
+    pendingSubmissions(device->allocators.Tag(kAllocSGUID)) {
 
 }
 
