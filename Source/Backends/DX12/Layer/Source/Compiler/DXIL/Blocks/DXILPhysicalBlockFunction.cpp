@@ -1916,8 +1916,6 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
         return;
     }
 
-    LLVMBlock *constantBlock{nullptr};
-
     // Visit child blocks
     for (LLVMBlock *fnBlock: block->blocks) {
         switch (static_cast<LLVMReservedBlock>(fnBlock->id)) {
@@ -1925,23 +1923,10 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                 break;
             }
             case LLVMReservedBlock::Constants: {
-                constantBlock = fnBlock;
                 table.global.CompileConstants(fnBlock);
                 break;
             }
         }
-    }
-
-    // If no constant block, create one
-    if (!constantBlock) {
-        LLVMBlock& root = table.scan.GetRoot();
-
-        // Allocate block
-        constantBlock = new(allocators, kAllocModuleDXILLLVMBlock) LLVMBlock(allocators, LLVMReservedBlock::Constants);
-        constantBlock->abbreviationSize = 4;
-
-        // Insert before metadata
-        root.InsertBlock(root.FindPlacement(LLVMBlockElementType::Block, LLVMReservedBlock::Metadata), constantBlock);
     }
 
     // Get the program map
@@ -3861,11 +3846,36 @@ const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUse
 
     // Get operands
     uint64_t _class = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(5)))->value;
-    uint64_t rangeID = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(6)))->value;
-    uint64_t rangeIndex = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(7)))->value;
+
+    // Handle ids are always stored as constants
+    uint32_t handleId = static_cast<uint32_t>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(6)))->value);
+
+    // Range indices may be dynamic
+    IL::ID rangeConstantOrValue = table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(7));
+
+    // Compile time?
+    uint32_t rangeIndex{~0u};
+    if (auto constant = program.GetConstants().GetConstant<IL::IntConstant>(rangeConstantOrValue)) {
+        rangeIndex = static_cast<uint32_t>(constant->value);
+    } else {
+        // Get runtime instruction
+        IL::InstructionRef<> offsetInstr = program.GetIdentifierMap().Get(rangeConstantOrValue);
+        if (!offsetInstr.Is<IL::AddInstruction>()) {
+            return nullptr;
+        }
+
+        // Assume DXC style offsets
+        auto constantOffset = program.GetConstants().GetConstant<IL::IntConstant>(offsetInstr.As<IL::AddInstruction>()->rhs);
+        if (!constantOffset) {
+            return nullptr;
+        }
+
+        // Assume index from base range
+        rangeIndex = static_cast<uint32_t>(constantOffset->value);
+    }
 
     // Get metadata handle
-    const DXILPhysicalBlockMetadata::HandleEntry* handle = table.metadata.GetHandle(static_cast<DXILShaderResourceClass>(_class), static_cast<uint32_t>(rangeID));
+    const DXILPhysicalBlockMetadata::HandleEntry* handle = table.metadata.GetHandle(static_cast<DXILShaderResourceClass>(_class), static_cast<uint32_t>(handleId));
     if (!handle) {
         return nullptr;
     }
