@@ -150,6 +150,11 @@ struct MessageStream {
     /// Append another container
     template<typename T>
     void Append(const T& other) {
+        // Skip empty
+        if (other.IsEmpty()) {
+            return;
+        }
+    
         // Attempt to inherit the schema
         ValidateOrSetSchema(other.GetSchema());
 
