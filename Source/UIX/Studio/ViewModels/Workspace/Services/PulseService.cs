@@ -85,7 +85,7 @@ namespace Studio.ViewModels.Workspace.Listeners
         public void UpdateMissedPulse()
         {
             // Misssed if more than 10 seconds has passed
-            bool missedPulse = (DateTime.Now - _lastPulseTime).Seconds > 10;
+            bool missedPulse = (DateTime.Now - _lastPulseTime).TotalSeconds > 10;
 
             // Changed?
             if (missedPulse != MissedPulse)
