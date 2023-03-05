@@ -1,8 +1,10 @@
-﻿using System.Windows.Input;
+﻿using System;
+using System.Windows.Input;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
 
@@ -56,6 +58,33 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
                 OnPipelineChanged();
             }
         }
+
+        /// <summary>
+        /// Instrumentation handler
+        /// </summary>
+        public InstrumentationState InstrumentationState
+        {
+            get => _instrumentationState;
+            set
+            {
+                if (!this.CheckRaiseAndSetIfChanged(ref _instrumentationState, value))
+                {
+                    return;
+                }
+                
+                // Get bus
+                var bus = ConnectionViewModel?.GetSharedBus();
+                if (bus == null)
+                {
+                    return;
+                }
+
+                // Submit request
+                var request = bus.Add<SetPipelineInstrumentationMessage>();
+                request.featureBitSet = value.FeatureBitMask;
+                request.pipelineUID = Pipeline.GUID;
+            }
+        }
         
         /// <summary>
         /// View model associated with this property
@@ -91,6 +120,9 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
             request.featureBitSet = 0x0;
             request.pipelineUID = Pipeline.GUID;
             
+            // Track
+            _instrumentationState = new();
+            
             // Remove from parent
             this.DetachFromParent();
         }
@@ -113,25 +145,6 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         }
 
         /// <summary>
-        /// Invoked on instrumentation
-        /// </summary>
-        /// <param name="state"></param>
-        public void SetInstrumentation(InstrumentationState state)
-        {
-            // Get bus
-            var bus = ConnectionViewModel?.GetSharedBus();
-            if (bus == null)
-            {
-                return;
-            }
-
-            // Submit request
-            var request = bus.Add<SetPipelineInstrumentationMessage>();
-            request.featureBitSet = state.FeatureBitMask;
-            request.pipelineUID = Pipeline.GUID;
-        }
-
-        /// <summary>
         /// Code listener
         /// </summary>
         private PipelineIdentifier _pipeline;
@@ -145,5 +158,10 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// Internal connection
         /// </summary>
         private IConnectionViewModel? _connectionViewModel;
+
+        /// <summary>
+        /// Tracked state
+        /// </summary>
+        private InstrumentationState _instrumentationState = new();
     }
 }

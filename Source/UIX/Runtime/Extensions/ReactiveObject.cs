@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using ReactiveUI;
 
@@ -19,6 +21,26 @@ namespace Studio.Extensions
         public static void BindProperty<TSender, TObj>(this TSender source, Expression<Func<TSender, TObj>> getter, Action<TObj> setter)
         {
             source.WhenAnyValue(getter).Subscribe(setter);
+        }
+        
+        /// <summary>
+        /// Raise and set if changed
+        /// </summary>
+        /// <param name="source">source object</param>
+        /// <param name="field">given field to check and assign</param>
+        /// <param name="value">value to check against</param>
+        /// <param name="propertyName">field name</param>
+        /// <returns>returns true if changed</returns>
+        public static bool CheckRaiseAndSetIfChanged<TObj, TRet>(this TObj source, ref TRet field, TRet value, [CallerMemberName] string? propertyName = null) where TObj : IReactiveObject
+        {
+            if (EqualityComparer<TRet>.Default.Equals(field, value))
+            {
+                return false;
+            }
+
+            // Proxy down
+            source.RaiseAndSetIfChanged(ref field, value, propertyName);
+            return true;
         }
 
         /// <summary>

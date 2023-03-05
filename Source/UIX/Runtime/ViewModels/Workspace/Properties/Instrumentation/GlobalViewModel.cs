@@ -3,6 +3,7 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
 
@@ -52,6 +53,32 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         }
 
         /// <summary>
+        /// Instrumentation handler
+        /// </summary>
+        public InstrumentationState InstrumentationState
+        {
+            get => _instrumentationState;
+            set
+            {
+                if (!this.CheckRaiseAndSetIfChanged(ref _instrumentationState, value))
+                {
+                    return;
+                }
+                
+                // Get bus
+                var bus = ConnectionViewModel?.GetSharedBus();
+                if (bus == null)
+                {
+                    return;
+                }
+
+                // Submit request
+                var request = bus.Add<SetGlobalInstrumentationMessage>();
+                request.featureBitSet = value.FeatureBitMask;
+            }
+        }
+
+        /// <summary>
         /// Invoked on closes
         /// </summary>
         public ICommand? CloseCommand { get; set; }
@@ -89,26 +116,11 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
             var request = bus.Add<SetGlobalInstrumentationMessage>();
             request.featureBitSet = 0x0;
             
+            // Track
+            _instrumentationState = new();
+            
             // Remove from parent
             this.DetachFromParent();
-        }
-
-        /// <summary>
-        /// Invoked on instrumentation
-        /// </summary>
-        /// <param name="state"></param>
-        public void SetInstrumentation(InstrumentationState state)
-        {
-            // Get bus
-            var bus = ConnectionViewModel?.GetSharedBus();
-            if (bus == null)
-            {
-                return;
-            }
-
-            // Submit request
-            var request = bus.Add<SetGlobalInstrumentationMessage>();
-            request.featureBitSet = state.FeatureBitMask;
         }
 
         /// <summary>
@@ -120,5 +132,10 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// Internal connection
         /// </summary>
         private IConnectionViewModel? _connectionViewModel;
+
+        /// <summary>
+        /// Tracked state
+        /// </summary>
+        private InstrumentationState _instrumentationState = new();
     }
 }

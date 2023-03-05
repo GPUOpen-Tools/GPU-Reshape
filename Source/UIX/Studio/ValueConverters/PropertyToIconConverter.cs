@@ -2,6 +2,7 @@
 using System.Globalization;
 using Avalonia.Data.Converters;
 using Studio.ViewModels.Tools;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ValueConverters
@@ -21,16 +22,30 @@ namespace Studio.ValueConverters
         {
             IPropertyViewModel property = value as IPropertyViewModel ?? throw new NotSupportedException("Expected property view model in conversion");
             
+            // Known cases
             switch (property)
             {
-                default:
-                    return null;
                 case WorkspaceCollectionViewModel:
                     return ResourceLocator.GetIcon("StreamOn");
                 case PipelineCollectionViewModel:
                 case ShaderCollectionViewModel:
                     return ResourceLocator.GetIcon("DotsGrid");
             }
+
+            // Special instrumentation
+            if (property is IInstrumentableObject instrumentableObject)
+            {
+                if (instrumentableObject.InstrumentationState.FeatureBitMask == 0)
+                {
+                    return ResourceLocator.GetIcon("RecordHollow");
+                }
+                else
+                {
+                    return ResourceLocator.GetIcon("Record");
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

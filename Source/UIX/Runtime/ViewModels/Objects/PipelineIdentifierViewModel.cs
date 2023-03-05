@@ -45,6 +45,44 @@ namespace Runtime.ViewModels.Objects
         }
 
         /// <summary>
+        /// Instrumentation handler
+        /// </summary>
+        public InstrumentationState InstrumentationState
+        {
+            get
+            {
+                return Workspace?.PropertyCollection
+                    .GetProperty<IPipelineCollectionViewModel>()?
+                    .GetPropertyWhere<PipelineViewModel>(x => x.Pipeline.GUID == Model.GUID)?
+                    .InstrumentationState ?? new InstrumentationState();   
+            }
+            set
+            {
+                // Get collection
+                var pipelineCollectionViewModel = Workspace?.PropertyCollection.GetProperty<IPipelineCollectionViewModel>();
+                if (pipelineCollectionViewModel == null)
+                {
+                    return;
+                }
+
+                // Find or create property
+                var pipelineViewModel = pipelineCollectionViewModel.GetPropertyWhere<PipelineViewModel>(x => x.Pipeline.GUID == Model.GUID);
+                if (pipelineViewModel == null)
+                {
+                    pipelineCollectionViewModel.Properties.Add(pipelineViewModel = new PipelineViewModel()
+                    {
+                        Parent = pipelineCollectionViewModel,
+                        ConnectionViewModel = pipelineCollectionViewModel.ConnectionViewModel,
+                        Pipeline = Model
+                    });
+                }
+            
+                // Pass down
+                pipelineViewModel.InstrumentationState = value;
+            }
+        }
+
+        /// <summary>
         /// Global UID
         /// </summary>
         public UInt64 GUID
@@ -67,36 +105,6 @@ namespace Runtime.ViewModels.Objects
         public IPropertyViewModel? GetWorkspace()
         {
             return Workspace?.PropertyCollection;
-        }
-
-        /// <summary>
-        /// Set the instrumentation
-        /// </summary>
-        /// <param name="state"></param>
-        /// <param name="filter"></param>
-        public void SetInstrumentation(InstrumentationState state)
-        {
-            // Get collection
-            var pipelineCollectionViewModel = Workspace?.PropertyCollection.GetProperty<IPipelineCollectionViewModel>();
-            if (pipelineCollectionViewModel == null)
-            {
-                return;
-            }
-
-            // Find or create property
-            var pipelineViewModel = pipelineCollectionViewModel.GetPropertyWhere<PipelineViewModel>(x => x.Pipeline.GUID == Model.GUID);
-            if (pipelineViewModel == null)
-            {
-                pipelineCollectionViewModel.Properties.Add(pipelineViewModel = new PipelineViewModel()
-                {
-                    Parent = pipelineCollectionViewModel,
-                    ConnectionViewModel = pipelineCollectionViewModel.ConnectionViewModel,
-                    Pipeline = Model
-                });
-            }
-            
-            // Pass down
-            pipelineViewModel.SetInstrumentation(state);
         }
     }
 }

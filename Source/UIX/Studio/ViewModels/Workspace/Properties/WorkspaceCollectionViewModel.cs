@@ -4,6 +4,7 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
@@ -63,6 +64,33 @@ namespace Studio.ViewModels.Workspace.Properties
                 this.RaiseAndSetIfChanged(ref _connectionViewModel, value);
 
                 OnConnectionChanged();
+            }
+        }
+
+        /// <summary>
+        /// Instrumentation handler
+        /// </summary>
+        public InstrumentationState InstrumentationState
+        {
+            get
+            {
+                return this.GetProperty<GlobalViewModel>()?.InstrumentationState ?? new InstrumentationState();
+            }
+            set
+            {
+                // Get global instrumentation
+                var globalViewModel = this.GetProperty<GlobalViewModel>();
+                if (globalViewModel == null)
+                {
+                    Properties.Add(globalViewModel = new GlobalViewModel()
+                    {
+                        Parent = this,
+                        ConnectionViewModel = ConnectionViewModel
+                    });
+                }
+
+                // Pass down
+                globalViewModel.InstrumentationState = value;
             }
         }
 
@@ -146,28 +174,6 @@ namespace Studio.ViewModels.Workspace.Properties
         public IPropertyViewModel GetWorkspace()
         {
             return this;
-        }
-
-        /// <summary>
-        /// Set the instrumentation info
-        /// </summary>
-        /// <param name="state"></param>
-        /// <param name="filter"></param>
-        public void SetInstrumentation(InstrumentationState state)
-        {
-            // Get global instrumentation
-            var globalViewModel = this.GetProperty<GlobalViewModel>();
-            if (globalViewModel == null)
-            {
-                Properties.Add(globalViewModel = new GlobalViewModel()
-                {
-                    Parent = this,
-                    ConnectionViewModel = ConnectionViewModel
-                });
-            }
-
-            // Pass down
-            globalViewModel.SetInstrumentation(state);
         }
 
         /// <summary>

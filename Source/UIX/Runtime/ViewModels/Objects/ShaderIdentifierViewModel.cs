@@ -45,6 +45,44 @@ namespace Runtime.ViewModels.Objects
         }
 
         /// <summary>
+        /// Instrumentation handler
+        /// </summary>
+        public InstrumentationState InstrumentationState
+        {
+            get
+            {
+                return Workspace?.PropertyCollection
+                    .GetProperty<IShaderCollectionViewModel>()?
+                    .GetPropertyWhere<ShaderViewModel>(x => x.Shader.GUID == Model.GUID)?
+                    .InstrumentationState ?? new InstrumentationState();   
+            }
+            set
+            {
+                // Get collection
+                var shaderCollectionViewModel = Workspace?.PropertyCollection.GetProperty<IShaderCollectionViewModel>();
+                if (shaderCollectionViewModel == null)
+                {
+                    return;
+                }
+
+                // Find or create property
+                var shaderViewModel = shaderCollectionViewModel.GetPropertyWhere<ShaderViewModel>(x => x.Shader.GUID == Model.GUID);
+                if (shaderViewModel == null)
+                {
+                    shaderCollectionViewModel.Properties.Add(shaderViewModel = new ShaderViewModel()
+                    {
+                        Parent = shaderCollectionViewModel,
+                        ConnectionViewModel = shaderCollectionViewModel.ConnectionViewModel,
+                        Shader = Model
+                    });
+                }
+            
+                // Pass down
+                shaderViewModel.InstrumentationState = value;
+            }
+        }
+
+        /// <summary>
         /// Global UID
         /// </summary>
         public UInt64 GUID
@@ -67,36 +105,6 @@ namespace Runtime.ViewModels.Objects
         public IPropertyViewModel? GetWorkspace()
         {
             return Workspace?.PropertyCollection;
-        }
-
-        /// <summary>
-        /// Set the instrumentation info
-        /// </summary>
-        /// <param name="state"></param>
-        /// <param name="filter"></param>
-        public void SetInstrumentation(InstrumentationState state)
-        {
-            // Get collection
-            var shaderCollectionViewModel = Workspace?.PropertyCollection.GetProperty<IShaderCollectionViewModel>();
-            if (shaderCollectionViewModel == null)
-            {
-                return;
-            }
-
-            // Find or create property
-            var shaderViewModel = shaderCollectionViewModel.GetPropertyWhere<ShaderViewModel>(x => x.Shader.GUID == Model.GUID);
-            if (shaderViewModel == null)
-            {
-                shaderCollectionViewModel.Properties.Add(shaderViewModel = new ShaderViewModel()
-                {
-                    Parent = shaderCollectionViewModel,
-                    ConnectionViewModel = shaderCollectionViewModel.ConnectionViewModel,
-                    Shader = Model
-                });
-            }
-            
-            // Pass down
-            shaderViewModel.SetInstrumentation(state);
         }
     }
 }

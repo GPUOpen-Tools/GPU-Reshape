@@ -64,10 +64,10 @@ namespace Studio.ViewModels.Contexts
             }
 
             // Request instrumentation
-            instrumentable.SetInstrumentation(new InstrumentationState()
+            instrumentable.InstrumentationState = new InstrumentationState()
             {
                 FeatureBitMask = 0u
-            });
+            };
         }
 
         /// <summary>

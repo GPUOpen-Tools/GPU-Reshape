@@ -73,10 +73,10 @@ namespace GRS.Features.ResourceBounds.UIX.Contexts
             }
 
             // Request instrumentation
-            instrumentable.SetInstrumentation(new InstrumentationState()
+            instrumentable.InstrumentationState = new InstrumentationState()
             {
                 FeatureBitMask = _featureInfo?.FeatureBit ?? 0
-            });
+            };
         }
 
         /// <summary>

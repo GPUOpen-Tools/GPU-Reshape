@@ -4,6 +4,7 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Query;
 using Studio.ViewModels.Traits;
@@ -73,6 +74,39 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         }
 
         /// <summary>
+        /// Instrumentation handler
+        /// </summary>
+        public InstrumentationState InstrumentationState
+        {
+            get => _instrumentationState;
+            set
+            {
+                if (!this.CheckRaiseAndSetIfChanged(ref _instrumentationState, value))
+                {
+                    return;
+                }
+                
+                // Get bus
+                var bus = ConnectionViewModel?.GetSharedBus();
+                if (bus == null)
+                {
+                    return;
+                }
+
+                // Submit request
+                var request = bus.Add<SetOrAddFilteredPipelineInstrumentationMessage>(new SetOrAddFilteredPipelineInstrumentationMessage.AllocationInfo
+                {
+                    guidLength = (ulong)_guid.ToString().Length,
+                    nameLength = (ulong)(Filter.Name?.Length ?? 0)
+                });
+                request.guid.SetString(_guid.ToString());
+                request.featureBitSet = value.FeatureBitMask;
+                request.type = (uint)(Filter.Type ?? 0);
+                request.name.SetString(Filter.Name ?? string.Empty);
+            }
+        }
+
+        /// <summary>
         /// View model associated with this property
         /// </summary>
         public IConnectionViewModel? ConnectionViewModel
@@ -116,6 +150,9 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
             });
             request.guid.SetString(_guid.ToString());
             
+            // Track
+            _instrumentationState = new();
+            
             // Remove from parent
             this.DetachFromParent();
         }
@@ -135,31 +172,6 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         public IPropertyViewModel? GetWorkspace()
         {
             return Parent?.GetRoot();
-        }
-
-        /// <summary>
-        /// Invoked on instrumentation
-        /// </summary>
-        /// <param name="state"></param>
-        public void SetInstrumentation(InstrumentationState state)
-        {
-            // Get bus
-            var bus = ConnectionViewModel?.GetSharedBus();
-            if (bus == null)
-            {
-                return;
-            }
-
-            // Submit request
-            var request = bus.Add<SetOrAddFilteredPipelineInstrumentationMessage>(new SetOrAddFilteredPipelineInstrumentationMessage.AllocationInfo
-            {
-                guidLength = (ulong)_guid.ToString().Length,
-                nameLength = (ulong)(Filter.Name?.Length ?? 0)
-            });
-            request.guid.SetString(_guid.ToString());
-            request.featureBitSet = state.FeatureBitMask;
-            request.type = (uint)(Filter.Type ?? 0);
-            request.name.SetString(Filter.Name ?? string.Empty);
         }
 
         /// <summary>
@@ -186,5 +198,10 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// Internal connection
         /// </summary>
         private IConnectionViewModel? _connectionViewModel;
+
+        /// <summary>
+        /// Tracked state
+        /// </summary>
+        private InstrumentationState _instrumentationState = new();
     }
 }
