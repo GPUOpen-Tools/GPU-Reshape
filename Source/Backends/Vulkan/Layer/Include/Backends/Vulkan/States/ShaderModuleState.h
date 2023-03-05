@@ -29,6 +29,8 @@ struct ShaderModuleState : public ReferenceObject {
     /// \param featureBitSet the enabled feature set
     /// \param module the module in question
     void AddInstrument(const ShaderModuleInstrumentationKey& key, VkShaderModule module) {
+        ASSERT(key.featureBitSet, "Invalid instrument addition");
+
         std::lock_guard lock(mutex);
         instrumentObjects[key] = module;
     }
@@ -37,6 +39,11 @@ struct ShaderModuleState : public ReferenceObject {
     /// \param featureBitSet the enabled feature set
     /// \return nullptr if not found
     VkShaderModule GetInstrument(const ShaderModuleInstrumentationKey& key) {
+        if (!key.featureBitSet) {
+            return object; 
+        }
+
+        // Instrumented request
         std::lock_guard lock(mutex);
         auto&& it = instrumentObjects.find(key);
         if (it == instrumentObjects.end()) {
@@ -50,11 +57,17 @@ struct ShaderModuleState : public ReferenceObject {
     /// \param featureBitSet the enabled feature set
     /// \return false if not found
     bool HasInstrument(const ShaderModuleInstrumentationKey& key) {
+        if (!key.featureBitSet) {
+            return true; 
+        }
+        
         std::lock_guard lock(mutex);
         return instrumentObjects.count(key) > 0;
     }
 
     bool Reserve(const ShaderModuleInstrumentationKey& key) {
+        ASSERT(key.featureBitSet, "Invalid instrument reservation");
+    
         std::lock_guard lock(mutex);
         auto&& it = instrumentObjects.find(key);
         if (it == instrumentObjects.end()) {

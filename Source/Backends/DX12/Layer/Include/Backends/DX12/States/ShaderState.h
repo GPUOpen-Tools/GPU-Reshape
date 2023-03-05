@@ -35,6 +35,10 @@ struct ShaderState : public ReferenceObject {
     /// \param featureBitSet the enabled feature set
     /// \return false if not found
     bool HasInstrument(const ShaderInstrumentationKey& instrumentationKey) {
+        if (!instrumentationKey.featureBitSet) {
+            return true; 
+        }
+        
         std::lock_guard lock(mutex);
         return instrumentObjects.count(instrumentationKey) > 0;
     }

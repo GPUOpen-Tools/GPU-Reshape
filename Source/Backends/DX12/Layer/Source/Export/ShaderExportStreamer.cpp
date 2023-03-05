@@ -223,6 +223,9 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, Des
         return;
     }
 
+    // Data race begone!
+    std::lock_guard guard(mutex);
+
     // Set current heap
     state->heap = heap;
 

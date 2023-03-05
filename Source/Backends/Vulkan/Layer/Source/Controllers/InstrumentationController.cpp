@@ -443,6 +443,11 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             // Get the super feature set
             uint64_t featureBitSet = shaderFeatureBitSet | dependentObject->instrumentationInfo.featureBitSet;
 
+            // No features?
+            if (!featureBitSet) {
+                continue;
+            }
+
             // Number of slots used by the pipeline
             uint32_t pipelineLayoutUserSlots = dependentObject->layout->boundUserDescriptorStates;
 
@@ -481,7 +486,10 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
     // Submit compiler jobs
     for (size_t dirtyIndex = 0; dirtyIndex < batch->dirtyPipelines.size(); dirtyIndex++) {
-        PipelineState* state = batch->dirtyPipelines[enqueuedJobs];
+        PipelineState *state = batch->dirtyPipelines[dirtyIndex];
+
+        // Was this job skipped?
+        bool isSkipped = false;
 
         // Setup the job
         PipelineJob& job = jobs[dirtyIndex];
@@ -491,6 +499,9 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         // Allocate feature bit sets
         job.shaderModuleInstrumentationKeys = new (registry->GetAllocators()) ShaderModuleInstrumentationKey[state->shaderModules.size()];
 
+        // Super set
+        uint64_t superFeatureBitSet{0};
+
         // Set the module feature bit sets
         for (uint32_t shaderIndex = 0; shaderIndex < state->shaderModules.size(); shaderIndex++) {
             uint64_t featureBitSet = 0;
@@ -499,6 +510,9 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             // ? Pipeline specific bit set fed back during shader compilation
             featureBitSet |= state->shaderModules[shaderIndex]->instrumentationInfo.featureBitSet;
             featureBitSet |= state->instrumentationInfo.featureBitSet;
+
+            // Summarize
+            superFeatureBitSet |= featureBitSet;
 
             // Number of slots used by the pipeline
             uint32_t pipelineLayoutUserSlots = state->layout->boundUserDescriptorStates;
@@ -519,10 +533,21 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             // Shader may have failed to compile for whatever reason, skip if need be
             if (!job.state->shaderModules[shaderIndex]->HasInstrument(instrumentationKey)) {
                 rejectedKeys.push_back(std::make_pair(job.state->shaderModules[shaderIndex], instrumentationKey));
-
-                // Skip this job
-                continue;
+                isSkipped = true;
             }
+        }
+
+        // No features?
+        if (!superFeatureBitSet) {
+            // Set the hot swapped object to native
+            state->hotSwapObject.store(nullptr);
+            isSkipped = true;
+        }
+
+        // Not of interest?
+        if (isSkipped) {
+            destroy(job.shaderModuleInstrumentationKeys, allocators);
+            continue;
         }
 
         // Next job

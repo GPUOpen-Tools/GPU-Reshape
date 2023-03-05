@@ -461,6 +461,11 @@ ShaderState::~ShaderState() {
 }
 
 D3D12_SHADER_BYTECODE ShaderState::GetInstrument(const ShaderInstrumentationKey &instrumentationKey) {
+    if (!instrumentationKey.featureBitSet) {
+        return key.byteCode; 
+    }
+
+    // Instrumented request
     std::lock_guard lock(mutex);
     auto&& it = instrumentObjects.find(instrumentationKey);
     if (it == instrumentObjects.end()) {
@@ -475,6 +480,8 @@ D3D12_SHADER_BYTECODE ShaderState::GetInstrument(const ShaderInstrumentationKey 
 }
 
 bool ShaderState::Reserve(const ShaderInstrumentationKey &instrumentationKey) {
+    ASSERT(instrumentationKey.featureBitSet, "Invalid instrument reservation");
+    
     std::lock_guard lock(mutex);
     auto&& it = instrumentObjects.find(instrumentationKey);
     if (it == instrumentObjects.end()) {
@@ -487,6 +494,7 @@ bool ShaderState::Reserve(const ShaderInstrumentationKey &instrumentationKey) {
 
 void ShaderState::AddInstrument(const ShaderInstrumentationKey &instrumentationKey, const DXStream &instrument) {
     std::lock_guard lock(mutex);
+    ASSERT(instrumentationKey.featureBitSet, "Invalid instrument addition");
 
     // Replace or add
     if (auto it = instrumentObjects.find(instrumentationKey); it != instrumentObjects.end()) {
