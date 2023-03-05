@@ -59,6 +59,9 @@ uint32_t InstrumentationController::GetJobCount() {
 }
 
 void InstrumentationController::CreatePipeline(PipelineState *state) {
+    std::lock_guard guard(mutex);
+
+    // Propagate on state
     PropagateInstrumentationInfo(state);
 
     // Nothing of interest?
@@ -140,6 +143,8 @@ bool InstrumentationController::FilterPipeline(PipelineState *state, const Filte
 }
 
 void InstrumentationController::Handle(const MessageStream *streams, uint32_t count) {
+    std::lock_guard guard(mutex);
+    
     for (uint32_t i = 0; i < count; i++) {
         ConstMessageStreamView view(streams[i]);
 
@@ -423,6 +428,7 @@ void InstrumentationController::Commit() {
     }
 
     // Commit all pending instrumentation
+    std::lock_guard guard(mutex);
     CommitInstrumentation();
 }
 
@@ -534,7 +540,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
         // Submit
         device->logBuffer.Add("DX12", keyMessage.str());
-#endif
+#endif // LOG_REJECTED_KEYS
     }
 
     // Free up
