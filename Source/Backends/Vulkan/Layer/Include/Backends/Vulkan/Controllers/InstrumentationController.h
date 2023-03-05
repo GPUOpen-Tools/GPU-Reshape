@@ -3,8 +3,10 @@
 // Layer
 #include <Backends/Vulkan/InstrumentationInfo.h>
 #include <Backends/Vulkan/Controllers/IController.h>
+#include <Backends/Vulkan/States/PipelineType.h>
 
 // Common
+#include <Common/Allocator/Vector.h>
 #include <Common/Dispatcher/EventCounter.h>
 #include <Common/ComRef.h>
 
@@ -15,6 +17,7 @@
 #include <vector>
 #include <chrono>
 #include <set>
+#include <unordered_map>
 
 // Forward declarations
 class Registry;
@@ -54,6 +57,11 @@ public:
     /// Get the number of jobs
     uint32_t GetJobCount();
 
+public:
+    /// Invoked on pipeline creation
+    /// \param state given state
+    void CreatePipeline(PipelineState* state);
+
 protected:
     void CommitShaders(DispatcherBucket* bucket, void *data);
     void CommitPipelines(DispatcherBucket* bucket, void *data);
@@ -72,14 +80,51 @@ protected:
     /// \param stream the specialization stream
     void SetInstrumentationInfo(InstrumentationInfo& info, uint64_t bitSet, const MessageSubStream& stream);
 
+    /// Propagate instrumentation states
+    /// \param state destination pipeline
+    void PropagateInstrumentationInfo(PipelineState* state);
+
+    /// Propagate instrumentation states
+    /// \param state destination shader
+    void PropagateInstrumentationInfo(ShaderModuleState* state);
+    
+private:
+    struct FilterEntry {
+        /// Assigned filter GUID
+        std::string guid;
+
+        /// Given pipeline type
+        PipelineType type;
+
+        /// Name subset
+        std::string name;
+
+        /// Desired instrumentation
+        InstrumentationInfo instrumentationInfo;
+    };
+
+    /// Filter a pipeline against an entry
+    /// \param state given pipeline
+    /// \param filter tested filter
+    /// \return true if passes
+    bool FilterPipeline(PipelineState* state, const FilterEntry& filter);
+
 private:
     DeviceDispatchTable* table;
     ComRef<ShaderCompiler> shaderCompiler;
     ComRef<PipelineCompiler> pipelineCompiler;
     ComRef<Dispatcher> dispatcher;
 
+private:
     /// The global info
     InstrumentationInfo globalInstrumentationInfo;
+
+    /// Object specific instrumentation
+    std::unordered_map<uint64_t, InstrumentationInfo> shaderUIDInstrumentationInfo;
+    std::unordered_map<uint64_t, InstrumentationInfo> pipelineUIDInstrumentationInfo;
+
+    /// Filtered instrumentation
+    std::vector<FilterEntry> filteredInstrumentationInfo;
 
 private:
     struct Batch {

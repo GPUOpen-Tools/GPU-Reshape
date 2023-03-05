@@ -1,10 +1,13 @@
 ﻿using System;
+using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace Runtime.ViewModels.Objects
 {
@@ -70,17 +73,30 @@ namespace Runtime.ViewModels.Objects
         /// Set the instrumentation
         /// </summary>
         /// <param name="state"></param>
+        /// <param name="filter"></param>
         public void SetInstrumentation(InstrumentationState state)
         {
-            // Get bus
-            var bus = Workspace?.Connection?.GetSharedBus();
-            if (bus == null)
+            // Get collection
+            var pipelineCollectionViewModel = Workspace?.PropertyCollection.GetProperty<IPipelineCollectionViewModel>();
+            if (pipelineCollectionViewModel == null)
+            {
                 return;
+            }
 
-            // Submit request
-            var request = bus.Add<SetPipelineInstrumentationMessage>();
-            request.pipelineUID = GUID;
-            request.featureBitSet = state.FeatureBitMask;
+            // Find or create property
+            var pipelineViewModel = pipelineCollectionViewModel.GetPropertyWhere<PipelineViewModel>(x => x.Pipeline.GUID == Model.GUID);
+            if (pipelineViewModel == null)
+            {
+                pipelineCollectionViewModel.Properties.Add(pipelineViewModel = new PipelineViewModel()
+                {
+                    Parent = pipelineCollectionViewModel,
+                    ConnectionViewModel = pipelineCollectionViewModel.ConnectionViewModel,
+                    Pipeline = Model
+                });
+            }
+            
+            // Pass down
+            pipelineViewModel.SetInstrumentation(state);
         }
     }
 }

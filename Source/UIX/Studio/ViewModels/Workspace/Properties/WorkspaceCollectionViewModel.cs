@@ -4,9 +4,11 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
@@ -150,16 +152,22 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Set the instrumentation info
         /// </summary>
         /// <param name="state"></param>
+        /// <param name="filter"></param>
         public void SetInstrumentation(InstrumentationState state)
         {
-            // Get bus
-            var bus = ConnectionViewModel?.GetSharedBus();
-            if (bus == null)
-                return;
+            // Get global instrumentation
+            var globalViewModel = this.GetProperty<GlobalViewModel>();
+            if (globalViewModel == null)
+            {
+                Properties.Add(globalViewModel = new GlobalViewModel()
+                {
+                    Parent = this,
+                    ConnectionViewModel = ConnectionViewModel
+                });
+            }
 
-            // Submit request
-            var request = bus.Add<SetGlobalInstrumentationMessage>();
-            request.featureBitSet = state.FeatureBitMask;
+            // Pass down
+            globalViewModel.SetInstrumentation(state);
         }
 
         /// <summary>

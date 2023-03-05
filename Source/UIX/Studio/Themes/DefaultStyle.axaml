@@ -53,6 +53,10 @@
         <Color x:Key="ConnectionKeyApplicationFilter">#083000</Color>
         <Color x:Key="ConnectionKeyApplicationAPI">#610202</Color>
         <Color x:Key="ConnectionKeyApplicationPID">#025e61</Color>
+        
+        <!-- Filter strings -->
+        <Color x:Key="PipelineFilterKeyType">#290099</Color>
+        <Color x:Key="PipelineFilterKeyName">#083000</Color>
     </Styles.Resources>
 
     <!-- Base style -->

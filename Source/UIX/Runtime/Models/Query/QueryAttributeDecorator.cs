@@ -1,6 +1,6 @@
 ﻿using Avalonia.Media;
 
-namespace Runtime.Models.Connections
+namespace Runtime.Models.Query
 {
     public struct QueryAttributeDecorator
     {

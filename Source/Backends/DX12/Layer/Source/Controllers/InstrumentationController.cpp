@@ -30,7 +30,10 @@
 // Std
 #include <sstream>
 
-InstrumentationController::InstrumentationController(DeviceState *device) : device(device), immediateBatch(allocators) {
+InstrumentationController::InstrumentationController(DeviceState *device) :
+    device(device),
+    filteredInstrumentationInfo(device->allocators.Tag(kAllocInstrumentation)),
+    immediateBatch(device->allocators.Tag(kAllocInstrumentation)) {
 
 }
 
@@ -53,6 +56,87 @@ void InstrumentationController::Uninstall() {
 uint32_t InstrumentationController::GetJobCount() {
     std::lock_guard guard(mutex);
     return compilationBucket ? compilationBucket->GetCounter() : 0;
+}
+
+void InstrumentationController::CreatePipeline(PipelineState *state) {
+    PropagateInstrumentationInfo(state);
+
+    // Nothing of interest?
+    if (!state->instrumentationInfo.featureBitSet) {
+        return;
+    }
+    
+    // Add the state itself
+    if (!immediateBatch.dirtyObjects.count(state)) {
+        immediateBatch.dirtyObjects.insert(state);
+        immediateBatch.dirtyPipelines.push_back(state);
+    }
+
+    // Add source modules
+    for (ShaderState *shaderState: state->shaders) {
+        if (immediateBatch.dirtyObjects.count(shaderState)) {
+            continue;
+        }
+                
+        immediateBatch.dirtyObjects.insert(shaderState);
+        immediateBatch.dirtyShaders.push_back(shaderState);
+    }
+}
+
+void InstrumentationController::PropagateInstrumentationInfo(PipelineState *state) {
+    state->instrumentationInfo.featureBitSet = 0x0;
+    state->instrumentationInfo.specialization.Clear();
+
+    // Append global
+    state->instrumentationInfo.featureBitSet |= globalInstrumentationInfo.featureBitSet;
+    state->instrumentationInfo.specialization.Append(globalInstrumentationInfo.specialization);
+
+    // Append object specific
+    if (auto it = pipelineUIDInstrumentationInfo.find(state->uid); it != pipelineUIDInstrumentationInfo.end()) {
+        state->instrumentationInfo.featureBitSet |= it->second.featureBitSet;
+        state->instrumentationInfo.specialization.Append(it->second.specialization);
+    }
+
+    // Append filters
+    for (const FilterEntry& entry : filteredInstrumentationInfo) {
+        if (!FilterPipeline(state, entry)) {
+            continue;
+        }
+
+        // Passed!
+        state->instrumentationInfo.featureBitSet |= entry.instrumentationInfo.featureBitSet;
+        state->instrumentationInfo.specialization.Append(entry.instrumentationInfo.specialization);
+    }
+}
+
+void InstrumentationController::PropagateInstrumentationInfo(ShaderState *state) {
+    state->instrumentationInfo.featureBitSet = 0x0;
+    state->instrumentationInfo.specialization.Clear();
+
+    // Append global
+    state->instrumentationInfo.featureBitSet |= globalInstrumentationInfo.featureBitSet;
+    state->instrumentationInfo.specialization.Append(globalInstrumentationInfo.specialization);
+
+    // Append object specific
+    if (auto it = shaderUIDInstrumentationInfo.find(state->uid); it != shaderUIDInstrumentationInfo.end()) {
+        state->instrumentationInfo.featureBitSet |= it->second.featureBitSet;
+        state->instrumentationInfo.specialization.Append(it->second.specialization);
+    }
+}
+
+bool InstrumentationController::FilterPipeline(PipelineState *state, const FilterEntry &filter) {
+    // Test type
+    if (filter.type != PipelineType::None && filter.type != state->type) {
+        return false;
+    }
+
+    // Test name
+    if (filter.name.data() && state->debugName && !std::strstr(state->debugName, filter.name.c_str())) {
+        return false;
+    }
+
+    // Passed!
+    return true;
 }
 
 void InstrumentationController::Handle(const MessageStream *streams, uint32_t count) {
@@ -112,15 +196,15 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
         case SetShaderInstrumentationMessage::kID: {
             auto *message = it.Get<SetShaderInstrumentationMessage>();
 
+            // Apply instrumentation
+            SetInstrumentationInfo(shaderUIDInstrumentationInfo[message->shaderUID], message->featureBitSet, message->specialization);
+
             // Attempt to get the state
             ShaderState *state = device->states_Shaders.GetFromUID(message->shaderUID);
             if (!state) {
                 // TODO: Error logging
                 return;
             }
-
-            // Apply instrumentation
-            SetInstrumentationInfo(state->instrumentationInfo, message->featureBitSet, message->specialization);
 
             // Add the state itself
             if (!immediateBatch.dirtyObjects.count(state)) {
@@ -144,15 +228,15 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
         case SetPipelineInstrumentationMessage::kID: {
             auto *message = it.Get<SetPipelineInstrumentationMessage>();
 
+            // Apply instrumentation
+            SetInstrumentationInfo(pipelineUIDInstrumentationInfo[message->pipelineUID], message->featureBitSet, message->specialization);
+
             // Attempt to get the state
             PipelineState *state = device->states_Pipelines.GetFromUID(message->pipelineUID);
             if (!state) {
                 // TODO: Error logging
                 return;
             }
-
-            // Apply instrumentation
-            SetInstrumentationInfo(state->instrumentationInfo, message->featureBitSet, message->specialization);
 
             // Add the state itself
             if (!immediateBatch.dirtyObjects.count(state)) {
@@ -162,8 +246,101 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
 
             // Add source modules
             for (ShaderState *shaderState: state->shaders) {
+                if (immediateBatch.dirtyObjects.count(shaderState)) {
+                    continue;
+                }
+                
                 immediateBatch.dirtyObjects.insert(shaderState);
                 immediateBatch.dirtyShaders.push_back(shaderState);
+            }
+            break;
+        }
+
+        case RemoveFilteredPipelineInstrumentationMessage::kID: {
+            auto *message = it.Get<SetOrAddFilteredPipelineInstrumentationMessage>();
+
+            // Remove all with matching guid
+            filteredInstrumentationInfo.erase(std::ranges::remove_if(filteredInstrumentationInfo, [&](const FilterEntry& entry) {
+                return entry.guid == message->guid.View();
+            }).begin(), filteredInstrumentationInfo.end());
+
+            // Add all shader modules
+            for (ShaderState *state: device->states_Shaders.GetLinear()) {
+                if (immediateBatch.dirtyObjects.count(state)) {
+                    continue;
+                }
+
+                immediateBatch.dirtyObjects.insert(state);
+                immediateBatch.dirtyShaders.push_back(state);
+            }
+
+            // Add all pipelines modules
+            for (PipelineState *state: device->states_Pipelines.GetLinear()) {
+                if (immediateBatch.dirtyObjects.count(state)) {
+                    continue;
+                }
+
+                immediateBatch.dirtyObjects.insert(state);
+                immediateBatch.dirtyPipelines.push_back(state);
+            }
+            break;
+        }
+
+        case SetOrAddFilteredPipelineInstrumentationMessage::kID: {
+            auto *message = it.Get<SetOrAddFilteredPipelineInstrumentationMessage>();
+
+            // Try to find
+            auto it = std::find_if(filteredInstrumentationInfo.begin(), filteredInstrumentationInfo.end(), [&](const FilterEntry& entry) {
+                return entry.guid == message->guid.View();
+            });
+
+            // None?
+            if (it == filteredInstrumentationInfo.end()) {
+                it = filteredInstrumentationInfo.emplace(filteredInstrumentationInfo.end());
+
+                // Copy properties
+                it->guid = message->guid.View();
+                it->name = message->name.View();
+            }
+
+            // Translate type
+            switch (message->type) {
+                default:
+                    ASSERT(false, "Invalid pipeline type");
+                    break;
+                case 0:
+                    it->type = PipelineType::None;
+                    break;
+                case 1:
+                    it->type = PipelineType::Graphics;
+                    break;
+                case 2:
+                    it->type = PipelineType::Compute;
+                    break;
+            }
+
+            // Copy info
+            SetInstrumentationInfo(it->instrumentationInfo, message->featureBitSet, message->specialization);
+
+            // Refilter all pipelines
+            for (PipelineState *state: device->states_Pipelines.GetLinear()) {
+                if (immediateBatch.dirtyObjects.count(state) || !FilterPipeline(state, *it)) {
+                    continue;
+                }
+
+                // Push pipeline
+                immediateBatch.dirtyObjects.insert(state);
+                immediateBatch.dirtyPipelines.push_back(state);
+
+                // Push source modules
+                for (ShaderState *shaderState: state->shaders) {
+                    if (immediateBatch.dirtyObjects.count(shaderState)) {
+                        continue;
+                    }
+                
+                    immediateBatch.dirtyObjects.insert(shaderState);
+                    immediateBatch.dirtyShaders.push_back(shaderState);
+                }
             }
             break;
         }
@@ -179,6 +356,11 @@ void InstrumentationController::SetInstrumentationInfo(InstrumentationInfo &info
 }
 
 void InstrumentationController::CommitInstrumentation() {
+    // Early out
+    if (immediateBatch.dirtyObjects.empty()) {
+        return;
+    }
+    
     compilationEvent.IncrementHead();
 
     // Diagnostic
@@ -188,7 +370,17 @@ void InstrumentationController::CommitInstrumentation() {
         immediateBatch.dirtyShaders.size(),
         immediateBatch.dirtyPipelines.size()
     ));
-#endif
+#endif // LOG_INSTRUMENTATION
+
+    // Re-propagate all shaders
+    for (ShaderState* state : immediateBatch.dirtyShaders) {
+        PropagateInstrumentationInfo(state);
+    }
+
+    // Re-propagate all pipelines
+    for (PipelineState* state : immediateBatch.dirtyPipelines) {
+        PropagateInstrumentationInfo(state);
+    }
 
     // Copy batch
     auto* batch = new (registry->GetAllocators(), kAllocInstrumentation) Batch(immediateBatch);
@@ -220,18 +412,18 @@ void InstrumentationController::Commit() {
     uint32_t count = GetJobCount();
 
     // Any since last?
-    if (lastPooledCount == count) {
-        return;
+    if (lastPooledCount != count) {
+        // Add diagnostic message
+        auto message = MessageStreamView(commitStream).Add<JobDiagnosticMessage>();
+        message->remaining = count;
+        device->bridge->GetOutput()->AddStreamAndSwap(commitStream);
+
+        // OK
+        lastPooledCount = count;
     }
 
-    // Add diagnostic message
-    auto message = MessageStreamView(commitStream).Add<JobDiagnosticMessage>();
-    message->remaining = count;
-    
-    device->bridge->GetOutput()->AddStreamAndSwap(commitStream);
-
-    // OK
-    lastPooledCount = count;
+    // Commit all pending instrumentation
+    CommitInstrumentation();
 }
 
 void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *data) {
@@ -240,7 +432,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 
     // Submit compiler jobs
     for (ShaderState* state : batch->dirtyShaders) {
-        uint64_t shaderFeatureBitSet = globalInstrumentationInfo.featureBitSet | state->instrumentationInfo.featureBitSet;
+        uint64_t shaderFeatureBitSet = state->instrumentationInfo.featureBitSet;
 
         // Perform feedback from the dependent objects
         for (PipelineState* dependentObject : device->dependencies_shaderPipelines.Get(state)) {
@@ -287,7 +479,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         // Setup the job
         PipelineJob& job = jobs[dirtyIndex];
         job.state = state;
-        job.featureBitSet = globalInstrumentationInfo.featureBitSet | state->instrumentationInfo.featureBitSet;
+        job.featureBitSet = state->instrumentationInfo.featureBitSet;
 
         // Allocate feature bit sets
         job.shaderInstrumentationKeys = new (registry->GetAllocators(), kAllocInstrumentation) ShaderInstrumentationKey[state->shaders.size()];
@@ -296,9 +488,8 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         for (uint32_t shaderIndex = 0; shaderIndex < state->shaders.size(); shaderIndex++) {
             uint64_t featureBitSet = 0;
 
-            // Create super feature bit set (global -> shader -> pipeline)
+            // Create super feature bit set (shader -> pipeline)
             // ? Pipeline specific bit set fed back during shader compilation
-            featureBitSet |= globalInstrumentationInfo.featureBitSet;
             featureBitSet |= state->shaders[shaderIndex]->instrumentationInfo.featureBitSet;
             featureBitSet |= state->instrumentationInfo.featureBitSet;
 

@@ -5,6 +5,7 @@
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 #include <Backends/DX12/SubObjectReader.h>
+#include <Backends/DX12/Controllers/InstrumentationController.h>
 
 // Common
 #include <Common/CRC.h>
@@ -327,6 +328,9 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
         if (FAILED(hr)) {
             return hr;
         }
+
+        // Inform the controller
+        table.state->instrumentationController->CreatePipeline(state);
     }
 
     // Cleanup
@@ -385,6 +389,9 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
         if (FAILED(hr)) {
             return hr;
         }
+
+        // Inform the controller
+        table.state->instrumentationController->CreatePipeline(state);
     }
 
     // Cleanup

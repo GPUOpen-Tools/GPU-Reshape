@@ -57,7 +57,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Add a new shader to this collection
         /// </summary>
         /// <param name="shaderViewModel"></param>
-        public void AddShader(ShaderViewModel shaderViewModel)
+        public void AddShader(Objects.ShaderViewModel shaderViewModel)
         {
             // Flat view
             Shaders.Add(shaderViewModel);
@@ -71,9 +71,9 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         /// <param name="GUID"></param>
         /// <returns>null if not found</returns>
-        public ShaderViewModel? GetShader(UInt64 GUID)
+        public Objects.ShaderViewModel? GetShader(UInt64 GUID)
         {
-            _shaderModelGUID.TryGetValue(GUID, out ShaderViewModel? shaderViewModel);
+            _shaderModelGUID.TryGetValue(GUID, out Objects.ShaderViewModel? shaderViewModel);
             return shaderViewModel;
         }
 
@@ -82,14 +82,14 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         /// <param name="GUID"></param>
         /// <returns></returns>
-        public ShaderViewModel GetOrAddShader(UInt64 GUID)
+        public Objects.ShaderViewModel GetOrAddShader(UInt64 GUID)
         {
-            ShaderViewModel? shaderViewModel = GetShader(GUID);
+            Objects.ShaderViewModel? shaderViewModel = GetShader(GUID);
             
             // Create if not found
             if (shaderViewModel == null)
             {
-                shaderViewModel = new ShaderViewModel()
+                shaderViewModel = new Objects.ShaderViewModel()
                 {
                     GUID = GUID
                 };
@@ -136,7 +136,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// GUID to shader mappings
         /// </summary>
-        private Dictionary<UInt64, ShaderViewModel> _shaderModelGUID = new();
+        private Dictionary<UInt64, Objects.ShaderViewModel> _shaderModelGUID = new();
 
         /// <summary>
         /// Code listener

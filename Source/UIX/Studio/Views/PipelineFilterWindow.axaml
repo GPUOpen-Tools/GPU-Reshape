@@ -1,4 +1,4 @@
-﻿<Window x:Class="Studio.Views.ConnectWindow"
+﻿<Window x:Class="Studio.Views.PipelineFilter"
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -8,12 +8,11 @@
         xmlns:views="using:Studio.Views"
         xmlns:vc="using:Studio.ValueConverters"
         xmlns:r="using:Studio.Resources"
-        xmlns:connections="clr-namespace:Runtime.Models.Connections;assembly=UIX.Studio.Runtime"
         xmlns:converters="clr-namespace:Avalonia.Markup.Xaml.Converters;assembly=Avalonia.Markup.Xaml"
         xmlns:controls="clr-namespace:Studio.Views.Controls"
         mc:Ignorable="d"
-        d:DesignWidth="550" d:DesignHeight="350"
-        Width="550" Height="350"
+        CanResize="False"
+        Width="550" Height="100"
         UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
         WindowState="Normal" WindowStartupLocation="CenterScreen"
         TransparencyLevelHint="None"
@@ -24,7 +23,7 @@
         ExtendClientAreaChromeHints="PreferSystemChrome">
     <Window.Resources>
         <ResourceDictionary>
-            <vc:ConnectionStatusToProgressConverter x:Key="ConnectionStatusToProgressConverter" />
+            <vc:QueryResultToProgressConverter x:Key="QueryResultToProgressConverter" />
             <converters:ColorToBrushConverter x:Key="ColorToBrushConverter"/>
         </ResourceDictionary>
     </Window.Resources>
@@ -34,7 +33,7 @@
         <StackPanel VerticalAlignment="Top" Orientation="Horizontal">
             <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="17" />
 
-            <TextBlock Margin="7,0,0,0">Create workspace connection</TextBlock>
+            <TextBlock Margin="7,0,0,0">Create pipeline filter</TextBlock>
         </StackPanel>
 
         <!-- Content -->
@@ -46,7 +45,7 @@
                     VerticalAlignment="Top"
                     Height="27"
                     Margin="0,0,0,0"
-                    Text="{Binding ConnectionString}" />
+                    Text="{Binding FilterString}" />
                     
                 <Button 
                     Background="Transparent"
@@ -61,31 +60,25 @@
                         <Flyout Placement="BottomEdgeAlignedRight">
                             <StackPanel Orientation="Vertical" Width="350">
                                 <TextBlock TextWrapping="Wrap">
-Connection strings define the endpoint query and application filter, each attribute is specified as name:value.
+Pipeline filters define instrumentation filters on pipelines, each attribute is specified as name:value.
 
 Valid attributes:
                                 </TextBlock>
                                 <Grid Margin="25 0 0 0" ColumnDefinitions="35,*">
                                     <TextBlock TextWrapping="Wrap" Grid.Column="0">
-ip
-port
-app 
-pid 
-api 
+type
+name
                                     </TextBlock>
                                     <TextBlock TextWrapping="Wrap" Grid.Column="1">
-- Endpoint hostname or ipv4/6 string
-- Endpoint host resolver port, leave default if unknown
-- Application name filter
-- Application process id
-- Application backend API filter
+- Pipeline type (graphics, compute)
+- Pipeline name
                                     </TextBlock>
                                 </Grid>
                                 
                                 <TextBlock Margin="0 10 0 0" TextWrapping="Wrap">
 Examples:
-    ip:localhost app:UE4Editor
-    ip:test_agent port:8865 app:UnitTest api:Vulkan  
+    name:PostProcessing
+    type:Compute name:RTResolve  
                                 </TextBlock>
                             </StackPanel>
                         </Flyout>
@@ -94,32 +87,6 @@ Examples:
 
                 <controls:QueryAttributeSegments x:Name="AttributeSegments" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0 26 0 0"/>
             </Panel>
-
-            <Grid Margin="0,35,0,0">
-                <DataGrid
-                    x:Name="ConnectionGrid"
-                    IsReadOnly="True"
-                    HeadersVisibility="Column"
-                    CanUserResizeColumns="True"
-                    AutoGenerateColumns="False"
-                    SelectedItem="{Binding SelectedApplication}"
-                    Items="{Binding ResolvedApplications}">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Process" Width="*" Binding="{Binding Process}" />
-                        <DataGridTextColumn Header="Name" Width="*" Binding="{Binding Name}" />
-                        <DataGridTextColumn Header="API" Width="75" Binding="{Binding API }" />
-                        <DataGridTextColumn Header="PID" Width="50" Binding="{Binding Pid}" />
-                    </DataGrid.Columns>
-                </DataGrid>
-            </Grid>
-
-            <ProgressBar
-                VerticalAlignment="Bottom"
-                MinHeight="5"
-                x:Name="ProgressIndicator"
-                Value="100"
-                IsIndeterminate="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}"
-                Foreground="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}" />
         </Grid>
 
         <!-- Tool Result -->
@@ -129,14 +96,14 @@ Examples:
                 Margin="5,0,0,0"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Left"
-                Text="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}" />
+                Text="{Binding FilterStatus, Converter={StaticResource QueryResultToProgressConverter}}" />
 
             <StackPanel Margin="0,0,5,0" HorizontalAlignment="Right" Orientation="Horizontal">
                 <Button
                     HorizontalAlignment="Right"
-                    Command="{Binding Connect}"
+                    Command="{Binding Create}"
                     ToolTip.Tip="{x:Static r:Resources.Workspace_Connect}">
-                    Connect
+                    Create
                 </Button>
             </StackPanel>
         </Grid>

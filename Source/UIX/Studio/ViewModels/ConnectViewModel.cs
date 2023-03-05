@@ -14,10 +14,10 @@ using Bridge.CLR;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
-using Runtime.Models.Connections;
+using Runtime.Models.Query;
 using Studio.Extensions;
 using Studio.Models.Workspace;
-using Studio.ViewModels.Connections;
+using Studio.ViewModels.Query;
 using Color = Avalonia.Media.Color;
 
 namespace Studio.ViewModels
@@ -142,7 +142,7 @@ namespace Studio.ViewModels
         private void CreateConnectionQuery(string query)
         {
             // Try to parse collection
-            QueryAttribute[]? attributes = ConnectionQueryViewModel.GetAttributes(query);
+            QueryAttribute[]? attributes = QueryParser.GetAttributes(query);
             if (attributes == null)
             {
                 ConnectionStatus = ConnectionStatus.QueryInvalid;

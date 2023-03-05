@@ -3,6 +3,7 @@
 #include <Backends/DX12/Table.Gen.h>
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/PipelineLibraryState.h>
+#include <Backends/DX12/Controllers/InstrumentationController.h>
 
 HRESULT WINAPI HookID3D12DeviceCreatePipelineLibrary(ID3D12Device* device, const void *pLibraryBlob, SIZE_T BlobLength, REFIID riid, void **ppPipelineLibrary) {
     auto table = GetTable(device);
@@ -138,6 +139,9 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
         if (FAILED(hr)) {
             return hr;
         }
+
+        // Inform the controller
+        deviceTable.state->instrumentationController->CreatePipeline(state);
     }
 
     // Cleanup
@@ -199,6 +203,9 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
         if (FAILED(hr)) {
             return hr;
         }
+
+        // Inform the controller
+        deviceTable.state->instrumentationController->CreatePipeline(state);
     }
 
     // Cleanup

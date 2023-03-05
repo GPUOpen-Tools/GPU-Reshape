@@ -3,7 +3,7 @@ using ReactiveUI;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class PipelineCollectionViewModel : ReactiveObject, IPropertyViewModel
+    public class PipelineCollectionViewModel : ReactiveObject, IPipelineCollectionViewModel
     {
         /// <summary>
         /// Name of this property

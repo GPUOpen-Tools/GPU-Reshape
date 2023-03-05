@@ -1,10 +1,13 @@
 ﻿using System;
+using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace Runtime.ViewModels.Objects
 {
@@ -70,17 +73,30 @@ namespace Runtime.ViewModels.Objects
         /// Set the instrumentation info
         /// </summary>
         /// <param name="state"></param>
+        /// <param name="filter"></param>
         public void SetInstrumentation(InstrumentationState state)
         {
-            // Get bus
-            var bus = Workspace?.Connection?.GetSharedBus();
-            if (bus == null)
+            // Get collection
+            var shaderCollectionViewModel = Workspace?.PropertyCollection.GetProperty<IShaderCollectionViewModel>();
+            if (shaderCollectionViewModel == null)
+            {
                 return;
+            }
 
-            // Submit request
-            var request = bus.Add<SetShaderInstrumentationMessage>();
-            request.shaderUID = GUID;
-            request.featureBitSet = state.FeatureBitMask;
+            // Find or create property
+            var shaderViewModel = shaderCollectionViewModel.GetPropertyWhere<ShaderViewModel>(x => x.Shader.GUID == Model.GUID);
+            if (shaderViewModel == null)
+            {
+                shaderCollectionViewModel.Properties.Add(shaderViewModel = new ShaderViewModel()
+                {
+                    Parent = shaderCollectionViewModel,
+                    ConnectionViewModel = shaderCollectionViewModel.ConnectionViewModel,
+                    Shader = Model
+                });
+            }
+            
+            // Pass down
+            shaderViewModel.SetInstrumentation(state);
         }
     }
 }

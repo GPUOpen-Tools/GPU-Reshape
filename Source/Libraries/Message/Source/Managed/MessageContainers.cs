@@ -146,8 +146,26 @@ namespace Message.CLR
             {
                 unsafe
                 {
-                    var Count = Array.Count;
-                    return Count > 0 ? Encoding.ASCII.GetString(Array.GetDataStart(), Count) : string.Empty;
+                    var count = Array.Count;
+                    return count > 0 ? Encoding.ASCII.GetString(Array.GetDataStart(), count) : string.Empty;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => SetString(value);
+        }
+
+        public void SetString(string value)
+        {
+            unsafe
+            {
+                byte[] bytes = Encoding.ASCII.GetBytes(value);
+                Debug.Assert(bytes.Length == Array.Count);
+                    
+                // Copy all bytes
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    Array.GetDataStart()[i] = bytes[i];
                 }
             }
         }

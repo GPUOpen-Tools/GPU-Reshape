@@ -19,9 +19,9 @@ using TextFormatter = Runtime.TextFormatter;
 
 namespace Studio.Views
 {
-    public partial class ConnectWindow : ReactiveWindow<ViewModels.ConnectViewModel>
+    public partial class PipelineFilter : ReactiveWindow<ViewModels.PipelineFilterViewModel>
     {
-        public ConnectWindow()
+        public PipelineFilter()
         {
             InitializeComponent();
 #if DEBUG
@@ -40,10 +40,10 @@ namespace Studio.Views
             this.WhenActivated(disposables => { });
             
             // On data context
-            this.WhenAnyValue(x => x.DataContext).CastNullable<ViewModels.ConnectViewModel>().Subscribe(x =>
+            this.WhenAnyValue(x => x.DataContext).CastNullable<ViewModels.PipelineFilterViewModel>().Subscribe(x =>
             {
                 // Bind interactions
-                x.AcceptClient.RegisterHandler(ctx =>
+                x.AcceptFilter.RegisterHandler(ctx =>
                 {
                     // Request closure
                     Close(true);
@@ -55,11 +55,6 @@ namespace Studio.Views
                 // Set decorators
                 AttributeSegments.Decorators = x.QueryDecorators;
             });
-
-            // Bind events
-            ConnectionGrid.Events().DoubleTapped
-                .ToSignal()
-                .Subscribe(x => VM?.Connect.Execute(null));
         }
 
         /// <summary>
@@ -107,11 +102,11 @@ namespace Studio.Views
         /// <summary>
         /// All suggestions
         /// </summary>
-        private string[] AutoSource = new[] { "ip:", "app:", "port:", "pid:", "api:" };
+        private string[] AutoSource = new[] { "type:", "name:" };
         
         /// <summary>
         /// View model helper
         /// </summary>
-        private ViewModels.ConnectViewModel? VM => DataContext as ViewModels.ConnectViewModel;
+        private ViewModels.PipelineFilterViewModel? VM => DataContext as ViewModels.PipelineFilterViewModel;
     }
 }

@@ -22,6 +22,7 @@ namespace Studio.Services
             ViewModel.Items.AddRange(new IContextMenuItemViewModel[]
             {
                 new InstrumentContextViewModel(),
+                new InstrumentPipelineFilterContextViewModel(),
                 new CloseContextViewModel()
             });
         }

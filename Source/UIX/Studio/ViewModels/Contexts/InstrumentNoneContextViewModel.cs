@@ -3,12 +3,13 @@ using System.Reactive;
 using System.Windows.Input;
 using Message.CLR;
 using ReactiveUI;
-using Studio.ViewModels.Workspace.Properties;
+using Runtime.Models.Objects;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
-    public class InstrumentContextViewModel : ReactiveObject, IInstrumentContextViewModel
+    public class InstrumentNoneContextViewModel : ReactiveObject, IInstrumentContextViewModel
     {
         /// <summary>
         /// Target view model of the context
@@ -26,7 +27,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Display header of this context model
         /// </summary>
-        public string Header { get; set; } = "Instrument";
+        public string Header { get; set; } = "None";
         
         /// <summary>
         /// All items within this context model
@@ -36,28 +37,43 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Target command
         /// </summary>
-        public ICommand? Command { get; } = null;
-
-        public InstrumentContextViewModel()
-        {
-            // Standard objects
-            Items.Add(new InstrumentNoneContextViewModel());
-            Items.Add(new InstrumentAllContextViewModel());
-        }
+        public ICommand Command { get; }
 
         /// <summary>
         /// Is this context enabled?
         /// </summary>
         public bool IsVisible
         {
-            get => _isVisible;
-            set => this.RaiseAndSetIfChanged(ref _isVisible, value);
+            get => _isEnabled;
+            set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
+        }
+
+        public InstrumentNoneContextViewModel()
+        {
+            Command = ReactiveCommand.Create(OnInvoked);
+        }
+
+        /// <summary>
+        /// Command implementation
+        /// </summary>
+        private void OnInvoked()
+        {
+            if (_targetViewModel is not IInstrumentableObject instrumentable)
+            {
+                return;
+            }
+
+            // Request instrumentation
+            instrumentable.SetInstrumentation(new InstrumentationState()
+            {
+                FeatureBitMask = 0u
+            });
         }
 
         /// <summary>
         /// Internal enabled state
         /// </summary>
-        private bool _isVisible = false;
+        private bool _isEnabled = false;
 
         /// <summary>
         /// Internal target view model

@@ -3,6 +3,7 @@
 #include <Backends/Vulkan/States/PipelineLayoutState.h>
 #include <Backends/Vulkan/States/RenderPassState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Controllers/InstrumentationController.h>
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo *pCreateInfos, const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
@@ -52,10 +53,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
             table->dependencies_shaderModulesPipelines.Add(shaderModuleState, state);
         }
 
-        // TODO: Register with instrumentation controller, in case there is already instrumentation
-
         // Store lookup
         table->states_pipeline.Add(pipelines[i], state);
+
+        // Inform the controller
+        table->instrumentationController->CreatePipeline(state);
     }
 
     // Writeout
@@ -102,10 +104,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
         // Add dependency, shader module -> pipeline
         table->dependencies_shaderModulesPipelines.Add(shaderModuleState, state);
 
-        // TODO: Register with instrumentation controller, in case there is already instrumentation
-
         // Store lookup
         table->states_pipeline.Add(pipelines[i], state);
+
+        // Inform the controller
+        table->instrumentationController->CreatePipeline(state);
     }
 
     // Writeout

@@ -57,6 +57,26 @@ namespace Studio.ViewModels.Workspace.Properties
 
             return default;
         }
+
+        /// <summary>
+        /// Get a property from a given type with a matching predecate
+        /// </summary>
+        /// <param name="self"></param>
+        /// <param name="predecate"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>null if not found</returns>
+        public static T? GetPropertyWhere<T>(this IPropertyViewModel self, Func<T, bool> predecate) where T : IPropertyViewModel
+        {
+            foreach (IPropertyViewModel propertyViewModel in self.Properties.Items)
+            {
+                if (propertyViewModel is T typed && predecate.Invoke(typed))
+                {
+                    return typed;
+                }
+            }
+
+            return default;
+        }
         
         /// <summary>
         /// Get a service from a given type
@@ -75,6 +95,33 @@ namespace Studio.ViewModels.Workspace.Properties
             }
 
             return default;
+        }
+
+        /// <summary>
+        /// Get the root property
+        /// </summary>
+        /// <param name="self"></param>
+        /// <returns></returns>
+        public static IPropertyViewModel GetRoot(this IPropertyViewModel self)
+        {
+            IPropertyViewModel vm = self;
+
+            // Keep rolling back
+            while (vm.Parent != null)
+            {
+                vm = vm.Parent;
+            }
+
+            return vm;
+        }
+
+        /// <summary>
+        /// Detach a given property from its parent
+        /// </summary>
+        /// <param name="self"></param>
+        public static void DetachFromParent(this IPropertyViewModel self)
+        {
+            self.Parent?.Properties.Remove(self);
         }
     }
 }

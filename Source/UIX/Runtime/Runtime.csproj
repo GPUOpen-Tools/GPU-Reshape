@@ -79,8 +79,4 @@
       <UpToDateCheckInput Remove="Views\Workspace\Properties\MessageCollectionView.axaml" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Models\Shader" />
-    </ItemGroup>
-
 </Project>

@@ -25,4 +25,22 @@
         </field>
         <field name="specialization" type="stream"/>
     </message>
+
+    <message name="SetOrAddFilteredPipelineInstrumentation">
+        <field name="guid" type="string">
+            Unique guid for this filter
+        </field>
+        <field name="type" type="uint32"/>
+        <field name="name" type="string"/>
+        <field name="featureBitSet" type="uint64">
+            Feature set to be enabled for the given pipelines
+        </field>
+        <field name="specialization" type="stream"/>
+    </message>
+
+    <message name="RemoveFilteredPipelineInstrumentation">
+        <field name="guid" type="string">
+            Unique guid for this filter
+        </field>
+    </message>
 </schema>

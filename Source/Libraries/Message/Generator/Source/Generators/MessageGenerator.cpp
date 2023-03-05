@@ -401,14 +401,14 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             }
 
             // Add allocation parameter
-            allocationParameters << "\t\t\tulong " << field.name << "Count;\n";
+            allocationParameters << "\t\t\tpublic ulong " << field.name << "Count;\n";
 
             // Add byte size
             byteSize << "\t\t\t\t\tsize += 16 + " << it->second.size << " * " << field.name << "Count" << ";\n";
 
             // Add patch
             patch << "\t\t\t\tself." << field.name << ".SetCount((int)" << field.name << "Count);\n";
-            patch << "\t\t\t\tself." << field.name << ".SetThisOffset(offset + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message)) - " << cxxSizeType << ");\n";
+            patch << "\t\t\t\tself." << field.name << ".SetThisOffset(offset + NativeSelfLength - " << cxxSizeType << ");\n";
             patch << "\t\t\t\toffset += " << field.name << "Count * " << it->second.size << "; \n\n";
 
             // Requires the dynamic schema
@@ -427,14 +427,14 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             cxxSizeType += 16;
         } else if (field.type ==  "string") {
             // Add allocation parameter
-            allocationParameters << "\t\t\tulong " << field.name << "Length;\n";
+            allocationParameters << "\t\t\tpublic ulong " << field.name << "Length;\n";
 
             // Add byte size
             byteSize << "\t\t\t\t\tsize += 16 + (ulong)Marshal.SizeOf(typeof(char)) * " << field.name << "Length" << ";\n";
 
             // Add patch
             patch << "\t\t\t\tself." << field.name << ".Array.SetCount((int)" << field.name << "Length);\n";
-            patch << "\t\t\t\tself." << field.name << ".Array.SetThisOffset(offset + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message)) - " << cxxSizeType << ");\n";
+            patch << "\t\t\t\tself." << field.name << ".Array.SetThisOffset(offset + NativeSelfLength - " << cxxSizeType << ");\n";
             patch << "\t\t\t\toffset += " << field.name << "Length * (ulong)Marshal.SizeOf(typeof(char)); \n\n";
 
             // Requires the dynamic schema
@@ -453,7 +453,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             cxxSizeType += 16;
         } else if (field.type ==  "stream") {
             // Add allocation parameter
-            allocationParameters << "\t\t\tulong " << field.name << "ByteSize;\n";
+            allocationParameters << "\t\t\tpublic ulong " << field.name << "ByteSize;\n";
 
             // Add byte size
             byteSize << "\t\t\t\t\tsize += 32 + (ulong)Marshal.SizeOf(typeof(char)) * " << field.name << "ByteSize" << ";\n";
@@ -462,7 +462,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             patch << "\t\t\t\tself." << field.name << ".Data.SetCount((int)" << field.name << "ByteSize);\n";
             patch << "\t\t\t\tself."
                   << field.name << ".Data.SetThisOffset(offset"
-                  << " + (ulong)Marshal.SizeOf(typeof(" << message.name << "Message))"
+                  << " + NativeSelfLength"
                   << " - " << cxxSizeType
                   << " - 16);\n";
             patch << "\t\t\t\toffset += " << field.name << "ByteSize * (ulong)Marshal.SizeOf(typeof(char)); \n\n";
@@ -532,6 +532,9 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
 
     // Message id
     out.types << "\t\t\tpublic uint ID => " << IDHash(message.name.c_str()) << "u;\n";
+
+    // Native length
+    out.types << "\n\t\t\tpublic static uint NativeSelfLength = " << cxxSizeType << "u;\n";
 
     // Byte size information
     out.types << "\n";

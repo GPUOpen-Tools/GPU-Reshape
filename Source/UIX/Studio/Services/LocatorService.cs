@@ -19,6 +19,7 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.SettingsViewModel), typeof(Views.SettingsWindow));
             AddDerived(typeof(ViewModels.AboutViewModel), typeof(Views.AboutWindow));
             AddDerived(typeof(ViewModels.ConnectViewModel), typeof(Views.ConnectWindow));
+            AddDerived(typeof(ViewModels.PipelineFilterViewModel), typeof(Views.PipelineFilter));
         }
 
         /// <summary>
