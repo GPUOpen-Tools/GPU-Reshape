@@ -15,7 +15,7 @@
         Foreground="{DynamicResource DockThemeForegroundBrush}"
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
-        Title="Dock Avalonia Demo" 
+        Title="GPU Reshape" 
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="PreferSystemChrome"
         id:DockProperties.IsDragEnabled="True" id:DockProperties.IsDropEnabled="True">

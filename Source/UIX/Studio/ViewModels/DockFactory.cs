@@ -94,7 +94,7 @@ namespace Studio.ViewModels
                 IsCollapsable = false,
                 ActiveDockable = welcome,
                 VisibleDockables = CreateList<IDockable>(welcome),
-                CanCreateDocument = true
+                CanCreateDocument = false
             };
 
             var centerLayout = new ProportionalDock
