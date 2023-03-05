@@ -138,8 +138,21 @@ private:
 
         // Consume enqueued data
         if (onRead) {
-            uint64_t consumed = onRead(*this, enqueuedBuffer.data(), enqueuedBuffer.size());
-            enqueuedBuffer.erase(enqueuedBuffer.begin(), enqueuedBuffer.begin() + consumed);
+            // Reduce removal until reads are done
+            uint64_t consumptionHead = 0;
+
+            // Consume all chunks possible
+            for (; !enqueuedBuffer.empty();) {
+                uint64_t consumed = onRead(*this, enqueuedBuffer.data() + consumptionHead, enqueuedBuffer.size() - consumptionHead);
+                if (!consumed) {
+                    break;
+                }
+
+                // Next!
+                consumptionHead += consumed;
+            }
+
+            enqueuedBuffer.erase(enqueuedBuffer.begin(), enqueuedBuffer.begin() + consumptionHead);
         }
 
         Read();
