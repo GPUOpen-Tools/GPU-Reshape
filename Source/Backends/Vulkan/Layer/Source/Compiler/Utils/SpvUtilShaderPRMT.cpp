@@ -160,6 +160,9 @@ SpvValueDecoration SpvUtilShaderPRMT::GetSourceResourceDecoration(IL::ID resourc
         default:
             ASSERT(false, "Backtracking not implemented for op-code");
             return {};
+        case IL::OpCode::AddressChain:
+            // TODO: Offset PUID by dynamic index
+            return GetSourceResourceDecoration(ref->As<IL::AddressChainInstruction>()->composite);
         case IL::OpCode::Load:
             return GetSourceResourceDecoration(ref->As<IL::LoadInstruction>()->address);
     }

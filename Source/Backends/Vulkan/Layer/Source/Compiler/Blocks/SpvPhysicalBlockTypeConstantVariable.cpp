@@ -270,6 +270,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                         break;
                     }
                 }
+                break;
             }
 
             case SpvOpConstant: {
