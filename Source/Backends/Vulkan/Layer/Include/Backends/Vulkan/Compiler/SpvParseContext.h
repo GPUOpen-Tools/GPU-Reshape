@@ -54,6 +54,11 @@ struct SpvParseContext {
         return instructionOffset < Get()->GetWordCount();
     }
 
+    /// Does the current instruction have any pending words?
+    uint32_t PendingWords() const {
+        return Get()->GetWordCount() - instructionOffset;
+    }
+
     /// Get the current instruction code
     /// \return word pointer
     const uint32_t* GetInstructionCode() const {

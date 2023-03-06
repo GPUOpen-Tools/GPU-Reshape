@@ -616,6 +616,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 // Create metadata
                 IdentifierMetadata& md = identifierMetadata.at(instr.result);
                 md.type = IdentifierType::CombinedImageSampler;
+                md.combinedImageSampler.type = ctx.GetResultType();
                 md.combinedImageSampler.image = ctx++;
                 md.combinedImageSampler.sampler = ctx++;
                 break;
@@ -643,10 +644,20 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 instr.ddx = IL::InvalidID;
                 instr.ddy = IL::InvalidID;
 
+                // Assign metadata
+                IdentifierMetadata& md = identifierMetadata.at(instr.result);
+                md.type = IdentifierType::SampleTexture;
+                md.sampleImage.combinedImageSampler = IL::InvalidID;
+
                 // Extract combined types if needed
-                if (IdentifierMetadata& md = identifierMetadata.at(instr.texture); md.type == IdentifierType::CombinedImageSampler) {
-                    instr.texture = md.combinedImageSampler.image;
-                    instr.sampler = md.combinedImageSampler.sampler;
+                if (IdentifierMetadata& combinedMd = identifierMetadata.at(instr.texture); combinedMd.type == IdentifierType::CombinedImageSampler) {
+                    // Set metadata
+                    md.sampleImage.combinedType = combinedMd.combinedImageSampler.type;
+                    md.sampleImage.combinedImageSampler = instr.texture;
+
+                    // Set instruction operands
+                    instr.texture = combinedMd.combinedImageSampler.image;
+                    instr.sampler = combinedMd.combinedImageSampler.sampler;
                 }
 
                 // Optional reference
@@ -671,22 +682,24 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 }
 
                 // Get mask, succeeding operands parsed in-order
-                uint32_t operandMask = ctx++;
+                if (ctx.HasPendingWords()) {
+                    uint32_t operandMask = ctx++;
 
-                // Implicit bias?
-                if (operandMask & SpvImageOperandsBiasMask) {
-                    instr.bias = ctx++;
-                }
+                    // Implicit bias?
+                    if (operandMask & SpvImageOperandsBiasMask) {
+                        instr.bias = ctx++;
+                    }
 
-                // Explicit LOD?
-                if (operandMask & SpvImageOperandsLodMask) {
-                    instr.lod = ctx++;
-                }
+                    // Explicit LOD?
+                    if (operandMask & SpvImageOperandsLodMask) {
+                        instr.lod = ctx++;
+                    }
 
-                // Explicit gradient?
-                if (operandMask & SpvImageOperandsGradMask) {
-                    instr.ddx = ctx++;
-                    instr.ddy = ctx++;
+                    // Explicit gradient?
+                    if (operandMask & SpvImageOperandsGradMask) {
+                        instr.ddx = ctx++;
+                        instr.ddy = ctx++;
+                    }
                 }
 
                 // Note: Ignore remaining parameters
@@ -744,6 +757,71 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 instr.result = IL::InvalidID;
                 instr.source = source;
                 instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpAccessChain: {
+                const uint32_t base = ctx++;
+
+                // Get type of composite
+                const auto* elementType = program.GetTypeMap().GetType(base);
+
+                // Number of address chains
+                const uint32_t chainCount = ctx.PendingWords();
+
+                // Allocate instruction
+                auto *instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(chainCount));
+                instr->opCode = IL::OpCode::AddressChain;
+                instr->result = ctx.GetResult();
+                instr->source = source;
+                instr->composite = base;
+                instr->chains.count = chainCount;
+
+                // Start unwrapping from value type
+                elementType = elementType->As<Backend::IL::PointerType>()->pointee;
+
+                // Handle all cases
+                for (uint32_t i = 0; i < chainCount; i++) {
+                    const uint32_t nextChainId = ctx++;
+
+                    // Constant indexing into struct?
+                    switch (elementType->kind) {
+                        default: {
+                            ASSERT(false, "Unexpected access chain type");
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Vector: {
+                            elementType = elementType->As<Backend::IL::VectorType>()->containedType;
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Matrix: {
+                            elementType = elementType->As<Backend::IL::MatrixType>()->containedType;
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Pointer:{
+                            elementType = elementType->As<Backend::IL::PointerType>()->pointee;
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Array:{
+                            elementType = elementType->As<Backend::IL::ArrayType>()->elementType;
+                            break;
+                        }
+                        case Backend::IL::TypeKind::Struct: {
+                            const Backend::IL::Constant* constant = program.GetConstants().GetConstant(nextChainId);
+                            ASSERT(constant, "Access chain struct chains must be constant");
+
+                            uint32_t memberIdx = static_cast<uint32_t>(constant->As<Backend::IL::IntConstant>()->value);
+                            elementType = elementType->As<Backend::IL::StructType>()->memberTypes[memberIdx];
+                            break;
+                        }
+                    }
+
+                    // Set index
+                    instr->chains[i].index = nextChainId;
+                }
+
+                // OK
                 basicBlock->Append(instr);
                 break;
             }
@@ -833,6 +911,65 @@ bool SpvPhysicalBlockFunction::CompileFunction(SpvIdMap &idMap, IL::Function &fn
     return true;
 }
 
+bool SpvPhysicalBlockFunction::IsTriviallyCopyableSpecial(IL::BasicBlock *bb, const IL::BasicBlock::Iterator& it) {
+    const bool sourceRequest = it->source.TriviallyCopyable();
+
+    switch (it->opCode) {
+        default: {
+            return sourceRequest;
+        }
+        case IL::OpCode::SampleTexture: {
+            // If not source
+            if (!sourceRequest) {
+                return false;
+            }
+
+            // Get metadata
+            const IdentifierMetadata& samplerMetadata = identifierMetadata.at(it->result);
+            ASSERT(samplerMetadata.type == IdentifierType::SampleTexture, "Unexpected metadata");
+
+            // Not combine sampler?
+            if (samplerMetadata.sampleImage.combinedImageSampler == IL::InvalidID) {
+                return true;
+            }
+
+            // Trivially copyable
+            IL::InstructionRef<> ref = program.GetIdentifierMap().Get(samplerMetadata.sampleImage.combinedImageSampler);
+            return ref.basicBlock == bb;
+        }
+    }
+}
+
+IL::ID SpvPhysicalBlockFunction::MigrateCombinedImageSampler(SpvStream &stream, SpvIdMap &idMap, IL::BasicBlock *bb, const IL::SampleTextureInstruction *instr) {
+    // Get metadata
+    const IdentifierMetadata& samplerMetadata = identifierMetadata.at(instr->result);
+    ASSERT(samplerMetadata.type == IdentifierType::SampleTexture, "Unexpected metadata");
+
+    // Not combine sampler?
+    if (samplerMetadata.sampleImage.combinedImageSampler == IL::InvalidID) {
+        return idMap.Get(instr->texture);
+    }
+
+    // If within the same block, no need to migrate
+    IL::InstructionRef<> ref = program.GetIdentifierMap().Get(samplerMetadata.sampleImage.combinedImageSampler);
+    if (ref.basicBlock == bb) {
+        return idMap.Get(instr->texture);
+    }
+
+    // Allocate id
+    IL::ID id = table.scan.header.bound++;
+
+    // Migrate combined sampler
+    SpvInstruction& spv = stream.Allocate(SpvOpSampledImage, 5);
+    spv[1] = samplerMetadata.sampleImage.combinedType;
+    spv[2] = id;
+    spv[3] = idMap.Get(instr->texture);
+    spv[4] = idMap.Get(instr->sampler);
+
+    // OK
+    return id;
+}
+
 bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& fn, IL::BasicBlock *bb, bool isModifiedScope) {
     SpvStream& stream = block->stream;
 
@@ -862,7 +999,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
     // Emit all backend instructions
     for (auto instr = bb->begin(); instr != bb->end(); instr++) {
         // If trivial, just copy it directly
-        if (instr->source.TriviallyCopyable()) {
+        if (IsTriviallyCopyableSpecial(bb, instr)) {
             stream.Template(instr->source);
             continue;
         }
@@ -889,6 +1026,105 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                 spv[2] = literal->result;
                 spv[3] = static_cast<uint32_t>(literal->value.integral);
+                break;
+            }
+            case IL::OpCode::SampleTexture: {
+                auto *sampleTexture = instr.As<IL::SampleTextureInstruction>();
+
+                // Migrate combined states
+                IL::ID imageId = MigrateCombinedImageSampler(stream, idMap, bb, sampleTexture);
+
+                // Get the texture type
+                const auto* textureType = ilTypeMap.GetType(sampleTexture->texture)->As<Backend::IL::TextureType>();
+
+                // Total operand count
+                uint32_t opCount = 0;
+
+                // Translate op
+                SpvOp op;
+                switch (sampleTexture->sampleMode) {
+                    default: {
+                        ASSERT(false, "Invalid sample mode");
+                        op = SpvOpImageSampleImplicitLod;
+                        opCount += 5;
+                        break;
+                    }
+                    case Backend::IL::TextureSampleMode::Default: {
+                        op = sampleTexture->lod == IL::InvalidID ? SpvOpImageSampleImplicitLod : SpvOpImageSampleExplicitLod;
+                        opCount += 5;
+                        break;
+                    }
+                    case Backend::IL::TextureSampleMode::DepthComparison: {
+                        op = sampleTexture->lod == IL::InvalidID ? SpvOpImageSampleDrefImplicitLod : SpvOpImageSampleDrefExplicitLod;
+                        opCount += 6;
+                        break;
+                    }
+                    case Backend::IL::TextureSampleMode::Projection: {
+                        op = sampleTexture->lod == IL::InvalidID ? SpvOpImageSampleProjImplicitLod : SpvOpImageSampleProjExplicitLod;
+                        opCount += 5;
+                        break;
+                    }
+                    case Backend::IL::TextureSampleMode::ProjectionDepthComparison: {
+                        op = sampleTexture->lod == IL::InvalidID ? SpvOpImageSampleProjDrefImplicitLod : SpvOpImageSampleProjDrefExplicitLod;
+                        opCount += 6;
+                        break;
+                    }
+                }
+                
+                // Additional operands
+                uint32_t imageOperandCount = 0;
+                imageOperandCount += sampleTexture->bias != IL::InvalidID;
+                imageOperandCount += sampleTexture->lod != IL::InvalidID;
+                imageOperandCount += sampleTexture->ddx != IL::InvalidID;
+
+                // Operand mask
+                if (imageOperandCount) {
+                    opCount += imageOperandCount + 1;
+                }
+
+                // Current offset
+                uint32_t offset = 1;
+
+                // Load image
+                SpvInstruction& spv = stream.TemplateOrAllocate(op, opCount, instr->source);
+                spv[offset++] = table.typeConstantVariable.typeMap.GetSpvTypeId(Backend::IL::Splat(program, textureType->sampledType, 4u));
+                spv[offset++] = sampleTexture->result;
+                spv[offset++] = imageId;
+                spv[offset++] = idMap.Get(sampleTexture->coordinate);
+
+                // Has reference value?
+                if (sampleTexture->sampleMode == Backend::IL::TextureSampleMode::DepthComparison ||
+                    sampleTexture->sampleMode == Backend::IL::TextureSampleMode::ProjectionDepthComparison) {
+                    spv[offset++] = idMap.Get(sampleTexture->reference);
+                }
+
+                // Additional operands?
+                if (imageOperandCount) {
+                    // Emit mask
+                    uint32_t& mask = spv[offset++] = 0;
+                    mask |= (sampleTexture->bias != IL::InvalidID) * SpvImageOperandsBiasMask;
+                    mask |= (sampleTexture->lod != IL::InvalidID) * SpvImageOperandsLodMask;
+                    mask |= (sampleTexture->ddx != IL::InvalidID) * SpvImageOperandsGradMask;
+
+                    // Given bias?
+                    if (sampleTexture->bias != IL::InvalidID) {
+                        spv[offset++] = idMap.Get(sampleTexture->bias);
+                    }
+
+                    // Given LOD?
+                    if (sampleTexture->lod != IL::InvalidID) {
+                        spv[offset++] = idMap.Get(sampleTexture->lod);
+                    }
+
+                    // Given gradient?
+                    if (sampleTexture->ddx != IL::InvalidID) {
+                        spv[offset++] = idMap.Get(sampleTexture->ddx);
+                        spv[offset++] = idMap.Get(sampleTexture->ddy);
+                    }
+                }
+
+                // Validate
+                ASSERT(offset == opCount, "Unexpected operand offset");
                 break;
             }
             case IL::OpCode::LoadTexture: {

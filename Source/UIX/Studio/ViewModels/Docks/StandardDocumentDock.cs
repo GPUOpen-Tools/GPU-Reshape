@@ -42,7 +42,7 @@ namespace Studio.ViewModels.Docks
         private void OnCreateDocument(IDescriptor descriptor)
         {
             // Valid state?
-            if (!CanCreateDocument || descriptor.Identifier == null)
+            if (descriptor.Identifier == null)
             {
                 return;
             }

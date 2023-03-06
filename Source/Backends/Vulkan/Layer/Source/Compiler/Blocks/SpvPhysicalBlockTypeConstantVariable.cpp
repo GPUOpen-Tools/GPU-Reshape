@@ -221,6 +221,105 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 typeMap.AddType(ctx.GetResult(), Backend::IL::UnexposedType{});
                 break;
             }
+
+            case SpvOpConstantTrue: {
+                const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
+
+                // Add constant
+                program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                    .value = true
+                });
+                break;
+            }
+
+            case SpvOpConstantFalse: {
+                const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
+
+                // Add constant
+                program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                    .value = false
+                });
+                break;
+            }
+
+            case SpvOpConstantNull: {
+                const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
+
+                // Add constant
+                switch (type->kind) {
+                    default: {
+                        program.GetConstants().AddUnsortedConstant(ctx.GetResult(), type, Backend::IL::UnexposedConstant {});
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Bool: {
+                        program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                            .value = 0
+                        });
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Int: {
+                        program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
+                            .value = 0
+                        });
+                        break;
+                    }
+                    case Backend::IL::TypeKind::FP: {
+                        program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
+                            .value = 0.0
+                        });
+                        break;
+                    }
+                }
+            }
+
+            case SpvOpConstant: {
+                const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
+
+                // Add constant
+                switch (type->kind) {
+                    default: {
+                        program.GetConstants().AddUnsortedConstant(ctx.GetResult(), type, Backend::IL::UnexposedConstant {});
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Bool: {
+                        program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                            .value = static_cast<bool>(ctx++)
+                        });
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Int: {
+                        // Get type
+                        const auto* _type = type->As<Backend::IL::IntType>();
+
+                        // Read chunks
+                        int64_t value = 0;
+                        for (uint32_t i = 0; i < _type->bitWidth; i += 32) {
+                            value |= (ctx++) << (32 * i);
+                        }
+                        
+                        program.GetConstants().AddConstant(ctx.GetResult(), _type, Backend::IL::IntConstant {
+                            .value = value
+                        });
+                        break;
+                    }
+                    case Backend::IL::TypeKind::FP: {
+                        // Get type
+                        const auto* _type = type->As<Backend::IL::FPType>();
+
+                        // Read chunks
+                        uint64_t value = 0;
+                        for (uint32_t i = 0; i < _type->bitWidth; i += 32) {
+                            value |= (ctx++) << (32 * i);
+                        }
+                        
+                        program.GetConstants().AddConstant(ctx.GetResult(), _type, Backend::IL::FPConstant {
+                            .value = std::bit_cast<double>(value)
+                        });
+                        break;
+                    }
+                }
+                break;
+            }
         }
 
         // Next instruction

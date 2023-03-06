@@ -86,10 +86,27 @@ private:
     void CreateDataLookups(SpvStream& stream, SpvIdMap& idMap);
 
 private:
+    /// Check if a given instruction is trivially copyable, including special instructions which
+    /// may require recompilation.
+    /// \param bb source basic block
+    /// \param it instruction iterator
+    /// \return true if trivially copyable
+    bool IsTriviallyCopyableSpecial(IL::BasicBlock *bb, const IL::BasicBlock::Iterator& it);
+
+    /// Migrate a combined image sampler state
+    /// \param stream source stream
+    /// \param idMap compilation identifier map
+    /// \param bb source basic block
+    /// \param instr sampling instruction
+    /// \return image identifier
+    IL::ID MigrateCombinedImageSampler(SpvStream &stream, SpvIdMap &idMap, IL::BasicBlock *bb, const IL::SampleTextureInstruction *instr);
+    
+private:
     /// Identifier type
     enum class IdentifierType {
         None,
         CombinedImageSampler,
+        SampleTexture
     };
 
     /// Single identifier metadata
@@ -100,9 +117,15 @@ private:
         /// Payload
         union {
             struct {
+                IL::ID type;
                 IL::ID image;
                 IL::ID sampler;
             } combinedImageSampler;
+
+            struct {
+                IL::ID combinedType;
+                IL::ID combinedImageSampler;
+            } sampleImage;
         };
     };
 
