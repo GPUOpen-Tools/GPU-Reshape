@@ -214,7 +214,7 @@ static void CommitCompute(CommandBufferObject* commandBuffer) {
                 commandBuffer->object,
                 commandBuffer->context.pipeline->layout->object,
                 VK_SHADER_STAGE_ALL,
-                commandBuffer->context.pipeline->layout->userPushConstantOffset + index,
+                commandBuffer->context.pipeline->layout->dataPushConstantOffset + index,
                 sizeof(uint32_t),
                 commandBuffer->userContext.eventStack.GetData() + index
             );
@@ -246,7 +246,7 @@ static void CommitGraphics(CommandBufferObject* commandBuffer) {
                 commandBuffer->object,
                 commandBuffer->context.pipeline->layout->object,
                 VK_SHADER_STAGE_ALL,
-                commandBuffer->context.pipeline->layout->userPushConstantOffset + index,
+                commandBuffer->context.pipeline->layout->dataPushConstantOffset + index,
                 sizeof(uint32_t),
                 commandBuffer->userContext.eventStack.GetData() + index
             );

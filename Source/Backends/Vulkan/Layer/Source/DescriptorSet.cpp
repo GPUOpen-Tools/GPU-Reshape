@@ -319,7 +319,12 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
     // User push constant offset
-    uint32_t userPushConstantOffset = 0;
+    uint32_t userPushConstantLength = 0;
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    uint32_t prmtPushConstantOffset = 0;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+    uint32_t dataPushConstantOffset = 0;
+    uint32_t dataPushConstantLength = 0;
 
     // If we have exhausted all the sets, we can't add further records
     bool exhausted = pCreateInfo->setLayoutCount >= table->physicalDeviceProperties.limits.maxBoundDescriptorSets;
@@ -345,10 +350,13 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
         uint32_t eventCount{0};
         table->dataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
 
+        // To length
+        dataPushConstantLength += eventCount * sizeof(uint32_t);
+
         // Append after all user PCs
         for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
             const VkPushConstantRange& userRange = pCreateInfo->pPushConstantRanges[i];
-            userPushConstantOffset = std::max(userPushConstantOffset, userRange.offset + userRange.size);
+            userPushConstantLength = std::max(userPushConstantLength, userRange.offset + userRange.size);
         }
 
         // Mirror creation info
@@ -357,12 +365,25 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
         createInfo.pSetLayouts = setLayouts;
         createInfo.pPushConstantRanges = ranges;
 
+        // Instrumented length
+        uint32_t extendedPushConstantLength = userPushConstantLength;
+
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+        // Take single dword for PRMT sub-segment offset
+        prmtPushConstantOffset = extendedPushConstantLength;
+        extendedPushConstantLength += sizeof(uint32_t);
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
+        // Allocate extended length
+        dataPushConstantOffset = extendedPushConstantLength;
+        extendedPushConstantLength += dataPushConstantLength;
+
         // Any data?
-        if (eventCount > 0) {
+        if (extendedPushConstantLength > userPushConstantLength) {
             // Append internal PC range
             VkPushConstantRange& range = ranges[pCreateInfo->pushConstantRangeCount];
-            range.offset = userPushConstantOffset;
-            range.size = eventCount * sizeof(uint32_t);
+            range.offset = userPushConstantLength;
+            range.size = extendedPushConstantLength - userPushConstantLength;
             range.stageFlags = VK_SHADER_STAGE_ALL;
 
             // Count
@@ -401,7 +422,12 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
 
     // Binding info
     state->boundUserDescriptorStates = pCreateInfo->setLayoutCount;
-    state->userPushConstantOffset = userPushConstantOffset;
+    state->userPushConstantLength = userPushConstantLength;
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    state->prmtPushConstantOffset = prmtPushConstantOffset;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+    state->dataPushConstantOffset = dataPushConstantOffset;
+    state->dataPushConstantLength = dataPushConstantLength;
 
     // Store lookup
     table->states_pipelineLayout.Add(*pPipelineLayout, state);

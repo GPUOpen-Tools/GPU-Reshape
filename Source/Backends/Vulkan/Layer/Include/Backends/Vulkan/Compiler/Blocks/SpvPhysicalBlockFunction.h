@@ -38,22 +38,25 @@ struct SpvPhysicalBlockFunction : public SpvPhysicalBlockSection {
     void ParseFunctionBody(IL::Function *function, SpvParseContext &ctx);
 
     /// Compile the physical block
+    /// \param job source job
     /// \param idMap
     /// \return success state
     bool Compile(const SpvJob& job, SpvIdMap& idMap);
 
     /// Compile a function
+    /// \param job source job
     /// \param idMap the shared identifier map for proxies
     /// \param fn the function to be compiled
     /// \param emitDefinition if true, the definition body will get emitted
     /// \return success state
-    bool CompileFunction(SpvIdMap& idMap, IL::Function& fn, bool emitDefinition);
+    bool CompileFunction(const SpvJob& job, SpvIdMap& idMap, IL::Function& fn, bool emitDefinition);
 
     /// Compile a basic block
+    /// \param job source job
     /// \param idMap the shared identifier map for proxies
     /// \param bb the basic block to be recompiled
     /// \return success state
-    bool CompileBasicBlock(SpvIdMap& idMap, IL::Function& fn, IL::BasicBlock* bb, bool isModifiedScope);
+    bool CompileBasicBlock(const SpvJob& job, SpvIdMap& idMap, IL::Function& fn, IL::BasicBlock* bb, bool isModifiedScope);
 
     /// Copy to a new block
     /// \param remote the remote table
@@ -78,12 +81,13 @@ private:
 
     /// Create the user fed PC map
     /// \param job parent job
-    void CreateDataPCMap(const SpvJob& job);
+    void CreatePCMap(const SpvJob& job);
 
     /// Create the data lookups
+    /// \param job parent job
     /// \param stream function scope
     /// \param idMap identifier map to be used for the current scope
-    void CreateDataLookups(SpvStream& stream, SpvIdMap& idMap);
+    void CreateDataLookups(const SpvJob& job, SpvStream& stream, SpvIdMap& idMap);
 
 private:
     /// Check if a given instruction is trivially copyable, including special instructions which

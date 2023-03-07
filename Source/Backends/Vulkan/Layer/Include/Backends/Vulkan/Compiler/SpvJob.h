@@ -10,4 +10,7 @@ struct SpvJob {
 
     /// Layout information
     PipelineLayoutBindingInfo bindingInfo{};
+
+    /// Sets up PRMT data for user descriptor mapping
+    bool requiresUserDescriptorMapping{true};
 };

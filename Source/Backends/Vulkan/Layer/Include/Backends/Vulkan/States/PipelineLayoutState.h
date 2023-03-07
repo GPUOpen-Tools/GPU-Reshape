@@ -39,8 +39,17 @@ struct PipelineLayoutState : public ReferenceObject {
     /// Number of descriptor sets for the user
     uint32_t boundUserDescriptorStates{0};
 
-    /// Push constant offset
-    uint32_t userPushConstantOffset{0};
+    /// User push constant length
+    uint32_t userPushConstantLength{0};
+
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    /// PRMT push constant offset
+    uint32_t prmtPushConstantOffset{0};
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
+    /// Data push constant offset
+    uint32_t dataPushConstantOffset{0};
+    uint32_t dataPushConstantLength{0};
 
     /// Unique identifier, unique for the type
     uint64_t uid;

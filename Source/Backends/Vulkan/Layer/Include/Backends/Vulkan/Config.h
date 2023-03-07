@@ -3,9 +3,11 @@
 /// Diagnostic logging on/off?
 #ifndef NDEBUG
 #   define VK_DIAGNOSTIC 1
-#else
+#else // NDEBUG
 #   define VK_DIAGNOSTIC 0
-#endif
+#endif // NDEBUG
+
+/** Debugging **/
 
 /// Log allocations
 #define LOG_ALLOCATION (VK_DIAGNOSTIC && 0)
@@ -28,7 +30,18 @@
 #define SHADER_COMPILER_DEBUG_FILE (VK_DIAGNOSTIC && 0)
 
 /// Enable debugging mode for shader compiler
-#define SHADER_COMPILER_DEBUG (VK_DIAGNOSTIC && 0)
+#define SHADER_COMPILER_DEBUG (VK_DIAGNOSTIC && 1)
 
 /// Enable tracking of bound descriptor sets for debugging
 #define TRACK_DESCRIPTOR_SETS (VK_DIAGNOSTIC && 0)
+
+/** Options **/
+
+/// Use dynamic uniform buffer objects for PRMT binding
+#define PRMT_METHOD_UB_DYNAMIC 0
+
+/// Use uniform buffer objects with push constant offsets for PRMT binding
+#define PRMT_METHOD_UB_PC  1
+
+/// Current PRMT method
+#define PRMT_METHOD PRMT_METHOD_UB_PC

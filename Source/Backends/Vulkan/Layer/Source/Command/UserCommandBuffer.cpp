@@ -39,7 +39,7 @@ static void ReconstructPushConstantState(CommandBufferObject* commandBuffer, con
     ShaderExportPipelineBindState& bindState = commandBuffer->streamState->pipelineBindPoints[static_cast<uint32_t>(PipelineType::Compute)];
 
     // Relevant bind state?
-    if (!bindState.pipeline || bindState.pipeline->layout->userPushConstantOffset == 0) {
+    if (!bindState.pipeline || bindState.pipeline->layout->dataPushConstantLength == 0) {
         return;
     }
 
@@ -49,7 +49,7 @@ static void ReconstructPushConstantState(CommandBufferObject* commandBuffer, con
         bindState.pipeline->layout->object,
         VK_SHADER_STAGE_COMPUTE_BIT,
         0u,
-        bindState.pipeline->layout->userPushConstantOffset,
+        bindState.pipeline->layout->dataPushConstantOffset,
         commandBuffer->streamState->persistentPushConstantData.data()
     );
 }

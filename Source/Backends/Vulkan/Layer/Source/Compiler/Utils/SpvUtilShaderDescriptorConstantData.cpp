@@ -108,6 +108,11 @@ IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorOffset(SpvStream& strea
 
     // Constant identifiers
     uint32_t zeroUintId = table.scan.header.bound++;
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    uint32_t fourUintId = table.scan.header.bound++;
+    uint32_t indexId = table.scan.header.bound++;
+    uint32_t indexWithOffsetId = table.scan.header.bound++;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
     uint32_t rowUintId = table.scan.header.bound++;
     uint32_t columnUintId = table.scan.header.bound++;
 
@@ -121,6 +126,40 @@ IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorOffset(SpvStream& strea
     spvZero[2] = zeroUintId;
     spvZero[3] = 0;
 
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    // 4
+    SpvInstruction &spvFour = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+    spvFour[1] = uintTypeId;
+    spvFour[2] = fourUintId;
+    spvFour[3] = 4;
+
+    // Index
+    SpvInstruction &spvIndex = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+    spvIndex[1] = uintTypeId;
+    spvIndex[2] = indexId;
+    spvIndex[3] = index;
+
+    // Offset index (PCID + DescriptorSetOffset)
+    SpvInstruction& spvOffsetIndex = stream.Allocate(SpvOpIAdd, 5);
+    spvOffsetIndex[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+    spvOffsetIndex[2] = indexWithOffsetId;
+    spvOffsetIndex[3] = indexId;
+    spvOffsetIndex[4] = pcId;
+
+    // Row
+    SpvInstruction &spvRow = stream.Allocate(SpvOpUDiv, 5);
+    spvRow[1] = uintTypeId;
+    spvRow[2] = rowUintId;
+    spvRow[3] = indexWithOffsetId;
+    spvRow[4] = fourUintId;
+
+    // Column
+    SpvInstruction &spvColumn = stream.Allocate(SpvOpUMod, 5);
+    spvColumn[1] = uintTypeId;
+    spvColumn[2] = columnUintId;
+    spvColumn[3] = indexWithOffsetId;
+    spvColumn[4] = fourUintId;
+#else // PRMT_METHOD == PRMT_METHOD_UB_PC
     // Row
     SpvInstruction &spvRow = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
     spvRow[1] = uintTypeId;
@@ -132,6 +171,7 @@ IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorOffset(SpvStream& strea
     spvColumn[1] = uintTypeId;
     spvColumn[2] = columnUintId;
     spvColumn[3] = index % 4;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
 
     // Address identifier
     uint32_t addressId = table.scan.header.bound++;

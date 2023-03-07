@@ -268,8 +268,32 @@ void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBind
 
             // Set current for successive binds
             bindState.currentSegment = allocation;
+
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+            // Bind the new export
+            table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
+                commandBuffer->object,
+                bindPoint, bindState.pipeline->layout->object,
+                bindState.pipeline->layout->boundUserDescriptorStates, 1u, &bindState.currentSegment.info.set,
+                0u, nullptr
+            );
+#endif  // PRMT_METHOD == PRMT_METHOD_UB_PC
         }
 
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+        // Descriptor dynamic offset
+        uint32_t dynamicOffset = static_cast<uint32_t>(bindState.descriptorDataAllocator->GetSegmentDynamicOffset());
+
+        // Update offset
+        table->commandBufferDispatchTable.next_vkCmdPushConstants(
+            commandBuffer->object,
+            bindState.pipeline->layout->object,
+            VK_SHADER_STAGE_ALL,
+            bindState.pipeline->layout->prmtPushConstantOffset,
+            sizeof(uint32_t),
+            &dynamicOffset
+        );
+#else // PRMT_METHOD == PRMT_METHOD_UB_PC
         // Descriptor dynamic offset
         uint32_t dynamicOffset = static_cast<uint32_t>(bindState.descriptorDataAllocator->GetSegmentDynamicOffset());
 
@@ -280,6 +304,7 @@ void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBind
             bindState.pipeline->layout->boundUserDescriptorStates, 1u, &bindState.currentSegment.info.set,
             1u, &dynamicOffset
         );
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
     }
 
     // Begin new segment
@@ -356,6 +381,28 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, Pipe
             break;
     }
 
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    // Descriptor dynamic offset
+    uint32_t dynamicOffset = static_cast<uint32_t>(bindState.descriptorDataAllocator->GetSegmentDynamicOffset());
+
+    // Bind the export
+    table->commandBufferDispatchTable.next_vkCmdBindDescriptorSets(
+        commandBuffer->object,
+        vkBindPoint, layout,
+        slot, 1u, &bindState.currentSegment.info.set,
+        0u, nullptr
+    );
+
+    // Update offset
+    table->commandBufferDispatchTable.next_vkCmdPushConstants(
+        commandBuffer->object,
+        bindState.pipeline->layout->object,
+        VK_SHADER_STAGE_ALL,
+        bindState.pipeline->layout->prmtPushConstantOffset,
+        sizeof(uint32_t),
+        &dynamicOffset
+    );
+#else // PRMT_METHOD == PRMT_METHOD_UB_PC
     // Descriptor dynamic offset
     uint32_t dynamicOffset = static_cast<uint32_t>(bindState.descriptorDataAllocator->GetSegmentDynamicOffset());
 
@@ -366,6 +413,7 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, Pipe
         slot, 1u, &bindState.currentSegment.info.set,
         1u, &dynamicOffset
     );
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
 }
 
 void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, const PipelineState *pipeline, CommandBufferObject* commandBuffer) {

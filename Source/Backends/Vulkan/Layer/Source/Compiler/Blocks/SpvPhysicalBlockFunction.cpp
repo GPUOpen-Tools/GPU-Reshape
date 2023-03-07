@@ -848,11 +848,11 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 bool SpvPhysicalBlockFunction::Compile(const SpvJob& job, SpvIdMap &idMap) {
     // Create data associations
     CreateDataResourceMap(job);
-    CreateDataPCMap(job);
+    CreatePCMap(job);
 
     // Compile all function declarations
     for (IL::Function* fn : program.GetFunctionList()) {
-        if (!CompileFunction(idMap, *fn, true)) {
+        if (!CompileFunction(job, idMap, *fn, true)) {
             return false;
         }
     }
@@ -870,7 +870,7 @@ bool SpvPhysicalBlockFunction::Compile(const SpvJob& job, SpvIdMap &idMap) {
     return true;
 }
 
-bool SpvPhysicalBlockFunction::CompileFunction(SpvIdMap &idMap, IL::Function &fn, bool emitDefinition) {
+bool SpvPhysicalBlockFunction::CompileFunction(const SpvJob& job, SpvIdMap &idMap, IL::Function &fn, bool emitDefinition) {
     const Backend::IL::FunctionType* type = fn.GetFunctionType();
     ASSERT(type, "Function without a given type");
 
@@ -898,7 +898,7 @@ bool SpvPhysicalBlockFunction::CompileFunction(SpvIdMap &idMap, IL::Function &fn
         }
 
         for (IL::BasicBlock* basicBlock : fn.GetBasicBlocks()) {
-            if (!CompileBasicBlock(idMap, fn, basicBlock, isModifiedScope)) {
+            if (!CompileBasicBlock(job, idMap, fn, basicBlock, isModifiedScope)) {
                 return false;
             }
         }
@@ -970,7 +970,7 @@ IL::ID SpvPhysicalBlockFunction::MigrateCombinedImageSampler(SpvStream &stream, 
     return id;
 }
 
-bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& fn, IL::BasicBlock *bb, bool isModifiedScope) {
+bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &idMap, IL::Function& fn, IL::BasicBlock *bb, bool isModifiedScope) {
     SpvStream& stream = block->stream;
 
     Backend::IL::TypeMap& ilTypeMap = program.GetTypeMap();
@@ -992,7 +992,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(SpvIdMap &idMap, IL::Function& 
         // Has the function been modified?
         if (isModifiedScope) {
             // Create user data ids
-            CreateDataLookups(block->stream, idMap);
+            CreateDataLookups(job, block->stream, idMap);
         }
     }
 
@@ -2106,7 +2106,7 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
     }
 }
 
-void SpvPhysicalBlockFunction::CreateDataPCMap(const SpvJob &job) {
+void SpvPhysicalBlockFunction::CreatePCMap(const SpvJob &job) {
     // Get data map
     IL::ShaderDataMap& shaderDataMap = program.GetShaderDataMap();
 
@@ -2115,6 +2115,12 @@ void SpvPhysicalBlockFunction::CreateDataPCMap(const SpvJob &job) {
 
     // Requested dword count
     uint32_t dwordCount = 0;
+
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    if (job.requiresUserDescriptorMapping) {
+        dwordCount++;
+    }
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
 
     // Aggregate dword count
     for (const ShaderDataInfo& info : shaderDataMap) {
@@ -2177,7 +2183,7 @@ void SpvPhysicalBlockFunction::CreateDataPCMap(const SpvJob &job) {
     }
 }
 
-void SpvPhysicalBlockFunction::CreateDataLookups(SpvStream& stream, SpvIdMap& idMap) {
+void SpvPhysicalBlockFunction::CreateDataLookups(const SpvJob& job, SpvStream& stream, SpvIdMap& idMap) {
     if (!pcBlockType) {
         return;
     }
@@ -2206,6 +2212,23 @@ void SpvPhysicalBlockFunction::CreateDataLookups(SpvStream& stream, SpvIdMap& id
     // Current dword offset
     uint32_t dwordOffset = 0;
 
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    if (job.requiresUserDescriptorMapping) {
+        // Id allocations
+        IL::ID pcId = table.scan.header.bound++;
+
+        // Fetch dword
+        SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
+        spvExtract[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(intType);
+        spvExtract[2] = pcId;
+        spvExtract[3] = pcBlockLoadId;
+        spvExtract[4] = dwordOffset++;
+
+        // Assign to PRMT
+        table.shaderDescriptorConstantData.SetPCID(pcId);
+    }
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
     // Aggregate dword count
     for (const ShaderDataInfo& info : shaderDataMap) {
         if (info.type != ShaderDataType::Event) {
@@ -2218,7 +2241,7 @@ void SpvPhysicalBlockFunction::CreateDataLookups(SpvStream& stream, SpvIdMap& id
         // Id allocations
         IL::ID pcRedirect = table.scan.header.bound++;
 
-        // Fetch texel
+        // Fetch dword
         SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
         spvExtract[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(intType);
         spvExtract[2] = pcRedirect;

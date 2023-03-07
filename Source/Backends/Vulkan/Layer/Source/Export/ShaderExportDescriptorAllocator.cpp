@@ -80,7 +80,11 @@ bool ShaderExportDescriptorAllocator::Install() {
 
     // Binding for descriptor data
     VkDescriptorSetLayoutBinding& descriptorDataLayout = bindings.Add({});
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    descriptorDataLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+#else // PRMT_METHOD == PRMT_METHOD_UB_PC
     descriptorDataLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
     descriptorDataLayout.stageFlags = VK_SHADER_STAGE_ALL;
     descriptorDataLayout.descriptorCount = 1;
     descriptorDataLayout.binding = bindingInfo.descriptorDataDescriptorOffset;
@@ -282,7 +286,11 @@ ShaderExportDescriptorAllocator::PoolInfo &ShaderExportDescriptorAllocator::Find
 
         // Descriptor
         {
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+#else // PRMT_METHOD == PRMT_METHOD_UB_PC
             .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
             .descriptorCount = 1u * setsPerPool
         },
     };
@@ -346,7 +354,11 @@ void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentD
     if (descriptorChunk) {
         // Write descriptor
         VkWriteDescriptorSet& descriptorWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+#else // PRMT_METHOD == PRMT_METHOD_UB_PC
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
         descriptorWrite.descriptorCount = 1u;
         descriptorWrite.pBufferInfo = &bufferInfo;
         descriptorWrite.dstArrayElement = 0;

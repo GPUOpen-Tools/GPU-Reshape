@@ -30,6 +30,12 @@ struct SpvUtilShaderDescriptorConstantData {
     /// \param out the destination shader block
     void CopyTo(SpvPhysicalBlockTable& remote, SpvUtilShaderDescriptorConstantData& out);
 
+    /// Set the push constant identifier
+    /// \param id given id
+    void SetPCID(IL::ID id) {
+        pcId = id;
+    }
+
 private:
     /// Shared allocators
     Allocators allocators;
@@ -42,4 +48,7 @@ private:
 
     /// Spv identifiers
     uint32_t descriptorConstantId{0};
+
+    /// Push constant offset identifier
+    IL::ID pcId{IL::InvalidID};
 };

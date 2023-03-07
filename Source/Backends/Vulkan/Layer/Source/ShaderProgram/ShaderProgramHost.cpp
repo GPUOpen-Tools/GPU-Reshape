@@ -74,8 +74,10 @@ bool ShaderProgramHost::InstallPrograms() {
         // Finally, inject the host program8
         entry.program->Inject(*entry.module->GetProgram());
 
+        // Setup job description
         SpvJob spvJob{};
         spvJob.bindingInfo = shaderExportDescriptorAllocator->GetBindingInfo();
+        spvJob.requiresUserDescriptorMapping = false;
 
         if (!entry.module->Recompile(
             reinterpret_cast<const uint32_t*>(kSPIRVInbuiltTemplateModuleVulkan),

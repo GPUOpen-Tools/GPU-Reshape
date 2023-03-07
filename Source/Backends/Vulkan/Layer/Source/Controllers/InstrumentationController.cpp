@@ -452,13 +452,19 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             uint32_t pipelineLayoutUserSlots = dependentObject->layout->boundUserDescriptorStates;
 
             // User push constant offset
-            uint32_t pipelineLayoutPCOffset = dependentObject->layout->userPushConstantOffset;
+            uint32_t pipelineLayoutDataPCOffset = dependentObject->layout->dataPushConstantOffset;
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+            uint32_t pipelineLayoutPRMTPCOffset = dependentObject->layout->prmtPushConstantOffset;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
 
             // Create the instrumentation key
             ShaderModuleInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
             instrumentationKey.pipelineLayoutUserSlots = pipelineLayoutUserSlots;
-            instrumentationKey.pipelineLayoutUserPCOffset = pipelineLayoutPCOffset;
+            instrumentationKey.pipelineLayoutDataPCOffset = pipelineLayoutDataPCOffset;
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+            instrumentationKey.pipelineLayoutPRMTPCOffset = pipelineLayoutPRMTPCOffset;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
 
             // Attempt to reserve
             if (!state->Reserve(instrumentationKey)) {
@@ -519,13 +525,19 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             ASSERT(pipelineLayoutUserSlots <= table->physicalDeviceProperties.limits.maxBoundDescriptorSets, "Pipeline layout user slots sanity check failed (corrupt)");
 
             // User push constant offset
-            uint32_t pipelineLayoutPCOffset = state->layout->userPushConstantOffset;
+            uint32_t pipelineLayoutDataPCOffset = state->layout->dataPushConstantOffset;
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+            uint32_t pipelineLayoutPRMTPCOffset = state->layout->prmtPushConstantOffset;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
 
             // Create the instrumentation key
             ShaderModuleInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
             instrumentationKey.pipelineLayoutUserSlots = pipelineLayoutUserSlots;
-            instrumentationKey.pipelineLayoutUserPCOffset = pipelineLayoutPCOffset;
+            instrumentationKey.pipelineLayoutDataPCOffset = pipelineLayoutDataPCOffset;
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+            instrumentationKey.pipelineLayoutPRMTPCOffset = pipelineLayoutPRMTPCOffset;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
 
             // Assign key
             job.shaderModuleInstrumentationKeys[shaderIndex] = instrumentationKey;
