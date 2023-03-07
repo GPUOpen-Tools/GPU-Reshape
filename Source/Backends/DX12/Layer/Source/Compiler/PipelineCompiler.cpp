@@ -28,7 +28,7 @@ bool PipelineCompiler::Install() {
     return true;
 }
 
-void PipelineCompiler::AddBatch(PipelineJob *jobs, uint32_t count, DispatcherBucket *bucket) {
+void PipelineCompiler::AddBatch(PipelineCompilerDiagnostic* diagnostic, PipelineJob *jobs, uint32_t count, DispatcherBucket *bucket) {
     // Segment the types
     for (uint32_t i = 0; i < count; i++) {
         switch (jobs[i].state->type) {
@@ -44,14 +44,14 @@ void PipelineCompiler::AddBatch(PipelineJob *jobs, uint32_t count, DispatcherBuc
         }
     }
 
-    AddBatchOfType(graphicsJobs, PipelineType::Graphics, bucket);
-    AddBatchOfType(computeJobs, PipelineType::Compute, bucket);
+    AddBatchOfType(diagnostic, graphicsJobs, PipelineType::Graphics, bucket);
+    AddBatchOfType(diagnostic, computeJobs, PipelineType::Compute, bucket);
 
     graphicsJobs.clear();
     computeJobs.clear();
 }
 
-void PipelineCompiler::AddBatchOfType(const Vector<PipelineJob> &jobs, PipelineType type, DispatcherBucket *bucket) {
+void PipelineCompiler::AddBatchOfType(PipelineCompilerDiagnostic* diagnostic, const Vector<PipelineJob> &jobs, PipelineType type, DispatcherBucket *bucket) {
     if (jobs.empty()) {
         return;
     }
@@ -77,6 +77,7 @@ void PipelineCompiler::AddBatchOfType(const Vector<PipelineJob> &jobs, PipelineT
 
         // Create the job data
         auto data = new(registry->GetAllocators(), kAllocInstrumentation) PipelineJobBatch{
+            .diagnostic = diagnostic,
             .jobs = copy,
             .count = count
         };
@@ -151,6 +152,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->vs) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->vs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
 
@@ -162,6 +164,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->hs) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->hs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
 
@@ -173,6 +176,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->ds) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->ds->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
 
@@ -184,6 +188,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->gs) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->gs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
 
@@ -195,6 +200,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->ps) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->ps->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
 
@@ -210,6 +216,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             // Pass down callchain
             HRESULT hr = streamDevice->CreatePipelineState(&desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
             if (FAILED(hr)) {
+                ++batch.diagnostic->failedJobs;
                 continue;
             }
         } else {
@@ -224,6 +231,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->vs) {
                 desc.VS = graphicsState->vs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.VS.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
             }
@@ -232,6 +240,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->hs) {
                 desc.HS = graphicsState->hs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.HS.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
             }
@@ -240,6 +249,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->ds) {
                 desc.DS = graphicsState->ds->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.DS.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
             }
@@ -248,6 +258,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->gs) {
                 desc.GS = graphicsState->gs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.GS.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
             }
@@ -256,6 +267,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->ps) {
                 desc.PS = graphicsState->ps->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.PS.pShaderBytecode) {
+                    ++batch.diagnostic->failedJobs;
                     continue;
                 }
             }
@@ -263,6 +275,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             // Attempt to create pipeline
             HRESULT result = device->object->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipeline));
             if (FAILED(result)) {
+                ++batch.diagnostic->failedJobs;
                 continue;
             }
         }
@@ -314,6 +327,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         // Stream based?
         if (!computeState->deepCopy.blob) {
             if (!streamDevice) {
+                ++batch.diagnostic->failedJobs;
                 continue;
             }
 
@@ -332,6 +346,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
             // Pass down callchain
             HRESULT hr = streamDevice->CreatePipelineState(&desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
             if (FAILED(hr)) {
+                ++batch.diagnostic->failedJobs;
                 continue;
             }
         } else {
@@ -342,12 +357,14 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
             // Assign instrumented version
             desc.CS = computeState->cs->GetInstrument(job.shaderInstrumentationKeys[0]);
             if (!desc.CS.pShaderBytecode) {
+                ++batch.diagnostic->failedJobs;
                 continue;
             }
 
             // Attempt to create pipeline
             HRESULT result = device->object->CreateComputePipelineState(&desc, IID_PPV_ARGS(&pipeline));
             if (FAILED(result)) {
+                ++batch.diagnostic->failedJobs;
                 continue;
             }
         }

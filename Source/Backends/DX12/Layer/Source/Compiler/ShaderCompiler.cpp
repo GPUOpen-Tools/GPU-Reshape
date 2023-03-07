@@ -67,9 +67,10 @@ bool ShaderCompiler::Install() {
     return true;
 }
 
-void ShaderCompiler::Add(ShaderState *state, const ShaderInstrumentationKey& instrumentationKey, DispatcherBucket *bucket) {
+void ShaderCompiler::Add(ShaderState *state, ShaderCompilerDiagnostic* diagnostic, const ShaderInstrumentationKey& instrumentationKey, DispatcherBucket *bucket) {
     auto data = new(registry->GetAllocators(), kAllocInstrumentation) ShaderJob{
         .state = state,
+        .diagnostic = diagnostic,
         .instrumentationKey = instrumentationKey
     };
 
@@ -82,7 +83,7 @@ void ShaderCompiler::Worker(void *data) {
     destroy(job, allocators);
 }
 
-void ShaderCompiler::InitializeModule(ShaderState *state) {
+bool ShaderCompiler::InitializeModule(ShaderState *state) {
     // Instrumented pipelines are unique, however, originating modules may not be
     std::lock_guard moduleGuad(state->mutex);
 
@@ -95,7 +96,7 @@ void ShaderCompiler::InitializeModule(ShaderState *state) {
         switch (type) {
             default: {
                 // Unknown type, just skip the job
-                return;
+                return false;
             }
             case 'CBXD': {
                 state->module = new (allocators, kAllocModuleDXBC) DXBCModule(allocators.Tag(kAllocModuleDXBC), state->uid, GlobalUID::New());
@@ -105,9 +106,12 @@ void ShaderCompiler::InitializeModule(ShaderState *state) {
 
         // Try to parse the bytecode
         if (!state->module->Parse(state->key.byteCode.pShaderBytecode, state->key.byteCode.BytecodeLength)) {
-            return;
+            return false;
         }
     }
+
+    // OK
+    return true;
 }
 
 void ShaderCompiler::CompileShader(const ShaderJob &job) {
@@ -117,7 +121,10 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 #endif
 
     // Initialize module
-    InitializeModule(job.state);
+    if (!InitializeModule(job.state)) {
+        ++job.diagnostic->failedJobs;
+        return;
+    }
 
     // Create a copy of the module, don't modify the source
     DXModule *module = job.state->module->Copy();
@@ -168,6 +175,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Attempt to recompile
     if (!module->Compile(compileJob, stream)) {
+        ++job.diagnostic->failedJobs;
         return;
     }
 

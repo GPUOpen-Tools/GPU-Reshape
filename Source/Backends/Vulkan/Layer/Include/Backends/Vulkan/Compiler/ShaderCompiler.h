@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/Vulkan/States/ShaderModuleState.h>
+#include <Backends/Vulkan/Compiler/ShaderCompilerDiagnostic.h>
 
 // Backend
 #include <Backend/ShaderData/ShaderDataInfo.h>
@@ -31,18 +32,20 @@ public:
 
     /// Add a shader job
     /// \param state the state to be compiled
+    /// \param diagnostic shader diagnostic
     /// \param featureBitSet the enabled feature set
     /// \param bucket optional, the dispatcher bucket
-    void Add(DeviceDispatchTable* table, ShaderModuleState *state, const ShaderModuleInstrumentationKey& instrumentationKey, DispatcherBucket *bucket = nullptr);
+    void Add(DeviceDispatchTable* table, ShaderModuleState *state, ShaderCompilerDiagnostic* diagnostic, const ShaderModuleInstrumentationKey& instrumentationKey, DispatcherBucket *bucket = nullptr);
 
     /// Ensure a module is initialized
     /// \param state shader state
-    void InitializeModule(ShaderModuleState* state);
+    bool InitializeModule(ShaderModuleState* state);
 
 protected:
     struct ShaderJob {
         DeviceDispatchTable *table;
         ShaderModuleState *state;
+        ShaderCompilerDiagnostic* diagnostic;
         ShaderModuleInstrumentationKey instrumentationKey;
     };
 

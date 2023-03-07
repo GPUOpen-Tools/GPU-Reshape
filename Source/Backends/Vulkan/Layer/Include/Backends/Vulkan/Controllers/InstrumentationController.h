@@ -4,6 +4,8 @@
 #include <Backends/Vulkan/InstrumentationInfo.h>
 #include <Backends/Vulkan/Controllers/IController.h>
 #include <Backends/Vulkan/States/PipelineType.h>
+#include <Backends/Vulkan/Compiler/ShaderCompilerDiagnostic.h>
+#include <Backends/Vulkan/Compiler/PipelineCompilerDiagnostic.h>
 
 // Common
 #include <Common/Allocator/Vector.h>
@@ -128,12 +130,19 @@ private:
 
 private:
     struct Batch {
+        /// Given feature set
         uint64_t featureBitSet;
 
+        /// Compiler diagnostics
+        ShaderCompilerDiagnostic shaderCompilerDiagnostic;
+        PipelineCompilerDiagnostic pipelineCompilerDiagnostic;
+
+        /// Stamps
         std::chrono::high_resolution_clock::time_point stampBegin;
         std::chrono::high_resolution_clock::time_point stampBeginShaders;
         std::chrono::high_resolution_clock::time_point stampBeginPipelines;
 
+        /// Dirty objects
         std::set<ReferenceObject*> dirtyObjects;
         std::vector<ShaderModuleState*> dirtyShaderModules;
         std::vector<PipelineState*> dirtyPipelines;

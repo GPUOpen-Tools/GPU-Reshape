@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/DX12/States/ShaderState.h>
+#include <Backends/DX12/Compiler/ShaderCompilerDiagnostic.h>
 
 // Backend
 #include <Backend/ShaderData/ShaderDataInfo.h>
@@ -34,17 +35,19 @@ public:
 
     /// Add a shader job
     /// \param state the state to be compiled
+    /// \param diagnostic shader diagnostics
     /// \param featureBitSet the enabled feature set
     /// \param bucket optional, the dispatcher bucket
-    void Add(ShaderState* state, const ShaderInstrumentationKey& instrumentationKey, DispatcherBucket *bucket = nullptr);
+    void Add(ShaderState* state, ShaderCompilerDiagnostic* diagnostic, const ShaderInstrumentationKey& instrumentationKey, DispatcherBucket *bucket = nullptr);
 
     /// Ensure a module is initialized
     /// \param state shader state
-    void InitializeModule(ShaderState* state);
+    bool InitializeModule(ShaderState* state);
 
 protected:
     struct ShaderJob {
         ShaderState *state;
+        ShaderCompilerDiagnostic* diagnostic;
         ShaderInstrumentationKey instrumentationKey;
     };
 

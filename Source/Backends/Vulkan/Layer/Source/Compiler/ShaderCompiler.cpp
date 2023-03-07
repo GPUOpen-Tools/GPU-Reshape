@@ -61,17 +61,18 @@ bool ShaderCompiler::Install() {
     return true;
 }
 
-void ShaderCompiler::Add(DeviceDispatchTable *table, ShaderModuleState *state, const ShaderModuleInstrumentationKey& instrumentationKey, DispatcherBucket *bucket) {
+void ShaderCompiler::Add(DeviceDispatchTable *table, ShaderModuleState *state, ShaderCompilerDiagnostic* diagnostic, const ShaderModuleInstrumentationKey& instrumentationKey, DispatcherBucket *bucket) {
     auto data = new(registry->GetAllocators()) ShaderJob{
         .table = table,
         .state = state,
+        .diagnostic = diagnostic,
         .instrumentationKey = instrumentationKey
     };
 
     dispatcher->Add(BindDelegate(this, ShaderCompiler::Worker), data, bucket);
 }
 
-void ShaderCompiler::InitializeModule(ShaderModuleState *state) {
+bool ShaderCompiler::InitializeModule(ShaderModuleState *state) {
     // Create the module on demand
     if (!state->spirvModule) {
         state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators, state->uid);
@@ -84,9 +85,12 @@ void ShaderCompiler::InitializeModule(ShaderModuleState *state) {
 
         // Failed?
         if (!result) {
-            return;
+            return false;
         }
     }
+
+    // OK
+    return true;
 }
 
 void ShaderCompiler::Worker(void *data) {
@@ -115,7 +119,10 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 #endif
 
     // Ensure state is initialized
-    InitializeModule(job.state);
+    if (!InitializeModule(job.state)) {
+        ++job.diagnostic->failedJobs;
+        return;
+    }
 
     // Passed initial check?
     bool validSource{true};
@@ -165,6 +172,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         static_cast<uint32_t>(job.state->createInfoDeepCopy.createInfo.codeSize / 4u),
         spvJob
     )) {
+        ++job.diagnostic->failedJobs;
         return;
     }
 
@@ -194,6 +202,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Attempt to compile the program
     VkResult result = job.table->next_vkCreateShaderModule(job.table->object, &createInfo, nullptr, &instrument);
     if (result != VK_SUCCESS) {
+        ++job.diagnostic->failedJobs;
         return;
     }
 

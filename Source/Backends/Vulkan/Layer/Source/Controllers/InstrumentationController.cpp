@@ -472,7 +472,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             }
 
             // Inject the feedback state
-            shaderCompiler->Add(table, state, instrumentationKey, bucket);
+            shaderCompiler->Add(table, state, &batch->shaderCompilerDiagnostic, instrumentationKey, bucket);
         }
     }
 }
@@ -567,7 +567,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
     }
 
     // Submit all jobs
-    pipelineCompiler->AddBatch(table, jobs, enqueuedJobs, bucket);
+    pipelineCompiler->AddBatch(table, &batch->pipelineCompilerDiagnostic, jobs, enqueuedJobs, bucket);
 
     // Report all rejected keys
     if (!rejectedKeys.empty()) {
@@ -606,6 +606,19 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Diagnostic
 #if LOG_INSTRUMENTATION
+    // Get failure counts
+    const uint64_t failedShaders   = batch->shaderCompilerDiagnostic.failedJobs.load();
+    const uint64_t failedPipelines = batch->pipelineCompilerDiagnostic.failedJobs.load();
+
+    // Log on failure
+    if (failedShaders || failedPipelines) {
+        table->parent->logBuffer.Add("Vulkan", Format(
+            "Instrumentation failed for {} shaders and {} pipelines",
+            failedShaders,
+            failedPipelines
+        ));
+    }
+    
     table->parent->logBuffer.Add("Vulkan", Format(
         "Instrumented {} shaders ({} ms) and {} pipelines ({} ms), total {} ms",
         batch->dirtyShaderModules.size(),

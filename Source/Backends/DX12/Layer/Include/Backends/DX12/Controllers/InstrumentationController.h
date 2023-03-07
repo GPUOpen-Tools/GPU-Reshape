@@ -5,6 +5,8 @@
 #include <Backends/DX12/Controllers/IController.h>
 #include <Backends/DX12/InstrumentationInfo.h>
 #include <Backends/DX12/States/PipelineType.h>
+#include <Backends/DX12/Compiler/ShaderCompilerDiagnostic.h>
+#include <Backends/DX12/Compiler/PipelineCompilerDiagnostic.h>
 
 // Message
 #include <Message/MessageStream.h>
@@ -136,13 +138,20 @@ private:
         Batch(const Allocators& allocators) : dirtyShaders(allocators), dirtyPipelines(allocators) {
             
         }
-        
+
+        /// Given feature set
         uint64_t featureBitSet;
 
+        /// Compiler diagnostics
+        ShaderCompilerDiagnostic shaderCompilerDiagnostic;
+        PipelineCompilerDiagnostic pipelineCompilerDiagnostic;
+
+        /// Time stamps
         std::chrono::high_resolution_clock::time_point stampBegin;
         std::chrono::high_resolution_clock::time_point stampBeginShaders;
         std::chrono::high_resolution_clock::time_point stampBeginPipelines;
 
+        /// All dirty objects
         std::set<ReferenceObject*> dirtyObjects;
         Vector<ShaderState*> dirtyShaders;
         Vector<PipelineState*> dirtyPipelines;

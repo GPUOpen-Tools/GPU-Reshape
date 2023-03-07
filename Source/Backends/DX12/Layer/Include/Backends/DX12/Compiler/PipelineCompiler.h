@@ -3,6 +3,7 @@
 // Layer
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/ShaderInstrumentationKey.h>
+#include <Backends/DX12/Compiler/PipelineCompilerDiagnostic.h>
 
 // Common
 #include <Common/IComponent.h>
@@ -37,22 +38,25 @@ public:
     bool Install();
 
     /// Add a pipeline batch job
+    /// \param diagnostic pipeline diagnostics
     /// \param states all pipeline states
     /// \param count the number of states
     /// \param bucket optional, dispatcher bucket
-    void AddBatch(PipelineJob* jobs, uint32_t count, DispatcherBucket* bucket = nullptr);
+    void AddBatch(PipelineCompilerDiagnostic* diagnostic, PipelineJob* jobs, uint32_t count, DispatcherBucket* bucket = nullptr);
 
 protected:
     struct PipelineJobBatch {
-        PipelineJob*         jobs;
-        uint32_t             count;
+        PipelineCompilerDiagnostic* diagnostic;
+        PipelineJob*                jobs;
+        uint32_t                    count;
     };
 
     /// Add a pipeline batch job
+    /// \param diagnostic pipeline diagnostics
     /// \param states all pipeline states
     /// \param count the number of states
     /// \param bucket optional, dispatcher bucket
-    void AddBatchOfType(const Vector<PipelineJob>& jobs, PipelineType type, DispatcherBucket* bucket);
+    void AddBatchOfType(PipelineCompilerDiagnostic* diagnostic, const Vector<PipelineJob>& jobs, PipelineType type, DispatcherBucket* bucket);
 
     /// Compile a given job
     void CompileGraphics(const PipelineJobBatch& job);

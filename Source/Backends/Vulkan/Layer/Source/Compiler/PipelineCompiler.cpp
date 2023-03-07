@@ -20,7 +20,7 @@ bool PipelineCompiler::Install() {
     return true;
 }
 
-void PipelineCompiler::AddBatch(DeviceDispatchTable *table, PipelineJob *jobs, uint32_t count, DispatcherBucket *bucket) {
+void PipelineCompiler::AddBatch(DeviceDispatchTable *table, PipelineCompilerDiagnostic* diagnostic, PipelineJob *jobs, uint32_t count, DispatcherBucket *bucket) {
     // Segment the types
     for (uint32_t i = 0; i < count; i++) {
         switch (jobs[i].state->type) {
@@ -36,14 +36,14 @@ void PipelineCompiler::AddBatch(DeviceDispatchTable *table, PipelineJob *jobs, u
         }
     }
 
-    AddBatchOfType(table, graphicsJobs, PipelineType::Graphics, bucket);
-    AddBatchOfType(table, computeJobs, PipelineType::Compute, bucket);
+    AddBatchOfType(table, diagnostic, graphicsJobs, PipelineType::Graphics, bucket);
+    AddBatchOfType(table, diagnostic, computeJobs, PipelineType::Compute, bucket);
 
     graphicsJobs.clear();
     computeJobs.clear();
 }
 
-void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, const std::vector<PipelineJob> &jobs, PipelineType type, DispatcherBucket *bucket) {
+void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, PipelineCompilerDiagnostic* diagnostic, const std::vector<PipelineJob> &jobs, PipelineType type, DispatcherBucket *bucket) {
     if (jobs.empty()) {
         return;
     }
@@ -70,6 +70,7 @@ void PipelineCompiler::AddBatchOfType(DeviceDispatchTable *table, const std::vec
         // Create the job data
         auto data = new(registry->GetAllocators()) PipelineJobBatch{
             .table = table,
+            .diagnostic = diagnostic,
             .jobs = copy,
             .count = count
         };
@@ -149,7 +150,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     for (uint32_t i = 0; i < batch.count; i++) {
         VkResult result = batch.table->next_vkCreateGraphicsPipelines(batch.table->object, nullptr, 1u, &createInfos[i], nullptr, &pipelines[i]);
         if (result != VK_SUCCESS) {
-            // TODO: Error reporting
+            ++batch.diagnostic->failedJobs;
             return;
         }
     }
@@ -157,7 +158,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     // TODO: Pipeline cache?
     VkResult result = batch.table->next_vkCreateGraphicsPipelines(batch.table->object, nullptr, batch.count, createInfos, nullptr, pipelines);
     if (result != VK_SUCCESS) {
-        // TODO: Error reporting
+        batch.diagnostic->failedJobs += batch.count;
         return;
     }
 #endif
@@ -212,7 +213,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
     // TODO: Pipeline cache?
     VkResult result = batch.table->next_vkCreateComputePipelines(batch.table->object, nullptr, batch.count, createInfos, nullptr, pipelines);
     if (result != VK_SUCCESS) {
-        // TODO: Error reporting
+        batch.diagnostic->failedJobs += batch.count;
         return;
     }
 
