@@ -9,6 +9,9 @@
 // Forward declarations
 class CommandContext;
 struct BufferDescriptor;
+struct TextureDescriptor;
+struct ResourceInfo;
+struct RenderPassInfo;
 
 // Hook types
 namespace Hooks {
@@ -18,14 +21,31 @@ namespace Hooks {
     using Dispatch = Delegate<void(CommandContext* context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ)>;
 
     /// Resource
-    using CopyBuffer = Delegate<void(CommandContext* context, const BufferDescriptor& source, const BufferDescriptor& dest, uint64_t byteSize)>;
+    using CopyResource = Delegate<void(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest)>;
+    using ResolveResource = Delegate<void(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest)>;
+    using ClearResource = Delegate<void(CommandContext* context, const ResourceInfo& resource)>;
+    using WriteResource = Delegate<void(CommandContext* context, const ResourceInfo& resource)>;
+
+    /// Render pass
+    using BeginRenderPass = Delegate<void(CommandContext* context, const RenderPassInfo& passInfo)>;
+    using EndRenderPass = Delegate<void(CommandContext* context)>;
 }
 
 /// Contains the required hooks for a given feature
 class FeatureHookTable {
 public:
+    /// Invocations
     Hooks::DrawInstanced drawInstanced;
     Hooks::DrawIndexedInstanced drawIndexedInstanced;
     Hooks::Dispatch dispatch;
-    Hooks::CopyBuffer copyBuffer;
+
+    /// Resource
+    Hooks::CopyResource copyResource;
+    Hooks::ResolveResource resolveResource;
+    Hooks::ClearResource clearResource;
+    Hooks::WriteResource writeResource;
+
+    /// Render pass
+    Hooks::BeginRenderPass beginRenderPass;
+    Hooks::EndRenderPass endRenderPass;
 };

@@ -39,8 +39,8 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatch |= (1ull << i);
         }
 
-        if (hookTable.copyBuffer.IsValid()) {
-            table->commandBufferDispatchTable.featureHooks_vkCmdCopyBuffer[i] = hookTable.copyBuffer;
+        if (hookTable.copyResource.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyBuffer[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer |= (1ull << i);
         }
     }

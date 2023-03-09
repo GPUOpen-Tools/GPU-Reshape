@@ -10,6 +10,10 @@
 #include <Backend/IL/ResourceTokenType.h>
 #include <Backend/CommandContext.h>
 #include <Backend/Command/BufferDescriptor.h>
+#include <Backend/Command/TextureDescriptor.h>
+#include <Backend/Command/ResourceInfo.h>
+#include <Backend/Command/AttachmentInfo.h>
+#include <Backend/Command/RenderPassInfo.h>
 #include <Backend/Command/CommandBuilder.h>
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
 
@@ -66,7 +70,11 @@ bool InitializationFeature::Install() {
 
 FeatureHookTable InitializationFeature::GetHookTable() {
     FeatureHookTable table{};
-    table.copyBuffer = BindDelegate(this, InitializationFeature::OnCopyBuffer);
+    table.copyResource = BindDelegate(this, InitializationFeature::OnCopyResource);
+    table.resolveResource = BindDelegate(this, InitializationFeature::OnResolveResource);
+    table.clearResource = BindDelegate(this, InitializationFeature::OnClearResource);
+    table.writeResource = BindDelegate(this, InitializationFeature::OnWriteResource);
+    table.beginRenderPass = BindDelegate(this, InitializationFeature::OnBeginRenderPass);
     return table;
 }
 
@@ -183,8 +191,30 @@ void InitializationFeature::Inject(IL::Program &program) {
     });
 }
 
-void InitializationFeature::OnCopyBuffer(CommandContext* context, const BufferDescriptor& source, const BufferDescriptor& dest, uint64_t byteSize) {
+void InitializationFeature::OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
     MaskResourceSRB(context, dest.token.puid, ~0u);
+}
+
+void InitializationFeature::OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
+    MaskResourceSRB(context, dest.token.puid, ~0u);
+}
+
+void InitializationFeature::OnClearResource(CommandContext* context, const ResourceInfo& resource) {
+    MaskResourceSRB(context, resource.token.puid, ~0u);
+}
+
+void InitializationFeature::OnWriteResource(CommandContext* context, const ResourceInfo& resource) {
+    MaskResourceSRB(context, resource.token.puid, ~0u);
+}
+
+void InitializationFeature::OnBeginRenderPass(CommandContext *context, const RenderPassInfo &passInfo) {
+    for (uint32_t i = 0; i < passInfo.attachmentCount; i++) {
+        const AttachmentInfo& info = passInfo.attachments[i];
+
+        if (info.action == AttachmentAction::Clear) {
+            MaskResourceSRB(context, info.resource.token.puid, ~0u);
+        }
+    }
 }
 
 FeatureInfo InitializationFeature::GetInfo() {
@@ -195,15 +225,18 @@ FeatureInfo InitializationFeature::GetInfo() {
 }
 
 void InitializationFeature::MaskResourceSRB(CommandContext *context, uint64_t puid, uint32_t srb) {
-    uint32_t& initializedSRB = puidSRBInitializationMap[puid];
+    {
+        std::lock_guard guard(mutex);
+        uint32_t& initializedSRB = puidSRBInitializationMap[puid];
 
-    // May already be initialized
-    if ((initializedSRB & srb) == srb) {
-        return;
+        // May already be initialized
+        if ((initializedSRB & srb) == srb) {
+            return;
+        }
+
+        // Mark host side initialization
+        initializedSRB |= srb;
     }
-
-    // Mark host side initialization
-    initializedSRB |= srb;
 
     // Mask the entire resource as mapped
     CommandBuilder builder(context->buffer);

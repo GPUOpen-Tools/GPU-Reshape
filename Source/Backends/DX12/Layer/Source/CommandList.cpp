@@ -38,9 +38,41 @@ void CreateDeviceCommandProxies(DeviceState *state) {
             state->commandListProxies.featureBitSetMask_Dispatch |= (1ull << i);
         }
 
-        if (hookTable.copyBuffer.IsValid()) {
-            state->commandListProxies.featureHooks_CopyBufferRegion[i] = hookTable.copyBuffer;
+        if (hookTable.copyResource.IsValid()) {
+            state->commandListProxies.featureHooks_CopyBufferRegion[i] = hookTable.copyResource;
+            state->commandListProxies.featureHooks_CopyTextureRegion[i] = hookTable.copyResource;
+            state->commandListProxies.featureHooks_CopyResource[i] = hookTable.copyResource;
             state->commandListProxies.featureBitSetMask_CopyBufferRegion |= (1ull << i);
+            state->commandListProxies.featureBitSetMask_CopyTextureRegion |= (1ull << i);
+            state->commandListProxies.featureBitSetMask_CopyResource |= (1ull << i);
+        }
+
+        if (hookTable.resolveResource.IsValid()) {
+            state->commandListProxies.featureHooks_ResolveSubresource[i] = hookTable.resolveResource;
+            state->commandListProxies.featureHooks_ResolveSubresourceRegion[i] = hookTable.resolveResource;
+            state->commandListProxies.featureBitSetMask_ResolveSubresource |= (1ull << i);
+            state->commandListProxies.featureBitSetMask_ResolveSubresourceRegion |= (1ull << i);
+        }
+
+        if (hookTable.clearResource.IsValid()) {
+            state->commandListProxies.featureHooks_ClearDepthStencilView[i] = hookTable.clearResource;
+            state->commandListProxies.featureHooks_ClearRenderTargetView[i] = hookTable.clearResource;
+            state->commandListProxies.featureHooks_ClearUnorderedAccessViewFloat[i] = hookTable.clearResource;
+            state->commandListProxies.featureHooks_ClearUnorderedAccessViewUint[i] = hookTable.clearResource;
+            state->commandListProxies.featureBitSetMask_ClearDepthStencilView |= (1ull << i);
+            state->commandListProxies.featureBitSetMask_ClearRenderTargetView |= (1ull << i);
+            state->commandListProxies.featureBitSetMask_ClearUnorderedAccessViewFloat |= (1ull << i);
+            state->commandListProxies.featureBitSetMask_ClearUnorderedAccessViewUint |= (1ull << i);
+        }
+
+        if (hookTable.beginRenderPass.IsValid()) {
+            state->commandListProxies.featureHooks_BeginRenderPass[i] = hookTable.beginRenderPass;
+            state->commandListProxies.featureBitSetMask_BeginRenderPass |= (1ull << i);
+        }
+
+        if (hookTable.endRenderPass.IsValid()) {
+            state->commandListProxies.featureHooks_EndRenderPass[i] = hookTable.endRenderPass;
+            state->commandListProxies.featureBitSetMask_EndRenderPass |= (1ull << i);
         }
     }
 }
@@ -48,6 +80,16 @@ void CreateDeviceCommandProxies(DeviceState *state) {
 void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet) {
     state->commandListProxies.featureBitSet_Dispatch = state->commandListProxies.featureBitSetMask_Dispatch & featureSet;
     state->commandListProxies.featureBitSet_CopyBufferRegion = state->commandListProxies.featureBitSetMask_CopyBufferRegion & featureSet;
+    state->commandListProxies.featureBitSet_CopyTextureRegion = state->commandListProxies.featureBitSetMask_CopyTextureRegion & featureSet;
+    state->commandListProxies.featureBitSet_CopyResource = state->commandListProxies.featureBitSetMask_CopyResource & featureSet;
+    state->commandListProxies.featureBitSet_ResolveSubresource = state->commandListProxies.featureBitSetMask_ResolveSubresource & featureSet;
+    state->commandListProxies.featureBitSet_ClearDepthStencilView = state->commandListProxies.featureBitSetMask_ClearDepthStencilView & featureSet;
+    state->commandListProxies.featureBitSet_ClearRenderTargetView = state->commandListProxies.featureBitSetMask_ClearRenderTargetView & featureSet;
+    state->commandListProxies.featureBitSet_ClearUnorderedAccessViewUint = state->commandListProxies.featureBitSetMask_ClearUnorderedAccessViewUint & featureSet;
+    state->commandListProxies.featureBitSet_ClearUnorderedAccessViewFloat = state->commandListProxies.featureBitSetMask_ClearUnorderedAccessViewFloat & featureSet;
+    state->commandListProxies.featureBitSet_ResolveSubresourceRegion = state->commandListProxies.featureBitSetMask_ResolveSubresourceRegion & featureSet;
+    state->commandListProxies.featureBitSet_BeginRenderPass = state->commandListProxies.featureBitSetMask_BeginRenderPass & featureSet;
+    state->commandListProxies.featureBitSet_EndRenderPass = state->commandListProxies.featureBitSetMask_EndRenderPass & featureSet;
 }
 
 static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue* commandQueue, const D3D12_COMMAND_QUEUE_DESC *desc, const IID &riid, void **pCommandQueue) {

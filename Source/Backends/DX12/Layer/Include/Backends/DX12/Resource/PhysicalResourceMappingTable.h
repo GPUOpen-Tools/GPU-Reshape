@@ -5,17 +5,20 @@
 #include <Backends/DX12/Allocation/MirrorAllocation.h>
 
 // Common
+#include <Common/Allocator/Vector.h>
 #include <Common/ComRef.h>
 
 // Std
 #include <vector>
 
+// Forward declarations
 class DeviceAllocator;
+struct ResourceState;
 
 /// Performs mapping between virtual heaps and physical resources
 class PhysicalResourceMappingTable {
 public:
-    PhysicalResourceMappingTable(const ComRef<DeviceAllocator>& allocator);
+    PhysicalResourceMappingTable(const Allocators& allocators, const ComRef<DeviceAllocator>& allocator);
 
     /// Install the table
     /// \param count number of descriptors
@@ -41,6 +44,22 @@ public:
     /// \param offset offset to be written
     /// \param mapping mapping to write
     void WriteMapping(uint32_t offset, const VirtualResourceMapping& mapping);
+
+    /// Write a single mapping at a given offset
+    /// \param offset offset to be written
+    /// \param state given state
+    /// \param mapping mapping to write
+    void WriteMapping(uint32_t offset, ResourceState* state, const VirtualResourceMapping& mapping);
+
+    /// Set the state of a mapping
+    /// \param offset offset to be written
+    /// \param state given state
+    void SetMappingState(uint32_t offset, ResourceState* state);
+
+    /// Get the mapping from an offset
+    /// \param offset given offset
+    /// \return state, nullptr if not found
+    ResourceState* GetMappingState(uint32_t offset);
 
     /// Get the underlying resource
     /// \return
@@ -69,6 +88,10 @@ private:
 
     /// Allocation view
     D3D12_SHADER_RESOURCE_VIEW_DESC view{};
+
+private:
+    /// All states
+    Vector<ResourceState*> states;
 
 private:
     ComRef<DeviceAllocator> allocator{};

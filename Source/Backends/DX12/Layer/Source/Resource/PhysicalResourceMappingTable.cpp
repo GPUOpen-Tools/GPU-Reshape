@@ -1,7 +1,7 @@
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 
-PhysicalResourceMappingTable::PhysicalResourceMappingTable(const ComRef<DeviceAllocator> &allocator) : allocator(allocator) {
+PhysicalResourceMappingTable::PhysicalResourceMappingTable(const Allocators& allocators, const ComRef<DeviceAllocator> &allocator) : states(allocators), allocator(allocator) {
 
 }
 
@@ -53,6 +53,9 @@ void PhysicalResourceMappingTable::Install(uint32_t count) {
             .srb = 0
         };
     }
+
+    // Zero states
+    states.resize(count, nullptr);
 }
 
 void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
@@ -98,4 +101,19 @@ void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, const VirtualRe
 
     ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
     virtualMappings[offset] = mapping;
+}
+
+void PhysicalResourceMappingTable::SetMappingState(uint32_t offset, ResourceState *state) {
+    ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
+    states[offset] = state;
+}
+
+ResourceState *PhysicalResourceMappingTable::GetMappingState(uint32_t offset) {
+    ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
+    return states[offset];
+}
+
+void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, ResourceState *state, const VirtualResourceMapping &mapping) {
+    WriteMapping(offset, mapping);
+    SetMappingState(offset, state);
 }

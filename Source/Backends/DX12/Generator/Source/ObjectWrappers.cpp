@@ -105,24 +105,27 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
             state.hooks << " out;\n";
         }
 
-        // Hooked?
-        if (isHooked) {
-            if (objDecl.contains("proxies")) {
-                bool isProxied{false};
+        // Proxied?
+        if (objDecl.contains("proxies")) {
+            bool isProxied{false};
 
-                // Check if it exists in the shared list
-                for (auto proxy : objDecl["proxies"]) {
-                    isProxied |= proxy.get<std::string>() == methodName;
-                }
+            // Check if it exists in the shared list
+            for (auto proxy : objDecl["proxies"]) {
+                isProxied |= proxy.get<std::string>() == methodName;
+            }
 
-                // Proxied hook?
-                if (isProxied) {
-                    // Pass down to next object
-                    state.hooks << "\t\tApplyFeatureHook<FeatureHook_" << methodName << ">(\n";
-                    state.hooks << "\t\t\tstate,\n";
-                    state.hooks << "\t\t\tstate->proxies.context,\n";
-                    state.hooks << "\t\t\tstate->proxies.featureBitSet_" << methodName << ",\n";
-                    state.hooks << "\t\t\tstate->proxies.featureHooks_" << methodName << ",\n";
+            // Proxied hook?
+            if (isProxied) {
+                // Pass down to next object
+                state.hooks << "\t\tApplyFeatureHook<FeatureHook_" << methodName << ">(\n";
+                state.hooks << "\t\t\tstate,\n";
+                state.hooks << "\t\t\tstate->proxies.context,\n";
+                state.hooks << "\t\t\tstate->proxies.featureBitSet_" << methodName << ",\n";
+                state.hooks << "\t\t\tstate->proxies.featureHooks_" << methodName;
+
+                // Any parameters?
+                if (parameters.size()) {
+                    state.hooks << ",\n";
                     state.hooks << "\t\t\t";
 
                     // Unwrap arguments
@@ -133,12 +136,17 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
 
                         state.hooks << parameters[i]["name"].get<std::string>();
                     }
-
-                    // End call
-                    state.hooks << "\n\t\t);\n\n";
+                } else {
+                    state.hooks << "\n";
                 }
-            }
 
+                // End call
+                state.hooks << "\n\t\t);\n\n";
+            }
+        }
+        
+        // Hooked?
+        if (isHooked) {
             // Print return if needed
             if (isStructRet || method["returnType"]["type"] == "void") {
                 state.hooks << "\t";

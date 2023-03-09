@@ -67,6 +67,8 @@
         "CreateComputePipelineState",
         "CreateShaderResourceView",
         "CreateUnorderedAccessView",
+        "CreateDepthStencilView",
+        "CreateRenderTargetView",
         "CreateCommandSignature",
         "CreatePipelineLibrary"
       ]
@@ -125,7 +127,17 @@
         "DrawInstanced",
         "DrawIndexedInstanced",
         "Dispatch",
-        "CopyBufferRegion"
+        "CopyBufferRegion",
+        "CopyTextureRegion",
+        "CopyResource",
+        "ResolveSubresource",
+        "ResolveSubresourceRegion",
+        "ClearDepthStencilView",
+        "ClearRenderTargetView",
+        "ClearUnorderedAccessViewUint",
+        "ClearUnorderedAccessViewFloat",
+        "BeginRenderPass",
+        "EndRenderPass"
       ]
     },
     "ID3D12Fence": {

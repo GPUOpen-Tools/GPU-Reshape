@@ -17,6 +17,7 @@
 
 // Std
 #include <atomic>
+#include <mutex>
 #include <unordered_map>
 
 // Forward declarations
@@ -52,8 +53,12 @@ public:
     }
 
 private:
-    /// Invoked on buffer copies
-    void OnCopyBuffer(CommandContext* context, const BufferDescriptor& source, const BufferDescriptor& dest, uint64_t byteSize);
+    /// Hooks
+    void OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest);
+    void OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest);
+    void OnClearResource(CommandContext* context, const ResourceInfo& buffer);
+    void OnWriteResource(CommandContext* context, const ResourceInfo& buffer);
+    void OnBeginRenderPass(CommandContext* context, const RenderPassInfo& passInfo);
 
 private:
     /// Mark a resource SRB
@@ -83,6 +88,9 @@ private:
     MessageStream stream;
 
 private:
+    /// Shared lock
+    std::mutex mutex;
+
     /// Current initialization mask
     std::unordered_map<uint64_t, uint32_t> puidSRBInitializationMap;
 };

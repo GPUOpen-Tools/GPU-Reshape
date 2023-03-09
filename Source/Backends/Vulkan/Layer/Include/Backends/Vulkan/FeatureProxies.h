@@ -28,6 +28,6 @@ struct FeatureHook_vkCmdDispatch : TFeatureHook<Hooks::Dispatch> {
     }
 };
 
-struct FeatureHook_vkCmdCopyBuffer : TFeatureHook<Hooks::CopyBuffer> {
+struct FeatureHook_vkCmdCopyBuffer : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandBufferObject* object, CommandContext* context, VkBuffer srcBuffer, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferCopy* pRegions) const;
 };
