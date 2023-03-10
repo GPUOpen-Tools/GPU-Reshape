@@ -100,15 +100,6 @@ struct ShaderExportStreamBindState {
     /// Currently bound root signature
     const RootSignatureState* rootSignature{nullptr};
 
-    /// Currently bound pipeline
-    const PipelineState* pipeline{nullptr};
-
-    /// Currently instrumented pipeline
-    ID3D12PipelineState* pipelineObject{nullptr};
-
-    /// Is the current pipeline instrumented?
-    bool isInstrumented{false};
-
     /// Descriptor data allocator tied to this segment
     DescriptorDataAppendAllocator* descriptorDataAllocator{nullptr};
 
@@ -136,6 +127,15 @@ struct ShaderExportStreamState {
 
     /// Bind states
     ShaderExportStreamBindState bindStates[static_cast<uint32_t>(PipelineType::Count)];
+
+    /// Currently bound pipeline
+    const PipelineState* pipeline{nullptr};
+
+    /// Currently instrumented pipeline
+    ID3D12PipelineState* pipelineObject{nullptr};
+
+    /// Is the current pipeline instrumented?
+    bool isInstrumented{false};
 
     /// All segment descriptors, lifetime bound to deferred segment
     Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;

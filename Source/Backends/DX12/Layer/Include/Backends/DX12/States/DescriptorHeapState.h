@@ -35,6 +35,9 @@ struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapSt
     /// Type of this heap
     D3D12_DESCRIPTOR_HEAP_TYPE type;
 
+    /// Flags of this heap
+    D3D12_DESCRIPTOR_HEAP_FLAGS flags;
+
     /// Base addresses
     D3D12_CPU_DESCRIPTOR_HANDLE cpuDescriptorBase{};
     D3D12_GPU_DESCRIPTOR_HANDLE gpuDescriptorBase{};
@@ -43,7 +46,7 @@ struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapSt
     uint64_t stride{0};
 
     /// Number of descriptors, includes prefix
-    uint64_t physicalDescriptorCount{0};
+    uint32_t physicalDescriptorCount{0};
 
     /// Internal allocator
     ShaderExportDescriptorAllocator* allocator{nullptr};

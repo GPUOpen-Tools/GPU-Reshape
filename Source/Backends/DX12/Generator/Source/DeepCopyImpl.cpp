@@ -272,6 +272,36 @@ static bool DeepCopyObjectTree(const GeneratorInfo& info, DeepCopyState &state, 
 
                 state.deepCopy << Pad(indent) << "}\n";
             }
+        } else if (memberType["name"] == "LPCSTR") {
+            // Size variable
+            std::string sizeVar = "size_lpcstr_" + std::to_string(state.counter++);
+
+            // Accessor to the length (member)
+            std::string length = "std::strlen(" + sourceAccessorPrefix + memberName + ") + 1u";
+
+            // Emit size var
+            state.byteSize << Pad(indent) << "uint64_t " << sizeVar << " = " << length << ";\n";
+
+            // Repeat for deep copy if scope requires it
+            if (indent > 1) {
+                state.deepCopy << Pad(indent) << "uint64_t " << sizeVar << " = " << length << ";\n";
+            }
+
+            // Emit byte size
+            state.byteSize << Pad(indent) << "blobSize += sizeof(char) * " << sizeVar << ";\n";
+
+            // Assign the indirection
+            std::string mutableName = AssignPtrAndGetMutable(state, destAccessorPrefix, {
+                {"const", 0},
+                {"name", "char"},
+                {"type", "pod"}
+            }, memberName, indent);
+
+            state.deepCopy << Pad(indent) << "std::memcpy(" << mutableName << ", " << "" << sourceAccessorPrefix << memberName;
+            state.deepCopy << ", sizeof(char) * " << sizeVar << ");\n";
+
+            // Offset
+            state.deepCopy << Pad(indent) << "blobOffset += sizeof(char) * " << sizeVar << ";\n";
         } else {
             // Name of the contained type
             std::string containedName = memberType["name"].get<std::string>();

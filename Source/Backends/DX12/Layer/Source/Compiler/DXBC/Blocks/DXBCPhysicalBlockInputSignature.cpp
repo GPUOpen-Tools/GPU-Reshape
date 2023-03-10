@@ -39,6 +39,12 @@ void DXBCPhysicalBlockInputSignature::Parse() {
 }
 
 void DXBCPhysicalBlockInputSignature::Compile() {
+    // Block is optional
+    DXBCPhysicalBlock *block = table.scan.GetPhysicalBlock(DXBCPhysicalBlockType::InputSignature);
+    if (!block) {
+        return;
+    }
+
     // Get compiled binding info
     ASSERT(table.dxilModule, "IS not supported for native DXBC");
     const RootRegisterBindingInfo& bindingInfo = table.dxilModule->GetBindingInfo().bindingInfo;

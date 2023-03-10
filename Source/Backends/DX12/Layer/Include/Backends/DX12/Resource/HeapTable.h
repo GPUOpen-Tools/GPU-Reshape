@@ -33,6 +33,13 @@ public:
         entries.insert(std::upper_bound(entries.begin(), entries.end(), entry), entry);
     }
 
+    /// Remove a heap from tracking
+    /// \param base base descriptor offset
+    void Remove(uint64_t base) {
+        auto it = --std::lower_bound(entries.begin(), entries.end(), HeapEntry {.base = base});
+        entries.erase(it);
+    }
+
     /// Find a given heap
     /// \param offset descriptor offset
     /// \return nullptr if not found

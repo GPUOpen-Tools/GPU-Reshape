@@ -582,15 +582,12 @@ static void CommitGraphics(DeviceState* device, CommandListState* list) {
     // Inform the streamer
     device->exportStreamer->CommitGraphics(list->streamState, list);
 
-    // Bind state
-    ShaderExportStreamBindState& bindState = list->streamState->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
-
     // TODO: Update the event data in batches
     if (uint64_t bitMask = list->userContext.eventStack.GetGraphicsDirtyMask()) {
         unsigned long index;
         while (_BitScanReverse64(&index, bitMask)) {
             list->object->SetGraphicsRoot32BitConstant(
-                bindState.pipeline->signature->userRootCount + 2u,
+                list->streamState->pipeline->signature->userRootCount + 2u,
                 list->userContext.eventStack.GetData()[index],
                 index
             );
@@ -611,15 +608,12 @@ static void CommitCompute(DeviceState* device, CommandListState* list) {
     // Inform the streamer
     device->exportStreamer->CommitCompute(list->streamState, list);
 
-    // Bind state
-    ShaderExportStreamBindState& bindState = list->streamState->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
-
     // TODO: Update the event data in batches
     if (uint64_t bitMask = list->userContext.eventStack.GetComputeDirtyMask()) {
         unsigned long index;
         while (_BitScanReverse64(&index, bitMask)) {
             list->object->SetComputeRoot32BitConstant(
-                bindState.pipeline->signature->userRootCount + 2u,
+                list->streamState->pipeline->signature->userRootCount + 2u,
                 list->userContext.eventStack.GetData()[index],
                 index
             );

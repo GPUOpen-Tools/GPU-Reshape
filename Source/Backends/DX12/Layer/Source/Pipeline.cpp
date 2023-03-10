@@ -320,11 +320,11 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     table.state->states_Pipelines.Add(state);
 
     // Create detours
-    state->object = CreateDetour(state->allocators, state->object, state);
+    ID3D12PipelineState* detourPipeline = CreateDetour(state->allocators, state->object, state);
 
     // Query to external object if requested
     if (pPipeline) {
-        hr = state->object->QueryInterface(riid, pPipeline);
+        hr = detourPipeline->QueryInterface(riid, pPipeline);
         if (FAILED(hr)) {
             return hr;
         }
@@ -334,7 +334,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     }
 
     // Cleanup
-    state->object->Release();
+    detourPipeline->Release();
 
     // OK
     return S_OK;
@@ -381,11 +381,11 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     table.state->states_Pipelines.Add(state);
 
     // Create detours
-    state->object = CreateDetour(state->allocators, state->object, state);
+    ID3D12PipelineState* detourPipeline = CreateDetour(state->allocators, state->object, state);
 
     // Query to external object if requested
     if (pPipeline) {
-        hr = state->object->QueryInterface(riid, pPipeline);
+        hr = detourPipeline->QueryInterface(riid, pPipeline);
         if (FAILED(hr)) {
             return hr;
         }
@@ -395,7 +395,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     }
 
     // Cleanup
-    state->object->Release();
+    detourPipeline->Release();
 
     // OK
     return S_OK;

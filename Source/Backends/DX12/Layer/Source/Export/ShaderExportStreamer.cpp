@@ -172,6 +172,9 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
     // Reset state
     state->heap = nullptr;
     state->pipelineSegmentMask = {};
+    state->pipeline = nullptr;
+    state->pipelineObject = nullptr;
+    state->isInstrumented = false;
 
     // Set initial heap
     commandList->object->SetDescriptorHeaps(1u, &sharedGPUHeap);
@@ -206,9 +209,6 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
 
         // Reset state
         bindState.rootSignature = nullptr;
-        bindState.pipeline = nullptr;
-        bindState.pipelineObject = nullptr;
-        bindState.isInstrumented = false;
     }
 }
 
@@ -249,8 +249,8 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, Des
         ShaderExportStreamBindState &bindState = state->bindStates[i];
 
         // Set if valid
-        if (bindState.rootSignature && bindState.pipeline && bindState.isInstrumented) {
-            BindShaderExport(state, bindState.pipeline, commandList);
+        if (bindState.rootSignature && state->isInstrumented && state->pipeline->type == static_cast<PipelineType>(i)) {
+            BindShaderExport(state, state->pipeline, commandList);
         }
     }
 }
@@ -271,8 +271,8 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
     bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount);
 
     // Ensure the shader export states are bound
-    if (bindState.pipeline && bindState.isInstrumented) {
-        BindShaderExport(state, bindState.pipeline, commandList);
+    if (state->pipeline && state->pipeline->type == PipelineType::Compute && state->isInstrumented) {
+        BindShaderExport(state, state->pipeline, commandList);
     }
 }
 
@@ -292,8 +292,8 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
     bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount);
 
     // Ensure the shader export states are bound
-    if (bindState.pipeline && bindState.isInstrumented) {
-        BindShaderExport(state, bindState.pipeline, commandList);
+    if (state->pipeline && state->pipeline->type == PipelineType::Graphics && state->isInstrumented) {
+        BindShaderExport(state, state->pipeline, commandList);
     }
 }
 
@@ -348,9 +348,9 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
     ShaderExportStreamBindState& bindState = GetBindStateFromPipeline(state, pipeline);
 
     // Set state
-    bindState.pipeline = pipeline;
-    bindState.pipelineObject = pipelineObject;
-    bindState.isInstrumented = instrumented;
+    state->pipeline = pipeline;
+    state->pipelineObject = pipelineObject;
+    state->isInstrumented = instrumented;
 
     // Invalidated root signature?
     if (bindState.rootSignature != pipeline->signature) {

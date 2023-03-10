@@ -13,6 +13,8 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = desc->Type;
+    state->flags = desc->Flags;
+    state->physicalDescriptorCount = desc->NumDescriptors;
     state->exhausted = false;
 
     // Object
@@ -76,13 +78,13 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     state->prmTable = new (table.state->allocators, kAllocPRMT) PhysicalResourceMappingTable(table.state->allocators.Tag(kAllocPRMT), table.state->deviceAllocator);
 
     // Initialize table with count
-    state->prmTable->Install(desc->NumDescriptors);
+    state->prmTable->Install(state->physicalDescriptorCount);
 
     // Register heap in shared table
     table.state->heapTable.Add(
         state,
         state->cpuDescriptorBase.ptr,
-        desc->NumDescriptors,
+        state->physicalDescriptorCount,
         state->stride
     );
 
@@ -125,7 +127,7 @@ void WINAPI HookID3D12DescriptorHeapGetGPUDescriptorHandleForHeapStart(ID3D12Des
     table.bottom->next_GetGPUDescriptorHandleForHeapStart(table.next, &reg);
 
     // Advance base by heap prefix
-    if (table.state->allocator) {
+    if (table.state->allocator && table.state->flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
         reg.ptr += table.state->allocator->GetPrefixOffset();
     }
 
@@ -220,5 +222,8 @@ HRESULT HookID3D12DescriptorHeapGetDevice(ID3D12DescriptorHeap*_this, const IID 
 }
 
 DescriptorHeapState::~DescriptorHeapState() {
+    auto table = GetTable(parent);
 
+    // Remove from table
+    table.state->heapTable.Remove(cpuDescriptorBase.ptr);
 }
