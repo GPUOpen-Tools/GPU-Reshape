@@ -32,4 +32,6 @@ target_include_directories(GRS.Libraries.Common PUBLIC Include)
 
 # Links
 ExternalProject_Link(GRS.Libraries.Common TinyXML2 tinyxml2)
+ExternalProject_Link(GRS.Libraries.Common UnorderedDense)
+ExternalProject_Link(GRS.Libraries.Common BTree)
 ExternalProject_Link(GRS.Libraries.Common Fmt $<$<CONFIG:Debug>:fmtd> $<$<CONFIG:Release>:fmt> $<$<CONFIG:RelWithDebInfo>:fmt>)
