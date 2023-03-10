@@ -84,7 +84,7 @@ public:
             return 0ull;
         }
         
-        return segment.entries.back().allocation.resource->GetGPUVirtualAddress() + mappedOffset;
+        return segment.entries.back().allocation.resource->GetGPUVirtualAddress() + mappedOffset * sizeof(uint32_t);
     }
 
     /// Release the segment
@@ -104,7 +104,7 @@ private:
     /// Roll the current chunk
     void RollChunk() {
         // Advance current offset
-        mappedOffset += std::max<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, mappedSegmentLength);
+        mappedOffset += std::max<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT / sizeof(uint32_t), mappedSegmentLength);
 
         // Out of memory?
         if (mappedOffset + pendingRootCount >= chunkSize) {
