@@ -168,6 +168,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
                 // Create mapping
                 RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.Constants.RegisterSpace, parameter.Constants.ShaderRegister);
+                user.isRootResourceParameter = true;
                 user.rootParameter = i;
                 user.offset = 0;
                 break;
@@ -178,6 +179,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
                 // Create mapping
                 RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
+                user.isRootResourceParameter = true;
                 user.rootParameter = i;
                 user.offset = 0;
                 break;
@@ -188,6 +190,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
                 // Create mapping
                 RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::SRV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
+                user.isRootResourceParameter = true;
                 user.rootParameter = i;
                 user.offset = 0;
                 break;
@@ -198,6 +201,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
                 // Create mapping
                 RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::UAV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
+                user.isRootResourceParameter = true;
                 user.rootParameter = i;
                 user.offset = 0;
                 break;

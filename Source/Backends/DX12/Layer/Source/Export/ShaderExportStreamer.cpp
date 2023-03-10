@@ -498,19 +498,75 @@ void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamStat
 }
 
 void ShaderExportStreamer::SetComputeRootShaderResourceView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
-    // TODO: Add method for determining what VRM it came from?
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+
+    // Store persistent
+    bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::SRV, bufferLocation);
+
+    // Set the root PRMT offset
+    ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
 }
 
 void ShaderExportStreamer::SetGraphicsRootShaderResourceView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
-    // TODO: Add method for determining what VRM it came from?
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
+
+    // Store persistent
+    bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::SRV, bufferLocation);
+
+    // Set the root PRMT offset
+    ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
 }
 
 void ShaderExportStreamer::SetComputeRootUnorderedAccessView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
-    // TODO: Add method for determining what VRM it came from?
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+
+    // Store persistent
+    bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::UAV, bufferLocation);
+
+    // Set the root PRMT offset
+    ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
 }
 
 void ShaderExportStreamer::SetGraphicsRootUnorderedAccessView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
-    // TODO: Add method for determining what VRM it came from?
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
+
+    // Store persistent
+    bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::UAV, bufferLocation);
+
+    // Set the root PRMT offset
+    ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+}
+    
+void ShaderExportStreamer::SetComputeRootConstantBufferView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+
+    // Store persistent
+    bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::CBV, bufferLocation);
+
+    // Set the root PRMT offset
+    ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+}
+
+void ShaderExportStreamer::SetGraphicsRootConstantBufferView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
+    // Bind state
+    ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
+
+    // Store persistent
+    bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::CBV, bufferLocation);
+
+    // Set the root PRMT offset
+    ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
 }
 
 void ShaderExportStreamer::SetGraphicsRootConstants(ShaderExportStreamState* state, UINT rootParameterIndex, const void* data, uint64_t size, uint64_t offset) {

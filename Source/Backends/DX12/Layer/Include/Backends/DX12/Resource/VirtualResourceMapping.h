@@ -7,14 +7,23 @@
 #include <cstdint>
 
 struct VirtualResourceMapping {
-    /// Physical UID of the resource
-    uint32_t puid : IL::kResourceTokenPUIDBitCount;
+    union
+    {
+        struct
+        {
+            /// Physical UID of the resource
+            uint32_t puid : IL::kResourceTokenPUIDBitCount;
 
-    /// Type identifier of this resource
-    uint32_t type : IL::kResourceTokenTypeBitCount;
+            /// Type identifier of this resource
+            uint32_t type : IL::kResourceTokenTypeBitCount;
 
-    /// Sub-resource base of this resource
-    uint32_t srb  : IL::kResourceTokenSRBBitCount;
+            /// Sub-resource base of this resource
+            uint32_t srb  : IL::kResourceTokenSRBBitCount;
+        };
+
+        /// Opaque key
+        uint32_t opaque;
+    };
 };
 
 /// Validation

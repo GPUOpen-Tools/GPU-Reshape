@@ -62,6 +62,9 @@ static void ReconstructPipelineState(CommandListState* commandList, DeviceState*
         }
     }
 
+    // Compute overwritten at this point
+    commandList->streamState->pipelineSegmentMask &= ~PipelineTypeSet(PipelineType::Compute);
+
     // Rebind the export, invalidated by signature change
     device->exportStreamer->BindShaderExport(commandList->streamState, commandList->streamState->pipeline, commandList);
 }

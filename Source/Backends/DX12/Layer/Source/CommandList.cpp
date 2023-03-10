@@ -517,6 +517,32 @@ void WINAPI HookID3D12CommandListSetGraphicsRootUnorderedAccessView(ID3D12Comman
     table.next->SetGraphicsRootUnorderedAccessView(RootParameterIndex, BufferLocation);
 }
 
+void WINAPI HookID3D12CommandListSetComputeRootConstantBufferView(ID3D12CommandList *list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetComputeRootConstantBufferView(table.state->streamState, RootParameterIndex, BufferLocation);
+
+    // Pass down call chain
+    table.next->SetComputeRootConstantBufferView(RootParameterIndex, BufferLocation);
+}
+
+void WINAPI HookID3D12CommandListSetGraphicsRootConstantBufferView(ID3D12CommandList *list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Inform the streamer
+    device.state->exportStreamer->SetGraphicsRootConstantBufferView(table.state->streamState, RootParameterIndex, BufferLocation);
+
+    // Pass down call chain
+    table.next->SetGraphicsRootConstantBufferView(RootParameterIndex, BufferLocation);
+}
+
 void WINAPI HookID3D12CommandListCopyBufferRegion(ID3D12CommandList *list, ID3D12Resource* pDstBuffer, UINT64 DstOffset, ID3D12Resource* pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes) {
     auto table = GetTable(list);
 

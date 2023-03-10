@@ -18,7 +18,9 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
 
         // Create state
         auto* bufferState = new (state->allocators, kAllocStateResource) ResourceState();
-        state->allocators = state->allocators;
+        bufferState->allocators = state->allocators;
+        bufferState->object = bottomBuffer;
+        bufferState->dimension = bottomBuffer->GetDesc().Dimension;
         bufferState->parent = state->parent;
 
         // Create detours

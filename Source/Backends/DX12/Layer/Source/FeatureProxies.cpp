@@ -33,13 +33,9 @@ static ResourceState* GetResourceStateFromHeapHandle(CommandListState* state, D3
 
     // Get heap from handle ptr
     DescriptorHeapState* heap = table.state->heapTable.Find(handle.ptr);
-    
-    // Get base offset from heap
-    uint64_t offset = handle.ptr - heap->cpuDescriptorBase.ptr;
-    ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
-    // Get from PRMT
-    return heap->prmTable->GetMappingState(static_cast<uint32_t>(offset / heap->stride));
+    // Get state
+    return heap->GetStateFromHeapHandle(handle);
 }
 
 void FeatureHook_CopyBufferRegion::operator()(CommandListState *list, CommandContext *context, ID3D12Resource* pDstBuffer, UINT64 DstOffset, ID3D12Resource* pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes) const {

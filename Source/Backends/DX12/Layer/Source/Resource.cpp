@@ -23,6 +23,8 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     // Create state
     auto* state = new (table.state->allocators, kAllocStateResource) ResourceState();
     state->allocators = table.state->allocators;
+    state->object = resource;
+    state->dimension = desc->Dimension;
     state->parent = parent;
 
     // Allocate PUID
@@ -45,6 +47,21 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
 
     // Entire SRB is visible from the resource
     state->virtualMapping.srb = ~0u;
+
+    // Create mapping
+    switch (desc->Dimension) {
+        default:
+        ASSERT(false, "Unsupported dimension");
+            break;
+        case D3D12_RESOURCE_DIMENSION_BUFFER:
+            table.state->virtualAddressTable.Add(state, resource->GetGPUVirtualAddress(), desc->Width);
+            break;
+        case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
+        case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+        case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+            table.state->virtualAddressTable.Add(state, resource->GetGPUVirtualAddress(), 4u);
+            break;
+    }
 
     // Create detours
     return CreateDetour(state->allocators, resource, state);
@@ -238,5 +255,13 @@ HRESULT WINAPI HookID3D12ResourceGetDevice(ID3D12Resource* _this, REFIID riid, v
 }
 
 ResourceState::~ResourceState() {
+    auto table = GetTable(parent);
 
+    // May be invalid
+    if (!object) {
+        return;
+    }
+
+    // Remove mapping
+    table.state->virtualAddressTable.Remove(object->GetGPUVirtualAddress());
 }

@@ -49,7 +49,7 @@ public:
         }
 
         // Sorted search
-        auto it = --std::lower_bound(entries.begin(), entries.end(), HeapEntry {.base = offset});
+        auto it = --std::upper_bound(entries.begin(), entries.end(), HeapEntry {.base = offset});
 
         // May not be valid
         if (it->base + it->count * it->stride <= offset) {

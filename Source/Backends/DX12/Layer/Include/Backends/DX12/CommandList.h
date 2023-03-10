@@ -41,6 +41,8 @@ void WINAPI HookID3D12CommandListSetComputeRootShaderResourceView(ID3D12CommandL
 void WINAPI HookID3D12CommandListSetGraphicsRootShaderResourceView(ID3D12CommandList *list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation);
 void WINAPI HookID3D12CommandListSetComputeRootUnorderedAccessView(ID3D12CommandList *list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation);
 void WINAPI HookID3D12CommandListSetGraphicsRootUnorderedAccessView(ID3D12CommandList *list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation);
+void WINAPI HookID3D12CommandListSetComputeRootConstantBufferView(ID3D12CommandList *list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation);
+void WINAPI HookID3D12CommandListSetGraphicsRootConstantBufferView(ID3D12CommandList *list, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation);
 void WINAPI HookID3D12CommandListCopyBufferRegion(ID3D12CommandList *list, ID3D12Resource* pDstBuffer, UINT64 DstOffset, ID3D12Resource* pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes);
 void WINAPI HookID3D12CommandListCopyTextureRegion(ID3D12CommandList *list, const D3D12_TEXTURE_COPY_LOCATION *pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION *pSrc, const D3D12_BOX *pSrcBox);
 void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList *list, UINT NumBarriers, const D3D12_RESOURCE_BARRIER *pBarriers);

@@ -3912,9 +3912,6 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
 
     // Allocate ids
     uint32_t legacyLoad = program.GetIdentifierMap().AllocID();
-    uint32_t retOffset = program.GetIdentifierMap().AllocID();
-    uint32_t rootOffset = program.GetIdentifierMap().AllocID();
-    uint32_t descriptorOffset = program.GetIdentifierMap().AllocID();
 
     // Get the current root offset for the descriptor, entirely scalarized
     {
@@ -3948,79 +3945,98 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
         block->AddRecord(CompileIntrinsicCall(legacyLoad, intrinsic, 3, ops));
     }
 
-    // Extract respective value (uint4)
-    {
+    // Root parameters are hosted inline
+    if (userMapping->isRootResourceParameter) {
+        // Extract respective value (uint4)
+        {
+            LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+            recordExtract.SetUser(true, ~0u, _instr->result);
+            recordExtract.opCount = 2;
+            recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+            recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyLoad);
+            recordExtract.ops[1] = userMapping->rootParameter % 4u;
+            block->AddRecord(recordExtract);
+        }
+    } else {
+        // Alloc IDs
+        uint32_t retOffset = program.GetIdentifierMap().AllocID();
+        uint32_t rootOffset = program.GetIdentifierMap().AllocID();
+        uint32_t descriptorOffset = program.GetIdentifierMap().AllocID();
+        
+        // Extract respective value (uint4)
+        {
+            LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+            recordExtract.SetUser(true, ~0u, rootOffset);
+            recordExtract.opCount = 2;
+            recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+            recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyLoad);
+            recordExtract.ops[1] = userMapping->rootParameter % 4u;
+            block->AddRecord(recordExtract);
+        }
+        
+        // Add local descriptor offset
+        {
+            LLVMRecord addRecord;
+            addRecord.SetUser(true, ~0u, descriptorOffset);
+            addRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+            addRecord.opCount = 3u;
+            addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+            addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Add);
+
+            addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(rootOffset);
+
+            addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                Backend::IL::IntConstant{.value = userMapping->offset}
+            )->id);
+
+            block->AddRecord(addRecord);
+        }
+
+        // Load the resource token
+        {
+            // Get intrinsic
+            const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferLoadI32);
+
+            /*
+             * ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
+             * ; returns: status
+             * declare %dx.types.ResRet.f32 @dx.op.bufferLoad.f32(
+             *     i32,                  ; opcode
+             *     %dx.types.Handle,     ; resource handle
+             *     i32,                  ; coordinate c0
+             *     i32)                  ; coordinate c1
+             */
+
+            uint64_t ops[4];
+
+            ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferLoad)}
+            )->id);
+
+            ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtHandle);
+
+            ops[2] = table.idRemapper.EncodeRedirectedUserOperand(descriptorOffset);
+
+            ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                Backend::IL::UndefConstant{}
+            )->id);
+
+            // Invoke
+            block->AddRecord(CompileIntrinsicCall(retOffset, intrinsic, 4, ops));
+        }
+
+        // Extract first value
         LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-        recordExtract.SetUser(true, ~0u, rootOffset);
+        recordExtract.SetUser(true, ~0u, _instr->result);
         recordExtract.opCount = 2;
         recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
-        recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyLoad);
-        recordExtract.ops[1] = userMapping->rootParameter % 4u;
+        recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(retOffset);
+        recordExtract.ops[1] = 0;
         block->AddRecord(recordExtract);
     }
-
-    // Add local descriptor offset
-    {
-        LLVMRecord addRecord;
-        addRecord.SetUser(true, ~0u, descriptorOffset);
-        addRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
-        addRecord.opCount = 3u;
-        addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
-        addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Add);
-
-        addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(rootOffset);
-
-        addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = userMapping->offset}
-        )->id);
-
-        block->AddRecord(addRecord);
-    }
-
-    // Load the resource token
-    {
-        // Get intrinsic
-        const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferLoadI32);
-
-        /*
-         * ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
-         * ; returns: status
-         * declare %dx.types.ResRet.f32 @dx.op.bufferLoad.f32(
-         *     i32,                  ; opcode
-         *     %dx.types.Handle,     ; resource handle
-         *     i32,                  ; coordinate c0
-         *     i32)                  ; coordinate c1
-         */
-
-        uint64_t ops[4];
-
-        ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferLoad)}
-        )->id);
-
-        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtHandle);
-
-        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(descriptorOffset);
-
-        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::UndefConstant{}
-        )->id);
-
-        // Invoke
-        block->AddRecord(CompileIntrinsicCall(retOffset, intrinsic, 4, ops));
-    }
-
-    // Extract first value
-    LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-    recordExtract.SetUser(true, ~0u, _instr->result);
-    recordExtract.opCount = 2;
-    recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
-    recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(retOffset);
-    recordExtract.ops[1] = 0;
-    block->AddRecord(recordExtract);
 }
 
 void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const IL::ExportInstruction *_instr) {

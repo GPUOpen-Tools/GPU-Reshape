@@ -9,6 +9,7 @@
 // Forward declarations
 class ShaderExportDescriptorAllocator;
 class PhysicalResourceMappingTable;
+struct ResourceState;
 
 struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapState {
     ~DescriptorHeapState();
@@ -22,6 +23,12 @@ struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapSt
     bool IsInBounds(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {
         return handle.ptr >= cpuDescriptorBase.ptr && handle.ptr < cpuDescriptorBase.ptr + physicalDescriptorCount * stride;
     }
+
+    /// Get the state from a handle
+    ResourceState* GetStateFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const;
+
+    /// Get the state from a handle
+    ResourceState* GetStateFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const;
 
     /// Parent state
     ID3D12Device* parent{};

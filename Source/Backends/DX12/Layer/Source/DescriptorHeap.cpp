@@ -227,3 +227,21 @@ DescriptorHeapState::~DescriptorHeapState() {
     // Remove from table
     table.state->heapTable.Remove(cpuDescriptorBase.ptr);
 }
+
+ResourceState * DescriptorHeapState::GetStateFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {
+    // Get base offset from heap
+    uint64_t offset = handle.ptr - cpuDescriptorBase.ptr;
+    ASSERT(offset % stride == 0, "Invalid heap offset");
+
+    // Get from PRMT
+    return prmTable->GetMappingState(static_cast<uint32_t>(offset / stride));
+}
+
+ResourceState * DescriptorHeapState::GetStateFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const {
+    // Get base offset from heap
+    uint64_t offset = handle.ptr - gpuDescriptorBase.ptr;
+    ASSERT(offset % stride == 0, "Invalid heap offset");
+
+    // Get from PRMT
+    return prmTable->GetMappingState(static_cast<uint32_t>(offset / stride));
+}

@@ -6,6 +6,7 @@
 #include <Backends/DX12/DependentObject.h>
 #include <Backends/DX12/Compiler/ShaderSet.h>
 #include <Backends/DX12/Resource/HeapTable.h>
+#include <Backends/DX12/Resource/ResourceVirtualAddressTable.h>
 #include <Backends/DX12/Resource/PhysicalResourceIdentifierMap.h>
 #include <Backends/DX12/FeatureProxies.Gen.h>
 
@@ -45,6 +46,7 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
           states_Pipelines(allocators.Tag(kAllocTracking)),
           states_Queues(allocators.Tag(kAllocTracking)),
           heapTable(allocators.Tag(kAllocTracking)),
+          virtualAddressTable(allocators.Tag(kAllocTracking)),
           physicalResourceIdentifierMap(allocators.Tag(kAllocPRMT)),
           dependencies_shaderPipelines(allocators.Tag(kAllocTracking)),
           features(allocators) { }
@@ -86,6 +88,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Sorted heap table
     HeapTable heapTable;
+
+    /// Sorted virtual address table
+    ResourceVirtualAddressTable virtualAddressTable;
 
     /// Physical identifier map
     PhysicalResourceIdentifierMap physicalResourceIdentifierMap;

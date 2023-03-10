@@ -163,6 +163,18 @@ public:
     /// Invoked during root binding
     /// \param state parent stream state
     /// \param rootParameterIndex given root index
+    /// \param baseDescriptor data to be bound
+    void SetComputeRootConstantBufferView(ShaderExportStreamState* state, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation);
+
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
+    /// \param baseDescriptor data to be bound
+    void SetGraphicsRootConstantBufferView(ShaderExportStreamState* state, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation);
+
+    /// Invoked during root binding
+    /// \param state parent stream state
+    /// \param rootParameterIndex given root index
     /// \param data data to be bound
     /// \param size byte size in data
     /// \param offset initial offset
