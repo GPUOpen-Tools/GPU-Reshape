@@ -6,6 +6,7 @@ DXILDebugModule::DXILDebugModule(const Allocators &allocators)
     : scan(allocators),
       sourceFragments(allocators),
       instructionMetadata(allocators),
+      metadata(allocators),
       thinTypes(allocators),
       thinValues(allocators),
       allocators(allocators) { }
@@ -226,6 +227,11 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
                 metadata.sourceAssociation.line = record.OpAs<uint32_t>(0) - 1;
                 metadata.sourceAssociation.column = record.OpAs<uint32_t>(1) - 1;
 
+                // Has scope?
+                if (uint32_t scope = record.OpAs<uint32_t>(2); scope) {
+                    metadata.sourceAssociation.fileUID = static_cast<uint16_t>(GetLinearFileUID(scope - 1));
+                }
+
                 if (instructionMetadata.size()) {
                     instructionMetadata.back() = metadata;
                 }
@@ -257,12 +263,22 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
     // Current name
     LLVMRecordStringView recordName;
 
+    // Value anchor
+    uint32_t anchor = static_cast<uint32_t>(metadata.size());
+
+    // Preallocate
+    metadata.resize(metadata.size() + block->records.size());
+
     // Visit records
     for (size_t i = 0; i < block->records.size(); i++) {
         const LLVMRecord &record = block->records[i];
 
+        // Setup md
+        Metadata& md = metadata[anchor + i];
+        md.type = static_cast<LLVMMetadataRecord>(record.id);
+
         // Handle record
-        switch (static_cast<LLVMMetadataRecord>(record.id)) {
+        switch (md.type) {
             default: {
                 // Ignored
                 break;
@@ -278,15 +294,53 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                 break;
             }
 
+            case LLVMMetadataRecord::SubProgram: {
+                md.subProgram.fileMdId = static_cast<uint32_t>(record.Op(4));
+                break;
+            }
+
+            case LLVMMetadataRecord::LexicalBlock: {
+                md.lexicalBlock.fileMdId = static_cast<uint32_t>(record.Op(2));
+                break;
+            }
+
+            case LLVMMetadataRecord::LexicalBlockFile: {
+                md.lexicalBlockFile.fileMdId = static_cast<uint32_t>(record.Op(2));
+                break;
+            }
+
+            case LLVMMetadataRecord::Namespace: {
+                md._namespace.fileMdId = static_cast<uint32_t>(record.Op(2));
+                break;
+            }
+
+            case LLVMMetadataRecord::CompileUnit: {
+                md.compileUnit.fileMdId = static_cast<uint32_t>(record.Op(2));
+                break;
+            }
+
+            case LLVMMetadataRecord::File: {
+                md.file.linearFileUID = static_cast<uint32_t>(sourceFragments.size());
+
+                // Create fragment
+                SourceFragment& fragment = sourceFragments.emplace_back(allocators);
+
+                // Copy filename
+                LLVMRecordStringView filename(block->records[record.Op(1) - 1], 0);
+                fragment.filename.resize(filename.Length());
+                filename.Copy(fragment.filename.data());
+                break;
+            }
+
             case LLVMMetadataRecord::NamedNode: {
-                ParseNamedMetadata(block, record, recordName);
+                ParseNamedMetadata(block, anchor, record, recordName);
                 break;
             }
         }
     }
 }
 
-void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, const LLVMRecord &record, const struct LLVMRecordStringView& name) {
+void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, uint32_t anchor, const LLVMRecord &record, const struct LLVMRecordStringView& name) {
     switch (name.GetHash()) {
         case CRC64("dx.source.contents"): {
             if (name != "dx.source.contents") {
@@ -295,7 +349,7 @@ void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, const LLVMRecord &rec
 
             // Parse all files
             for (uint32_t i = 0; i < record.opCount; i++) {
-                ParseContents(block, block->records[record.Op(i)]);
+                ParseContents(block, static_cast<uint32_t>(record.Op(i)));
             }
             break;
         }
@@ -309,32 +363,39 @@ void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, const LLVMRecord &rec
     }
 }
 
-void DXILDebugModule::ParseContents(LLVMBlock* block, const LLVMRecord& record) {
+void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
+    const LLVMRecord& record = block->records[fileMdId];
+
+    // Get strings
     LLVMRecordStringView filename(block->records[record.Op(0) - 1], 0);
     LLVMRecordStringView contents(block->records[record.Op(1) - 1], 0);
 
-    // Create fragment
-    SourceFragment& fragment = sourceFragments.emplace_back(allocators);
+    // Target fragment
+    SourceFragment* fragment = FindOrCreateSourceFragment(filename);
+
+    // May not exist
+    if (!fragment) {
+        ASSERT(false, "Unassociated file");
+        return;
+    }
 
     // Allocate
-    fragment.filename.resize(filename.Length());
-    fragment.contents.resize(contents.Length());
+    fragment->contents.resize(contents.Length());
 
     // Copy data
-    filename.Copy(fragment.filename.data());
-    contents.Copy(fragment.contents.data());
+    contents.Copy(fragment->contents.data());
 
     // Count number of line endings
-    uint32_t lineEndingCount = static_cast<uint32_t>(std::count(fragment.contents.begin(), fragment.contents.end(), '\n'));
-    fragment.lineOffsets.reserve(lineEndingCount + 1);
+    uint32_t lineEndingCount = static_cast<uint32_t>(std::count(fragment->contents.begin(), fragment->contents.end(), '\n'));
+    fragment->lineOffsets.reserve(lineEndingCount + 1);
 
     // First line
-    fragment.lineOffsets.push_back(0);
+    fragment->lineOffsets.push_back(0);
 
     // Summarize line offsets
-    for (size_t offset = 0; offset < fragment.contents.length(); offset++) {
-        if (fragment.contents[offset] == '\n') {
-            fragment.lineOffsets.push_back(static_cast<uint32_t>(offset + 1));
+    for (size_t offset = 0; offset < fragment->contents.length(); offset++) {
+        if (fragment->contents[offset] == '\n') {
+            fragment->lineOffsets.push_back(static_cast<uint32_t>(offset + 1));
         }
     }
 }
@@ -362,4 +423,85 @@ uint64_t DXILDebugModule::GetCombinedSourceLength(uint32_t fileUID) const {
 void DXILDebugModule::FillCombinedSource(uint32_t fileUID, char *buffer) const {
     const SourceFragment& fragment = sourceFragments.at(fileUID);
     std::memcpy(buffer, fragment.contents.data(), fragment.contents.length());
+}
+
+uint32_t DXILDebugModule::GetLinearFileUID(uint32_t scopeMdId) {
+    Metadata& md = metadata[scopeMdId];
+
+    // Handle scope
+    uint32_t fileMdId;
+    switch (md.type) {
+        default:
+            ASSERT(false, "Unexpected scope id");
+            return 0;
+        case LLVMMetadataRecord::SubProgram: {
+            fileMdId = md.subProgram.fileMdId;
+            break;
+        }
+        case LLVMMetadataRecord::LexicalBlock: {
+            fileMdId = md.lexicalBlock.fileMdId;
+            break;
+        }
+        case LLVMMetadataRecord::LexicalBlockFile: {
+            fileMdId = md.lexicalBlockFile.fileMdId;
+            break;
+        }
+        case LLVMMetadataRecord::Namespace: {
+            fileMdId = md._namespace.fileMdId;
+            break;
+        }
+        case LLVMMetadataRecord::CompileUnit: {
+            fileMdId = md.compileUnit.fileMdId;
+            break;
+        }
+    }
+
+    // Get file uid
+    Metadata& fileMd = metadata[fileMdId - 1];
+    ASSERT(fileMd.type == LLVMMetadataRecord::File, "Unexpected node");
+
+    // OK
+    return fileMd.file.linearFileUID;
+}
+
+static char SanitizeSourceFragmentPathChar(char ch) {
+    switch (ch) {
+        default:
+            return ch;
+        case '/':
+        case '\\':
+            return '\\';
+    }
+}
+
+DXILDebugModule::SourceFragment *DXILDebugModule::FindOrCreateSourceFragment(const LLVMRecordStringView &view) {
+    // Find fragment
+    for (SourceFragment& candidate : sourceFragments) {
+        if (candidate.filename.length() != view.Length()) {
+            continue;
+        }
+
+        bool isMatch = true;
+
+        for (uint32_t i = 0; i < view.Length(); i++) {
+            if (SanitizeSourceFragmentPathChar(candidate.filename[i]) != SanitizeSourceFragmentPathChar(view[i])) {
+                isMatch = false;
+                break;
+            }
+        }
+
+        if (isMatch) {
+            return &candidate;
+        }
+    }
+
+    // The fragment doesn't exist, likely indicating that it was not used in the shader
+    SourceFragment& fragment = sourceFragments.emplace_back(allocators);
+
+    // Copy filename
+    fragment.filename.resize(view.Length());
+    view.Copy(fragment.filename.data());
+    
+    // None
+    return &fragment;
 }

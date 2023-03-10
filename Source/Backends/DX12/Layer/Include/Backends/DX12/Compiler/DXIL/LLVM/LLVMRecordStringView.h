@@ -78,6 +78,12 @@ struct LLVMRecordStringView {
         return true;
     }
 
+    /// Accessor
+    char operator[](uint32_t i) const {
+        ASSERT(i < operandCount, "Out of bounds index");
+        return static_cast<char>(operands[i]);
+    }
+
     /// Valid?
     operator bool() const {
         return operands != nullptr;

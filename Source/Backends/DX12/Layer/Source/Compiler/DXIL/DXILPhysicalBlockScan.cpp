@@ -602,12 +602,12 @@ static void ValidateBlock(const LLVMBlock *lhs, const LLVMBlock *rhs) {
     // Validate properties
     ASSERT(lhs->id == rhs->id, "Id mismatch");
     ASSERT(lhs->abbreviationSize == rhs->abbreviationSize, "Abbreviation size mismatch");
-    ASSERT(lhs->blocks.Size() == rhs->blocks.Size(), "Block count mismatch");
-    ASSERT(lhs->abbreviations.Size() == rhs->abbreviations.Size(), "Abbreviation count mismatch");
-    ASSERT(lhs->records.Size() == rhs->records.Size(), "Record count mismatch");
-    ASSERT(lhs->elements.Size() == rhs->elements.Size(), "Element count mismatch");
+    ASSERT(lhs->blocks.size() == rhs->blocks.size(), "Block count mismatch");
+    ASSERT(lhs->abbreviations.size() == rhs->abbreviations.size(), "Abbreviation count mismatch");
+    ASSERT(lhs->records.size() == rhs->records.size(), "Record count mismatch");
+    ASSERT(lhs->elements.size() == rhs->elements.size(), "Element count mismatch");
 
-    for (size_t elementIdx = 0; elementIdx < lhs->elements.Size(); elementIdx++) {
+    for (size_t elementIdx = 0; elementIdx < lhs->elements.size(); elementIdx++) {
         const LLVMBlockElement& elementLhs = lhs->elements[elementIdx];
         const LLVMBlockElement& elementRhs = rhs->elements[elementIdx];
 
@@ -725,7 +725,7 @@ void DXILPhysicalBlockScan::Stitch(DXStream &out) {
     ASSERT(reader.ValidateAndConsume(), "Validation failed");
 
     // Block for validation
-    LLVMBlock mirrorBlock;
+    LLVMBlock mirrorBlock(allocators);
 
     // Must start with a sub-block
     ASSERT(reader.FixedEnum<LLVMReservedAbbreviation>(2) == LLVMReservedAbbreviation::EnterSubBlock, "First block must be EnterSubBlock");

@@ -49,16 +49,20 @@ private:
     /// \param block source block
     /// \param record source record
     /// \param name given name of the node
-    void ParseNamedMetadata(LLVMBlock* block, const LLVMRecord& record, const struct LLVMRecordStringView& name);
+    void ParseNamedMetadata(LLVMBlock* block, uint32_t anchor, const LLVMRecord& record, const struct LLVMRecordStringView& name);
 
     /// Parse operand contents
     /// \param block source block
-    /// \param record source record
-    void ParseContents(LLVMBlock* block, const LLVMRecord& record);
+    /// \param fileMdId file id
+    void ParseContents(LLVMBlock* block, uint32_t fileMdId);
 
     /// Parse a function
     /// \param block source block
     void ParseFunction(LLVMBlock* block);
+
+    /// Get the linear file index
+    /// \param scopeMdId scope id
+    uint32_t GetLinearFileUID(uint32_t scopeMdId);
 
 private:
     /// Scanner
@@ -80,6 +84,10 @@ private:
         Vector<uint32_t> lineOffsets;
     };
 
+    /// Find or create a source fragment
+    /// \param view filename view
+    SourceFragment* FindOrCreateSourceFragment(const LLVMRecordStringView& view);
+
     /// All source fragments within a module
     Vector<SourceFragment> sourceFragments;
 
@@ -91,6 +99,42 @@ private:
 
     /// All instruction data, used for cross referencing
     Vector<InstructionMetadata> instructionMetadata;
+
+private:
+    struct Metadata {
+        /// Underlying MD
+        LLVMMetadataRecord type{};
+
+        /// Payload data
+        union {
+            struct {
+                uint32_t linearFileUID;
+            } file;
+
+            struct {
+                uint32_t fileMdId;
+            } lexicalBlock;
+
+            struct {
+                uint32_t fileMdId;
+            } lexicalBlockFile;
+
+            struct {
+                uint32_t fileMdId;
+            } subProgram;
+
+            struct {
+                uint32_t fileMdId;
+            } _namespace;
+
+            struct {
+                uint32_t fileMdId;
+            } compileUnit;
+        };
+    };
+
+    /// All metadata
+    Vector<Metadata> metadata;
 
 private:
     /// Lightweight type definition
