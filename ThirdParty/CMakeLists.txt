@@ -29,6 +29,8 @@ include(DXIL.cmake)
 include(DxbcSigner.cmake)
 include(D3D12MA.cmake)
 include(AMDAGS.cmake)
+include(UnorderedDense.cmake)
+include(BTree.cmake)
 
 # UI?
 if (${BUILD_UIX})

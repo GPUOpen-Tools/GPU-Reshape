@@ -78,6 +78,12 @@ Please see *Developmental configuration options* below for additional options.
 - **libClang** </br>
   Clang compiler C-interface
 
+- **unordered_dense** </br>
+  Fast hashmap implementation
+
+- **BTree** </br>
+  Fast b'tree implementation
+
 ## UIX dependencies
 
 - **Avalonia** </br>
