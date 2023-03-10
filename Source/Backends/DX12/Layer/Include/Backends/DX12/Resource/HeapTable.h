@@ -1,11 +1,10 @@
 #pragma once
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Allocator/BTree.h>
 
 // Std
-#include <vector>
-#include <algorithm>
+#include <mutex>
 
 // Forward declarations
 struct DescriptorHeapState;
@@ -22,55 +21,57 @@ public:
     /// \param count number of descriptors
     /// \param stride stride of each descriptor
     void Add(DescriptorHeapState* heap, uint64_t base, uint64_t count, uint64_t stride) {
-        HeapEntry entry {
-            .base = base,
+        std::lock_guard guard(lock);
+        entries[base] = HeapEntry {
             .count = count,
             .stride = stride,
             .heap = heap
         };
-
-        // Sorted insertion
-        entries.insert(std::upper_bound(entries.begin(), entries.end(), entry), entry);
     }
 
     /// Remove a heap from tracking
     /// \param base base descriptor offset
     void Remove(uint64_t base) {
-        auto it = --std::lower_bound(entries.begin(), entries.end(), HeapEntry {.base = base});
-        entries.erase(it);
+        std::lock_guard guard(lock);
+        entries.erase(base);
     }
 
     /// Find a given heap
     /// \param offset descriptor offset
     /// \return nullptr if not found
-    DescriptorHeapState* Find(uint64_t offset) const {
+    DescriptorHeapState* Find(uint64_t offset) {
+        std::lock_guard guard(lock);
         if (entries.empty()) {
             return nullptr;
         }
 
         // Sorted search
-        auto it = --std::upper_bound(entries.begin(), entries.end(), HeapEntry {.base = offset});
+        auto it = --entries.upper_bound(offset);
 
-        // May not be valid
-        if (it->base + it->count * it->stride <= offset) {
+        // Bad lower?
+        if (offset < it->first) {
+            return nullptr;
+        }
+        
+        // Validate against upper
+        if (offset - it->first > it->second.count * it->second.stride) {
             return nullptr;
         }
 
-        return it->heap;
+        // OK
+        return it->second.heap;
     }
 
 private:
     struct HeapEntry {
-        bool operator<(const HeapEntry& rhs) const {
-            return base <= rhs.base;
-        }
-
-        uint64_t base{0};
         uint64_t count{0};
         uint64_t stride{0};
         DescriptorHeapState* heap{nullptr};
     };
 
+    /// Shared lock
+    std::mutex lock;
+
     /// All heaps tracked
-    Vector<HeapEntry> entries;
+    BTreeMap<uint64_t, HeapEntry> entries;
 };
