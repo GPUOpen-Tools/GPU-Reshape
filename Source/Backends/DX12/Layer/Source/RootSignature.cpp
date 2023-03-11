@@ -152,7 +152,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                             // Create at space[base + idx]
                             RootSignatureUserMapping& user = GetRootMapping(mapping, classType, range.RegisterSpace, range.BaseShaderRegister + registerIdx);
                             user.rootParameter = i;
-                            user.offset = descriptorOffset;
+                            user.offset = descriptorOffset + registerIdx;
                         }
 
                         // Next!
