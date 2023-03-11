@@ -209,7 +209,11 @@ namespace Studio.ViewModels
             _endpointConnected = false;
 
             // Start connection
-            _connectionViewModel.Connect(query.IPvX ?? "127.0.0.1", query.Port);
+            _connectionViewModel.Connect(query.IPvX switch
+            {
+                null or "localhost" => "127.0.0.1",
+                _ => query.IPvX
+            }, query.Port);
             _pendingQuery = query;
 
             // Set status
