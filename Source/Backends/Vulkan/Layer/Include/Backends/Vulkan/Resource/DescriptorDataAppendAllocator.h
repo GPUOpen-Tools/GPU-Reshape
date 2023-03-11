@@ -144,12 +144,13 @@ private:
             chunkSize = std::min<size_t>(chunkSize, maxChunkSize / sizeof(uint32_t));
 
             // Create new chunk
+            uint64_t lastSegmentLength = mappedSegmentLength;
             CreateChunk();
 
             // Migrate last segment?
             if (migrateLastSegment) {
-                ASSERT(pendingRootCount == mappedSegmentLength, "Requested migration with mismatched root counts");
-                std::memcpy(mapped + nextMappedOffset, lastChunkDwords, sizeof(uint32_t) * mappedSegmentLength);
+                ASSERT(pendingRootCount == lastSegmentLength, "Requested migration with mismatched root counts");
+                std::memcpy(mapped + nextMappedOffset, lastChunkDwords, sizeof(uint32_t) * lastSegmentLength);
             }
         } else {
             // Migrate last segment?

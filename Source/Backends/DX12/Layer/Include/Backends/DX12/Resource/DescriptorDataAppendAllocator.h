@@ -119,12 +119,13 @@ private:
             uint64_t nextSize = std::max<size_t>(64'000, static_cast<size_t>(chunkSize * 1.5f));
 
             // Create new chunk
+            uint64_t lastSegmentLength = mappedSegmentLength;
             CreateChunk(nextSize);
 
             // Migrate last segment?
             if (migrateLastSegment) {
-                ASSERT(pendingRootCount == mappedSegmentLength, "Requested migration with mismatched root counts");
-                std::memcpy(mapped + nextMappedOffset, lastChunkDwords, sizeof(uint32_t) * mappedSegmentLength);
+                ASSERT(pendingRootCount == lastSegmentLength, "Requested migration with mismatched root counts");
+                std::memcpy(mapped + nextMappedOffset, lastChunkDwords, sizeof(uint32_t) * lastSegmentLength);
             }
         } else {
             // Migrate last segment?
