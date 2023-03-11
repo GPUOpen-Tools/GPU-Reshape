@@ -225,7 +225,7 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
     // Ensure the shader export states are bound
     if (instrumented) {
         // Create initial descriptor segment
-        bindState.descriptorDataAllocator->BeginSegment(pipeline->layout->boundUserDescriptorStates);
+        bindState.descriptorDataAllocator->BeginSegment(pipeline->layout->boundUserDescriptorStates, true);
 
         // Set export set
         BindShaderExport(state, pipeline, commandBuffer);
@@ -308,7 +308,7 @@ void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBind
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.pipeline->layout->boundUserDescriptorStates);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.pipeline->layout->boundUserDescriptorStates, true);
 }
 
 void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState *state, const PipelineState *pipeline, CommandBufferObject* commandBuffer) {

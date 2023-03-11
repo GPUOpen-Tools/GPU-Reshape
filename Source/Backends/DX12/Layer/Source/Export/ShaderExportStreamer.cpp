@@ -268,7 +268,7 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
     bindState.rootSignature = rootSignature;
 
     // Create initial descriptor segments
-    bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount);
+    bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount, false);
 
     // Ensure the shader export states are bound
     if (state->pipeline && state->pipeline->type == PipelineType::Compute && state->isInstrumented) {
@@ -289,7 +289,7 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
     bindState.rootSignature = rootSignature;
 
     // Create initial descriptor segments
-    bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount);
+    bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount, false);
 
     // Ensure the shader export states are bound
     if (state->pipeline && state->pipeline->type == PipelineType::Graphics && state->isInstrumented) {
@@ -307,7 +307,7 @@ void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, Command
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->userRootCount);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->userRootCount, true);
 }
 
 void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, CommandListState* commandList) {
@@ -320,7 +320,7 @@ void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, Comman
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->userRootCount);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->userRootCount, true);
 }
 
 ShaderExportStreamBindState& ShaderExportStreamer::GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline) {

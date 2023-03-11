@@ -33,7 +33,8 @@ public:
 
     /// Begin a new segment
     /// \param rootCount number of root parameters
-    void BeginSegment(uint32_t rootCount) {
+    void BeginSegment(uint32_t rootCount, bool migrateData) {
+        migrateLastSegment = migrateData && mappedSegmentLength == rootCount;
         pendingRootCount = rootCount;
         pendingRoll = true;
     }
@@ -57,7 +58,7 @@ public:
         // Begin a new segment if the previous does not suffice, may be allocated dynamically
         if (offset >= mappedSegmentLength) {
             ASSERT(allocationSize > offset, "Chunk allocation size must be larger than the expected offset");
-            BeginSegment(allocationSize);
+            BeginSegment(allocationSize, mappedSegmentLength == allocationSize);
         }
 
         // Roll! D2! (Never played DnD, sorry)
@@ -126,10 +127,16 @@ private:
     /// Roll the current chunk
     void RollChunk() {
         // Advance current offset
-        mappedOffset += mappedSegmentLength;
+        uint64_t nextMappedOffset = mappedOffset + mappedSegmentLength;
 
         // Out of memory?
-        if (mappedOffset + pendingRootCount >= chunkSize) {
+        if (nextMappedOffset + pendingRootCount >= chunkSize) {
+            // Copy last chunk if migration is requested
+            uint32_t* lastChunkDwords = ALLOCA_ARRAY(uint32_t, mappedSegmentLength);
+            if (migrateLastSegment) {
+                std::memcpy(lastChunkDwords, mapped + mappedOffset, sizeof(uint32_t) * mappedSegmentLength);
+            }
+
             // Growth factor of 1.5
             chunkSize = std::max<size_t>(64'000, static_cast<size_t>(chunkSize * 1.5f));
 
@@ -138,11 +145,27 @@ private:
 
             // Create new chunk
             CreateChunk();
+
+            // Migrate last segment?
+            if (migrateLastSegment) {
+                ASSERT(pendingRootCount == mappedSegmentLength, "Requested migration with mismatched root counts");
+                std::memcpy(mapped + nextMappedOffset, lastChunkDwords, sizeof(uint32_t) * mappedSegmentLength);
+            }
+        } else {
+            // Migrate last segment?
+            if (mappedSegmentLength == pendingRootCount) {
+                ASSERT(pendingRootCount == mappedSegmentLength, "Requested migration with mismatched root counts");
+                std::memcpy(mapped + nextMappedOffset, mapped + mappedOffset, sizeof(uint32_t) * mappedSegmentLength);
+            }
+            
+            // Set new offset
+            mappedOffset = nextMappedOffset;
         }
 
         // Set next roll length
         mappedSegmentLength = pendingRootCount;
         pendingRoll = false;
+        migrateLastSegment = false;
     }
 
     /// Create a new chunk
@@ -209,6 +232,9 @@ private:
 
     /// Any pending roll?
     bool pendingRoll{true};
+    
+    /// Should the last segment be migrated on rolls?
+    bool migrateLastSegment{false};
 
     /// Device allocator
     ComRef<DeviceAllocator> allocator;
