@@ -146,6 +146,10 @@ const SpvSourceMap *ShaderSGUIDHost::GetSourceMap(uint64_t shaderGUID) {
 }
 
 std::string_view ShaderSGUIDHost::GetSource(ShaderSGUID sguid) {
+    if (sguid == InvalidShaderSGUID) {
+        return {};
+    }
+
     return GetSource(sguidLookup.at(sguid));
 }
 

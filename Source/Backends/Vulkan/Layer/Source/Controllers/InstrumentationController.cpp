@@ -637,7 +637,7 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Release the bucket handle, destructed after this call 
     std::lock_guard guard(mutex);
-    bucket = nullptr;
+    compilationBucket = nullptr;
 }
 
 uint64_t InstrumentationController::SummarizeFeatureBitSet() {

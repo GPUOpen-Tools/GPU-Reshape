@@ -107,7 +107,7 @@ public:
     /// Get the current segment address
     /// \return
     uint64_t GetSegmentDynamicOffset() const {
-        return mappedOffset * sizeof(uint32_t);
+        return mappedOffset;
     }
 
     /// Release the segment
