@@ -41,7 +41,29 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
 
         if (hookTable.copyResource.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyBuffer[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyImage[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyImageToBuffer[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyBufferToImage[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdBlitImage[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImage |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdBlitImage |= (1ull << i);
+        }
+        
+        if (hookTable.resolveResource.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdResolveImage[i] = hookTable.resolveResource;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdResolveImage |= (1ull << i);
+        }
+        
+        if (hookTable.clearResource.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdClearAttachments[i] = hookTable.clearResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdClearColorImage[i] = hookTable.clearResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdClearDepthStencilImage[i] = hookTable.clearResource;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearAttachments |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearColorImage |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearDepthStencilImage |= (1ull << i);
         }
     }
 }
@@ -53,6 +75,16 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdDrawIndexed = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawIndexed & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdDispatch = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatch & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImage & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBufferToImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImageToBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdBlitImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBlitImage & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdUpdateBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdUpdateBuffer & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdFillBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdFillBuffer & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdClearColorImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearColorImage & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdClearDepthStencilImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearDepthStencilImage & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdClearAttachments = table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearAttachments & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdResolveImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdResolveImage & featureSet;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkCommandPool *pCommandPool) {

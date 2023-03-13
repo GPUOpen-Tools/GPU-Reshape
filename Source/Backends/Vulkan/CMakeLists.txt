@@ -44,8 +44,17 @@ set(
     vkCmdDispatch
     vkCmdDraw
     vkCmdDrawIndexed
-    vkCmdDrawIndexed
     vkCmdCopyBuffer
+    vkCmdCopyImage
+    vkCmdBlitImage
+    vkCmdCopyBufferToImage
+    vkCmdCopyImageToBuffer
+    vkCmdUpdateBuffer
+    vkCmdFillBuffer
+    vkCmdClearColorImage
+    vkCmdClearDepthStencilImage
+    vkCmdClearAttachments
+    vkCmdResolveImage
 )
 
 # White list
