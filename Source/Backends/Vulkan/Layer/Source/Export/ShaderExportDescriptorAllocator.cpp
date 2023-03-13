@@ -144,6 +144,7 @@ void ShaderExportDescriptorAllocator::CreateBindingLayout() {
 
     // Descriptor data
     bindingInfo.descriptorDataDescriptorOffset = offset;
+    bindingInfo.descriptorDataDescriptorLength = std::min<uint32_t>(table->physicalDeviceProperties.limits.maxUniformBufferRange, 256'000);
     offset++;
 
     // Data resources

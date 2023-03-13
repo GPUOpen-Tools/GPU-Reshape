@@ -78,7 +78,7 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
         state->pipelineBindPoints[i].descriptorDataAllocator = new (allocators) DescriptorDataAppendAllocator(
             table,
             deviceAllocator,
-            table->physicalDeviceProperties.limits.maxUniformBufferRange
+            descriptorAllocator->GetBindingInfo().descriptorDataDescriptorLength
         );
     }
 
@@ -154,7 +154,7 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Co
 
         // Recycle free data segments if available
         if (!freeDescriptorDataSegmentEntries.empty()) {
-            bindState.descriptorDataAllocator->SetChunk(freeDescriptorDataSegmentEntries.back());
+            bindState.descriptorDataAllocator->SetChunk(commandBuffer, freeDescriptorDataSegmentEntries.back());
             freeDescriptorDataSegmentEntries.pop_back();
         }
 
@@ -182,7 +182,7 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, Co
         }
 
         // Commit dangling data
-        bindState.descriptorDataAllocator->Commit(nullptr);
+        bindState.descriptorDataAllocator->Commit();
 
         // Reset descriptor state
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
@@ -205,8 +205,8 @@ void ShaderExportStreamer::EndCommandBuffer(ShaderExportStreamState* state, Comm
             }
         }
 
-        // Commit all host data to device
-        bindState.descriptorDataAllocator->Commit(commandBuffer);
+        // Commit all host data
+        bindState.descriptorDataAllocator->Commit();
     }
 }
 
@@ -630,7 +630,7 @@ VkCommandBuffer ShaderExportStreamer::RecordPatchCommandBuffer(ShaderExportQueue
     return segment->patchCommandBuffer;
 }
 
-void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets) {
+void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets, CommandBufferObject* commandBuffer) {
     PipelineLayoutState* layoutState = table->states_pipelineLayout.Get(layout);
 
     // Get the bind state
@@ -647,7 +647,7 @@ void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, Vk
         DescriptorSetState* persistentState = table->states_descriptorSet.Get(sets[i]);
 
         // Set the shader PRMT offset, roll the chunk if needed
-        bindState.descriptorDataAllocator->SetOrAllocate(slot, layoutState->boundUserDescriptorStates, table->prmTable->GetSegmentShaderOffset(persistentState->segmentID));
+        bindState.descriptorDataAllocator->SetOrAllocate(commandBuffer, slot, layoutState->boundUserDescriptorStates, table->prmTable->GetSegmentShaderOffset(persistentState->segmentID));
 
         // Number of dynamic counts for this slot
         uint32_t slotDynamicCount = layoutState->descriptorDynamicOffsets.at(slot);

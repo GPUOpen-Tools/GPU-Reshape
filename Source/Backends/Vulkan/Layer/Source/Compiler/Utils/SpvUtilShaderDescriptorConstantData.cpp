@@ -30,7 +30,7 @@ void SpvUtilShaderDescriptorConstantData::CompileRecords(const SpvJob &job) {
         }),
 
         // Snap array to 4 (row boundary)
-        .count = std::max<uint32_t>(1, (job.instrumentationKey.pipelineLayoutUserSlots + 3) / 4)
+        .count = std::max<uint32_t>(1, (job.bindingInfo.descriptorDataDescriptorLength + 3) / 4)
     });
 
     // { <UInt32, 4>[N] }*

@@ -101,7 +101,8 @@ public:
     /// \param start the first set
     /// \param count the number of sets
     /// \param sets the sets to be bound
-    void BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets);
+    /// \param commandBuffer command buffer being invoked
+    void BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets, CommandBufferObject* commandBuffer);
 
     /// Map a stream state pre submission
     /// \param state the stream state

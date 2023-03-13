@@ -16,6 +16,7 @@ struct PipelineLayoutBindingInfo {
 
     /// Descriptor data descriptors
     uint32_t descriptorDataDescriptorOffset{0};
+    uint32_t descriptorDataDescriptorLength{0};
 
     /// Shader data descriptors
     uint32_t shaderDataDescriptorOffset{0};

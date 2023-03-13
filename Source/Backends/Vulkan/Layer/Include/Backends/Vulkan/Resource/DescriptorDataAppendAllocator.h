@@ -19,8 +19,9 @@ public:
     }
 
     /// Set the chunk
+    /// \param commandBuffer upload command buffer
     /// \param segmentEntry segment to be bound to
-    void SetChunk(const DescriptorDataSegmentEntry& segmentEntry) {
+    void SetChunk(CommandBufferObject* commandBuffer, const DescriptorDataSegmentEntry& segmentEntry) {
         // Set inherited width
         chunkSize = segmentEntry.width / sizeof(uint32_t);
 
@@ -29,6 +30,30 @@ public:
 
         // Set mapped
         mapped = static_cast<uint32_t*>(allocator->Map(segmentEntry.allocation.host));
+
+        // Copy host to device
+        VkBufferCopy copy;
+        copy.srcOffset = 0;
+        copy.dstOffset = 0;
+        copy.size = segmentEntry.width;
+        commandBuffer->dispatchTable.next_vkCmdCopyBuffer(commandBuffer->object, segmentEntry.bufferHost, segmentEntry.bufferDevice, 1u, &copy);
+
+        // Transfer to shader barrier
+        VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.buffer = segmentEntry.bufferDevice;
+        barrier.size = segmentEntry.width;
+        barrier.offset = 0u;
+        table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
+            commandBuffer->object,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0x0,
+            0, nullptr,
+            1u, &barrier,
+            0, nullptr
+        );
     }
 
     /// Begin a new segment
@@ -40,11 +65,12 @@ public:
     }
 
     /// Set a root value
+    /// \param commandBuffer upload command buffer
     /// \param offset current root offset
     /// \param value value at root offset
-    void Set(uint32_t offset, uint32_t value) {
+    void Set(CommandBufferObject* commandBuffer, uint32_t offset, uint32_t value) {
         if (pendingRoll) {
-            RollChunk();
+            RollChunk(commandBuffer);
         }
 
         ASSERT(offset < mappedSegmentLength, "Out of bounds descriptor segment offset");
@@ -52,9 +78,10 @@ public:
     }
 
     /// Set a root value
+    /// \param commandBuffer upload command buffer
     /// \param offset current root offset
     /// \param value value at root offset
-    void SetOrAllocate(uint32_t offset, uint32_t allocationSize, uint32_t value) {
+    void SetOrAllocate(CommandBufferObject* commandBuffer, uint32_t offset, uint32_t allocationSize, uint32_t value) {
         // Begin a new segment if the previous does not suffice, may be allocated dynamically
         if (offset >= mappedSegmentLength) {
             ASSERT(allocationSize > offset, "Chunk allocation size must be larger than the expected offset");
@@ -63,7 +90,7 @@ public:
 
         // Roll! D2! (Never played DnD, sorry)
         if (pendingRoll) {
-            RollChunk();
+            RollChunk(commandBuffer);
         }
 
         ASSERT(offset < mappedSegmentLength, "Chunk allocation failed");
@@ -77,7 +104,7 @@ public:
     }
 
     /// Commit all changes for the GPU
-    void Commit(CommandBufferObject* commandBuffer) {
+    void Commit() {
         if (!mapped) {
             return;
         }
@@ -87,15 +114,6 @@ public:
 
         // Unmap range
         allocator->Unmap(entry.allocation.host);
-
-        // Copy data to device if needed
-        if (commandBuffer && entry.width) {
-            VkBufferCopy copy;
-            copy.srcOffset = 0;
-            copy.dstOffset = 0;
-            copy.size = entry.width;
-            commandBuffer->dispatchTable.next_vkCmdCopyBuffer(commandBuffer->object, entry.bufferHost, entry.bufferDevice, 1u, &copy);
-        }
     }
 
     /// Get the current segment address
@@ -125,7 +143,8 @@ public:
 
 private:
     /// Roll the current chunk
-    void RollChunk() {
+    /// \param commandBuffer upload command buffer
+    void RollChunk(CommandBufferObject* commandBuffer) {
         // Advance current offset
         uint64_t nextMappedOffset = mappedOffset + mappedSegmentLength;
 
@@ -145,7 +164,7 @@ private:
 
             // Create new chunk
             uint64_t lastSegmentLength = mappedSegmentLength;
-            CreateChunk();
+            CreateChunk(commandBuffer);
 
             // Migrate last segment?
             if (migrateLastSegment) {
@@ -170,7 +189,8 @@ private:
     }
 
     /// Create a new chunk
-    void CreateChunk() {
+    /// \param commandBuffer upload command buffer
+    void CreateChunk(CommandBufferObject* commandBuffer) {
         // Release existing chunk if needed
         if (mapped) {
             allocator->Unmap(segment.entries.back().allocation.host);
@@ -212,7 +232,7 @@ private:
         allocator->BindBuffer(segmentEntry.allocation.host, segmentEntry.bufferHost);
 
         // Set as current chunk
-        SetChunk(segmentEntry);
+        SetChunk(commandBuffer, segmentEntry);
     }
 
 private:
