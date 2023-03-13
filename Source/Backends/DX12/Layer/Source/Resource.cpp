@@ -51,15 +51,9 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     // Create mapping
     switch (desc->Dimension) {
         default:
-        ASSERT(false, "Unsupported dimension");
             break;
         case D3D12_RESOURCE_DIMENSION_BUFFER:
             table.state->virtualAddressTable.Add(state, resource->GetGPUVirtualAddress(), desc->Width);
-            break;
-        case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
-        case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
-        case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
-            table.state->virtualAddressTable.Add(state, resource->GetGPUVirtualAddress(), 4u);
             break;
     }
 
@@ -263,5 +257,11 @@ ResourceState::~ResourceState() {
     }
 
     // Remove mapping
-    table.state->virtualAddressTable.Remove(object->GetGPUVirtualAddress());
+    switch (dimension) {
+        default:
+            break;
+        case D3D12_RESOURCE_DIMENSION_BUFFER:
+            table.state->virtualAddressTable.Remove(object->GetGPUVirtualAddress());
+            break;
+    }
 }
