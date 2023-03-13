@@ -79,10 +79,6 @@ private:
     /// \param job parent job
     void CreateDataResourceMap(const SpvJob& job);
 
-    /// Create the user fed PC map
-    /// \param job parent job
-    void CreatePCMap(const SpvJob& job);
-
     /// Create the data lookups
     /// \param job parent job
     /// \param stream function scope
@@ -144,11 +140,4 @@ private:
 
     /// All continue blocks
     std::vector<LoopContinueBlock> loopContinueBlocks;
-
-private:
-    /// Type of the PC block
-    const Backend::IL::Type* pcBlockType{nullptr};
-
-    /// Identifier of the PC data
-    IL::ID pcBlockId{IL::InvalidID};
 };

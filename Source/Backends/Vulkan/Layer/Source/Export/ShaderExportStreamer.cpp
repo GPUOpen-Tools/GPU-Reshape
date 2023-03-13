@@ -224,9 +224,6 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
 
     // Ensure the shader export states are bound
     if (instrumented) {
-        // Create initial descriptor segment
-        bindState.descriptorDataAllocator->BeginSegment(pipeline->layout->boundUserDescriptorStates, true);
-
         // Set export set
         BindShaderExport(state, pipeline, commandBuffer);
     }

@@ -70,6 +70,11 @@ struct SpvParseContext {
         return IL::Source::Code(static_cast<uint32_t>(code - source.programBegin));
     }
 
+    /// Get the block source for the current offset
+    uint32_t BlockSourceOffset() const {
+        return static_cast<uint32_t>(code - source.code);
+    }
+
     /// Does the instruction have a result?
     bool HasResult() const {
         return id != IL::InvalidID;

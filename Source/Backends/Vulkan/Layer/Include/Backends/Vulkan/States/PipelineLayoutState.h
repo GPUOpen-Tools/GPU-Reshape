@@ -51,6 +51,9 @@ struct PipelineLayoutState : public ReferenceObject {
     uint32_t dataPushConstantOffset{0};
     uint32_t dataPushConstantLength{0};
 
+    /// Combined push constant mask
+    VkShaderStageFlags pushConstantRangeMask{0};
+
     /// Unique identifier, unique for the type
     uint64_t uid;
 };

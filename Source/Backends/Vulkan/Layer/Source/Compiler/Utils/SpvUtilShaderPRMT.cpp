@@ -83,7 +83,7 @@ IL::ID SpvUtilShaderPRMT::GetResourcePRMTOffset(SpvStream &stream, IL::ID resour
     SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
     spvZero[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
     spvZero[2] = offsetId;
-    spvZero[3] = valueDecoration.offset;
+    spvZero[3] = valueDecoration.descriptorOffset;
 
     // Final PRM index, DescriptorSetOffset + BindingOffset
     SpvInstruction& spv = stream.Allocate(SpvOpIAdd, 5);

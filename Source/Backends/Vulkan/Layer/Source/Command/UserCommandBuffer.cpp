@@ -21,15 +21,20 @@ static void ReconstructPipelineState(CommandBufferObject* commandBuffer, const U
         commandBuffer->table->exportStreamer->BindShaderExport(commandBuffer->streamState, bindState.pipeline, commandBuffer);
     }
 
-    // First bound descriptor set
-    const ShaderExportDescriptorState& descriptorState = bindState.persistentDescriptorState.at(0);
+    // Rebind all expected states
+    for (uint32_t i = 0; i < bindState.pipeline->layout->boundUserDescriptorStates; i++) {
+        const ShaderExportDescriptorState& descriptorState = bindState.persistentDescriptorState.at(i);
 
-    // Bind the expected set if needed
-    if (descriptorState.set) {
+        // Invalid or mismatched hash?
+        if (!descriptorState.set || bindState.pipeline->layout->compatabilityHashes[i] != descriptorState.compatabilityHash) {
+            continue;
+        }
+
+        // Bind the expected set
         commandBuffer->dispatchTable.next_vkCmdBindDescriptorSets(
             commandBuffer->object,
             VK_PIPELINE_BIND_POINT_COMPUTE, bindState.pipeline->layout->object,
-            0u, 1u, &descriptorState.set,
+            i, 1u, &descriptorState.set,
             descriptorState.dynamicOffsets.count, descriptorState.dynamicOffsets.data
         );
     }
@@ -47,9 +52,9 @@ static void ReconstructPushConstantState(CommandBufferObject* commandBuffer, con
     commandBuffer->dispatchTable.next_vkCmdPushConstants(
         commandBuffer->object,
         bindState.pipeline->layout->object,
-        VK_SHADER_STAGE_COMPUTE_BIT,
+        bindState.pipeline->layout->pushConstantRangeMask,
         0u,
-        bindState.pipeline->layout->dataPushConstantOffset,
+        bindState.pipeline->layout->userPushConstantLength,
         commandBuffer->streamState->persistentPushConstantData.data()
     );
 }

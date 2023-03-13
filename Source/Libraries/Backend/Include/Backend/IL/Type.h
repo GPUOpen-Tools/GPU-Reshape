@@ -46,6 +46,7 @@ namespace Backend::IL {
 
         TypeKind kind{TypeKind::None};
         ::IL::ID id{::IL::InvalidID};
+        uint32_t sourceOffset{::IL::InvalidOffset};
     };
 
     struct UnexposedType : public Type {

@@ -60,7 +60,7 @@ namespace Backend::IL {
 
             auto &typePtr = sortMap[type.SortKey()];
             if (!typePtr) {
-                typePtr = AllocateType<T>(identifierMap.AllocID(), type);
+                typePtr = AllocateType<T>(identifierMap.AllocID(), InvalidOffset, type);
             }
 
             return typePtr;
@@ -74,7 +74,21 @@ namespace Backend::IL {
 
             auto &typePtr = sortMap[type.SortKey()];
             if (!typePtr) {
-                typePtr = AllocateType<T>(id, type);
+                typePtr = AllocateType<T>(id, InvalidOffset, type);
+            }
+
+            return typePtr;
+        }
+
+        /// Add a type to this map, must be unique
+        /// \param type the type to be added
+        template<typename T>
+        const T* AddType(ID id, uint32_t sourceOffset, const T &type) {
+            auto&& sortMap = GetSortMap<T>();
+
+            auto &typePtr = sortMap[type.SortKey()];
+            if (!typePtr) {
+                typePtr = AllocateType<T>(id, sourceOffset, type);
             }
 
             return typePtr;
@@ -132,10 +146,11 @@ namespace Backend::IL {
         /// \param decl the declaration specifier
         /// \return the allocated type
         template<typename T>
-        T *AllocateType(ID id, const T &decl) {
+        T *AllocateType(ID id, uint32_t sourceOffset, const T &decl) {
             auto *type = blockAllocator.Allocate<T>(decl);
             type->kind = T::kKind;
             type->id = id;
+            type->sourceOffset = sourceOffset;
             types.push_back(type);
             return type;
         }

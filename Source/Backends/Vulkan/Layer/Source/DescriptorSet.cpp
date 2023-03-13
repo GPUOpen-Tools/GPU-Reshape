@@ -325,6 +325,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
     uint32_t dataPushConstantOffset = 0;
     uint32_t dataPushConstantLength = 0;
+    VkShaderStageFlags pushConstantRangeMask = 0;
 
     // If we have exhausted all the sets, we can't add further records
     bool exhausted = pCreateInfo->setLayoutCount >= table->physicalDeviceProperties.limits.maxBoundDescriptorSets;
@@ -356,6 +357,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
         // Append after all user PCs
         for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
             const VkPushConstantRange& userRange = pCreateInfo->pPushConstantRanges[i];
+
+            // Mask all usages
+            pushConstantRangeMask |= userRange.stageFlags;
+
+            // Extend length
             userPushConstantLength = std::max(userPushConstantLength, userRange.offset + userRange.size);
         }
 
@@ -380,14 +386,28 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
 
         // Any data?
         if (extendedPushConstantLength > userPushConstantLength) {
-            // Append internal PC range
-            VkPushConstantRange& range = ranges[pCreateInfo->pushConstantRangeCount];
-            range.offset = userPushConstantLength;
-            range.size = extendedPushConstantLength - userPushConstantLength;
-            range.stageFlags = VK_SHADER_STAGE_ALL;
+            VkPushConstantRange* range{nullptr};
 
-            // Count
-            createInfo.pushConstantRangeCount = pCreateInfo->pushConstantRangeCount + 1;
+            // Existing range?
+            for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
+                if (ranges[i].stageFlags == VK_SHADER_STAGE_ALL) {
+                    range = ranges + i;
+                }
+            }
+            
+            // Append internal PC range
+            if (!range) {
+                range = ranges + pCreateInfo->pushConstantRangeCount;
+                range->offset = userPushConstantLength;
+                range->size = extendedPushConstantLength - userPushConstantLength;
+                range->stageFlags = VK_SHADER_STAGE_ALL;
+                createInfo.pushConstantRangeCount = pCreateInfo->pushConstantRangeCount + 1;
+
+                // Use entire range
+                pushConstantRangeMask |= VK_SHADER_STAGE_ALL;
+            } else {
+                range->size = extendedPushConstantLength - range->offset;
+            }
         }
 
         // Pass down callchain
@@ -428,6 +448,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
     state->dataPushConstantOffset = dataPushConstantOffset;
     state->dataPushConstantLength = dataPushConstantLength;
+    state->pushConstantRangeMask  = pushConstantRangeMask;
 
     // Store lookup
     table->states_pipelineLayout.Add(*pPipelineLayout, state);

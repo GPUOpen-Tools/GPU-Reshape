@@ -36,6 +36,15 @@ struct SpvStream {
         stream.insert(stream.end(), words, words + sizeof(T) / sizeof(uint32_t));
     }
 
+    /// Allocate a block of words
+    /// \param count word count
+    /// \return base address
+    uint32_t* AllocateRaw(uint32_t count) {
+        uint32_t offset = static_cast<uint32_t>(stream.size());
+        stream.resize(stream.size() + count);
+        return stream.data() + offset;
+    }
+
     /// Allocate an appended type
     /// \tparam T the type to be appended
     /// \return the allocated type, invalidated upon next insertion
@@ -68,6 +77,11 @@ struct SpvStream {
         }
 
         return Template(source);
+    }
+
+    /// Get an instruction at an offset
+    SpvInstruction& Get(uint32_t offset) {
+        return *reinterpret_cast<SpvInstruction*>(stream.data() + offset);
     }
 
     /// Preallocate the stream

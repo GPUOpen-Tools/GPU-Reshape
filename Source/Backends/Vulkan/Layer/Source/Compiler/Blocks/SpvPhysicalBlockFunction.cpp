@@ -848,7 +848,9 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 bool SpvPhysicalBlockFunction::Compile(const SpvJob& job, SpvIdMap &idMap) {
     // Create data associations
     CreateDataResourceMap(job);
-    CreatePCMap(job);
+
+    // Create push constant data block
+    table.typeConstantVariable.CreatePushConstantBlock(job);
 
     // Compile all function declarations
     for (IL::Function* fn : program.GetFunctionList()) {
@@ -2106,85 +2108,8 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
     }
 }
 
-void SpvPhysicalBlockFunction::CreatePCMap(const SpvJob &job) {
-    // Get data map
-    IL::ShaderDataMap& shaderDataMap = program.GetShaderDataMap();
-
-    // Get IL map
-    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
-
-    // Requested dword count
-    uint32_t dwordCount = 0;
-
-#if PRMT_METHOD == PRMT_METHOD_UB_PC
-    if (job.requiresUserDescriptorMapping) {
-        dwordCount++;
-    }
-#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
-
-    // Aggregate dword count
-    for (const ShaderDataInfo& info : shaderDataMap) {
-        if (info.type == ShaderDataType::Event) {
-            dwordCount++;
-        }
-    }
-
-    // Early out if no requests
-    if (!dwordCount) {
-        return;
-    }
-
-    // UInt32
-    const Backend::IL::Type *intType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
-        .bitWidth = 32,
-        .signedness = false
-    });
-
-    // One dword per event, emit as individual members
-    Backend::IL::StructType structDecl;
-    for (uint32_t i = 0; i < dwordCount; i++) {
-        structDecl.memberTypes.push_back(intType);
-    }
-
-    // Create type
-    pcBlockType = ilTypeMap.FindTypeOrAdd(structDecl);
-
-    // Pointer to block
-    auto* bufferPtrType = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
-        .pointee = pcBlockType,
-        .addressSpace = Backend::IL::AddressSpace::RootConstant
-    });
-
-    // SpvIds
-    SpvId pcBlockTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(pcBlockType);
-    SpvId bufferPtrTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(bufferPtrType);
-
-    // Id allocations
-    pcBlockId = table.scan.header.bound++;
-
-    // Declare push constant block
-    SpvInstruction &spvCounterVar = table.typeConstantVariable.block->stream.Allocate(SpvOpVariable, 4);
-    spvCounterVar[1] = bufferPtrTypeId;
-    spvCounterVar[2] = pcBlockId;
-    spvCounterVar[3] = SpvStorageClassPushConstant;
-
-    // Block annotation
-    SpvInstruction &pcBlock = table.annotation.block->stream.Allocate(SpvOpDecorate, 3);
-    pcBlock[1] = pcBlockTypeId;
-    pcBlock[2] = SpvDecorationBlock;
-
-    // Block annotation
-    for (uint32_t i = 0; i < dwordCount; i++) {
-        SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpMemberDecorate, 5);
-        pcBlockMember[1] = pcBlockTypeId;
-        pcBlockMember[2] = i;
-        pcBlockMember[3] = SpvDecorationOffset;
-        pcBlockMember[4] = sizeof(uint32_t) * i;
-    }
-}
-
 void SpvPhysicalBlockFunction::CreateDataLookups(const SpvJob& job, SpvStream& stream, SpvIdMap& idMap) {
-    if (!pcBlockType) {
+    if (!table.typeConstantVariable.GetPushConstantBlockType()) {
         return;
     }
 
@@ -2205,12 +2130,12 @@ void SpvPhysicalBlockFunction::CreateDataLookups(const SpvJob& job, SpvStream& s
 
     // Load pc block
     SpvInstruction& spvLoad = stream.Allocate(SpvOpLoad, 4);
-    spvLoad[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(pcBlockType);
+    spvLoad[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(table.typeConstantVariable.GetPushConstantBlockType());
     spvLoad[2] = pcBlockLoadId;
-    spvLoad[3] = pcBlockId;
+    spvLoad[3] = table.typeConstantVariable.GetPushConstantVariableId();
 
-    // Current dword offset
-    uint32_t dwordOffset = 0;
+    // Current member offset
+    uint32_t memberOffset = table.typeConstantVariable.GetPushConstantMemberOffset();
 
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
     if (job.requiresUserDescriptorMapping) {
@@ -2222,7 +2147,7 @@ void SpvPhysicalBlockFunction::CreateDataLookups(const SpvJob& job, SpvStream& s
         spvExtract[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(intType);
         spvExtract[2] = pcId;
         spvExtract[3] = pcBlockLoadId;
-        spvExtract[4] = dwordOffset++;
+        spvExtract[4] = memberOffset++;
 
         // Assign to PRMT
         table.shaderDescriptorConstantData.SetPCID(pcId);
@@ -2246,14 +2171,14 @@ void SpvPhysicalBlockFunction::CreateDataLookups(const SpvJob& job, SpvStream& s
         spvExtract[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(intType);
         spvExtract[2] = pcRedirect;
         spvExtract[3] = pcBlockLoadId;
-        spvExtract[4] = dwordOffset;
+        spvExtract[4] = memberOffset;
 
         // Set the identifier redirect, the frontend exposes the event ids as constant IDs independent of the function.
         // However, as multiple functions can be instrumented we have to load them per function, use the redirector in this case.
         idMap.Set(variable->id, pcRedirect);
 
         // Next!
-        dwordOffset++;
+        memberOffset++;
     }
 }
 

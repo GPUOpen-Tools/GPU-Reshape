@@ -1,8 +1,15 @@
 #include <Backends/Vulkan/Compiler/Blocks/SpvPhysicalBlockTypeConstantVariable.h>
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
+#include <Backends/Vulkan/Compiler/SpvJob.h>
+#include <Backends/Vulkan/Compiler/SpvRecordReader.h>
+#include <Backends/Vulkan/Config.h>
+
+// Backend
+#include <Backend/IL/TypeSize.h>
 
 // Common
+#include <Common/Containers/TrivialStackVector.h>
 #include <Common/Sink.h>
 
 SpvPhysicalBlockTypeConstantVariable::SpvPhysicalBlockTypeConstantVariable(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
@@ -14,14 +21,30 @@ SpvPhysicalBlockTypeConstantVariable::SpvPhysicalBlockTypeConstantVariable(const
 void SpvPhysicalBlockTypeConstantVariable::Parse() {
     block = table.scan.GetPhysicalBlock(SpvPhysicalBlockType::TypeConstantVariable);
 
+    // Compile to a record block
+    SpvParseContext recordCtx(block->source);
+    while (recordCtx) {
+        recordBlock.records.push_back(SpvRecord {
+            .lowWordCountHighOpCode = recordCtx->lowWordCountHighOpCode,
+            .operands = &recordCtx->Word(1)
+        });
+        
+        // Next instruction
+        recordCtx.Next();
+    }
+
+    // Current anchor
+    uint32_t anchor{0};
+    
     // Parse instructions
-    SpvParseContext ctx(block->source);
-    while (ctx) {
+    for (const SpvRecord& record : recordBlock.records) {
+        SpvRecordReader ctx(record);
+        
         // Create type association
         AssignTypeAssociation(ctx);
 
         // Handle instruction
-        switch (ctx->GetOp()) {
+        switch (ctx.GetOp()) {
             default:
                 break;
 
@@ -29,26 +52,26 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 Backend::IL::IntType type;
                 type.bitWidth = ctx++;
                 type.signedness = ctx++;
-                typeMap.AddType(ctx.GetResult(), type);
+                typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
 
             case SpvOpTypeVoid: {
                 Backend::IL::VoidType type;
-                typeMap.AddType(ctx.GetResult(), type);
+                typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
 
             case SpvOpTypeBool: {
                 Backend::IL::BoolType type;
-                typeMap.AddType(ctx.GetResult(), type);
+                typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
 
             case SpvOpTypeFloat: {
                 Backend::IL::FPType type;
                 type.bitWidth = ctx++;
-                typeMap.AddType(ctx.GetResult(), type);
+                typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
 
@@ -56,7 +79,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 Backend::IL::VectorType type;
                 type.containedType = typeMap.GetTypeFromId(ctx++);
                 type.dimension = ctx++;
-                typeMap.AddType(ctx.GetResult(), type);
+                typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
 
@@ -70,7 +93,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 type.containedType = columnVector->containedType;
                 type.rows = columnVector->dimension;
                 type.columns = ctx++;
-                typeMap.AddType(ctx.GetResult(), type);
+                typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
 
@@ -78,7 +101,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 Backend::IL::PointerType type;
                 type.addressSpace = Translate(static_cast<SpvStorageClass>(ctx++));
                 type.pointee = typeMap.GetTypeFromId(ctx++);
-                typeMap.AddType(ctx.GetResult(), type);
+                typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
 
@@ -87,7 +110,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 type.elementType = typeMap.GetTypeFromId(ctx++);
                 type.count = ctx++;
 
-                typeMap.AddType(ctx.GetResult(), type);
+                typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
 
@@ -96,12 +119,12 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 type.elementType = typeMap.GetTypeFromId(ctx++);
                 type.count = 0;
 
-                typeMap.AddType(ctx.GetResult(), type);
+                typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
 
             case SpvOpTypeSampler: {
-                typeMap.AddType(ctx.GetResult(), Backend::IL::SamplerType{});
+                typeMap.AddType(ctx.GetResult(), anchor, Backend::IL::SamplerType{});
                 break;
             }
 
@@ -156,7 +179,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                     type.elementType = sampledType;
                     type.texelType = format;
                     type.samplerMode = samplerMode;
-                    typeMap.AddType(ctx.GetResult(), type);
+                    typeMap.AddType(ctx.GetResult(), anchor, type);
                 } else {
                     Backend::IL::TextureType type;
                     type.sampledType = sampledType;
@@ -180,7 +203,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                     type.samplerMode = samplerMode;
                     type.format = format;
 
-                    typeMap.AddType(ctx.GetResult(), type);
+                    typeMap.AddType(ctx.GetResult(), anchor, type);
                 }
                 break;
             }
@@ -196,7 +219,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                     function.parameterTypes.push_back(typeMap.GetTypeFromId(ctx++));
                 }
 
-                typeMap.AddType(ctx.GetResult(), function);
+                typeMap.AddType(ctx.GetResult(), anchor, function);
                 break;
             }
 
@@ -207,7 +230,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                     _struct.memberTypes.push_back(typeMap.GetTypeFromId(ctx++));
                 }
 
-                typeMap.AddType(ctx.GetResult(), _struct);
+                typeMap.AddType(ctx.GetResult(), anchor, _struct);
                 break;
             }
 
@@ -218,7 +241,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
             case SpvOpTypePipe:
             case SpvOpTypeForwardPointer:
             case SpvOpTypeOpaque: {
-                typeMap.AddType(ctx.GetResult(), Backend::IL::UnexposedType{});
+                typeMap.AddType(ctx.GetResult(), anchor, Backend::IL::UnexposedType{});
                 break;
             }
 
@@ -321,14 +344,25 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 }
                 break;
             }
+
+            case SpvOpVariable: {
+                auto storageClass = static_cast<SpvStorageClass>(ctx++);
+
+                // Store single PC block
+                if (storageClass == SpvStorageClassPushConstant) {
+                    pushConstantVariableOffset = anchor;
+                    pushConstantVariableId = ctx.GetResult();
+                }
+                break;
+            }
         }
 
-        // Next instruction
-        ctx.Next();
+        // Next anchor
+        anchor++;
     }
 }
 
-void SpvPhysicalBlockTypeConstantVariable::AssignTypeAssociation(SpvParseContext &ctx) {
+void SpvPhysicalBlockTypeConstantVariable::AssignTypeAssociation(const SpvParseContext &ctx) {
     // If there's an associated type, map it
     if (!ctx.HasResult() || !ctx.HasResultType()) {
         return;
@@ -337,7 +371,23 @@ void SpvPhysicalBlockTypeConstantVariable::AssignTypeAssociation(SpvParseContext
     // Get type, if not found assume unexposed
     const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
     if (!type) {
-        type = typeMap.AddType(ctx.GetResultType(), Backend::IL::UnexposedType{});
+        type = typeMap.AddType(ctx.GetResultType(),  IL::InvalidOffset, Backend::IL::UnexposedType{});
+    }
+
+    // Create type -> id mapping
+    program.GetTypeMap().SetType(ctx.GetResult(), type);
+}
+
+void SpvPhysicalBlockTypeConstantVariable::AssignTypeAssociation(const SpvRecordReader &ctx) {
+    // If there's an associated type, map it
+    if (!ctx.HasResult() || !ctx.HasResultType()) {
+        return;
+    }
+
+    // Get type, if not found assume unexposed
+    const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
+    if (!type) {
+        type = typeMap.AddType(ctx.GetResultType(),  IL::InvalidOffset, Backend::IL::UnexposedType{});
     }
 
     // Create type -> id mapping
@@ -346,10 +396,160 @@ void SpvPhysicalBlockTypeConstantVariable::AssignTypeAssociation(SpvParseContext
 
 void SpvPhysicalBlockTypeConstantVariable::CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockTypeConstantVariable &out) {
     out.block = remote.scan.GetPhysicalBlock(SpvPhysicalBlockType::TypeConstantVariable);
+    out.recordBlock = recordBlock;
+    out.pushConstantBlockType = pushConstantBlockType;
+    out.pushConstantVariableOffset = pushConstantVariableOffset;
+    out.pushConstantVariableId = pushConstantVariableId;
     typeMap.CopyTo(out.typeMap);
 }
 
+IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJob& job) {
+    // Get data map
+    IL::ShaderDataMap& shaderDataMap = program.GetShaderDataMap();
+    
+    // Get IL map
+    Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
+    
+    // Requested dword count
+    uint32_t dwordCount = 0;
+
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    if (job.requiresUserDescriptorMapping) {
+        dwordCount++;
+    }
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
+    // Aggregate dword count
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (info.type == ShaderDataType::Event) {
+            dwordCount++;
+        }
+    }
+
+    // Early out if no requests
+    if (!dwordCount) {
+        return IL::InvalidID;
+    }
+    
+    // Final declaration type
+    Backend::IL::StructType structDecl;
+
+    // Identifiers
+    IL::ID pcBlockPtrId;
+
+    // Given decoration, if present
+    const SpvValueDecoration* sourceDecoration{nullptr};
+
+    // Existing PC block?
+    if (pushConstantVariableOffset != IL::InvalidOffset) {
+        // Get types
+        const Backend::IL::Type* pcVarType = program.GetTypeMap().GetType(pushConstantVariableId);
+        const auto* pointeeType = pcVarType->As<Backend::IL::PointerType>();
+        const auto* structType = pointeeType->pointee->As<Backend::IL::StructType>();
+
+        // Get decoration
+        sourceDecoration = &table.annotation.GetDecoration(structType->id);
+
+        // Reuse previous id
+        pcBlockPtrId = typeMap.GetSpvTypeId(pointeeType);
+
+        // Add old types
+        for (const Backend::IL::Type* memberType : structType->memberTypes) {
+            structDecl.memberTypes.push_back(memberType);
+        }
+    } else {
+        // Allocate new ids
+        pcBlockPtrId           = table.scan.header.bound++;
+        pushConstantVariableId = table.scan.header.bound++;
+    }
+
+    // Starting offset for instrumentation
+    pushConstantMemberOffset = static_cast<uint32_t>(structDecl.memberTypes.size());
+
+    // Validate offsets
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+    uint32_t sourceByteOffset = job.instrumentationKey.pipelineLayoutPRMTPCOffset;
+#else // PRMT_METHOD == PRMT_METHOD_UB_PC
+    uint32_t sourceByteOffset = job.instrumentationKey.pipelineLayoutDataPCOffset;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
+    // UInt32
+    const Backend::IL::Type *intType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
+        .bitWidth = 32,
+        .signedness = false
+    });
+
+    // Add instrumented data
+    for (uint32_t i = 0; i < dwordCount; i++) {
+        structDecl.memberTypes.push_back(intType);
+    }
+
+    // Create type
+    pushConstantBlockType = ilTypeMap.FindTypeOrAdd(structDecl);
+    
+    // SpvIds
+    SpvId pcBlockTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(pushConstantBlockType);
+
+    // Create new pointer
+    SpvInstruction &spvPtrType = table.typeConstantVariable.block->stream.Allocate(SpvOpTypePointer, 4);
+    spvPtrType[1] = pcBlockPtrId;
+    spvPtrType[2] = SpvStorageClassPushConstant;
+    spvPtrType[3] = pcBlockTypeId;
+    
+    // Declare push constant block
+    SpvInstruction &spvCounterVar = table.typeConstantVariable.block->stream.Allocate(SpvOpVariable, 4);
+    spvCounterVar[1] = pcBlockPtrId;
+    spvCounterVar[2] = pushConstantVariableId;
+    spvCounterVar[3] = SpvStorageClassPushConstant;
+
+    // Block annotation
+    SpvInstruction &pcBlock = table.annotation.block->stream.Allocate(SpvOpDecorate, 3);
+    pcBlock[1] = pcBlockTypeId;
+    pcBlock[2] = SpvDecorationBlock;
+
+    // Migrate previous decorations if present
+    if (sourceDecoration) {
+        for (uint32_t i = 0; i < sourceDecoration->memberDecorations.size(); i++) {
+            SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpMemberDecorate, 5);
+            pcBlockMember[1] = pcBlockTypeId;
+            pcBlockMember[2] = i;
+            pcBlockMember[3] = SpvDecorationOffset;
+            pcBlockMember[4] = sourceDecoration->memberDecorations[i].blockOffset;
+        }
+    }
+
+    // Block annotation
+    for (uint32_t i = 0; i < dwordCount; i++) {
+        SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpMemberDecorate, 5);
+        pcBlockMember[1] = pcBlockTypeId;
+        pcBlockMember[2] = pushConstantMemberOffset + i;
+        pcBlockMember[3] = SpvDecorationOffset;
+        pcBlockMember[4] = sourceByteOffset + sizeof(uint32_t) * i;
+    }
+
+    // OK
+    return pushConstantVariableId;
+}
+
 void SpvPhysicalBlockTypeConstantVariable::Compile(SpvIdMap &idMap) {
+    // Deprecate push constant data
+    if (pushConstantVariableOffset != IL::InvalidOffset) {
+        const auto* pointeeType = program.GetTypeMap().GetType(pushConstantVariableId)->As<Backend::IL::PointerType>();
+        
+        // Get records
+        SpvRecord& varRecord = recordBlock.records.at(pushConstantVariableOffset);
+        SpvRecord& ptrRecord = recordBlock.records.at(pointeeType->sourceOffset);
+        
+        // Deprecate old records
+        varRecord.Deprecate();
+        ptrRecord.Deprecate();
+
+    }
+
+    // Rewrite from record block
+    block->stream.Clear();
+    recordBlock.Write(block->stream);
+    
     // Set the destination declaration stream
     typeMap.SetDeclarationStream(&block->stream);
 

@@ -35,7 +35,39 @@ void SpvPhysicalBlockAnnotation::Parse() {
                         break;
                     }
                     case SpvDecorationBinding: {
-                        decoration.value.offset = ctx++;
+                        decoration.value.descriptorOffset = ctx++;
+                        break;
+                    }
+                }
+                break;
+            }
+            case SpvOpMemberDecorate: {
+                uint32_t target = ctx++;
+                uint32_t member = ctx++;
+
+                // Allocate if needed
+                if (target >= entries.size()) {
+                    entries.resize(target + 1);
+                }
+
+                // Get decoration
+                SpvDecorationEntry& decoration = entries[target];
+                decoration.decorated = true;
+
+                // Allocate if needed
+                if (member >= decoration.value.memberDecorations.size()) {
+                    decoration.value.memberDecorations.resize(member + 1);
+                }
+
+                // Get decoration for member
+                SpvValueDecoration& valueDecoration = decoration.value.memberDecorations[member];
+
+                // Handle decoration
+                switch (static_cast<SpvDecoration>(ctx++)) {
+                    default:
+                        break;
+                    case SpvDecorationOffset: {
+                        valueDecoration.blockOffset = ctx++;
                         break;
                     }
                 }

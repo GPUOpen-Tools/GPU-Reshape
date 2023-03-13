@@ -44,8 +44,8 @@ struct SpvTypeMap {
     /// \param decl the IL type declaration
     /// \return the new type
     template<typename T>
-    const Backend::IL::Type* AddType(SpvId id, const T& decl) {
-        const Backend::IL::Type* type = programMap->AddType<T>(id, decl);
+    const Backend::IL::Type* AddType(SpvId id, uint32_t sourceOffset, const T& decl) {
+        const Backend::IL::Type* type = programMap->AddType<T>(id, sourceOffset, decl);
         AddMapping(id, type);
         return type;
     }
