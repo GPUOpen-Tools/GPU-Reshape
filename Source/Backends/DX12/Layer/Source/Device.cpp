@@ -186,8 +186,8 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         }
 
         // Set stride bounds
-        state->cpuHeapTable.SetStrideBound(state->object->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-        state->gpuHeapTable.SetStrideBound(state->object->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+        state->cpuHeapTable.SetStrideBound(state->object);
+        state->gpuHeapTable.SetStrideBound(state->object);
 
         // Install the streamer
         state->deviceAllocator = state->registry.AddNew<DeviceAllocator>();

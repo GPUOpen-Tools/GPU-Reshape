@@ -28,11 +28,11 @@ static ResourceToken GetResourceToken(const T* state) {
 /// \param state given command list state
 /// \param handle opaque handle
 /// \return state, may be nullptr
-static ResourceState* GetResourceStateFromHeapHandle(CommandListState* state, D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+static ResourceState* GetResourceStateFromHeapHandle(CommandListState* state, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle) {
     auto table = GetTable(state->parent);
 
     // Get heap from handle ptr
-    DescriptorHeapState* heap = table.state->cpuHeapTable.Find(handle.ptr);
+    DescriptorHeapState* heap = table.state->cpuHeapTable.Find(type, handle.ptr);
 
     // Get state
     return heap->GetStateFromHeapHandle(handle);
@@ -175,7 +175,7 @@ void FeatureHook_ResolveSubresource::operator()(CommandListState *object, Comman
 
 void FeatureHook_ClearDepthStencilView::operator()(CommandListState *object, CommandContext *context, D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView, D3D12_CLEAR_FLAGS ClearFlags, FLOAT Depth, UINT8 Stencil, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceState* state = GetResourceStateFromHeapHandle(object, DepthStencilView);
+    ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, DepthStencilView);
 
     // Setup source descriptor
     TextureDescriptor descriptor{
@@ -192,7 +192,7 @@ void FeatureHook_ClearDepthStencilView::operator()(CommandListState *object, Com
 
 void FeatureHook_ClearRenderTargetView::operator()(CommandListState *object, CommandContext *context, D3D12_CPU_DESCRIPTOR_HANDLE RenderTargetView, const FLOAT *ColorRGBA, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceState* state = GetResourceStateFromHeapHandle(object, RenderTargetView);
+    ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, RenderTargetView);
 
     // Setup source descriptor
     TextureDescriptor descriptor{
@@ -209,7 +209,7 @@ void FeatureHook_ClearRenderTargetView::operator()(CommandListState *object, Com
 
 void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *object, CommandContext *context, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const UINT *Values, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceState* state = GetResourceStateFromHeapHandle(object, ViewCPUHandle);
+    ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
 
     // Setup source descriptor
     TextureDescriptor descriptor{
@@ -226,7 +226,7 @@ void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *obje
 
 void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *object, CommandContext *context, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const FLOAT *Values, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceState* state = GetResourceStateFromHeapHandle(object, ViewCPUHandle);
+    ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
 
     // Setup source descriptor
     TextureDescriptor descriptor{
@@ -272,7 +272,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
     // Translate render targets
     for (uint32_t i = 0; i < NumRenderTargets; i++) {
-        ResourceState* state = GetResourceStateFromHeapHandle(object, pRenderTargets[i].cpuDescriptor);
+        ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, pRenderTargets[i].cpuDescriptor);
 
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
@@ -312,7 +312,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
     AttachmentInfo    depthInfo;
 
     if (pDepthStencil) {
-        ResourceState* depthState = GetResourceStateFromHeapHandle(object, pDepthStencil->cpuDescriptor);
+        ResourceState* depthState = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, pDepthStencil->cpuDescriptor);
 
         // Setup destination descriptor
         depthDescriptor = TextureDescriptor{
