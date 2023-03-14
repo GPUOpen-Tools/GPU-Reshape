@@ -81,12 +81,12 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     state->prmTable->Install(state->physicalDescriptorCount);
 
     // Register heap in shared table
-    table.state->heapTable.Add(
-        state,
-        state->cpuDescriptorBase.ptr,
-        state->physicalDescriptorCount,
-        state->stride
-    );
+    table.state->cpuHeapTable.Add(state, state->cpuDescriptorBase.ptr, state->physicalDescriptorCount, state->stride);
+
+    // GPU visibility optional
+    if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
+        table.state->gpuHeapTable.Add(state, state->gpuDescriptorBase.ptr, state->physicalDescriptorCount, state->stride);
+    }
 
     // Create detours
     heap = CreateDetour(state->allocators, heap, state);
@@ -141,7 +141,7 @@ void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12
     // TODO: Null descriptors!
     if (pResource) {
         // Associated heap?
-        if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
+        if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(DestDescriptor.ptr)) {
             uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
             ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
@@ -161,7 +161,7 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
     // TODO: Null descriptors!
     if (pResource) {
         // Associated heap?
-        if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
+        if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(DestDescriptor.ptr)) {
             uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
             ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
@@ -181,7 +181,7 @@ void WINAPI HookID3D12DeviceCreateRenderTargetView(ID3D12Device* _this, ID3D12Re
     // TODO: Null descriptors!
     if (pResource) {
         // Associated heap?
-        if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
+        if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(DestDescriptor.ptr)) {
             uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
             ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
@@ -201,7 +201,7 @@ void WINAPI HookID3D12DeviceCreateDepthStencilView(ID3D12Device* _this, ID3D12Re
     // TODO: Null descriptors!
     if (pResource) {
         // Associated heap?
-        if (DescriptorHeapState* heap = table.state->heapTable.Find(DestDescriptor.ptr)) {
+        if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(DestDescriptor.ptr)) {
             uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
             ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
@@ -225,7 +225,12 @@ DescriptorHeapState::~DescriptorHeapState() {
     auto table = GetTable(parent);
 
     // Remove from table
-    table.state->heapTable.Remove(cpuDescriptorBase.ptr);
+    table.state->cpuHeapTable.Remove(cpuDescriptorBase.ptr);
+
+    // GPU visibility optional
+    if (flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
+        table.state->cpuHeapTable.Remove(gpuDescriptorBase.ptr);
+    }
 }
 
 ResourceState * DescriptorHeapState::GetStateFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {

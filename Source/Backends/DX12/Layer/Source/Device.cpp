@@ -185,6 +185,10 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
             factory->Release();
         }
 
+        // Set stride bounds
+        state->cpuHeapTable.SetStrideBound(state->object->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+        state->gpuHeapTable.SetStrideBound(state->object->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+
         // Install the streamer
         state->deviceAllocator = state->registry.AddNew<DeviceAllocator>();
         ENSURE(state->deviceAllocator->Install(state->object, dxgiAdapter), "Failed to install device allocator");

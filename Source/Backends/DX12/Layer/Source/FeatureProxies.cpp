@@ -32,7 +32,7 @@ static ResourceState* GetResourceStateFromHeapHandle(CommandListState* state, D3
     auto table = GetTable(state->parent);
 
     // Get heap from handle ptr
-    DescriptorHeapState* heap = table.state->heapTable.Find(handle.ptr);
+    DescriptorHeapState* heap = table.state->cpuHeapTable.Find(handle.ptr);
 
     // Get state
     return heap->GetStateFromHeapHandle(handle);

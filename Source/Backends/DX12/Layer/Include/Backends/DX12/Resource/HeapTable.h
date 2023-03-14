@@ -11,8 +11,16 @@ struct DescriptorHeapState;
 
 class HeapTable {
 public:
-    HeapTable(const Allocators& allocators) : entries(allocators) {
+    HeapTable(const Allocators& allocators) : alignmentBuckets(allocators), allocators(allocators) {
         
+    }
+
+    /// Set the stride bound
+    /// \param stride maximum stride
+    void SetStrideBound(uint32_t stride) {
+        for (uint32_t i = 0; i < stride; i++) {
+            alignmentBuckets.emplace_back(allocators);
+        }
     }
     
     /// Add a new heap for tracking
@@ -22,7 +30,7 @@ public:
     /// \param stride stride of each descriptor
     void Add(DescriptorHeapState* heap, uint64_t base, uint64_t count, uint64_t stride) {
         std::lock_guard guard(lock);
-        entries[base] = HeapEntry {
+        GetAlignmentBucket(base).entries[base] = HeapEntry {
             .count = count,
             .stride = stride,
             .heap = heap
@@ -33,7 +41,7 @@ public:
     /// \param base base descriptor offset
     void Remove(uint64_t base) {
         std::lock_guard guard(lock);
-        entries.erase(base);
+        GetAlignmentBucket(base).entries.erase(base);
     }
 
     /// Find a given heap
@@ -41,12 +49,15 @@ public:
     /// \return nullptr if not found
     DescriptorHeapState* Find(uint64_t offset) {
         std::lock_guard guard(lock);
-        if (entries.empty()) {
+
+        HeapAlignmentBucket& bucket = GetAlignmentBucket(offset);
+
+        if (bucket.entries.empty()) {
             return nullptr;
         }
 
         // Sorted search
-        auto it = --entries.upper_bound(offset);
+        auto it = --bucket.entries.upper_bound(offset);
 
         // Bad lower?
         if (offset < it->first) {
@@ -64,14 +75,38 @@ public:
 
 private:
     struct HeapEntry {
+        /// Number of descriptors in this heap
         uint64_t count{0};
+
+        /// Given stride of the heap
         uint64_t stride{0};
+
+        /// Underlying heap
         DescriptorHeapState* heap{nullptr};
     };
 
+    struct HeapAlignmentBucket {
+        HeapAlignmentBucket(const Allocators& allocators) : entries(allocators) {
+
+        }
+
+        /// All heaps tracked in this bucket
+        BTreeMap<uint64_t, HeapEntry> entries;
+    };
+
+    /// Get the owning bucket of an offset
+    /// \param offset opaque offset
+    /// \return owning bucket
+    HeapAlignmentBucket& GetAlignmentBucket(uint64_t offset) {
+        return alignmentBuckets.at(offset % alignmentBuckets.size());
+    }
+
+    /// Linear buckets
+    Vector<HeapAlignmentBucket> alignmentBuckets;
+
+private:
+    Allocators allocators;
+
     /// Shared lock
     std::mutex lock;
-
-    /// All heaps tracked
-    BTreeMap<uint64_t, HeapEntry> entries;
 };

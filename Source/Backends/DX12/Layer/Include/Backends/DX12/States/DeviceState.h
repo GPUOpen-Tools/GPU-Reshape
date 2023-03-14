@@ -45,7 +45,8 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
           states_Shaders(allocators.Tag(kAllocTracking)),
           states_Pipelines(allocators.Tag(kAllocTracking)),
           states_Queues(allocators.Tag(kAllocTracking)),
-          heapTable(allocators.Tag(kAllocTracking)),
+          cpuHeapTable(allocators.Tag(kAllocTracking)),
+          gpuHeapTable(allocators.Tag(kAllocTracking)),
           virtualAddressTable(allocators.Tag(kAllocTracking)),
           physicalResourceIdentifierMap(allocators.Tag(kAllocPRMT)),
           dependencies_shaderPipelines(allocators.Tag(kAllocTracking)),
@@ -86,8 +87,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     TrackedObject<PipelineState> states_Pipelines;
     TrackedObject<CommandQueueState> states_Queues;
 
-    /// Sorted heap table
-    HeapTable heapTable;
+    /// Sorted heap tables
+    HeapTable cpuHeapTable;
+    HeapTable gpuHeapTable;
 
     /// Sorted virtual address table
     ResourceVirtualAddressTable virtualAddressTable;
