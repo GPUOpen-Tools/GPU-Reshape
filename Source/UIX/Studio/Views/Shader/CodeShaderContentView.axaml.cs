@@ -1,8 +1,12 @@
 ﻿using System;
+using System.Linq.Expressions;
+using System.Reactive;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using AvaloniaEdit.TextMate;
 using AvaloniaEdit.Utils;
 using DynamicData;
@@ -104,6 +108,20 @@ namespace Studio.Views.Shader
                             _validationTextMarkerService.ResumarizeValidationObjects();
                         });
                 });
+            
+            // Bind object change
+            ValidationObjectChanged
+                .Window(() => Observable.Timer(TimeSpan.FromMilliseconds(250)))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ => OnValidationObjectChanged());
+        }
+
+        /// <summary>
+        /// Invoked on object changes
+        /// </summary>
+        private void OnValidationObjectChanged()
+        {
+            Editor.TextArea.TextView.Redraw();
         }
 
         /// <summary>
@@ -112,6 +130,11 @@ namespace Studio.Views.Shader
         /// <param name="validationObject"></param>
         private void OnValidationObjectAdded(ValidationObject validationObject)
         {
+            // Bind count and contents
+            validationObject
+                .WhenAnyValue(x => x.Count, x => x.Content)
+                .Subscribe(x => ValidationObjectChanged.OnNext(new Unit()));
+            
             _validationTextMarkerService.Add(validationObject);
         }
 
@@ -133,5 +156,10 @@ namespace Studio.Views.Shader
         /// Text marker service, hosts transformed objects
         /// </summary>
         private ValidationTextMarkerService _validationTextMarkerService;
+
+        /// <summary>
+        /// Internal proxy observable
+        /// </summary>
+        private ISubject<Unit> ValidationObjectChanged = new Subject<Unit>();
     }
 }

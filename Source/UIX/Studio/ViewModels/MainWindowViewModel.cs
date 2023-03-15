@@ -113,9 +113,9 @@ namespace Studio.ViewModels
             // Bind workspace
             if (App.Locator.GetService<IWorkspaceService>() is { } workspaceService)
             {
-                workspaceService.WhenAnyValue(x => x.SelectedWorkspace).WhereNotNull().Subscribe(x =>
+                workspaceService.WhenAnyValue(x => x.SelectedWorkspace).Subscribe(x =>
                 {
-                    WorkspaceLabel = x.Connection?.Application?.DecoratedName ?? "";
+                    WorkspaceLabel = x?.Connection?.Application?.DecoratedName ?? "";
                 });
             }
         }

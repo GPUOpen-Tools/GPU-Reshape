@@ -67,6 +67,12 @@ namespace Studio.Services
             // Diagnostic
             Logging.Info($"Closed workspace for {workspaceViewModel.Connection?.Application?.Name}");
             
+            // Is selected?
+            if (SelectedWorkspace == workspaceViewModel)
+            {
+                SelectedWorkspace = null;
+            }
+            
             // Try to remove
             return _workspaces.Remove(workspaceViewModel);
         }

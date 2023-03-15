@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Reactive;
+using System.Reactive.Subjects;
 using Avalonia.Media;
 using DynamicData;
 using DynamicData.Binding;

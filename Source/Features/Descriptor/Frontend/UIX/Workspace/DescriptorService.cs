@@ -71,7 +71,10 @@ namespace GRS.Features.Descriptor.UIX.Workspace
                 // Add to reduced set
                 if (_reducedMessages.ContainsKey(kv.Key))
                 {
-                    _reducedMessages[kv.Key].Count += kv.Value;
+                    Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        _reducedMessages[kv.Key].Count += kv.Value;
+                    });
                 }
                 else
                 {

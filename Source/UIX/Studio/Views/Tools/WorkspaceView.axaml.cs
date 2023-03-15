@@ -33,7 +33,7 @@ namespace Studio.Views.Tools
         private void OnItemSelected(object? sender, SelectionChangedEventArgs e)
         {
             // Validate sender
-            if (sender is not Control { DataContext: WorkspaceTreeItemViewModel { OwningContext: IWorkspaceViewModel workspaceViewModel } })
+            if (e.AddedItems.Count == 0 || e.AddedItems[0] is not WorkspaceTreeItemViewModel { OwningContext: IWorkspaceViewModel workspaceViewModel })
                 return;
 
             // Get service

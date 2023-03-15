@@ -118,15 +118,15 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         private void OnConnectionChanged()
         {
+            // Clear states
+            PipelineIdentifiers.Clear();
+            _lookup.Clear();
+            
             if (_workspaceViewModel is not { Connection: { } })
                 return;
             
             // Subscribe
             _workspaceViewModel.Connection.Bridge?.Register(this);
-            
-            // Clear states
-            PipelineIdentifiers.Clear();
-            _lookup.Clear();
 
             // Start pooling timer
             _poolTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, OnPoolEvent);
