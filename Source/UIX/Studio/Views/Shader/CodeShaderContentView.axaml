@@ -38,7 +38,7 @@
                 FontFamily="Consolas,Menlo,Monospace"
                 Foreground="#D4D4D4"
                 Background="{StaticResource TextBlockColor}"
-                HorizontalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Visible"
                 VerticalScrollBarVisibility="Visible"
                 FontWeight="Light"
                 FontSize="14"

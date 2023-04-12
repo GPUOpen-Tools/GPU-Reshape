@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -14,6 +15,7 @@ using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
 using Studio.Extensions;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.Views.Editor;
@@ -62,7 +64,7 @@ namespace Studio.Views.Shader
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationBackgroundRenderer);
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationTextMarkerService);
             Editor.TextArea.TextView.LineTransformers.Add(_validationTextMarkerService);
-
+            
             // Add services
             IServiceContainer services = Editor.Document.GetService<IServiceContainer>();
             services?.AddService(typeof(ValidationTextMarkerService), _validationTextMarkerService);
@@ -75,14 +77,14 @@ namespace Studio.Views.Shader
                 .WhereNotNull()
                 .Cast<CodeShaderContentViewModel>()
                 .WhereNotNull()
-                .Subscribe(x =>
+                .Subscribe(codeViewModel =>
                 {
                     // Update services
-                    _validationTextMarkerService.ShaderContentViewModel = x;
-                    _validationBackgroundRenderer.ShaderContentViewModel = x;
-                    
+                    _validationTextMarkerService.ShaderContentViewModel = codeViewModel;
+                    _validationBackgroundRenderer.ShaderContentViewModel = codeViewModel;
+
                     // Bind object model
-                    x.WhenAnyValue(y => y.Object).WhereNotNull().Subscribe(_object =>
+                    codeViewModel.WhenAnyValue(y => y.Object).WhereNotNull().Subscribe(_object =>
                     {
                         // Set objects
                         _validationBackgroundRenderer.ValidationObjects = _object.ValidationObjects;
@@ -94,21 +96,44 @@ namespace Studio.Views.Shader
                             .OnItemAdded(OnValidationObjectAdded)
                             .OnItemRemoved(OnValidationObjectAdded)
                             .Subscribe();
+
+                        // Raise navigation changes on file additions
+                        _object.FileViewModels.ToObservableChangeSet()
+                            .AsObservableList()
+                            .Connect()
+                            .OnItemAdded(x =>
+                            {
+                                if (codeViewModel.NavigationLocation != null)
+                                {
+                                    UpdateNavigationLocation(codeViewModel, codeViewModel.NavigationLocation.Value);
+                                }
+                            })
+                            .Subscribe();
                     });
-                    
+
                     // Bind selected contents
-                    x.WhenAnyValue(y => y.SelectedShaderFileViewModel, y => y?.Contents)
+                    codeViewModel.WhenAnyValue(y => y.SelectedShaderFileViewModel, y => y?.Contents)
                         .WhereNotNull()
                         .Subscribe(contents =>
                         {
+                            // Set offset to start
+                            Editor.TextArea.Caret.Line = 0;
+                            Editor.TextArea.Caret.Column = 0;
+                            Editor.TextArea.Caret.BringCaretToView();
+                            
                             // Clear and set, avoids internal replacement reformatting hell
                             Editor.Text = string.Empty;
                             Editor.Text = contents;
-                            
+
                             _validationTextMarkerService.ResumarizeValidationObjects();
                         });
+
+                    // Bind navigation location
+                    codeViewModel.WhenAnyValue(y => y.NavigationLocation)
+                        .WhereNotNull()
+                        .Subscribe(location => UpdateNavigationLocation(codeViewModel, location!.Value));
                 });
-            
+
             // Bind object change
             ValidationObjectChanged
                 .Window(() => Observable.Timer(TimeSpan.FromMilliseconds(250)))
@@ -116,6 +141,24 @@ namespace Studio.Views.Shader
                 .Subscribe(_ => OnValidationObjectChanged());
         }
 
+        private void UpdateNavigationLocation(CodeShaderContentViewModel codeViewModel, ShaderLocation location)
+        {
+            // Attempt to find file vm
+            ShaderFileViewModel? fileViewModel = codeViewModel.Object?.FileViewModels.FirstOrDefault(x => x.UID == location.FileUID);
+            if (fileViewModel == null)
+            {
+                return;
+            }
+
+            // Update selected file
+            codeViewModel.SelectedShaderFileViewModel = fileViewModel;
+                            
+            // Scroll to target
+            Editor.TextArea.Caret.Line = location.Line;
+            Editor.TextArea.Caret.Column = location.Column;
+            Editor.TextArea.Caret.BringCaretToView();
+        }
+        
         /// <summary>
         /// Invoked on object changes
         /// </summary>
@@ -134,7 +177,7 @@ namespace Studio.Views.Shader
             validationObject
                 .WhenAnyValue(x => x.Count, x => x.Content)
                 .Subscribe(x => ValidationObjectChanged.OnNext(new Unit()));
-            
+
             _validationTextMarkerService.Add(validationObject);
         }
 

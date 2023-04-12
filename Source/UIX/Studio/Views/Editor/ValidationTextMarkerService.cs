@@ -123,7 +123,13 @@ namespace Studio.Views.Editor
             {
                 return;
             }
-            
+
+            // Mismatched file?
+            if (validationObject.Segment.Location.FileUID != (ShaderContentViewModel?.SelectedShaderFileViewModel?.UID ?? uint.MaxValue))
+            {
+                return;
+            }
+
             // Get line
             DocumentLine line = Document!.Lines[validationObject.Segment.Location.Line];
             
@@ -149,7 +155,7 @@ namespace Studio.Views.Editor
             // Remove lookups
             _markers.Clear();
             _segments.Clear();
-
+            
             // Add as new
             ShaderContentViewModel?.Object?.ValidationObjects.ForEach(x => Add(x));
         }

@@ -23,12 +23,26 @@ namespace Studio.ViewModels.Documents
                 {
                     return;
                 }
+
+                // Construction descriptor?
+                if (_descriptor == null)
+                {
+                    ConstructDescriptor(descriptor);
+                }
                 
-                // Construct from descriptor
-                Id = "Workspace";
-                Title = $"{descriptor.Workspace?.Connection?.Application?.DecoratedName ?? "Invalid"}";
-                Workspace = descriptor.Workspace;
+                _descriptor = descriptor;
             }
+        }
+
+        /// <summary>
+        /// Construct from a given descriptor
+        /// </summary>
+        /// <param name="descriptor"></param>
+        private void ConstructDescriptor(WorkspaceOverviewDescriptor descriptor)
+        {
+            Id = "Workspace";
+            Title = $"{descriptor.Workspace?.Connection?.Application?.DecoratedName ?? "Invalid"}";
+            Workspace = descriptor.Workspace;
         }
 
         /// <summary>
@@ -97,6 +111,11 @@ namespace Studio.ViewModels.Documents
         /// Internal icon
         /// </summary>
         private StreamGeometry? _icon = ResourceLocator.GetIcon("StreamOn");
+
+        /// <summary>
+        /// Internal descriptor
+        /// </summary>
+        private WorkspaceOverviewDescriptor? _descriptor;
 
         /// <summary>
         /// Internal icon color

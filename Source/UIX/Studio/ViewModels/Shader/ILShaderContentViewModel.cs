@@ -1,6 +1,7 @@
 ﻿using System;
 using Avalonia.Media;
 using ReactiveUI;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -8,6 +9,17 @@ namespace Studio.ViewModels.Shader
 {
     public class ILShaderContentViewModel : ReactiveObject, IShaderContentViewModel
     {
+        /// <summary>
+        /// Given descriptor
+        /// </summary>
+        public ShaderDescriptor? Descriptor
+        {
+            set
+            {
+                
+            }
+        }
+        
         /// <summary>
         /// View icon
         /// </summary>

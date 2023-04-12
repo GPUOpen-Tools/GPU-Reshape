@@ -1,5 +1,7 @@
 <h1><img align="center" height="75" src="/Source/UIX/Studio/Resources/Icons/Icon_Frame.png"> <a>GPU Reshape</a></h1>
 
+**(Notice: Lack of commits last month was due to vacation)**
+
 **GPU Reshape** offers API agnostic instrumentation of GPU side operations to perform, e.g., validation of potentially undefined behaviour, supporting both Vulkan and D3D12 (DXIL).
 No application side integration is required.
 
@@ -67,7 +69,7 @@ This toolset aims to serve as a **framework** for instrumentation, acting as a m
 GPU Reshape was initially developed as a prototype tool by Miguel Petersen at Avalanche Studios Group, extending validation tools to shader side operations.
 It was then requested to continue development externally through an open collaboration on GPUOpen.
 
-Development is lead by Miguel Petersen, with support by: (readme todo, support? sounds vague, collaborators? need to figure out the terminology for proper crediting)
+Development is lead by Miguel Petersen, with support by:
 
 - Lou Kramer (AMD)
 - Jonas Gustavsson (AMD)

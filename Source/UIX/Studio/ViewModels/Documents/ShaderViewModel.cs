@@ -29,11 +29,29 @@ namespace Studio.ViewModels.Documents
                     return;
                 }
 
-                Id = $"Shader{descriptor.GUID}";
-                Title = $"Loading ...";
-                PropertyCollection = descriptor.PropertyCollection;
-                GUID = descriptor.GUID;
+                // Construction descriptor?
+                if (_descriptor == null)
+                {
+                    ConstructDescriptor(descriptor);
+                }
+                
+                // Update content descriptors
+                ShaderContentViewModels.ForEach(x => x.Descriptor = descriptor);
+                
+                _descriptor = descriptor;
             }
+        }
+
+        /// <summary>
+        /// Construct from a given descriptor
+        /// </summary>
+        /// <param name="descriptor"></param>
+        private void ConstructDescriptor(ShaderDescriptor descriptor)
+        {
+            Id = $"Shader{descriptor.GUID}";
+            Title = $"Loading ...";
+            PropertyCollection = descriptor.PropertyCollection;
+            GUID = descriptor.GUID;
         }
 
         /// <summary>
@@ -205,6 +223,11 @@ namespace Studio.ViewModels.Documents
         /// Internal icon
         /// </summary>
         private StreamGeometry? _icon = ResourceLocator.GetIcon("DotsGrid");
+
+        /// <summary>
+        /// Internal descriptor
+        /// </summary>
+        private ShaderDescriptor? _descriptor;
 
         /// <summary>
         /// Internal icon color

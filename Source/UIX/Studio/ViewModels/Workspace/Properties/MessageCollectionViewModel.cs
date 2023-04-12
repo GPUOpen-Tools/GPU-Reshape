@@ -92,6 +92,7 @@ namespace Studio.ViewModels.Workspace.Properties
                 layoutViewModel.OpenDocument?.Execute(new ShaderDescriptor()
                 {
                     PropertyCollection = Parent,
+                    StartupLocation = validationObject.Segment.Location,
                     GUID = validationObject.Segment.Location.SGUID
                 });
             }

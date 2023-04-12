@@ -7,6 +7,8 @@ using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
+using Studio.Models.Workspace.Objects;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -14,6 +16,18 @@ namespace Studio.ViewModels.Shader
 {
     public class CodeShaderContentViewModel : ReactiveObject, IShaderContentViewModel
     {
+        /// <summary>
+        /// Given descriptor
+        /// </summary>
+        public ShaderDescriptor? Descriptor
+        {
+            set
+            {
+                NavigationLocation = null;
+                NavigationLocation = value?.StartupLocation;
+            }
+        }
+
         /// <summary>
         /// View icon
         /// </summary>
@@ -39,6 +53,15 @@ namespace Studio.ViewModels.Shader
         {
             get => _isActive;
             set => this.RaiseAndSetIfChanged(ref _isActive, value);
+        }
+
+        /// <summary>
+        /// Current location
+        /// </summary>
+        public ShaderLocation? NavigationLocation
+        {
+            get => _navigationLocation;
+            set => this.RaiseAndSetIfChanged(ref _navigationLocation, value);
         }
 
         /// <summary>
@@ -107,6 +130,11 @@ namespace Studio.ViewModels.Shader
         /// Selected file
         /// </summary>
         private ShaderFileViewModel? _selectedSelectedShaderFileViewModel = null;
+
+        /// <summary>
+        /// Internal location
+        /// </summary>
+        private ShaderLocation? _navigationLocation;
 
         /// <summary>
         /// Internal active state

@@ -1,10 +1,16 @@
 ﻿using Avalonia.Media;
+using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader
 {
     public interface IShaderContentViewModel
     {
+        /// <summary>
+        /// Given creation descriptor
+        /// </summary>
+        public ShaderDescriptor? Descriptor { set; }
+        
         /// <summary>
         /// Content icon
         /// </summary>

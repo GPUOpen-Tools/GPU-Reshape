@@ -52,6 +52,12 @@ namespace Studio.ViewModels.Docks
             {
                 Factory?.SetActiveDockable(existingDockable);
                 Factory?.SetFocusedDockable(this, existingDockable);
+                
+                // Reassign descriptor if possible
+                if (existingDockable is IDocumentViewModel { } existingDocumentViewModel)
+                {
+                    existingDocumentViewModel.Descriptor = descriptor;
+                }
                 return;
             }
             
