@@ -15,6 +15,7 @@ add_library(
     Source/Backend.cpp
     Source/FeatureHost.cpp
     Source/Environment.cpp
+    Source/StartupEnvironment.cpp
     Source/ShaderSGUIDHostListener.cpp
     Source/IL/PrettyPrint.cpp
     Source/IL/Function.cpp

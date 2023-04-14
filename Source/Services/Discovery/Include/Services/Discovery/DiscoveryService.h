@@ -4,12 +4,16 @@
 #include <Common/Plugin/PluginResolver.h>
 #include <Common/Registry.h>
 
+// Discovery
+#include <Discovery/DiscoveryProcessInfo.h>
+
 // Std
 #include <vector>
 
 // Forward declarations
 class IDiscoveryHost;
 class IDiscoveryListener;
+struct MessageStream;
 
 class DiscoveryService {
 public:
@@ -52,6 +56,12 @@ public:
     /// Uninstall any conflicting instance
     /// \return false if failed
     bool UninstallConflictingInstances();
+
+    /// Start a bootstrapped service against all discovery backends
+    /// \param info process information
+    /// \param environment ordered message stream environment fed to the application
+    /// \return false if failed
+    bool StartBootstrappedProcess(const DiscoveryProcessInfo &info, const MessageStream& environment);
     
     /// Get the registry
     Registry* GetRegistry() {

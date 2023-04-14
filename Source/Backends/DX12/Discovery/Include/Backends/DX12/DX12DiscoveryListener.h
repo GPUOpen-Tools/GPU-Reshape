@@ -16,6 +16,7 @@ public:
     bool IsGloballyInstalled() override;
     bool Start() override;
     bool Stop() override;
+    void SetupBootstrappingEnvironment(const DiscoveryProcessInfo& info, DiscoveryBootstrappingEnvironment& env) override;
     bool InstallGlobal() override;
     bool UninstallGlobal() override;
     bool HasConflictingInstances() override;

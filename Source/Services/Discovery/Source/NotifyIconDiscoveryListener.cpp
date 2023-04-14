@@ -227,6 +227,10 @@ bool NotifyIconDiscoveryListener::Stop() {
     return true;
 }
 
+void NotifyIconDiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProcessInfo &info, DiscoveryBootstrappingEnvironment &environment) {
+    // Nothing
+}
+
 bool NotifyIconDiscoveryListener::IsGloballyInstalled() {
     return true;
 }

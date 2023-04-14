@@ -27,11 +27,15 @@
 
 // Backend
 #include <Backend/EnvironmentInfo.h>
+#include <Backend/StartupEnvironment.h>
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
+
+// Message
+#include <Message/IMessageStorage.h>
 
 // Common
 #ifndef NDEBUG
@@ -48,11 +52,29 @@
 #include <iostream>
 #include <sstream>
 #endif // NDEBUG
+#include <fstream>
 
 // Debugging allocator
 #ifndef NDEBUG
 TrackedAllocator trackedAllocator;
 #endif // NDEBUG
+
+static bool ApplyStartupEnvironment(DeviceState* state) {
+    MessageStream stream;
+    
+    // Attempt to load
+    Backend::StartupEnvironment startupEnvironment;
+    if (!startupEnvironment.LoadFromEnvironment(stream)) {
+        return false;
+    }
+
+    // Commit initial stream
+    state->bridge->GetInput()->AddStream(stream);
+    state->bridge->Commit();
+
+    // OK
+    return true;
+}
 
 static bool PoolAndInstallFeatures(DeviceState* state) {
     // Get the feature host
@@ -257,6 +279,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Install the streamer
         state->exportStreamer = state->registry.AddNew<ShaderExportStreamer>(state);
         ENSURE(state->exportStreamer->Install(), "Failed to install shader export streamer");
+
+        // Query and apply environment
+        ENSURE(ApplyStartupEnvironment(state), "Failed to apply startup environment");
     }
 
     // Cleanup

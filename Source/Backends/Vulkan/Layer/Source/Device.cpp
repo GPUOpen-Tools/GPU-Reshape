@@ -27,10 +27,14 @@
 
 // Backend
 #include <Backend/EnvironmentInfo.h>
+#include <Backend/StartupEnvironment.h>
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
 #include <Backend/IL/Format.h>
 #include <Backend/IL/TextureDimension.h>
+
+// Message
+#include <Message/OrderedMessageStorage.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -40,6 +44,23 @@
 
 // Std
 #include <cstring>
+
+static bool ApplyStartupEnvironment(DeviceDispatchTable* table) {
+    MessageStream stream;
+    
+    // Attempt to load
+    Backend::StartupEnvironment startupEnvironment;
+    if (!startupEnvironment.LoadFromEnvironment(stream)) {
+        return false;
+    }
+
+    // Commit initial stream
+    table->bridge->GetInput()->AddStream(stream);
+    table->bridge->Commit();
+
+    // OK
+    return true;
+}
 
 VkResult VKAPI_PTR Hook_vkEnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount, VkLayerProperties *pProperties) {
     auto table = InstanceDispatchTable::Get(GetInternalTable(physicalDevice));
@@ -316,6 +337,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
             CreateQueueState(table, queue, info.queueFamilyIndex);
         }
     }
+
+    // Query and apply environment
+    ENSURE(ApplyStartupEnvironment(table), "Failed to apply startup environment");
 
     // OK
     return VK_SUCCESS;

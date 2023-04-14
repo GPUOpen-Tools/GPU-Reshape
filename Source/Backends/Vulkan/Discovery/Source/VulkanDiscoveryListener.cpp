@@ -1,7 +1,11 @@
 #include <Backends/Vulkan/VulkanDiscoveryListener.h>
 #include <Backends/Vulkan/Layer.h>
 
+// Discovery
+#include "Discovery/DiscoveryBootstrappingEnvironment.h"
+
 // Common
+#include <Common/EnvironmentArray.h>
 #include <Common/FileSystem.h>
 
 // System
@@ -419,6 +423,12 @@ bool VulkanDiscoveryListener::Stop() {
 
     // OK
     return true;
+}
+
+void VulkanDiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProcessInfo &info, DiscoveryBootstrappingEnvironment &env) {
+    // Add search path and layer
+    env.environmentKeys.emplace_back("VK_LAYER_PATH", GetCurrentExecutableDirectory().string());
+    env.environmentKeys.emplace_back("VK_INSTANCE_LAYERS", VK_GPUOPEN_GPUVALIDATION_LAYER_NAME);
 }
 
 bool VulkanDiscoveryListener::IsGloballyInstalled() {

@@ -1,6 +1,13 @@
 #pragma once
 
+// Discovery
+#include "DiscoveryProcessInfo.h"
+
+// Common
 #include <Common/IComponent.h>
+
+// Forward declarations
+struct DiscoveryBootstrappingEnvironment;
 
 class IDiscoveryListener : public TComponent<IDiscoveryListener> {
 public:
@@ -21,6 +28,11 @@ public:
     /// Stops this listener
     /// \return success state
     virtual bool Stop() = 0;
+
+    /// Setup the expected bootstrapping environment
+    /// \param info process information
+    /// \param environment destination environment
+    virtual void SetupBootstrappingEnvironment(const DiscoveryProcessInfo& info, DiscoveryBootstrappingEnvironment& environment) = 0;
 
     /// Install this listener
     ///   ? Enables global hooking of respective discovery, always on for the end user

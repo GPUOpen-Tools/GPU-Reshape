@@ -13,4 +13,4 @@ SetSourceDiscovery(GRS.Libraries.Discovery CXX Include Source)
 target_include_directories(GRS.Libraries.Discovery PUBLIC Include)
 
 # Dependencies
-target_link_libraries(GRS.Libraries.Discovery PUBLIC GRS.Libraries.Common)
+target_link_libraries(GRS.Libraries.Discovery PUBLIC GRS.Libraries.Common GRS.Libraries.Message)

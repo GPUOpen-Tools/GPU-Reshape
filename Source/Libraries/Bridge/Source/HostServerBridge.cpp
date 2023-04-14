@@ -85,7 +85,7 @@ void HostServerBridge::Deregister(const ComRef<IBridgeListener>& listener) {
 }
 
 IMessageStorage *HostServerBridge::GetInput() {
-    return &storage;
+    return memoryBridge.GetInput();
 }
 
 IMessageStorage *HostServerBridge::GetOutput() {

@@ -3,6 +3,9 @@
 // Common
 #include "Allocator/ContainerAllocator.h"
 
+// Std
+#include <cstring>
+
 /// Default alignment
 static constexpr uint32_t kDefaultAlign = sizeof(void*);
 
@@ -48,10 +51,16 @@ inline void operator delete[](void* data, const Allocators& allocators, Allocati
 
 /// Destruction (can't overload deletion)
 template<typename T>
-inline void destroy(T* object, const Allocators& allocators) {
+inline void destroy(T* object, Allocators allocators) {
     if (!object)
         return;
 
     object->~T();
+
+    // Poison fill memory
+#ifndef NDEBUG
+    memset(object, 0xFFu, sizeof(T));
+#endif
+    
     allocators.free(allocators.userData, object, kDefaultAlign);
 }

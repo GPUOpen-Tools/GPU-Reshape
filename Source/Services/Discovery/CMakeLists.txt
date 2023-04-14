@@ -15,6 +15,9 @@ target_include_directories(GRS.Services.Discovery PUBLIC Include)
 # Dependencies
 target_link_libraries(GRS.Services.Discovery PUBLIC GRS.Libraries.Discovery GRS.Libraries.Bridge GRS.Libraries.Backend)
 
+# External
+ExternalProject_Link(GRS.Services.Discovery Detour Detour)
+
 #------ Standalone ------#
 
 # Create standalone

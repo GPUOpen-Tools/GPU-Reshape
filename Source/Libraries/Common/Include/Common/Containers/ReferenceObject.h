@@ -43,4 +43,7 @@ inline void destroyRef(T* object, const Allocators& allocators) {
 }
 
 template<typename T>
-inline constexpr bool IsReferenceObject = std::is_base_of_v<ReferenceObject, std::remove_const_t<std::remove_reference_t<T>>>;
+inline constexpr bool IsReferenceObject = std::is_base_of_v<
+    ReferenceObject,
+    std::remove_const_t<std::remove_pointer_t<std::remove_reference_t<T>>>
+>;

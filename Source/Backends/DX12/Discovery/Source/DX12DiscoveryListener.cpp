@@ -5,6 +5,9 @@
 #include <Common/FileSystem.h>
 #include <Common/IPGlobalLock.h>
 
+// Discovery
+#include <Discovery/DiscoveryBootstrappingEnvironment.h>
+
 // System
 #include <process.h>
 #include <tlhelp32.h>
@@ -361,6 +364,11 @@ bool DX12DiscoveryListener::Stop() {
 
     // Attempt to stop
     return StopProcess();
+}
+
+void DX12DiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProcessInfo &info, DiscoveryBootstrappingEnvironment &env) {
+    // Add bootstrapper dll
+    env.dlls.push_back((GetCurrentExecutableDirectory() / "GRS.Backends.DX12.Bootstrapper.dll").string());
 }
 
 bool DX12DiscoveryListener::StartProcess() {
