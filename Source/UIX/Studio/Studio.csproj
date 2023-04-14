@@ -139,6 +139,10 @@
         <DependentUpon>CreatePipelineFilterWindow.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\LaunchWindow.axaml.cs">
+        <DependentUpon>LaunchWindow.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

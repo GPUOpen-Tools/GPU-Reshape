@@ -11,6 +11,7 @@ Project_AddDotNetEx(
         WindowsBase
     LIBS
         GRS.Services.Discovery
+        GRS.Libraries.Message.DotNet
     FLAGS
         /Zc:twoPhase-
 )

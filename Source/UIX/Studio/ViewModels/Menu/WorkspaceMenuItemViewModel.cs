@@ -46,6 +46,17 @@ namespace Studio.ViewModels.Menu
             {
                 new MenuItemViewModel()
                 {
+                    Header = "Launch Application",
+                    Command = ReactiveCommand.Create(OnLaunchApplication)
+                },
+                
+                new MenuItemViewModel()
+                {
+                    Header = "-"
+                },
+                
+                new MenuItemViewModel()
+                {
                     Header = "Create Connection",
                     Command = ReactiveCommand.Create(OnCreateConnection)
                 },
@@ -56,6 +67,14 @@ namespace Studio.ViewModels.Menu
                     Command = ReactiveCommand.Create(OnCloseAllConnections)
                 }
             });
+        }
+
+        /// <summary>
+        /// Invoked on application launches
+        /// </summary>
+        private void OnLaunchApplication()
+        {
+            App.Locator.GetService<IWindowService>()?.OpenFor(new LaunchViewModel());
         }
 
         /// <summary>

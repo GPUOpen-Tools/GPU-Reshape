@@ -1,5 +1,8 @@
 #pragma once
 
+// Discovery
+#include "DiscoveryProcessInfo.h"
+
 class DiscoveryService;
 
 namespace Discovery::CLR {
@@ -44,6 +47,12 @@ namespace Discovery::CLR {
         /// Uninstall any conflicting instance
         /// \return false if failed
 	    bool UninstallConflictingInstances();
+
+	    /// Start a bootstrapped service against all discovery backends
+	    /// \param info process information
+	    /// \param environment ordered message stream environment fed to the application
+	    /// \return false if failed
+	    bool StartBootstrappedProcess(const DiscoveryProcessInfo^ info, Message::CLR::IMessageStream^ environment);
 
 	private:
 		::DiscoveryService* service{ nullptr };
