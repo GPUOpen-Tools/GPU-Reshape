@@ -136,21 +136,6 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
     // Free the layout
     destroyRef(state->layout, table->allocators);
 
-    // Type specific info
-    switch (state->type) {
-        default:
-            break;
-        case PipelineType::Graphics: {
-            auto* graphics = static_cast<GraphicsPipelineState*>(state);
-
-            // Free the render pass
-            if (graphics->renderPass) {
-                destroyRef(graphics->renderPass, table->allocators);
-            }
-            break;
-        }
-    }
-
     // Remove logical object from lookup
     //  Logical reference to state is invalid after this function
     table->states_pipeline.RemoveLogical(pipeline);
@@ -165,6 +150,21 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
 PipelineState::~PipelineState() {
     // Remove state lookup
     table->states_pipeline.RemoveState(this);
+
+    // Type specific info
+    switch (type) {
+        default:
+            break;
+        case PipelineType::Graphics: {
+            auto* graphics = static_cast<GraphicsPipelineState*>(this);
+
+            // Free the render pass
+            if (graphics->renderPass) {
+                destroyRef(graphics->renderPass, table->allocators);
+            }
+            break;
+        }
+    }
 
     // Release all instrumented objects
     for (auto&& kv : instrumentObjects) {
