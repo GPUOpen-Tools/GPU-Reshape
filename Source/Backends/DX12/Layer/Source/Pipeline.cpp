@@ -85,6 +85,9 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
             state->parent = device;
             state->type = PipelineType::Graphics;
             state->object = pipeline;
+    
+            // External user
+            state->AddUser();
 
             // Consume all sub-objects
             while (reader.IsGood()) {
@@ -180,6 +183,9 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
             state->parent = device;
             state->type = PipelineType::Compute;
             state->object = pipeline;
+    
+            // External user
+            state->AddUser();
 
             // Consume all sub-objects
             while (reader.IsGood()) {
@@ -258,6 +264,9 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Graphics;
+    
+    // External user
+    state->AddUser();
 
     // Perform deep copy
     state->deepCopy.DeepCopy(state->allocators, *desc);
@@ -351,6 +360,9 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Compute;
+    
+    // External user
+    state->AddUser();
 
     // Perform deep copy
     state->deepCopy.DeepCopy(state->allocators, *desc);

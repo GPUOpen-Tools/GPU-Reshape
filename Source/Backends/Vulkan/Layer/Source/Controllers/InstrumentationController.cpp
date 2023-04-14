@@ -71,6 +71,9 @@ void InstrumentationController::CreatePipeline(PipelineState *state) {
     if (!immediateBatch.dirtyObjects.count(state)) {
         immediateBatch.dirtyObjects.insert(state);
         immediateBatch.dirtyPipelines.push_back(state);
+
+        // Own lifetime
+        state->AddUser();
     }
 
     // Add source modules
@@ -78,6 +81,9 @@ void InstrumentationController::CreatePipeline(PipelineState *state) {
         if (immediateBatch.dirtyObjects.count(shaderState)) {
             continue;
         }
+
+        // Own lifetime
+        shaderState->AddUser();
                 
         immediateBatch.dirtyObjects.insert(shaderState);
         immediateBatch.dirtyShaderModules.push_back(shaderState);
@@ -179,6 +185,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                     continue;
                 }
 
+                // Own lifetime
+                state->AddUser();
+
                 immediateBatch.dirtyObjects.insert(state);
                 immediateBatch.dirtyShaderModules.push_back(state);
             }
@@ -188,6 +197,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 if (immediateBatch.dirtyObjects.count(state)) {
                     continue;
                 }
+
+                // Own lifetime
+                state->AddUser();
 
                 immediateBatch.dirtyObjects.insert(state);
                 immediateBatch.dirtyPipelines.push_back(state);
@@ -213,6 +225,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             if (!immediateBatch.dirtyObjects.count(state)) {
                 immediateBatch.dirtyObjects.insert(state);
                 immediateBatch.dirtyShaderModules.push_back(state);
+
+                // Own lifetime
+                state->AddUser();
             }
 
             // Add dependent pipelines
@@ -220,6 +235,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 if (immediateBatch.dirtyObjects.count(dependentState)) {
                     continue;
                 }
+
+                // Own lifetime
+                dependentState->AddUser();
 
                 immediateBatch.dirtyObjects.insert(dependentState);
                 immediateBatch.dirtyPipelines.push_back(dependentState);
@@ -245,6 +263,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             if (!immediateBatch.dirtyObjects.count(state)) {
                 immediateBatch.dirtyObjects.insert(state);
                 immediateBatch.dirtyPipelines.push_back(state);
+
+                // Own lifetime
+                state->AddUser();
             }
 
             // Add source modules
@@ -252,6 +273,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 if (immediateBatch.dirtyObjects.count(shaderModuleState)) {
                     continue;
                 }
+
+                // Own lifetime
+                shaderModuleState->AddUser();
                 
                 immediateBatch.dirtyObjects.insert(shaderModuleState);
                 immediateBatch.dirtyShaderModules.push_back(shaderModuleState);
@@ -273,6 +297,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                     continue;
                 }
 
+                // Own lifetime
+                state->AddUser();
+
                 immediateBatch.dirtyObjects.insert(state);
                 immediateBatch.dirtyShaderModules.push_back(state);
             }
@@ -282,6 +309,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 if (immediateBatch.dirtyObjects.count(state)) {
                     continue;
                 }
+
+                // Own lifetime
+                state->AddUser();
 
                 immediateBatch.dirtyObjects.insert(state);
                 immediateBatch.dirtyPipelines.push_back(state);
@@ -335,11 +365,17 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
                 immediateBatch.dirtyObjects.insert(state);
                 immediateBatch.dirtyPipelines.push_back(state);
 
+                // Own lifetime
+                state->AddUser();
+
                 // Push source modules
                 for (ShaderModuleState *shaderState: state->shaderModules) {
                     if (immediateBatch.dirtyObjects.count(shaderState)) {
                         continue;
                     }
+
+                    // Own lifetime
+                    shaderState->AddUser();
                 
                     immediateBatch.dirtyObjects.insert(shaderState);
                     immediateBatch.dirtyShaderModules.push_back(shaderState);
@@ -631,6 +667,11 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Mark as done
     compilationEvent.IncrementCounter();
+
+    // Release handles
+    for (ReferenceObject* object : batch->dirtyObjects) {
+        destroyRef(object, allocators);
+    }
 
     // Release batch
     destroy(batch, allocators);
