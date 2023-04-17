@@ -11,37 +11,8 @@ using Studio.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Properties.Instrumentation
 {
-    public class PipelineFilterViewModel : ReactiveObject, IPropertyViewModel, IInstrumentableObject, IClosableObject
+    public class PipelineFilterViewModel : BasePropertyViewModel, IInstrumentableObject, IClosableObject
     {
-        /// <summary>
-        /// Name of this property
-        /// </summary>
-        public string Name
-        {
-            get => _name;
-            set => this.RaiseAndSetIfChanged(ref _name, value);
-        }
-
-        /// <summary>
-        /// Visibility of this property
-        /// </summary>
-        public PropertyVisibility Visibility => PropertyVisibility.WorkspaceTool;
-
-        /// <summary>
-        /// Parent property
-        /// </summary>
-        public IPropertyViewModel? Parent { get; set; }
-
-        /// <summary>
-        /// Child properties
-        /// </summary>
-        public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
-
-        /// <summary>
-        /// All services
-        /// </summary>
-        public ISourceList<IPropertyService> Services { get; set; } = new SourceList<IPropertyService>();
-
         /// <summary>
         /// Invoked on closes
         /// </summary>
@@ -107,18 +78,9 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         }
 
         /// <summary>
-        /// View model associated with this property
-        /// </summary>
-        public IConnectionViewModel? ConnectionViewModel
-        {
-            get => _connectionViewModel;
-            set => this.RaiseAndSetIfChanged(ref _connectionViewModel, value);
-        }
-
-        /// <summary>
         /// Constructor
         /// </summary>
-        public PipelineFilterViewModel()
+        public PipelineFilterViewModel() : base ("Filter ...", PropertyVisibility.WorkspaceTool)
         {
             CloseCommand = ReactiveCommand.Create(OnClose);
         }
@@ -180,11 +142,6 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         private PipelineIdentifier _pipeline;
 
         /// <summary>
-        /// Internal name
-        /// </summary>
-        private string _name = "Filter ...";
-
-        /// <summary>
         /// Internal query
         /// </summary>
         private PipelineFilterQueryViewModel _filter;
@@ -193,11 +150,6 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// Unique guid to this filter
         /// </summary>
         private Guid _guid = Guid.NewGuid();
-
-        /// <summary>
-        /// Internal connection
-        /// </summary>
-        private IConnectionViewModel? _connectionViewModel;
 
         /// <summary>
         /// Tracked state

@@ -4,26 +4,21 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="using:Studio.ViewModels.Tools"
+             xmlns:propertyGrid="https://github.com/avalonia_extendedtoolkit"
              mc:Ignorable="d"
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:PropertyViewModel" x:CompileBindings="True">
     <Grid Focusable="True">
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-        </StackPanel>
-
-        <Grid Grid.Row="1" IsVisible="true">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <PathIcon
-                    Data="{StaticResource InfoHollow}"
-                    VerticalAlignment="Center"
-                    Margin="0 0 0 0"
-                    Width="10" />
-                <TextBlock
-                    Margin="5 0 0 0"
-                    Foreground="{StaticResource InfoMediumForeground}"
-                    VerticalAlignment="Center"
-                    Text=" No selected object" />
-            </StackPanel>
-        </Grid>
+        <propertyGrid:PropertyGrid
+            x:Name="PropertyGrid"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            PropertyDisplayMode="All"
+            ShowAttachedProperties="True"
+            ShowReadOnlyProperties="True">
+            <propertyGrid:PropertyGrid.Layout>
+                <propertyGrid:CategorizedLayout />
+            </propertyGrid:PropertyGrid.Layout>
+        </propertyGrid:PropertyGrid>
     </Grid>
 </UserControl>

@@ -14,7 +14,7 @@
         <Color x:Key="SystemBaseMediumLowColor">#3B3B3B</Color>
         <Color x:Key="SystemAltHighColor">#323232</Color>
         <Color x:Key="SystemBaseHighColor">#D8D8D8</Color>
-        
+
         <!-- Info colors -->
         <Color x:Key="SuccessColor">#669653</Color>
         <Color x:Key="WarningColor">#8F892E</Color>
@@ -37,7 +37,7 @@
         <SolidColorBrush x:Key="DockThemeAccentBrush" Color="{DynamicResource SystemAccentColor}" />
         <SolidColorBrush x:Key="DockThemeForegroundBrush" Color="{DynamicResource SystemBaseHighColor}" />
         <SolidColorBrush x:Key="DockThemeControlBackgroundBrush" Color="{DynamicResource SystemAltHighColor}" />
-        
+
         <!-- Info -->
         <SolidColorBrush x:Key="InfoMediumBackground">#2F3033</SolidColorBrush>
         <SolidColorBrush x:Key="InfoMediumForeground">#B1B3B5</SolidColorBrush>
@@ -47,14 +47,14 @@
         <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#3B3B3B" />
         <SolidColorBrush x:Key="TextBlockColor" Color="#262626" />
         <SolidColorBrush x:Key="ToggleButtonCheckColorBrush">#2C2C2C</SolidColorBrush>
-        
+
         <!-- Connection strings -->
         <Color x:Key="ConnectionKeyIP">#4C4C4C</Color>
         <Color x:Key="ConnectionKeyPort">#290099</Color>
         <Color x:Key="ConnectionKeyApplicationFilter">#083000</Color>
         <Color x:Key="ConnectionKeyApplicationAPI">#610202</Color>
         <Color x:Key="ConnectionKeyApplicationPID">#025e61</Color>
-        
+
         <!-- Filter strings -->
         <Color x:Key="PipelineFilterKeyType">#290099</Color>
         <Color x:Key="PipelineFilterKeyName">#083000</Color>
@@ -66,6 +66,28 @@
     <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Default.xaml" />
     <StyleInclude Source="avares://Dock.Avalonia/Themes/DockDefaultTheme.axaml" />
     <StyleInclude Source="avares://AvaloniaEdit/AvaloniaEdit.xaml" />
+
+    <!-- Property Grid -->
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Controls/EnumDropdown.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Controls/SearchTextBox.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Controls/SliderEditorBase.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/AlphabeticalLayout.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/CategorizedLayout.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/CategoryContainer.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/CategoryEditorContentPresenter.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/CategoryItemsLayout.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/ExtendedPropertyEditorTab.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/PropertyContainer.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/PropertyEditorContentPresenter.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/PropertyItemsLayout.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/PropertyNameTextBlock.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/TabbedLayout.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/TabbedLayoutItem.Base.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Design/TabbedLayoutItem.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Editor/DoubleEditor.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Editor/EditorResources.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/Editor/TypeEditor.axaml" />
+    <StyleInclude Source="avares://Avalonia.ExtendedToolkit/Styles/ExtendedControls/PropertyGrid/PropertyGrid.axaml" />
 
     <!-- 
       Custom control style extension
@@ -104,11 +126,11 @@
     <Style Selector="MenuItem /template/ ContentPresenter#PART_HeaderPresenter">
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    
+
     <Style Selector="ToggleButton:checked /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource ToggleButtonCheckColorBrush}" />
     </Style>
-    
+
     <Style Selector="ToggleButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource ToggleButtonCheckColorBrush}" />
     </Style>
@@ -138,17 +160,17 @@
             </ControlTemplate>
         </Setter>
     </Style>
-        
+
     <Style Selector="idc|DocumentControl">
         <Setter Property="HeaderTemplate">
             <DataTemplate DataType="core:IDockable">
                 <StackPanel Orientation="Horizontal">
-                    <PathIcon 
+                    <PathIcon
                         Data="{Binding Path=(documents:IDocumentViewModel).Icon}"
                         Foreground="{Binding Path=(documents:IDocumentViewModel).IconForeground}"
                         Width="12"
                         Height="12"
-                        Margin="0"/>
+                        Margin="0" />
 
                     <TextBlock Text="{Binding Title}"
                                VerticalAlignment="Center"
@@ -157,7 +179,7 @@
             </DataTemplate>
         </Setter>
     </Style>
-        
+
     <Style Selector="idc|ToolControl">
         <Setter Property="HeaderTemplate">
             <DataTemplate DataType="core:IDockable">

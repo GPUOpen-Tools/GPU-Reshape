@@ -2,6 +2,7 @@
 using System.Reactive.Subjects;
 using DynamicData;
 using ReactiveUI;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Services
 {
@@ -16,6 +17,11 @@ namespace Studio.Services
         /// Current workspace
         /// </summary>
         public ViewModels.Workspace.IWorkspaceViewModel? SelectedWorkspace { get; set; }
+        
+        /// <summary>
+        /// Current selected property
+        /// </summary>
+        public IPropertyViewModel? SelectedProperty { get; set; }
         
         /// <summary>
         /// Add a new workspace

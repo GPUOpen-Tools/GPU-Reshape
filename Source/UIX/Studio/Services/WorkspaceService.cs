@@ -9,6 +9,7 @@ using DynamicData.Binding;
 using ReactiveUI;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Services
 {
@@ -26,6 +27,15 @@ namespace Studio.Services
         {
             get => _selectedWorkspace;
             set => this.RaiseAndSetIfChanged(ref _selectedWorkspace, value);
+        }
+
+        /// <summary>
+        /// Current selected property
+        /// </summary>
+        public IPropertyViewModel? SelectedProperty
+        {
+            get => _selectedProperty;
+            set => this.RaiseAndSetIfChanged(ref _selectedProperty, value);
         }
 
         public WorkspaceService()
@@ -104,6 +114,11 @@ namespace Studio.Services
         /// Internal active workspace
         /// </summary>
         private IWorkspaceViewModel? _selectedWorkspace;
+
+        /// <summary>
+        /// Internal selected property
+        /// </summary>
+        private IPropertyViewModel? _selectedProperty;
 
     }
 }

@@ -10,37 +10,8 @@ using Studio.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Properties.Instrumentation
 {
-    public class ShaderViewModel : ReactiveObject, IPropertyViewModel, IInstrumentableObject, IClosableObject
+    public class ShaderViewModel : BasePropertyViewModel, IInstrumentableObject, IClosableObject
     {
-        /// <summary>
-        /// Name of this property
-        /// </summary>
-        public string Name
-        {
-            get => _name;
-            set => this.RaiseAndSetIfChanged(ref _name, value);
-        }
-
-        /// <summary>
-        /// Visibility of this property
-        /// </summary>
-        public PropertyVisibility Visibility => PropertyVisibility.WorkspaceTool;
-
-        /// <summary>
-        /// Parent property
-        /// </summary>
-        public IPropertyViewModel? Parent { get; set; }
-
-        /// <summary>
-        /// Child properties
-        /// </summary>
-        public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
-
-        /// <summary>
-        /// All services
-        /// </summary>
-        public ISourceList<IPropertyService> Services { get; set; } = new SourceList<IPropertyService>();
-
         /// <summary>
         /// Invoked on closes
         /// </summary>
@@ -87,18 +58,9 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         }
 
         /// <summary>
-        /// View model associated with this property
-        /// </summary>
-        public IConnectionViewModel? ConnectionViewModel
-        {
-            get => _connectionViewModel;
-            set => this.RaiseAndSetIfChanged(ref _connectionViewModel, value);
-        }
-
-        /// <summary>
         /// Constructor
         /// </summary>
-        public ShaderViewModel()
+        public ShaderViewModel() : base("Shader", PropertyVisibility.WorkspaceTool)
         {
             CloseCommand = ReactiveCommand.Create(OnClose);
         }
@@ -148,16 +110,6 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// Code listener
         /// </summary>
         private ShaderIdentifier _shader = new();
-
-        /// <summary>
-        /// Internal name
-        /// </summary>
-        private string _name = "Shader";
-        
-        /// <summary>
-        /// Internal connection
-        /// </summary>
-        private IConnectionViewModel? _connectionViewModel;
 
         /// <summary>
         /// Tracked state

@@ -137,6 +137,7 @@ namespace Studio.ViewModels.Controls
             {
                 Items.Add(new WorkspaceTreeItemViewModel()
                 {
+                    OwningContext = propertyViewModel,
                     ViewModel = propertyViewModel
                 });
             }

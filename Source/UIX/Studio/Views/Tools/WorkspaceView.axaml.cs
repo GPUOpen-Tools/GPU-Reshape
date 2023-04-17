@@ -9,6 +9,7 @@ using Studio.Services;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
 using System.Reactive.Linq;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Views.Tools
 {
@@ -33,16 +34,26 @@ namespace Studio.Views.Tools
         private void OnItemSelected(object? sender, SelectionChangedEventArgs e)
         {
             // Validate sender
-            if (e.AddedItems.Count == 0 || e.AddedItems[0] is not WorkspaceTreeItemViewModel { OwningContext: IWorkspaceViewModel workspaceViewModel })
+            if (e.AddedItems.Count == 0 || e.AddedItems[0] is not { } _object)
                 return;
-
+            
             // Get service
             var service = App.Locator.GetService<IWorkspaceService>();
             if (service == null)
                 return;
 
-            // Set selected
-            service.SelectedWorkspace = workspaceViewModel;
+            // Workspace?
+            if (_object is WorkspaceTreeItemViewModel { OwningContext: IWorkspaceViewModel workspaceViewModel })
+            {
+                service.SelectedWorkspace = workspaceViewModel;
+                service.SelectedProperty = workspaceViewModel.PropertyCollection;
+            }
+
+            // Property?
+            if (_object is WorkspaceTreeItemViewModel { OwningContext: IPropertyViewModel propertyViewModel })
+            {
+                service.SelectedProperty = propertyViewModel;
+            }
         }
         
         private WorkspaceViewModel? VM => DataContext as WorkspaceViewModel;

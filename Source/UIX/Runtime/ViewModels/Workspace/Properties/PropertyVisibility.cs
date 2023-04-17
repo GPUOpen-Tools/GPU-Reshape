@@ -18,6 +18,11 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Summary view in the workspace overview
         /// </summary>
-        WorkspaceOverview = 2
+        WorkspaceOverview = 2,
+        
+        /// <summary>
+        /// Property tool data section
+        /// </summary>
+        Configuration = 4,
     }
 }

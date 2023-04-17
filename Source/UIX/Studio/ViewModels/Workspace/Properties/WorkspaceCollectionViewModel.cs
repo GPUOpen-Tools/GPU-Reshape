@@ -9,6 +9,7 @@ using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Properties.Config;
 using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace Studio.ViewModels.Workspace.Properties
@@ -18,10 +19,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Name of this property
         /// </summary>
-        public string Name
-        {
-            get => ConnectionViewModel?.Application?.DecoratedName ?? "Invalid";
-        }
+        public string Name => ConnectionViewModel?.Application?.DecoratedName ?? "Invalid";
 
         /// <summary>
         /// Visibility of this property
@@ -133,6 +131,7 @@ namespace Studio.ViewModels.Workspace.Properties
                 return;
             }
             
+            // Toolable properties
             Properties.AddRange(new IPropertyViewModel[]
             {
                 new LogViewModel()
@@ -160,6 +159,16 @@ namespace Studio.ViewModels.Workspace.Properties
                 },
 
                 new PipelineCollectionViewModel()
+                {
+                    Parent = this,
+                    ConnectionViewModel = _connectionViewModel
+                }
+            });
+            
+            // Configuration properties
+            Properties.AddRange(new IPropertyViewModel[]
+            {
+                new InstrumentationConfigViewModel()
                 {
                     Parent = this,
                     ConnectionViewModel = _connectionViewModel

@@ -11,54 +11,20 @@ using Studio.ViewModels.Logging;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class LogViewModel : ReactiveObject, IPropertyViewModel, Bridge.CLR.IBridgeListener
+    public class LogViewModel : BasePropertyViewModel, Bridge.CLR.IBridgeListener
     {
-        /// <summary>
-        /// Name of this property
-        /// </summary>
-        public string Name { get; } = "Logs";
-
-        /// <summary>
-        /// Visibility of this property
-        /// </summary>
-        public PropertyVisibility Visibility => PropertyVisibility.Default;
-
-        /// <summary>
-        /// Parent property
-        /// </summary>
-        public IPropertyViewModel? Parent { get; set; }
-
-        /// <summary>
-        /// Child properties
-        /// </summary>
-        public ISourceList<IPropertyViewModel> Properties { get; set; } = new SourceList<IPropertyViewModel>();
-
-        /// <summary>
-        /// All services
-        /// </summary>
-        public ISourceList<IPropertyService> Services { get; set; } = new SourceList<IPropertyService>();
-        
-        /// <summary>
-        /// View model associated with this property
-        /// </summary>
-        public IConnectionViewModel? ConnectionViewModel
+        public LogViewModel() : base("Logs", PropertyVisibility.Default)
         {
-            get => _connectionViewModel;
-            set
-            {
-                this.RaiseAndSetIfChanged(ref _connectionViewModel, value);
-
-                OnConnectionChanged();
-            }
+            this.WhenAnyValue(x => x.ConnectionViewModel).Subscribe(_ => OnConnectionChanged());
         }
-
+        
         /// <summary>
         /// Invoked when a connection has changed
         /// </summary>
         private void OnConnectionChanged()
         {
             // Register to logging messages
-            _connectionViewModel?.Bridge?.Register(LogMessage.ID, this);
+            ConnectionViewModel?.Bridge?.Register(LogMessage.ID, this);
 
             // Create all properties
             CreateProperties();
@@ -71,7 +37,7 @@ namespace Studio.ViewModels.Workspace.Properties
         {
             Properties.Clear();
 
-            if (_connectionViewModel == null)
+            if (ConnectionViewModel == null)
             {
                 return;
             }
@@ -95,7 +61,7 @@ namespace Studio.ViewModels.Workspace.Properties
             // Enumerate all messages
             foreach (LogMessage message in new DynamicMessageView<LogMessage>(streams))
             {
-                messages.Add($"{_connectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}");
+                messages.Add($"{ConnectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}");
             }
 
             // Append messages on UI thread
@@ -116,10 +82,5 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Shared logging view model
         /// </summary>
         private ILoggingViewModel? _loggingViewModel = App.Locator.GetService<ILoggingService>()?.ViewModel;
-
-        /// <summary>
-        /// Internal view model
-        /// </summary>
-        private IConnectionViewModel? _connectionViewModel;
     }
 }

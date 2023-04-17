@@ -40,7 +40,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// All services
         /// </summary>
-        public ISourceList<IPropertyService> Services { get; set; } = new SourceList<IPropertyService>();
+        public ISourceList<IPropertyService> Services { get; } = new SourceList<IPropertyService>();
 
         /// <summary>
         /// All pooled features
