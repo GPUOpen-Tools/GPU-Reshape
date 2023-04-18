@@ -1,4 +1,5 @@
 #include <Common/CrashHandler.h>
+#include <Common/Sink.h>
 
 // Std
 #include <mutex>
@@ -49,6 +50,8 @@ static LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo) 
 
     // Walk frame
     for (ULONG frame = 0;; frame++) {
+        GRS_SINK(frame);
+
         BOOL result = StackWalk64(
 #if defined(_M_AMD64)
             IMAGE_FILE_MACHINE_AMD64,

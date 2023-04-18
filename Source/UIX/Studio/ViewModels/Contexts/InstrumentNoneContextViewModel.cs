@@ -58,16 +58,16 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         private void OnInvoked()
         {
-            if (_targetViewModel is not IInstrumentableObject instrumentable)
+            if (_targetViewModel is not IPropertyViewModel propertyViewModel)
             {
                 return;
             }
 
-            // Request instrumentation
-            instrumentable.InstrumentationState = new InstrumentationState()
+            // Close all instrumentation properties
+            while (propertyViewModel.GetProperty<IInstrumentationProperty>() is { } instrumentationProperty)
             {
-                FeatureBitMask = 0u
-            };
+                (instrumentationProperty as IClosableObject)?.CloseCommand?.Execute(Unit.Default);
+            }
         }
 
         /// <summary>

@@ -40,9 +40,6 @@ struct DXILTable {
 bool Generators::DXILTables(const GeneratorInfo &info, TemplateEngine &templateEngine) {
     std::stringstream enums;
 
-    // Current search string
-    const char* searchStr = info.dxilRST.c_str();
-
     // Table begin regex
     std::regex tableBegin("\\.\\. ([A-Za-z-]*):BEGIN");
 
@@ -134,9 +131,6 @@ bool Generators::DXILTables(const GeneratorInfo &info, TemplateEngine &templateE
 
         // Close
         enums << "};\n\n";
-
-        // Next!
-        searchStr += m->position() + m->length();
     }
 
     // Substitute keys

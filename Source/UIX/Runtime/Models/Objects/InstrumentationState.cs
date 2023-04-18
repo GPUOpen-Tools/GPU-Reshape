@@ -2,7 +2,7 @@
 
 namespace Runtime.Models.Objects
 {
-    public struct InstrumentationState
+    public class InstrumentationState
     {
         /// <summary>
         /// Instrumentation bit mask, see feature infos

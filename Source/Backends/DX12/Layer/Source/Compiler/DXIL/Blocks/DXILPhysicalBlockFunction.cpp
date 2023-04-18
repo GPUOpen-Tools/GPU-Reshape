@@ -445,6 +445,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 // Number of address cases
                 const uint32_t addressCount = reader.Remaining();
 
+                // Unused
+                GRS_SINK(pointee, inBounds);
+
                 // Allocate instruction
                 auto *instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(addressCount));
                 instr->opCode = IL::OpCode::AddressChain;

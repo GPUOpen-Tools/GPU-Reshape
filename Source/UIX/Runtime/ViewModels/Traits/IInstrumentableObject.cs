@@ -1,4 +1,5 @@
-﻿using Runtime.Models.Objects;
+﻿using Message.CLR;
+using Runtime.Models.Objects;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
@@ -14,8 +15,14 @@ namespace Studio.ViewModels.Traits
         public IPropertyViewModel? GetWorkspace();
 
         /// <summary>
+        /// Get the targetable instrumentation property
+        /// </summary>
+        /// <returns></returns>
+        public IPropertyViewModel? GetOrCreateInstrumentationProperty();
+        
+        /// <summary>
         /// Current instrumentation state
         /// </summary>
-        public InstrumentationState InstrumentationState { get; set; }
+        public InstrumentationState InstrumentationState { get; }
     }
 }

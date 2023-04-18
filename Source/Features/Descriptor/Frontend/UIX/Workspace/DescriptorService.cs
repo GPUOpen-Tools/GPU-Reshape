@@ -4,14 +4,18 @@ using Avalonia.Threading;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
 using Bridge.CLR;
+using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
+using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Workspace;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace GRS.Features.Descriptor.UIX.Workspace
 {
-    public class DescriptorService : IPropertyService, Bridge.CLR.IBridgeListener
+    public class DescriptorService : IInstrumentationPropertyService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
         /// Assigned workspace
@@ -113,6 +117,34 @@ namespace GRS.Features.Descriptor.UIX.Workspace
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
                 }
             }
+        }
+
+        /// <summary>
+        /// Create an instrumentation property
+        /// </summary>
+        /// <param name="target"></param>
+        /// <returns></returns>
+        public IPropertyViewModel? CreateInstrumentationObjectProperty(IPropertyViewModel target)
+        {
+            // Get feature in parent
+            FeatureInfo? featureInfo = (target as IInstrumentableObject)?
+                .GetWorkspace()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .GetFeature("Descriptor");
+
+            // Invalid or already exists?
+            if (featureInfo == null || target.HasProperty<DescriptorPropertyViewModel>())
+            {
+                return null;
+            }
+                
+            // Create property
+            return new DescriptorPropertyViewModel()
+            {
+                Parent = target,
+                ConnectionViewModel = target.ConnectionViewModel,
+                FeatureInfo = featureInfo.Value
+            };
         }
         
         /// <summary>

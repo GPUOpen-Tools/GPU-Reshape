@@ -1,5 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.Windows.Input;
+using DynamicData;
+using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
@@ -67,16 +69,26 @@ namespace GRS.Features.Initialization.UIX.Contexts
         /// </summary>
         private void OnInvoked()
         {
-            if (_targetViewModel is not IInstrumentableObject instrumentable)
+            if (_targetViewModel is not IInstrumentableObject instrumentable ||
+               instrumentable.GetOrCreateInstrumentationProperty() is not { } propertyViewModel ||
+                _featureInfo == null)
             {
                 return;
             }
 
-            // Request instrumentation
-            instrumentable.InstrumentationState = new InstrumentationState()
+            // Already instrumented?
+            if (propertyViewModel.HasProperty<InitializationPropertyViewModel>())
             {
-                FeatureBitMask = _featureInfo?.FeatureBit ?? 0
-            };
+                return;
+            }
+            
+            // Add property
+            propertyViewModel.Properties.Add(new InitializationPropertyViewModel()
+            {
+                Parent = propertyViewModel,
+                ConnectionViewModel = propertyViewModel.ConnectionViewModel,
+                FeatureInfo = _featureInfo.Value
+            });
         }
 
         /// <summary>

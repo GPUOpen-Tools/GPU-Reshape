@@ -4,30 +4,34 @@ using Avalonia.Threading;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
 using Bridge.CLR;
+using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
+using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Workspace;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace GRS.Features.Concurrency.UIX.Workspace
 {
-    public class ConcurrencyService : IPropertyService, Bridge.CLR.IBridgeListener
+    public class ConcurrencyService : IInstrumentationPropertyService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
         /// Assigned workspace
         /// </summary>
         public IWorkspaceViewModel ViewModel { get; }
-        
+
         public ConcurrencyService(IWorkspaceViewModel viewModel)
         {
             ViewModel = viewModel;
-            
+
             // Add listener to bridge
             viewModel.Connection?.Bridge?.Register(ResourceRaceConditionMessage.ID, this);
-            
+
             // Get properties
             _messageCollectionViewModel = viewModel.PropertyCollection.GetProperty<IMessageCollectionViewModel>();
-            
+
             // Get services
             _shaderMappingService = viewModel.PropertyCollection.GetService<IShaderMappingService>();
         }
@@ -40,7 +44,7 @@ namespace GRS.Features.Concurrency.UIX.Workspace
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsStatic(ResourceRaceConditionMessage.ID)) 
+            if (!streams.GetSchema().IsStatic(ResourceRaceConditionMessage.ID))
                 return;
 
             var view = new StaticMessageView<ResourceRaceConditionMessage>(streams);
@@ -68,10 +72,7 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                 // Add to reduced set
                 if (_reducedMessages.ContainsKey(kv.Key))
                 {
-                    Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        _reducedMessages[kv.Key].Count += kv.Value;
-                    });
+                    Dispatcher.UIThread.InvokeAsync(() => { _reducedMessages[kv.Key].Count += kv.Value; });
                 }
                 else
                 {
@@ -111,7 +112,35 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                 }
             }
         }
-        
+
+        /// <summary>
+        /// Create an instrumentation property
+        /// </summary>
+        /// <param name="target"></param>
+        /// <returns></returns>
+        public IPropertyViewModel? CreateInstrumentationObjectProperty(IPropertyViewModel target)
+        {
+            // Find feature data
+            FeatureInfo? featureInfo = (target as IInstrumentableObject)?
+                .GetWorkspace()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .GetFeature("Concurrency");
+
+            // Invalid or already exists?
+            if (featureInfo == null || target.HasProperty<ConcurrencyPropertyViewModel>())
+            {
+                return null;
+            }
+
+            // Create against target
+            return new ConcurrencyPropertyViewModel()
+            {
+                Parent = target,
+                ConnectionViewModel = target.ConnectionViewModel,
+                FeatureInfo = featureInfo.Value
+            };
+        }
+
         /// <summary>
         /// All reduced resource messages
         /// </summary>

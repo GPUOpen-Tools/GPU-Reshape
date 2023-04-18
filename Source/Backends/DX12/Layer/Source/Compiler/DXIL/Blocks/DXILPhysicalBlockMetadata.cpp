@@ -343,6 +343,9 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                     }
                 }
 
+                // Unused
+                GRS_SINK(elementType);
+
                 // Buffer shape?
                 if (IsBuffer(shape)) {
                     Backend::IL::BufferType buffer{};
@@ -442,6 +445,9 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                         }
                     }
                 }
+
+                // Unused
+                GRS_SINK(elementType);
 
                 // Buffer shape?
                 if (IsBuffer(shape)) {

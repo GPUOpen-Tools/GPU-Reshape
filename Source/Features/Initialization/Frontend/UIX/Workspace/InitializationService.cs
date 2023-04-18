@@ -4,14 +4,18 @@ using Avalonia.Threading;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
 using Bridge.CLR;
+using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
+using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Workspace;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace GRS.Features.Initialization.UIX.Workspace
 {
-    public class InitializationService : IPropertyService, Bridge.CLR.IBridgeListener
+    public class InitializationService : IInstrumentationPropertyService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
         /// Assigned workspace
@@ -113,6 +117,34 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
                 }
             }
+        }
+
+        /// <summary>
+        /// Create an instrumentation property
+        /// </summary>
+        /// <param name="target"></param>
+        /// <returns></returns>
+        public IPropertyViewModel? CreateInstrumentationObjectProperty(IPropertyViewModel target)
+        {
+            // Get feature info on target
+            FeatureInfo? featureInfo = (target as IInstrumentableObject)?
+                .GetWorkspace()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .GetFeature("Initialization");
+
+            // Invalid or already exists?
+            if (featureInfo == null || target.HasProperty<InitializationPropertyViewModel>())
+            {
+                return null;
+            }
+                
+            // Create the property
+            return new InitializationPropertyViewModel()
+            {
+                Parent = target,
+                ConnectionViewModel = target.ConnectionViewModel,
+                FeatureInfo = featureInfo.Value
+            };
         }
         
         /// <summary>

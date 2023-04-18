@@ -1,10 +1,12 @@
 ﻿using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Windows.Input;
+using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
@@ -58,16 +60,20 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         private void OnInvoked()
         {
-            if (_targetViewModel is not IInstrumentableObject instrumentable)
+            if (_targetViewModel is not IInstrumentableObject instrumentable ||
+                instrumentable.GetOrCreateInstrumentationProperty() is not { } propertyViewModel)
             {
                 return;
             }
 
-            // Request instrumentation
-            instrumentable.InstrumentationState = new InstrumentationState()
+            // Create all instrumentation properties
+            foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspace().GetServices<IInstrumentationPropertyService>())
             {
-                FeatureBitMask = ~0u
-            };
+                if (service.CreateInstrumentationObjectProperty(propertyViewModel) is { } instrumentationObjectProperty)
+                {
+                    propertyViewModel.Properties.Add(instrumentationObjectProperty);
+                }
+            }
         }
 
         /// <summary>

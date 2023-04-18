@@ -11,7 +11,7 @@ using Studio.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Properties.Instrumentation
 {
-    public class PipelineFilterViewModel : BasePropertyViewModel, IInstrumentableObject, IClosableObject
+    public class PipelineFilterViewModel : BasePropertyViewModel, IInstrumentableObject, IClosableObject, IBusObject
     {
         /// <summary>
         /// Invoked on closes
@@ -50,31 +50,7 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         public InstrumentationState InstrumentationState
         {
             get => _instrumentationState;
-            set
-            {
-                if (!this.CheckRaiseAndSetIfChanged(ref _instrumentationState, value))
-                {
-                    return;
-                }
-                
-                // Get bus
-                var bus = ConnectionViewModel?.GetSharedBus();
-                if (bus == null)
-                {
-                    return;
-                }
-
-                // Submit request
-                var request = bus.Add<SetOrAddFilteredPipelineInstrumentationMessage>(new SetOrAddFilteredPipelineInstrumentationMessage.AllocationInfo
-                {
-                    guidLength = (ulong)_guid.ToString().Length,
-                    nameLength = (ulong)(Filter.Name?.Length ?? 0)
-                });
-                request.guid.SetString(_guid.ToString());
-                request.featureBitSet = value.FeatureBitMask;
-                request.type = (uint)(Filter.Type ?? 0);
-                request.name.SetString(Filter.Name ?? string.Empty);
-            }
+            set => this.CheckRaiseAndSetIfChanged(ref _instrumentationState, value);
         }
 
         /// <summary>
@@ -83,6 +59,34 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         public PipelineFilterViewModel() : base ("Filter ...", PropertyVisibility.WorkspaceTool)
         {
             CloseCommand = ReactiveCommand.Create(OnClose);
+
+            // Connect property changes
+            Properties
+                .Connect()
+                .OnItemAdded(OnPropertyChanged)
+                .OnItemRemoved(OnPropertyChanged)
+                .Subscribe();
+        }
+
+        /// <summary>
+        /// Invoked on property changes
+        /// </summary>
+        /// <param name="obj"></param>
+        private void OnPropertyChanged(IPropertyViewModel obj)
+        {
+            if (obj is IInstrumentationProperty)
+            {
+                this.EnqueueBus();
+            }
+        }
+
+        /// <summary>
+        /// Get the targetable property
+        /// </summary>
+        /// <returns></returns>
+        public IPropertyViewModel? GetOrCreateInstrumentationProperty()
+        {
+            return this;
         }
 
         /// <summary>
@@ -100,23 +104,48 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         {
             // Get bus
             var bus = ConnectionViewModel?.GetSharedBus();
-            if (bus == null)
+            if (bus != null)
             {
-                return;
+                // Submit request
+                var request = bus.Add<RemoveFilteredPipelineInstrumentationMessage>(new RemoveFilteredPipelineInstrumentationMessage.AllocationInfo
+                {
+                    guidLength = (ulong)_guid.ToString().Length
+                });
+                request.guid.SetString(_guid.ToString());
             }
-
-            // Submit request
-            var request = bus.Add<RemoveFilteredPipelineInstrumentationMessage>(new RemoveFilteredPipelineInstrumentationMessage.AllocationInfo
-            {
-                guidLength = (ulong)_guid.ToString().Length
-            });
-            request.guid.SetString(_guid.ToString());
             
             // Track
             _instrumentationState = new();
             
             // Remove from parent
             this.DetachFromParent();
+        }
+
+        /// <summary>
+        /// Commit all state
+        /// </summary>
+        /// <param name="stream"></param>
+        public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
+        {
+            // Create new state
+            InstrumentationState = new InstrumentationState();
+
+            // Commit all child properties
+            foreach (IInstrumentationProperty instrumentationProperty in this.GetProperties<IInstrumentationProperty>())
+            {
+                instrumentationProperty.Commit(InstrumentationState);
+            }
+
+            // Submit request
+            var request = stream.Add<SetOrAddFilteredPipelineInstrumentationMessage>(new SetOrAddFilteredPipelineInstrumentationMessage.AllocationInfo
+            {
+                guidLength = (ulong)_guid.ToString().Length,
+                nameLength = (ulong)(Filter.Name?.Length ?? 0)
+            });
+            request.guid.SetString(_guid.ToString());
+            request.featureBitSet = InstrumentationState.FeatureBitMask;
+            request.type = (uint)(Filter.Type ?? 0);
+            request.name.SetString(Filter.Name ?? string.Empty);
         }
 
         /// <summary>

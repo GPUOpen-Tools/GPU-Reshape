@@ -1,4 +1,6 @@
-﻿using System.Windows.Input;
+﻿using System;
+using System.Linq;
+using System.Windows.Input;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
@@ -9,7 +11,7 @@ using Studio.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Properties.Instrumentation
 {
-    public class GlobalViewModel : BasePropertyViewModel, IInstrumentableObject, IClosableObject
+    public class GlobalViewModel : BasePropertyViewModel, IInstrumentableObject, IClosableObject, IBusObject
     {
         /// <summary>
         /// Instrumentation handler
@@ -17,24 +19,7 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         public InstrumentationState InstrumentationState
         {
             get => _instrumentationState;
-            set
-            {
-                if (!this.CheckRaiseAndSetIfChanged(ref _instrumentationState, value))
-                {
-                    return;
-                }
-                
-                // Get bus
-                var bus = ConnectionViewModel?.GetSharedBus();
-                if (bus == null)
-                {
-                    return;
-                }
-
-                // Submit request
-                var request = bus.Add<SetGlobalInstrumentationMessage>();
-                request.featureBitSet = value.FeatureBitMask;
-            }
+            set => this.CheckRaiseAndSetIfChanged(ref _instrumentationState, value);
         }
 
         /// <summary>
@@ -48,6 +33,25 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         public GlobalViewModel() : base("Global", PropertyVisibility.WorkspaceTool)
         {
             CloseCommand = ReactiveCommand.Create(OnClose);
+
+            // Connect properties
+            Properties
+                .Connect()
+                .OnItemAdded(OnPropertyChanged)
+                .OnItemRemoved(OnPropertyChanged)
+                .Subscribe();
+        }
+
+        /// <summary>
+        /// Invoked on property changes
+        /// </summary>
+        /// <param name="obj"></param>
+        private void OnPropertyChanged(IPropertyViewModel obj)
+        {
+            if (obj is IInstrumentationProperty)
+            {
+                this.EnqueueBus();
+            }
         }
 
         /// <summary>
@@ -60,26 +64,53 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         }
 
         /// <summary>
+        /// Get the targetable property
+        /// </summary>
+        /// <returns></returns>
+        public IPropertyViewModel? GetOrCreateInstrumentationProperty()
+        {
+            return this;
+        }
+        
+        /// <summary>
         /// Invoked on close
         /// </summary>
         private void OnClose()
         {
             // Get bus
             var bus = ConnectionViewModel?.GetSharedBus();
-            if (bus == null)
+            if (bus != null)
             {
-                return;
-            }
-
-            // Submit request
-            var request = bus.Add<SetGlobalInstrumentationMessage>();
-            request.featureBitSet = 0x0;
+                // Submit request
+                var request = bus.Add<SetGlobalInstrumentationMessage>();
+                request.featureBitSet = 0x0;
             
-            // Track
-            _instrumentationState = new();
+                // Track
+                _instrumentationState = new();
+            }
             
             // Remove from parent
             this.DetachFromParent();
+        }
+
+        /// <summary>
+        /// Commit all state
+        /// </summary>
+        /// <param name="stream"></param>
+        public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
+        {
+            // Create new state
+            InstrumentationState = new InstrumentationState();
+
+            // Commit all child properties
+            foreach (IInstrumentationProperty instrumentationProperty in this.GetProperties<IInstrumentationProperty>())
+            {
+                instrumentationProperty.Commit(InstrumentationState);
+            }
+
+            // Submit request
+            var request = stream.Add<SetGlobalInstrumentationMessage>();
+            request.featureBitSet = _instrumentationState.FeatureBitMask;
         }
 
         /// <summary>

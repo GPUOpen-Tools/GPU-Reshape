@@ -66,6 +66,27 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Get the targetable instrumentation property
+        /// </summary>
+        /// <returns></returns>
+        public IPropertyViewModel? GetOrCreateInstrumentationProperty()
+        {
+            // Get global instrumentation
+            var globalViewModel = this.GetProperty<GlobalViewModel>();
+            if (globalViewModel == null)
+            {
+                Properties.Add(globalViewModel = new GlobalViewModel()
+                {
+                    Parent = this,
+                    ConnectionViewModel = ConnectionViewModel
+                });
+            }
+
+            // OK
+            return globalViewModel;
+        }
+
+        /// <summary>
         /// Instrumentation handler
         /// </summary>
         public InstrumentationState InstrumentationState
@@ -73,22 +94,6 @@ namespace Studio.ViewModels.Workspace.Properties
             get
             {
                 return this.GetProperty<GlobalViewModel>()?.InstrumentationState ?? new InstrumentationState();
-            }
-            set
-            {
-                // Get global instrumentation
-                var globalViewModel = this.GetProperty<GlobalViewModel>();
-                if (globalViewModel == null)
-                {
-                    Properties.Add(globalViewModel = new GlobalViewModel()
-                    {
-                        Parent = this,
-                        ConnectionViewModel = ConnectionViewModel
-                    });
-                }
-
-                // Pass down
-                globalViewModel.InstrumentationState = value;
             }
         }
 
@@ -117,6 +122,12 @@ namespace Studio.ViewModels.Workspace.Properties
             
             // Register pulse service
             Services.Add(pulseService);
+            
+            // Register bus service
+            Services.Add(new BusPropertyService()
+            {
+                ConnectionViewModel = ConnectionViewModel
+            });
         }
 
         /// <summary>

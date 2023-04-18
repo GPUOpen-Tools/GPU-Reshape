@@ -15,6 +15,7 @@
 
 // Std
 #include <vector>
+#include <string>
 #include <map>
 
 class DXILTypeMap {

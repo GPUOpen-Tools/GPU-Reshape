@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using DynamicData;
 using ReactiveUI;
 
@@ -40,12 +41,31 @@ namespace Studio.ViewModels.Workspace.Properties
     public static class PropertyViewModelExtensions
     {
         /// <summary>
+        /// Check if a property of type exists
+        /// </summary>
+        /// <param name="self"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>null if not found</returns>
+        public static bool HasProperty<T>(this IPropertyViewModel self)
+        {
+            foreach (IPropertyViewModel propertyViewModel in self.Properties.Items)
+            {
+                if (propertyViewModel is T typed)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        
+        /// <summary>
         /// Get a property from a given type
         /// </summary>
         /// <param name="self"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns>null if not found</returns>
-        public static T? GetProperty<T>(this IPropertyViewModel self) where T : IPropertyViewModel
+        public static T? GetProperty<T>(this IPropertyViewModel self)
         {
             foreach (IPropertyViewModel propertyViewModel in self.Properties.Items)
             {
@@ -65,7 +85,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <param name="predecate"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns>null if not found</returns>
-        public static T? GetPropertyWhere<T>(this IPropertyViewModel self, Func<T, bool> predecate) where T : IPropertyViewModel
+        public static T? GetPropertyWhere<T>(this IPropertyViewModel self, Func<T, bool> predecate)
         {
             foreach (IPropertyViewModel propertyViewModel in self.Properties.Items)
             {
@@ -79,12 +99,29 @@ namespace Studio.ViewModels.Workspace.Properties
         }
         
         /// <summary>
+        /// Get a set of properties with type
+        /// </summary>
+        /// <param name="self"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>null if not found</returns>
+        public static IEnumerable<T> GetProperties<T>(this IPropertyViewModel self)
+        {
+            foreach (IPropertyViewModel propertyViewModel in self.Properties.Items)
+            {
+                if (propertyViewModel is T typed)
+                {
+                    yield return typed;
+                }
+            }
+        }
+        
+        /// <summary>
         /// Get a service from a given type
         /// </summary>
         /// <param name="self"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns>null if not found</returns>
-        public static T? GetService<T>(this IPropertyViewModel self) where T : IPropertyService
+        public static T? GetService<T>(this IPropertyViewModel self)
         {
             foreach (IPropertyService extension in self.Services.Items)
             {
@@ -95,6 +132,23 @@ namespace Studio.ViewModels.Workspace.Properties
             }
 
             return default;
+        }
+        
+        /// <summary>
+        /// Get a set of services with type
+        /// </summary>
+        /// <param name="self"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>null if not found</returns>
+        public static IEnumerable<T> GetServices<T>(this IPropertyViewModel self)
+        {
+            foreach (IPropertyService extension in self.Services.Items)
+            {
+                if (extension is T typed)
+                {
+                    yield return typed;
+                }
+            }
         }
 
         /// <summary>

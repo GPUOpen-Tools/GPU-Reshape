@@ -45,6 +45,35 @@ namespace Runtime.ViewModels.Objects
         }
 
         /// <summary>
+        /// Get the targetable instrumentation property
+        /// </summary>
+        /// <returns></returns>
+        public IPropertyViewModel? GetOrCreateInstrumentationProperty()
+        {
+            // Get collection
+            var pipelineCollectionViewModel = Workspace?.PropertyCollection.GetProperty<IPipelineCollectionViewModel>();
+            if (pipelineCollectionViewModel == null)
+            {
+                return null;
+            }
+
+            // Find or create property
+            var pipelineViewModel = pipelineCollectionViewModel.GetPropertyWhere<PipelineViewModel>(x => x.Pipeline.GUID == Model.GUID);
+            if (pipelineViewModel == null)
+            {
+                pipelineCollectionViewModel.Properties.Add(pipelineViewModel = new PipelineViewModel()
+                {
+                    Parent = pipelineCollectionViewModel,
+                    ConnectionViewModel = pipelineCollectionViewModel.ConnectionViewModel,
+                    Pipeline = Model
+                });
+            }
+            
+            // OK
+            return pipelineViewModel;
+        }
+
+        /// <summary>
         /// Instrumentation handler
         /// </summary>
         public InstrumentationState InstrumentationState
@@ -55,30 +84,6 @@ namespace Runtime.ViewModels.Objects
                     .GetProperty<IPipelineCollectionViewModel>()?
                     .GetPropertyWhere<PipelineViewModel>(x => x.Pipeline.GUID == Model.GUID)?
                     .InstrumentationState ?? new InstrumentationState();   
-            }
-            set
-            {
-                // Get collection
-                var pipelineCollectionViewModel = Workspace?.PropertyCollection.GetProperty<IPipelineCollectionViewModel>();
-                if (pipelineCollectionViewModel == null)
-                {
-                    return;
-                }
-
-                // Find or create property
-                var pipelineViewModel = pipelineCollectionViewModel.GetPropertyWhere<PipelineViewModel>(x => x.Pipeline.GUID == Model.GUID);
-                if (pipelineViewModel == null)
-                {
-                    pipelineCollectionViewModel.Properties.Add(pipelineViewModel = new PipelineViewModel()
-                    {
-                        Parent = pipelineCollectionViewModel,
-                        ConnectionViewModel = pipelineCollectionViewModel.ConnectionViewModel,
-                        Pipeline = Model
-                    });
-                }
-            
-                // Pass down
-                pipelineViewModel.InstrumentationState = value;
             }
         }
 
