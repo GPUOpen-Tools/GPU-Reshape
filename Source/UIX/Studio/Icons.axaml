@@ -41,6 +41,7 @@
             <StreamGeometry x:Key="Folder">M19,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10L12,6H19A2,2 0 0,1 21,8H21L4,8V18L6.14,10H23.21L20.93,18.5C20.7,19.37 19.92,20 19,20Z</StreamGeometry>
             <StreamGeometry x:Key="Play">M8,5.14V19.14L19,12.14L8,5.14Z</StreamGeometry>
             <StreamGeometry x:Key="Pause">M14,19H18V5H14M6,19H10V5H6V19Z</StreamGeometry>
+            <StreamGeometry x:Key="Stop">M18,18H6V6H18V18Z</StreamGeometry>
             <StreamGeometry x:Key="Circle">M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z</StreamGeometry>
         </Style.Resources>
     </Style>

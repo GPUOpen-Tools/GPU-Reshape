@@ -48,9 +48,19 @@
         </StackPanel>
 
         <!-- Toolbox right hand side -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 0 140 0" Grid.Row="0" Grid.Column="0">
-            <controls:DiscoveryDropdown/>
-        </StackPanel>
+        <Border 
+            Margin="0 2 140 2" 
+            Grid.Row="0" Grid.Column="0"
+            BorderBrush="{StaticResource DockThemeBorderLowBrush}" 
+            BorderThickness="1"
+            CornerRadius="5"
+            HorizontalAlignment="Right"
+            Padding="3 0 3 0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <controls:BusModeButton Margin="0 0 5 0"/>
+                <controls:DiscoveryDropdown/>
+            </StackPanel>
+        </Border>
         
         <DockControl 
             x:Name="DockControl" 

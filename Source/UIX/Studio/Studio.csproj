@@ -144,6 +144,10 @@
         <DependentUpon>LaunchWindow.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Controls\BusModeButton.axaml.cs">
+        <DependentUpon>BusModeButton.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
