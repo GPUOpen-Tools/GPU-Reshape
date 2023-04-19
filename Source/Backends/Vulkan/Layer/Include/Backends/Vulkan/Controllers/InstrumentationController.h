@@ -129,6 +129,10 @@ private:
     std::vector<FilterEntry> filteredInstrumentationInfo;
 
 private:
+    /// Virtual redirects, exists for a single session
+    std::vector<uint32_t> virtualFeatureRedirects;
+
+private:
     struct Batch {
         /// Given feature set
         uint64_t featureBitSet;

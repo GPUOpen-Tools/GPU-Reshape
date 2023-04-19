@@ -1,4 +1,9 @@
 <schema>
+    <message name="SetVirtualFeatureRedirect">
+        <field name="name" type="string"/>
+        <field name="index" type="int32"/>
+    </message>
+    
     <message name="SetGlobalInstrumentation">
         <field name="featureBitSet" type="uint64">
             Feature set to be enabled globally

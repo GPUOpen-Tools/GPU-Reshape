@@ -85,6 +85,9 @@ namespace Message.CLR
             throw new NotSupportedException("Allocation not supported on read only message streams");
         }
 
+        // Optional pin
+        public GCHandle? Pin;
+
         // Top schema type
         public MessageSchema Schema;
 
@@ -129,6 +132,24 @@ namespace Message.CLR
         {
             Data.SetLength(Data.Length + size);
             return GetSpan((int)Data.Length - size);
+        }
+
+        public ReadOnlyMessageStream ToReadOnly()
+        {
+            ByteSpan span = GetSpan(0);
+
+            // Create stream
+            unsafe
+            {
+                return new ReadOnlyMessageStream()
+                {
+                    Count = Count,
+                    Pin = span.Pin,
+                    Ptr = span.Data,
+                    Schema = Schema,
+                    Size = (ulong)span.Length
+                };
+            }
         }
 
         private ByteSpan GetSpan(int offset)

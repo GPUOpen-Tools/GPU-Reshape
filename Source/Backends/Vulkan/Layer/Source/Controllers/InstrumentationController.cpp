@@ -9,6 +9,9 @@
 #include <Backends/Vulkan/CommandBuffer.h>
 #include <Backends/Vulkan/Symbolizer/ShaderSGUIDHost.h>
 
+// Backend
+#include <Backend/IFeature.h>
+
 // Bridge
 #include <Bridge/IBridge.h>
 
@@ -169,6 +172,29 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
         case SetInstrumentationConfigMessage::kID: {
             auto *message = it.Get<SetInstrumentationConfigMessage>();
             synchronousRecording = message->synchronousRecording;
+            break;
+        }
+
+        // Virtualization
+        case SetVirtualFeatureRedirectMessage::kID: {
+            auto *message = it.Get<SetVirtualFeatureRedirectMessage>();
+
+            // Assume max
+            if (virtualFeatureRedirects.size() != 64) {
+                virtualFeatureRedirects.resize(64);
+            }
+            
+            // Note: Not a free search, however, for the purposes of virtual redirects this is sufficient
+            for (size_t i = 0; i < table->features.size(); i++) {
+                if (table->features[i]->GetInfo().name == message->name.View()) {
+                    virtualFeatureRedirects[message->index] = (1u << i);
+                }
+            }
+
+            // Validate
+            if (!virtualFeatureRedirects[message->index]) {
+                table->parent->logBuffer.Add("Vulkan", Format("Virtual redirect failed for feature \"{}\"", message->name.View()));
+            }
             break;
         }
 
@@ -384,11 +410,34 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             break;
         }
     }
+
+    // Flush
+    virtualFeatureRedirects.clear();
 }
 
 void InstrumentationController::SetInstrumentationInfo(InstrumentationInfo &info, uint64_t bitSet, const MessageSubStream &stream) {
     // Set the enabled bit-set
-    info.featureBitSet = bitSet;
+    if (!virtualFeatureRedirects.empty()) {
+        info.featureBitSet = 0x0;
+
+        // Traverse bit set
+        unsigned long index;
+        while (_BitScanReverse64(&index, bitSet)) {
+            // Translate bit set
+            uint32_t physical = virtualFeatureRedirects[index];
+            if (physical) {
+                info.featureBitSet |= physical;
+            } else {
+                table->parent->logBuffer.Add("Vulkan", Format("Unknown virtual redirect at {}", index));
+            }
+
+            // Next!
+            bitSet &= ~(1ull << index);
+        }
+    } else {
+        // No virtualization, just inherit
+        info.featureBitSet = bitSet;        
+    }
 
     // Transfer sub stream
     stream.Transfer(info.specialization);

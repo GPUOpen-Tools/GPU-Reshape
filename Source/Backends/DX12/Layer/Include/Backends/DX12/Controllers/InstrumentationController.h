@@ -134,6 +134,10 @@ private:
     Vector<FilterEntry> filteredInstrumentationInfo;
 
 private:
+    /// Virtual redirects, exists for a single session
+    std::vector<uint32_t> virtualFeatureRedirects;
+
+private:
     struct Batch {
         Batch(const Allocators& allocators) : dirtyShaders(allocators), dirtyPipelines(allocators) {
             
