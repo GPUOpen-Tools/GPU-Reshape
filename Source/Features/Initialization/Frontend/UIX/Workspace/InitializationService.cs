@@ -18,6 +18,11 @@ namespace GRS.Features.Initialization.UIX.Workspace
     public class InitializationService : IInstrumentationPropertyService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
+        /// Feature name
+        /// </summary>
+        public string Name => "Initialization";
+        
+        /// <summary>
         /// Assigned workspace
         /// </summary>
         public IWorkspaceViewModel ViewModel { get; }

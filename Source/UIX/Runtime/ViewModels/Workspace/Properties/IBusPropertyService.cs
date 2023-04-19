@@ -1,4 +1,5 @@
 ﻿using DynamicData;
+using Message.CLR;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 
@@ -26,5 +27,10 @@ namespace Runtime.ViewModels.Workspace.Properties
         /// Commit all enqueued bus objects
         /// </summary>
         public void Commit();
+
+        /// <summary>
+        /// Commit all enqueued bus objects
+        /// </summary>
+        public void CommitRedirect(OrderedMessageView<ReadWriteMessageStream> stream);
     }
 }

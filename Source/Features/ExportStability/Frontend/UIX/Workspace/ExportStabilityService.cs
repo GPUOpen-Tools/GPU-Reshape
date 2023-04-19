@@ -18,6 +18,11 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
     public class ExportStabilityService : IInstrumentationPropertyService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
+        /// Feature name
+        /// </summary>
+        public string Name => "Export Stability";
+        
+        /// <summary>
         /// Assigned workspace
         /// </summary>
         public IWorkspaceViewModel ViewModel { get; }

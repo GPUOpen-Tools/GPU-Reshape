@@ -341,10 +341,14 @@ namespace Studio.ViewModels
                 var provider = App.Locator.GetService<Services.IWorkspaceService>();
 
                 // Create workspace
-                provider?.Add(new ViewModels.Workspace.WorkspaceViewModel()
+                var workspace = new ViewModels.Workspace.WorkspaceViewModel()
                 {
                     Connection = _connectionViewModel
-                });
+                };
+                
+                // Configure and register workspace
+                provider?.Install(workspace);
+                provider?.Add(workspace);
             });
         }
 

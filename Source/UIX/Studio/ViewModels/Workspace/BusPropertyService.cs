@@ -67,20 +67,27 @@ namespace Studio.ViewModels.Workspace
                 return;
             }
             
-            // Get bus
-            OrderedMessageView<ReadWriteMessageStream> bus = ConnectionViewModel.GetSharedBus();
-            
+            // Redirect to shared bus
+            CommitRedirect(ConnectionViewModel.GetSharedBus());
+        }
+
+        /// <summary>
+        /// Commit all outstanding objects to a given stream
+        /// </summary>
+        /// <param name="stream"></param>
+        public void CommitRedirect(OrderedMessageView<ReadWriteMessageStream> stream)
+        {
             // Commit all objects
             foreach (IBusObject objectsItem in Objects.Items)
             {
-                objectsItem.Commit(bus);
+                objectsItem.Commit(stream);
             }
             
             // Flush
             Objects.Clear();
             _lookup.Clear();
         }
-        
+
         /// <summary>
         /// Internal connection
         /// </summary>

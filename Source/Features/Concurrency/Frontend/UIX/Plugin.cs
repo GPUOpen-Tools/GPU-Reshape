@@ -6,11 +6,12 @@ using GRS.Features.Concurrency.UIX.Workspace;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 
 namespace GRS.Features.Concurrency.UIX
 {
-    public class Plugin : IPlugin
+    public class Plugin : IPlugin, IWorkspaceExtension
     {
         /// <summary>
         /// Plugin info
@@ -33,10 +34,8 @@ namespace GRS.Features.Concurrency.UIX
                 .GetItem<IInstrumentContextViewModel>()?
                 .Items.Add(new ConcurrencyContextMenuItemViewModel());
             
-            // Connect to workspaces
-            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Workspaces.Connect()
-                .OnItemAdded(OnWorkspaceAdded)
-                .Subscribe();
+            // Add workspace extension
+            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Extensions.Add(this);
 
             // OK
             return true;
@@ -47,14 +46,15 @@ namespace GRS.Features.Concurrency.UIX
         /// </summary>
         public void Uninstall()
         {
-            
+            // Remove workspace extension
+            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Extensions.Remove(this);
         }
 
         /// <summary>
-        /// Invoked when a workspace has been added
+        /// Install an extension
         /// </summary>
         /// <param name="workspaceViewModel"></param>
-        private void OnWorkspaceAdded(IWorkspaceViewModel workspaceViewModel)
+        public void Install(IWorkspaceViewModel workspaceViewModel)
         {
             // Create service
             workspaceViewModel.PropertyCollection.Services.Add(new ConcurrencyService(workspaceViewModel));

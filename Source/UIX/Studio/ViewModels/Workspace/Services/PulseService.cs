@@ -62,15 +62,15 @@ namespace Studio.ViewModels.Workspace.Listeners
 
         private void OnTick(object? sender, EventArgs e)
         {
-            // Check last known time, report lost if needed
-            UpdateMissedPulse();
-            
             // Valid connection?
-            if (_connectionViewModel == null)
+            if (_connectionViewModel?.Bridge == null)
             {
                 return;
             }
-
+            
+            // Check last known time, report lost if needed
+            UpdateMissedPulse();
+            
             // Create stream
             var stream = new StaticMessageView<PingPongMessage, ReadWriteMessageStream>(new ReadWriteMessageStream());
 

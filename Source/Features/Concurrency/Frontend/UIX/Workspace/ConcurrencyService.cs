@@ -18,6 +18,11 @@ namespace GRS.Features.Concurrency.UIX.Workspace
     public class ConcurrencyService : IInstrumentationPropertyService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
+        /// Feature name
+        /// </summary>
+        public string Name => "Concurrency";
+
+        /// <summary>
         /// Assigned workspace
         /// </summary>
         public IWorkspaceViewModel ViewModel { get; }
@@ -112,7 +117,7 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                 }
             }
         }
-
+        
         /// <summary>
         /// Create an instrumentation property
         /// </summary>

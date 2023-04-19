@@ -32,6 +32,17 @@ namespace Studio.Models.Workspace
         /// <summary>
         /// Decorated name of the info
         /// </summary>
-        public string DecoratedName => $"{Process} - {Name}";
+        public string DecoratedName
+        {
+            get
+            {
+                if (Name.Length > 0)
+                {
+                    return $"{Process} - {Name}";
+                }
+
+                return Process;
+            }
+        }
     }
 }

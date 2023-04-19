@@ -18,6 +18,11 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
     public class ResourceBoundsService : IInstrumentationPropertyService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
+        /// Feature name
+        /// </summary>
+        public string Name => "Resource Bounds";
+        
+        /// <summary>
         /// Parent view model
         /// </summary>
         public IWorkspaceViewModel ViewModel { get; }

@@ -2,6 +2,7 @@
 using System.Reactive.Subjects;
 using DynamicData;
 using ReactiveUI;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Services
@@ -12,6 +13,11 @@ namespace Studio.Services
         /// All active workspaces
         /// </summary>
         IObservableList<ViewModels.Workspace.IWorkspaceViewModel> Workspaces { get; }
+        
+        /// <summary>
+        /// All extensions
+        /// </summary>
+        public ISourceList<IWorkspaceExtension> Extensions { get; }
         
         /// <summary>
         /// Current workspace
@@ -28,6 +34,12 @@ namespace Studio.Services
         /// </summary>
         /// <param name="workspaceViewModel">active connection</param>
         void Add(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel);
+
+        /// <summary>
+        /// Install a given workspace
+        /// </summary>
+        /// <param name="workspaceViewModel"></param>
+        void Install(ViewModels.Workspace.IWorkspaceViewModel workspaceViewModel);
 
         /// <summary>
         /// Remove an existing workspace

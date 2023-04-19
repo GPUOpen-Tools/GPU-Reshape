@@ -8,6 +8,7 @@ using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Studio.ViewModels.Documents;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -19,6 +20,11 @@ namespace Studio.Services
         /// Active workspaces
         /// </summary>
         public IObservableList<ViewModels.Workspace.IWorkspaceViewModel> Workspaces => _workspaces;
+
+        /// <summary>
+        /// All extensions
+        /// </summary>
+        public ISourceList<IWorkspaceExtension> Extensions { get; } = new SourceList<IWorkspaceExtension>();
 
         /// <summary>
         /// Current workspace
@@ -65,6 +71,18 @@ namespace Studio.Services
             
             // Assign as selected
             SelectedWorkspace = workspaceViewModel;
+        }
+
+        /// <summary>
+        /// Install a workspace
+        /// </summary>
+        /// <param name="workspaceViewModel"></param>
+        public void Install(IWorkspaceViewModel workspaceViewModel)
+        {
+            foreach (IWorkspaceExtension workspaceExtension in Extensions.Items)
+            {
+                workspaceExtension.Install(workspaceViewModel);
+            }
         }
 
         /// <summary>

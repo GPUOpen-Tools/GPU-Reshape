@@ -18,6 +18,11 @@ namespace GRS.Features.Descriptor.UIX.Workspace
     public class DescriptorService : IInstrumentationPropertyService, Bridge.CLR.IBridgeListener
     {
         /// <summary>
+        /// Feature name
+        /// </summary>
+        public string Name => "Descriptor";
+        
+        /// <summary>
         /// Assigned workspace
         /// </summary>
         public IWorkspaceViewModel ViewModel { get; }

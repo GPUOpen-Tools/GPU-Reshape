@@ -1,9 +1,10 @@
 ﻿using Message.CLR;
 using ReactiveUI;
+using Studio.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Properties.Config
 {
-    public class InstrumentationConfigViewModel : BasePropertyViewModel
+    public class InstrumentationConfigViewModel : BasePropertyViewModel, IBusObject
     {
         /// <summary>
         /// Enables shader compilation stalling before use
@@ -15,7 +16,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
             set
             {
                 this.RaiseAndSetIfChanged(ref _synchronousRecording, value);
-                Commit();
+                this.EnqueueBus();
             }
         }
 
@@ -28,19 +29,13 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         }
 
         /// <summary>
-        /// Invoked on commits
+        /// Commit all state
         /// </summary>
-        private void Commit()
+        /// <param name="stream"></param>
+        public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
         {
-            // Get bus
-            var bus = ConnectionViewModel?.GetSharedBus();
-            if (bus == null)
-            {
-                return;
-            }
-
             // Submit request
-            var request = bus.Add<SetInstrumentationConfigMessage>();
+            var request = stream.Add<SetInstrumentationConfigMessage>();
             request.synchronousRecording = _synchronousRecording ? 1 : 0;
         }
 
