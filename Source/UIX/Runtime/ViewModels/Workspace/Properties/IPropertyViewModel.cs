@@ -104,7 +104,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <param name="self"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns>null if not found</returns>
-        public static IEnumerable<T> GetProperties<T>(this IPropertyViewModel self)
+        public static IEnumerable<T> GetProperties<T>(this IPropertyViewModel? self)
         {
             foreach (IPropertyViewModel propertyViewModel in self.Properties.Items)
             {

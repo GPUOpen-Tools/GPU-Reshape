@@ -14,7 +14,12 @@
     </UserControl.Resources>
 
     <StackPanel Orientation="Horizontal">
-        <PathIcon x:Name="Icon" Data="{Binding ViewModel, FallbackValue={StaticResource DotsGrid}, Converter={StaticResource PropertyToIconConverter}}" Foreground="{Binding StatusColor, FallbackValue=White}" Width="9" Margin="0,-2,0,0" />
+        <PathIcon
+            x:Name="Icon" 
+            Data="{Binding ViewModel, FallbackValue={StaticResource DotsGrid}, Converter={StaticResource PropertyToIconConverter}}" 
+            Foreground="{Binding StatusColor, FallbackValue=White}" 
+            Width="{Binding ViewModel, FallbackValue=9, Converter={StaticResource PropertyToIconConverter}}" 
+            Margin="0,-2,0,0" />
         <Label Content="{Binding Text, FallbackValue=ApplicationName}" Margin="4,-2,0,0" />
     </StackPanel>
 </UserControl>

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Globalization;
+using System.Linq;
 using Avalonia.Data.Converters;
+using Avalonia.Media;
 using Studio.ViewModels.Tools;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
@@ -21,27 +23,37 @@ namespace Studio.ValueConverters
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             IPropertyViewModel property = value as IPropertyViewModel ?? throw new NotSupportedException("Expected property view model in conversion");
-            
-            // Known cases
-            switch (property)
-            {
-                case WorkspaceCollectionViewModel:
-                    return ResourceLocator.GetIcon("StreamOn");
-                case PipelineCollectionViewModel:
-                case ShaderCollectionViewModel:
-                    return ResourceLocator.GetIcon("DotsGrid");
-            }
 
-            // Special instrumentation
-            if (property is IInstrumentableObject instrumentableObject)
+            // Handle target
+            if (targetType == typeof(Geometry))
             {
-                if (instrumentableObject.InstrumentationState.FeatureBitMask == 0)
+                // Known cases
+                switch (property)
                 {
-                    return ResourceLocator.GetIcon("RecordHollow");
+                    case WorkspaceCollectionViewModel:
+                        return ResourceLocator.GetIcon("StreamOn");
+                    case PipelineCollectionViewModel:
+                    case ShaderCollectionViewModel:
+                        return ResourceLocator.GetIcon("DotsGrid");
+                    case IInstrumentationProperty:
+                        return ResourceLocator.GetIcon("Circle");
                 }
-                else
+
+                // Special instrumentation
+                if (property is IInstrumentableObject instrumentableObject)
                 {
-                    return ResourceLocator.GetIcon("Record");
+                    return ResourceLocator.GetIcon(instrumentableObject.GetOrCreateInstrumentationProperty().GetProperties<IInstrumentationProperty>().Any() ? "Record" : "RecordHollow");
+                }
+            }
+            else if (targetType == typeof(Double))
+            {
+                // Known cases
+                switch (property)
+                {
+                    default:
+                        return 9;
+                    case IInstrumentationProperty:
+                        return 4;
                 }
             }
 
