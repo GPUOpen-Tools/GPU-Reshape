@@ -130,6 +130,16 @@ namespace Backend::IL {
             return idMap[id];
         }
 
+        /// Remove a type mapping
+        /// \param id the id from which to remove the type
+        void RemoveType(ID id) {
+            if (idMap.size() <= id) {
+                return;
+            }
+
+            idMap[id] = nullptr;
+        }
+
         /// Iterator accessors
         Container::iterator begin() { return types.begin(); }
         Container::reverse_iterator rbegin() { return types.rbegin(); }

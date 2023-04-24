@@ -10,6 +10,7 @@ namespace Backend::IL {
         Bool,
         Int,
         FP,
+        Null,
         Unexposed
     };
 }

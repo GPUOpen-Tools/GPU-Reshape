@@ -97,6 +97,16 @@ namespace IL {
         }
     };
 
+    struct NullConstant : public Constant {
+        using Type = Backend::IL::Type;
+
+        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Null;
+
+        auto SortKey(const Type* _type) const {
+            return std::make_tuple(_type);
+        }
+    };
+
     /// Sort key helper
     template<typename T>
     using ConstantSortKey = decltype(std::declval<T>().SortKey(nullptr));

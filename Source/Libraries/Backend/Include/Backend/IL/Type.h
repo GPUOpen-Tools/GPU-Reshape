@@ -3,6 +3,7 @@
 // Backend
 #include "TypeKind.h"
 #include "ID.h"
+#include "Source.h"
 #include "AddressSpace.h"
 #include "TextureDimension.h"
 #include "Format.h"

@@ -1,6 +1,7 @@
 #pragma once
 
 // Backend
+#include "Instruction.h"
 #include "BasicBlock.h"
 #include "Program.h"
 #include "TypeResult.h"
@@ -728,6 +729,39 @@ namespace IL {
             instr.fail = fail->GetID();
             instr.controlFlow = controlFlow;
             return Op(instr);
+        }
+
+        /// Add phi instruction
+        /// \param first first case basic block
+        /// \param firstValue first case value produced by first basic block
+        /// \param second second case basic block
+        /// \param secondValue second case value produced by first basic block
+        /// \return instruction reference
+        InstructionRef <PhiInstruction> Phi(BasicBlock* first, ID firstValue, BasicBlock* second, ID secondValue) {
+            return Phi(map->AllocID(), first, firstValue, second, secondValue);
+        }
+
+        /// Add phi instruction
+        /// \param result result id
+        /// \param first first case basic block
+        /// \param firstValue first case value produced by first basic block
+        /// \param second second case basic block
+        /// \param secondValue second case value produced by first basic block
+        /// \return instruction reference
+        InstructionRef <PhiInstruction> Phi(IL::ID result, BasicBlock* first, ID firstValue, BasicBlock* second, ID secondValue) {
+            ASSERT(IsMapped(firstValue) && IsMapped(secondValue), "Unmapped identifier");
+            ASSERT(first && second, "Invalid branch");
+
+            auto instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(2u));
+            instr->opCode = OpCode::Phi;
+            instr->source = Source::Invalid();
+            instr->result = result;
+            instr->values.count = 2u;
+            instr->values[0].branch = first->GetID();
+            instr->values[0].value = firstValue;
+            instr->values[1].branch = second->GetID();
+            instr->values[1].value = secondValue;
+            return Op(*instr);
         }
 
         /// Perform an atomic / interlocked or

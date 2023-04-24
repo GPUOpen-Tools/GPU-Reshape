@@ -472,6 +472,8 @@ namespace IL {
                 map.AddInstruction(ref, instr.result);
             }
 
+            AddInstructionReferences(&instr, ref);
+
 #ifndef NDEBUG
             debugRevision++;
 #endif
@@ -743,6 +745,11 @@ namespace IL {
             }
 
             return static_cast<const T*>(instruction);
+        }
+
+        /// Get the identifier map
+        IdentifierMap& GetIdentifierMap() const {
+            return map;
         }
 
         /// Get the current debug revision

@@ -160,6 +160,7 @@ namespace Backend::IL {
         template<> SortMap<IntConstant>& GetSortMap<IntConstant>() { return maps.intMap; }
         template<> SortMap<FPConstant>& GetSortMap<FPConstant>() { return maps.fpMap; }
         template<> SortMap<UndefConstant>& GetSortMap<UndefConstant>() { return maps.undefMap; }
+        template<> SortMap<NullConstant>& GetSortMap<NullConstant>() { return maps.nullMap; }
 
     private:
         Allocators allocators;
@@ -177,6 +178,7 @@ namespace Backend::IL {
             SortMap<IntConstant> intMap;
             SortMap<FPConstant> fpMap;
             SortMap<UndefConstant> undefMap;
+            SortMap<NullConstant> nullMap;
         };
         
         /// Declaration order
