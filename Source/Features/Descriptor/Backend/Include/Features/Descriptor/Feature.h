@@ -31,7 +31,7 @@ public:
 
     /// IShaderFeature
     void CollectExports(const MessageStream &exports) override;
-    void Inject(IL::Program &program) override;
+    void Inject(IL::Program &program, const MessageStreamView<> &specialization) override;
 
     /// Interface querying
     void *QueryInterface(ComponentID id) override {

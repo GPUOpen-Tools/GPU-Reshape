@@ -1,5 +1,6 @@
 #include <Features/Initialization/Feature.h>
 #include <Features/Initialization/SRBMaskingShaderProgram.h>
+#include <Features/Descriptor/Feature.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -19,9 +20,11 @@
 
 // Generated schema
 #include <Schemas/Features/Initialization.h>
+#include <Schemas/Instrumentation.h>
 
 // Message
 #include <Message/IMessageStorage.h>
+#include <Message/MessageStreamCommon.h>
 
 // Common
 #include <Common/Registry.h>
@@ -86,7 +89,7 @@ void InitializationFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-void InitializationFeature::Inject(IL::Program &program) {
+void InitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Get the data ids
     IL::ID initializationMaskBufferDataID = program.GetShaderDataMap().Get(initializationMaskBufferID)->id;
 
@@ -221,6 +224,12 @@ FeatureInfo InitializationFeature::GetInfo() {
     FeatureInfo info;
     info.name = "Initialization";
     info.description = "Instrumentation and validation of resource initialization prior to reads";
+
+    // Resource bounds requires valid descriptor data, for proper safe-guarding add the descriptor feature as a dependency.
+    // This ensures that during instrumentation, we are operating on the already validated, and potentially safe-guarded, descriptor data.
+    info.dependencies.push_back(DescriptorFeature::kID);
+
+    // OK
     return info;
 }
 

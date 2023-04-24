@@ -49,6 +49,9 @@ struct ComponentName {
 /// Base class for all components and interfaces
 class IComponentBase : public ReferenceObject {
 public:
+    /// Id of this component
+    ComponentID componentId;
+
     /// Name of this component
     ComponentName componentName;
 

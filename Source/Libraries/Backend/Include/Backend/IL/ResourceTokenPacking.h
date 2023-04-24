@@ -9,6 +9,11 @@ namespace IL {
     static constexpr uint32_t kResourceTokenPUIDBitCount = 22u;
     static constexpr uint32_t kResourceTokenPUIDMask  = (1u << kResourceTokenPUIDBitCount) - 1u;
 
+    /// Special physical unique ids
+    static constexpr uint32_t kResourceTokenPUIDUndefined    = kResourceTokenPUIDMask - 0;
+    static constexpr uint32_t kResourceTokenPUIDOutOfBounds  = kResourceTokenPUIDMask - 1;
+    static constexpr uint32_t kResourceTokenPUIDInvalidStart = kResourceTokenPUIDOutOfBounds;
+
     /// Token type, texture, buffer, cbuffer or sampler (2 bits)
     static constexpr uint32_t kResourceTokenTypeShift = 22u;
     static constexpr uint32_t kResourceTokenTypeBitCount = 2u;

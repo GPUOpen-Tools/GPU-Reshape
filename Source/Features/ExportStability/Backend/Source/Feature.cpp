@@ -44,7 +44,7 @@ void ExportStabilityFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-void ExportStabilityFeature::Inject(IL::Program &program) {
+void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
         // Instruction of interest?

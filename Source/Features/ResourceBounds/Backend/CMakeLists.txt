@@ -20,7 +20,12 @@ SetSourceDiscovery(GRS.Features.ResourceBounds.Backend CXX Include Source Schema
 target_include_directories(GRS.Features.ResourceBounds.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(GRS.Features.ResourceBounds.Backend PUBLIC GRS.Libraries.Common GRS.Libraries.Backend)
+target_link_libraries(
+    GRS.Features.ResourceBounds.Backend PUBLIC
+    GRS.Libraries.Common
+    GRS.Libraries.Backend
+    GRS.Features.Descriptor.Backend
+)
 
 # Set all outputs to Plugins/.
 add_custom_command(
@@ -32,7 +37,7 @@ add_custom_command(
 
 # Test files
 Project_AddBackendTest_Common(GeneratedTest ResourceBounds)
-Project_AddBackendTest(GeneratedTest "-Od" ResourceBounds Tests/Data/SimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" ResourceBounds Tests/Data/ResourceBoundsSimpleTest.hlsl)
 
 Project_AddTest(
         NAME GRS.Features.ResourceBounds.Tests

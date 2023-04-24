@@ -14,6 +14,7 @@ enum class ResourceType {
     Texture3D,
     RWTexture3D,
     SamplerState,
+    StaticSamplerState,
     CBuffer
 };
 
@@ -31,6 +32,9 @@ struct Resource {
 
     /// View and data format
     std::string_view format;
+
+    /// Optional array size (0 indicates no array)
+    uint32_t arraySize{0};
 
     /// Initialization info
     ResourceInitialization initialization;

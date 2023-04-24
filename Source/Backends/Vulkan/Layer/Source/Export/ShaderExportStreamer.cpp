@@ -13,6 +13,7 @@
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
+#include <Backends/Vulkan/Resource/DescriptorData.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -305,7 +306,7 @@ void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBind
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.pipeline->layout->boundUserDescriptorStates, true);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.pipeline->layout->boundUserDescriptorStates * kDescriptorDataDWordCount, true);
 }
 
 void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState *state, const PipelineState *pipeline, CommandBufferObject* commandBuffer) {
@@ -646,8 +647,14 @@ void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, Vk
         // Get the state
         DescriptorSetState* persistentState = table->states_descriptorSet.Get(sets[i]);
 
-        // Set the shader PRMT offset, roll the chunk if needed
-        bindState.descriptorDataAllocator->SetOrAllocate(commandBuffer, slot, layoutState->boundUserDescriptorStates, table->prmTable->GetSegmentShaderOffset(persistentState->segmentID));
+        // Descriptor data
+        const uint32_t descriptorDataDWordOffset = slot * kDescriptorDataDWordCount;
+        const uint32_t descriptorDataDWordBound  = layoutState->boundUserDescriptorStates * kDescriptorDataDWordCount;
+
+        // Set the shader PRMT offset, roll the chunk if needed (only initial set needs to roll)
+        PhysicalResourceMappingTableSegment segment = table->prmTable->GetSegmentShader(persistentState->segmentID);
+        bindState.descriptorDataAllocator->SetOrAllocate(commandBuffer, descriptorDataDWordOffset + kDescriptorDataLengthDWord, descriptorDataDWordBound, segment.length);
+        bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDataDWordOffset + kDescriptorDataOffsetDWord, segment.offset);
 
         // Number of dynamic counts for this slot
         uint32_t slotDynamicCount = layoutState->descriptorDynamicOffsets.at(slot);

@@ -11,6 +11,7 @@ namespace Test {
         Texture3D,
         RWTexture3D,
         SamplerState,
+        StaticSamplerState,
         CBuffer
     };
 }

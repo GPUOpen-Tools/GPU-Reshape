@@ -2,5 +2,7 @@
     <shader-export name="DescriptorMismatch">
         <field name="compileType" type="uint32" bits="2"/>
         <field name="runtimeType" type="uint32" bits="2"/>
+        <field name="isUndefined" type="uint32" bits="1"/>
+        <field name="isOutOfBounds" type="uint32" bits="1"/>
     </shader-export>
 </schema>

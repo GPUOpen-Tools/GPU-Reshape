@@ -20,6 +20,9 @@ struct ShaderInstrumentationKey {
     /// Feature bit set
     uint64_t featureBitSet{0};
 
+    /// Final hash, includes stream data and physical mappings
+    uint64_t combinedHash{0};
+
     /// Root signature mapping
     RootSignaturePhysicalMapping* physicalMapping{nullptr};
 

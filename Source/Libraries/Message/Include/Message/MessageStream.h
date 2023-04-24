@@ -47,10 +47,12 @@ struct MessageStream {
     /// Validate against a schema or set a new one
     /// \param value
     void ValidateOrSetSchema(const MessageSchema& value) {
+#ifndef NDEBUG
         if (schema.type != MessageSchemaType::None) {
             ASSERT(schema == value, "Source schema incompatible with destination schema");
             return;
         }
+#endif // NDEBUG
 
         schema = value;
     }

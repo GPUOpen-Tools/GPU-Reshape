@@ -5,6 +5,7 @@
 
 // Common
 #include <Common/IComponent.h>
+#include <Message/MessageStream.h>
 
 // Forward declarations
 struct MessageStream;
@@ -24,5 +25,5 @@ public:
 
     /// Perform injection into a program
     /// \param program the program to be injected to
-    virtual void Inject(IL::Program& program) { /* no injection */ }
+    virtual void Inject(IL::Program &program, const MessageStreamView<> &specialization) { /* no injection */ }
 };

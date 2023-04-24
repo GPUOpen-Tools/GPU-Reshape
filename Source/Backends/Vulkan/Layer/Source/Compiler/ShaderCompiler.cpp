@@ -158,7 +158,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         }
 
         // Inject marked shader feature
-        shaderFeatures[i]->Inject(*module->GetProgram());
+        shaderFeatures[i]->Inject(*module->GetProgram(), job.state->instrumentationInfo.specialization);
     }
 
     // Spv job

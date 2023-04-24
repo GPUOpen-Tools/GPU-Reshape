@@ -3,6 +3,10 @@
         <field name="name" type="string"/>
         <field name="index" type="int32"/>
     </message>
+
+    <message name="SetSafeGuard">
+        <field name="enabled" type="bool"/>
+    </message>
     
     <message name="SetGlobalInstrumentation">
         <field name="featureBitSet" type="uint64">

@@ -1,4 +1,5 @@
 #include <Features/ResourceBounds/Feature.h>
+#include <Features/Descriptor/Feature.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -44,7 +45,7 @@ void ResourceBoundsFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-void ResourceBoundsFeature::Inject(IL::Program &program) {
+void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Unsigned target type
     const Backend::IL::Type* uint32Type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false});
 
@@ -157,6 +158,12 @@ FeatureInfo ResourceBoundsFeature::GetInfo() {
     FeatureInfo info;
     info.name = "Resource Bounds";
     info.description = "Instrumentation and validation of resource indexing operations";
+
+    // Resource bounds requires valid descriptor data, for proper safe-guarding add the descriptor feature as a dependency.
+    // This ensures that during instrumentation, we are operating on the already validated, and potentially safe-guarded, descriptor data.
+    info.dependencies.push_back(DescriptorFeature::kID);
+
+    // OK
     return info;
 }
 

@@ -8,6 +8,7 @@
 #include <Backend/IL/Source.h>
 #include <Backend/IL/Type.h>
 #include <Backend/IL/Program.h>
+#include <Backend/IL/ID.h>
 
 // Forward declarations
 struct SpvJob;
@@ -21,12 +22,6 @@ struct SpvUtilShaderPRMT {
     /// \param job source job being compiled against
     void CompileRecords(const SpvJob &job);
 
-    /// Get the PRMT offset for a given resource
-    /// \param stream current stream
-    /// \param resource resource to be tracked
-    /// \return allocated identifier
-    IL::ID GetResourcePRMTOffset(SpvStream& stream, IL::ID resource);
-
     /// Export a given value
     /// \param stream the current spirv stream
     /// \param value the resource id
@@ -38,10 +33,36 @@ struct SpvUtilShaderPRMT {
     void CopyTo(SpvPhysicalBlockTable& remote, SpvUtilShaderPRMT& out);
 
 private:
+    struct SpvPRMTOffset {
+        /// Computed offset
+        IL::ID offset{IL::InvalidID};
+
+        /// Optional bounds operand
+        IL::ID outOfBounds{IL::InvalidID};
+    };
+
+    /// Get the PRMT offset for a given resource
+    /// \param stream current stream
+    /// \param resource resource to be tracked
+    /// \return allocated identifier
+    SpvPRMTOffset GetResourcePRMTOffset(SpvStream& stream, IL::ID resource);
+
+private:
+    struct DynamicSpvValueDecoration {
+        /// Source operand
+        SpvValueDecoration source;
+
+        /// Dynamic offset into source
+        IL::ID dynamicOffset{IL::InvalidID};
+
+        /// Does the dynamic offset require bounds checking?
+        bool checkOutOfBounds{false};
+    };
+
     /// Find the originating resource decoration
     /// \param resource resource to be traced
     /// \return found decoration
-     SpvValueDecoration GetSourceResourceDecoration(IL::ID resource);
+    DynamicSpvValueDecoration GetSourceResourceDecoration(SpvStream& stream, IL::ID resource);
 
 private:
     /// Shared allocators

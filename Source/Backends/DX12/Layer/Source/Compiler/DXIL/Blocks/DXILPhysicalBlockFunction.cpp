@@ -13,6 +13,9 @@
 // Backend
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/PrettyPrint.h>
+#include <Backend/IL/Constant.h>
+#include <Backend/IL/ID.h>
+#include <Backend/IL/ResourceTokenPacking.h>
 
 // Common
 #include <Common/Sink.h>
@@ -3822,7 +3825,9 @@ void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXJob &job, struct 
     }
 }
 
-const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUserMapping(const DXJob& job, const Vector<LLVMRecord>& source, IL::ID resource) {
+DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunction::GetResourceUserMapping(const DXJob& job, const Vector<LLVMRecord>& source, IL::ID resource) {
+    DynamicRootSignatureUserMapping out;
+
     // TODO: This will not hold true for everything
 
     // Get resource instruction
@@ -3864,13 +3869,19 @@ const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUse
         // Get runtime instruction
         IL::InstructionRef<> offsetInstr = program.GetIdentifierMap().Get(rangeConstantOrValue);
         if (!offsetInstr.Is<IL::AddInstruction>()) {
-            return nullptr;
+            return {};
         }
 
-        // Assume DXC style offsets
-        auto constantOffset = program.GetConstants().GetConstant<IL::IntConstant>(offsetInstr.As<IL::AddInstruction>()->rhs);
+        // Get typed
+        auto _offsetInstr = offsetInstr.As<IL::AddInstruction>();
+
+        // Assume dynamic counterpart
+        out.dynamicOffset = _offsetInstr->lhs;
+
+        // Assume DXC style constant offset
+        auto constantOffset = program.GetConstants().GetConstant<IL::IntConstant>(_offsetInstr->rhs);
         if (!constantOffset) {
-            return nullptr;
+            return {};
         }
 
         // Assume index from base range
@@ -3880,7 +3891,7 @@ const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUse
     // Get metadata handle
     const DXILPhysicalBlockMetadata::HandleEntry* handle = table.metadata.GetHandle(static_cast<DXILShaderResourceClass>(_class), static_cast<uint32_t>(handleId));
     if (!handle) {
-        return nullptr;
+        return {};
     }
 
     // Translate class
@@ -3888,7 +3899,7 @@ const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUse
     switch (static_cast<DXILShaderResourceClass>(_class)) {
         default:
             ASSERT(false, "Invalid class");
-            return nullptr;
+            return {};
         case DXILShaderResourceClass::SRVs:
             classType = RootSignatureUserClassType::SRV;
             break;
@@ -3906,12 +3917,15 @@ const struct RootSignatureUserMapping *DXILPhysicalBlockFunction::GetResourceUse
     // Get user mapping
     const RootSignatureUserClass& userClass = job.instrumentationKey.physicalMapping->spaces[static_cast<uint32_t>(classType)];
     const RootSignatureUserSpace& userSpace = userClass.spaces[handle->bindSpace];
-    return &userSpace.mappings[rangeIndex];
+    out.source = &userSpace.mappings[rangeIndex];
+
+    // OK
+    return out;
 }
 
 void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
-    const RootSignatureUserMapping* userMapping = GetResourceUserMapping(job, source, _instr->resource);
-    ASSERT(userMapping, "Fallback user mappings not supported yet");
+    DynamicRootSignatureUserMapping userMapping = GetResourceUserMapping(job, source, _instr->resource);
+    ASSERT(userMapping.source, "Fallback user mappings not supported yet");
 
     // Allocate ids
     uint32_t legacyLoad = program.GetIdentifierMap().AllocID();
@@ -3941,7 +3955,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
 
         ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<int64_t>(userMapping->rootParameter / 4u)}
+            Backend::IL::IntConstant{.value = static_cast<int64_t>(userMapping.source->rootParameter / 4u)}
         )->id);
 
         // Invoke
@@ -3949,7 +3963,9 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
     }
 
     // Root parameters are hosted inline
-    if (userMapping->isRootResourceParameter) {
+    if (userMapping.source->isRootResourceParameter) {
+        ASSERT(userMapping.dynamicOffset == IL::InvalidID, "Dynamic offset on inline root parameter");
+
         // Extract respective value (uint4)
         {
             LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
@@ -3957,7 +3973,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
             recordExtract.opCount = 2;
             recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
             recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyLoad);
-            recordExtract.ops[1] = userMapping->rootParameter % 4u;
+            recordExtract.ops[1] = userMapping.source->rootParameter % 4u;
             block->AddRecord(recordExtract);
         }
     } else {
@@ -3973,7 +3989,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
             recordExtract.opCount = 2;
             recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
             recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyLoad);
-            recordExtract.ops[1] = userMapping->rootParameter % 4u;
+            recordExtract.ops[1] = userMapping.source->rootParameter % 4u;
             block->AddRecord(recordExtract);
         }
         
@@ -3990,10 +4006,91 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
 
             addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                 program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = userMapping->offset}
+                Backend::IL::IntConstant{.value = userMapping.source->offset}
             )->id);
 
             block->AddRecord(addRecord);
+        }
+
+        // Optional, out of bounds checking
+        IL::ID outOfHeapOperand = IL::InvalidID;
+
+        // Apply dynamic offset if valid
+        if (userMapping.dynamicOffset != IL::InvalidID) {
+            uint32_t extendedDescriptorOffset = program.GetIdentifierMap().AllocID();
+
+            // CBOffset + DynamicOffset
+            {
+                LLVMRecord addRecord;
+                addRecord.SetUser(true, ~0u, extendedDescriptorOffset);
+                addRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+                addRecord.opCount = 3u;
+                addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(descriptorOffset);
+                addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(userMapping.dynamicOffset);
+                addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Add);
+                block->AddRecord(addRecord);
+            }
+
+            // Set new offset
+            descriptorOffset = extendedDescriptorOffset;
+
+            // Allocate out of bounds identifier
+            outOfHeapOperand = program.GetIdentifierMap().AllocID();
+
+            // Intermediate identifiers
+            IL::ID structDimensionsId = program.GetIdentifierMap().AllocID();
+            IL::ID vrmtCountId        = program.GetIdentifierMap().AllocID();
+
+            // Determine number of VRMTs
+            {
+                // Get intrinsic
+                const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpGetDimensions);
+
+                /*
+                 * declare %dx.types.Dimensions @dx.op.getDimensions(
+                 *   i32,                  ; opcode
+                 *   %dx.types.Handle,     ; resource handle
+                 *   i32)                  ; MIP level
+                 */
+
+                uint64_t ops[3];
+
+                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                    Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::GetDimensions)}
+                )->id);
+                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtHandle);
+                ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                    Backend::IL::UndefConstant{}
+                )->id);
+
+                // Invoke
+                block->AddRecord(CompileIntrinsicCall(structDimensionsId, intrinsic, 3, ops));
+
+                // Extract first value
+                LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+                recordExtract.SetUser(true, ~0u, vrmtCountId);
+                recordExtract.opCount = 2;
+                recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+                recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(structDimensionsId);
+                recordExtract.ops[1] = 0;
+                block->AddRecord(recordExtract);
+            }
+
+            // DescriptorOffset > VRMTCount
+            {
+                LLVMRecord cmpRecord;
+                cmpRecord.SetUser(true, ~0u, outOfHeapOperand);
+                cmpRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCmp);
+                cmpRecord.opCount = 3u;
+                cmpRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                cmpRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(descriptorOffset);
+                cmpRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(vrmtCountId);
+                cmpRecord.ops[2] = static_cast<uint64_t>(LLVMCmpOp::IntUnsignedGreaterEqual);
+                block->AddRecord(cmpRecord);
+            }
         }
 
         // Load the resource token
@@ -4017,11 +4114,8 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
                 program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
                 Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferLoad)}
             )->id);
-
             ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtHandle);
-
             ops[2] = table.idRemapper.EncodeRedirectedUserOperand(descriptorOffset);
-
             ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                 program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
                 Backend::IL::UndefConstant{}
@@ -4031,14 +4125,42 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
             block->AddRecord(CompileIntrinsicCall(retOffset, intrinsic, 4, ops));
         }
 
-        // Extract first value
-        LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-        recordExtract.SetUser(true, ~0u, _instr->result);
-        recordExtract.opCount = 2;
-        recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
-        recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(retOffset);
-        recordExtract.ops[1] = 0;
-        block->AddRecord(recordExtract);
+        // Requires out of bounds safe-guarding?
+        if (outOfHeapOperand == IL::InvalidID) {
+            // Extract first value
+            LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+            recordExtract.SetUser(true, ~0u, _instr->result);
+            recordExtract.opCount = 2;
+            recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+            recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(retOffset);
+            recordExtract.ops[1] = 0;
+            block->AddRecord(recordExtract);
+        } else {
+            // Intermediate identifiers
+            IL::ID extractId = program.GetIdentifierMap().AllocID();
+
+            // Extract first value
+            LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+            recordExtract.SetUser(true, ~0u, extractId);
+            recordExtract.opCount = 2;
+            recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+            recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(retOffset);
+            recordExtract.ops[1] = 0;
+            block->AddRecord(recordExtract);
+
+            // OutOfBounds ? kResourceTokenPUIDOutOfBounds : ResourceToken
+            LLVMRecord recordSelect(LLVMFunctionRecord::InstVSelect);
+            recordSelect.SetUser(true, ~0u, _instr->result);
+            recordSelect.opCount = 3;
+            recordSelect.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+            recordSelect.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                Backend::IL::IntConstant{.value = IL::kResourceTokenPUIDOutOfBounds}
+            )->id);
+            recordSelect.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(extractId);
+            recordSelect.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(outOfHeapOperand);
+            block->AddRecord(recordSelect);
+        }
     }
 }
 

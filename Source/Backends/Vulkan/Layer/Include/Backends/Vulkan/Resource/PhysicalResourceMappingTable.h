@@ -2,6 +2,7 @@
 
 // Backend
 #include "VirtualResourceMapping.h"
+#include "PhysicalResourceMappingTableSegment.h"
 #include "PhysicalResourceSegment.h"
 #include <Backends/Vulkan/Allocation/MirrorAllocation.h>
 
@@ -43,7 +44,7 @@ public:
     /// Get the shader offset for a given segment
     /// \param id segment identifier
     /// \return shader buffer offset
-    uint32_t GetSegmentShaderOffset(PhysicalResourceSegmentID id);
+    PhysicalResourceMappingTableSegment GetSegmentShader(PhysicalResourceSegmentID id);
 
     /// Write a single mapping at a given offset
     /// \param offset offset to be written
@@ -104,12 +105,6 @@ private:
     VkBufferView deviceView{nullptr};
 
 private:
-    struct SegmentEntry {
-        PhysicalResourceSegmentID id{0};
-        uint32_t offset{0};
-        uint32_t length{0};
-    };
-
     /// Free indices to be used immediately
     std::vector<PhysicalResourceSegmentID> freeIndices;
 
@@ -117,7 +112,7 @@ private:
     std::vector<uint32_t> indices;
 
     /// Linear segments
-    std::vector<SegmentEntry> segments;
+    std::vector<PhysicalResourceMappingTableSegment> segments;
 
     /// Number of live segments
     uint32_t liveSegmentCount{0};

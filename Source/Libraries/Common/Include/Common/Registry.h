@@ -46,6 +46,7 @@ public:
         // Set the registry
         component->allocators    = allocators;
         component->registry      = this;
+        component->componentId   = T::kID;
         component->componentName = T::kName;
         component->address       = component;
 
@@ -78,6 +79,7 @@ public:
         // Set the registry
         component->allocators    = allocators;
         component->registry      = this;
+        component->componentId   = T::kID;
         component->componentName = T::kName;
         component->address       = component;
 

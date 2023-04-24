@@ -211,6 +211,10 @@ bool Parser::ParseStatement(Parser::Context &context) {
         return ParseMessage(context);
     } else if (context.TryNext("SCHEMA")) {
         return ParseSchema(context);
+    } else if (context.TryNext("EXECUTOR")) {
+        return ParseExecutor(context);
+    }else if (context.TryNext("SAFEGUARD")) {
+        return ParseSafeGuard(context);
     }
 
     // Unknown
@@ -242,6 +246,16 @@ bool Parser::ParseSchema(Parser::Context &context) {
     }
 
     // OK
+    return true;
+}
+
+bool Parser::ParseExecutor(Parser::Context &context) {
+    // Parse executor
+    return ParseString(context, &program.executor);
+}
+
+bool Parser::ParseSafeGuard(Parser::Context &context) {
+    program.isSafeGuarded = true;
     return true;
 }
 
@@ -293,6 +307,22 @@ bool Parser::ParseResource(Parser::Context &context) {
 
         if (!context.TryNext(">")) {
             context.Error("Expected end of format template");
+            return false;
+        }
+    }
+
+    if (context.TryNext("[")) {
+        Token count = context.Next();
+
+        if (count.type != TokenType::Int) {
+            context.Error("Expected size integer");
+            return false;
+        }
+
+        resource.format = count.str;
+
+        if (!context.TryNext("]")) {
+            context.Error("Expected end of array size");
             return false;
         }
     }
@@ -469,6 +499,8 @@ bool Parser::ParseResourceType(Parser::Context &context, ResourceType *out) {
         *out = ResourceType::RWTexture3D;
     } else if (context.TryNext("SamplerState")) {
         *out = ResourceType::SamplerState;
+    } else if (context.TryNext("StaticSamplerState")) {
+        *out = ResourceType::StaticSamplerState;
     } else if (context.TryNext("CBuffer")) {
         *out = ResourceType::CBuffer;
     } else {

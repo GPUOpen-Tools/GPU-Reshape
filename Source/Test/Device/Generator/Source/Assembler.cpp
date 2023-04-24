@@ -36,21 +36,24 @@ bool Assembler::Assemble(std::ostream &out) {
         includes << "#include <" << schema << ">\n";
     }
 
+    // Executor define
+    defines << "#define INLINE_EXECUTOR " << (program.executor.empty() ? "1" : "0") << "\n";
+    defines << "#define SAFE_GUARDED " << (program.isSafeGuarded ? "1" : "0") << "\n";
+
     // Vulkan?
 #ifdef ENABLE_BACKEND_VULKAN
-    includes << "#include \"" << assembleInfo.shaderPath << "Vulkan.h\"\n";
     defines << "#define ENABLE_BACKEND_VULKAN 1\n";
 #endif // ENABLE_BACKEND_VULKAN
 
     // DX12?
 #ifdef ENABLE_BACKEND_DX12
-    includes << "#include \"" << assembleInfo.shaderPath << "D3D12.h\"\n";
     defines << "#define ENABLE_BACKEND_DX12 1\n";
 #endif // ENABLE_BACKEND_DX12
 
     // Replace
     testTemplate.Substitute("$INCLUDES", includes.str().c_str());
     testTemplate.Substitute("$DEFINES", defines.str().c_str());
+    testTemplate.SubstituteAll("$EXECUTOR", std::string(program.executor).c_str());
 
     // Assemble sections
     AssembleConstraints();
@@ -187,13 +190,16 @@ void Assembler::AssembleResources() {
             case ResourceType::SamplerState:
                 types << "ResourceType::SamplerState";
                 break;
+            case ResourceType::StaticSamplerState:
+                types << "ResourceType::StaticSamplerState";
+                break;
             case ResourceType::CBuffer:
                 types << "ResourceType::CBuffer";
                 break;
         }
         types << ",\n";
 
-        if (resource.type != ResourceType::SamplerState) {
+        if (resource.type != ResourceType::SamplerState && resource.type != ResourceType::StaticSamplerState) {
             create << "\t\tconst uint32_t data" << i << "[] = {";
             for (uint64_t data : resource.initialization.data) {
                 create << data << ", ";
@@ -264,6 +270,7 @@ void Assembler::AssembleResources() {
                 create << "data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::SamplerState:
+            case ResourceType::StaticSamplerState:
                 create << "SamplerID resource" << i << " = device->CreateSampler();\n";
                 break;
             case ResourceType::CBuffer:

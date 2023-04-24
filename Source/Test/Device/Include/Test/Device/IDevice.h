@@ -13,10 +13,17 @@
 #include "DeviceInfo.h"
 #include "ResourceType.h"
 
+// Std
+#include <initializer_list>
+
 namespace Test {
     class IDevice : public TComponent<IDevice> {
     public:
         COMPONENT(ITestDevice);
+
+        /// Get the name of this device
+        /// \return
+        virtual const char* GetName() = 0;
 
         /// Install this device
         /// \param info device information
@@ -62,7 +69,7 @@ namespace Test {
         /// \param types all types of the layout
         /// \param count number of types
         /// \return layout identifier
-        virtual ResourceLayoutID CreateResourceLayout(const ResourceType *types, uint32_t count) = 0;
+        virtual ResourceLayoutID CreateResourceLayout(const ResourceType *types, uint32_t count, bool isLastUnbounded = false) = 0;
 
         /// Create a resource layout
         /// \param types all types of the layout
@@ -99,7 +106,7 @@ namespace Test {
         /// Bind a resource set
         /// \param commandBuffer the command buffer to be bound to
         /// \param resourceSet the resource set to bind
-        virtual void BindResourceSet(CommandBufferID commandBuffer, ResourceSetID resourceSet) = 0;
+        virtual void BindResourceSet(CommandBufferID commandBuffer, uint32_t slot, ResourceSetID resourceSet) = 0;
 
         /// Dispatch a compute pipeline
         /// \param commandBuffer command buffer
@@ -119,5 +126,31 @@ namespace Test {
 
         /// Flush and wait for all work
         virtual void Flush() = 0;
+
+        /// Create a resource layout
+        /// \param types all types of the layout
+        /// \param count number of types
+        /// \return layout identifier
+        ResourceLayoutID CreateResourceLayout(const std::initializer_list<ResourceType>& types, bool isLastUnbounded = false) {
+            return CreateResourceLayout(types.begin(), static_cast<uint32_t>(types.size()), isLastUnbounded);
+        }
+
+        /// Create a resource layout
+        /// \param types all types of the layout
+        /// \param count number of types
+        /// \return set identifier
+        ResourceSetID CreateResourceSet(ResourceLayoutID layout, const std::initializer_list<ResourceID>& resources) {
+            return CreateResourceSet(layout, resources.begin(), static_cast<uint32_t>(resources.size()));
+        }
+
+        /// Create a compute pipeline
+        /// \param layouts all layout definitions
+        /// \param layoutCount the number of layouts
+        /// \param shaderCode shader code
+        /// \param shaderSize byte size of shader code
+        /// \return pipeline identifier
+        PipelineID CreateComputePipeline(const std::initializer_list<ResourceLayoutID>& layouts, const void *shaderCode, uint32_t shaderSize) {
+            return CreateComputePipeline(layouts.begin(), static_cast<uint32_t>(layouts.size()), shaderCode, shaderSize);
+        }
     };
 }

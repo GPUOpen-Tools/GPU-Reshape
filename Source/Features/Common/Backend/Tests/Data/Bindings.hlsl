@@ -12,7 +12,7 @@
 //! RESOURCE RWBuffer<RGBA32Float> size:64
 [[vk::binding(2)]] RWBuffer<float4> bufferRW : register(u2, space0);
 
-//! RESOURCE SamplerState size:64
+//! RESOURCE StaticSamplerState size:64
 [[vk::binding(3)]] SamplerState defaultSampler : register(s3, space0);
 
 [numthreads(64, 1, 1)]

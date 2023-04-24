@@ -130,7 +130,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkFreeDescriptorSets(VkDevice device, VkDesc
             DescriptorSetState* lastState = pool->states.back();
 
             // Swap last with current
-            std::swap(pool->states[setState->poolSwapIndex], lastState);
+            pool->states[setState->poolSwapIndex] = lastState;
 
             // Reassign new position of last
             lastState->poolSwapIndex = setState->poolSwapIndex;

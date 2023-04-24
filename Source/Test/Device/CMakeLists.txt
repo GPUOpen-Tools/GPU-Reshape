@@ -35,7 +35,48 @@ target_link_libraries(GRS.Test.Device.Generator PUBLIC GRS.Libraries.Common)
 ExternalProject_Link(GRS.Test.Device.Generator ArgParse)
 
 # Test helper
+function(Project_AddShaderType OUT_GENERATED ARGS HLSL)
+    # Get the source directory of the generator
+    get_target_property(GeneratorSourceDir GRS.Libraries.Message.Generator SOURCE_DIR)
+
+    # Get the filename
+    get_filename_component(HLSLName ${HLSL} NAME_WE)
+    set(HLSLOutPath Source/HLSL/${HLSLName}.cpp)
+
+    # Compile the hlsl for all relevant backends
+    set(HlslGenerated "")
+    Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${HLSL} Source/HLSL/${HLSLName} kShaderCode)
+
+    # Get the source directory of the generator
+    get_target_property(GeneratorSourceDir GRS.Test.Device.Generator SOURCE_DIR)
+
+    # Template path
+    set(Templates ${GeneratorSourceDir}/Generator/Templates)
+
+    # Generate the shader type
+    add_custom_command(
+        OUTPUT ${HLSLOutPath}
+        DEPENDS
+            GRS.Test.Device.Generator
+            ${Test}
+            ${HlslGenerated}
+            ${Templates}/ShaderType.cppt
+        COMMAND GRS.Test.Device.Generator
+            -shaderType ${HLSLName}
+            -name ${HLSLName}
+            -templates ${Templates}
+            -o ${HLSLOutPath}
+    )
+
+    # Set output
+    set(${OUT_GENERATED} "${${OUT_GENERATED}};${HLSLOutPath}" PARENT_SCOPE)
+endfunction()
+
+# Test helper
 function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
+    # Create shader
+    Project_AddShaderType(${OUT_GENERATED} ${ARGS} ${TEST})
+
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir GRS.Libraries.Message.Generator SOURCE_DIR)
 
@@ -50,10 +91,6 @@ function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
     get_filename_component(TestName ${TEST} NAME_WE)
     set(TestOutPath Source/Test/${TestName}.cpp)
 
-    # Compile the hlsl for all relevant backends
-    set(HlslGenerated "")
-    Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${Test} Source/Test/${TestName} kShaderCode)
-
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir GRS.Test.Device.Generator SOURCE_DIR)
 
@@ -66,7 +103,6 @@ function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
         DEPENDS
             GRS.Test.Device.Generator
             ${Test}
-            ${HlslGenerated}
             ${Templates}/MessageConstraint.cppt
             ${Templates}/Test.cppt
         COMMAND GRS.Test.Device.Generator
@@ -86,6 +122,7 @@ endfunction()
 add_library(
     GRS.Test.Device STATIC
     Source/main.cpp
+    Source/ShaderHost.cpp
 )
 
 # IDE source discovery

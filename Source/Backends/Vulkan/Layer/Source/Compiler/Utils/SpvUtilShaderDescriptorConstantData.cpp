@@ -88,7 +88,7 @@ void SpvUtilShaderDescriptorConstantData::CompileRecords(const SpvJob &job) {
     spvCounterBinding[3] = job.bindingInfo.descriptorDataDescriptorOffset;
 }
 
-IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorOffset(SpvStream& stream, uint32_t index) {
+IL::ID SpvUtilShaderDescriptorConstantData::GetDescriptorData(SpvStream& stream, uint32_t index) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Id allocations

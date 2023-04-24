@@ -21,7 +21,12 @@ SetSourceDiscovery(GRS.Features.Initialization.Backend CXX Include Source Schema
 target_include_directories(GRS.Features.Initialization.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(GRS.Features.Initialization.Backend PUBLIC GRS.Libraries.Common GRS.Libraries.Backend)
+target_link_libraries(
+    GRS.Features.Initialization.Backend PUBLIC
+    GRS.Libraries.Common
+    GRS.Libraries.Backend
+    GRS.Features.Descriptor.Backend
+)
 
 # Set all outputs to Plugins/.
 add_custom_command(
@@ -33,7 +38,7 @@ add_custom_command(
 
 # Test files
 Project_AddBackendTest_Common(GeneratedTest Initialization)
-Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/InitializationSimpleTest.hlsl)
 Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SampledTest.hlsl)
 
 Project_AddTest(

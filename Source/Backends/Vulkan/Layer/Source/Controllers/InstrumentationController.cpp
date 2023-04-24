@@ -751,6 +751,11 @@ uint64_t InstrumentationController::SummarizeFeatureBitSet() {
 void InstrumentationController::BeginCommandList() {
     // If synchronous, wait for the head compilation counter
     if (synchronousRecording) {
+        // Commit all pending instrumentation
+        std::lock_guard guard(mutex);
+        CommitInstrumentation();
+
+        // Wait til head
         compilationEvent.Wait(compilationEvent.GetHead());
     }
 }

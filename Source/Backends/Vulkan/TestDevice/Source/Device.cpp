@@ -395,6 +395,7 @@ void Device::ReleaseResources() {
                 vmaDestroyBuffer(allocator, info.cbuffer.buffer, info.cbuffer.allocation);
                 break;
             case ResourceType::SamplerState:
+            case ResourceType::StaticSamplerState:
                 vkDestroySampler(device, info.sampler.sampler, nullptr);
                 break;
         }
@@ -629,7 +630,7 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
     return id;
 }
 
-ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_t count) {
+ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_t count, bool isLastUnbounded) {
     ResourceLayoutInfo& info = resourceLayouts.emplace_back();
     info.resources.insert(info.resources.end(), types, types + count);
 
@@ -660,6 +661,7 @@ ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_
                 binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 break;
             case ResourceType::SamplerState:
+            case ResourceType::StaticSamplerState:
                 binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
                 break;
             case ResourceType::CBuffer:
@@ -691,6 +693,7 @@ static bool HasImageDescriptor(ResourceType type) {
         case ResourceType::Texture3D:
         case ResourceType::RWTexture3D:
         case ResourceType::SamplerState:
+        case ResourceType::StaticSamplerState:
             return true;
     }
 }
@@ -730,7 +733,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
         if (HasImageDescriptor(type)) {
             VkDescriptorImageInfo& imageInfo = imageInfos.emplace_back();
 
-            if (type == ResourceType::SamplerState) {
+            if (type == ResourceType::SamplerState || type == ResourceType::StaticSamplerState) {
                 imageInfo.imageView = nullptr;
                 imageInfo.sampler = resources.at(setResources[i]).sampler.sampler;
             } else {
@@ -753,6 +756,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
                     break;
                 case ResourceType::SamplerState:
+                case ResourceType::StaticSamplerState:
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
                     break;
             }
@@ -795,6 +799,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 write.pImageInfo = &imageInfos[imageOffset++];
                 break;
             case ResourceType::SamplerState:
+            case ResourceType::StaticSamplerState:
                 write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
                 write.pImageInfo = &imageInfos[imageOffset++];
                 break;
@@ -907,14 +912,14 @@ void Device::BindPipeline(CommandBufferID commandBuffer, PipelineID pipeline) {
     vkCmdBindPipeline(info.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelines.at(pipeline).pipeline);
 }
 
-void Device::BindResourceSet(CommandBufferID commandBuffer, ResourceSetID resourceSet) {
+void Device::BindResourceSet(CommandBufferID commandBuffer, uint32_t slot, ResourceSetID resourceSet) {
     CommandBufferInfo& info = commandBuffers.at(commandBuffer);
 
     vkCmdBindDescriptorSets(
         info.commandBuffer,
         VK_PIPELINE_BIND_POINT_COMPUTE,
         pipelines.at(info.context.pipeline).layout,
-        0, 1, &resourceSets.at(resourceSet).set,
+        slot, 1, &resourceSets.at(resourceSet).set,
         0, nullptr
     );
 }
@@ -1095,4 +1100,8 @@ Device::UploadBuffer &Device::CreateUploadBuffer(uint64_t size) {
     vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &uploadBuffer.buffer, &uploadBuffer.allocation, nullptr);
 
     return uploadBuffer;
+}
+
+const char *Device::GetName() {
+    return "Vulkan";
 }

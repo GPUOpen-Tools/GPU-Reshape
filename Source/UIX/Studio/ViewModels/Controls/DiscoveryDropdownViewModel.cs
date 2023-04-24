@@ -88,7 +88,7 @@ namespace Studio.ViewModels.Controls
             }
             
             // Manual refresh
-            Update();;
+            Update();
         }
 
         /// <summary>
@@ -113,7 +113,7 @@ namespace Studio.ViewModels.Controls
             }
             
             // Manual refresh
-            Update();;
+            Update();
         }
 
         /// <summary>
@@ -150,7 +150,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Internal status color
         /// </summary>
-        private IBrush _statusColor;
+        private IBrush? _statusColor;
         
         /// <summary>
         /// Internal instance label
@@ -160,7 +160,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Internal timer for pooling
         /// </summary>
-        private DispatcherTimer _timer = new()
+        private readonly DispatcherTimer _timer = new()
         {
             Interval = TimeSpan.FromSeconds(0.5),
             IsEnabled = true

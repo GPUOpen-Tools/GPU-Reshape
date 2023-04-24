@@ -266,13 +266,13 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
     return TextureID(ResourceID(static_cast<uint32_t>(resources.size()) - 1));
 }
 
-ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_t count) {
+ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_t count, bool isLastUnbounded) {
     ResourceLayoutInfo &layout = resourceLayouts.emplace_back();
 
     // Translate bindings
     for (uint32_t i = 0; i < count; i++) {
         // Special case for sampler
-        if (types[i] == ResourceType::SamplerState) {
+        if (types[i] == ResourceType::StaticSamplerState) {
             auto& sampler = layout.staticSamplers.emplace_back(D3D12_STATIC_SAMPLER_DESC{});
             sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
             sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
@@ -308,6 +308,9 @@ ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_
             case ResourceType::CBuffer:
                 range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
                 break;
+            case ResourceType::SamplerState:
+                range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+                break;
         }
     }
 
@@ -322,14 +325,22 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
     REQUIRE(count == _layout.ranges.size() + _layout.staticSamplers.size());
 
     // Set offsets
-    set.resources.heapCPUHandleOffset = sharedResourceHeap.sharedCPUHeapOffset;
-    set.resources.heapGPUHandleOffset = sharedResourceHeap.sharedGPUHeapOffset;
-    set.samplers.heapCPUHandleOffset = sharedSamplerHeap.sharedCPUHeapOffset;
-    set.samplers.heapGPUHandleOffset = sharedSamplerHeap.sharedGPUHeapOffset;
+    if (_layout.ranges[0].RangeType == D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER) {
+        set.heapCPUHandleOffset = sharedSamplerHeap.sharedCPUHeapOffset;
+        set.heapGPUHandleOffset = sharedSamplerHeap.sharedGPUHeapOffset;
+    } else {
+        set.heapCPUHandleOffset = sharedResourceHeap.sharedCPUHeapOffset;
+        set.heapGPUHandleOffset = sharedResourceHeap.sharedGPUHeapOffset;
+    }
 
     // Create all resources
     for (uint32_t i = 0; i < count; i++) {
         const ResourceInfo &resource = resources[setResources[i]];
+
+        // Ignore static samplers
+        if (resource.type == ResourceType::SamplerState && _layout.ranges[0].RangeType != D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER) {
+            continue;
+        }
 
         // Get description
         D3D12_RESOURCE_DESC resourceDesc;
@@ -339,6 +350,10 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
 
         // Create view
         switch (resource.type) {
+            default: {
+                ASSERT(false, "Unexpected resource type");
+                break;
+            }
             case ResourceType::TexelBuffer: {
                 D3D12_SHADER_RESOURCE_VIEW_DESC desc{};
                 desc.Format = Translate(resource.format);
@@ -348,7 +363,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / Backend::IL::GetSize(resource.format));
                 desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
                 device->CreateShaderResourceView(resource.resource.Get(), &desc, sharedResourceHeap.sharedCPUHeapOffset);
-                set.resources.count++;
+                set.count++;
                 break;
             }
             case ResourceType::RWTexelBuffer: {
@@ -359,7 +374,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
                 desc.Buffer.NumElements = static_cast<uint32_t>(resourceDesc.Width / Backend::IL::GetSize(resource.format));
                 device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
-                set.resources.count++;
+                set.count++;
                 break;
             }
             case ResourceType::Texture1D: {
@@ -369,7 +384,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
                 desc.Texture1D.MipLevels = 1;
                 device->CreateShaderResourceView(resource.resource.Get(), &desc, sharedResourceHeap.sharedCPUHeapOffset);
-                set.resources.count++;
+                set.count++;
                 break;
             }
             case ResourceType::RWTexture1D: {
@@ -377,7 +392,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.Format = resourceDesc.Format;
                 desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
                 device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
-                set.resources.count++;
+                set.count++;
                 break;
             }
             case ResourceType::Texture2D: {
@@ -387,7 +402,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
                 desc.Texture2D.MipLevels = 1;
                 device->CreateShaderResourceView(resource.resource.Get(), &desc, sharedResourceHeap.sharedCPUHeapOffset);
-                set.resources.count++;
+                set.count++;
                 break;
             }
             case ResourceType::RWTexture2D: {
@@ -395,7 +410,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.Format = resourceDesc.Format;
                 desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
                 device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
-                set.resources.count++;
+                set.count++;
                 break;
             }
             case ResourceType::Texture3D: {
@@ -405,7 +420,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
                 desc.Texture3D.MipLevels = 1;
                 device->CreateShaderResourceView(resource.resource.Get(), &desc, sharedResourceHeap.sharedCPUHeapOffset);
-                set.resources.count++;
+                set.count++;
                 break;
             }
             case ResourceType::RWTexture3D: {
@@ -413,7 +428,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.Format = resourceDesc.Format;
                 desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
                 device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
-                set.resources.count++;
+                set.count++;
                 break;
             }
             case ResourceType::CBuffer: {
@@ -421,10 +436,16 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 desc.BufferLocation = resource.resource->GetGPUVirtualAddress();
                 desc.SizeInBytes = static_cast<uint32_t>(resourceDesc.Width);
                 device->CreateConstantBufferView(&desc, sharedResourceHeap.sharedCPUHeapOffset);
-                set.resources.count++;
+                set.count++;
                 break;
             }
             case ResourceType::SamplerState: {
+                D3D12_SAMPLER_DESC sampler{};
+                sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+                sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+                sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+                sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+                device->CreateSampler(&sampler, sharedSamplerHeap.sharedCPUHeapOffset);
                 continue;
             }
         }
@@ -450,17 +471,37 @@ PipelineID Device::CreateComputePipeline(const ResourceLayoutID *layouts, uint32
     std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers;
     rootParameters.resize(layoutCount);
 
-    // Translate parameters
+    // Deduce range count
+    uint32_t rangeCount{0};
     for (uint32_t i = 0; i < layoutCount; i++) {
         const ResourceLayoutInfo &layout = resourceLayouts[i];
+        rangeCount += static_cast<uint32_t>(layout.ranges.size());
+    }
+
+    // Range data
+    std::vector<D3D12_DESCRIPTOR_RANGE> ranges(rangeCount);
+
+    // Translate parameters
+    for (uint32_t i = 0, rangeOffset = 0; i < layoutCount; i++) {
+        const ResourceLayoutInfo &layout = resourceLayouts[i];
+
+        // Copy ranges and select space
+        for (uint64_t j = 0; j < layout.ranges.size(); j++) {
+            D3D12_DESCRIPTOR_RANGE& range = ranges[rangeOffset + j] = layout.ranges[j];
+            range.RegisterSpace = i;
+        }
 
         D3D12_ROOT_PARAMETER &root = rootParameters[i];
         root.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
         root.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         root.DescriptorTable.NumDescriptorRanges = static_cast<uint32_t>(layout.ranges.size());
-        root.DescriptorTable.pDescriptorRanges = layout.ranges.data();
+        root.DescriptorTable.pDescriptorRanges = &ranges[rangeOffset];
 
+        // Inherit samplers
         staticSamplers.insert(staticSamplers.end(), layout.staticSamplers.begin(), layout.staticSamplers.end());
+
+        // Next offset
+        rangeOffset += static_cast<uint32_t>(layout.ranges.size());
     }
 
     // Signature description
@@ -474,12 +515,17 @@ PipelineID Device::CreateComputePipeline(const ResourceLayoutID *layouts, uint32
     // Serialize signature
     ComPtr <ID3DBlob> pOutBlob;
     ComPtr <ID3DBlob> pErrorBlob;
-    REQUIRE(SUCCEEDED(D3D12SerializeRootSignature(
+    HRESULT status = D3D12SerializeRootSignature(
         &signatureDesc,
         D3D_ROOT_SIGNATURE_VERSION_1,
         pOutBlob.GetAddressOf(),
         pErrorBlob.GetAddressOf()
-    )));
+    );
+
+    // Did we fail?
+    if (FAILED(status)) {
+        REQUIRE_FORMAT(false, static_cast<const char*>(pErrorBlob->GetBufferPointer()));
+    }
 
     // Create signature
     REQUIRE(SUCCEEDED(device->CreateRootSignature(
@@ -545,9 +591,9 @@ void Device::BindPipeline(CommandBufferID commandBuffer, PipelineID pipeline) {
     info.commandList->SetPipelineState(pipelineInfo.pipeline.Get());
 }
 
-void Device::BindResourceSet(CommandBufferID commandBuffer, ResourceSetID resourceSet) {
+void Device::BindResourceSet(CommandBufferID commandBuffer, uint32_t slot, ResourceSetID resourceSet) {
     CommandBufferInfo& info = commandBuffers.at(commandBuffer);
-    info.commandList->SetComputeRootDescriptorTable(0, resourceSets[resourceSet].resources.heapGPUHandleOffset);
+    info.commandList->SetComputeRootDescriptorTable(slot, resourceSets[resourceSet].heapGPUHandleOffset);
 }
 
 void Device::Dispatch(CommandBufferID commandBuffer, uint32_t x, uint32_t y, uint32_t z) {
@@ -739,4 +785,8 @@ Device::UploadBuffer &Device::CreateUploadBuffer(uint64_t size) {
         IID_PPV_ARGS(&uploadBuffer.resource))));
 
     return uploadBuffer;
+}
+
+const char *Device::GetName() {
+    return "D3D12";
 }

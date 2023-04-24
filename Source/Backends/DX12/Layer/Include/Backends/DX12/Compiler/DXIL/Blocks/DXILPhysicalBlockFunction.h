@@ -165,12 +165,20 @@ private:
     void CreateEventHandle(const DXJob &job, struct LLVMBlock* block);
 
 private:
+    struct DynamicRootSignatureUserMapping {
+        /// Source mapping
+        const struct RootSignatureUserMapping* source{nullptr};
+
+        /// Dynamic, sequential, offset due to dynamic indexing
+        IL::ID dynamicOffset{IL::InvalidID};
+    };
+
     /// Get the mapping of a resource
     /// \param job parent job
     /// \param source source records
     /// \param resource resource to be fetched
-    /// \return nullptr if not found
-    const struct RootSignatureUserMapping* GetResourceUserMapping(const DXJob& job, const Vector<LLVMRecord>& source, IL::ID resource);
+    /// \return empty if not found
+    DynamicRootSignatureUserMapping GetResourceUserMapping(const DXJob& job, const Vector<LLVMRecord>& source, IL::ID resource);
 
 private:
     /// Compile an export instruction

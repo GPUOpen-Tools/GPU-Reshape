@@ -20,7 +20,12 @@ SetSourceDiscovery(GRS.Features.Concurrency.Backend CXX Include Source Schemas)
 target_include_directories(GRS.Features.Concurrency.Backend PUBLIC Include ${CMAKE_CURRENT_BINARY_DIR}/Include)
 
 # Links
-target_link_libraries(GRS.Features.Concurrency.Backend PUBLIC GRS.Libraries.Common GRS.Libraries.Backend)
+target_link_libraries(
+    GRS.Features.Concurrency.Backend PUBLIC
+    GRS.Libraries.Common
+    GRS.Libraries.Backend
+    GRS.Features.Descriptor.Backend
+)
 
 # Set all outputs to Plugins/.
 add_custom_command(
@@ -32,7 +37,7 @@ add_custom_command(
 
 # Test files
 Project_AddBackendTest_Common(GeneratedTest Concurrency)
-Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/SimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencySimpleTest.hlsl)
 
 Project_AddTest(
         NAME GRS.Features.Concurrency.Tests

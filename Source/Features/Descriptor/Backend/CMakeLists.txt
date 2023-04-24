@@ -32,12 +32,17 @@ add_custom_command(
 
 # Test files
 Project_AddBackendTest_Common(GeneratedTest Descriptor)
-Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/SimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/DescriptorSimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/SamplerIndexOOBTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Descriptor Tests/Data/TextureIndexOOBTest.hlsl)
 
 Project_AddTest(
-        NAME GRS.Features.Descriptor.Tests
-        SOURCE ${GeneratedTest}
-        LIBS GRS.Test.Device GRS.Features.Descriptor.Backend
+    NAME GRS.Features.Descriptor.Tests
+    SOURCE
+        ${GeneratedTest}
+        Source/SamplerIndexOOB.cpp
+        Source/TextureIndexOOB.cpp
+    LIBS GRS.Test.Device GRS.Features.Descriptor.Backend
 )
 
 #----- .Net bindings -----#

@@ -83,31 +83,13 @@ static bool PoolAndInstallFeatures(DeviceState* state) {
         return false;
     }
 
-    // All templates
-    std::vector<ComRef<IComponentTemplate>> templates;
-
     // Pool feature count
     uint32_t featureCount;
-    host->Enumerate(&featureCount, nullptr);
+    host->Install(&featureCount, nullptr, nullptr);
 
     // Pool features
-    templates.resize(featureCount);
-    host->Enumerate(&featureCount, templates.data());
-
-    // Install features
-    for (const ComRef<IComponentTemplate>& _template : templates) {
-        // Instantiate feature to this registry
-        auto feature = Cast<IFeature>(_template->Instantiate(&state->registry));
-
-        // Try to install feature
-        if (!feature->Install()) {
-            return false;
-        }
-
-        state->features.push_back(feature);
-    }
-
-    return true;
+    state->features.resize(featureCount);
+    return host->Install(&featureCount, state->features.data(), &state->registry);
 }
 
 static void CreateEventRemappingTable(DeviceState* state) {

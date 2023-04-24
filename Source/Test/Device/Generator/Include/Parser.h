@@ -127,6 +127,8 @@ private:
     bool ParseCheck(Context& context);
     bool ParseMessage(Context& context);
     bool ParseSchema(Context& context);
+    bool ParseExecutor(Context& context);
+    bool ParseSafeGuard(Context& context);
     bool ParseKernelType(Context& context, KernelType* out);
     bool ParseResourceType(Context& context, ResourceType* out);
     bool ParseString(Context& context, std::string_view* out);

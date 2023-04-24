@@ -113,31 +113,13 @@ static bool PoolAndInstallFeatures(DeviceDispatchTable* table) {
         return false;
     }
 
-    // All templates
-    std::vector<ComRef<IComponentTemplate>> templates;
-
     // Pool feature count
     uint32_t featureCount;
-    host->Enumerate(&featureCount, nullptr);
+    host->Install(&featureCount, nullptr, nullptr);
 
     // Pool features
-    templates.resize(featureCount);
-    host->Enumerate(&featureCount, templates.data());
-
-    // Install features
-    for (const ComRef<IComponentTemplate>& _template : templates) {
-        // Instantiate feature to this registry
-        auto feature = Cast<IFeature>(_template->Instantiate(&table->registry));
-
-        // Try to install feature
-        if (!feature->Install()) {
-            return false;
-        }
-
-        table->features.push_back(feature);
-    }
-
-    return true;
+    table->features.resize(featureCount);
+    return host->Install(&featureCount, table->features.data(), &table->registry);
 }
 
 static void CreateEventRemappingTable(DeviceDispatchTable* table) {

@@ -12,7 +12,7 @@ Code quick start
 - Implementation
   - [Generator](../../Source/Test/Device/Generator) </br>
 - Examples
-  - [Resource Bounds Unit Test](../../Source/Features/ResourceBounds/Backend/Tests/Data/SimpleTest.hlsl)
+  - [Resource Bounds Unit Test](../../Source/Features/ResourceBounds/Backend/Tests/Data/ResourceBoundsSimpleTest.hlsl)
 
 ---
 

@@ -1,6 +1,11 @@
 #include <Backends/Vulkan/Compiler/Utils/SpvUtilShaderPRMT.h>
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvJob.h>
+#include <Backends/Vulkan/Resource/DescriptorData.h>
+
+// Backend
+#include <Backend/IL/ResourceTokenPacking.h>
+#include <Backend/IL/ID.h>
 
 SpvUtilShaderPRMT::SpvUtilShaderPRMT(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
     allocators(allocators),
@@ -60,12 +65,14 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
     spvCounterBinding[3] = job.bindingInfo.prmtDescriptorOffset;
 }
 
-IL::ID SpvUtilShaderPRMT::GetResourcePRMTOffset(SpvStream &stream, IL::ID resource) {
+SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(SpvStream &stream, IL::ID resource) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
+    // Output
+    SpvPRMTOffset out;
+
     // Identifiers
-    uint32_t prmtOffsetId = table.scan.header.bound++;
-    uint32_t offsetId = table.scan.header.bound++;
+    out.offset = table.scan.header.bound++;
 
     // UInt32
     const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType {
@@ -74,26 +81,36 @@ IL::ID SpvUtilShaderPRMT::GetResourcePRMTOffset(SpvStream &stream, IL::ID resour
     });
 
     // Get decoration
-    SpvValueDecoration valueDecoration = GetSourceResourceDecoration(resource);
+    DynamicSpvValueDecoration valueDecoration = GetSourceResourceDecoration(stream, resource);
 
     // Get the descriptor fed offset into the PRM table
-    IL::ID baseOffsetId = table.shaderDescriptorConstantData.GetDescriptorOffset(stream, valueDecoration.descriptorSet);
-
-    // Offset
-    SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvZero[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    spvZero[2] = offsetId;
-    spvZero[3] = valueDecoration.descriptorOffset;
+    IL::ID baseOffsetId = table.shaderDescriptorConstantData.GetDescriptorData(stream, valueDecoration.source.descriptorSet * kDescriptorDataDWordCount + kDescriptorDataOffsetDWord);
 
     // Final PRM index, DescriptorSetOffset + BindingOffset
     SpvInstruction& spv = stream.Allocate(SpvOpIAdd, 5);
     spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    spv[2] = prmtOffsetId;
+    spv[2] = out.offset;
     spv[3] = baseOffsetId;
-    spv[4] = offsetId;
+    spv[4] = valueDecoration.dynamicOffset;
+
+    // Requires bounds checking?
+    if (valueDecoration.checkOutOfBounds) {
+        // Allocate identifier
+        out.outOfBounds = table.scan.header.bound++;
+
+        // Read length of the segment
+        IL::ID baseLengthId = table.shaderDescriptorConstantData.GetDescriptorData(stream, valueDecoration.source.descriptorSet * kDescriptorDataDWordCount + kDescriptorDataLengthDWord);
+
+        // DynamicOffset >= Length
+        SpvInstruction& spv = stream.Allocate(SpvOpUGreaterThanEqual, 5);
+        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType { }));
+        spv[2] = out.outOfBounds;
+        spv[3] = valueDecoration.dynamicOffset;
+        spv[4] = baseLengthId;
+    }
 
     // OK
-    return prmtOffsetId;
+    return out;
 }
 
 void SpvUtilShaderPRMT::GetToken(SpvStream &stream, IL::ID resource, IL::ID result) {
@@ -116,7 +133,7 @@ void SpvUtilShaderPRMT::GetToken(SpvStream &stream, IL::ID resource, IL::ID resu
     uint32_t texelId = table.scan.header.bound++;
 
     // Get offset
-    IL::ID mappingOffset = GetResourcePRMTOffset(stream, resource);
+    SpvPRMTOffset mappingOffset = GetResourcePRMTOffset(stream, resource);
 
     // SpvIds
     uint32_t buffer32UIId = table.typeConstantVariable.typeMap.GetSpvTypeId(buffer32UI);
@@ -134,19 +151,58 @@ void SpvUtilShaderPRMT::GetToken(SpvStream &stream, IL::ID resource, IL::ID resu
     spvTexel[1] = uint4TypeId;
     spvTexel[2] = texelId;
     spvTexel[3] = bufferId;
-    spvTexel[4] = mappingOffset;
+    spvTexel[4] = mappingOffset.offset;
 
-    // Fetch texel
-    SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
-    spvExtract[1] = uintTypeId;
-    spvExtract[2] = result;
-    spvExtract[3] = texelId;
-    spvExtract[4] = 0;
+    // Requires out-of-bounds selection?
+    if (mappingOffset.outOfBounds == IL::InvalidID) {
+        // Fetch texel
+        SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
+        spvExtract[1] = uintTypeId;
+        spvExtract[2] = result;
+        spvExtract[3] = texelId;
+        spvExtract[4] = 0;
+    } else {
+        uint32_t outOfBoundsConstantId = table.scan.header.bound++;
+        uint32_t extractId = table.scan.header.bound++;
+
+        // Fetch texel
+        SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
+        spvExtract[1] = uintTypeId;
+        spvExtract[2] = extractId;
+        spvExtract[3] = texelId;
+        spvExtract[4] = 0;
+
+        // Special out-of-bounds value
+        SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+        spvZero[1] = uintTypeId;
+        spvZero[2] = outOfBoundsConstantId;
+        spvZero[3] = IL::kResourceTokenPUIDOutOfBounds;
+
+        // Select out-of-bounds value if needed
+        SpvInstruction& spvSelect = stream.Allocate(SpvOpSelect, 6);
+        spvSelect[1] = uintTypeId;
+        spvSelect[2] = result;
+        spvSelect[3] = mappingOffset.outOfBounds;
+        spvSelect[4] = outOfBoundsConstantId;
+        spvSelect[5] = extractId;
+    }
 }
 
-SpvValueDecoration SpvUtilShaderPRMT::GetSourceResourceDecoration(IL::ID resource) {
+SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourceDecoration(SpvStream& stream, IL::ID resource) {
+    // Source binding?
     if (table.annotation.IsDecoratedBinding(resource)) {
-        return table.annotation.GetDecoration(resource);
+        DynamicSpvValueDecoration dynamic;
+        dynamic.source = table.annotation.GetDecoration(resource);
+        dynamic.dynamicOffset = table.scan.header.bound++;
+
+        // Offset
+        SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+        spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+        spvOffset[2] = dynamic.dynamicOffset;
+        spvOffset[3] = dynamic.source.descriptorOffset;
+
+        // OK
+        return dynamic;
     }
 
     // Get the identifier map
@@ -157,14 +213,39 @@ SpvValueDecoration SpvUtilShaderPRMT::GetSourceResourceDecoration(IL::ID resourc
 
     // Handle type
     switch (ref->opCode) {
-        default:
+        default: {
             ASSERT(false, "Backtracking not implemented for op-code");
             return {};
-        case IL::OpCode::AddressChain:
-            // TODO: Offset PUID by dynamic index
-            return GetSourceResourceDecoration(ref->As<IL::AddressChainInstruction>()->composite);
-        case IL::OpCode::Load:
-            return GetSourceResourceDecoration(ref->As<IL::LoadInstruction>()->address);
+        }
+        case IL::OpCode::AddressChain: {
+            auto* addressChain = ref->As<IL::AddressChainInstruction>();
+            ASSERT(addressChain->chains.count == 1, "Unexpected address chain on descriptor data");
+
+            // Get base decoration
+            DynamicSpvValueDecoration dynamic = GetSourceResourceDecoration(stream, addressChain->composite);
+
+            // Address could be constant, but easier to just assume dynamic indexing at this point
+            dynamic.checkOutOfBounds = true;
+
+            // Allocate id
+            IL::ID offsetId = table.scan.header.bound++;
+
+            // Add dynamic offset
+            SpvInstruction& spv = stream.Allocate(SpvOpIAdd, 5);
+            spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+            spv[2] = offsetId;
+            spv[3] = dynamic.dynamicOffset;
+            spv[4] = addressChain->chains[0].index;
+
+            // Set new offset
+            dynamic.dynamicOffset = offsetId;
+
+            // OK
+            return dynamic;
+        }
+        case IL::OpCode::Load: {
+            return GetSourceResourceDecoration(stream, ref->As<IL::LoadInstruction>()->address);
+        }
     }
 }
 

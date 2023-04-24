@@ -59,7 +59,7 @@ inline void destroy(T* object, Allocators allocators) {
 
     // Poison fill memory
 #ifndef NDEBUG
-    memset(object, 0xFFu, sizeof(T));
+    memset(static_cast<void*>(object), 0xFFu, sizeof(T));
 #endif
     
     allocators.free(allocators.userData, object, kDefaultAlign);

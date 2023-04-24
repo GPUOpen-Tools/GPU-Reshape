@@ -48,7 +48,7 @@ public:
 
     }
 
-    void Inject(IL::Program &program) override {
+    void Inject(IL::Program &program, const MessageStreamView<> &specialization) override {
         for (IL::Function* fn : program.GetFunctionList()) {
             for (IL::BasicBlock* bb : fn->GetBasicBlocks()) {
                 for (auto it = bb->begin(); it != bb->end(); ++it) {

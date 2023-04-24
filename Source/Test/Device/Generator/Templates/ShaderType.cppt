@@ -1,0 +1,14 @@
+#include <Test/Device/ShaderHost.h>
+
+// Shader
+#include "$PATHD3D12.h"
+#include "$PATHVulkan.h"
+
+namespace {
+    struct $NAMEInitializer {
+        $NAMEInitializer() {
+            ShaderHost::Register("$NAME", "D3D12", ShaderBlob{.code = kShaderCodeD3D12, .length = sizeof(kShaderCodeD3D12)});
+            ShaderHost::Register("$NAME", "Vulkan", ShaderBlob{.code = kShaderCodeVulkan, .length = sizeof(kShaderCodeVulkan)});
+        }
+    } $NAMEInitializer;
+}

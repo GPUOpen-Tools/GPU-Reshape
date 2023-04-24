@@ -19,6 +19,8 @@
 
 // Common
 #include <Common/Format.h>
+#include <Common/CRC.h>
+#include <Common/Hash.h>
 
 // Common
 #include <Common/Registry.h>
@@ -71,7 +73,7 @@ void InstrumentationController::CreatePipeline(PipelineState *state) {
     if (!state->instrumentationInfo.featureBitSet) {
         return;
     }
-    
+
     // Add the state itself
     if (!immediateBatch.dirtyObjects.count(state)) {
         immediateBatch.dirtyObjects.insert(state);
@@ -86,7 +88,7 @@ void InstrumentationController::CreatePipeline(PipelineState *state) {
         if (immediateBatch.dirtyObjects.count(shaderState)) {
             continue;
         }
-                
+
         immediateBatch.dirtyObjects.insert(shaderState);
         immediateBatch.dirtyShaders.push_back(shaderState);
 
@@ -110,7 +112,7 @@ void InstrumentationController::PropagateInstrumentationInfo(PipelineState *stat
     }
 
     // Append filters
-    for (const FilterEntry& entry : filteredInstrumentationInfo) {
+    for (const FilterEntry &entry: filteredInstrumentationInfo) {
         if (!FilterPipeline(state, entry)) {
             continue;
         }
@@ -119,6 +121,12 @@ void InstrumentationController::PropagateInstrumentationInfo(PipelineState *stat
         state->instrumentationInfo.featureBitSet |= entry.instrumentationInfo.featureBitSet;
         state->instrumentationInfo.specialization.Append(entry.instrumentationInfo.specialization);
     }
+
+    // Compute hash
+    state->instrumentationInfo.specializationHash = BufferCRC64(
+        state->instrumentationInfo.specialization.GetDataBegin(),
+        state->instrumentationInfo.specialization.GetByteSize()
+    );
 }
 
 void InstrumentationController::PropagateInstrumentationInfo(ShaderState *state) {
@@ -134,6 +142,12 @@ void InstrumentationController::PropagateInstrumentationInfo(ShaderState *state)
         state->instrumentationInfo.featureBitSet |= it->second.featureBitSet;
         state->instrumentationInfo.specialization.Append(it->second.specialization);
     }
+
+    // Compute hash
+    state->instrumentationInfo.specializationHash = BufferCRC64(
+        state->instrumentationInfo.specialization.GetDataBegin(),
+        state->instrumentationInfo.specialization.GetByteSize()
+    );
 }
 
 bool InstrumentationController::FilterPipeline(PipelineState *state, const FilterEntry &filter) {
@@ -153,7 +167,7 @@ bool InstrumentationController::FilterPipeline(PipelineState *state, const Filte
 
 void InstrumentationController::Handle(const MessageStream *streams, uint32_t count) {
     std::lock_guard guard(mutex);
-    
+
     for (uint32_t i = 0; i < count; i++) {
         ConstMessageStreamView view(streams[i]);
 
@@ -185,7 +199,7 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             if (virtualFeatureRedirects.size() != 64) {
                 virtualFeatureRedirects.resize(64);
             }
-            
+
             // Note: Not a free search, however, for the purposes of virtual redirects this is sufficient
             for (size_t i = 0; i < device->features.size(); i++) {
                 if (device->features[i]->GetInfo().name == message->name.View()) {
@@ -304,7 +318,7 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
 
                 // Own lifetime
                 shaderState->AddUser();
-                
+
                 immediateBatch.dirtyObjects.insert(shaderState);
                 immediateBatch.dirtyShaders.push_back(shaderState);
             }
@@ -315,7 +329,7 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             auto *message = it.Get<SetOrAddFilteredPipelineInstrumentationMessage>();
 
             // Remove all with matching guid
-            filteredInstrumentationInfo.erase(std::ranges::remove_if(filteredInstrumentationInfo, [&](const FilterEntry& entry) {
+            filteredInstrumentationInfo.erase(std::ranges::remove_if(filteredInstrumentationInfo, [&](const FilterEntry &entry) {
                 return entry.guid == message->guid.View();
             }).begin(), filteredInstrumentationInfo.end());
 
@@ -351,7 +365,7 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             auto *message = it.Get<SetOrAddFilteredPipelineInstrumentationMessage>();
 
             // Try to find
-            auto it = std::find_if(filteredInstrumentationInfo.begin(), filteredInstrumentationInfo.end(), [&](const FilterEntry& entry) {
+            auto it = std::find_if(filteredInstrumentationInfo.begin(), filteredInstrumentationInfo.end(), [&](const FilterEntry &entry) {
                 return entry.guid == message->guid.View();
             });
 
@@ -404,7 +418,7 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
 
                     // Own lifetime
                     shaderState->AddUser();
-                
+
                     immediateBatch.dirtyObjects.insert(shaderState);
                     immediateBatch.dirtyShaders.push_back(shaderState);
                 }
@@ -438,7 +452,7 @@ void InstrumentationController::SetInstrumentationInfo(InstrumentationInfo &info
         }
     } else {
         // No virtualization, just inherit
-        info.featureBitSet = bitSet;        
+        info.featureBitSet = bitSet;
     }
 
     // Transfer sub stream
@@ -450,7 +464,7 @@ void InstrumentationController::CommitInstrumentation() {
     if (immediateBatch.dirtyObjects.empty()) {
         return;
     }
-    
+
     compilationEvent.IncrementHead();
 
     // Diagnostic
@@ -463,17 +477,17 @@ void InstrumentationController::CommitInstrumentation() {
 #endif // LOG_INSTRUMENTATION
 
     // Re-propagate all shaders
-    for (ShaderState* state : immediateBatch.dirtyShaders) {
+    for (ShaderState *state: immediateBatch.dirtyShaders) {
         PropagateInstrumentationInfo(state);
     }
 
     // Re-propagate all pipelines
-    for (PipelineState* state : immediateBatch.dirtyPipelines) {
+    for (PipelineState *state: immediateBatch.dirtyPipelines) {
         PropagateInstrumentationInfo(state);
     }
 
     // Copy batch
-    auto* batch = new (registry->GetAllocators(), kAllocInstrumentation) Batch(immediateBatch);
+    auto *batch = new(registry->GetAllocators(), kAllocInstrumentation) Batch(immediateBatch);
     batch->stampBegin = std::chrono::high_resolution_clock::now();
 
     // Summarize the needed feature set
@@ -517,16 +531,16 @@ void InstrumentationController::Commit() {
     CommitInstrumentation();
 }
 
-void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *data) {
-    auto* batch = static_cast<Batch*>(data);
+void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *data) {
+    auto *batch = static_cast<Batch *>(data);
     batch->stampBeginShaders = std::chrono::high_resolution_clock::now();
 
     // Submit compiler jobs
-    for (ShaderState* state : batch->dirtyShaders) {
+    for (ShaderState *state: batch->dirtyShaders) {
         uint64_t shaderFeatureBitSet = state->instrumentationInfo.featureBitSet;
 
         // Perform feedback from the dependent objects
-        for (PipelineState* dependentObject : device->dependencies_shaderPipelines.Get(state)) {
+        for (PipelineState *dependentObject: device->dependencies_shaderPipelines.Get(state)) {
             // Get the super feature set
             uint64_t featureBitSet = shaderFeatureBitSet | dependentObject->instrumentationInfo.featureBitSet;
 
@@ -536,13 +550,17 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             }
 
             // Number root info
-            const RootRegisterBindingInfo& signatureBindingInfo = dependentObject->signature->rootBindingInfo;
+            const RootRegisterBindingInfo &signatureBindingInfo = dependentObject->signature->rootBindingInfo;
 
             // Create the instrumentation key
             ShaderInstrumentationKey instrumentationKey{};
             instrumentationKey.featureBitSet = featureBitSet;
             instrumentationKey.physicalMapping = dependentObject->signature->physicalMapping;
             instrumentationKey.bindingInfo = signatureBindingInfo;
+
+            // Combine hashes
+            instrumentationKey.combinedHash = dependentObject->instrumentationInfo.specializationHash;
+            CombineHash(instrumentationKey.combinedHash, dependentObject->signature->physicalMapping->signatureHash);
 
             // Attempt to reserve
             if (!state->Reserve(instrumentationKey)) {
@@ -606,6 +624,10 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             instrumentationKey.featureBitSet = featureBitSet;
             instrumentationKey.physicalMapping = state->signature->physicalMapping;
             instrumentationKey.bindingInfo = signatureBindingInfo;
+
+            // Combine hashes
+            instrumentationKey.combinedHash = state->instrumentationInfo.specializationHash;
+            CombineHash(instrumentationKey.combinedHash, state->signature->physicalMapping->signatureHash);
 
             // Assign key
             job.shaderInstrumentationKeys[shaderIndex] = instrumentationKey;
@@ -734,6 +756,11 @@ uint64_t InstrumentationController::SummarizeFeatureBitSet() {
 void InstrumentationController::BeginCommandList() {
     // If syncronous, wait for the head compilation counter
     if (synchronousRecording) {
+        // Commit all pending instrumentation
+        std::lock_guard guard(mutex);
+        CommitInstrumentation();
+
+        // Wait til head
         compilationEvent.Wait(compilationEvent.GetHead());
     }
 }

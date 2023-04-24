@@ -55,6 +55,12 @@ struct Program {
     /// Kernel info
     Kernel kernel;
 
+    /// Optional executor
+    std::string_view executor;
+
+    /// Is this program safe guarded?
+    bool isSafeGuarded{false};
+
     /// Expected invocations
     std::vector<ProgramInvocation> invocations;
 

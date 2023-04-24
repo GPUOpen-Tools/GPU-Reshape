@@ -64,7 +64,7 @@ PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count)
     indices[id] = static_cast<uint32_t>(segments.size());
 
     // Create new segment
-    SegmentEntry& entry = segments.emplace_back();
+    PhysicalResourceMappingTableSegment& entry = segments.emplace_back();
     entry.id = id;
     entry.offset = head;
     entry.length = count;
@@ -152,7 +152,7 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
     // Dummy initialize all new VRMs
     for (uint32_t i = migratedCount; i < virtualMappingCount; i++) {
         virtualMappings[i] = VirtualResourceMapping{
-            .puid = 0,
+            .puid = IL::kResourceTokenPUIDUndefined,
             .type = 0,
             .srb = 0
         };
@@ -181,12 +181,9 @@ void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
         Defragment();
     }
 
-    // Number of mappings to copy
-    size_t actualMappingCount = segments.back().offset + segments.back().length;
-
     // Copy host to device
     VkBufferCopy copyRegion;
-    copyRegion.size = actualMappingCount * sizeof(VirtualResourceMapping);
+    copyRegion.size = virtualMappingCount * sizeof(VirtualResourceMapping);
     copyRegion.srcOffset = 0;
     copyRegion.dstOffset = 0;
     table->commandBufferDispatchTable.next_vkCmdCopyBuffer(commandBuffer, hostBuffer, deviceBuffer, 1u, &copyRegion);
@@ -211,7 +208,7 @@ VirtualResourceMapping* PhysicalResourceMappingTable::ModifyMappings(PhysicalRes
     isDirty = true;
 
     // Get the underlying segment
-    SegmentEntry& segment = segments.at(indices.at(id));
+    PhysicalResourceMappingTableSegment& segment = segments.at(indices.at(id));
 
     // Get mapping start
     ASSERT(offset + count <= segment.length, "Physical segment offset out of bounds");
@@ -222,7 +219,7 @@ void PhysicalResourceMappingTable::WriteMapping(PhysicalResourceSegmentID id, ui
     isDirty = true;
 
     // Get the underlying segment
-    SegmentEntry& segment = segments.at(indices.at(id));
+    PhysicalResourceMappingTableSegment& segment = segments.at(indices.at(id));
 
     // Write mapping
     ASSERT(offset < segment.length, "Physical segment offset out of bounds");
@@ -260,7 +257,7 @@ void PhysicalResourceMappingTable::Defragment() {
 
     // Remove dead segments
     for (size_t i = 0; i < segments.size(); i++) {
-        const SegmentEntry& peekSegment = segments[i];
+        const PhysicalResourceMappingTableSegment& peekSegment = segments[i];
 
         // Skip if removed, or not fragmented
         if (peekSegment.length == 0 || liveHead == i) {
@@ -287,13 +284,13 @@ void PhysicalResourceMappingTable::Defragment() {
     fragmentedEntries = 0;
 }
 
-uint32_t PhysicalResourceMappingTable::GetSegmentShaderOffset(PhysicalResourceSegmentID id) {
-    return segments.at(indices.at(id)).offset;
+PhysicalResourceMappingTableSegment PhysicalResourceMappingTable::GetSegmentShader(PhysicalResourceSegmentID id) {
+    return segments.at(indices.at(id));
 }
 
 VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(PhysicalResourceSegmentID id, uint32_t offset) const {
     // Get the underlying segment
-    const SegmentEntry& segment = segments.at(indices.at(id));
+    const PhysicalResourceMappingTableSegment& segment = segments.at(indices.at(id));
 
     // Write mapping
     ASSERT(offset < segment.length, "Physical segment offset out of bounds");

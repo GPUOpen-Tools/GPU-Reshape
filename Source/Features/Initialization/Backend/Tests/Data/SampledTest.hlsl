@@ -9,7 +9,7 @@
 //! RESOURCE Texture2D<R32Float> size:64,64
 [[vk::binding(1)]] Texture2D<float> textureRO : register(t1, space0);
 
-//! RESOURCE SamplerState
+//! RESOURCE StaticSamplerState
 [[vk::binding(2)]] SamplerState defaultSampler : register(s2, space0);
 
 [numthreads(64, 1, 1)]

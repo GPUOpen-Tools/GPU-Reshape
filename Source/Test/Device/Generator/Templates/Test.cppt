@@ -6,6 +6,7 @@ $DEFINES
 // Test
 #include <Test/Device/IDevice.h>
 #include <Test/Device/Catch2.h>
+#include <Test/Device/ShaderHost.h>
 
 // Backend
 #include <Backend/IShaderSGUIDHost.h>
@@ -31,6 +32,7 @@ $DEFINES
 
 // Common
 #include <Common/Registry.h>
+#include <Common/Sink.h>
 
 // Std
 #include <functional>
@@ -45,19 +47,86 @@ $INCLUDES
 
 using namespace Test;
 
+// Execute test
+#if !INLINE_EXECUTOR
+extern void $EXECUTOR(Test::IDevice*);
+#endif // INLINE_EXECUTOR
+
 namespace {
 
 $CONSTRAINTS;
 
-struct ShaderCode {
-    const void* code{nullptr};
-    uint32_t size{0};
-};
+#if INLINE_EXECUTOR
+static void $TEST_NAMEExecutor(Test::IDevice* device) {
+    // Optional, resource set
+    ResourceSetID resourceSet;
+
+    // All layouts
+    std::vector<ResourceLayoutID> layouts;
+
+    // Any resources?
+    const bool hasResources = $HAS_RESOURCES;
+    if (hasResources) {
+        // Create all resources
+        $RESOURCES_CREATE
+
+        // Types for layout definition
+        ResourceType resourceTypes[] = {
+            $RESOURCES_TYPES
+        };
+
+        // Create layout
+        ResourceLayoutID layout = device->CreateResourceLayout(resourceTypes, sizeof(resourceTypes) / sizeof(ResourceType));
+
+        // Resources for set
+        ResourceID resources[] = {
+            $RESOURCES_SET
+        };
+
+        // Create set
+        resourceSet = device->CreateResourceSet(layout, resources, sizeof(resources) / sizeof(ResourceID));
+
+        // Add layout
+        layouts.push_back(layout);
+    }
+
+    // Get the shader
+    ShaderBlob blob = ShaderHost::Get("$TEST_NAME", device->GetName());
+
+    // Create pipeline
+    PipelineID pipeline = device->CreateComputePipeline(layouts.data(), static_cast<uint32_t>(layouts.size()), blob.code, blob.length);
+
+    // Create command buffer
+    CommandBufferID commandBuffer = device->CreateCommandBuffer(QueueType::Graphics);
+
+    // Begin!
+    device->BeginCommandBuffer(commandBuffer);
+
+    // Init all resources
+    device->InitializeResources(commandBuffer);
+
+    // Bind pipeline and resources
+    device->BindPipeline(commandBuffer, pipeline);
+
+    // Bind resources if needed
+    if (hasResources) {
+        device->BindResourceSet(commandBuffer, 0u, resourceSet);
+    }
+
+    $COMMANDS
+
+    // End!
+    device->EndCommandBuffer(commandBuffer);
+
+    // Submit on generic graphics
+    device->Submit(device->GetQueue(QueueType::Graphics), commandBuffer);
+}
+#endif // INLINE_EXECUTOR
 
 template<typename DEVICE>
 class $TEST_NAMERunner {
 public:
-    void Run(const ShaderCode& code) {
+    void Run() {
         Backend::EnvironmentInfo info;
         info.memoryBridge = true;
         environment.Install(info);
@@ -73,7 +142,7 @@ public:
 
 $CONSTRAINT_INSTALL
 
-        Execute(code);
+        Execute();
         Validate();
     }
 
@@ -86,23 +155,39 @@ private:
         MessageStream stream;
 #ifdef _MSC_VER // Clang-cl bug, works fine for other tests
         MessageStreamView<void, MessageStream> view(stream);
-#else
+#else // _MSC_VER
         MessageStreamView view(stream);
-#endif
+#endif // _MSC_VER
+
         // Make the recording wait for compilation
         auto config = view.Add<SetInstrumentationConfigMessage>();
-        config->synchronousRecording = 1;
+        config->synchronousRecording = 1u;
+
+        // Specialization stream
+        MessageStream specializationStream;
+        MessageStreamView<> specializationView(specializationStream);
+
+#if SAFE_GUARDED
+        // Mark as safe-guarded
+        auto set = specializationView.Add<SetSafeGuardMessage>();
+        set->enabled = 1u;
+#endif // SAFE_GUARDED
 
         // Global instrumentation
-        auto msg = view.Add<SetGlobalInstrumentationMessage>();
+        auto msg = view.Add<SetGlobalInstrumentationMessage>(SetGlobalInstrumentationMessage::AllocationInfo {
+            .specializationByteSize = specializationStream.GetByteSize()
+        });
         msg->featureBitSet = ~0ull;
+
+        // Transfer
+        msg->specialization.Set(specializationStream);
 
         // Submit configuration
         bridge->GetOutput()->AddStream(stream);
         bridge->Commit();
     }
 
-    void Execute(const ShaderCode& code) {
+    void Execute() {
         Registry* registry = environment.GetRegistry();
 
         // Create a device
@@ -113,68 +198,17 @@ private:
         info.enableValidation = false;
         device->Install(info);
 
-        // Optional, resource set
-        ResourceSetID resourceSet;
-
-        // All layouts
-        std::vector<ResourceLayoutID> layouts;
-
-        // Any resources?
-        const bool hasResources = $HAS_RESOURCES;
-
-        if (hasResources) {
-            // Create all resources
-$RESOURCES_CREATE
-
-            // Types for layout definition
-            ResourceType resourceTypes[] = {
-$RESOURCES_TYPES
-            };
-
-            // Create layout
-            ResourceLayoutID layout = device->CreateResourceLayout(resourceTypes, sizeof(resourceTypes) / sizeof(ResourceType));
-
-            // Resources for set
-            ResourceID resources[] = {
-$RESOURCES_SET
-            };
-
-            // Create set
-            resourceSet = device->CreateResourceSet(layout, resources, sizeof(resources) / sizeof(ResourceID));
-
-            // Add layout
-            layouts.push_back(layout);
-        }
-
-        // Create pipeline
-        PipelineID pipeline = device->CreateComputePipeline(layouts.data(), static_cast<uint32_t>(layouts.size()), code.code, code.size);
-
         // Set the bridge up for the expected communication
         ConfigureBridge();
 
-        // Create command buffer
-        CommandBufferID commandBuffer = device->CreateCommandBuffer(QueueType::Graphics);
+        // Execute test
+#if INLINE_EXECUTOR
+        $TEST_NAMEExecutor(device.GetUnsafe());
+#else // INLINE_EXECUTOR
+        $EXECUTOR(device.GetUnsafe());
+#endif // INLINE_EXECUTOR
 
-        // Begin!
-        device->BeginCommandBuffer(commandBuffer);
-
-        // Init all resources
-        device->InitializeResources(commandBuffer);
-
-        // Bind pipeline and resources
-        device->BindPipeline(commandBuffer, pipeline);
-
-        if (hasResources) {
-            device->BindResourceSet(commandBuffer, resourceSet);
-        }
-
-$COMMANDS
-
-        // End!
-        device->EndCommandBuffer(commandBuffer);
-
-        // Submit on generic graphics
-        device->Submit(device->GetQueue(QueueType::Graphics), commandBuffer);
+        // Flush pending work
         device->Flush();
     }
 
@@ -191,19 +225,13 @@ $CONSTRAINT_FIELDS
 TEST_CASE("GRS.Features.$FEATURE_NAME.$TEST_NAME") {
 #ifdef ENABLE_BACKEND_VULKAN
     SECTION("Vulkan") {
-        $TEST_NAMERunner<Vulkan::Device>{}.Run(ShaderCode {
-            .code = kShaderCodeVulkan,
-            .size = sizeof(kShaderCodeVulkan)
-        });
+        $TEST_NAMERunner<Vulkan::Device>{}.Run();
     }
 #endif // ENABLE_BACKEND_VULKAN
 
 #ifdef ENABLE_BACKEND_DX12
     SECTION("DX12") {
-        $TEST_NAMERunner<DX12::Device>{}.Run(ShaderCode {
-            .code = kShaderCodeD3D12,
-            .size = sizeof(kShaderCodeD3D12)
-        });
+        $TEST_NAMERunner<DX12::Device>{}.Run();
     }
 #endif // ENABLE_BACKEND_DX12
 }

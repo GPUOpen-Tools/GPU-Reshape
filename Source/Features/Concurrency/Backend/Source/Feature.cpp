@@ -1,4 +1,5 @@
-#include <Features/Concurrency//Feature.h>
+#include <Features/Concurrency/Feature.h>
+#include <Features/Descriptor/Feature.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -64,7 +65,7 @@ void ConcurrencyFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-void ConcurrencyFeature::Inject(IL::Program &program) {
+void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Get the data ids
     IL::ID lockBufferDataID = program.GetShaderDataMap().Get(lockBufferID)->id;
     IL::ID eventDataID = program.GetShaderDataMap().Get(eventID)->id;
@@ -172,6 +173,12 @@ FeatureInfo ConcurrencyFeature::GetInfo() {
     FeatureInfo info;
     info.name = "Concurrency";
     info.description = "Instrumentation and validation of race conditions across events or queues";
+
+    // Resource bounds requires valid descriptor data, for proper safe-guarding add the descriptor feature as a dependency.
+    // This ensures that during instrumentation, we are operating on the already validated, and potentially safe-guarded, descriptor data.
+    info.dependencies.push_back(DescriptorFeature::kID);
+
+    // OK
     return info;
 }
 

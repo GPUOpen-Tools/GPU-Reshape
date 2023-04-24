@@ -19,13 +19,20 @@ $INITS
     void Handle(const MessageStream *streams, uint32_t count) override {
         auto sguidHost = registry->Get<ShaderSGUIDHostListener>();
 
+        // Validate all streams
         for (uint32_t i = 0; i < count; i++) {
             ConstMessageStreamView<$MESSAGE_TYPEMessage> view(streams[i]);
 
             // Validate all messages
             for (auto it = view.GetIterator(); it; ++it) {
+                // For debugging
+                auto message = it.Get();
+                GRS_SINK(message);
+
+                // Validate guid
                 REQUIRE_FORMAT(it->sguid != InvalidShaderSGUID, "Message $MESSAGE_TYPE missing sguid");
 
+                // Get line
                 uint32_t line = sguidHost->GetMapping(it->sguid).line;
 
                 // Find the respective message
@@ -37,6 +44,7 @@ $INITS
                     }
                 }
 
+                // Missing bucket?
                 REQUIRE_FORMAT(bucket != nullptr, "Message $MESSAGE_TYPE reported, but no match found on line " << line);
 
 $TESTS

@@ -23,7 +23,7 @@ struct SpvUtilShaderDescriptorConstantData {
     /// Export a given value
     /// \param stream the current spirv stream
     /// \param value the resource id
-    IL::ID GetDescriptorOffset(SpvStream& stream, uint32_t index);
+    IL::ID GetDescriptorData(SpvStream& stream, uint32_t index);
 
     /// Copy to a new block
     /// \param remote the new block table

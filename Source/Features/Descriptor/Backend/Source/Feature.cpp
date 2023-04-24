@@ -8,12 +8,17 @@
 #include <Backend/IL/ResourceTokenEmitter.h>
 #include <Backend/IL/ResourceTokenType.h>
 #include <Backend/CommandContext.h>
+#include <Backend/IL/BasicBlockFlags.h>
+#include <Backend/IL/ResourceTokenPacking.h>
 
 // Generated schema
 #include <Schemas/Features/Descriptor.h>
+#include <Schemas/Instrumentation.h>
 
 // Message
 #include <Message/IMessageStorage.h>
+#include <Message/MessageStreamCommon.h>
+#include <Message/MessageStream.h>
 
 // Common
 #include <Common/Registry.h>
@@ -48,9 +53,12 @@ void DescriptorFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-void DescriptorFeature::Inject(IL::Program &program) {
+void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
+    // Options
+    const bool isSafeGuarded = FindOrDefault<SetSafeGuardMessage>(specialization, {.enabled = false}).enabled;
+
     // Visit all instructions
-    IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
+    IL::VisitUserInstructions(program, [&](IL::VisitContext &context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
         // Pooled resource id
         IL::ID resource;
 
@@ -58,7 +66,6 @@ void DescriptorFeature::Inject(IL::Program &program) {
         Backend::IL::ResourceTokenType compileTypeLiteral;
 
         // Instruction of interest?
-        // TODO: Expose samplers!
         switch (it->opCode) {
             default:
                 return it;
@@ -78,17 +85,35 @@ void DescriptorFeature::Inject(IL::Program &program) {
                 resource = it->As<IL::LoadTextureInstruction>()->texture;
                 compileTypeLiteral = Backend::IL::ResourceTokenType::Texture;
                 break;
+            case IL::OpCode::SampleTexture:
+                resource = it->As<IL::SampleTextureInstruction>()->texture;
+                compileTypeLiteral = Backend::IL::ResourceTokenType::Texture;
+                break;
         }
 
         // Bind the SGUID
         ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
 
         // Allocate resume
-        IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock();
+        IL::BasicBlock *resumeBlock = context.function.GetBasicBlocks().AllocBlock();
 
         // Split this basic block, move all instructions post and including the instrumented instruction to resume
         // ! iterator invalidated
-        auto instr = context.basicBlock.Split(resumeBlock, it);
+        auto instr = context.basicBlock.Split(resumeBlock, isSafeGuarded ? std::next(it) : it);
+
+        // Allocate match block if safe-guarded
+        IL::BasicBlock* matchBlock;
+        if (isSafeGuarded) {
+            matchBlock = context.function.GetBasicBlocks().AllocBlock();
+            matchBlock->AddFlag(BasicBlockFlag::Visited);
+
+            // Move offending instruction to this block
+            context.basicBlock.Split(matchBlock, it);
+
+            // Branch back to resume
+            IL::Emitter<> match(program, *matchBlock);
+            match.Branch(resumeBlock);
+        }
 
         // Allocate failure block
         IL::Emitter<> mismatch(program, *context.function.GetBasicBlocks().AllocBlock());
@@ -103,22 +128,38 @@ void DescriptorFeature::Inject(IL::Program &program) {
         // Get the types
         IL::ID compileType = pre.UInt32(static_cast<uint32_t>(compileTypeLiteral));
         IL::ID runtimeType = token.GetType();
+        IL::ID runtimePUID = token.GetPUID();
 
-        // Types must match
-        IL::ID cond = pre.NotEqual(compileType, runtimeType);
+        // Types must match, or out of bounds
+        IL::ID cond = pre.Or(
+            pre.NotEqual(compileType, runtimeType),
+            pre.GreaterThanEqual(runtimePUID, pre.UInt32(IL::kResourceTokenPUIDInvalidStart))
+        );
 
         // If so, branch to failure, otherwise resume
-        pre.BranchConditional(cond, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+        pre.BranchConditional(
+            cond,
+            mismatch.GetBasicBlock(), isSafeGuarded ? matchBlock : resumeBlock,
+            IL::ControlFlow::Selection(resumeBlock)
+        );
+
+        // Special PUIDs
+        IL::ID isUndefined   = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDUndefined));
+        IL::ID isOutOfBounds = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDOutOfBounds));
 
         // Export the message
         DescriptorMismatchMessage::ShaderExport msg;
         msg.sguid = mismatch.UInt32(sguid);
         msg.compileType = compileType;
         msg.runtimeType = runtimeType;
+        msg.isUndefined = mismatch.Select(isUndefined, mismatch.UInt32(1), mismatch.UInt32(0));
+        msg.isOutOfBounds = mismatch.Select(isOutOfBounds, mismatch.UInt32(1), mismatch.UInt32(0));
         mismatch.Export(exportID, msg);
 
-        // Branch back
+        // Branch to resume
         mismatch.Branch(resumeBlock);
+
+        // OK
         return instr;
     });
 }

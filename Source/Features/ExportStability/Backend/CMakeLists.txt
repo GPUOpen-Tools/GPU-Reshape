@@ -32,7 +32,7 @@ add_custom_command(
 
 # Test files
 Project_AddBackendTest_Common(GeneratedTest ExportStability)
-Project_AddBackendTest(GeneratedTest "-Od" ExportStability Tests/Data/SimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" ExportStability Tests/Data/ExportStabilitySimpleTest.hlsl)
 
 Project_AddTest(
         NAME GRS.Features.ExportStability.Tests
