@@ -203,6 +203,9 @@ namespace IL {
         /// Explicit gradients, optional
         ID ddx;
         ID ddy;
+
+        /// Offset, optional
+        ID offset;
     };
 
     struct LoadTextureInstruction : public Instruction {
@@ -210,6 +213,12 @@ namespace IL {
 
         ID texture;
         ID index;
+
+        /// Offset, optional
+        ID offset;
+
+        /// Mip level, optional
+        ID mip;
     };
 
     struct StoreTextureInstruction : public Instruction {

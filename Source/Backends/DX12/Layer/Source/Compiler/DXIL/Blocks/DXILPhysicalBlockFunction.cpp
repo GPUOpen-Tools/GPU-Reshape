@@ -16,9 +16,12 @@
 #include <Backend/IL/Constant.h>
 #include <Backend/IL/ID.h>
 #include <Backend/IL/ResourceTokenPacking.h>
+#include <Backend/IL/Instruction.h>
+#include <Backend/IL/Type.h>
 
 // Common
 #include <Common/Sink.h>
+#include <Common/Containers/TrivialStackVector.h>
 
 // Std
 #ifndef NDEBUG
@@ -1417,7 +1420,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t oz = reader.GetMappedRelative(anchor);
 
             // Unused
-            GRS_SINK(opCode, ox, oy, oz, mip);
+            GRS_SINK(opCode);
 
             // Get type
             const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
@@ -1427,6 +1430,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
 
             // Vectorize
             IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);
+            IL::ID svoxOffset     = AllocateSVOSequential(textureDimensionCount, ox, oy, oz);
 
             // Emit as store
             IL::LoadTextureInstruction instr{};
@@ -1434,6 +1438,8 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             instr.result = result;
             instr.source = IL::Source::Code(recordIdx);
             instr.texture = resource;
+            instr.mip = mip;
+            instr.offset = svoxOffset;
             instr.index = svoxCoordinate;
             basicBlock->Append(instr);
             return true;
@@ -1479,9 +1485,6 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t oy = reader.GetMappedRelative(anchor);
             uint32_t oz = reader.GetMappedRelative(anchor);
 
-            // Unused
-            GRS_SINK(ox, oy, oz);
-
             // Get type
             const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
 
@@ -1490,6 +1493,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
 
             // Vectorize
             IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz, cw);
+            IL::ID svoxOffset     = AllocateSVOSequential(textureDimensionCount, ox, oy, oz);
 
             // Emit as sample
             IL::SampleTextureInstruction instr{};
@@ -1505,6 +1509,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             instr.reference = IL::InvalidID;
             instr.ddx = IL::InvalidID;
             instr.ddy = IL::InvalidID;
+            instr.offset = svoxOffset;
 
             // Handle additional operands
             switch (static_cast<DXILOpcodes>(opCode)) {
@@ -3149,6 +3154,339 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     break;
                 }
 
+                case IL::OpCode::StoreTexture: {
+                    auto _instr = instr->As<IL::StoreTextureInstruction>();
+                    ASSERT(false, "Untested path, confirm");
+
+                    // Get type
+                    const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
+
+                    // Get intrinsic
+                    const DXILFunctionDeclaration *intrinsic;
+                    switch (Backend::IL::GetComponentType(textureType->sampledType)->kind) {
+                        default:
+                        ASSERT(false, "Invalid buffer element type");
+                            return;
+                        case Backend::IL::TypeKind::Int: {
+                            const auto* intType = textureType->sampledType->As<Backend::IL::IntType>();
+                            switch (intType->bitWidth) {
+                                default:
+                                    ASSERT(false, "Unsupported bit-width");
+                                    break;
+                                case 32:
+                                    intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpTextureStoreI32);
+                                    break;
+                            }
+                            break;
+                        }
+                        case Backend::IL::TypeKind::FP: {
+                            const auto* fpType = textureType->sampledType->As<Backend::IL::FPType>();
+                            switch (fpType->bitWidth) {
+                                default:
+                                    ASSERT(false, "Unsupported bit-width");
+                                    break;
+                                case 16:
+                                    intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpTextureStoreF16);
+                                    break;
+                                case 32:
+                                    intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpTextureStoreF32);
+                                    break;
+                            }
+                            break;
+                        }
+                    }
+
+                    uint64_t ops[10];
+
+                    // Opcode
+                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::TextureStore)}
+                    )->id);
+
+                    // Handle
+                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->texture);
+
+                    // Get component counts
+                    uint32_t indexCount = GetSVOXCount(_instr->index);
+                    uint32_t texelCount = GetSVOXCount(_instr->texel);
+
+                    // Undefined value
+                    uint32_t undefConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::UndefConstant{}
+                    )->id);
+
+                    // C0,1,2
+                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 0 ? ExtractSVOXElement(block, _instr->index, 0).value : undefConstant);
+                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 1 ? ExtractSVOXElement(block, _instr->index, 1).value : undefConstant);
+                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 2 ? ExtractSVOXElement(block, _instr->index, 2).value : undefConstant);
+
+                    // V0,1,2
+                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 0 ? ExtractSVOXElement(block, _instr->texel, 0).value : undefConstant);
+                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 1 ? ExtractSVOXElement(block, _instr->texel, 1).value : undefConstant);
+                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 2 ? ExtractSVOXElement(block, _instr->texel, 2).value : undefConstant);
+                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 3 ? ExtractSVOXElement(block, _instr->texel, 3).value : undefConstant);
+
+                    // Write mask
+                    ops[9] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(_instr->mask.value)}
+                    )->id);
+
+                    // Invoke into result
+                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 10, ops));
+                    break;
+                }
+
+                case IL::OpCode::LoadTexture: {
+                    auto _instr = instr->As<IL::LoadTextureInstruction>();
+                    ASSERT(false, "Untested path, confirm");
+
+                    // Get type
+                    const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
+
+                    // Get intrinsic
+                    const DXILFunctionDeclaration *intrinsic;
+                    switch (Backend::IL::GetComponentType(textureType->sampledType)->kind) {
+                        default:
+                            ASSERT(false, "Invalid buffer element type");
+                            return;
+                        case Backend::IL::TypeKind::Int: {
+                            const auto* intType = textureType->sampledType->As<Backend::IL::IntType>();
+                            switch (intType->bitWidth) {
+                                default:
+                                    ASSERT(false, "Unsupported bit-width");
+                                    break;
+                                case 32:
+                                    intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpTextureLoadI32);
+                                    break;
+                            }
+                            break;
+                        }
+                        case Backend::IL::TypeKind::FP: {
+                            const auto* fpType = textureType->sampledType->As<Backend::IL::FPType>();
+                            switch (fpType->bitWidth) {
+                                default:
+                                    ASSERT(false, "Unsupported bit-width");
+                                    break;
+                                case 16:
+                                    intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpTextureLoadF16);
+                                    break;
+                                case 32:
+                                    intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpTextureLoadF32);
+                                    break;
+                            }
+                            break;
+                        }
+                    }
+
+                    uint64_t ops[9];
+
+                    // Opcode
+                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::TextureStore)}
+                    )->id);
+
+                    // Handle
+                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->texture);
+
+                    // Mip
+                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->mip);
+
+                    // Get component counts
+                    uint32_t indexCount  = GetSVOXCount(_instr->index);
+                    uint32_t offsetCount = GetSVOXCount(_instr->offset);
+
+                    // Undefined value
+                    uint32_t undefConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::UndefConstant{}
+                    )->id);
+
+                    // C0,1,2
+                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 0 ? ExtractSVOXElement(block, _instr->index, 0).value : undefConstant);
+                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 1 ? ExtractSVOXElement(block, _instr->index, 1).value : undefConstant);
+                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 2 ? ExtractSVOXElement(block, _instr->index, 2).value : undefConstant);
+
+                    // O0,1,2
+                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 0 ? ExtractSVOXElement(block, _instr->offset, 0).value : undefConstant);
+                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 1 ? ExtractSVOXElement(block, _instr->offset, 1).value : undefConstant);
+                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 2 ? ExtractSVOXElement(block, _instr->offset, 2).value : undefConstant);
+
+                    // Invoke into result
+                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 10, ops));
+                    break;
+                }
+
+                case IL::OpCode::SampleTexture: {
+                    auto _instr = instr->As<IL::SampleTextureInstruction>();
+
+                    // Get type
+                    const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
+
+                    // Get bit-width
+                    uint32_t bitWidth = Backend::IL::GetComponentType(textureType->sampledType)->As<Backend::IL::FPType>()->bitWidth;
+                    ASSERT(bitWidth == 16 || bitWidth == 32, "Unsupported sampling operation");
+
+                    // Final op code
+                    DXILOpcodes opcode;
+
+                    // Final intrinsic
+                    const DXILFunctionDeclaration *intrinsic;
+
+                    // Select intrinsic and op-code
+                    if (_instr->bias != IL::InvalidID) {
+                        intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleBiasF16 : Intrinsics::DxOpSampleBiasF32);
+                        opcode = DXILOpcodes::SampleBias;
+                    } else if (_instr->lod != IL::InvalidID) {
+                        intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleLevelF16 : Intrinsics::DxOpSampleLevelF32);
+                        opcode = DXILOpcodes::SampleLevel;
+                    } else if (_instr->ddx != IL::InvalidID) {
+                        intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleGradF16 : Intrinsics::DxOpSampleGradF32);
+                        opcode = DXILOpcodes::SampleGrad;
+                    } else {
+                        intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleF16 : Intrinsics::DxOpSampleF32);
+                        opcode = DXILOpcodes::Sample;
+                    }
+
+                    // Optional, source record
+                    const LLVMRecord* sourceRecord = _instr->source.IsValid() ? &source[_instr->source.codeOffset] : nullptr;
+
+                    // Get original opcode, if possible
+                    DXILOpcodes sourceOpcode{};
+                    if (sourceRecord) {
+                        sourceOpcode = static_cast<DXILOpcodes>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(
+                            sourceRecord->sourceAnchor, sourceRecord->Op32(4)
+                        ))->value);
+                    }
+
+                    switch (_instr->sampleMode) {
+                        default:
+                            ASSERT(false, "Unexpected sample mode");
+                            break;
+                        case Backend::IL::TextureSampleMode::Default: {
+                            if (_instr->bias != IL::InvalidID) {
+                                intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleBiasF16 : Intrinsics::DxOpSampleBiasF32);
+                                opcode = DXILOpcodes::SampleBias;
+                            } else if (_instr->lod != IL::InvalidID) {
+                                intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleLevelF16 : Intrinsics::DxOpSampleLevelF32);
+                                opcode = DXILOpcodes::SampleLevel;
+                            } else if (_instr->ddx != IL::InvalidID) {
+                                intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleGradF16 : Intrinsics::DxOpSampleGradF32);
+                                opcode = DXILOpcodes::SampleGrad;
+                            } else {
+                                intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleF16 : Intrinsics::DxOpSampleF32);
+                                opcode = DXILOpcodes::Sample;
+                            }
+                            break;
+                        }
+                        case Backend::IL::TextureSampleMode::DepthComparison: {
+                            intrinsic = table.intrinsics.GetIntrinsic(bitWidth == 16 ? Intrinsics::DxOpSampleCmpF16 : Intrinsics::DxOpSampleCmpF32);
+                            opcode = sourceOpcode == DXILOpcodes::SampleCmpLevelZero ? DXILOpcodes::SampleCmpLevelZero : DXILOpcodes::SampleCmp;
+                            break;
+                        }
+                    }
+
+                    TrivialStackVector<uint64_t, 16> ops;
+
+                    // Opcode
+                    ops.Add(table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(opcode)}
+                    )->id));
+
+                    // Handle
+                    ops.Add(table.idRemapper.EncodeRedirectedUserOperand(_instr->texture));
+
+                    // Sampler
+                    ops.Add(table.idRemapper.EncodeRedirectedUserOperand(_instr->sampler));
+
+                    // Get component counts
+                    uint32_t coordinateCount  = GetSVOXCount(_instr->coordinate);
+                    uint32_t offsetCount = GetSVOXCount(_instr->offset);
+
+                    // Undefined value
+                    uint64_t undefFPConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::FPType{.bitWidth=32}),
+                        Backend::IL::UndefConstant{}
+                    )->id);
+
+                    // Undefined value
+                    uint64_t undefIntConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=false}),
+                        Backend::IL::UndefConstant{}
+                    )->id);
+
+                    // C0,1,2
+                    ops.Add(coordinateCount > 0 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->coordinate, 0).value) : undefFPConstant);
+                    ops.Add(coordinateCount > 1 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->coordinate, 1).value) : undefFPConstant);
+                    ops.Add(coordinateCount > 2 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->coordinate, 2).value) : undefFPConstant);
+                    ops.Add(coordinateCount > 3 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->coordinate, 3).value) : undefFPConstant);
+
+                    // O0,1,2
+                    ops.Add(offsetCount > 0 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->offset, 0).value) : undefIntConstant);
+                    ops.Add(offsetCount > 1 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->offset, 1).value) : undefIntConstant);
+                    ops.Add(offsetCount > 2 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->offset, 2).value) : undefIntConstant);
+
+                    // Handle additional operands
+                    switch (opcode) {
+                        default: {
+                            ASSERT(false, "Unexpected sampling opcode");
+                            break;
+                        }
+                        case DXILOpcodes::Sample: {
+                            ops.Add(sourceOpcode == opcode ? sourceRecord->Op(4+10) : undefFPConstant);
+                            break;
+                        }
+                        case DXILOpcodes::SampleBias: {
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(_instr->bias));
+
+                            // Clamp
+                            ops.Add(sourceOpcode == opcode ? sourceRecord->Op(4+11) : undefFPConstant);
+                            break;
+                        }
+                        case DXILOpcodes::SampleCmp: {
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(_instr->reference));
+
+                            // Clamp
+                            ops.Add(sourceOpcode == opcode ? sourceRecord->Op(4+11) : undefFPConstant);
+                            break;
+                        }
+                        case DXILOpcodes::SampleCmpLevelZero: {
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(_instr->reference));
+                            break;
+                        }
+                        case DXILOpcodes::SampleGrad: {
+                            // Get component counts
+                            uint32_t ddCount = GetSVOXCount(_instr->ddx);
+
+                            // DDX
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 0 ? ExtractSVOXElement(block, _instr->ddx, 0).value : undefFPConstant));
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 1 ? ExtractSVOXElement(block, _instr->ddx, 1).value : undefFPConstant));
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 2 ? ExtractSVOXElement(block, _instr->ddx, 2).value : undefFPConstant));
+
+                            // DDY
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 0 ? ExtractSVOXElement(block, _instr->ddy, 0).value : undefFPConstant));
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 1 ? ExtractSVOXElement(block, _instr->ddy, 1).value : undefFPConstant));
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 2 ? ExtractSVOXElement(block, _instr->ddy, 2).value : undefFPConstant));
+
+                            // Clamp
+                            ops.Add(sourceOpcode == opcode ? sourceRecord->Op(4+16) : undefFPConstant);
+                            break;
+                        }
+                        case DXILOpcodes::SampleLevel: {
+                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(_instr->lod));
+                            break;
+                        }
+                    }
+
+                    // Invoke into result
+                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, static_cast<uint32_t>(ops.Size()), ops.Data()));
+                    break;
+                }
+
                 case IL::OpCode::Extract: {
                     auto _instr = instr->As<IL::ExtractInstruction>();
 
@@ -3167,16 +3505,6 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     case IL::OpCode::Load:
                         break;
                     case IL::OpCode::Store:
-                        break;
-                    case IL::OpCode::StoreTexture:
-                        break;
-                    case IL::OpCode::LoadTexture:
-                        break;
-                    case IL::OpCode::StoreOutput:
-                        break;
-                    case IL::OpCode::StoreBuffer:
-                        break;
-                    case IL::OpCode::LoadBuffer:
                         break;
 #endif
             }

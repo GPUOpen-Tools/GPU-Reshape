@@ -9,6 +9,7 @@
 // Backend
 #include <Backend/IL/ConstantMap.h>
 #include <Backend/IL/IdentifierMap.h>
+#include <Backend/IL/Constant.h>
 
 // Std
 #include <vector>
@@ -118,6 +119,8 @@ private:
                 return CompileConstant(static_cast<const Backend::IL::FPConstant*>(constant));
             case Backend::IL::ConstantKind::Undef:
                 return CompileConstant(static_cast<const Backend::IL::UndefConstant*>(constant));
+            case Backend::IL::ConstantKind::Null:
+                return CompileConstant(static_cast<const Backend::IL::NullConstant*>(constant));
         }
     }
 
@@ -151,6 +154,14 @@ private:
     /// Compile a given constant
     uint64_t CompileConstant(const Backend::IL::UndefConstant* constant) {
         LLVMRecord record(LLVMConstantRecord::Undef);
+        record.opCount = 0;
+        record.ops = recordAllocator.AllocateArray<uint64_t>(1);
+        return Emit(constant, record);
+    }
+
+    /// Compile a given constant
+    uint64_t CompileConstant(const Backend::IL::NullConstant* constant) {
+        LLVMRecord record(LLVMConstantRecord::Null);
         record.opCount = 0;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
         return Emit(constant, record);

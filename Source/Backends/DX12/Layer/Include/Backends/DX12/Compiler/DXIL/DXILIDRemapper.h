@@ -10,6 +10,7 @@
 
 // Backend
 #include <Backend/IL/ID.h>
+#include <Backend/IL/Source.h>
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -258,8 +259,16 @@ struct DXILIDRemapper {
                 mapping = stitchSegment.sourceMappings.at(record.sourceAnchor + DXILIDRemapper::DecodeForward(static_cast<uint32_t>(source)));
             }
 
-            // Valid?
-            ASSERT(mapping != ~0u, "Remapped not found on source operand");
+            // If failed, this may be a replaced identifier, try user space
+            if (mapping == ~0u) {
+                // Get mapped identifier
+                IL::ID id = idMap.GetMapped(record.sourceAnchor - source);
+                ASSERT(id != IL::InvalidOffset, "Remapped failed to potentially replaced identifier");
+
+                // Get absolute mapping
+                mapping = TryGetUserMapping(id);
+                ASSERT(mapping != ~0u, "Remapped not found on user operand");
+            }
 
             // Assign absolute
             absoluteRemap = mapping;
