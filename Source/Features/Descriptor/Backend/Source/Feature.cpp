@@ -10,6 +10,8 @@
 #include <Backend/CommandContext.h>
 #include <Backend/IL/BasicBlockFlags.h>
 #include <Backend/IL/ResourceTokenPacking.h>
+#include <Backend/IL/BasicBlockCommon.h>
+#include <Backend/IL/Constant.h>
 
 // Generated schema
 #include <Schemas/Features/Descriptor.h>
@@ -91,6 +93,15 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
                 break;
         }
 
+        // Do we need a merge (phi) for result data?
+        const bool needsSafeGuardCFMerge = isSafeGuarded && it->result != IL::InvalidID;
+
+        // Resulting type of the instruction (safe-guarding)
+        const Backend::IL::Type* resultType{nullptr};
+        if (needsSafeGuardCFMerge) {
+            resultType = context.program.GetTypeMap().GetType(it->result);
+        }
+
         // Bind the SGUID
         ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
 
@@ -101,6 +112,11 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
         // ! iterator invalidated
         auto instr = context.basicBlock.Split(resumeBlock, isSafeGuarded ? std::next(it) : it);
 
+        // Safe-guard identifiers, later merged with phi
+        IL::ID safeGuardValue    = it->result;
+        IL::ID safeGuardRedirect = IL::InvalidID;
+        IL::ID safeGuardZero     = IL::InvalidID;
+
         // Allocate match block if safe-guarded
         IL::BasicBlock* matchBlock;
         if (isSafeGuarded) {
@@ -108,7 +124,13 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
             matchBlock->AddFlag(BasicBlockFlag::Visited);
 
             // Move offending instruction to this block
-            context.basicBlock.Split(matchBlock, it);
+            IL::BasicBlock::Iterator splitIt = context.basicBlock.Split(matchBlock, it);
+
+            // Redirect the user instruction
+            if (needsSafeGuardCFMerge) {
+                safeGuardRedirect = context.program.GetIdentifierMap().AllocID();
+                Backend::IL::RedirectResult(context.program, splitIt, safeGuardRedirect);
+            }
 
             // Branch back to resume
             IL::Emitter<> match(program, *matchBlock);
@@ -156,8 +178,28 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
         msg.isOutOfBounds = mismatch.Select(isOutOfBounds, mismatch.UInt32(1), mismatch.UInt32(0));
         mismatch.Export(exportID, msg);
 
+        // If safe-guarded, allocate null fallback constant
+        if (needsSafeGuardCFMerge) {
+            safeGuardZero = context.program.GetConstants().FindConstantOrAdd(resultType, Backend::IL::NullConstant{})->id;
+        }
+
         // Branch to resume
         mismatch.Branch(resumeBlock);
+
+        // If safe-guarded, phi the data back together
+        if (needsSafeGuardCFMerge) {
+            IL::Emitter<> resumeEmitter(program, *resumeBlock, instr);
+
+            // Select the appropriate type with phi
+            resumeEmitter.Phi(
+                safeGuardValue,
+                matchBlock, safeGuardRedirect,
+                mismatch.GetBasicBlock(), safeGuardZero
+            );
+
+            // Resume after phi
+            instr = resumeEmitter.GetIterator();
+        }
 
         // OK
         return instr;
