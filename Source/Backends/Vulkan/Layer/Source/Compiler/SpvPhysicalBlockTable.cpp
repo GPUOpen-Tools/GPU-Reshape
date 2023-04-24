@@ -54,6 +54,9 @@ bool SpvPhysicalBlockTable::Compile(const SpvJob &job) {
         return false;
     }
 
+    // Compile dynamic constant data
+    typeConstantVariable.CompileConstants();
+
     // OK
     return true;
 }

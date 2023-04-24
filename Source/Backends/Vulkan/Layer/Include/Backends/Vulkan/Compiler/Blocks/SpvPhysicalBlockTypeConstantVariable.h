@@ -1,6 +1,7 @@
 #pragma once
 
 // Layer
+#include <Backends/Vulkan/Compiler/SpvConstantMap.h>
 #include <Backends/Vulkan/Compiler/SpvTypeMap.h>
 #include <Backends/Vulkan/Compiler/Blocks/SpvPhysicalBlockSection.h>
 #include <Backends/Vulkan/Compiler/SpvBlock.h>
@@ -38,6 +39,9 @@ struct SpvPhysicalBlockTypeConstantVariable : public SpvPhysicalBlockSection {
     /// \param idMap the shared identifier map for proxies
     void Compile(SpvIdMap& idMap);
 
+    /// Compile all pending constants
+    void CompileConstants();
+
     /// Copy to a new block
     /// \param remote the remote table
     /// \param out destination type constant variable
@@ -45,6 +49,9 @@ struct SpvPhysicalBlockTypeConstantVariable : public SpvPhysicalBlockSection {
 
     /// SPIRV type map
     SpvTypeMap typeMap;
+
+    /// SPIRV constant map
+    SpvConstantMap constantMap;
 
 public:
     /// Create the PC block

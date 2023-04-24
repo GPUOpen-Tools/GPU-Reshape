@@ -1,3 +1,4 @@
+#include <Backends/Vulkan/Compiler/SpvInstruction.h>
 #include <Backends/Vulkan/Compiler/Blocks/SpvPhysicalBlockFunction.h>
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
@@ -5,6 +6,7 @@
 
 // Backend
 #include <Backend/IL/Emitter.h>
+#include <Backend/IL/ID.h>
 
 // Common
 #include <Common/Alloca.h>
@@ -943,19 +945,31 @@ bool SpvPhysicalBlockFunction::IsTriviallyCopyableSpecial(IL::BasicBlock *bb, co
 }
 
 IL::ID SpvPhysicalBlockFunction::MigrateCombinedImageSampler(SpvStream &stream, SpvIdMap &idMap, IL::BasicBlock *bb, const IL::SampleTextureInstruction *instr) {
-    // Get metadata
-    const IdentifierMetadata& samplerMetadata = identifierMetadata.at(instr->result);
-    ASSERT(samplerMetadata.type == IdentifierType::SampleTexture, "Unexpected metadata");
+    IL::ID combinedType = IL::InvalidID;
 
-    // Not combine sampler?
-    if (samplerMetadata.sampleImage.combinedImageSampler == IL::InvalidID) {
-        return idMap.Get(instr->texture);
-    }
+    // Has source?
+    if (instr->source.IsValid()) {
+        const SpvInstruction* spvInstr = stream.GetInstruction(instr->source);
 
-    // If within the same block, no need to migrate
-    IL::InstructionRef<> ref = program.GetIdentifierMap().Get(samplerMetadata.sampleImage.combinedImageSampler);
-    if (ref.basicBlock == bb) {
-        return idMap.Get(instr->texture);
+        // Get metadata
+        const IdentifierMetadata& samplerMetadata = identifierMetadata.at(spvInstr->Word(2));
+        ASSERT(samplerMetadata.type == IdentifierType::SampleTexture, "Unexpected metadata");
+
+        // Not combine sampler?
+        if (samplerMetadata.sampleImage.combinedImageSampler == IL::InvalidID) {
+            return idMap.Get(instr->texture);
+        }
+
+        // If within the same block, no need to migrate
+        IL::InstructionRef<> ref = program.GetIdentifierMap().Get(samplerMetadata.sampleImage.combinedImageSampler);
+        if (ref.basicBlock == bb) {
+            return idMap.Get(instr->texture);
+        }
+
+        // Set type
+        combinedType = samplerMetadata.sampleImage.combinedType;
+    } else {
+        ASSERT(false, "Not implemented");
     }
 
     // Allocate id
@@ -963,7 +977,7 @@ IL::ID SpvPhysicalBlockFunction::MigrateCombinedImageSampler(SpvStream &stream, 
 
     // Migrate combined sampler
     SpvInstruction& spv = stream.Allocate(SpvOpSampledImage, 5);
-    spv[1] = samplerMetadata.sampleImage.combinedType;
+    spv[1] = combinedType;
     spv[2] = id;
     spv[3] = idMap.Get(instr->texture);
     spv[4] = idMap.Get(instr->sampler);

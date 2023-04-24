@@ -67,6 +67,14 @@ struct SpvStream {
         return *reinterpret_cast<SpvInstruction*>(&stream[offset]);
     }
 
+    /// Get an instruction
+    /// \param source given source
+    /// \return instruction
+    const SpvInstruction* GetInstruction(const IL::Source& source) {
+        ASSERT(source.IsValid(), "Cannot template instruction without source");
+        return reinterpret_cast<const SpvInstruction*>(code + source.codeOffset);
+    }
+
     /// Template a source instruction if the source operand is valid, otherwise allocate a new one
     /// \tparam T the templated instruction type
     /// \param source the source word offset

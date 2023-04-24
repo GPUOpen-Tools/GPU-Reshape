@@ -1,3 +1,4 @@
+#include "Backend/IL/ConstantKind.h"
 #include <Backends/Vulkan/Compiler/Blocks/SpvPhysicalBlockTypeConstantVariable.h>
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
@@ -13,8 +14,9 @@
 #include <Common/Sink.h>
 
 SpvPhysicalBlockTypeConstantVariable::SpvPhysicalBlockTypeConstantVariable(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
-   SpvPhysicalBlockSection(allocators, program, table),
-    typeMap(allocators, &program.GetTypeMap()) {
+    SpvPhysicalBlockSection(allocators, program, table),
+    typeMap(allocators, &program.GetTypeMap()),
+    constantMap(program.GetConstants(), typeMap) {
 
 }
 
@@ -249,7 +251,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
 
                 // Add constant
-                program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
                     .value = true
                 });
                 break;
@@ -259,7 +261,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
 
                 // Add constant
-                program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
                     .value = false
                 });
                 break;
@@ -271,23 +273,23 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 // Add constant
                 switch (type->kind) {
                     default: {
-                        program.GetConstants().AddUnsortedConstant(ctx.GetResult(), type, Backend::IL::UnexposedConstant {});
+                        constantMap.AddUnsortedConstant(ctx.GetResult(), type, Backend::IL::UnexposedConstant {});
                         break;
                     }
                     case Backend::IL::TypeKind::Bool: {
-                        program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
                             .value = 0
                         });
                         break;
                     }
                     case Backend::IL::TypeKind::Int: {
-                        program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
                             .value = 0
                         });
                         break;
                     }
                     case Backend::IL::TypeKind::FP: {
-                        program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
                             .value = 0.0
                         });
                         break;
@@ -302,11 +304,11 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 // Add constant
                 switch (type->kind) {
                     default: {
-                        program.GetConstants().AddUnsortedConstant(ctx.GetResult(), type, Backend::IL::UnexposedConstant {});
+                        constantMap.AddUnsortedConstant(ctx.GetResult(), type, Backend::IL::UnexposedConstant {});
                         break;
                     }
                     case Backend::IL::TypeKind::Bool: {
-                        program.GetConstants().AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
                             .value = static_cast<bool>(ctx++)
                         });
                         break;
@@ -321,7 +323,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                             value |= (ctx++) << (32 * i);
                         }
                         
-                        program.GetConstants().AddConstant(ctx.GetResult(), _type, Backend::IL::IntConstant {
+                        constantMap.AddConstant(ctx.GetResult(), _type, Backend::IL::IntConstant {
                             .value = value
                         });
                         break;
@@ -336,7 +338,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                             value |= (ctx++) << (32 * i);
                         }
                         
-                        program.GetConstants().AddConstant(ctx.GetResult(), _type, Backend::IL::FPConstant {
+                        constantMap.AddConstant(ctx.GetResult(), _type, Backend::IL::FPConstant {
                             .value = std::bit_cast<double>(value)
                         });
                         break;
@@ -401,6 +403,7 @@ void SpvPhysicalBlockTypeConstantVariable::CopyTo(SpvPhysicalBlockTable& remote,
     out.pushConstantVariableOffset = pushConstantVariableOffset;
     out.pushConstantVariableId = pushConstantVariableId;
     typeMap.CopyTo(out.typeMap);
+    constantMap.CopyTo(out.constantMap);
 }
 
 IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJob& job) {
@@ -543,7 +546,6 @@ void SpvPhysicalBlockTypeConstantVariable::Compile(SpvIdMap &idMap) {
         // Deprecate old records
         varRecord.Deprecate();
         ptrRecord.Deprecate();
-
     }
 
     // Rewrite from record block
@@ -552,7 +554,15 @@ void SpvPhysicalBlockTypeConstantVariable::Compile(SpvIdMap &idMap) {
     
     // Set the destination declaration stream
     typeMap.SetDeclarationStream(&block->stream);
+    constantMap.SetDeclarationStream(&block->stream);
 
     // Set the identifier proxy map
     typeMap.SetIdMap(&idMap);
+}
+
+void SpvPhysicalBlockTypeConstantVariable::CompileConstants() {
+    // Ensure all IL constants are mapped
+    for (const Backend::IL::Constant* constant : program.GetConstants()) {
+        constantMap.EnsureConstant(constant);
+    }
 }
