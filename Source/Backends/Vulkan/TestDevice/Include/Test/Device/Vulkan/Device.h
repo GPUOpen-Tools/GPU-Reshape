@@ -24,7 +24,7 @@ namespace Test::Vulkan {
         SamplerID CreateSampler() override;
         ResourceLayoutID CreateResourceLayout(const ResourceType *types, uint32_t count, bool isLastUnbounded = false) override;
         ResourceSetID CreateResourceSet(ResourceLayoutID layout, const ResourceID *resources, uint32_t count) override;
-        PipelineID CreateComputePipeline(const ResourceLayoutID* layouts, uint32_t layoutCount, const void *shaderCode, uint32_t shaderSize) override;
+        PipelineID CreateComputePipeline(const ResourceLayoutID* layouts, uint32_t layoutCount, const void *shaderCode, uint64_t shaderSize) override;
         CommandBufferID CreateCommandBuffer(QueueType type) override;
         void BeginCommandBuffer(CommandBufferID commandBuffer) override;
         void EndCommandBuffer(CommandBufferID commandBuffer) override;

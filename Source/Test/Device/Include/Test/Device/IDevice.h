@@ -83,7 +83,7 @@ namespace Test {
         /// \param shaderCode shader code
         /// \param shaderSize byte size of shader code
         /// \return pipeline identifier
-        virtual PipelineID CreateComputePipeline(const ResourceLayoutID* layouts, uint32_t layoutCount, const void *shaderCode, uint32_t shaderSize) = 0;
+        virtual PipelineID CreateComputePipeline(const ResourceLayoutID* layouts, uint32_t layoutCount, const void *shaderCode, uint64_t shaderSize) = 0;
 
         /// Createa  new command buffer
         /// \param type submission queue type
@@ -149,7 +149,7 @@ namespace Test {
         /// \param shaderCode shader code
         /// \param shaderSize byte size of shader code
         /// \return pipeline identifier
-        PipelineID CreateComputePipeline(const std::initializer_list<ResourceLayoutID>& layouts, const void *shaderCode, uint32_t shaderSize) {
+        PipelineID CreateComputePipeline(const std::initializer_list<ResourceLayoutID>& layouts, const void *shaderCode, uint64_t shaderSize) {
             return CreateComputePipeline(layouts.begin(), static_cast<uint32_t>(layouts.size()), shaderCode, shaderSize);
         }
     };

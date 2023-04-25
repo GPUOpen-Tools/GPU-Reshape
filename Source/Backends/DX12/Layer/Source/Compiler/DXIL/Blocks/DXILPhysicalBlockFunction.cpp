@@ -3230,15 +3230,15 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     )->id);
 
                     // C0,1,2
-                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 0 ? ExtractSVOXElement(block, _instr->index, 0).value : undefIntConstant);
-                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 1 ? ExtractSVOXElement(block, _instr->index, 1).value : undefIntConstant);
-                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 2 ? ExtractSVOXElement(block, _instr->index, 2).value : undefIntConstant);
+                    ops[2] = indexCount > 0 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->index, 0).value) : undefIntConstant;
+                    ops[3] = indexCount > 1 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->index, 1).value) : undefIntConstant;
+                    ops[4] = indexCount > 2 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->index, 2).value) : undefIntConstant;
 
                     // V0,1,2
-                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 0 ? ExtractSVOXElement(block, _instr->texel, 0).value : nullChannelConstant);
-                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 1 ? ExtractSVOXElement(block, _instr->texel, 1).value : nullChannelConstant);
-                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 2 ? ExtractSVOXElement(block, _instr->texel, 2).value : nullChannelConstant);
-                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 3 ? ExtractSVOXElement(block, _instr->texel, 3).value : nullChannelConstant);
+                    ops[5] = texelCount > 0 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->texel, 0).value) : nullChannelConstant;
+                    ops[6] = texelCount > 1 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->texel, 1).value) : nullChannelConstant;
+                    ops[7] = texelCount > 2 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->texel, 2).value) : nullChannelConstant;
+                    ops[8] = texelCount > 3 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->texel, 3).value) : nullChannelConstant;
 
                     // Write mask
                     ops[9] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
@@ -3320,14 +3320,14 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     )->id);
 
                     // C0,1,2
-                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 0 ? ExtractSVOXElement(block, _instr->index, 0).value : undefIntConstant);
-                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 1 ? ExtractSVOXElement(block, _instr->index, 1).value : undefIntConstant);
-                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 2 ? ExtractSVOXElement(block, _instr->index, 2).value : undefIntConstant);
+                    ops[3] = indexCount > 0 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->index, 0).value) : undefIntConstant;
+                    ops[4] = indexCount > 1 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->index, 1).value) : undefIntConstant;
+                    ops[5] = indexCount > 2 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->index, 2).value) : undefIntConstant;
 
                     // O0,1,2
-                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 0 ? ExtractSVOXElement(block, _instr->offset, 0).value : undefIntConstant);
-                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 1 ? ExtractSVOXElement(block, _instr->offset, 1).value : undefIntConstant);
-                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 2 ? ExtractSVOXElement(block, _instr->offset, 2).value : undefIntConstant);
+                    ops[6] = offsetCount > 0 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->offset, 0).value) : undefIntConstant;
+                    ops[7] = offsetCount > 1 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->offset, 1).value) : undefIntConstant;
+                    ops[8] = offsetCount > 2 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->offset, 2).value) : undefIntConstant;
 
                     // Invoke into result
                     block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 9, ops));
@@ -3477,14 +3477,14 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                             uint32_t ddCount = GetSVOXCount(_instr->ddx);
 
                             // DDX
-                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 0 ? ExtractSVOXElement(block, _instr->ddx, 0).value : undefFPConstant));
-                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 1 ? ExtractSVOXElement(block, _instr->ddx, 1).value : undefFPConstant));
-                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 2 ? ExtractSVOXElement(block, _instr->ddx, 2).value : undefFPConstant));
+                            ops.Add(ddCount > 0 ?table.idRemapper.EncodeRedirectedUserOperand( ExtractSVOXElement(block, _instr->ddx, 0).value) : undefFPConstant);
+                            ops.Add(ddCount > 1 ?table.idRemapper.EncodeRedirectedUserOperand( ExtractSVOXElement(block, _instr->ddx, 1).value) : undefFPConstant);
+                            ops.Add(ddCount > 2 ?table.idRemapper.EncodeRedirectedUserOperand( ExtractSVOXElement(block, _instr->ddx, 2).value) : undefFPConstant);
 
                             // DDY
-                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 0 ? ExtractSVOXElement(block, _instr->ddy, 0).value : undefFPConstant));
-                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 1 ? ExtractSVOXElement(block, _instr->ddy, 1).value : undefFPConstant));
-                            ops.Add(table.idRemapper.EncodeRedirectedUserOperand(ddCount > 2 ? ExtractSVOXElement(block, _instr->ddy, 2).value : undefFPConstant));
+                            ops.Add(ddCount > 0 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->ddy, 0).value) : undefFPConstant);
+                            ops.Add(ddCount > 1 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->ddy, 1).value) : undefFPConstant);
+                            ops.Add(ddCount > 2 ? table.idRemapper.EncodeRedirectedUserOperand(ExtractSVOXElement(block, _instr->ddy, 2).value) : undefFPConstant);
 
                             // Clamp
                             ops.Add(sourceOpcode == opcode ? sourceRecord->Op(4+16) : undefFPConstant);

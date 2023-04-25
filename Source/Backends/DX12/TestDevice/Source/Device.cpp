@@ -460,7 +460,7 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
     return ResourceSetID(static_cast<uint32_t>(resourceSets.size()) - 1);
 }
 
-PipelineID Device::CreateComputePipeline(const ResourceLayoutID *layouts, uint32_t layoutCount, const void *shaderCode, uint32_t shaderSize) {
+PipelineID Device::CreateComputePipeline(const ResourceLayoutID *layouts, uint32_t layoutCount, const void *shaderCode, uint64_t shaderSize) {
     PipelineInfo &pipeline = pipelines.emplace_back();
 
     // All root parameters

@@ -25,7 +25,7 @@ namespace Test::DX12 {
         TextureID CreateTexture(ResourceType type, Backend::IL::Format format, uint32_t width, uint32_t height, uint32_t depth, const void *data, uint64_t dataSize) override;
         ResourceLayoutID CreateResourceLayout(const ResourceType *types, uint32_t count, bool isLastUnbounded = false) override;
         ResourceSetID CreateResourceSet(ResourceLayoutID layout, const ResourceID *resources, uint32_t count) override;
-        PipelineID CreateComputePipeline(const ResourceLayoutID *layouts, uint32_t layoutCount, const void *shaderCode, uint32_t shaderSize) override;
+        PipelineID CreateComputePipeline(const ResourceLayoutID *layouts, uint32_t layoutCount, const void *shaderCode, uint64_t shaderSize) override;
         CommandBufferID CreateCommandBuffer(QueueType type) override;
         void BeginCommandBuffer(CommandBufferID commandBuffer) override;
         void EndCommandBuffer(CommandBufferID commandBuffer) override;
