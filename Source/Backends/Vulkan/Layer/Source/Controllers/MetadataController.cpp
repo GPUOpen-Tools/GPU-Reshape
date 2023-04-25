@@ -236,13 +236,13 @@ void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {
 
     // Print graph
     for (auto it = functions.begin(); it != functions.end(); it++) {
-        IL::PrettyPrintBlockJsonGraph(**it, blockStream);
-        
         if (it != functions.begin()) {
             blockStream << ",\n\n";
         } else {
             blockStream << "\n";
         }
+        
+        IL::PrettyPrintBlockJsonGraph(**it, blockStream);
     }
 
     // Close function block
