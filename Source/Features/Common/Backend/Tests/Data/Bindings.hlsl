@@ -9,11 +9,14 @@
 //! RESOURCE Texture2D<RGBA32Float> size:64,64
 [[vk::binding(1)]] Texture2D<float4> texture : register(t1, space0);
 
+//! RESOURCE RWTexture2D<RGBA32Float> size:64,64
+[[vk::binding(2)]] RWTexture2D<float4> textureRW : register(u2, space0);
+
 //! RESOURCE RWBuffer<RGBA32Float> size:64
-[[vk::binding(2)]] RWBuffer<float4> bufferRW : register(u2, space0);
+[[vk::binding(3)]] RWBuffer<float4> bufferRW : register(u3, space0);
 
 //! RESOURCE StaticSamplerState size:64
-[[vk::binding(3)]] SamplerState defaultSampler : register(s3, space0);
+[[vk::binding(4)]] SamplerState defaultSampler : register(s4, space0);
 
 [numthreads(64, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
@@ -30,5 +33,6 @@ void main(uint dtid : SV_DispatchThreadID) {
     GroupMemoryBarrierWithGroupSync();
 
     // Write back
-	bufferRW[dtid.x] = data + gPrefixData;
+    bufferRW[dtid.x] = data + gPrefixData;
+    textureRW[dtid.xx] = data + gPrefixData;
 }

@@ -1356,7 +1356,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t y = reader.GetMappedRelative(anchor);
             uint32_t z = reader.GetMappedRelative(anchor);
             uint32_t w = reader.GetMappedRelative(anchor);
-            uint32_t mask = reader.GetMappedRelative(anchor);
+
+            // Get mask
+            uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
 
             // Unused
             GRS_SINK(opCode, offset);
@@ -1617,7 +1619,9 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t vy = reader.GetMappedRelative(anchor);
             uint32_t vz = reader.GetMappedRelative(anchor);
             uint32_t vw = reader.GetMappedRelative(anchor);
-            uint32_t mask = reader.GetMappedRelative(anchor);
+
+            // Get mask
+            uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
 
             // Unused
             GRS_SINK(opCode);
@@ -3156,19 +3160,21 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
 
                 case IL::OpCode::StoreTexture: {
                     auto _instr = instr->As<IL::StoreTextureInstruction>();
-                    ASSERT(false, "Untested path, confirm");
 
                     // Get type
                     const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
 
+                    // Get component type
+                    const Backend::IL::Type* componentType = Backend::IL::GetComponentType(textureType->sampledType);
+
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
-                    switch (Backend::IL::GetComponentType(textureType->sampledType)->kind) {
+                    switch (componentType->kind) {
                         default:
                         ASSERT(false, "Invalid buffer element type");
                             return;
                         case Backend::IL::TypeKind::Int: {
-                            const auto* intType = textureType->sampledType->As<Backend::IL::IntType>();
+                            const auto* intType = componentType->As<Backend::IL::IntType>();
                             switch (intType->bitWidth) {
                                 default:
                                     ASSERT(false, "Unsupported bit-width");
@@ -3180,7 +3186,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                             break;
                         }
                         case Backend::IL::TypeKind::FP: {
-                            const auto* fpType = textureType->sampledType->As<Backend::IL::FPType>();
+                            const auto* fpType = componentType->As<Backend::IL::FPType>();
                             switch (fpType->bitWidth) {
                                 default:
                                     ASSERT(false, "Unsupported bit-width");
@@ -3212,21 +3218,27 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     uint32_t texelCount = GetSVOXCount(_instr->texel);
 
                     // Undefined value
-                    uint32_t undefConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                    uint64_t undefIntConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=false}),
                         Backend::IL::UndefConstant{}
                     )->id);
 
+                    // Undefined value
+                    uint64_t nullChannelConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        componentType,
+                        Backend::IL::NullConstant{}
+                    )->id);
+
                     // C0,1,2
-                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 0 ? ExtractSVOXElement(block, _instr->index, 0).value : undefConstant);
-                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 1 ? ExtractSVOXElement(block, _instr->index, 1).value : undefConstant);
-                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 2 ? ExtractSVOXElement(block, _instr->index, 2).value : undefConstant);
+                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 0 ? ExtractSVOXElement(block, _instr->index, 0).value : undefIntConstant);
+                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 1 ? ExtractSVOXElement(block, _instr->index, 1).value : undefIntConstant);
+                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 2 ? ExtractSVOXElement(block, _instr->index, 2).value : undefIntConstant);
 
                     // V0,1,2
-                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 0 ? ExtractSVOXElement(block, _instr->texel, 0).value : undefConstant);
-                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 1 ? ExtractSVOXElement(block, _instr->texel, 1).value : undefConstant);
-                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 2 ? ExtractSVOXElement(block, _instr->texel, 2).value : undefConstant);
-                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 3 ? ExtractSVOXElement(block, _instr->texel, 3).value : undefConstant);
+                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 0 ? ExtractSVOXElement(block, _instr->texel, 0).value : nullChannelConstant);
+                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 1 ? ExtractSVOXElement(block, _instr->texel, 1).value : nullChannelConstant);
+                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 2 ? ExtractSVOXElement(block, _instr->texel, 2).value : nullChannelConstant);
+                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(texelCount > 3 ? ExtractSVOXElement(block, _instr->texel, 3).value : nullChannelConstant);
 
                     // Write mask
                     ops[9] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
@@ -3241,19 +3253,21 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
 
                 case IL::OpCode::LoadTexture: {
                     auto _instr = instr->As<IL::LoadTextureInstruction>();
-                    ASSERT(false, "Untested path, confirm");
 
                     // Get type
                     const auto* textureType = typeMap.GetType(_instr->texture)->As<Backend::IL::TextureType>();
 
+                    // Get component type
+                    const Backend::IL::Type* componentType = Backend::IL::GetComponentType(textureType->sampledType);
+
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
-                    switch (Backend::IL::GetComponentType(textureType->sampledType)->kind) {
+                    switch (componentType->kind) {
                         default:
                             ASSERT(false, "Invalid buffer element type");
                             return;
                         case Backend::IL::TypeKind::Int: {
-                            const auto* intType = textureType->sampledType->As<Backend::IL::IntType>();
+                            const auto* intType = componentType->As<Backend::IL::IntType>();
                             switch (intType->bitWidth) {
                                 default:
                                     ASSERT(false, "Unsupported bit-width");
@@ -3265,7 +3279,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                             break;
                         }
                         case Backend::IL::TypeKind::FP: {
-                            const auto* fpType = textureType->sampledType->As<Backend::IL::FPType>();
+                            const auto* fpType = componentType->As<Backend::IL::FPType>();
                             switch (fpType->bitWidth) {
                                 default:
                                     ASSERT(false, "Unsupported bit-width");
@@ -3286,7 +3300,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     // Opcode
                     ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::TextureStore)}
+                        Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::TextureLoad)}
                     )->id);
 
                     // Handle
@@ -3300,23 +3314,23 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
                     uint32_t offsetCount = GetSVOXCount(_instr->offset);
 
                     // Undefined value
-                    uint32_t undefConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                    uint64_t undefIntConstant = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=false}),
                         Backend::IL::UndefConstant{}
                     )->id);
 
                     // C0,1,2
-                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 0 ? ExtractSVOXElement(block, _instr->index, 0).value : undefConstant);
-                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 1 ? ExtractSVOXElement(block, _instr->index, 1).value : undefConstant);
-                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 2 ? ExtractSVOXElement(block, _instr->index, 2).value : undefConstant);
+                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 0 ? ExtractSVOXElement(block, _instr->index, 0).value : undefIntConstant);
+                    ops[4] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 1 ? ExtractSVOXElement(block, _instr->index, 1).value : undefIntConstant);
+                    ops[5] = table.idRemapper.EncodeRedirectedUserOperand(indexCount > 2 ? ExtractSVOXElement(block, _instr->index, 2).value : undefIntConstant);
 
                     // O0,1,2
-                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 0 ? ExtractSVOXElement(block, _instr->offset, 0).value : undefConstant);
-                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 1 ? ExtractSVOXElement(block, _instr->offset, 1).value : undefConstant);
-                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 2 ? ExtractSVOXElement(block, _instr->offset, 2).value : undefConstant);
+                    ops[6] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 0 ? ExtractSVOXElement(block, _instr->offset, 0).value : undefIntConstant);
+                    ops[7] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 1 ? ExtractSVOXElement(block, _instr->offset, 1).value : undefIntConstant);
+                    ops[8] = table.idRemapper.EncodeRedirectedUserOperand(offsetCount > 2 ? ExtractSVOXElement(block, _instr->offset, 2).value : undefIntConstant);
 
                     // Invoke into result
-                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 10, ops));
+                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 9, ops));
                     break;
                 }
 
