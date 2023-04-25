@@ -50,10 +50,12 @@ namespace IL {
         }
 
         /// Remove a basic block
-        /// \param block iterator
-        void Remove(const Container::const_iterator& block) {
-            basicBlockMap[(*block)->GetID()] = nullptr;
-            basicBlocks.erase(block);
+        /// \param block block to be removed
+        void Remove(BasicBlock* block) {
+            basicBlockMap.erase(block->GetID());
+
+            // Note: Removing by value is somewhat acceptable, we are not expecting large amounts of blocks
+            basicBlocks.erase(std::find(basicBlocks.begin(), basicBlocks.end(), block));
         }
 
         /// Add a basic block
@@ -61,6 +63,17 @@ namespace IL {
         void Add(BasicBlock* block) {
             basicBlocks.push_back(block);
             basicBlockMap[block->GetID()] = block;
+        }
+
+        /// Rename an existing block
+        /// \param block block to be added
+        /// \param id block to be added
+        void RenameBlock(BasicBlock* block, IL::ID id) {
+            ASSERT(basicBlockMap.contains(block->GetID()), "Renaming a block of foreign residence");
+
+            Remove(block);
+            block->SetID(id);
+            Add(block);
         }
 
         /// Swap blocks with a container

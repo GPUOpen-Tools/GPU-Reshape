@@ -2028,9 +2028,12 @@ void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
             program.GetIdentifierMap().RemoveBlockUser(block.block, ref);
         }
 
-        // Get the original continue block, set new id
-        IL::BasicBlock* originalContinueBlock = fn->GetBasicBlocks().GetBlock(block.block);
-        originalContinueBlock->SetID(bridgeBlockId);
+        // All blocks
+        IL::BasicBlockList& basicBlocks = fn->GetBasicBlocks();
+
+        // Get the original continue block and rename it
+        IL::BasicBlock* originalContinueBlock = basicBlocks.GetBlock(block.block);
+        basicBlocks.RenameBlock(originalContinueBlock, bridgeBlockId);
 
         // Allocate continue proxy block, use the same id
         IL::BasicBlock* postContinueBlock = fn->GetBasicBlocks().AllocBlock(block.block);
