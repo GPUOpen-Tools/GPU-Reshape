@@ -1103,7 +1103,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
 
                 // Load image
                 SpvInstruction& spv = stream.TemplateOrAllocate(op, opCount, instr->source);
-                spv[offset++] = table.typeConstantVariable.typeMap.GetSpvTypeId(Backend::IL::Splat(program, textureType->sampledType, 4u));
+                spv[offset++] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                 spv[offset++] = sampleTexture->result;
                 spv[offset++] = imageId;
                 spv[offset++] = idMap.Get(sampleTexture->coordinate);
@@ -1151,7 +1151,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
 
                 // Load image
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageRead, 5, instr->source);
-                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(textureType->sampledType);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                 spv[2] = loadTexture->result;
                 spv[3] = idMap.Get(loadTexture->texture);
                 spv[4] = idMap.Get(loadTexture->index);
