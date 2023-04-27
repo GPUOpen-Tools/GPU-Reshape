@@ -14,7 +14,7 @@ struct PhysicalResourceIdentifierMap {
     /// \return
     uint32_t AllocatePUID() {
         if (freePUIDs.empty()) {
-            ASSERT(puidHead < IL::kResourceTokenPUIDMask, "Exceeded maximum resource count");
+            ASSERT(puidHead < IL::kResourceTokenPUIDInvalidStart, "Exceeded maximum resource count");
             return puidHead++;
         }
 
@@ -31,7 +31,7 @@ struct PhysicalResourceIdentifierMap {
 
 private:
     /// Current head counter
-    uint32_t puidHead{0};
+    uint32_t puidHead{IL::kResourceTokenPUIDReservedCount};
 
     /// All free indices
     std::vector<uint32_t> freePUIDs;

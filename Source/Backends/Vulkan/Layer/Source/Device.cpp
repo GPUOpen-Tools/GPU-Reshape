@@ -190,6 +190,8 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->physicalDeviceFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     table->physicalDeviceFeatures.pNext = &table->physicalDeviceDescriptorIndexingFeatures;
     table->physicalDeviceDescriptorIndexingFeatures = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES};
+    table->physicalDeviceDescriptorIndexingFeatures.pNext = &table->physicalDeviceRobustness2Features;
+    table->physicalDeviceRobustness2Features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT};
 
     // Get the device features
     table->parent->next_vkGetPhysicalDeviceFeatures2(physicalDevice, &table->physicalDeviceFeatures);

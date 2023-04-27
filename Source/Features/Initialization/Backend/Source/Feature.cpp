@@ -174,7 +174,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         IL::ID PUID = token.GetPUID();
 
         // Get the current mask
-        IL::ID currentMask = pre.Extract(pre.LoadBuffer(pre.Load(initializationMaskBufferDataID), token.GetPUID()), 0u);
+        IL::ID currentMask = pre.Extract(pre.LoadBuffer(pre.Load(initializationMaskBufferDataID), PUID), 0u);
 
         // Compare mask against token SRB
         IL::ID cond = pre.NotEqual(pre.BitAnd(currentMask, SRB), SRB);

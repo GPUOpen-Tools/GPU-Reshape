@@ -176,7 +176,7 @@ void SpvUtilShaderPRMT::GetToken(SpvStream &stream, IL::ID resource, IL::ID resu
         SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
         spvZero[1] = uintTypeId;
         spvZero[2] = outOfBoundsConstantId;
-        spvZero[3] = IL::kResourceTokenPUIDOutOfBounds;
+        spvZero[3] = IL::kResourceTokenPUIDInvalidOutOfBounds;
 
         // Select out-of-bounds value if needed
         SpvInstruction& spvSelect = stream.Allocate(SpvOpSelect, 6);

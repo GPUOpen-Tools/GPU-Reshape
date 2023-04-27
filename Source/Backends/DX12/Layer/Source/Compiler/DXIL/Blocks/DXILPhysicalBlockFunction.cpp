@@ -4490,14 +4490,14 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
             recordExtract.ops[1] = 0;
             block->AddRecord(recordExtract);
 
-            // OutOfBounds ? kResourceTokenPUIDOutOfBounds : ResourceToken
+            // OutOfBounds ? kResourceTokenPUIDInvalidOutOfBounds : ResourceToken
             LLVMRecord recordSelect(LLVMFunctionRecord::InstVSelect);
             recordSelect.SetUser(true, ~0u, _instr->result);
             recordSelect.opCount = 3;
             recordSelect.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
             recordSelect.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                 program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = IL::kResourceTokenPUIDOutOfBounds}
+                Backend::IL::IntConstant{.value = IL::kResourceTokenPUIDInvalidOutOfBounds}
             )->id);
             recordSelect.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(extractId);
             recordSelect.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(outOfHeapOperand);

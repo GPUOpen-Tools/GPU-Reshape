@@ -217,9 +217,10 @@ struct DeviceDispatchTable {
     PFN_vkSetDebugUtilsObjectNameEXT      next_vkSetDebugUtilsObjectNameEXT;
 
     /// Properties
-    VkPhysicalDeviceProperties physicalDeviceProperties{};
-    VkPhysicalDeviceFeatures2 physicalDeviceFeatures{};
+    VkPhysicalDeviceProperties                 physicalDeviceProperties{};
+    VkPhysicalDeviceFeatures2                  physicalDeviceFeatures{};
     VkPhysicalDeviceDescriptorIndexingFeatures physicalDeviceDescriptorIndexingFeatures{};
+    VkPhysicalDeviceRobustness2FeaturesEXT     physicalDeviceRobustness2Features{};
 
     /// Command buffer dispatch table
     std::mutex                 commandBufferMutex;

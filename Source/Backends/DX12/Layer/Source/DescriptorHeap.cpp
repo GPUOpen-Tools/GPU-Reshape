@@ -5,6 +5,9 @@
 #include <Backends/DX12/Export/ShaderExportDescriptorAllocator.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 
+// Backend
+#include <Backend/IL/ResourceTokenType.h>
+
 HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const D3D12_DESCRIPTOR_HEAP_DESC *desc, REFIID riid, void **pHeap) {
     auto table = GetTable(device);
 
@@ -134,19 +137,84 @@ void WINAPI HookID3D12DescriptorHeapGetGPUDescriptorHandleForHeapStart(ID3D12Des
     *out = reg;
 }
 
+static VirtualResourceMapping GetNullResourceMapping(D3D12_SRV_DIMENSION dimension) {
+    // Handle by dimension
+    switch (dimension) {
+        default: {
+            ASSERT(false, "Unsupported value");
+            return {};
+        }
+        case D3D12_SRV_DIMENSION_BUFFER:{
+            return VirtualResourceMapping {
+                .puid = IL::kResourceTokenPUIDReservedNullBuffer,
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer),
+                .srb  = 0x1
+            };
+        }
+        case D3D12_SRV_DIMENSION_TEXTURE1D:
+        case D3D12_SRV_DIMENSION_TEXTURE1DARRAY:
+        case D3D12_SRV_DIMENSION_TEXTURE2D:
+        case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
+        case D3D12_SRV_DIMENSION_TEXTURE2DMS:
+        case D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY:
+        case D3D12_SRV_DIMENSION_TEXTURE3D:
+        case D3D12_SRV_DIMENSION_TEXTURECUBE:
+        case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY: {
+            return VirtualResourceMapping {
+                .puid = IL::kResourceTokenPUIDReservedNullTexture,
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture),
+                .srb  = 0x1
+            };
+        }
+    }
+}
+
+static VirtualResourceMapping GetNullResourceMapping(D3D12_UAV_DIMENSION dimension) {
+    // Handle by dimension
+    switch (dimension) {
+        default: {
+            ASSERT(false, "Unsupported value");
+            return {};
+        }
+        case D3D12_UAV_DIMENSION_BUFFER:{
+            return VirtualResourceMapping {
+                .puid = IL::kResourceTokenPUIDReservedNullBuffer,
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer),
+                .srb  = 0x1
+            };
+        }
+        case D3D12_UAV_DIMENSION_TEXTURE1D:
+        case D3D12_UAV_DIMENSION_TEXTURE1DARRAY:
+        case D3D12_UAV_DIMENSION_TEXTURE2D:
+        case D3D12_UAV_DIMENSION_TEXTURE2DARRAY:
+        case D3D12_UAV_DIMENSION_TEXTURE3D: {
+            return VirtualResourceMapping {
+                .puid = IL::kResourceTokenPUIDReservedNullTexture,
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture),
+                .srb  = 0x1
+            };
+        }
+    }
+}
+
 void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12Resource* pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
     auto table = GetTable(_this);
     auto resource = GetTable(pResource);
 
-    // TODO: Null descriptors!
-    if (pResource) {
-        // Associated heap?
-        if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, DestDescriptor.ptr)) {
-            uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
-            ASSERT(offset % heap->stride == 0, "Invalid heap offset");
+    // Associated heap?
+    if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, DestDescriptor.ptr)) {
+        const uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
+        ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
+        // Table wise offset
+        const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
+        
+        // Null descriptors are handled separately
+        if (pResource) {
             // TODO: SRB masking
-            heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state, resource.state->virtualMapping);
+            heap->prmTable->WriteMapping(tableOffset, resource.state, resource.state->virtualMapping);
+        } else {
+            heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
     }
 
@@ -158,15 +226,20 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
     auto table = GetTable(_this);
     auto resource = GetTable(pResource);
 
-    // TODO: Null descriptors!
-    if (pResource) {
-        // Associated heap?
-        if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, DestDescriptor.ptr)) {
-            uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
-            ASSERT(offset % heap->stride == 0, "Invalid heap offset");
+    // Associated heap?
+    if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, DestDescriptor.ptr)) {
+        const uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
+        ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
+        // Table wise offset
+        const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
+        
+        // Null descriptors are handled separately
+        if (pResource) {
             // TODO: SRB masking
-            heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state, resource.state->virtualMapping);
+            heap->prmTable->WriteMapping(tableOffset, resource.state, resource.state->virtualMapping);
+        } else {
+            heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
     }
 
@@ -178,7 +251,7 @@ void WINAPI HookID3D12DeviceCreateRenderTargetView(ID3D12Device* _this, ID3D12Re
     auto table = GetTable(_this);
     auto resource = GetTable(pResource);
 
-    // TODO: Null descriptors!
+    // TODO: Implications on null RTVs
     if (pResource) {
         // Associated heap?
         if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, DestDescriptor.ptr)) {
@@ -198,7 +271,7 @@ void WINAPI HookID3D12DeviceCreateDepthStencilView(ID3D12Device* _this, ID3D12Re
     auto table = GetTable(_this);
     auto resource = GetTable(pResource);
 
-    // TODO: Null descriptors!
+    // TODO: Implications on null DSVs
     if (pResource) {
         // Associated heap?
         if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, DestDescriptor.ptr)) {

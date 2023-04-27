@@ -166,8 +166,8 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
         );
 
         // Special PUIDs
-        IL::ID isUndefined   = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDUndefined));
-        IL::ID isOutOfBounds = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDOutOfBounds));
+        IL::ID isUndefined   = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDInvalidUndefined));
+        IL::ID isOutOfBounds = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDInvalidOutOfBounds));
 
         // Export the message
         DescriptorMismatchMessage::ShaderExport msg;

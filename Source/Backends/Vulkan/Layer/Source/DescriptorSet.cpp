@@ -14,6 +14,9 @@
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 #include <Backends/Vulkan/States/DescriptorPoolState.h>
 
+// Backend
+#include <Backend/IL/ResourceTokenType.h>
+
 // Common
 #include <Common/Hash.h>
 
@@ -252,14 +255,20 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t
                 case VK_DESCRIPTOR_TYPE_SAMPLER: {
                     if (write.pImageInfo[descriptorIndex].sampler) {
                         mapping = table->states_sampler.Get(write.pImageInfo[descriptorIndex].sampler)->virtualMapping;
+                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
+                        mapping.puid = IL::kResourceTokenPUIDReservedNullSampler;
+                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
+                        mapping.srb  = 0x1;
                     }
                     break;
                 }
                 case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
                     if (write.pImageInfo[descriptorIndex].imageView) {
                         mapping = table->states_imageView.Get(write.pImageInfo[descriptorIndex].imageView)->virtualMapping;
-                    } else if (write.pImageInfo[descriptorIndex].sampler) {
-                        mapping = table->states_sampler.Get(write.pImageInfo[descriptorIndex].sampler)->virtualMapping;
+                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
+                        mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
+                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+                        mapping.srb  = 0x1;
                     }
                     break;
                 }
@@ -267,6 +276,10 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t
                 case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
                     if (write.pImageInfo[descriptorIndex].imageView) {
                         mapping = table->states_imageView.Get(write.pImageInfo[descriptorIndex].imageView)->virtualMapping;
+                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
+                        mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
+                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+                        mapping.srb  = 0x1;
                     }
                     break;
                 }
@@ -274,6 +287,10 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t
                 case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
                     if (write.pTexelBufferView[descriptorIndex]) {
                         mapping = table->states_bufferView.Get(write.pTexelBufferView[descriptorIndex])->virtualMapping;
+                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
+                        mapping.puid = IL::kResourceTokenPUIDReservedNullBuffer;
+                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
+                        mapping.srb  = 0x1;
                     }
                     break;
                 }
@@ -283,6 +300,10 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t
                 case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
                     if (write.pBufferInfo[descriptorIndex].buffer) {
                         mapping = table->states_buffer.Get(write.pBufferInfo[descriptorIndex].buffer)->virtualMapping;
+                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
+                        mapping.puid = IL::kResourceTokenPUIDReservedNullCBuffer;
+                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::CBuffer);
+                        mapping.srb  = 0x1;
                     }
                     break;
                 }

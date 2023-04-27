@@ -48,7 +48,7 @@ void PhysicalResourceMappingTable::Install(uint32_t count) {
     // Dummy initialize all VRMs
     for (uint32_t i = 0; i < count; i++) {
         virtualMappings[i] = VirtualResourceMapping{
-            .puid = IL::kResourceTokenPUIDUndefined,
+            .puid = IL::kResourceTokenPUIDInvalidUndefined,
             .type = 0,
             .srb = 0
         };
