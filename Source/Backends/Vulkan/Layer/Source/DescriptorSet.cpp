@@ -126,6 +126,12 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkFreeDescriptorSets(VkDevice device, VkDesc
 
     // Remove the states
     for (uint32_t i = 0; i < descriptorSetCount; i++) {
+        // Null destruction is allowed by the standard
+        if (!pDescriptorSets[i]) {
+            continue;
+        }
+
+        // Get stata
         DescriptorSetState* setState = table->states_descriptorSet.Get(pDescriptorSets[i]);
 
         // Not last element?

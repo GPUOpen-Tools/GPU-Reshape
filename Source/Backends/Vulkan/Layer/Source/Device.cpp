@@ -333,6 +333,9 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
     // Get table
     auto table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Wait for all pending instrumentation
+    table->instrumentationController->WaitForCompletion();
+
     // Ensure all work is done
     table->next_vkDeviceWaitIdle(device);
 

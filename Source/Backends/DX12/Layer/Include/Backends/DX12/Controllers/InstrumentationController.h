@@ -61,6 +61,9 @@ public:
     /// Commit all bridges
     void Commit();
 
+    /// Wait for all outstanding jobs
+    void WaitForCompletion();
+
     /// Get the number of jobs
     uint32_t GetJobCount();
 

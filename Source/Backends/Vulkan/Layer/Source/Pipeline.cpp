@@ -133,9 +133,6 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyPipeline(VkDevice device, VkPipeline pi
     //  ? To satisfy the pAllocator constraints, the original object must be released now
     state->object = nullptr;
 
-    // Free the layout
-    destroyRef(state->layout, table->allocators);
-
     // Remove logical object from lookup
     //  Logical reference to state is invalid after this function
     table->states_pipeline.RemoveLogical(pipeline);
@@ -179,4 +176,7 @@ PipelineState::~PipelineState() {
         // Release ref
         destroyRef(module, table->allocators);
     }
+
+    // Free the layout
+    destroyRef(layout, table->allocators);
 }

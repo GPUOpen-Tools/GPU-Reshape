@@ -511,6 +511,9 @@ DeviceState::~DeviceState() {
         return;
     }
 
+    // Wait for all pending instrumentation
+    instrumentationController->WaitForCompletion();
+
     // Process all remaining work
     exportStreamer->Process();
 

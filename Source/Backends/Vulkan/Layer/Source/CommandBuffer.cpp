@@ -392,6 +392,13 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkFreeCommandBuffers(VkDevice device, VkCommandP
 
     // Unwrap and release wrappers
     for (uint32_t i = 0; i < commandBufferCount; i++) {
+        // Null destruction is allowed by the standard
+        if (!pCommandBuffers[i]) {
+            vkCommandBuffers[i] = nullptr;
+            continue;
+        }
+
+        // Set native
         vkCommandBuffers[i] = pCommandBuffers[i]->object;
 
         // Remove from pool

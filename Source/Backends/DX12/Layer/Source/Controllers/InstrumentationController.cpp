@@ -719,9 +719,6 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     ));
 #endif
 
-    // Mark as done
-    compilationEvent.IncrementCounter();
-
     // Release handles
     for (ReferenceObject* object : batch->dirtyObjects) {
         destroyRef(object, allocators);
@@ -730,9 +727,14 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Release batch
     destroy(batch, allocators);
 
-    // Release the bucket handle, destructed after this call 
-    std::lock_guard guard(mutex);
-    compilationBucket = nullptr;
+    // Release the bucket handle, destructed after this call
+    {
+        std::lock_guard guard(mutex);
+        compilationBucket = nullptr;
+    }
+
+    // Mark as done
+    compilationEvent.IncrementCounter();
 }
 
 uint64_t InstrumentationController::SummarizeFeatureBitSet() {
@@ -753,14 +755,20 @@ uint64_t InstrumentationController::SummarizeFeatureBitSet() {
     return featureBitSet;
 }
 
+void InstrumentationController::WaitForCompletion() {
+    // Commit all pending instrumentation
+    {
+        std::lock_guard guard(mutex);
+        CommitInstrumentation();
+    }
+
+    // Wait til head
+    compilationEvent.Wait(compilationEvent.GetHead());
+}
+
 void InstrumentationController::BeginCommandList() {
     // If syncronous, wait for the head compilation counter
     if (synchronousRecording) {
-        // Commit all pending instrumentation
-        std::lock_guard guard(mutex);
-        CommitInstrumentation();
-
-        // Wait til head
-        compilationEvent.Wait(compilationEvent.GetHead());
+        WaitForCompletion();
     }
 }
