@@ -474,6 +474,8 @@ namespace IL {
 
             AddInstructionReferences(&instr, ref);
 
+            count++;
+
 #ifndef NDEBUG
             debugRevision++;
 #endif
@@ -503,6 +505,8 @@ namespace IL {
             RemoveRelocationOffset(instruction.relocationOffset);
 
             ResummarizeRelocationTable(instruction.relocationOffset, static_cast<uint32_t>(relocationIndex));
+
+            count--;
 
 #ifndef NDEBUG
             debugRevision++;
