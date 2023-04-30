@@ -1050,9 +1050,6 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 // Migrate combined states
                 IL::ID imageId = MigrateCombinedImageSampler(stream, idMap, bb, sampleTexture);
 
-                // Get the texture type
-                const auto* textureType = ilTypeMap.GetType(sampleTexture->texture)->As<Backend::IL::TextureType>();
-
                 // Total operand count
                 uint32_t opCount = 0;
 
@@ -1145,9 +1142,6 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             }
             case IL::OpCode::LoadTexture: {
                 auto *loadTexture = instr.As<IL::LoadTextureInstruction>();
-
-                // Get the texture type
-                const auto* textureType = ilTypeMap.GetType(loadTexture->texture)->As<Backend::IL::TextureType>();
 
                 // Load image
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpImageRead, 5, instr->source);
