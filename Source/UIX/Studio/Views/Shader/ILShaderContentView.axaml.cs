@@ -29,13 +29,13 @@ namespace Studio.Views.Shader
             InitializeComponent();
 
             // Create the registry
-            var registryOptions = new RegistryOptions(ThemeName.DarkPlus);
+            var registryOptions = new TextMate.RegistryOptions();
 
             // Create a text mate instance
             var textMate = Editor.InstallTextMate(registryOptions);
 
             // Set the default grammar (just assume .hlsl)
-            textMate.SetGrammar(registryOptions.GetScopeByLanguageId(registryOptions.GetLanguageByExtension(".cpp").Id));
+            textMate.SetGrammar("IL");
 
             // Common styling
             Editor.Options.IndentationSize = 4;

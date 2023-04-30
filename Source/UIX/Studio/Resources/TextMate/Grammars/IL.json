@@ -1,0 +1,82 @@
+﻿{
+  "name": "IL",
+  "scopeName": "IL",
+  "patterns": [
+    {
+      "name": "constant.numeric.decimal",
+      "match": "\\b[0-9]+\\.[0-9]*(F|f)?\\b"
+    },
+    {
+      "name": "constant.numeric.decimal",
+      "match": "(\\.([0-9]+)(F|f)?)\\b"
+    },
+    {
+      "name": "constant.numeric.decimal",
+      "match": "\\b([0-9]+(F|f)?)\\b"
+    },
+    {
+      "name": "constant.numeric.hex",
+      "match": "\\b(0(x|X)[0-9a-fA-F]+)\\b"
+    },
+    {
+      "name": "constant.numeric.decimal",
+      "match": "\\b%[0-9]+\\b"
+    },
+    {
+      "name": "constant.language",
+      "match": "\\b(false|true)\\b"
+    },
+    {
+      "name": "support.type",
+      "match": "\\b(Bool|Void|UInt|Int|FP|Vector|Matrix|Pointer|Array|Texture|Buffer|Sampler|CBuffer|Function|BasicBlock|Struct)\\b"
+    },
+    {
+      "name": "keyword.control",
+      "match": "\\b(Select|Branch|BranchConditional|Switch|Phi|Return)\\b"
+    },
+    {
+      "name": "keyword.op.arithmetic",
+      "match": "\\b(Literal|Add|Sub|Div|Mul|Rem|Trunc)\\b"
+    },
+    {
+      "name": "keyword.op.logical",
+      "match": "\\b(Any|All|Or|And|Equal|NotEqual|LessThan|LessThanEqual|GreaterThan|GreaterThanEqual)\\b"
+    },
+    {
+      "name": "keyword.op.bit",
+      "match": "\\b(BitOr|BitXOr|BitAnd|BitShiftLeft|BitShiftRight)\\b"
+    },
+    {
+      "name": "keyword.op.special",
+      "match": "\\b(IsInf|IsNaN)\\b"
+    },
+    {
+      "name": "keyword.op.atomic",
+      "match": "\\b(AtomicOr|AtomicXOr|AtomicAnd|AtomicAdd|AtomicMin|AtomicMax|AtomicExchange|AtomicCompareExchange)\\b"
+    },
+    {
+      "name": "keyword.op.structural",
+      "match": "\\b(AddressChain|Extract|Insert)\\b"
+    },
+    {
+      "name": "keyword.op.cast",
+      "match": "\\b(FloatToInt|IntToFloat|BitCast)\\b"
+    },
+    {
+      "name": "keyword.op.register",
+      "match": "\\b(Alloca|Load|Store|StoreOutput)\\b"
+    },
+    {
+      "name": "keyword.op.resource",
+      "match": "\\b(SampleTexture|StoreTexture|LoadTexture|StoreBuffer|LoadBuffer)\\b"
+    },
+    {
+      "name": "keyword.op.extension",
+      "match": "\\b(Export|ResourceToken|ResourceSize)\\b"
+    },
+    {
+      "name": "keyword.op.unexposed",
+      "match": "\\bUnexposed\\b"
+    }
+  ]
+}

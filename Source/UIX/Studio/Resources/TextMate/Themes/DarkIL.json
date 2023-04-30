@@ -1,0 +1,101 @@
+﻿{
+  "name": "DarkIL",
+  "settings": [
+    {
+      "settings": {
+        "foreground": "#d4d4d4",
+        "background": "#1e1e1e"
+      }
+    },
+    {
+      "scope": "constant.numeric",
+      "settings": {
+        "foreground": "#b5cea8"
+      }
+    },
+    {
+      "scope": "constant.language",
+      "settings": {
+        "foreground": "#569cd6"
+      }
+    },
+    {
+      "scope": "support.type",
+      "settings": {
+        "foreground": "#4ec9b0"
+      }
+    },
+    {
+      "scope": "keyword.control",
+      "settings": {
+        "foreground": "#c586c0"
+      }
+    },
+    {
+      "scope": "keyword.op.arithmetic",
+      "settings": {
+        "foreground": "#78c0ce"
+      }
+    },
+    {
+      "scope": "keyword.op.logical",
+      "settings": {
+        "foreground": "#7896ce"
+      }
+    },
+    {
+      "scope": "keyword.op.bit",
+      "settings": {
+        "foreground": "#78ce9c"
+      }
+    },
+    {
+      "scope": "keyword.op.special",
+      "settings": {
+        "foreground": "#8c78ce"
+      }
+    },
+    {
+      "scope": "keyword.op.atomic",
+      "settings": {
+        "foreground": "#ce7878"
+      }
+    },
+    {
+      "scope": "keyword.op.structural",
+      "settings": {
+        "foreground": "#cea378"
+      }
+    },
+    {
+      "scope": "keyword.op.cast",
+      "settings": {
+        "foreground": "#4EC9B0"
+      }
+    },
+    {
+      "scope": "keyword.op.register",
+      "settings": {
+        "foreground": "#d49250"
+      }
+    },
+    {
+      "scope": "keyword.op.resource",
+      "settings": {
+        "foreground": "#70a653"
+      }
+    },
+    {
+      "scope": "keyword.op.extension",
+      "settings": {
+        "foreground": "#b87bb4"
+      }
+    },
+    {
+      "scope": "keyword.op.unexposed",
+      "settings": {
+        "foreground": "#5e5e5e"
+      }
+    }
+  ]
+}

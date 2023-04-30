@@ -19,6 +19,10 @@ void IL::PrettyPrint(const Program &program, IL::PrettyPrintContext out) {
 
     // Print all functions
     for (const IL::Function *fn: program.GetFunctionList()) {
+        if (*program.GetFunctionList().begin() != fn) {
+            out.Line() << "\n";
+        }
+        
         PrettyPrint(*fn, out);
     }
 }
@@ -834,7 +838,7 @@ void IL::PrettyPrint(const Backend::IL::ConstantMap &map, PrettyPrintContext out
     for (Backend::IL::Constant *constant: map) {
         std::ostream &line = out.Line();
 
-        line << "%" << constant->id << " type:%" << constant->type->id << " = ";
+        line << "%" << constant->id << " = type:%" << constant->type->id << " ";
 
         switch (constant->kind) {
             default: {

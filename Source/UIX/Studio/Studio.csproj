@@ -148,6 +148,8 @@
         <DependentUpon>BusModeButton.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <AvaloniaResource Include="Resources\TextMate\Themes\DarkIL.json" />
+      <AvaloniaResource Include="Resources\TextMate\Grammars\IL.json" />
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
