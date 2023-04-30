@@ -10,6 +10,9 @@ struct RootSignatureUserMapping {
     /// Descriptor offset within the parameter
     uint32_t offset{UINT32_MAX};
 
+    /// Is this a static sampler?
+    bool isStaticSampler{false};
+
     /// If the resource lies in the root space
     bool isRootResourceParameter{false};
 

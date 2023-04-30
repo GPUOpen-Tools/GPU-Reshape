@@ -18,8 +18,12 @@ void ShaderExportDescriptorLayout::Install(DeviceState *device, uint32_t stride)
     shaderExportStreamOffset = descriptorOffset;
     descriptorOffset += exportCount * descriptorStride;
 
-    // Shared PRMT buffer
-    prmtOffset = descriptorOffset;
+    // Shared SRV PRMT buffer
+    resourcePRMTOffset = descriptorOffset;
+    descriptorOffset += descriptorStride;
+
+    // Shared sampler PRMT buffer
+    samplerPRMTOffset = descriptorOffset;
     descriptorOffset += descriptorStride;
 
     // Number of resources

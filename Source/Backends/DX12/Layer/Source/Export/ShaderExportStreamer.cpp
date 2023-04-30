@@ -170,7 +170,8 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
     std::lock_guard guard(mutex);
 
     // Reset state
-    state->heap = nullptr;
+    state->resourceHeap = nullptr;
+    state->samplerHeap = nullptr;
     state->pipelineSegmentMask = {};
     state->pipeline = nullptr;
     state->pipelineObject = nullptr;
@@ -186,7 +187,7 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
     state->segmentDescriptors.push_back(allocation);
 
     // No user heap provided, map immutable to nothing
-    MapImmutableDescriptors(allocation, nullptr);
+    MapImmutableDescriptors(allocation, nullptr, nullptr);
 
     // Set current for successive binds
     state->currentSegment = allocation.info;
@@ -218,25 +219,35 @@ void ShaderExportStreamer::CloseCommandList(ShaderExportStreamState *state) {
     }
 }
 
-void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState *state, DescriptorHeapState *heap, CommandListState* commandList) {
-    if (heap->type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
+void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, CommandListState* commandList) {
+    // Set heap
+    switch (heap->type) {
+        case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
+            state->resourceHeap = heap;
+            break;
+        case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
+            state->samplerHeap = heap;
+            break;
+        default:
+            return;
+    }
+
+    // No need to recreate if not resource heap
+    if (!state->resourceHeap) {
         return;
     }
 
     // Data race begone!
     std::lock_guard guard(mutex);
 
-    // Set current heap
-    state->heap = heap;
-
     // Allocate initial segment from shared allocator
     ShaderExportSegmentDescriptorAllocation allocation;
-    allocation.info = heap->allocator->Allocate(descriptorLayout.Count());
-    allocation.allocator = heap->allocator;
+    allocation.info = state->resourceHeap->allocator->Allocate(descriptorLayout.Count());
+    allocation.allocator = state->resourceHeap->allocator;
     state->segmentDescriptors.push_back(allocation);
 
     // Map immutable to current heap
-    MapImmutableDescriptors(allocation, heap);
+    MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap);
 
     // Set current for successive binds
     state->currentSegment = allocation.info;
@@ -406,21 +417,27 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
     state->pipelineSegmentMask |= pipeline->type;
 }
 
-void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* heap) {
-    if (!heap) {
-        // TODO: Bind dummy? Is it needed?
-        return;
+void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap) {
+    if (resourceHeap) {
+        // Create view to PRMT buffer
+        device->object->CreateShaderResourceView(
+            resourceHeap->prmTable->GetResource(),
+            &resourceHeap->prmTable->GetView(),
+            descriptorLayout.GetResourcePRMT(descriptors.info.cpuHandle)
+        );
+
+        // Create views to shader resources
+        device->shaderDataHost->CreateDescriptors(descriptorLayout.GetShaderData(descriptors.info.cpuHandle, 0), sharedCPUHeapAllocator->GetAdvance());
     }
 
-    // Create view to PRMT buffer
-    device->object->CreateShaderResourceView(
-        heap->prmTable->GetResource(),
-        &heap->prmTable->GetView(),
-        descriptorLayout.GetPRMT(descriptors.info.cpuHandle)
-    );
-
-    // Create views to shader resources
-    device->shaderDataHost->CreateDescriptors(descriptorLayout.GetShaderData(descriptors.info.cpuHandle, 0), sharedCPUHeapAllocator->GetAdvance());
+    if (samplerHeap) {
+        // Create view to PRMT buffer
+        device->object->CreateShaderResourceView(
+            samplerHeap->prmTable->GetResource(),
+            &samplerHeap->prmTable->GetView(),
+            descriptorLayout.GetSamplerPRMT(descriptors.info.cpuHandle)
+        );
+    }
 }
 
 void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {
@@ -464,16 +481,16 @@ void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState
 
     // If the address is outside the SRV heap, then it's originating from a foreign heap
     // This could be intentional, say a sampler heap, or a bug from the parent application
-    if (!state->heap->IsInBounds(baseDescriptor)) {
+    if (!state->resourceHeap->IsInBounds(baseDescriptor)) {
         return;
     }
 
     // Get offset
-    uint64_t offset = baseDescriptor.ptr - state->heap->gpuDescriptorBase.ptr;
-    ASSERT(offset % state->heap->stride == 0, "Mismatched heap stride");
+    uint64_t offset = baseDescriptor.ptr - state->resourceHeap->gpuDescriptorBase.ptr;
+    ASSERT(offset % state->resourceHeap->stride == 0, "Mismatched heap stride");
 
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->heap->stride));
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->resourceHeap->stride));
 }
 
 void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
@@ -485,16 +502,16 @@ void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamStat
 
     // If the address is outside the SRV heap, then it's originating from a foreign heap
     // This could be intentional, say a sampler heap, or a bug from the parent application
-    if (!state->heap->IsInBounds(baseDescriptor)) {
+    if (!state->resourceHeap->IsInBounds(baseDescriptor)) {
         return;
     }
 
     // Get offset
-    uint64_t offset = baseDescriptor.ptr - state->heap->gpuDescriptorBase.ptr;
-    ASSERT(offset % state->heap->stride == 0, "Mismatched heap stride");
+    uint64_t offset = baseDescriptor.ptr - state->resourceHeap->gpuDescriptorBase.ptr;
+    ASSERT(offset % state->resourceHeap->stride == 0, "Mismatched heap stride");
 
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->heap->stride));
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->resourceHeap->stride));
 }
 
 void ShaderExportStreamer::SetComputeRootShaderResourceView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {

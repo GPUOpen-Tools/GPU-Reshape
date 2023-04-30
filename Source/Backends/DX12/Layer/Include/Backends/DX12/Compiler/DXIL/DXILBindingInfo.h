@@ -14,8 +14,9 @@ struct DXILBindingInfo {
     /// Handle for shader export data
     uint32_t shaderExportHandleId{};
 
-    /// Handle for PRMT relocation
-    uint32_t prmtHandleId{};
+    /// Handles for PRMT relocation
+    uint32_t resourcePRMTHandleId{};
+    uint32_t samplerPRMTHandleId{};
 
     /// Handle for descriptor data
     uint32_t descriptorConstantsHandleId{};

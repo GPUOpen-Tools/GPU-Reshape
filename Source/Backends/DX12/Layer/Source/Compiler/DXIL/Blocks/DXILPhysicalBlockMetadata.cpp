@@ -1165,22 +1165,45 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXJob &job) {
         .addressSpace = Backend::IL::AddressSpace::Function
     });
 
-    // Create handle
-    HandleEntry& handle = handles.emplace_back();
-    handle.name = "PRMT";
-    handle.type = retTyPtr;
-    handle.bindSpace = job.instrumentationKey.bindingInfo.space;
-    handle.registerBase = job.instrumentationKey.bindingInfo.prmtBaseRegister;
-    handle.registerRange = 1u;
-    handle.srv.componentType = ComponentType::UInt32;
-    handle.srv.shape = DXILShaderResourceShape::TypedBuffer;
+    // Resource PRMT
+    {
+        // Create handle
+        HandleEntry& handle = handles.emplace_back();
+        handle.name = "ResourcePRMT";
+        handle.type = retTyPtr;
+        handle.bindSpace = job.instrumentationKey.bindingInfo.space;
+        handle.registerBase = job.instrumentationKey.bindingInfo.resourcePRMTBaseRegister;
+        handle.registerRange = 1u;
+        handle.srv.componentType = ComponentType::UInt32;
+        handle.srv.shape = DXILShaderResourceShape::TypedBuffer;
 
-    // Append handle to class
-    MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::SRVs);
-    _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
+        // Append handle to class
+        MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::SRVs);
+        _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
 
-    // Set binding info
-    table.bindingInfo.prmtHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
+        // Set binding info
+        table.bindingInfo.resourcePRMTHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
+    }
+
+    // Sampler PRMT
+    {
+        // Create handle
+        HandleEntry& handle = handles.emplace_back();
+        handle.name = "SamplerPRMT";
+        handle.type = retTyPtr;
+        handle.bindSpace = job.instrumentationKey.bindingInfo.space;
+        handle.registerBase = job.instrumentationKey.bindingInfo.samplerPRMTBaseRegister;
+        handle.registerRange = 1u;
+        handle.srv.componentType = ComponentType::UInt32;
+        handle.srv.shape = DXILShaderResourceShape::TypedBuffer;
+
+        // Append handle to class
+        MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::SRVs);
+        _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
+
+        // Set binding info
+        table.bindingInfo.samplerPRMTHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
+    }
 }
 
 void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXJob &job) {

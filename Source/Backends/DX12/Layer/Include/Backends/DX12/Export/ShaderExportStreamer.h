@@ -216,8 +216,9 @@ public:
 private:
     /// Map all segment agnostic data
     /// \param descriptors descriptors to be bound
-    /// \param heap heap to bind against
-    void MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* heap);
+    /// \param resourceHeap resource heap to bind against
+    /// \param samplerHeap sampler heap to bind against
+    void MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap);
 
     /// Process all segments within a queue
     /// \param queue the queue state

@@ -11,8 +11,9 @@ struct RootRegisterBindingInfo {
     uint32_t shaderExportBaseRegister;
     uint32_t shaderExportCount;
 
-    /// PRMT register
-    uint32_t prmtBaseRegister;
+    /// PRMT registers
+    uint32_t resourcePRMTBaseRegister;
+    uint32_t samplerPRMTBaseRegister;
 
     /// Descriptor constant register
     uint32_t descriptorConstantBaseRegister;

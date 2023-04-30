@@ -133,7 +133,8 @@ public:
 private:
     /// Shared counter handle
     uint32_t exportCounterHandle;
-    uint32_t prmtHandle;
+    uint32_t resourcePRMTHandle;
+    uint32_t samplerPRMTHandle;
     uint32_t descriptorHandle;
     uint32_t eventHandle;
 

@@ -69,6 +69,7 @@
         "CreateUnorderedAccessView",
         "CreateDepthStencilView",
         "CreateRenderTargetView",
+        "CreateSampler",
         "CreateCommandSignature",
         "CreatePipelineLibrary"
       ]

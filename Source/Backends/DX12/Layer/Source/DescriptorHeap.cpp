@@ -287,7 +287,30 @@ void WINAPI HookID3D12DeviceCreateDepthStencilView(ID3D12Device* _this, ID3D12Re
     table.next->CreateDepthStencilView(resource.next, pDesc, DestDescriptor);
 }
 
-HRESULT HookID3D12DescriptorHeapGetDevice(ID3D12DescriptorHeap*_this, const IID &riid, void **ppDevice) {
+void WINAPI HookID3D12DeviceCreateSampler(ID3D12Device* _this, const D3D12_SAMPLER_DESC* pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor) {
+    auto table = GetTable(_this);
+
+    // Associated heap?
+    if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, DestDescriptor.ptr)) {
+        const uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
+        ASSERT(offset % heap->stride == 0, "Invalid heap offset");
+
+        // Table wise offset
+        const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
+
+        // Write mapping
+        heap->prmTable->WriteMapping(tableOffset, nullptr, VirtualResourceMapping {
+            .puid = 0,
+            .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler),
+            .srb  = 0x1
+        });
+    }
+
+    // Pass down callchain
+    table.next->CreateSampler(pDesc, DestDescriptor);
+}
+
+HRESULT WINAPI HookID3D12DescriptorHeapGetDevice(ID3D12DescriptorHeap*_this, const IID &riid, void **ppDevice) {
     auto table = GetTable(_this);
 
     // Pass to device query

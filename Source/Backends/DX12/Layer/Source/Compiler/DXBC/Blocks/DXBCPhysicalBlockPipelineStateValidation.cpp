@@ -106,13 +106,27 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
         }
     });
 
-    // PRMT
+    // Resource PRMT
     srvs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{
             .type = DXBCPSVBindInfoType::ShaderResourceView,
             .space = bindingInfo.space,
-            .low = bindingInfo.prmtBaseRegister,
-            .high = bindingInfo.prmtBaseRegister
+            .low = bindingInfo.resourcePRMTBaseRegister,
+            .high = bindingInfo.resourcePRMTBaseRegister
+        },
+        .info1 = DXBCPSVBindInfo1{
+            .kind = DXBCPSVBindInfoKind::TypedBuffer,
+            .flags = 0
+        }
+    });
+
+    // Sampler PRMT
+    srvs.Add(DXBCPSVBindInfoRevision1 {
+        .info0 = DXBCPSVBindInfo0{
+            .type = DXBCPSVBindInfoType::ShaderResourceView,
+            .space = bindingInfo.space,
+            .low = bindingInfo.samplerPRMTBaseRegister,
+            .high = bindingInfo.samplerPRMTBaseRegister
         },
         .info1 = DXBCPSVBindInfo1{
             .kind = DXBCPSVBindInfoKind::TypedBuffer,

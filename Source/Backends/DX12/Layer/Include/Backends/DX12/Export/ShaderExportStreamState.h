@@ -116,8 +116,9 @@ struct ShaderExportStreamState {
         
     }
     
-    /// Currently bound (SRV, UAV, CBV) heap
-    const DescriptorHeapState* heap{nullptr};
+    /// Currently bound heaps
+    DescriptorHeapState* resourceHeap{nullptr};
+    DescriptorHeapState* samplerHeap{nullptr};
 
     /// Current mask of bound segments
     PipelineTypeSet pipelineSegmentMask{0};

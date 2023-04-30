@@ -52,8 +52,12 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
     bindingInfo.shaderExportCount = static_cast<uint32_t>(state->features.size()) + 1u;
     registerOffset += bindingInfo.shaderExportCount;
 
-    // Set base register for prmt data
-    bindingInfo.prmtBaseRegister = registerOffset;
+    // Set base register for resource prmt data
+    bindingInfo.resourcePRMTBaseRegister = registerOffset;
+    registerOffset += 1u;
+
+    // Set base register for sampler prmt data
+    bindingInfo.samplerPRMTBaseRegister = registerOffset;
     registerOffset += 1u;
 
     // Set base register for descriptor constants
@@ -93,7 +97,7 @@ RootSignatureUserMapping& GetRootMapping(RootSignaturePhysicalMapping* mapping, 
 }
 
 template<typename T>
-static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount) {
+static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount, const D3D12_STATIC_SAMPLER_DESC* staticSamplers, uint32_t staticSamplerCount) {
     auto* mapping = new (state->allocators, kAllocStateRootSignature) RootSignaturePhysicalMapping(state->allocators.Tag(kAllocStateRootSignature));
 
     // TODO: Could do a pre-pass
@@ -209,6 +213,22 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
         }
     }
 
+    // Create static sampler mappings
+    for (uint32_t i = 0; i < staticSamplerCount; i++) {
+        const D3D12_STATIC_SAMPLER_DESC& sampler = staticSamplers[i];
+
+        // Add to hash
+        CombineHash(mapping->signatureHash, BufferCRC64(&sampler, sizeof(sampler)));
+
+        // Create mapping
+        RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::Sampler, sampler.RegisterSpace, sampler.ShaderRegister);
+        user.isRootResourceParameter = true;
+        user.isStaticSampler = true;
+        user.rootParameter = i;
+        user.offset = 0;
+    }
+
+    // OK
     return mapping;
 }
 
@@ -241,11 +261,20 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
             .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
         },
 
-        // PRMT range
+        // Resource PRMT range
         {
             .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
             .NumDescriptors = 1u,
-            .BaseShaderRegister = outRoot->prmtBaseRegister,
+            .BaseShaderRegister = outRoot->resourcePRMTBaseRegister,
+            .RegisterSpace = outRoot->space,
+            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+        },
+
+        // Sampler PRMT range
+        {
+            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            .NumDescriptors = 1u,
+            .BaseShaderRegister = outRoot->samplerPRMTBaseRegister,
             .RegisterSpace = outRoot->space,
             .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
         },
@@ -264,7 +293,7 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     Parameter& exportParameter = parameters[source.NumParameters + 0u] = {};
     exportParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     exportParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    exportParameter.DescriptorTable.NumDescriptorRanges = 3u;
+    exportParameter.DescriptorTable.NumDescriptorRanges = 4u;
     exportParameter.DescriptorTable.pDescriptorRanges = ranges;
 
     // Range version 1.1 assumes STATIC registers, explicitly say otherwise
@@ -292,7 +321,7 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     eventParameter.Constants.Num32BitValues = eventCount;
 
     // Create mappings
-    *outMapping = CreateRootPhysicalMappings(state, parameters, parameterCount);
+    *outMapping = CreateRootPhysicalMappings(state, parameters, parameterCount, source.pStaticSamplers, source.NumStaticSamplers);
 
     // Versioned creation info
     D3D12_VERSIONED_ROOT_SIGNATURE_DESC versioned;

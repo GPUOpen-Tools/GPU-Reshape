@@ -108,13 +108,22 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         exportRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
         // Create PRMT range
-        DXBCRootSignatureDescriptorRange1& prmtRange = parameter.descriptorTable.ranges.emplace_back();
-        prmtRange.type = DXBCRootSignatureRangeType::SRV;
-        prmtRange.space = bindingInfo.space;
-        prmtRange._register = bindingInfo.prmtBaseRegister;
-        prmtRange.descriptorCount = 1u;
-        prmtRange.flags = 0x0;
-        prmtRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        DXBCRootSignatureDescriptorRange1& resourcePRMTRange = parameter.descriptorTable.ranges.emplace_back();
+        resourcePRMTRange.type = DXBCRootSignatureRangeType::SRV;
+        resourcePRMTRange.space = bindingInfo.space;
+        resourcePRMTRange._register = bindingInfo.resourcePRMTBaseRegister;
+        resourcePRMTRange.descriptorCount = 1u;
+        resourcePRMTRange.flags = 0x0;
+        resourcePRMTRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        // Create PRMT range
+        DXBCRootSignatureDescriptorRange1& samplerPRMTRange = parameter.descriptorTable.ranges.emplace_back();
+        samplerPRMTRange.type = DXBCRootSignatureRangeType::SRV;
+        samplerPRMTRange.space = bindingInfo.space;
+        samplerPRMTRange._register = bindingInfo.samplerPRMTBaseRegister;
+        samplerPRMTRange.descriptorCount = 1u;
+        samplerPRMTRange.flags = 0x0;
+        samplerPRMTRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
         // Create user range
         DXBCRootSignatureDescriptorRange1& userRange = parameter.descriptorTable.ranges.emplace_back();

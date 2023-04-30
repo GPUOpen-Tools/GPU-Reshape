@@ -26,10 +26,16 @@ public:
         return D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = base.ptr + shaderExportStreamOffset + descriptorStride * index};
     }
 
-    /// Get the PRMT handle
+    /// Get the resource PRMT handle
     /// \param base base address
-    D3D12_CPU_DESCRIPTOR_HANDLE GetPRMT(D3D12_CPU_DESCRIPTOR_HANDLE base) {
-        return D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = base.ptr + prmtOffset};
+    D3D12_CPU_DESCRIPTOR_HANDLE GetResourcePRMT(D3D12_CPU_DESCRIPTOR_HANDLE base) {
+        return D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = base.ptr + resourcePRMTOffset};
+    }
+
+    /// Get the sampler PRMT handle
+    /// \param base base address
+    D3D12_CPU_DESCRIPTOR_HANDLE GetSamplerPRMT(D3D12_CPU_DESCRIPTOR_HANDLE base) {
+        return D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = base.ptr + samplerPRMTOffset};
     }
 
     /// Get the shader data handle
@@ -56,8 +62,9 @@ private:
     /// Offset to the shader export streams
     uint32_t shaderExportStreamOffset{0};
 
-    /// Offset to the PRMT data
-    uint32_t prmtOffset{0};
+    /// Offsets to the PRMT data
+    uint32_t resourcePRMTOffset{0};
+    uint32_t samplerPRMTOffset{0};
 
     /// Offset to the shader datas
     uint32_t shaderDataOffset{0};

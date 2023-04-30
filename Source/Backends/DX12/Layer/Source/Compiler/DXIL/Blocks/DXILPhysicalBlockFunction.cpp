@@ -9,6 +9,7 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
 #include <Backends/DX12/Compiler/Tags.h>
 #include <Backends/DX12/Compiler/DXJob.h>
+#include <Backends/DX12/Resource/VirtualResourceMapping.h>
 
 // Backend
 #include <Backend/IL/TypeCommon.h>
@@ -18,6 +19,7 @@
 #include <Backend/IL/ResourceTokenPacking.h>
 #include <Backend/IL/Instruction.h>
 #include <Backend/IL/Type.h>
+#include <Backend/IL/ResourceTokenType.h>
 
 // Common
 #include <Common/Sink.h>
@@ -415,7 +417,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.source = IL::Source::Code(recordIdx);
                 instr.composite = compositeValue;
                 instr.index = index;
-                
+
                 basicBlock->Append(instr);
                 break;
             }
@@ -1056,7 +1058,7 @@ void DXILPhysicalBlockFunction::MigrateConstantBlocks() {
         if (static_cast<LLVMReservedBlock>(block->id) != LLVMReservedBlock::Function) {
             continue;
         }
-        
+
         // Definition order is linear to the internally linked functions
         uint32_t linkedIndex = internalLinkedFunctions[functionIndex++];
 
@@ -1065,7 +1067,7 @@ void DXILPhysicalBlockFunction::MigrateConstantBlocks() {
 
         // Constant offset
         uint32_t constantOffset = 0;
-        
+
         // Move all constant data
         for (LLVMBlock *fnBlock: block->blocks) {
             switch (static_cast<LLVMReservedBlock>(fnBlock->id)) {
@@ -1902,7 +1904,7 @@ static bool IsFunctionPostRecordDependentBlock(LLVMReservedBlock block) {
 
 void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlock *block) {
     const uint32_t functionIndex = static_cast<uint32_t>(functionBlocks.Size());
-    
+
     // Definition order is linear to the function blocks
     uint32_t linkedIndex = internalLinkedFunctions[functionIndex];
 
@@ -1914,7 +1916,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
         // Merge the id value segment
         table.idMap.Merge(declaration->segments.idSegment);
     }
-    
+
     // Create a new function block
     FunctionBlock& functionBlock = functionBlocks.Add();
     functionBlock.uid = block->uid;
@@ -3539,7 +3541,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlo
             }
         }
     }
-    
+
     // Only create value segments if there's more than one function, no need to branch if not
     if (RequiresValueMapSegmentation()) {
         // Revert previous value
@@ -3555,7 +3557,7 @@ void DXILPhysicalBlockFunction::StitchModuleFunction(LLVMRecord &record) {
     table.idRemapper.AllocRecordMapping(record);
 }
 
-void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {    
+void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
     // Get block
     FunctionBlock* functionBlock = GetFunctionBlock(block->uid);
     ASSERT(functionBlock, "Failed to deduce function block");
@@ -3645,7 +3647,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
 
             case LLVMFunctionRecord::InstGEP: {
                 writer.Skip(2);
-                
+
                 for (uint32_t i = 2; i < record.opCount; i++) {
                     writer.RemapRelativeValue(anchor);
                 }
@@ -3754,7 +3756,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
 
     // Fixup all forward references to their new value indices
     table.idRemapper.ResolveForwardReferences();
-    
+
     // Branching handling for multi function setups
     if (RequiresValueMapSegmentation()) {
         // Revert previous value
@@ -3881,7 +3883,8 @@ void DXILPhysicalBlockFunction::CreateHandles(const DXJob &job, struct LLVMBlock
 
 void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXJob &job, struct LLVMBlock *block) {
     // Allocate sharted counter
-    prmtHandle = program.GetIdentifierMap().AllocID();
+    resourcePRMTHandle     = program.GetIdentifierMap().AllocID();
+    samplerPRMTHandle = program.GetIdentifierMap().AllocID();
 
     // Get intrinsic
     const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCreateHandle);
@@ -3910,12 +3913,12 @@ void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXJob &job, struct LLVMBl
 
     ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-        Backend::IL::IntConstant{.value = table.bindingInfo.prmtHandleId}
+        Backend::IL::IntConstant{.value = table.bindingInfo.resourcePRMTHandleId}
     )->id);
 
     ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
         program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-        Backend::IL::IntConstant{.value = table.bindingInfo.bindingInfo.prmtBaseRegister}
+        Backend::IL::IntConstant{.value = table.bindingInfo.bindingInfo.resourcePRMTBaseRegister}
     )->id);
 
     ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
@@ -3923,8 +3926,21 @@ void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXJob &job, struct LLVMBl
         Backend::IL::BoolConstant{.value = false}
     )->id);
 
-    // Create shared counter handle
-    block->AddRecord(CompileIntrinsicCall(prmtHandle, intrinsic, 5, ops));
+    // Create shared resource prmt handle
+    block->AddRecord(CompileIntrinsicCall(resourcePRMTHandle, intrinsic, 5, ops));
+
+    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+        Backend::IL::IntConstant{.value = table.bindingInfo.samplerPRMTHandleId}
+    )->id);
+
+    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+        Backend::IL::IntConstant{.value = table.bindingInfo.bindingInfo.samplerPRMTBaseRegister}
+    )->id);
+
+    // Create shared sampler prmt handle
+    block->AddRecord(CompileIntrinsicCall(samplerPRMTHandle, intrinsic, 5, ops));
 }
 
 void DXILPhysicalBlockFunction::CreateDescriptorHandle(const DXJob &job, struct LLVMBlock *block) {
@@ -4256,9 +4272,28 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
             break;
     }
 
-    // Get user mapping
+    // Get user space
     const RootSignatureUserClass& userClass = job.instrumentationKey.physicalMapping->spaces[static_cast<uint32_t>(classType)];
     const RootSignatureUserSpace& userSpace = userClass.spaces[handle->bindSpace];
+
+    // If the range index is beyond the accessible mappings, it implies arrays or similar
+    if (rangeIndex >= userSpace.mappings.Size()) {
+        ASSERT(out.dynamicOffset == IL::InvalidID, "Dynamic mapping with out of bounds range index");
+
+        // Effective distance, +1 due to end of mappings
+        const uint32_t distanceFromEnd = 1u + (rangeIndex - static_cast<uint32_t>(userSpace.mappings.Size()));
+
+        // Assign distance as the dynamic offset to validate
+        out.dynamicOffset = program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = static_cast<uint32_t>(distanceFromEnd)}
+        )->id;
+
+        // Set to last index
+        rangeIndex = userSpace.mappings.Size() - 1u;
+    }
+
+    // Assign source
     out.source = &userSpace.mappings[rangeIndex];
 
     // OK
@@ -4268,6 +4303,23 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
 void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
     DynamicRootSignatureUserMapping userMapping = GetResourceUserMapping(job, source, _instr->resource);
     ASSERT(userMapping.source, "Fallback user mappings not supported yet");
+
+    // Static samplers are valid by default, however have no "real" data
+    if (userMapping.source->isStaticSampler) {
+        // Create constant
+        IL::ID id = program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = VirtualResourceMapping {
+                .puid = 0,
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler),
+                .srb = 0x0
+            }.opaque}
+        )->id;
+
+        // Set redirection for constant
+        table.idRemapper.SetUserRedirect(_instr->result, id);
+        return;
+    }
 
     // Allocate ids
     uint32_t legacyLoad = program.GetIdentifierMap().AllocID();
@@ -4319,6 +4371,22 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
             block->AddRecord(recordExtract);
         }
     } else {
+        // Determine the appropriate PRMT handle
+        IL::ID prmtBufferId;
+        switch (program.GetTypeMap().GetType(_instr->resource)->kind) {
+            default:
+                ASSERT(false, "Invalid resource type to get token from");
+                return;
+            case Backend::IL::TypeKind::CBuffer:
+            case Backend::IL::TypeKind::Texture:
+            case Backend::IL::TypeKind::Buffer:
+                prmtBufferId = resourcePRMTHandle;
+                break;
+            case Backend::IL::TypeKind::Sampler:
+                prmtBufferId = samplerPRMTHandle;
+                break;
+        }
+
         // Alloc IDs
         uint32_t retOffset = program.GetIdentifierMap().AllocID();
         uint32_t rootOffset = program.GetIdentifierMap().AllocID();
@@ -4402,7 +4470,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
                     program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
                     Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::GetDimensions)}
                 )->id);
-                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtHandle);
+                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtBufferId);
                 ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                     program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
                     Backend::IL::UndefConstant{}
@@ -4456,7 +4524,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job
                 program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
                 Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::BufferLoad)}
             )->id);
-            ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtHandle);
+            ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtBufferId);
             ops[2] = table.idRemapper.EncodeRedirectedUserOperand(descriptorOffset);
             ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
                 program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
