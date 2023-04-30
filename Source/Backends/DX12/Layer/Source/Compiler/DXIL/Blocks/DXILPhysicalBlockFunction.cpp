@@ -4290,7 +4290,7 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
         )->id;
 
         // Set to last index
-        rangeIndex = userSpace.mappings.Size() - 1u;
+        rangeIndex = static_cast<uint32_t>(userSpace.mappings.Size()) - 1u;
     }
 
     // Assign source
