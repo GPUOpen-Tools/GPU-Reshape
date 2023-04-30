@@ -15,8 +15,8 @@
 void main(uint dtid : SV_DispatchThreadID) {
     float data = 1.0f;
 
-    //! MESSAGE DescriptorMismatch[0]
-    // data += textureRO.SampleLevel(samplers[gCBOffset], 0.0f.xx, 0.0f);
+    //! MESSAGE DescriptorMismatch[64]
+    data += textureRO.SampleLevel(samplers[gCBOffset], 0.0f.xx, 0.0f);
 
     //! MESSAGE DescriptorMismatch[0]
 	bufferRW[dtid.x] = data;

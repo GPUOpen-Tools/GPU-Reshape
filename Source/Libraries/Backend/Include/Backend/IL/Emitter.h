@@ -764,6 +764,30 @@ namespace IL {
             return Op(*instr);
         }
 
+        /// Add phi instruction
+        /// \param result result id
+        /// \param first first case basic block
+        /// \param firstValue first case value produced by first basic block
+        /// \param second second case basic block
+        /// \param secondValue second case value produced by first basic block
+        /// \return instruction reference
+        InstructionRef <PhiInstruction> Phi(IL::ID result, uint32_t count, PhiValue* values) {
+            auto instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(count));
+            instr->opCode = OpCode::Phi;
+            instr->source = Source::Invalid();
+            instr->result = result;
+            instr->values.count = count;
+
+            // Assign all values
+            for (uint32_t i = 0; i < count; i++) {
+                ASSERT(IsMapped(values[i].branch) && IsMapped(values[i].value), "Unmapped identifier");
+                instr->values[i].branch = values[i].branch;
+                instr->values[i].value = values[i].value;
+            }
+
+            return Op(*instr);
+        }
+
         /// Perform an atomic / interlocked or
         /// \param address base address
         /// \param value value

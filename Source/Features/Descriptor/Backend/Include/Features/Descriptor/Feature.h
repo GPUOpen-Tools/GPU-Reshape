@@ -9,6 +9,7 @@
 #include <Backend/ShaderExport.h>
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/VisitContext.h>
+#include <Backend/IL/ResourceTokenType.h>
 
 // Message
 #include <Message/MessageStream.h>
@@ -46,6 +47,17 @@ public:
 
         return nullptr;
     }
+
+private:
+    /// Inject instrumentation for a given resource
+    /// \param program source program
+    /// \param function source function
+    /// \param it source instruction reference from which instrumentation occurs, potentially safe-guarded
+    /// \param resource resource to validate
+    /// \param compileTypeLiteral expected compile type value
+    /// \param isSafeGuarded to safeguard, or not to safeguard
+    /// \return moved iterator
+    IL::BasicBlock::Iterator InjectForResource(IL::Program& program, IL::Function& function, IL::BasicBlock::Iterator it, IL::ID resource, Backend::IL::ResourceTokenType compileTypeLiteral, bool isSafeGuarded);
 
 private:
     /// Hosts
