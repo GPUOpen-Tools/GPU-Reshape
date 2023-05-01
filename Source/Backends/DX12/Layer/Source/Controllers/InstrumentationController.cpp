@@ -177,6 +177,9 @@ void InstrumentationController::Handle(const MessageStream *streams, uint32_t co
         }
     }
 
+    // Flush redirects
+    virtualFeatureRedirects.clear();
+
     if (!immediateBatch.dirtyObjects.empty()) {
         CommitInstrumentation();
     }
@@ -426,9 +429,6 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             break;
         }
     }
-
-    // Flush
-    virtualFeatureRedirects.clear();
 }
 
 void InstrumentationController::SetInstrumentationInfo(InstrumentationInfo &info, uint64_t bitSet, const MessageSubStream &stream) {
