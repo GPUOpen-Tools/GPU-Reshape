@@ -30,4 +30,10 @@
     <data name="Workspace_Connect" xml:space="preserve">
         <value>Create a new workspace connection</value>
     </data>
+    <data name="Shader_NotFound" xml:space="preserve">
+        <value>Shader not found in target application.</value>
+    </data>
+    <data name="Shader_NoDebugSymbols" xml:space="preserve">
+        <value>Shader not compiled with debugging symbols, please ensure the shader is compiled with embedded debugging data.</value>
+    </data>
 </root>

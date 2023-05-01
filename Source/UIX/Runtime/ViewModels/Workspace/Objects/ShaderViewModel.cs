@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
+using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
@@ -47,6 +48,15 @@ namespace Studio.ViewModels.Workspace.Objects
         {
             get => _blockGraph;
             set => this.RaiseAndSetIfChanged(ref _blockGraph, value);
+        }
+
+        /// <summary>
+        /// Current asynchronous status
+        /// </summary>
+        public AsyncShaderStatus AsyncStatus
+        {
+            get => _asyncStatus;
+            set => this.RaiseAndSetIfChanged(ref _asyncStatus, value);
         }
         
         /// <summary>
@@ -104,5 +114,10 @@ namespace Studio.ViewModels.Workspace.Objects
         /// All reduced resource messages
         /// </summary>
         private Dictionary<uint, ValidationObject> _reducedValidationObjects = new();
+
+        /// <summary>
+        /// Internal asynchronous status
+        /// </summary>
+        private AsyncShaderStatus _asyncStatus = AsyncShaderStatus.None;
     }
 }

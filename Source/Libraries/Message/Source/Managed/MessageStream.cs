@@ -130,6 +130,7 @@ namespace Message.CLR
 
         public ByteSpan Allocate(int size)
         {
+            Count++;
             Data.SetLength(Data.Length + size);
             return GetSpan((int)Data.Length - size);
         }

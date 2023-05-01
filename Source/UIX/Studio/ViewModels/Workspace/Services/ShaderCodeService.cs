@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Avalonia.Threading;
 using Message.CLR;
 using Runtime.ViewModels.Shader;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Listeners
@@ -52,15 +53,14 @@ namespace Studio.ViewModels.Workspace.Listeners
                             // Failed to find?
                             if (shaderCode.found == 0)
                             {
-                                Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.Contents = $"Shader {{{flat.shaderUID}}} not found"; });
+                                Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.AsyncStatus |= AsyncShaderStatus.NotFound; });
                             }
 
                             // Only native?
                             if (shaderCode.native == 1)
                             {
-                                Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.Contents = $"Shader {{{flat.shaderUID}}} is missing embedded source code"; });
+                                Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.AsyncStatus |= AsyncShaderStatus.NoDebugSymbols; });
                             }
-
                             break;
                         }
                         case ShaderCodeFileMessage.ID:

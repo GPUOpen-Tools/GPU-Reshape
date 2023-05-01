@@ -162,9 +162,16 @@ namespace Studio.ViewModels.Documents
         /// </summary>
         private void OnObjectChanged()
         {
-            _object!.WhenAnyValue(x => x.Filename).Where(x => x != string.Empty).Subscribe(x =>
+            _object!.WhenAnyValue(x => x.Filename).Subscribe(x =>
             {
-                Title = $"{_object!.Filename} ({_object.GUID})";
+                if (x == string.Empty)
+                {
+                    Title = $"Shader ({_object.GUID})";
+                }
+                else
+                {
+                    Title = $"{_object!.Filename} ({_object.GUID})";
+                }
             });
         }
 

@@ -109,6 +109,19 @@ namespace Studio.Views.Shader
                                 }
                             })
                             .Subscribe();
+                        
+                        // Bind status
+                        _object.WhenAnyValue(o => o.AsyncStatus).Subscribe(status =>
+                        {
+                            if (status.HasFlag(AsyncShaderStatus.NotFound))
+                            {
+                                Editor.Text = Studio.Resources.Resources.Shader_NotFound;
+                            }
+                            else if (status.HasFlag(AsyncShaderStatus.NoDebugSymbols))
+                            {
+                                Editor.Text = Studio.Resources.Resources.Shader_NoDebugSymbols;
+                            }
+                        });
                     });
 
                     // Bind selected contents
