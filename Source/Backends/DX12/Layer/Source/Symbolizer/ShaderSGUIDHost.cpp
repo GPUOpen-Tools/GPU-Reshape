@@ -35,9 +35,15 @@ void ShaderSGUIDHost::Commit(IBridge *bridge) {
     MessageStream stream;
     MessageStreamView<ShaderSourceMappingMessage> view(stream);
 
+    // Serial
+    std::lock_guard guard(mutex);
+    
     // Write all pending
     for (ShaderSGUID sguid : pendingSubmissions) {
-        std::string_view sourceContents = GetSource(sguid);
+        ShaderSourceMapping mapping = sguidLookup.at(sguid);
+
+        // Get source
+        std::string_view sourceContents = GetSource(mapping);
 
         // Allocate message
         ShaderSourceMappingMessage* message = view.Add(ShaderSourceMappingMessage::AllocationInfo {
@@ -48,7 +54,6 @@ void ShaderSGUIDHost::Commit(IBridge *bridge) {
         message->sguid = sguid;
 
         // Fill mapping
-        ShaderSourceMapping mapping = GetMapping(sguid);
         message->shaderGUID = mapping.shaderGUID;
         message->fileUID = mapping.fileUID;
         message->line = mapping.line;
@@ -138,10 +143,16 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpa
 }
 
 ShaderSourceMapping ShaderSGUIDHost::GetMapping(ShaderSGUID sguid) {
+    std::lock_guard guard(mutex);
     return sguidLookup.at(sguid);
 }
 
 std::string_view ShaderSGUIDHost::GetSource(ShaderSGUID sguid) {
+    if (sguid == InvalidShaderSGUID) {
+        return {};
+    }
+
+    std::lock_guard guard(mutex);
     return GetSource(sguidLookup.at(sguid));
 }
 
