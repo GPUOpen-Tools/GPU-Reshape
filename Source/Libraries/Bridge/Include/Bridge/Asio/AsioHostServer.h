@@ -24,7 +24,7 @@ struct AsioHostServer {
         resolveClientRunner.RunAsync(resolveClient);
 
         // Send allocation request
-        AllocateToken();
+        AllocateToken(config.reservedToken);
     }
 
     /// Destructor
@@ -69,9 +69,10 @@ struct AsioHostServer {
 
 protected:
     /// Allocate a new client token
-    void AllocateToken() {
+    void AllocateToken(const AsioHostClientToken& reservedToken) {
         AsioHostClientResolverAllocate allocate;
         allocate.info = info;
+        allocate.reservedToken = reservedToken;
         resolveClient.WriteAsync(&allocate, sizeof(allocate));
     }
 

@@ -87,6 +87,9 @@ struct ALIGN_PACK AsioHostClientResolverAllocate : public TAsioHeader<AsioHostCl
 
     AsioHostClientInfo info{};
 
+    /// Optional, token to allocate against
+    AsioHostClientToken reservedToken{};
+
     struct Response : public TAsioHeader<Response> {
         static constexpr auto kType = AsioHeaderType::HostClientResolverAllocateResponse;
 

@@ -83,6 +83,7 @@ bool Discovery::CLR::DiscoveryService::StartBootstrappedProcess(const DiscoveryP
     nativeInfo.applicationPath = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->applicationPath).ToPointer());
     nativeInfo.workingDirectoryPath = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->workingDirectoryPath).ToPointer());
     nativeInfo.arguments = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->arguments).ToPointer());
+    nativeInfo.reservedToken = GlobalUID::FromString(static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->reservedToken).ToPointer()));
 
     // Pass down!
     return service->StartBootstrappedProcess(nativeInfo, nativeEnvironment);

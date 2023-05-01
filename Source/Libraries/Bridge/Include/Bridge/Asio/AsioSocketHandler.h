@@ -95,6 +95,11 @@ public:
         }
     }
 
+    /// Set the GUID
+    void SetGlobalUID(const GlobalUID& value) {
+        uuid = value;
+    }
+
     /// Check if the socket is open
     bool IsOpen() const {
         return socket.is_open();

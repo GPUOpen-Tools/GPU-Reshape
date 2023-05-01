@@ -8,9 +8,6 @@
 
 namespace Backend {
     struct StartupEnvironment {
-        /// Expected environment key
-        static constexpr const char* kEnvKey = "GPUOpen.GRS.StartupEnvironment";
-
         /// Populate a stream from the current environment
         /// \param stream destination stream
         /// \return success code

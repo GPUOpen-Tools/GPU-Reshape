@@ -1,6 +1,7 @@
 #include <Backend/Environment.h>
 #include <Backend/EnvironmentInfo.h>
 #include <Backend/FeatureHost.h>
+#include <Backend/EnvironmentKeys.h>
 
 // Bridge
 #include <Bridge/MemoryBridge.h>
@@ -14,10 +15,28 @@
 #include <Schemas/PingPong.h>
 
 // Common
+#include <Common/Alloca.h>
 #include <Common/Dispatcher/Dispatcher.h>
 #include <Common/Plugin/PluginResolver.h>
 
 using namespace Backend;
+
+static AsioHostClientToken GetReservedStartupAsioToken() {
+    // Try to get length
+    uint64_t length{0};
+    if (getenv_s(&length, nullptr, 0u, kReservedEnvironmentTokenKey) || !length) {
+        return {};
+    }
+
+    // Get path data
+    auto* path = ALLOCA_ARRAY(char, length);
+    if (getenv_s(&length, path, length, kReservedEnvironmentTokenKey)) {
+        return {};
+    }
+
+    // Construct from value
+    return GlobalUID::FromString(path);
+} 
 
 Environment::Environment() {
 }
@@ -54,11 +73,12 @@ bool Environment::Install(const EnvironmentInfo &info) {
 
         // Networked
         auto network = registry.AddNew<HostServerBridge>();
-
+        
         // Endpoint info
         EndpointConfig endpointConfig;
         endpointConfig.applicationName = info.applicationName;
         endpointConfig.apiName = info.apiName;
+        endpointConfig.reservedToken = GetReservedStartupAsioToken();
 
         // Attempt to install as server
         if (!network->Install(endpointConfig)) {

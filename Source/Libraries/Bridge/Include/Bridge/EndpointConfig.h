@@ -1,5 +1,8 @@
 #pragma once
 
+// Bridge
+#include "Asio/AsioProtocol.h"
+
 // Std
 #include <cstdint>
 
@@ -9,6 +12,9 @@ struct EndpointConfig {
     /// Shared port for resolving
     uint32_t sharedPort = kBridgeSharedPort;
 
+    /// Optional, reserved token
+    AsioHostClientToken reservedToken{};
+    
     /// Name of the application
     const char* applicationName{"Unknown"};
 

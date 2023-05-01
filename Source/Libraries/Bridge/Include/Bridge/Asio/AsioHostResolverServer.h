@@ -130,6 +130,11 @@ protected:
     void OnAllocateRequest(AsioSocketHandler& handler, const AsioHostClientResolverAllocate* request) {
         std::lock_guard guard(mutex);
 
+        // Did the client request a reserved token?
+        if (request->reservedToken.IsValid()) {
+            handler.SetGlobalUID(request->reservedToken);
+        }
+
         // Create local client
         ClientInfo& info = clients.emplace_back();
         info.info = request->info;

@@ -1,14 +1,19 @@
 #include <Services/Discovery/DiscoveryService.h>
 #include <Services/Discovery/NotifyIconDiscoveryListener.h>
 
-// Discovery
-#include "Backend/StartupEnvironment.h"
-#include "Common/EnvironmentArray.h"
-#include "Discovery/DiscoveryBootstrappingEnvironment.h"
+// Backend
+#include <Backend/EnvironmentKeys.h>
+#include <Backend/StartupEnvironment.h>
 
+// Discovery
 #include <Discovery/DiscoveryHost.h>
 #include <Discovery/IDiscoveryListener.h>
+#include <Discovery/DiscoveryBootstrappingEnvironment.h>
 
+// Common
+#include <Common/EnvironmentArray.h>
+
+// Detour
 #ifdef _WIN32
 #include <Detour/detours.h>
 #endif // _WIN32
@@ -162,7 +167,12 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
     DiscoveryBootstrappingEnvironment bootstrappingEnvironment;
 
     // Write the startup environment
-    bootstrappingEnvironment.environmentKeys.emplace_back(Backend::StartupEnvironment::kEnvKey, Backend::StartupEnvironment{}.WriteEnvironment(environment));
+    bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kStartupEnvironmentKey, Backend::StartupEnvironment{}.WriteEnvironment(environment));
+
+    // Write token if valid
+    if (info.reservedToken.IsValid()) {
+        bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kReservedEnvironmentTokenKey, info.reservedToken.ToString());
+    }
     
     // Compose environment
     for (const ComRef<IDiscoveryListener>& listener : listeners) {

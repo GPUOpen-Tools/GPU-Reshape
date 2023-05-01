@@ -7,6 +7,7 @@
         xmlns:controls="clr-namespace:Studio.Views.Controls"
         xmlns:propertyGrid="https://github.com/avalonia_extendedtoolkit"
         xmlns:viewModels="clr-namespace:Studio.ViewModels"
+        xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
         mc:Ignorable="d"
         d:DesignWidth="550" d:DesignHeight="550"
         Width="550" Height="550"
@@ -19,6 +20,12 @@
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="PreferSystemChrome"
         x:DataType="viewModels:LaunchViewModel">
+    <Window.Resources>
+        <ResourceDictionary>
+            <valueConverters:ConnectionStatusToProgressConverter x:Key="ConnectionStatusToProgressConverter" />
+        </ResourceDictionary>
+    </Window.Resources>
+    
     <Grid Margin="5">
         <!-- Tool Header -->
         <StackPanel VerticalAlignment="Top" Orientation="Horizontal">
@@ -105,13 +112,29 @@
                     </propertyGrid:PropertyGrid>
                 </Border>
             </Grid>
+            
+            <ProgressBar
+                VerticalAlignment="Bottom"
+                MinHeight="5"
+                x:Name="ProgressIndicator"
+                Value="100"
+                IsIndeterminate="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}"
+                Foreground="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}" />
         </Grid>
 
         <!-- Tool Result -->
         <Grid VerticalAlignment="Bottom">
+            <TextBlock
+                x:Name="StatusBlock"
+                Margin="5,0,0,0"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                Text="{Binding ConnectionStatus, Converter={StaticResource ConnectionStatusToProgressConverter}}" />
+
             <StackPanel Margin="0,0,5,0" HorizontalAlignment="Right" Orientation="Horizontal">
                 <Button
                     HorizontalAlignment="Right"
+                    IsEnabled="{Binding CanLaunch}"
                     Command="{Binding Start}">
                     Start Process
                 </Button>

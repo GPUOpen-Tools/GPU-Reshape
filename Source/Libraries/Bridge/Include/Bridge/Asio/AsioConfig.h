@@ -2,6 +2,7 @@
 
 // Bridge
 #include "AsioDebug.h"
+#include "AsioProtocol.h"
 
 // Std
 #include <cstdint>
@@ -13,6 +14,9 @@ static constexpr uint16_t kDefaultAsioHostResolvePort = 34'213;
 struct AsioConfig {
     /// Shared resolve port
     uint16_t hostResolvePort = kDefaultAsioHostResolvePort;
+
+    /// Optional, reserved token
+    AsioHostClientToken reservedToken{};
 };
 
 /// Remote endpoint config

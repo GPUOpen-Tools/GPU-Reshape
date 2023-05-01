@@ -14,6 +14,7 @@ bool HostServerBridge::Install(const EndpointConfig &config) {
     // Port config
     AsioConfig asioConfig;
     asioConfig.hostResolvePort = config.sharedPort;
+    asioConfig.reservedToken = config.reservedToken;
 
     // Local info
     AsioHostClientInfo asioInfo;

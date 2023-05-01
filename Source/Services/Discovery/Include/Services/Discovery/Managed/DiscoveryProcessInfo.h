@@ -13,5 +13,8 @@ namespace Discovery::CLR {
 
         /// All command line arguments given to the application
         String^ arguments = "";
+
+        /// Optional, reserved token
+        String^ reservedToken = "";
     };
 }

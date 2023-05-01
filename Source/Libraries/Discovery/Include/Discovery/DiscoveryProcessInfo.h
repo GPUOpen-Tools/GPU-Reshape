@@ -1,5 +1,8 @@
 ﻿#pragma once
 
+// Common
+#include <Common/GlobalUID.h>
+
 struct DiscoveryProcessInfo {
     /// Path of the application
     const char* applicationPath{nullptr};
@@ -9,4 +12,7 @@ struct DiscoveryProcessInfo {
 
     /// All command line arguments given to the application
     const char* arguments{nullptr};
+
+    /// Optional, reserved token
+    GlobalUID reservedToken{};
 };

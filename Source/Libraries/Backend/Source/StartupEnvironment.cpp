@@ -1,4 +1,5 @@
 ﻿#include <Backend/StartupEnvironment.h>
+#include <Backend/EnvironmentKeys.h>
 
 // Common
 #include <Common/Alloca.h>
@@ -14,13 +15,13 @@ using namespace Backend;
 bool StartupEnvironment::LoadFromEnvironment(MessageStream& stream) {
     // Try to get length
     uint64_t length{0};
-    if (getenv_s(&length, nullptr, 0u, kEnvKey) || !length) {
+    if (getenv_s(&length, nullptr, 0u, kStartupEnvironmentKey) || !length) {
         return true;
     }
 
     // Get path data
     auto* path = ALLOCA_ARRAY(char, length);
-    if (getenv_s(&length, path, length, kEnvKey)) {
+    if (getenv_s(&length, path, length, kStartupEnvironmentKey)) {
         return false;
     }
 

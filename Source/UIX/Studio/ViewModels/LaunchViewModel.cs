@@ -1,24 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Threading;
+using Bridge.CLR;
 using Discovery.CLR;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.Services;
-using Studio.ViewModels.Traits;
+using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels
 {
-    public class LaunchViewModel : ReactiveObject
+    public class LaunchViewModel : ReactiveObject, IBridgeListener
     {
         /// <summary>
         /// Connect to selected application
@@ -33,9 +36,9 @@ namespace Studio.ViewModels
             get => _applicationPath;
             set
             {
-                if (WorkingDirectoryPath == string.Empty || WorkingDirectoryPath == System.IO.Path.GetDirectoryName(_applicationPath))
+                if (WorkingDirectoryPath == string.Empty || WorkingDirectoryPath == Path.GetDirectoryName(_applicationPath))
                 {
-                    WorkingDirectoryPath = System.IO.Path.GetDirectoryName(value)!;
+                    WorkingDirectoryPath = Path.GetDirectoryName(value)!;
                 }
 
                 this.RaiseAndSetIfChanged(ref _applicationPath, value);
@@ -61,9 +64,18 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
+        /// Connection status
+        /// </summary>
+        public ConnectionStatus ConnectionStatus
+        {
+            get => _connectionStatus;
+            set => this.RaiseAndSetIfChanged(ref _connectionStatus, value);
+        }
+
+        /// <summary>
         /// All virtual workspaces
         /// </summary>
-        public ObservableCollection<Controls.IObservableTreeItem> Workspaces { get; } = new();
+        public ObservableCollection<IObservableTreeItem> Workspaces { get; } = new();
 
         /// <summary>
         /// Current selected property
@@ -92,6 +104,15 @@ namespace Studio.ViewModels
         /// User interaction during launch acceptance
         /// </summary>
         public Interaction<Unit, bool> AcceptLaunch { get; }
+
+        /// <summary>
+        /// Can a launch be performed now?
+        /// </summary>
+        public bool CanLaunch
+        {
+            get => _canLaunch;
+            set => this.RaiseAndSetIfChanged(ref _canLaunch, value);
+        }
         
         /// <summary>
         /// Constructor
@@ -120,11 +141,11 @@ namespace Studio.ViewModels
             }
 
             // Create workspace with virtual adapter
-            WorkspaceViewModel = new WorkspaceViewModel()
+            WorkspaceViewModel = new WorkspaceViewModel
             {
-                Connection = new VirtualConnectionViewModel()
+                Connection = new VirtualConnectionViewModel
                 {
-                    Application = new ApplicationInfo()
+                    Application = new ApplicationInfo
                     {
                         Process = "Application"
                     }
@@ -149,7 +170,7 @@ namespace Studio.ViewModels
                     int index = _virtualFeatureMappings.Count;
                     
                     // Add feature
-                    featureCollectionViewModel.Features.Add(new FeatureInfo()
+                    featureCollectionViewModel.Features.Add(new FeatureInfo
                     {
                         Name = instrumentationPropertyService.Name,
                         FeatureBit = (1u << index)
@@ -161,11 +182,14 @@ namespace Studio.ViewModels
             }
             
             // Add workspace item
-            Workspaces.Add(new Controls.WorkspaceTreeItemViewModel()
+            Workspaces.Add(new WorkspaceTreeItemViewModel
             {
                 OwningContext = WorkspaceViewModel,
                 ViewModel = WorkspaceViewModel.PropertyCollection
             });
+
+            // Subscribe
+            _connectionViewModel.Connected.Subscribe(_ => OnRemoteConnected());
         }
 
         /// <summary>
@@ -178,17 +202,18 @@ namespace Studio.ViewModels
                 return;
             }
 
-            // Handle as accepted
-            if (!await AcceptLaunch.Handle(Unit.Default))
-            {
-                return;
-            }
+            // Prevent launches for now
+            _canLaunch = false;
+
+            // Allocate token up-front
+            _pendingReservedToken = $"{{{Guid.NewGuid()}}}";
 
             // Setup process info
             var processInfo = new DiscoveryProcessInfo();
             processInfo.applicationPath = _applicationPath;
             processInfo.workingDirectoryPath = _workingDirectoryPath;
             processInfo.arguments = _arguments;
+            processInfo.reservedToken = _pendingReservedToken;
 
             // Create environment view
             var view = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream());
@@ -214,12 +239,215 @@ namespace Studio.ViewModels
             
             // Start process
             service.StartBootstrappedProcess(processInfo, view.Storage);
+            
+            // Start connection
+            _connectionViewModel.Connect("127.0.0.1", null);
+            
+            // Update status
+            ConnectionStatus = ConnectionStatus.Connecting;
+        }
+
+        /// <summary>
+        /// Invoked when the remote endpoint has connected
+        /// </summary>
+        private void OnRemoteConnected()
+        {
+            // Register handler
+            _connectionViewModel.Bridge?.Register(this);
+
+            // Request discovery
+            _connectionViewModel.DiscoverAsync();
+
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // Existing?
+                _timer?.Stop();
+
+                // Create timer on main thread
+                _timer = new DispatcherTimer(DispatcherPriority.Background)
+                {
+                    Interval = TimeSpan.FromSeconds(1),
+                    IsEnabled = true
+                };
+
+                // Subscribe tick
+                _timer.Tick += OnPoolingTick;
+
+                // Must call start manually (a little vague)
+                _timer.Start();
+            });
+        }
+
+        /// <summary>
+        /// Invoked on timer pooling
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnPoolingTick(object? sender, EventArgs e)
+        {
+            _connectionViewModel.DiscoverAsync();
+        }
+
+        /// <summary>
+        /// Invoked on bridge handlers
+        /// </summary>
+        /// <param name="streams">all streams</param>
+        /// <param name="count">number of streams</param>
+        public void Handle(ReadOnlyMessageStream streams, uint count)
+        {
+            var schema = new OrderedMessageView(streams);
+
+            // Visit typed
+            foreach (OrderedMessage message in schema)
+            {
+                switch (message.ID)
+                {
+                    case HostDiscoveryMessage.ID:
+                    {
+                        Handle(message.Get<HostDiscoveryMessage>());
+                        break;
+                    }
+                    case HostConnectedMessage.ID:
+                    {
+                        Handle(message.Get<HostConnectedMessage>());
+                        break;
+                    }
+                    case HostResolvedMessage.ID:
+                    {
+                        Handle(message.Get<HostResolvedMessage>());
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Invoked on connection messages
+        /// </summary>
+        /// <param name="connected">message</param>
+        private void Handle(HostConnectedMessage connected)
+        {
+            var flat = connected.Flat;
+
+            Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                // Set status
+                if (flat.accepted == 0)
+                {
+                    ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationRejected;
+                }
+                else
+                {
+                    ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationAccepted;
+                }
+
+                // Handle as accepted
+                if (!await AcceptLaunch.Handle(Unit.Default))
+                {
+                    return;
+                }
+
+                // Get provider
+                var provider = App.Locator.GetService<Services.IWorkspaceService>();
+
+                // Create workspace
+                var workspace = new ViewModels.Workspace.WorkspaceViewModel()
+                {
+                    Connection = _connectionViewModel
+                };
+                
+                // Configure and register workspace
+                provider?.Install(workspace);
+                provider?.Add(workspace);
+            });
+        }
+
+        /// <summary>
+        /// Invoked on resolved messages
+        /// </summary>
+        /// <param name="resolved">message</param>
+        private void Handle(HostResolvedMessage resolved)
+        {
+            var flat = resolved.Flat;
+
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // Set status
+                if (flat.accepted == 0)
+                {
+                    ConnectionStatus = Models.Workspace.ConnectionStatus.ResolveRejected;
+                }
+                else
+                {
+                    ConnectionStatus = Models.Workspace.ConnectionStatus.ResolveAccepted;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Invoked on discovery messages
+        /// </summary>
+        /// <param name="discovery">message</param>
+        private void Handle(HostDiscoveryMessage discovery)
+        {
+            // Assigned to reserved application
+            ApplicationInfo? applicationInfo = null;
+
+            // Visit typed
+            foreach (OrderedMessage message in new OrderedMessageView(discovery.infos.Stream))
+            {
+                switch (message.ID)
+                {
+                    case HostServerInfoMessage.ID:
+                    {
+                        var info = message.Get<HostServerInfoMessage>();
+                        
+                        // Matched against pending?
+                        if (info.guid.String.Equals(_pendingReservedToken, StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            applicationInfo = new Models.Workspace.ApplicationInfo
+                            {
+                                Name = info.application.String,
+                                Process = info.process.String,
+                                API = info.api.String,
+                                Pid = info.processId,
+                                Guid = new Guid(info.guid.String)
+                            };
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Mark as connected
+            Dispatcher.UIThread.InvokeAsync(() => ConnectionStatus = ConnectionStatus.EndpointConnected);
+
+            // Not found?
+            if (applicationInfo == null)
+            {
+                return;
+            }
+            
+            // Add on UI thread
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                // Prevent future timings
+                _timer.Stop();
+                
+                // Submit request
+                _connectionViewModel.RequestClientAsync(applicationInfo);
+            });
         }
 
         /// <summary>
         /// Internal configurations
         /// </summary>
         private IEnumerable<IPropertyViewModel>? _selectedPropertyConfigurations;
+
+        /// <summary>
+        /// Internal connection
+        /// </summary>
+        private Workspace.ConnectionViewModel _connectionViewModel = new();
 
         /// <summary>
         /// Internal selected property
@@ -240,6 +468,26 @@ namespace Studio.ViewModels
         /// Internal arguments
         /// </summary>
         private string _arguments = string.Empty;
+
+        /// <summary>
+        /// Pending token for discovery matching
+        /// </summary>
+        private string _pendingReservedToken;
+
+        /// <summary>
+        /// Internal connection status
+        /// </summary>
+        private ConnectionStatus _connectionStatus;
+
+        /// <summary>
+        /// Shared bus timer
+        /// </summary>
+        private DispatcherTimer _timer;
+
+        /// <summary>
+        /// Internal launch state
+        /// </summary>
+        private bool _canLaunch = true;
         
         /// <summary>
         /// Internal virtual mappings
