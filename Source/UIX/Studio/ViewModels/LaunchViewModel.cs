@@ -15,6 +15,7 @@ using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.Services;
+using Studio.Services.Suspension;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
@@ -31,6 +32,7 @@ namespace Studio.ViewModels
         /// <summary>
         /// Current connection string
         /// </summary>
+        [DataMember]
         public string ApplicationPath
         {
             get => _applicationPath;
@@ -48,6 +50,7 @@ namespace Studio.ViewModels
         /// <summary>
         /// Current connection string
         /// </summary>
+        [DataMember]
         public string WorkingDirectoryPath
         {
             get => _workingDirectoryPath;
@@ -57,6 +60,7 @@ namespace Studio.ViewModels
         /// <summary>
         /// Current connection string
         /// </summary>
+        [DataMember]
         public string Arguments
         {
             get => _arguments;
@@ -190,6 +194,9 @@ namespace Studio.ViewModels
 
             // Subscribe
             _connectionViewModel.Connected.Subscribe(_ => OnRemoteConnected());
+            
+            // Suspension
+            this.BindTypedSuspension();
         }
 
         /// <summary>

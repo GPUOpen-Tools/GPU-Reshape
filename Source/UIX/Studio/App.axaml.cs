@@ -6,8 +6,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
-using ReactiveUI;
 using Studio.Plugin;
+using Studio.Services;
 using Studio.ViewModels;
 using Studio.Views;
 
@@ -47,38 +47,41 @@ namespace Studio
         {
             AvaloniaLocator locator = AvaloniaLocator.CurrentMutable;
             
+            // Cold suspension service
+            locator.BindToSelf<ISuspensionService>(new SuspensionService("GPUReshape.Config.json"));
+            
             // Locator
-            locator.BindToSelf<Services.ILocatorService>(new Services.LocatorService());
+            locator.BindToSelf<ILocatorService>(new LocatorService());
             
             // Logging host
-            locator.BindToSelf<Services.ILoggingService>(new Services.LoggingService());
+            locator.BindToSelf<ILoggingService>(new LoggingService());
 
             // Hosts all menu objects
-            locator.BindToSelf<Services.IWindowService>(new Services.WindowService());
+            locator.BindToSelf<IWindowService>(new WindowService());
 
             // Hosts all live workspaces
-            locator.BindToSelf<Services.IWorkspaceService>(new Services.WorkspaceService());
+            locator.BindToSelf<IWorkspaceService>(new WorkspaceService());
             
             // Provides general network diagnostics
-            locator.BindToSelf<Services.NetworkDiagnosticService>(new Services.NetworkDiagnosticService());
+            locator.BindToSelf(new NetworkDiagnosticService());
 
             // Initiates the host resolver if not already up and running
-            locator.BindToSelf<Services.IHostResolverService>(new Services.HostResolverService());
+            locator.BindToSelf<IHostResolverService>(new HostResolverService());
             
             // Local discoverability
-            locator.BindToSelf<Services.IBackendDiscoveryService>(new Services.BackendDiscoveryService());
+            locator.BindToSelf<IBackendDiscoveryService>(new BackendDiscoveryService());
 
             // Hosts all status objects
-            locator.BindToSelf<Services.IStatusService>(new Services.StatusService());
+            locator.BindToSelf<IStatusService>(new StatusService());
 
             // Hosts all context objects
-            locator.BindToSelf<Services.IContextMenuService>(new Services.ContextMenuService());
+            locator.BindToSelf<IContextMenuService>(new ContextMenuService());
 
             // Hosts all menu objects
-            locator.BindToSelf<Services.IMenuService>(new Services.MenuService());
+            locator.BindToSelf<IMenuService>(new MenuService());
 
             // Hosts all settings objects
-            locator.BindToSelf<Services.ISettingsService>(new Services.SettingsService());
+            locator.BindToSelf<ISettingsService>(new SettingsService());
         }
 
         private void InstallPlugins()
@@ -127,7 +130,7 @@ namespace Studio
                 }
                 case ISingleViewApplicationLifetime singleViewLifetime:
                 {
-                    var mainView = new MainView()
+                    var mainView = new MainView
                     {
                         DataContext = vm
                     };

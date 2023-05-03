@@ -17,6 +17,8 @@ using ReactiveUI;
 using Runtime.Models.Query;
 using Studio.Extensions;
 using Studio.Models.Workspace;
+using Studio.Services;
+using Studio.Services.Suspension;
 using Studio.ViewModels.Query;
 using Color = Avalonia.Media.Color;
 
@@ -37,6 +39,7 @@ namespace Studio.ViewModels
         /// <summary>
         /// Current connection string
         /// </summary>
+        [DataMember]
         public string ConnectionString
         {
             get => _connectionString;
@@ -125,6 +128,9 @@ namespace Studio.ViewModels
                 // Register handler
                 _connectionViewModel.Bridge?.Deregister(this);
             });
+            
+            // Suspension
+            this.BindTypedSuspension();
         }
 
         /// <summary>
