@@ -1,30 +1,31 @@
-#pragma once
+﻿#pragma once
 
 // Layer
 #include "Backends/Vulkan/Vulkan.h"
-#include "Backends/Vulkan/DeepCopyObjects.Gen.h"
 
 // Common
 #include "Common/Containers/ReferenceObject.h"
 
 // Std
 #include <cstdint>
+#include <vector>
 
 // Forward declarations
 struct DeviceDispatchTable;
+struct ImageViewState;
 
-struct RenderPassState : public ReferenceObject {
+struct FrameBufferState : public ReferenceObject {
     /// Reference counted destructor
-    virtual ~RenderPassState();
+    virtual ~FrameBufferState();
 
     /// Backwards reference
     DeviceDispatchTable* table;
 
-    /// User render pass
-    VkRenderPass object{VK_NULL_HANDLE};
+    /// User frame buffer
+    VkFramebuffer object{VK_NULL_HANDLE};
 
-    /// Deep copy info
-    VkRenderPassCreateInfoDeepCopy deepCopy;
+    /// All image views
+    std::vector<ImageViewState*> imageViews;
 
     /// Unique identifier, unique for the type
     uint64_t uid;

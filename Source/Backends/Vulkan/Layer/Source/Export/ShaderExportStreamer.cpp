@@ -145,6 +145,9 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Co
         bindState.isInstrumented = false;
     }
 
+    // Reset render pass state
+    state->renderPass.insideRenderPass = false;
+
     // Clear push data
     state->persistentPushConstantData.resize(table->physicalDeviceProperties.limits.maxPushConstantsSize);
     std::fill(state->persistentPushConstantData.begin(), state->persistentPushConstantData.end(), 0u);
@@ -361,7 +364,7 @@ void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState 
     }
 }
 
-void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, PipelineType type, VkPipelineLayout layout, VkPipeline pipeline, uint32_t slot, CommandBufferObject *commandBuffer) {
+void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, PipelineType type, VkPipelineLayout layout, VkPipeline pipeline, uint32_t prmtPushConstantOffset, uint32_t slot, CommandBufferObject *commandBuffer) {
     // Get the bind state
     ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(type)];
 
@@ -394,9 +397,9 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, Pipe
     // Update offset
     table->commandBufferDispatchTable.next_vkCmdPushConstants(
         commandBuffer->object,
-        bindState.pipeline->layout->object,
+        layout,
         VK_SHADER_STAGE_ALL,
-        bindState.pipeline->layout->prmtPushConstantOffset,
+        prmtPushConstantOffset,
         sizeof(uint32_t),
         &dynamicOffset
     );
@@ -433,7 +436,15 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
     commandBuffer->context.descriptorSets[static_cast<uint32_t>(pipeline->type)][pipeline->layout->boundUserDescriptorStates] = state->segmentDescriptorInfo.set;
 #endif
 
-    BindShaderExport(state, pipeline->type, pipeline->layout->object, pipeline->object, pipeline->layout->boundUserDescriptorStates, commandBuffer);
+    BindShaderExport(
+        state,
+        pipeline->type,
+        pipeline->layout->object,
+        pipeline->object,
+        pipeline->layout->prmtPushConstantOffset,
+        pipeline->layout->boundUserDescriptorStates,
+        commandBuffer
+    );
 
     // Mark as bound
     bindState.deviceDescriptorOverwriteMask |= bindMask;

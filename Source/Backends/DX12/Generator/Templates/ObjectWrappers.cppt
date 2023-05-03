@@ -4,6 +4,7 @@
 
 // Layer
 #include <Backends/DX12/Table.Gen.h>
+#include <Backends/DX12/Command/UserCommandBuffer.h>
 $INCLUDES
 
 /// Unwrapping UUID

@@ -136,7 +136,7 @@ bool ShaderProgramHost::InstallPrograms() {
         VkPushConstantRange range;
         range.offset = 0u;
         range.size = eventCount * sizeof(uint32_t);
-        range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        range.stageFlags = VK_SHADER_STAGE_ALL;
 
         // Optional event data
         if (eventCount > 0) {

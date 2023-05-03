@@ -30,10 +30,10 @@ struct TFeatureHook<R(A...)> {
 /// \param featureHooks the feature hooks registered
 /// \param args all hook arguments
 template<typename T, typename O, typename... A>
-inline void ApplyFeatureHook(O* object, CommandContext* context, uint64_t featureBitSet, typename T::Hook featureHooks[64], A... args) {
+inline bool ApplyFeatureHook(O* object, CommandContext* context, uint64_t featureBitSet, typename T::Hook featureHooks[64], A... args) {
     // Early out if empty
     if (!featureBitSet)
-        return;
+        return false;
 
     // Current mask
     uint64_t bitMask = featureBitSet;
@@ -49,5 +49,8 @@ inline void ApplyFeatureHook(O* object, CommandContext* context, uint64_t featur
         // Next!
         bitMask &= ~(1ull << index);
     }
+
+    // OK
+    return true;
 }
 

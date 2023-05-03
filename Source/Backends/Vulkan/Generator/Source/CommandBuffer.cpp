@@ -178,11 +178,11 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
 
         // Hooked?
         if (info.hooks.count(prototypeName->GetText())) {
-            hooks << "\tApplyFeatureHook<FeatureHook_" << prototypeName->GetText() << ">(\n";
+            hooks << "\tif (ApplyFeatureHook<FeatureHook_" << prototypeName->GetText() << ">(\n";
             hooks << "\t\t" << wrappedObject << ",\n";
             hooks << "\t\t&" << wrappedObject << "->userContext,\n";
             hooks << "\t\t" << wrappedObject  << "->dispatchTable.featureBitSet_" << prototypeName->GetText() << ",\n";
-            hooks << "\t\t" << wrappedObject  << "->dispatchTable.featureHooks_" << prototypeName->GetText() << ",\n";
+            hooks << "\t\t" << wrappedObject  << "->dispatchTable.featureHooks_" << prototypeName->GetText() << "\n";
             hooks << "\t\t";
 
             // Skip first parameter
@@ -198,16 +198,13 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
                     return false;
                 }
 
-                // Comma
-                if (paramNode != firstProxyParam) {
-                    hooks << ", ";
-                }
-
                 // Generate argument
-                hooks << paramName->GetText();
+                hooks << ", " << paramName->GetText();
             }
 
-            hooks << "\n\t);\n\n";
+            hooks << "\n\t)) {\n";
+            hooks << "\t\tCommitCommands(commandBuffer);\n";
+            hooks << "\t}\n\n";
         }
 
         // Indent!

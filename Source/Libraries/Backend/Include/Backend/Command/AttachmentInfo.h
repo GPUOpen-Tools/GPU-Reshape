@@ -8,6 +8,7 @@ struct AttachmentInfo {
     /// Given resource
     ResourceInfo resource;
 
-    /// Data action for given resource
-    AttachmentAction action;
+    /// Data actions for given resource
+    AttachmentAction loadAction;
+    AttachmentAction storeAction;
 };

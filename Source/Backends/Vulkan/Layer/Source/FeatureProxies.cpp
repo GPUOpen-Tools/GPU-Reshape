@@ -5,6 +5,11 @@
 #include <Backends/Vulkan/States/ImageState.h>
 
 // Backend
+#include <Backend/Command/AttachmentInfo.h>
+#include <Backend/Command/RenderPassInfo.h>
+#include <Backends/Vulkan/States/FrameBufferState.h>
+#include <Backends/Vulkan/States/RenderPassState.h>
+
 #include <Backend/Command/ResourceInfo.h>
 #include <Backend/Command/BufferDescriptor.h>
 #include <Backend/Command/TextureDescriptor.h>
@@ -28,6 +33,17 @@ static ResourceToken GetResourceToken(ImageState* state) {
         .puid = state->virtualMappingTemplate.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMappingTemplate.type),
         .srb= state->virtualMappingTemplate.srb
+    };
+}
+
+/// Get a resource token
+/// \param state object state
+/// \return given token
+static ResourceToken GetResourceToken(ImageViewState* state) {
+    return ResourceToken {
+        .puid = state->virtualMapping.puid,
+        .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
+        .srb= state->virtualMapping.srb
     };
 }
 
@@ -275,4 +291,83 @@ void FeatureHook_vkCmdResolveImage::operator()(CommandBufferObject *object, Comm
             ResourceInfo::Texture(GetResourceToken(dstImageState), &dstDescriptor)
         );
     }
+}
+
+void FeatureHook_vkCmdBeginRenderPass::operator()(CommandBufferObject *object, CommandContext *context, const VkRenderPassBeginInfo *info, VkSubpassContents contents) const {    
+    // Get states
+    FrameBufferState* frameBufferState = object->table->states_frameBuffers.Get(info->framebuffer);
+    RenderPassState* renderPassState = object->table->states_renderPass.Get(info->renderPass);
+
+    // Local data
+    TextureDescriptor* descriptors = ALLOCA_ARRAY(TextureDescriptor, renderPassState->deepCopy->attachmentCount);
+    AttachmentInfo*    attachments = ALLOCA_ARRAY(AttachmentInfo, renderPassState->deepCopy->attachmentCount);
+    
+    // Translate render targets
+    for (uint32_t i = 0; i < renderPassState->deepCopy.createInfo.attachmentCount; i++) {
+        const VkAttachmentDescription& description = renderPassState->deepCopy.createInfo.pAttachments[i];
+
+        // Respective frame buffer view
+        ImageViewState* state = frameBufferState->imageViews[i];
+
+        // Setup descriptor
+        descriptors[i] = TextureDescriptor{
+            .region = TextureRegion { },
+            .uid = 0u
+        };
+
+        // Setup attachment
+        AttachmentInfo& attachmentInfo = attachments[i];
+        attachmentInfo.resource.token = GetResourceToken(state);
+        attachmentInfo.resource.textureDescriptor = descriptors + i;
+
+        // Translate action
+        switch (description.loadOp) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
+            case VK_ATTACHMENT_LOAD_OP_LOAD:
+                attachmentInfo.loadAction = AttachmentAction::Load;
+                break;
+            case VK_ATTACHMENT_LOAD_OP_CLEAR:
+                attachmentInfo.loadAction = AttachmentAction::Clear;
+                break;
+            case VK_ATTACHMENT_LOAD_OP_DONT_CARE:
+                attachmentInfo.loadAction = AttachmentAction::Discard;
+                break;
+            case VK_ATTACHMENT_LOAD_OP_NONE_EXT:
+                attachmentInfo.loadAction = AttachmentAction::None;
+                break;
+        }
+
+        // Translate action
+        switch (description.storeOp) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
+            case VK_ATTACHMENT_STORE_OP_STORE:
+                attachmentInfo.loadAction = AttachmentAction::Store;
+                break;
+            case VK_ATTACHMENT_STORE_OP_DONT_CARE:
+                attachmentInfo.loadAction = AttachmentAction::Discard;
+                break;
+            case VK_ATTACHMENT_STORE_OP_NONE:
+                attachmentInfo.loadAction = AttachmentAction::None;
+                break;
+        }
+    }
+
+    // Render pass info
+    RenderPassInfo passInfo;
+    passInfo.attachmentCount = renderPassState->deepCopy.createInfo.attachmentCount;
+    passInfo.attachments = attachments;
+
+    // Invoke hook
+    hook.Invoke(
+        context,
+        passInfo
+    );
+}
+
+void FeatureHook_vkCmdEndRenderPass::operator()(CommandBufferObject *object, CommandContext *context) const {
+    hook.Invoke(context);
 }

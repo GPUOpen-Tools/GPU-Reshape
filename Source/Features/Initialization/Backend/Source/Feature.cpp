@@ -214,7 +214,9 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
     for (uint32_t i = 0; i < passInfo.attachmentCount; i++) {
         const AttachmentInfo& info = passInfo.attachments[i];
 
-        if (info.action == AttachmentAction::Clear) {
+        // Only mark as initialized if the destination is written to
+        if (info.loadAction == AttachmentAction::Clear ||
+            info.storeAction == AttachmentAction::Store) {
             MaskResourceSRB(context, info.resource.token.puid, ~0u);
         }
     }

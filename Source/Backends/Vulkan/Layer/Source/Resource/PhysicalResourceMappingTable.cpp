@@ -1,6 +1,7 @@
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/CommandBufferRenderPassScope.h>
 
 PhysicalResourceMappingTable::PhysicalResourceMappingTable(DeviceDispatchTable* table) : table(table) {
 
@@ -159,7 +160,7 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
     }
 }
 
-void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
+void PhysicalResourceMappingTable::Update(CommandBufferObject* object) {
     if (!isDirty || !liveSegmentCount) {
         return;
     }
@@ -181,19 +182,22 @@ void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
         Defragment();
     }
 
+    // Guard against render passes
+    CommandBufferRenderPassScope renderPassScope(object);
+
     // Copy host to device
     VkBufferCopy copyRegion;
     copyRegion.size = virtualMappingCount * sizeof(VirtualResourceMapping);
     copyRegion.srcOffset = 0;
     copyRegion.dstOffset = 0;
-    table->commandBufferDispatchTable.next_vkCmdCopyBuffer(commandBuffer, hostBuffer, deviceBuffer, 1u, &copyRegion);
+    table->commandBufferDispatchTable.next_vkCmdCopyBuffer(object->object, hostBuffer, deviceBuffer, 1u, &copyRegion);
 
     // Flush the copy for shader reads
     VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
-        commandBuffer,
+        object->object,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0x0,
         1, &barrier,
         0, nullptr,

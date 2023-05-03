@@ -35,3 +35,5 @@ VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdDispatchIndirect(CommandBufferObject *c
 VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdDrawIndirectCount(CommandBufferObject* commandBuffer, VkBuffer buffer, VkDeviceSize offset,VkBuffer countBuffer,VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride);
 VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdDrawIndexedIndirectCount(CommandBufferObject* commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride);
 VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdPushConstants(CommandBufferObject* commandBuffer, VkPipelineLayout layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues);
+VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdBeginRenderPass(CommandBufferObject* commandBuffer, const VkRenderPassBeginInfo* info, VkSubpassContents contents);
+VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdEndRenderPass(CommandBufferObject* commandBuffer);

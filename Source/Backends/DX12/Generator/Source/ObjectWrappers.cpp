@@ -117,7 +117,7 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
             // Proxied hook?
             if (isProxied) {
                 // Pass down to next object
-                state.hooks << "\t\tApplyFeatureHook<FeatureHook_" << methodName << ">(\n";
+                state.hooks << "\t\tif (ApplyFeatureHook<FeatureHook_" << methodName << ">(\n";
                 state.hooks << "\t\t\tstate,\n";
                 state.hooks << "\t\t\tstate->proxies.context,\n";
                 state.hooks << "\t\t\tstate->proxies.featureBitSet_" << methodName << ",\n";
@@ -141,7 +141,9 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
                 }
 
                 // End call
-                state.hooks << "\n\t\t);\n\n";
+                state.hooks << "\n\t\t)) {\n";
+                state.hooks << "\t\t\tCommitCommands(state);\n";
+                state.hooks << "\t\t}\n\n";
             }
         }
         

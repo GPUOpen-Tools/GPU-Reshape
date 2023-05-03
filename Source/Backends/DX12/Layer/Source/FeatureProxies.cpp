@@ -287,17 +287,39 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
         // Translate action
         switch (pRenderTargets[i].BeginningAccess.Type) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
             case D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD:
-                info.action = AttachmentAction::Discard;
+                info.loadAction = AttachmentAction::Discard;
                 break;
             case D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE:
-                info.action = AttachmentAction::Load;
+                info.loadAction = AttachmentAction::Load;
                 break;
             case D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR:
-                info.action = AttachmentAction::Clear;
+                info.loadAction = AttachmentAction::Clear;
                 break;
             case D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS:
-                info.action = AttachmentAction::None;
+                info.loadAction = AttachmentAction::None;
+                break;
+        }
+
+        // Translate action
+        switch (pRenderTargets[i].EndingAccess.Type) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
+            case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD:
+                info.storeAction = AttachmentAction::Discard;
+                break;
+            case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE:
+                info.storeAction = AttachmentAction::Keep;
+                break;
+            case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE:
+                info.storeAction = AttachmentAction::Resolve;
+                break;
+            case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS:
+                info.storeAction = AttachmentAction::None;
                 break;
         }
     }
@@ -322,17 +344,39 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
         // Translate action
         switch (pDepthStencil->DepthBeginningAccess.Type) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
             case D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD:
-                depthInfo.action = AttachmentAction::Discard;
+                depthInfo.loadAction = AttachmentAction::Discard;
                 break;
             case D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE:
-                depthInfo.action = AttachmentAction::Load;
+                depthInfo.loadAction = AttachmentAction::Load;
                 break;
             case D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR:
-                depthInfo.action = AttachmentAction::Clear;
+                depthInfo.loadAction = AttachmentAction::Clear;
                 break;
             case D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS:
-                depthInfo.action = AttachmentAction::None;
+                depthInfo.loadAction = AttachmentAction::None;
+                break;
+        }
+
+        // Translate action
+        switch (pDepthStencil->DepthEndingAccess.Type) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
+            case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD:
+                depthInfo.storeAction = AttachmentAction::Discard;
+                break;
+            case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE:
+                depthInfo.storeAction = AttachmentAction::Keep;
+                break;
+            case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE:
+                depthInfo.storeAction = AttachmentAction::Resolve;
+                break;
+            case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS:
+                depthInfo.storeAction = AttachmentAction::None;
                 break;
         }
 

@@ -4,6 +4,7 @@
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
+#include <Backends/Vulkan/CommandBufferRenderPassScope.h>
 #include "DescriptorDataSegment.h"
 
 // Common
@@ -30,6 +31,9 @@ public:
 
         // Set mapped
         mapped = static_cast<uint32_t*>(allocator->Map(segmentEntry.allocation.host));
+
+        // Guard against render passes
+        CommandBufferRenderPassScope renderPassScope(commandBuffer);
 
         // Copy host to device
         VkBufferCopy copy;

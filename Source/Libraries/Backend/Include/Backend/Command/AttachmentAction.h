@@ -6,6 +6,9 @@
 enum class AttachmentAction {
     None,
     Load,
+    Store,
     Clear,
-    Discard
+    Discard,
+    Keep,
+    Resolve
 };

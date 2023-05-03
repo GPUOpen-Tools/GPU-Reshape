@@ -183,6 +183,9 @@ private:
     /// Last pooled job counter
     uint32_t lastPooledCount{0};
 
+    /// Is a summarization pass pending?
+    bool pendingResummarization{false};
+
 private:
     bool synchronousRecording{false};
 };

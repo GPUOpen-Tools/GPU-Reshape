@@ -41,6 +41,7 @@ struct SamplerState;
 struct PipelineState;
 struct PipelineLayoutState;
 struct RenderPassState;
+struct FrameBufferState;
 struct FenceState;
 struct QueueState;
 class IFeature;
@@ -119,6 +120,7 @@ struct DeviceDispatchTable {
     TrackedObject<VkImageView, ImageViewState>                     states_imageView;
     TrackedObject<VkPipelineLayout, PipelineLayoutState>           states_pipelineLayout;
     TrackedObject<VkRenderPass, RenderPassState>                   states_renderPass;
+    TrackedObject<VkFramebuffer, FrameBufferState>                 states_frameBuffers;
     TrackedObject<VkFence, FenceState>                             states_fence;
     TrackedObject<VkQueue, QueueState>                             states_queue;
     TrackedObject<VkPipeline, PipelineState>                       states_pipeline;
@@ -190,6 +192,8 @@ struct DeviceDispatchTable {
     PFN_vkCreateRenderPass                next_vkCreateRenderPass;
     PFN_vkCreateRenderPass2               next_vkCreateRenderPass2;
     PFN_vkDestroyRenderPass               next_vkDestroyRenderPass;
+    PFN_vkCreateFramebuffer               next_vkCreateFrameBuffer;
+    PFN_vkDestroyFramebuffer              next_vkDestroyFrameBuffer;
     PFN_vkUpdateDescriptorSets            next_vkUpdateDescriptorSets;
     PFN_vkBindBufferMemory                next_vkBindBufferMemory;
     PFN_vkGetDeviceQueue                  next_vkGetDeviceQueue;

@@ -9,6 +9,7 @@
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
 #include <Backends/Vulkan/CommandBuffer.h>
 #include <Backends/Vulkan/DescriptorSet.h>
+#include <Backends/Vulkan/Command/UserCommandBuffer.h>
 
 // Backend
 #include <Backend/IFeature.h>

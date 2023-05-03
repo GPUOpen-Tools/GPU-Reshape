@@ -65,6 +65,16 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearColorImage |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearDepthStencilImage |= (1ull << i);
         }
+        
+        if (hookTable.beginRenderPass.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderPass[i] = hookTable.beginRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass |= (1ull << i);
+        }
+        
+        if (hookTable.endRenderPass.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdEndRenderPass[i] = hookTable.endRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderPass |= (1ull << i);
+        }
     }
 }
 
@@ -85,6 +95,8 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdClearDepthStencilImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearDepthStencilImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdClearAttachments = table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearAttachments & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdResolveImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdResolveImage & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderPass & featureSet;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkCommandPool *pCommandPool) {
@@ -162,7 +174,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     commandBuffer->table->exportStreamer->BeginCommandBuffer(commandBuffer->streamState, commandBuffer);
 
     // Update the PRMT data
-    commandBuffer->table->prmTable->Update(commandBuffer->object);
+    commandBuffer->table->prmTable->Update(commandBuffer);
 
     // Sanity (redundant), reset the context
     commandBuffer->context = {};
@@ -371,6 +383,27 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPushConstants(CommandBufferObject *commandB
 
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdPushConstants(commandBuffer->object, layout, stageFlags, offset, size, pValues);
+}
+
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBeginRenderPass(CommandBufferObject* commandBuffer, const VkRenderPassBeginInfo* info, VkSubpassContents contents) {
+    // Copy all render pass info
+    commandBuffer->streamState->renderPass.subpassContents = contents;
+    commandBuffer->streamState->renderPass.deepCopy.DeepCopy(commandBuffer->table->allocators, *info);
+
+    // Mark as inside
+    commandBuffer->streamState->renderPass.insideRenderPass = true;
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdBeginRenderPass(commandBuffer->object, info, contents);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdEndRenderPass(CommandBufferObject* commandBuffer) {
+    // Mark as outside
+    commandBuffer->streamState->renderPass.insideRenderPass = false;
+    
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdEndRenderPass(commandBuffer->object);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {

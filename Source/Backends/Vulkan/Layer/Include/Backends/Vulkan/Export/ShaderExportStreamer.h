@@ -120,7 +120,7 @@ public:
     /// \param slot the slot to be bound to
     /// \param type the expected pipeline type
     /// \param commandBuffer the command buffer
-    void BindShaderExport(ShaderExportStreamState* state, PipelineType type, VkPipelineLayout layout, VkPipeline pipeline, uint32_t slot, CommandBufferObject* commandBuffer);
+    void BindShaderExport(ShaderExportStreamState* state, PipelineType type, VkPipelineLayout layout, VkPipeline pipeline, uint32_t prmtPushConstantOffset, uint32_t slot, CommandBufferObject* commandBuffer);
 
     /// Bind the shader export for a pipeline
     /// \param state the stream state

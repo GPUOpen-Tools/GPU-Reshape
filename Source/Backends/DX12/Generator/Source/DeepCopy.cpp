@@ -41,6 +41,9 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
         // Indirection blob
         ss << "\tuint8_t* blob{nullptr};\n";
 
+        // Indirection size
+        ss << "\tuint64_t length{0u};\n";
+
         // End object
         ss << "};\n\n";
     }

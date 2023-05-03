@@ -66,6 +66,9 @@ uint32_t InstrumentationController::GetJobCount() {
 void InstrumentationController::CreatePipeline(PipelineState *state) {
     std::lock_guard guard(mutex);
 
+    // Mark as pending
+    pendingResummarization = true;
+
     // Propagate on state
     PropagateInstrumentationInfo(state);
 
@@ -180,9 +183,7 @@ void InstrumentationController::Handle(const MessageStream *streams, uint32_t co
     // Flush redirects
     virtualFeatureRedirects.clear();
 
-    if (!immediateBatch.dirtyObjects.empty()) {
-        CommitInstrumentation();
-    }
+    CommitInstrumentation();
 }
 
 void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstIterator &it) {
@@ -221,6 +222,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
         case SetGlobalInstrumentationMessage::kID: {
             auto *message = it.Get<SetGlobalInstrumentationMessage>();
 
+            // Mark as pending
+            pendingResummarization = true;
+
             // Apply instrumentation
             SetInstrumentationInfo(globalInstrumentationInfo, message->featureBitSet, message->specialization);
 
@@ -255,6 +259,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             // Shader instrumentation
         case SetShaderInstrumentationMessage::kID: {
             auto *message = it.Get<SetShaderInstrumentationMessage>();
+
+            // Mark as pending
+            pendingResummarization = true;
 
             // Apply instrumentation
             SetInstrumentationInfo(shaderUIDInstrumentationInfo[message->shaderUID], message->featureBitSet, message->specialization);
@@ -294,6 +301,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
         case SetPipelineInstrumentationMessage::kID: {
             auto *message = it.Get<SetPipelineInstrumentationMessage>();
 
+            // Mark as pending
+            pendingResummarization = true;
+
             // Apply instrumentation
             SetInstrumentationInfo(pipelineUIDInstrumentationInfo[message->pipelineUID], message->featureBitSet, message->specialization);
 
@@ -331,6 +341,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
         case RemoveFilteredPipelineInstrumentationMessage::kID: {
             auto *message = it.Get<SetOrAddFilteredPipelineInstrumentationMessage>();
 
+            // Mark as pending
+            pendingResummarization = true;
+
             // Remove all with matching guid
             filteredInstrumentationInfo.erase(std::ranges::remove_if(filteredInstrumentationInfo, [&](const FilterEntry &entry) {
                 return entry.guid == message->guid.View();
@@ -366,6 +379,9 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
 
         case SetOrAddFilteredPipelineInstrumentationMessage::kID: {
             auto *message = it.Get<SetOrAddFilteredPipelineInstrumentationMessage>();
+
+            // Mark as pending
+            pendingResummarization = true;
 
             // Try to find
             auto it = std::find_if(filteredInstrumentationInfo.begin(), filteredInstrumentationInfo.end(), [&](const FilterEntry &entry) {
@@ -460,11 +476,25 @@ void InstrumentationController::SetInstrumentationInfo(InstrumentationInfo &info
 }
 
 void InstrumentationController::CommitInstrumentation() {
+    uint64_t featureBitSet = 0;
+    
+    // Resummarize and commit the feature set if needed
+    if (pendingResummarization) {
+        featureBitSet = SummarizeFeatureBitSet();
+
+        // Set the enabled feature bit set
+        SetDeviceCommandFeatureSetAndCommit(device, featureBitSet);
+
+        // Mark as summarized
+        pendingResummarization = false;
+    }
+    
     // Early out
     if (immediateBatch.dirtyObjects.empty()) {
         return;
     }
 
+    // Mark next batch
     compilationEvent.IncrementHead();
 
     // Diagnostic
@@ -491,7 +521,8 @@ void InstrumentationController::CommitInstrumentation() {
     batch->stampBegin = std::chrono::high_resolution_clock::now();
 
     // Summarize the needed feature set
-    batch->featureBitSet = SummarizeFeatureBitSet();
+    ASSERT(featureBitSet != 0, "Pending commit without resummarization, events out of sync");
+    batch->featureBitSet = featureBitSet;
 
     // Task group
     // TODO: Tie lifetime of this task group to the controller
@@ -690,9 +721,6 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Commit all sguid changes
     auto bridge = registry->Get<IBridge>();
     device->sguidHost->Commit(bridge.GetUnsafe());
-
-    // Set the enabled feature bit set
-    SetDeviceCommandFeatureSetAndCommit(device, batch->featureBitSet);
 
     // Diagnostic
 #if LOG_INSTRUMENTATION

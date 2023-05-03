@@ -71,3 +71,11 @@ struct FeatureHook_vkCmdClearAttachments : TFeatureHook<Hooks::ClearResource> {
 struct FeatureHook_vkCmdResolveImage : TFeatureHook<Hooks::ResolveResource> {
     void operator()(CommandBufferObject *object, CommandContext *context, VkImage srcImage, VkImageLayout srcImageLayout, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkImageResolve* pRegions) const;
 };
+
+struct FeatureHook_vkCmdBeginRenderPass : TFeatureHook<Hooks::BeginRenderPass> {
+    void operator()(CommandBufferObject *object, CommandContext *context, const VkRenderPassBeginInfo* info, VkSubpassContents contents) const;
+};
+
+struct FeatureHook_vkCmdEndRenderPass : TFeatureHook<Hooks::EndRenderPass> {
+    void operator()(CommandBufferObject *object, CommandContext *context) const;
+};

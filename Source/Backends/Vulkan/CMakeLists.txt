@@ -55,6 +55,8 @@ set(
     vkCmdClearDepthStencilImage
     vkCmdClearAttachments
     vkCmdResolveImage
+    vkCmdBeginRenderPass
+    vkCmdEndRenderPass
 )
 
 # White list
@@ -78,6 +80,8 @@ set(
     vkCmdDrawIndirect
     vkCmdDrawIndirectCount
     vkCmdPushConstants
+    vkCmdBeginRenderPass
+    vkCmdEndRenderPass
 )
 
 # Join lists
@@ -85,7 +89,7 @@ list(JOIN VkHooks "," VkHooksJoin)
 list(JOIN VkWhitelist "," VkWhitelistJoin)
 
 # Object list
-set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkDeviceCreateInfo,VkPipelineShaderStageCreateInfo)
+set(VkObjects VkGraphicsPipelineCreateInfo,VkComputePipelineCreateInfo,VkShaderModuleCreateInfo,VkApplicationInfo,VkDeviceCreateInfo,VkPipelineShaderStageCreateInfo,VkRenderPassCreateInfo,VkRenderPassBeginInfo)
 
 # Generate the deep copy objects
 add_custom_command(

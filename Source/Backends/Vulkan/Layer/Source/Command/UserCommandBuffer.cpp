@@ -19,24 +19,23 @@ static void ReconstructPipelineState(CommandBufferObject* commandBuffer, const U
 
         // Rebind the export, invalidated by layout compatibility
         commandBuffer->table->exportStreamer->BindShaderExport(commandBuffer->streamState, bindState.pipeline, commandBuffer);
-    }
 
-    // Rebind all expected states
-    for (uint32_t i = 0; i < bindState.pipeline->layout->boundUserDescriptorStates; i++) {
-        const ShaderExportDescriptorState& descriptorState = bindState.persistentDescriptorState.at(i);
+        // Rebind all expected states
+        for (uint32_t i = 0; i < bindState.pipeline->layout->boundUserDescriptorStates; i++) {
+            const ShaderExportDescriptorState &descriptorState = bindState.persistentDescriptorState.at(i);
 
-        // Invalid or mismatched hash?
-        if (!descriptorState.set || bindState.pipeline->layout->compatabilityHashes[i] != descriptorState.compatabilityHash) {
-            continue;
+            // Invalid or mismatched hash?
+            if (!descriptorState.set || bindState.pipeline->layout->compatabilityHashes[i] != descriptorState.compatabilityHash) {
+                continue;
+            }
+
+            // Bind the expected set
+            commandBuffer->dispatchTable.next_vkCmdBindDescriptorSets(
+                commandBuffer->object,
+                VK_PIPELINE_BIND_POINT_COMPUTE, bindState.pipeline->layout->object,
+                i, 1u, &descriptorState.set,
+                descriptorState.dynamicOffsets.count, descriptorState.dynamicOffsets.data);
         }
-
-        // Bind the expected set
-        commandBuffer->dispatchTable.next_vkCmdBindDescriptorSets(
-            commandBuffer->object,
-            VK_PIPELINE_BIND_POINT_COMPUTE, bindState.pipeline->layout->object,
-            i, 1u, &descriptorState.set,
-            descriptorState.dynamicOffsets.count, descriptorState.dynamicOffsets.data
-        );
     }
 }
 
@@ -59,6 +58,15 @@ static void ReconstructPushConstantState(CommandBufferObject* commandBuffer, con
     );
 }
 
+static void ReconstructRenderPassState(CommandBufferObject* commandBuffer, const UserCommandState& state) {
+    // Reconstruct render pass
+    commandBuffer->dispatchTable.next_vkCmdBeginRenderPass(
+        commandBuffer->object,
+        &commandBuffer->streamState->renderPass.deepCopy.createInfo,
+        commandBuffer->streamState->renderPass.subpassContents
+    );
+}
+
 static void ReconstructState(CommandBufferObject* commandBuffer, const UserCommandState& state) {
     if (state.reconstructionFlags & ReconstructionFlag::Pipeline) {
         ReconstructPipelineState(commandBuffer, state);
@@ -67,10 +75,20 @@ static void ReconstructState(CommandBufferObject* commandBuffer, const UserComma
     if (state.reconstructionFlags & ReconstructionFlag::PushConstant) {
         ReconstructPushConstantState(commandBuffer, state);
     }
+
+    if (state.reconstructionFlags & ReconstructionFlag::RenderPass) {
+        ReconstructRenderPassState(commandBuffer, state);
+    }
 }
 
 void CommitCommands(CommandBufferObject* commandBuffer) {
     UserCommandState state;
+
+    // Always end the current render pass if any commands
+    if (commandBuffer->userContext.buffer.Count() && commandBuffer->streamState->renderPass.insideRenderPass) {
+        commandBuffer->dispatchTable.next_vkCmdEndRenderPass(commandBuffer->object);
+        state.reconstructionFlags |= ReconstructionFlag::RenderPass;
+    }
 
     // Handle all commands
     for (const Command& command : commandBuffer->userContext.buffer) {
@@ -102,6 +120,7 @@ void CommitCommands(CommandBufferObject* commandBuffer) {
                     layout,
                     pipeline,
                     0u,
+                    0u,
                     commandBuffer
                 );
                 break;
@@ -122,7 +141,7 @@ void CommitCommands(CommandBufferObject* commandBuffer) {
                 commandBuffer->dispatchTable.next_vkCmdPushConstants(
                     commandBuffer->object,
                     layout,
-                    VK_SHADER_STAGE_COMPUTE_BIT,
+                    VK_SHADER_STAGE_ALL,
                     offset,
                     sizeof(uint32_t),
                     &cmd->value

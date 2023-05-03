@@ -5,6 +5,7 @@
 #include "PhysicalResourceMappingTableSegment.h"
 #include "PhysicalResourceSegment.h"
 #include <Backends/Vulkan/Allocation/MirrorAllocation.h>
+#include <Backends/Vulkan/Objects/CommandBufferObject.h>
 
 // Common
 #include <Common/IComponent.h>
@@ -30,7 +31,7 @@ public:
 
     /// Update the table for use on a given list
     /// \param commandBuffer buffer to be updated on
-    void Update(VkCommandBuffer commandBuffer);
+    void Update(CommandBufferObject* object);
 
     /// Allocate a new segment
     /// \param count number of descriptors

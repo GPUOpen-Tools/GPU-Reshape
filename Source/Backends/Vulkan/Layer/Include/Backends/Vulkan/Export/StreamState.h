@@ -62,10 +62,25 @@ struct ShaderExportPipelineBindState {
     uint32_t deviceDescriptorOverwriteMask{0x0};
 };
 
+/// Render pass state
+struct ShaderExportRenderPassState {
+    /// Current deep copy
+    VkRenderPassBeginInfoDeepCopy deepCopy;
+
+    /// Current contents
+    VkSubpassContents subpassContents;
+
+    /// Are we inside a render pass? Also serves as validation for the deep copy
+    bool insideRenderPass{false};
+};
+
 /// Single stream state
 struct ShaderExportStreamState {
     /// All bind points
     ShaderExportPipelineBindState pipelineBindPoints[static_cast<uint32_t>(PipelineType::Count)];
+
+    /// Graphics render pass
+    ShaderExportRenderPassState renderPass;
 
     /// All segment descriptors, lifetime bound to deferred segment
     std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
