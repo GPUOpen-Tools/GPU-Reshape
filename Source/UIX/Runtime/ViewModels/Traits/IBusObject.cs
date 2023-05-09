@@ -37,5 +37,30 @@ namespace Studio.ViewModels.Traits
         {
             self.EnqueueBus(self);
         }
+        
+        /// <summary>
+        /// Enqueue a bus object from the first appropriate property view model
+        /// </summary>
+        /// <param name="self"></param>
+        /// <typeparam name="T"></typeparam>
+        public static bool EnqueueFirstParentBus<T>(this T self) where T : IPropertyViewModel
+        {
+            IPropertyViewModel top = self;
+
+            // Walk up until we reach the first bus object
+            while (top != null)
+            {
+                if (top is IBusObject busObject)
+                {
+                    busObject.EnqueueBus(top);
+                    return true;
+                }
+                
+                top = top.Parent;
+            }
+            
+            // None found
+            return false;
+        }
     }
 }

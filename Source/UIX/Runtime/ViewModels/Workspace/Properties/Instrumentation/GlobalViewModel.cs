@@ -8,6 +8,7 @@ using Runtime.Models.Objects;
 using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Properties.Config;
 
 namespace Studio.ViewModels.Workspace.Properties.Instrumentation
 {
@@ -40,6 +41,27 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
                 .OnItemAdded(OnPropertyChanged)
                 .OnItemRemoved(OnPropertyChanged)
                 .Subscribe();
+
+            // Bind connection
+            this.WhenAnyValue(x => x.ConnectionViewModel).Subscribe(_ => CreateProperties());
+        }
+
+        /// <summary>
+        /// Create all properties
+        /// </summary>
+        private void CreateProperties()
+        {
+            Properties.Clear();
+                
+            // Standard range
+            Properties.AddRange(new IPropertyViewModel[]
+            {
+                new InstrumentationConfigViewModel()
+                {
+                    Parent = this,
+                    ConnectionViewModel = ConnectionViewModel
+                }
+            });
         }
 
         /// <summary>
@@ -100,7 +122,10 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
         {
             // Create new state
-            InstrumentationState = new InstrumentationState();
+            InstrumentationState = new InstrumentationState()
+            {
+                SpecializationStream = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream())
+            };
 
             // Commit all child properties
             foreach (IInstrumentationProperty instrumentationProperty in this.GetProperties<IInstrumentationProperty>())
@@ -109,8 +134,12 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
             }
 
             // Submit request
-            var request = stream.Add<SetGlobalInstrumentationMessage>();
-            request.featureBitSet = _instrumentationState.FeatureBitMask;
+            var request = stream.Add<SetGlobalInstrumentationMessage>(new SetGlobalInstrumentationMessage.AllocationInfo
+            {
+                specializationByteSize = (ulong)InstrumentationState.SpecializationStream.Storage.GetSpan().Length
+            });
+            request.featureBitSet = InstrumentationState.FeatureBitMask;
+            request.specialization.Store(InstrumentationState.SpecializationStream.Storage);
         }
 
         /// <summary>

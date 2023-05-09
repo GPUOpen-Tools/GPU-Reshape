@@ -1,22 +1,37 @@
 ﻿using Message.CLR;
 using ReactiveUI;
+using Runtime.Models.Objects;
 using Studio.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Properties.Config
 {
-    public class InstrumentationConfigViewModel : BasePropertyViewModel, IBusObject
+    public class InstrumentationConfigViewModel : BasePropertyViewModel, IInstrumentationProperty
     {
         /// <summary>
-        /// Enables shader compilation stalling before use
+        /// Enables safe-guarding on potentially offending instructions
         /// </summary>
         [PropertyField]
-        public bool SynchronousRecording
+        public bool SafeGuard
         {
-            get => _synchronousRecording;
+            get => _safeGuard;
             set
             {
-                this.RaiseAndSetIfChanged(ref _synchronousRecording, value);
-                this.EnqueueBus();
+                this.RaiseAndSetIfChanged(ref _safeGuard, value);
+                this.EnqueueFirstParentBus();
+            }
+        }
+        
+        /// <summary>
+        /// Enables detailed instrumentation
+        /// </summary>
+        [PropertyField]
+        public bool Detail
+        {
+            get => _detail;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _detail, value);
+                this.EnqueueFirstParentBus();
             }
         }
 
@@ -29,20 +44,25 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         }
 
         /// <summary>
-        /// Commit all state
+        /// Commit all changes
         /// </summary>
-        /// <param name="stream"></param>
-        public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
+        /// <param name="state"></param>
+        public void Commit(InstrumentationState state)
         {
             // Submit request
-            var request = stream.Add<SetInstrumentationConfigMessage>();
-            request.synchronousRecording = _synchronousRecording ? 1 : 0;
+            var request = state.SpecializationStream.Add<SetInstrumentationConfigMessage>();
+            request.safeGuard = _safeGuard ? 1 : 0;
+            request.detail = _detail ? 1 : 0;
         }
 
-        
         /// <summary>
-        /// Internal recording state
+        /// Internal safe-guard state
         /// </summary>
-        private bool _synchronousRecording = false;
+        private bool _safeGuard = false;
+
+        /// <summary>
+        /// Internal detail state
+        /// </summary>
+        private bool _detail = false;
     }
 }

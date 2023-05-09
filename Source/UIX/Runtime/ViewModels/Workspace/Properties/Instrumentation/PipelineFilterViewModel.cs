@@ -8,6 +8,7 @@ using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Query;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Properties.Config;
 
 namespace Studio.ViewModels.Workspace.Properties.Instrumentation
 {
@@ -66,6 +67,27 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
                 .OnItemAdded(OnPropertyChanged)
                 .OnItemRemoved(OnPropertyChanged)
                 .Subscribe();
+
+            // Bind connection
+            this.WhenAnyValue(x => x.ConnectionViewModel).Subscribe(_ => CreateProperties());
+        }
+
+        /// <summary>
+        /// Create all properties
+        /// </summary>
+        private void CreateProperties()
+        {
+            Properties.Clear();
+                
+            // Standard range
+            Properties.AddRange(new IPropertyViewModel[]
+            {
+                new InstrumentationConfigViewModel()
+                {
+                    Parent = this,
+                    ConnectionViewModel = ConnectionViewModel
+                }
+            });
         }
 
         /// <summary>
@@ -128,7 +150,10 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
         {
             // Create new state
-            InstrumentationState = new InstrumentationState();
+            InstrumentationState = new InstrumentationState()
+            {
+                SpecializationStream = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream())
+            };
 
             // Commit all child properties
             foreach (IInstrumentationProperty instrumentationProperty in this.GetProperties<IInstrumentationProperty>())
@@ -140,12 +165,14 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
             var request = stream.Add<SetOrAddFilteredPipelineInstrumentationMessage>(new SetOrAddFilteredPipelineInstrumentationMessage.AllocationInfo
             {
                 guidLength = (ulong)_guid.ToString().Length,
-                nameLength = (ulong)(Filter.Name?.Length ?? 0)
+                nameLength = (ulong)(Filter.Name?.Length ?? 0),
+                specializationByteSize = (ulong)InstrumentationState.SpecializationStream.Storage.GetSpan().Length
             });
             request.guid.SetString(_guid.ToString());
             request.featureBitSet = InstrumentationState.FeatureBitMask;
             request.type = (uint)(Filter.Type ?? 0);
             request.name.SetString(Filter.Name ?? string.Empty);
+            request.specialization.Store(InstrumentationState.SpecializationStream.Storage);
         }
 
         /// <summary>

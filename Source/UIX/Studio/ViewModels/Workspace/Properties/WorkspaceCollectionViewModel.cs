@@ -179,7 +179,7 @@ namespace Studio.ViewModels.Workspace.Properties
             // Configuration properties
             Properties.AddRange(new IPropertyViewModel[]
             {
-                new InstrumentationConfigViewModel()
+                new ApplicationInstrumentationConfigViewModel()
                 {
                     Parent = this,
                     ConnectionViewModel = _connectionViewModel
