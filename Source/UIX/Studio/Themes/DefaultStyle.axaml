@@ -22,6 +22,8 @@
 
         <!-- Info brushes -->
         <SolidColorBrush x:Key="ErrorBrush" Color="{DynamicResource ErrorColor}" />
+        <SolidColorBrush x:Key="ErrorHighlightBrush" Color="#A68F2424" />
+        <SolidColorBrush x:Key="ErrorSelectedBrush" Color="#5C2020" />
 
         <!-- System brushes -->
         <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="{DynamicResource SystemBaseMediumLowColor}" />

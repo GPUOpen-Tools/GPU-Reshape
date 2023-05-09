@@ -1,0 +1,27 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:objects="clr-namespace:Studio.ViewModels.Workspace.Objects;assembly=UIX.Studio.Runtime"
+             mc:Ignorable="d" d:DesignWidth="800"
+             Height="150"
+             x:Class="Studio.Views.Workspace.Objects.ResourceValidationDetailView"
+             x:DataType="objects:ResourceValidationDetailViewModel">
+    <Grid ColumnDefinitions="150,*" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+        <ListBox Grid.Column="0" Items="{Binding Resources}" SelectedItem="{Binding SelectedResource}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Height="20" Text="{Binding DecoratedName}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ListBox Grid.Column="1" Items="{Binding SelectedResource.Instances}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Height="20" Text="{Binding Message}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>

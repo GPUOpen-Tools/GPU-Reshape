@@ -1,26 +1,22 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
-using Avalonia.Threading;
+using Avalonia.Input;
 using AvaloniaEdit.TextMate;
 using AvaloniaEdit.Utils;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
-using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.Views.Editor;
 using TextMateSharp.Grammars;
-using ShaderViewModel = Studio.ViewModels.Documents.ShaderViewModel;
 
 namespace Studio.Views.Shader
 {
@@ -64,6 +60,13 @@ namespace Studio.Views.Shader
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationBackgroundRenderer);
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationTextMarkerService);
             Editor.TextArea.TextView.LineTransformers.Add(_validationTextMarkerService);
+
+            // Bind pointer
+            Editor.TextArea.TextView.Events().PointerMoved.Subscribe(x => OnTextPointerMoved(x));
+            Editor.TextArea.TextView.Events().PointerPressed.Subscribe(x => OnTextPointerPressed(x));
+
+            // Bind redraw
+            Editor.TextArea.TextView.VisualLinesChanged += OnTextVisualLinesChanged;
             
             // Add services
             IServiceContainer services = Editor.Document.GetService<IServiceContainer>();
@@ -152,6 +155,77 @@ namespace Studio.Views.Shader
                 .Window(() => Observable.Timer(TimeSpan.FromMilliseconds(250)))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ => OnValidationObjectChanged());
+        }
+
+        /// <summary>
+        /// On redraw
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnTextVisualLinesChanged(object? sender, EventArgs e)
+        {
+            // Valid context?
+            if (DetailViewHost.DataContext == null || _validationTextMarkerService.SelectedObject == null)
+            {
+                return;
+            }
+
+            // Get the visual line of the selected object
+            if (Editor.TextArea.TextView.GetVisualLine(_validationTextMarkerService.SelectedObject.Segment?.Location.Line + 1 ?? 0) is not {} line)
+            {
+                return;
+            }
+
+            // Determine effective offset
+            double top    = Editor.TextArea.TextView.VerticalOffset;
+            double offset = line.VisualTop - top + Editor.TextArea.TextView.DefaultLineHeight;
+            
+            // Scroll detail view to offset
+            DetailViewHost.Margin = new Thickness(0, offset, 0, -offset);
+        }
+
+        /// <summary>
+        /// On pointer moved
+        /// </summary>
+        /// <param name="e"></param>
+        private void OnTextPointerMoved(PointerEventArgs e)
+        {
+            ValidationObject? validationObject = _validationTextMarkerService.FindObjectUnder(Editor.TextArea.TextView, e.GetPosition(Editor.TextArea.TextView));
+            
+            // Ignore if same
+            if (validationObject == _validationTextMarkerService.HighlightObject)
+            {
+                return;
+            }
+
+            // Set highlight and redraw
+            _validationTextMarkerService.HighlightObject = validationObject;
+            Editor.TextArea.TextView.Redraw();
+        }
+
+        /// <summary>
+        /// On pointer pressed
+        /// </summary>
+        /// <param name="e"></param>
+        private void OnTextPointerPressed(PointerPressedEventArgs e)
+        {
+            ValidationObject? validationObject = _validationTextMarkerService.FindObjectUnder(Editor.TextArea.TextView, e.GetPosition(Editor.TextArea.TextView));
+
+            // Always handled at this point
+            e.Handled = true;
+
+            // Changed?
+            if (validationObject == _validationTextMarkerService.SelectedObject)
+            {
+                return;
+            }
+
+            // Set detail context
+            DetailViewHost.ViewHost.ViewModel = validationObject?.DetailViewModel;
+
+            // Update selected and redraw
+            _validationTextMarkerService.SelectedObject = validationObject;
+            Editor.TextArea.TextView.Redraw();
         }
 
         private void UpdateNavigationLocation(CodeShaderContentViewModel codeViewModel, ShaderLocation location)

@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
-using AvaloniaEdit.Utils;
 using Studio.Extensions;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
@@ -20,7 +18,17 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Current content view model
         /// </summary>
-        public CodeShaderContentViewModel? ShaderContentViewModel { get; set; } 
+        public CodeShaderContentViewModel? ShaderContentViewModel { get; set; }
+
+        /// <summary>
+        /// Currently highlighted object
+        /// </summary>
+        public ValidationObject? HighlightObject { get; set; }
+
+        /// <summary>
+        /// Currently selected object
+        /// </summary>
+        public ValidationObject? SelectedObject { get; set; }
 
         /// <summary>
         /// Invoked on line draws / colorization 
@@ -98,17 +106,29 @@ namespace Studio.Views.Editor
                     // Set style
                     formatted.SetTextStyle(0, marker.Object?.Content.Length ?? 0, new SolidColorBrush(Colors.White));
 
-                    // Default padding
-                    uint Padding = 10;
+                    // Final brush
+                    IBrush brush = _validationBrush;
+
+                    // Is highlighted?
+                    if (marker.Object == HighlightObject)
+                    {
+                        brush = _validationHighlightBrush;
+                    }
+
+                    // Is selected?
+                    if (marker.Object == SelectedObject)
+                    {
+                        brush = _validationSelectedBrush;
+                    }
                     
                     // Border rectangle
-                    drawingContext.DrawRectangle(_validationBrush, null, new Rect(
-                        textView.Bounds.Width - formatted.Bounds.Width - Padding * 2, rect.TopLeft.Y,
-                        formatted.Bounds.Width + Padding * 2, rect.BottomLeft.Y - rect.TopLeft.Y
+                    drawingContext.DrawRectangle(brush, null, new Rect(
+                        textView.Bounds.Width - formatted.Bounds.Width - _borderPadding * 2, rect.TopLeft.Y,
+                        formatted.Bounds.Width + _borderPadding * 2, rect.BottomLeft.Y - rect.TopLeft.Y
                     ));
                     
                     // Draw validation error
-                    drawingContext.DrawText(new SolidColorBrush(Colors.Black), new Point(textView.Bounds.Width - formatted.Bounds.Width - Padding, rect.TopLeft.Y), formatted);
+                    drawingContext.DrawText(new SolidColorBrush(Colors.Black), new Point(textView.Bounds.Width - formatted.Bounds.Width - _borderPadding, rect.TopLeft.Y), formatted);
                 }
             }
         }
@@ -171,9 +191,66 @@ namespace Studio.Views.Editor
         }
 
         /// <summary>
+        /// Find a validation object under a given point
+        /// </summary>
+        /// <param name="textView"></param>
+        /// <param name="point"></param>
+        /// <returns></returns>
+        public ValidationObject? FindObjectUnder(TextView textView, Point point)
+        {
+            if (!textView.VisualLinesValid || textView.VisualLines.Count == 0)
+            {
+                return null;
+            }
+            
+            // Find line of interest
+            if (textView.GetVisualLineFromVisualTop(textView.VerticalOffset + point.Y) is not {} line)
+            {
+                return null;
+            }
+            
+            // Distance to the right hand side
+            double rightDistance = textView.Bounds.Width - point.X;
+
+            // Limit to current view
+            foreach (ValidationTextSegment marker in _markers.FindOverlappingSegments(line.FirstDocumentLine.Offset, line.LastDocumentLine.Offset - line.FirstDocumentLine.Offset))
+            {
+                // Create formatted segment
+                FormattedText formatted = new FormattedText()
+                {
+                    Text = $"{marker.Object?.Content} [{marker.Object?.Count}]",
+                    Typeface = new Typeface(FontFamily.Default),
+                    FontSize = 12
+                };
+                    
+                // Set style
+                formatted.SetTextStyle(0, marker.Object?.Content.Length ?? 0, new SolidColorBrush(Colors.White));
+                
+                // Valid marker and under the cursor?
+                if (marker.Object != null && formatted.Bounds.Width + _borderPadding * 2 >= rightDistance)
+                {
+                    return marker.Object;
+                }
+            }
+
+            // None found
+            return null;
+        }
+
+        /// <summary>
         /// Error brush
         /// </summary>
         private Brush _validationBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? new SolidColorBrush(Colors.Red);
+
+        /// <summary>
+        /// Error selected brush
+        /// </summary>
+        private Brush _validationSelectedBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorSelectedBrush") ?? new SolidColorBrush(Colors.Red);
+
+        /// <summary>
+        /// Error highlight brush
+        /// </summary>
+        private Brush _validationHighlightBrush = ResourceLocator.GetResource<SolidColorBrush>("ErrorHighlightBrush") ?? new SolidColorBrush(Colors.Red);
 
         /// <summary>
         /// All active segments
@@ -184,6 +261,11 @@ namespace Studio.Views.Editor
         /// Object to segment mapping
         /// </summary>
         private Dictionary<ValidationObject, ValidationTextSegment> _segments = new();
+
+        /// <summary>
+        /// Default padding
+        /// </summary>
+        private int _borderPadding = 10;
         
         /// <summary>
         /// Underlying layer

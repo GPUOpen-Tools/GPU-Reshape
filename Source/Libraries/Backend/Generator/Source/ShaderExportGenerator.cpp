@@ -340,9 +340,18 @@ bool ShaderExportGenerator::GenerateCS(const Message &message, MessageStream &ou
         out.types << "\t\tpublic uint Key\n";
         out.types << "\t\t{\n";
         out.types << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
-        out.types << "\t\t\tget => MemoryMarshal.Read<uint>(_memory.Slice(0, 4).AsRefSpan());\n\n";
-        out.types << "\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
-        out.types << "\t\t\tset => MemoryMarshal.Write<uint>(_memory.Slice(0, 4).AsRefSpan(), ref value);\n";
+        out.types << "\t\t\tget\n";
+        out.types << "\t\t\t{\n";
+
+        if (message.chunks.empty()) {
+            out.types << "\t\t\t\tuint key = MemoryMarshal.Read<uint>(_memory.Slice(0, 4).AsRefSpan());\n";
+        } else {
+            out.types << "\t\t\t\tuint key = _primary;\n";
+            out.types << "\t\t\t\tkey &= ~((int)Chunk.Mask << (32 - (int)Chunk.Count));\n";
+        }
+        
+        out.types << "\t\t\t\treturn key;\n";
+        out.types << "\t\t\t}\n";
         out.types << "\t\t}\n";
     }
 

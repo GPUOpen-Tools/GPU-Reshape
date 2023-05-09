@@ -21,6 +21,9 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.ConnectViewModel), typeof(Views.ConnectWindow));
             AddDerived(typeof(ViewModels.LaunchViewModel), typeof(Views.LaunchWindow));
             AddDerived(typeof(ViewModels.PipelineFilterViewModel), typeof(Views.PipelineFilter));
+            
+            // Object types
+            AddDerived(typeof(ViewModels.Workspace.Objects.ResourceValidationDetailViewModel), typeof(Views.Workspace.Objects.ResourceValidationDetailView));
         }
 
         /// <summary>

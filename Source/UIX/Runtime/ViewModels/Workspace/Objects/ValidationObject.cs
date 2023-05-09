@@ -32,6 +32,15 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
+        /// Associated detail view model, optional
+        /// </summary>
+        public IValidationDetailViewModel? DetailViewModel
+        {
+            get => _detailViewModel;
+            set => this.RaiseAndSetIfChanged(ref _detailViewModel, value);
+        }
+
+        /// <summary>
         /// General contents
         /// </summary>
         public string Content
@@ -73,5 +82,10 @@ namespace Studio.ViewModels.Workspace.Objects
         /// Internal extract
         /// </summary>
         private string _extract = string.Empty;
+
+        /// <summary>
+        /// Internal detail view model
+        /// </summary>
+        private IValidationDetailViewModel? _detailViewModel;
     }
 }

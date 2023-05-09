@@ -7,6 +7,7 @@
              xmlns:documents="clr-namespace:Studio.ViewModels.Documents"
              xmlns:shader="clr-namespace:Studio.ViewModels.Shader"
              xmlns:svm="clr-namespace:Runtime.ViewModels.Shader;assembly=UIX.Studio.Runtime"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Shader.CodeShaderContentView"
              x:DataType="shader:CodeShaderContentViewModel"
@@ -47,6 +48,10 @@
                 ShowLineNumbers="True"
                 IsReadOnly="True"
                 Text="..." />
+            
+            <Grid x:Name="DetailGrid" Margin="18 0 18 18">
+                <controls:LocatorViewHost x:Name="DetailViewHost" HorizontalAlignment="Stretch" VerticalAlignment="Top"/>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>
