@@ -123,6 +123,9 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
         if (config.detail) {
             msg.chunks |= ResourceIndexOutOfBoundsMessage::Chunk::Detail;
 
+            // Convenient zero
+            IL::ID zero = oob.UInt32(0);
+
             // Get detailed information on the op code
             switch (it->opCode) {
                 default:
@@ -134,16 +137,16 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     auto _instr = instr->As<IL::StoreBufferInstruction>();
                     msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetToken();
                     msg.detail.coordinate[0] = _instr->index;
-                    msg.detail.coordinate[1] = _instr->index;
-                    msg.detail.coordinate[2] = _instr->index;
+                    msg.detail.coordinate[1] = zero;
+                    msg.detail.coordinate[2] = zero;
                     break;
                 }
                 case IL::OpCode::LoadBuffer: {
                     auto _instr = instr->As<IL::LoadBufferInstruction>();
                     msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetToken();
                     msg.detail.coordinate[0] = _instr->index;
-                    msg.detail.coordinate[1] = _instr->index;
-                    msg.detail.coordinate[2] = _instr->index;
+                    msg.detail.coordinate[1] = zero;
+                    msg.detail.coordinate[2] = zero;
                     break;
                 }
                 case IL::OpCode::StoreTexture: {
@@ -153,8 +156,8 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     const uint32_t dimension = program.GetTypeMap().GetType(_instr->index)->As<Backend::IL::VectorType>()->dimension;
 
                     msg.detail.coordinate[0] = oob.Extract(_instr->index, 0);
-                    msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : msg.detail.coordinate[0];
-                    msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : msg.detail.coordinate[0];
+                    msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : zero;
+                    msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : zero;
                     break;
                 }
                 case IL::OpCode::LoadTexture: {
@@ -164,8 +167,8 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     const uint32_t dimension = program.GetTypeMap().GetType(_instr->index)->As<Backend::IL::VectorType>()->dimension;
 
                     msg.detail.coordinate[0] = oob.Extract(_instr->index, 0);
-                    msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : msg.detail.coordinate[0];
-                    msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : msg.detail.coordinate[0];
+                    msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : zero;
+                    msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : zero;
                     break;
                 }
             }
