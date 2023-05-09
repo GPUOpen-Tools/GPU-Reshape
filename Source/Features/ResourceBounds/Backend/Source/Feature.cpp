@@ -6,12 +6,15 @@
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
+#include <Backend/IL/ResourceTokenEmitter.h>
 
 // Generated schema
 #include <Schemas/Features/ResourceBounds.h>
+#include <Schemas/Instrumentation.h>
 
 // Message
 #include <Message/IMessageStorage.h>
+#include <Message/MessageStreamCommon.h>
 
 // Common
 #include <Common/Registry.h>
@@ -46,6 +49,9 @@ void ResourceBoundsFeature::CollectMessages(IMessageStorage *storage) {
 }
 
 void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
+    // Options
+    const SetInstrumentationConfigMessage config = FindOrDefault<SetInstrumentationConfigMessage>(specialization);
+
     // Unsigned target type
     const Backend::IL::Type* uint32Type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false});
 
@@ -107,11 +113,65 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
         IL::Emitter<> oob(program, *context.function.GetBasicBlocks().AllocBlock());
         oob.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
 
-        // Export the message
+        // Setup message
         ResourceIndexOutOfBoundsMessage::ShaderExport msg;
         msg.sguid = oob.UInt32(sguid);
         msg.isTexture = oob.UInt32(isTexture);
         msg.isWrite = oob.UInt32(isWrite);
+
+        // Detailed instrumentation?
+        if (config.detail) {
+            msg.chunks |= ResourceIndexOutOfBoundsMessage::Chunk::Detail;
+
+            // Get detailed information on the op code
+            switch (it->opCode) {
+                default:
+                    ASSERT(false, "Invalid op code");
+                    break;
+
+                    /* Handled cases */
+                case IL::OpCode::StoreBuffer: {
+                    auto _instr = instr->As<IL::StoreBufferInstruction>();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetToken();
+                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.coordinate[1] = _instr->index;
+                    msg.detail.coordinate[2] = _instr->index;
+                    break;
+                }
+                case IL::OpCode::LoadBuffer: {
+                    auto _instr = instr->As<IL::LoadBufferInstruction>();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetToken();
+                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.coordinate[1] = _instr->index;
+                    msg.detail.coordinate[2] = _instr->index;
+                    break;
+                }
+                case IL::OpCode::StoreTexture: {
+                    auto _instr = instr->As<IL::StoreTextureInstruction>();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetToken();
+
+                    const uint32_t dimension = program.GetTypeMap().GetType(_instr->index)->As<Backend::IL::VectorType>()->dimension;
+
+                    msg.detail.coordinate[0] = oob.Extract(_instr->index, 0);
+                    msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : msg.detail.coordinate[0];
+                    msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : msg.detail.coordinate[0];
+                    break;
+                }
+                case IL::OpCode::LoadTexture: {
+                    auto _instr = instr->As<IL::LoadTextureInstruction>();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetToken();
+
+                    const uint32_t dimension = program.GetTypeMap().GetType(_instr->index)->As<Backend::IL::VectorType>()->dimension;
+
+                    msg.detail.coordinate[0] = oob.Extract(_instr->index, 0);
+                    msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : msg.detail.coordinate[0];
+                    msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : msg.detail.coordinate[0];
+                    break;
+                }
+            }
+        }
+
+        // Export the message
         oob.Export(exportID, msg);
 
         // Branch back

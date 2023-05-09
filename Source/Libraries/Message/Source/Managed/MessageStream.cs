@@ -17,6 +17,18 @@ namespace Message.CLR
         // Create a default allocation request
         IMessageAllocationRequest DefaultRequest();
     }
+    
+    // Chunked message traits, usage is devirtualized
+    public interface IChunkedMessage : IMessage
+    {
+        uint RuntimeByteSize { get; }
+    }
+
+    public interface IChunk
+    {
+        // Memory view of reader
+        ByteSpan Memory { set; }
+    }
 
     // Message allocation, usage is devirtualized
     public interface IMessageAllocationRequest
@@ -253,6 +265,56 @@ namespace Message.CLR
 
                 // Skip contents
                 memory = memory.Slice((int)request.ByteSize);
+            }
+        }
+
+        // Generic enumeration not supported
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            throw new NotSupportedException();
+        }
+
+        private S _storage;
+    }
+
+    public class ChunkedMessageView<T, S> : IEnumerable<T> where T : IChunkedMessage, new() where S : IMessageStream
+    {
+        public S Storage => _storage;
+
+        public ChunkedMessageView(S storage)
+        {
+            // Create default request
+            IMessageAllocationRequest request = new T().DefaultRequest();
+
+            // Assign schema
+            MessageSchema schema = storage.GetOrSetSchema(new MessageSchema { type = MessageSchemaType.Chunked, id = request.ID });
+            
+            // Validate
+            Debug.Assert(
+                schema.type == MessageSchemaType.Chunked,
+                "Chunked view on non-chunked stream"
+            );
+
+            _storage = storage;
+        }
+
+        // Enumerate this view
+        public IEnumerator<T> GetEnumerator()
+        {
+            ByteSpan memory = _storage.GetSpan();
+
+            // While messages to process
+            while (!memory.IsEmpty)
+            {
+                // Create message
+                T message = new T()
+                {
+                    Memory = memory
+                };
+                yield return message;
+
+                // Skip contents
+                memory = memory.Slice((int)message.RuntimeByteSize);
             }
         }
 
@@ -525,6 +587,14 @@ namespace Message.CLR
     public class StaticMessageView<T> : StaticMessageView<T, ReadOnlyMessageStream> where T : IMessage, new()
     {
         public StaticMessageView(ReadOnlyMessageStream _storage) : base(_storage)
+        {
+
+        }
+    }
+
+    public class ChunkedMessageView<T> : ChunkedMessageView<T, ReadOnlyMessageStream> where T : IChunkedMessage, new()
+    {
+        public ChunkedMessageView(ReadOnlyMessageStream _storage) : base(_storage)
         {
 
         }

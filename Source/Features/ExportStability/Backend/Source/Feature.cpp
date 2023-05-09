@@ -58,8 +58,8 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
             case IL::OpCode::StoreTexture:
                 value = it->As<IL::StoreTextureInstruction>()->texel;
                 break;
-            case IL::OpCode::Export:
-                value = it->As<IL::ExportInstruction>()->value;
+            case IL::OpCode::StoreOutput:
+                value = it->As<IL::StoreOutputInstruction>()->value;
                 break;
         }
 

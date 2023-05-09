@@ -23,7 +23,10 @@ enum class MessageSchemaType : uint32_t {
     Dynamic,
 
     /// Ordered schema, stride of each message is variable, multiple message types
-    Ordered
+    Ordered,
+
+    /// Chunked schema, stride of each primary message is constant, single message type, each message may be extended by a set of variable chunks
+    Chunked
 };
 
 // MSVC tight packing
@@ -80,6 +83,18 @@ struct OrderedMessageSchema {
         MessageSchema schema{};
         schema.id = InvalidMessageID;
         schema.type = MessageSchemaType::Ordered;
+        return schema;
+    }
+};
+
+/// Chunked schema, see MessageSchemaType::Chunked
+struct ChunkedMessageSchema {
+    using Header = void;
+
+    static MessageSchema GetSchema(MessageID id) {
+        MessageSchema schema{};
+        schema.id = id;
+        schema.type = MessageSchemaType::Chunked;
         return schema;
     }
 };

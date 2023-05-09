@@ -11,6 +11,9 @@ struct InstrumentationInfo {
     /// The bit set of all active features
     uint64_t featureBitSet{0};
 
+    /// Hash for the specialization data
+    uint64_t specializationHash{0};
+
     /// Specialization stream
     MessageStream specialization;
 };

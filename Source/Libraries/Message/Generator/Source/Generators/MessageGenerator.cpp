@@ -216,10 +216,148 @@ bool MessageGenerator::GenerateCPP(const Message &message, MessageStream &out) {
     declaredTypes[message.name] = meta;
 
     // Set schema
-    if (anyDynamic) {
-        out.schemaType << "DynamicMessageSchema";
+    if (message.chunks.empty()) {
+        if (anyDynamic) {
+            out.schemaType << "DynamicMessageSchema";
+        } else {
+            out.schemaType << "StaticMessageSchema";
+        }
     } else {
-        out.schemaType << "StaticMessageSchema";
+        out.schemaType << "ChunkedMessageSchema";
+    }
+
+    // Chunked?
+    if (!message.chunks.empty()) {
+        // Chunk enum
+        {
+            out.chunks << "\n\tenum class Chunk {\n";
+
+            // Emit all chunk types
+            for (size_t i = 0; i < message.chunks.size(); i++ ) {
+                const Chunk& chunk = message.chunks[i];
+                out.chunks << "\t\t" << chunk.name << " = BIT(" << i << "),\n";
+            }
+
+            // End enum
+            out.chunks << "\t\tCount = " << message.chunks.size() << ",\n";
+            out.chunks << "\t\tMask = (1u << " << message.chunks.size() << ") - 1u\n";
+            out.chunks << "\t};\n\n";
+
+            // Bitset
+            out.chunks << "\tusing ChunkSet = TBitSet<Chunk>;\n";
+
+            // Enum operations
+            out.footer << "BIT_SET_NAMED(" << message.name << "Message::ChunkSet, " << message.name << "Message::Chunk);\n";
+        }
+
+        // All dword offsets for the chunks
+        std::vector<uint32_t> chunkDWordCount;
+
+        // Emit all chunk structures
+        for (size_t i = 0; i < message.chunks.size(); i++ ) {
+            const Chunk& chunk = message.chunks[i];
+
+            // Begin chunk
+            out.chunks << "\n";
+            out.chunks << "\tstruct " << chunk.name << "Chunk {\n";
+
+            // Current bit offset
+            uint32_t bitCount = 0;
+
+            // Append all fields
+            for (const Field& field : chunk.fields) {
+                if (auto it = primitiveTypeMap.types.find(field.type); it != primitiveTypeMap.types.end()) {
+                    // Optional bit size
+                    if (auto bits = field.attributes.Get("bits")) {
+                        const uint32_t bitAttribute = std::atoi(bits->value.c_str());
+
+                        // Add size
+                        bitCount += bitAttribute;
+
+                        // Add field
+                        out.chunks << "\t\t" << it->second.cxxType << " " << field.name << " : " << bitAttribute << ";\n";
+                    } else {
+                        // Add size
+                        bitCount += (static_cast<uint32_t>(it->second.size) * 8);
+
+                        // Add field
+                        out.chunks << "\t\t" << it->second.cxxType << " " << field.name << ";\n";
+                    }
+                } else if (field.type ==  "array") {
+                    // Get the type
+                    const Attribute *elementTypeName = field.attributes.Get("element");
+                    if (!elementTypeName) {
+                        std::cerr << "Malformed command in line: " << field.line << ", element type not found" << std::endl;
+                        return false;
+                    }
+
+                    // Get the length
+                    const Attribute *length = field.attributes.Get("length");
+                    if (!length) {
+                        std::cerr << "Malformed command in line: " << field.line << ", length not found" << std::endl;
+                        return false;
+                    }
+
+                    // Get the inbuilt type
+                    auto elementIt = primitiveTypeMap.types.find(elementTypeName->value);
+                    if (elementIt == primitiveTypeMap.types.end()) {
+                        std::cerr << "Malformed command in line: " << field.line << ", unknown array type '" << elementTypeName->value << "'" << std::endl;
+                        return false;
+                    }
+
+                    // Parse length
+                    const uint32_t lengthAttribute = std::atoi(length->value.c_str());
+
+                    // Add size
+                    bitCount += (static_cast<uint32_t>(elementIt->second.size) * 8) * lengthAttribute;
+
+                    // Add field
+                    out.chunks << "\t\t" << elementIt->second.cxxType << " " << field.name << "[" << lengthAttribute << "];\n";
+                } else {
+                    std::cerr << "Malformed command in line: " << message.line << ", unknown chunk field type '" << field.type << "'" << std::endl;
+                    return false;
+                }
+            }
+
+            // Snap dword count up
+            uint32_t dwordCount = (bitCount + 31) / 32;
+
+            // Emit dword count
+            out.chunks << "\n";
+            out.chunks << "\t\tstatic constexpr uint32_t kDWordCount = " << dwordCount << ";\n";
+            chunkDWordCount.push_back(dwordCount);
+
+            // End struct
+            out.chunks << "\t};\n";
+        }
+
+        // Emit dynamic message length utility for schema
+        out.chunks << "\n";
+        out.chunks << "\tstatic uint32_t MessageSize(const ResourceIndexOutOfBoundsMessage* message) {\n";
+        out.chunks << "\t\tuint32_t mask = *reinterpret_cast<const uint32_t*>(message) >> (32u - static_cast<uint32_t>(Chunk::Count));\n";
+        out.chunks << "\t\tuint32_t lut[static_cast<uint32_t>(Chunk::Mask) + 1u] = {\n";
+
+        // Full message mask
+        uint64_t chunkMask = (1u << message.chunks.size()) - 1u;
+
+        // Precompute the message iteration offsets
+        for (uint64_t lutMask = 0; lutMask <= chunkMask; lutMask++) {
+            uint64_t maskSize = cxxSizeType;
+
+            // Append all chunk offsets to current mask
+            for (uint64_t chunkIndex = 0; chunkIndex < message.chunks.size(); chunkIndex++) {
+                maskSize += sizeof(uint32_t) * chunkDWordCount[chunkIndex] * ((lutMask >> chunkIndex) & 0x1);
+            }
+
+            // Emit!
+            out.chunks << "\t\t\t" << maskSize << ",\n";
+        }
+
+        // Get offset to current mask
+        out.chunks << "\t\t};\n";
+        out.chunks << "\t\tASSERT(mask <= static_cast<uint32_t>(Chunk::Mask), \"Invalid mask\");\n";
+        out.chunks << "\t\treturn lut[mask];\n";
+        out.chunks << "\t}\n";
     }
 
     // Begin allocation info
@@ -523,8 +661,246 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
         out.schemaType << "IStaticMessageSchema";
     }
 
+    // Set base
+    if (message.chunks.empty()) {
+        out.base = "IMessage";
+    } else {
+        out.base = "IChunkedMessage";
+    }
+
     // Set size
     out.size = static_cast<uint32_t>(cxxSizeType);
+
+    // Cached primary key
+    if (!message.chunks.empty()) {
+        out.members << "\t\tprivate uint _primary;\n";
+    }
+
+    // Add memory setter, if chunked the primary key must be cached
+    out.types << "\t\tpublic ByteSpan Memory\n";
+    out.types << "\t\t{\n";
+    if (!message.chunks.empty()) {
+        out.types << "\t\t\tset\n";
+        out.types << "\t\t\t{\n";
+        out.types << "\t\t\t\t_memory = value;\n";
+        out.types << "\t\t\t\t_primary = MemoryMarshal.Read<uint>(_memory.Slice(0, 4).AsRefSpan());\n";
+        out.types << "\t\t\t}\n";
+    } else {
+        out.types << "\t\t\tset => _memory = value;\n";
+    }
+    out.types << "\t\t}\n\n";
+    
+    // Chunked?
+    if (!message.chunks.empty()) {
+        // Emit chunk enum
+        {
+            out.chunks << "\n\t\t[Flags]\n";
+            out.chunks << "\t\tpublic enum Chunk {\n";
+
+            // Emit all values
+            for (size_t i = 0; i < message.chunks.size(); i++ ) {
+                const Chunk& chunk = message.chunks[i];
+                out.chunks << "\t\t\t" << chunk.name << " = " << i << ",\n";
+            }
+
+            // End enum
+            out.chunks << "\t\t\tCount = " << message.chunks.size() << ",\n";
+            out.chunks << "\t\t\tMask = (1 << " << message.chunks.size() << ") - 1\n";
+            out.chunks << "\t\t};\n\n";
+        }
+
+        // Add IsChunked helper
+        out.chunks << "\t\tpublic bool IsChunked()\n";
+        out.chunks << "\t\t{\n";
+        out.chunks << "\t\t\tuint chunkMask = _primary >> (int)(32 - Chunk.Count);\n";
+        out.chunks << "\t\t\treturn chunkMask != 0u;\n";
+        out.chunks << "\t\t}\n\n";
+
+        // Add HasChunk helper
+        out.chunks << "\t\tpublic bool HasChunk(Chunk chunk)\n";
+        out.chunks << "\t\t{\n";
+        out.chunks << "\t\t\tuint chunkMask = _primary >> (int)(32 - Chunk.Count);\n";
+        out.chunks << "\t\t\treturn (chunkMask & (1 << (int)chunk)) != 0;\n";
+        out.chunks << "\t\t}\n\n";
+
+        // Add GetChunk helper
+        out.chunks << "\t\tpublic T GetChunk<T>(Chunk chunk) where T : struct, IChunk\n";
+        out.chunks << "\t\t{\n";
+        out.chunks << "\t\t\tuint chunkMask = _primary >> (int)(32 - Chunk.Count);\n";
+        out.chunks << "\t\t\tchunkMask &= (uint)(1 << (int)chunk) - 1;\n";
+        out.chunks << "\t\t\treturn new T\n";
+        out.chunks << "\t\t\t{\n";
+        out.chunks << "\t\t\t\tMemory = _memory.Slice((int)MessageSizeLUT[chunkMask])\n";
+        out.chunks << "\t\t\t};\n";
+        out.chunks << "\t\t}\n";
+
+        // All chunk dword counts
+        std::vector<uint32_t> chunkDWordCount;
+
+        // Emit all chunk declarations
+        for (size_t i = 0; i < message.chunks.size(); i++ ) {
+            const Chunk& chunk = message.chunks[i];
+
+            // Begin chunk
+            out.chunks << "\n";
+            out.chunks << "\t\tpublic struct " << chunk.name << "Chunk : IChunk\n";
+            out.chunks << "\t\t{\n";
+
+            // Internal memory
+            out.chunks << "\t\t\tpublic ByteSpan Memory\n";
+            out.chunks << "\t\t\t{\n";
+            out.chunks << "\t\t\t\tset => _memory = value;\n";
+            out.chunks << "\t\t\t}\n\n";
+
+            // Current bit offset
+            uint32_t bitCount = 0;
+
+            // Append all fields
+            for (const Field& field : chunk.fields) {
+                if (auto it = primitiveTypeMap.types.find(field.type); it != primitiveTypeMap.types.end()) {
+                    // Optional bit size
+                    if (auto bits = field.attributes.Get("bits")) {
+                        const uint32_t bitAttribute = std::atoi(bits->value.c_str());
+
+                        // Getter
+                        out.chunks << "\t\t\tpublic " << it->second.csType << " " << field.name << "\n";
+                        out.chunks << "\t\t\t{\n";
+                        out.chunks << "\t\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+                        out.chunks << "\t\t\t\tget\n";
+                        out.chunks << "\t\t\t\t{\n";
+                        out.chunks << "\t\t\t\t\tvar field = MemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << (bitCount / 8) << ", " << (it->second.size) << ").AsRefSpan());\n";
+                        out.chunks << "\t\t\t\t\treturn (" << it->second.csType << ")((field >> " << bitCount << ") & ((1u << " << bitAttribute << ") - 1));\n";
+                        out.chunks << "\t\t\t\t}\n\n";
+                        out.chunks << "\t\t\t}\n\n";
+
+                        // Add size
+                        bitCount += bitAttribute;
+                    } else {
+                        // Getter
+                        out.chunks << "\t\t\tpublic " << it->second.csType << " " << field.name << "\n";
+                        out.chunks << "\t\t\t{\n";
+                        out.chunks << "\t\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+                        out.chunks << "\t\t\t\tget\n";
+                        out.chunks << "\t\t\t\t{\n";
+                        out.chunks << "\t\t\t\t\treturn MemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << (bitCount / 8) << ", " << (it->second.size) << ").AsRefSpan());\n";
+                        out.chunks << "\t\t\t\t}\n\n";
+                        out.chunks << "\t\t\t}\n\n";
+                        
+                        // Add size
+                        bitCount += (static_cast<uint32_t>(it->second.size) * 8);
+                    }
+                } else if (field.type ==  "array") {
+                    // Get the type
+                    const Attribute *elementTypeName = field.attributes.Get("element");
+                    if (!elementTypeName) {
+                        std::cerr << "Malformed command in line: " << field.line << ", element type not found" << std::endl;
+                        return false;
+                    }
+
+                    // Get the length
+                    const Attribute *length = field.attributes.Get("length");
+                    if (!length) {
+                        std::cerr << "Malformed command in line: " << field.line << ", length not found" << std::endl;
+                        return false;
+                    }
+
+                    // Get the inbuilt type
+                    auto elementIt = primitiveTypeMap.types.find(elementTypeName->value);
+                    if (elementIt == primitiveTypeMap.types.end()) {
+                        std::cerr << "Malformed command in line: " << field.line << ", unknown array type '" << elementTypeName->value << "'" << std::endl;
+                        return false;
+                    }
+                    
+                    if (bitCount % 32) {
+                        std::cerr << "Malformed command in line: " << field.line << ", arrays must be dword aligned" << std::endl;
+                        return false;
+                    }
+
+                    // Parse length
+                    const uint32_t lengthAttribute = std::atoi(length->value.c_str());
+
+                    // Getter
+                    out.chunks << "\t\t\tpublic " << elementIt->second.csType << "[] " << field.name << "\n";
+                    out.chunks << "\t\t\t{\n";
+                    out.chunks << "\t\t\t\t[MethodImpl(MethodImplOptions.AggressiveInlining)]\n";
+                    out.chunks << "\t\t\t\tget\n";
+                    out.chunks << "\t\t\t\t{\n";
+                    out.chunks << "\t\t\t\t\treturn new " << elementIt->second.csType << "[] {\n";
+
+                    // Unroll all elements, static in nature
+                    for (uint32_t i = 0; i < lengthAttribute; i++) {
+                        out.chunks << "\t\t\t\t\t\tMemoryMarshal.Read<" << bitFieldType.csType << ">(_memory.Slice(" << ((bitCount / 8) + (i * elementIt->second.size)) << ", " << (elementIt->second.size) << ").AsRefSpan()),\n";
+                    }
+
+                    // End getter
+                    out.chunks << "\t\t\t\t\t};\n";
+                    out.chunks << "\t\t\t\t}\n";
+                    out.chunks << "\t\t\t}\n\n";
+
+                    // Add size
+                    bitCount += (static_cast<uint32_t>(elementIt->second.size) * 8) * lengthAttribute;
+                } else {
+                    std::cerr << "Malformed command in line: " << message.line << ", unknown chunk field type '" << field.type << "'" << std::endl;
+                    return false;
+                }
+            }
+
+            // Internal memory
+            out.chunks << "\t\t\tprivate ByteSpan _memory;\n";
+
+            // Determine dword count
+            uint32_t dwordCount = (bitCount + 31) / 32;
+            chunkDWordCount.push_back(dwordCount);
+
+            // End chunk
+            out.chunks << "\t\t}\n\n";
+        }
+
+        // Specialized chunk helpers GetXChunk, GetYChunk...
+        for (size_t i = 0; i < message.chunks.size(); i++ ) {
+            const Chunk& chunk = message.chunks[i];
+            out.chunks << "\t\tpublic " << chunk.name << "Chunk Get" << chunk.name << "Chunk()\n";
+            out.chunks << "\t\t{\n";
+            out.chunks << "\t\t\treturn GetChunk<" << chunk.name << "Chunk>(Chunk." << chunk.name << ");\n";
+            out.chunks << "\t\t}\n\n";
+        }
+
+        // Precomputed message LUT
+        out.chunks << "\t\tprivate static readonly uint[] MessageSizeLUT =\n";
+        out.chunks << "\t\t{\n";
+
+        // Complete chunk mask to iterate
+        uint64_t chunkMask = (1u << message.chunks.size()) - 1u;
+
+        // Generate precomputed iteration offsets for each mask
+        for (uint64_t lutMask = 0; lutMask <= chunkMask; lutMask++) {
+            uint64_t maskSize = cxxSizeType;
+
+            // Append all valid chunk sizes
+            for (uint64_t chunkIndex = 0; chunkIndex < message.chunks.size(); chunkIndex++) {
+                maskSize += sizeof(uint32_t) * chunkDWordCount[chunkIndex] * ((lutMask >> chunkIndex) & 0x1);
+            }
+
+            // Emit!
+            out.chunks << "\t\t\t" << maskSize << ",\n";
+        }
+
+        // End iteration offset
+        out.chunks << "\t\t};\n";
+
+        // Emit RuntimeByteSize helper, retrieves the size of the message
+        out.chunks << "\n";
+        out.chunks << "\t\tpublic uint RuntimeByteSize\n";
+        out.chunks << "\t\t{\n";
+        out.chunks << "\t\t\tget\n";
+        out.chunks << "\t\t\t{\n";
+        out.chunks << "\t\t\t\tuint primary = MemoryMarshal.Read<uint>(_memory.Slice(0, 4).AsRefSpan());\n";
+        out.chunks << "\t\t\t\tuint mask = primary >> (int)(32 - Chunk.Count);\n";
+        out.chunks << "\t\t\t\tDebug.Assert(mask <= (uint)Chunk.Mask, \"Invalid mask\");\n";
+        out.chunks << "\t\t\t\treturn MessageSizeLUT[mask];\n";
+        out.chunks << "\t\t\t}\n";
+        out.chunks << "\t\t}\n";
+    }
 
     // Begin allocation info
     out.types << "\n";

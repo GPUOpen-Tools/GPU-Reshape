@@ -181,7 +181,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
 
 void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
-    const bool isSafeGuarded = FindOrDefault<SetSafeGuardMessage>(specialization, {.enabled = false}).enabled;
+    const SetInstrumentationConfigMessage config = FindOrDefault<SetInstrumentationConfigMessage>(specialization);
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext &context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
@@ -190,16 +190,16 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
             default:
                 return it;
             case IL::OpCode::LoadBuffer: {
-                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, isSafeGuarded);
+                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config.safeGuard);
             }
             case IL::OpCode::StoreBuffer: {
-                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, isSafeGuarded);
+                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config.safeGuard);
             }
             case IL::OpCode::StoreTexture: {
-                return InjectForResource(program, context.function, it, it->As<IL::StoreTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, isSafeGuarded);
+                return InjectForResource(program, context.function, it, it->As<IL::StoreTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config.safeGuard);
             }
             case IL::OpCode::LoadTexture: {
-                return InjectForResource(program, context.function, it, it->As<IL::LoadTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, isSafeGuarded);
+                return InjectForResource(program, context.function, it, it->As<IL::LoadTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config.safeGuard);
             }
             case IL::OpCode::SampleTexture: {
                 auto* instr = it->As<IL::SampleTextureInstruction>();
@@ -209,7 +209,7 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
                 IL::ID sampler = instr->sampler;
 
                 // Validate texture
-                IL::BasicBlock::Iterator next = InjectForResource(program, context.function, it, texture, Backend::IL::ResourceTokenType::Texture, isSafeGuarded);
+                IL::BasicBlock::Iterator next = InjectForResource(program, context.function, it, texture, Backend::IL::ResourceTokenType::Texture, config.safeGuard);
 
                 // Samplers are not guaranteed (can be combined)
                 if (sampler == IL::InvalidID) {
@@ -217,7 +217,7 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
                 }
 
                 // Validate sampler
-                return InjectForResource(program, context.function, next, sampler, Backend::IL::ResourceTokenType::Sampler, isSafeGuarded);
+                return InjectForResource(program, context.function, next, sampler, Backend::IL::ResourceTokenType::Sampler, config.safeGuard);
             }
         }
     });

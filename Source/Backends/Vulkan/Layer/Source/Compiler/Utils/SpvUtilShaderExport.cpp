@@ -94,7 +94,7 @@ void SpvUtilShaderExport::CompileRecords(const SpvJob &job) {
     spvStreamBinding[3] = job.bindingInfo.streamDescriptorOffset;
 }
 
-void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, IL::ID value) {
+void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, const IL::ID* values, uint32_t valueCount) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Note: This is quite ugly, will be changed
@@ -149,7 +149,7 @@ void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, IL::ID va
     SpvInstruction &spvSize = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
     spvSize[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
     spvSize[2] = offsetAdditionId;
-    spvSize[3] = 1u;
+    spvSize[3] = valueCount;
 
     uint32_t texelPtrId = table.scan.header.bound++;
 
@@ -193,8 +193,35 @@ void SpvUtilShaderExport::Export(SpvStream &stream, uint32_t exportID, IL::ID va
     SpvInstruction &write = stream.Allocate(SpvOpImageWrite, 5);
     write[1] = accessLoadId;
     write[2] = atomicPositionId;
-    write[3] = value;
+    write[3] = values[0];
     write[4] = SpvImageOperandsMaskNone;
+
+    // Write successive values
+    for (uint32_t i = 1; i < valueCount; i++) {
+        uint32_t offsetId = table.scan.header.bound++;
+        uint32_t addId = table.scan.header.bound++;
+        
+        // Constant offset
+        // TODO: Finish the constant map for spirv, the amount of bloat is excessive
+        SpvInstruction &offset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+        offset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+        offset[2] = offsetId;
+        offset[3] = i;
+
+        // AtomicOffset + i
+        SpvInstruction& add = stream.Allocate(SpvOpIAdd, 5);
+        add[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+        add[2] = addId;
+        add[3] = atomicPositionId;
+        add[4] = offsetId;
+
+        // Write to the stream
+        SpvInstruction &postWrite = stream.Allocate(SpvOpImageWrite, 5);
+        postWrite[1] = accessLoadId;
+        postWrite[2] = addId;
+        postWrite[3] = values[i];
+        postWrite[4] = SpvImageOperandsMaskNone;
+    }
 }
 
 void SpvUtilShaderExport::CopyTo(SpvPhysicalBlockTable &remote, SpvUtilShaderExport &out) {

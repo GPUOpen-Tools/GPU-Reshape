@@ -20,11 +20,15 @@ struct SchemaStream {
 struct MessageStream {
     SchemaStream schema;
 
+    std::stringstream& header;
+    std::stringstream& footer;
     std::stringstream& schemaType;
+    std::stringstream& chunks;
     std::stringstream& types;
     std::stringstream& functions;
     std::stringstream& members;
 
+    std::string base;
     uint32_t size{0};
 };
 

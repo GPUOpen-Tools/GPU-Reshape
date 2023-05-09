@@ -16,7 +16,10 @@ namespace Message.CLR
         Dynamic,
 
         // Ordered schema, stride of each message is variable, multiple message types
-        Ordered
+        Ordered,
+
+        // Chunked schema, stride of each primary message is constant, single message type, each message may be extended by a set of variable chunks
+        Chunked
     };
 
     // Message schema
@@ -38,6 +41,12 @@ namespace Message.CLR
         public bool IsOrdered()
         {
             return type == MessageSchemaType.Ordered;
+        }
+        
+        // Check if this schema is static and of id
+        public bool IsChunked(uint id)
+        {
+            return type == MessageSchemaType.Chunked && this.id == id;
         }
 
         // Underlying type of schema

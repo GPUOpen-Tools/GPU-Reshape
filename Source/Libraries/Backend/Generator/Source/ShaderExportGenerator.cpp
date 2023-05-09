@@ -51,12 +51,18 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
 
     // Begin construction function
     out.types << "\t\ttemplate<typename OP>\n";
-    out.types << "\t\tIL::ID Construct(IL::Emitter<OP>& emitter) const {\n";
+    out.types << "\t\tvoid Construct(IL::Emitter<OP>& emitter, uint32_t *dwordCount, IL::ID* dwords) const {\n";
 
     // Simple write?
-    if (!structured) {
-        // Allocate type
-        out.types << "\t\t\tIL::ID value = emitter.UInt(32, 0);\n";
+    if (message.chunks.empty()) {
+        // Size query?
+        out.types << "\t\t\tif (!dwords) {\n";
+        out.types << "\t\t\t\t*dwordCount = 1u;\n";
+        out.types << "\t\t\t\treturn;\n";
+        out.types << "\t\t\t}\n";
+
+        // Create primary key
+        out.types << "\t\t\tIL::ID primary = emitter.UInt(32, 0);\n";
 
         // Current offset
         uint32_t bitOffset = 0;
@@ -76,7 +82,7 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
             uint32_t bitSize = bits ? std::atoi(bits->value.c_str()) : (static_cast<uint32_t>(it->second.size) * 8);
 
             // Append value
-            out.types << "\t\t\tvalue = emitter.BitOr(value, emitter.BitShiftLeft(" << field.name << ", emitter.UInt(32, " << bitOffset << ")));\n";
+            out.types << "\t\t\tprimary = emitter.BitOr(primary, emitter.BitShiftLeft(" << field.name << ", emitter.UInt(32, " << bitOffset << ")));\n";
 
             // Next
             bitOffset += bitSize;
@@ -88,8 +94,162 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
             return false;
         }
 
-        // Done!
-        out.types << "\t\t\treturn value;\n";
+        // If chunked, just write out the primary as is
+        out.types << "\t\t\tdwords[0] = primary;\n";
+    } else if (!structured) {
+        // Determine which chunks are of interest
+        for (const Chunk& chunk : message.chunks) {
+            out.types << "\t\t\tconst bool Append" << chunk.name << " = chunks.value & static_cast<uint32_t>(Chunk::" << chunk.name << ");\n";
+        }
+
+        // Size query?
+        {
+            out.types << "\n";
+            out.types << "\t\t\tif (!dwords) {\n";
+            out.types << "\t\t\t\t*dwordCount = 1u;\n";
+
+            // Append each size based on visibility
+            for (const Chunk& chunk : message.chunks) {
+                out.types << "\t\t\t\t*dwordCount += " << chunk.name << "Chunk::kDWordCount * Append" << chunk.name << ";\n";
+            }
+
+            // Query end
+            out.types << "\t\t\t\treturn;\n";
+            out.types << "\t\t\t}\n";
+        }
+
+        // Append the chunk mask at the end of the primary key
+        out.types << "\n";
+        out.types << "\t\t\tconst uint32_t chunkMask = static_cast<uint32_t>(chunks.value) << (32u - static_cast<uint32_t>(Chunk::Count));\n";
+
+        // Create primary key
+        out.types << "\n";
+        out.types << "\t\t\tuint32_t offset = 0;\n";
+        out.types << "\t\t\tdwords[offset] = emitter.UInt(32, chunkMask);\n";
+
+        // Current offset
+        uint32_t bitOffset = 0;
+
+        // Append all fields
+        for (const Field& field : message.fields) {
+            auto it = primitiveTypeMap.types.find(field.type);
+            if (it == primitiveTypeMap.types.end()) {
+                std::cerr << "Malformed command in line: " << message.line << ", type " << field.type << " not supported for non structured writes" << std::endl;
+                return false;
+            }
+
+            // Optional bit size
+            auto bits = field.attributes.Get("bits");
+
+            // Determine the size of this field
+            uint32_t bitSize = bits ? std::atoi(bits->value.c_str()) : (static_cast<uint32_t>(it->second.size) * 8);
+
+            // Append value
+            out.types << "\t\t\tdwords[offset] = emitter.BitOr(dwords[offset], emitter.BitShiftLeft(" << field.name << ", emitter.UInt(32, " << bitOffset << ")));\n";
+
+            // Next
+            bitOffset += bitSize;
+        }
+
+        // Check non structured write limit
+        if (bitOffset > 32) {
+            std::cerr << "Malformed command in line: " << message.line << ", non structured size exceeded 32 bits with " << bitOffset << " bits" << std::endl;
+            return false;
+        }
+
+        // Next!
+        out.types << "\t\t\toffset++;\n";
+        out.types << "\n";
+
+        // Emit all dynamic chunks as needed
+        for (const Chunk& chunk : message.chunks) {
+            out.types << "\t\t\tif (Append" << chunk.name << ") {\n";
+
+            // Lowercase name
+            std::string scopeName = chunk.name;
+            scopeName[0] = std::tolower(scopeName[0]);
+
+            // Current bit offset
+            bitOffset = 0;
+
+            // Emit all fields
+            for (const Field& field : chunk.fields) {
+                // Next dword? (must be aligned)
+                if (bitOffset == 32) {
+                    bitOffset = 0;
+                    out.types << "\t\t\t\toffset++;\n";
+                }
+
+                // Handle type
+                if (auto it = primitiveTypeMap.types.find(field.type); it != primitiveTypeMap.types.end()) {
+                    // Optional bit size
+                    auto bits = field.attributes.Get("bits");
+
+                    // Determine the size of this field
+                    uint32_t bitSize = bits ? std::atoi(bits->value.c_str()) : (static_cast<uint32_t>(it->second.size) * 8);
+
+                    if (bitOffset + bitSize > 32) {
+                        std::cerr << "Malformed command in line: " << message.line << ", bit offsets must be dword aligned" << std::endl;
+                        return false;
+                    }
+
+                    // Emit base value
+                    if (bitOffset == 0) {
+                        out.types << "\t\t\t\tdwords[offset] = emitter.UInt(32, 0);\n";
+                    }
+
+                    // Append value
+                    out.types << "\t\t\t\tdwords[offset] = emitter.BitOr(dwords[offset], emitter.BitShiftLeft(" << scopeName << "." << field.name << ", emitter.UInt(32, " << bitOffset << ")));\n";
+
+                    // Next
+                    bitOffset += bitSize;
+                } else if (field.type == "array") {
+                    if (bitOffset != 0) {
+                        std::cerr << "Malformed command in line: " << message.line << ", chunk arrays must be dword aligned" << std::endl;
+                        return false;
+                    }
+
+                    // Get the type
+                    const Attribute *elementTypeName = field.attributes.Get("element");
+                    if (!elementTypeName) {
+                        std::cerr << "Malformed command in line: " << field.line << ", element type not found" << std::endl;
+                        return false;
+                    }
+
+                    // Get the inbuilt type
+                    auto elementIt = primitiveTypeMap.types.find(elementTypeName->value);
+                    if (elementIt == primitiveTypeMap.types.end()) {
+                        std::cerr << "Malformed command in line: " << field.line << ", unknown array type '" << elementTypeName->value << "'" << std::endl;
+                        return false;
+                    }
+
+                    // Get the length
+                    const Attribute *length = field.attributes.Get("length");
+                    if (!length) {
+                        std::cerr << "Malformed command in line: " << field.line << ", length not found" << std::endl;
+                        return false;
+                    }
+
+                    // Parse length
+                    const uint32_t lengthAttribute = std::atoi(length->value.c_str());
+
+                    // Simply write the dword values
+                    for (uint32_t i = 0; i < lengthAttribute; i++) {
+                        out.types << "\t\t\t\tdwords[offset] = " << scopeName << "." << field.name << "[" << i << "];\n";
+                        out.types << "\t\t\t\toffset++;\n";
+                    }
+                } else {
+                    std::cerr << "Malformed command in line: " << message.line << ", type " << field.type << " not supported for chunk writes" << std::endl;
+                    return false;
+                }
+            }
+
+            // Next!
+            out.types << "\t\t\t}\n\n";
+        }
+
+        // Validation
+        out.types << "\t\t\tASSERT(offset <= *dwordCount, \"Append out of bounds\");\n";
     } else {
         // Soon (tm)
         std::cerr << "Malformed command in line: " << message.line << ", structured writes not supported yet" << std::endl;
@@ -99,9 +259,49 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
     // End construction function
     out.types << "\t\t}\n\n";
 
+    // User fed chunk mask
+    if (!message.chunks.empty()) {
+        out.types << "\t\tChunkSet chunks{0};\n";
+    }
+
     // Begin shader values
     for (const Field& field : message.fields) {
         out.types << "\t\tIL::ID " << field.name << "{IL::InvalidID};\n";
+    }
+
+    // Chunk data, each wrapped in an anonymous structure
+    for (const Chunk& chunk : message.chunks) {
+        out.types << "\t\tstruct {\n";
+
+        // Emit each field
+        for (const Field &field: chunk.fields) {
+            // Handle type
+            if (primitiveTypeMap.types.find(field.type) != primitiveTypeMap.types.end()) {
+                // Emit as singular
+                out.types << "\t\t\tIL::ID " << field.name << "{IL::InvalidID};\n";
+            } else if (field.type ==  "array") {
+                // Get the length
+                const Attribute *length = field.attributes.Get("length");
+                if (!length) {
+                    std::cerr << "Malformed command in line: " << field.line << ", length not found" << std::endl;
+                    return false;
+                }
+
+                // Emit as array
+                const uint32_t lengthAttribute = std::atoi(length->value.c_str());
+                out.types << "\t\t\tIL::ID " << field.name << "[" << lengthAttribute << "];\n";
+            } else {
+                std::cerr << "Malformed command in line: " << message.line << ", type " << field.type << " not supported for chunk writes" << std::endl;
+                return false;
+            }
+        }
+
+        // Lowercase
+        std::string scopeName = chunk.name;
+        scopeName[0] = std::tolower(scopeName[0]);
+
+        // Emit as named
+        out.types << "\t\t} " << scopeName << ";\n";
     }
 
     // End shader type

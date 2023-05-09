@@ -356,7 +356,17 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         }
         case OpCode::Export: {
             auto _export = instr->As<IL::ExportInstruction>();
-            line << "Export value:%" << _export->value << " exportID:" << _export->exportID;
+            line << "Export values:[";
+
+            for (uint32_t i = 0; i < _export->values.count; i++) {
+                if (i != 0) {
+                    line << ", ";
+                }
+
+                line << "%" << _export->values[i];
+            }
+
+            line << " exportID:" << _export->exportID;
             break;
         }
         case OpCode::Alloca: {

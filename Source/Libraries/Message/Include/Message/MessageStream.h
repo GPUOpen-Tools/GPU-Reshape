@@ -279,6 +279,74 @@ private:
     STREAM& stream;
 };
 
+/// Chunked schema, see MessageSchemaType::Chunked
+template<typename STREAM>
+struct MessageStreamSchema<ChunkedMessageSchema, STREAM> {
+    MessageStreamSchema(STREAM& stream) : stream(stream) {
+
+    }
+
+    /// Static iterator
+    template<typename T>
+    struct ConstIterator {
+        /// Get the message
+        const T* Get() const {
+            return reinterpret_cast<const T*>(ptr);
+        }
+
+        /// Accessor
+        const T* operator->() const {
+            return Get();
+        }
+
+        /// Post increment
+        ConstIterator operator++(int) const {
+            ConstIterator self = *this;
+            ++(*this);
+            return self;
+        }
+
+        /// Pre increment
+        ConstIterator& operator++() {
+            ptr = ptr + T::MessageSize(Get());
+            return *this;
+        }
+
+        /// Valid?
+        operator bool() const {
+            return ptr < end;
+        }
+
+        const uint8_t* ptr;
+        const uint8_t* end;
+    };
+
+    /// Add a new message
+    template<typename T>
+    T* Add(const typename T::AllocationInfo& info) {
+        auto allocation = stream.template Allocate<T, typename T::Schema>(sizeof(T));
+        return new (allocation.message) T();
+    }
+
+    /// Get the message iterator for the stream
+    template<typename T>
+    ConstIterator<T> GetIterator() const {
+        ConstIterator<T> iterator;
+        iterator.ptr = stream.GetDataBegin();
+        iterator.end = stream.GetDataEnd();
+        return iterator;
+    }
+
+    /// Get the message stream
+    [[nodiscard]]
+    STREAM& GetStream() const {
+        return stream;
+    }
+
+private:
+    STREAM& stream;
+};
+
 /// Dynamic schema, see MessageSchemaType::Dynamic
 template<typename STREAM>
 struct MessageStreamSchema<DynamicMessageSchema, STREAM> {

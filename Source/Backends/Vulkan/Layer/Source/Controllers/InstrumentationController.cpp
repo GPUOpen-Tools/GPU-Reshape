@@ -24,6 +24,7 @@
 // Common
 #include <Common/Registry.h>
 #include <Common/Dispatcher/TaskGroup.h>
+#include <Common/Hash.h>
 
 // Schemas
 #include <Schemas/Instrumentation.h>
@@ -120,6 +121,12 @@ void InstrumentationController::PropagateInstrumentationInfo(PipelineState *stat
         state->instrumentationInfo.featureBitSet |= entry.instrumentationInfo.featureBitSet;
         state->instrumentationInfo.specialization.Append(entry.instrumentationInfo.specialization);
     }
+
+    // Compute hash
+    state->instrumentationInfo.specializationHash = BufferCRC64(
+        state->instrumentationInfo.specialization.GetDataBegin(),
+        state->instrumentationInfo.specialization.GetByteSize()
+    );
 }
 
 void InstrumentationController::PropagateInstrumentationInfo(ShaderModuleState *state) {
@@ -135,6 +142,12 @@ void InstrumentationController::PropagateInstrumentationInfo(ShaderModuleState *
         state->instrumentationInfo.featureBitSet |= it->second.featureBitSet;
         state->instrumentationInfo.specialization.Append(it->second.specialization);
     }
+
+    // Compute hash
+    state->instrumentationInfo.specializationHash = BufferCRC64(
+        state->instrumentationInfo.specialization.GetDataBegin(),
+        state->instrumentationInfo.specialization.GetByteSize()
+    );
 }
 
 bool InstrumentationController::FilterPipeline(PipelineState *state, const FilterEntry &filter) {
@@ -173,8 +186,8 @@ void InstrumentationController::Handle(const MessageStream *streams, uint32_t co
 void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstIterator &it) {
     switch (it.GetID()) {
         // Config
-        case SetInstrumentationConfigMessage::kID: {
-            auto *message = it.Get<SetInstrumentationConfigMessage>();
+        case SetApplicationInstrumentationConfigMessage::kID: {
+            auto *message = it.Get<SetApplicationInstrumentationConfigMessage>();
             synchronousRecording = message->synchronousRecording;
             break;
         }
@@ -582,6 +595,14 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
             instrumentationKey.pipelineLayoutPRMTPCOffset = pipelineLayoutPRMTPCOffset;
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
 
+            // Combine hashes
+            instrumentationKey.combinedHash = dependentObject->instrumentationInfo.specializationHash;
+            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutUserSlots);
+            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutDataPCOffset);
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutPRMTPCOffset);
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
             // Attempt to reserve
             if (!state->Reserve(instrumentationKey)) {
                 continue;
@@ -653,6 +674,14 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             instrumentationKey.pipelineLayoutDataPCOffset = pipelineLayoutDataPCOffset;
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
             instrumentationKey.pipelineLayoutPRMTPCOffset = pipelineLayoutPRMTPCOffset;
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
+            // Combine hashes
+            instrumentationKey.combinedHash = state->instrumentationInfo.specializationHash;
+            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutUserSlots);
+            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutDataPCOffset);
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+            CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutPRMTPCOffset);
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
 
             // Assign key

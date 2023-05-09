@@ -1,10 +1,9 @@
-    public struct $NAME : IMessage {
+$HEADER
+
+    public struct $NAME : $BASE {
         public const uint ID = $ID;
 
-        public ByteSpan Memory
-        {
-            set => _memory = value;
-        }
+$CHUNKS
 
 $TYPES
 
@@ -14,4 +13,6 @@ $MEMBERS
 
         private ByteSpan _memory;
     }
+
+$FOOTER
 

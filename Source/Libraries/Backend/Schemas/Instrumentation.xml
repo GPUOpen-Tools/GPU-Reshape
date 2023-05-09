@@ -4,8 +4,9 @@
         <field name="index" type="int32"/>
     </message>
 
-    <message name="SetSafeGuard">
-        <field name="enabled" type="bool"/>
+    <message name="SetInstrumentationConfig">
+        <field name="safeGuard" type="bool"/>
+        <field name="detail" type="bool"/>
     </message>
     
     <message name="SetGlobalInstrumentation">

@@ -326,7 +326,7 @@ TEST_CASE_METHOD(Loader, "Layer.Feature.WritingNegativeValue", "[Vulkan]") {
         MessageStreamView view(stream);
 
         // Make the recording wait for compilation
-        auto config = view.Add<SetInstrumentationConfigMessage>();
+        auto config = view.Add<SetApplicationInstrumentationConfigMessage>();
         config->synchronousRecording = 1;
 
         // Global instrumentation

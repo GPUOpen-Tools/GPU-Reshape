@@ -172,7 +172,7 @@ int main(int argc, char *const argv[]) {
 
             // Field type?
             if (!std::strcmp(element->Name(), "field")) {
-                Field& field = message.fields.emplace_back();
+                Field &field = message.fields.emplace_back();
 
                 // Get the name
                 const char *fieldName = element->Attribute("name", nullptr);
@@ -194,10 +194,73 @@ int main(int argc, char *const argv[]) {
                 field.line = element->GetLineNum();
 
                 // Get all attributes
-                for (const tinyxml2::XMLAttribute* attributeNode = element->FirstAttribute(); attributeNode; attributeNode = attributeNode->Next()) {
-                    Attribute& attr = field.attributes.attributes.emplace_back();
+                for (const tinyxml2::XMLAttribute *attributeNode = element->FirstAttribute(); attributeNode; attributeNode = attributeNode->Next()) {
+                    Attribute &attr = field.attributes.attributes.emplace_back();
                     attr.name = attributeNode->Name();
                     attr.value = attributeNode->Value();
+                }
+            } else if (!std::strcmp(element->Name(), "chunk")) {
+                Chunk &chunk = message.chunks.emplace_back();
+
+                // Get the name
+                const char *chunkName = element->Attribute("name", nullptr);
+                if (!chunkName) {
+                    std::cerr << "Malformed command in line: " << element->GetLineNum() << ", name not found" << std::endl;
+                    return 1;
+                }
+
+                // Set basic properties
+                chunk.name = chunkName;
+                chunk.line = element->GetLineNum();
+
+                // Get all attributes
+                for (const tinyxml2::XMLAttribute *attributeNode = element->FirstAttribute(); attributeNode; attributeNode = attributeNode->Next()) {
+                    Attribute &attr = chunk.attributes.attributes.emplace_back();
+                    attr.name = attributeNode->Name();
+                    attr.value = attributeNode->Value();
+                }
+
+                // Iterate all parameters
+                for (tinyxml2::XMLNode *chunkChildNode = element->FirstChild(); chunkChildNode; chunkChildNode = chunkChildNode->NextSibling()) {
+                    tinyxml2::XMLElement *chunkElement = chunkChildNode->ToElement();
+                    if (!chunkElement) {
+                        std::cerr << "Malformed child in line: " << chunkChildNode->GetLineNum() << std::endl;
+                        return 1;
+                    }
+
+                    // Field type?
+                    if (!std::strcmp(chunkElement->Name(), "field")) {
+                        Field &field = chunk.fields.emplace_back();
+
+                        // Get the name
+                        const char *fieldName = chunkElement->Attribute("name", nullptr);
+                        if (!fieldName) {
+                            std::cerr << "Malformed command in line: " << chunkElement->GetLineNum() << ", name not found" << std::endl;
+                            return 1;
+                        }
+
+                        // Get the type
+                        const char *typeName = chunkElement->Attribute("type", nullptr);
+                        if (!typeName) {
+                            std::cerr << "Malformed command in line: " << chunkElement->GetLineNum() << ", type not found" << std::endl;
+                            return 1;
+                        }
+
+                        // Set basic properties
+                        field.name = fieldName;
+                        field.type = typeName;
+                        field.line = chunkElement->GetLineNum();
+
+                        // Get all attributes
+                        for (const tinyxml2::XMLAttribute *attributeNode = chunkElement->FirstAttribute(); attributeNode; attributeNode = attributeNode->Next()) {
+                            Attribute &attr = field.attributes.attributes.emplace_back();
+                            attr.name = attributeNode->Name();
+                            attr.value = attributeNode->Value();
+                        }
+                    } else {
+                        std::cerr << "Malformed child in line: " << chunkChildNode->GetLineNum() << ", unknown child type: '" << chunkElement->Name() << "'" << std::endl;
+                        return 1;
+                    }
                 }
             } else {
                 std::cerr << "Malformed child in line: " << childNode->GetLineNum() << ", unknown child type: '" << element->Name() << "'" << std::endl;
@@ -256,6 +319,9 @@ int main(int argc, char *const argv[]) {
         // Generate all messages
         for (const Message& message : schema.messages) {
             // Streams
+            std::stringstream header;
+            std::stringstream footer;
+            std::stringstream chunksStream;
             std::stringstream schemaType;
             std::stringstream typeStream;
             std::stringstream functionStream;
@@ -264,7 +330,10 @@ int main(int argc, char *const argv[]) {
             // Schema output
             MessageStream messageStreamOut{
                 schemaStreamOut,
+                header,
+                footer,
                 schemaType,
+                chunksStream,
                 typeStream,
                 functionStream,
                 memberStream
@@ -287,10 +356,14 @@ int main(int argc, char *const argv[]) {
             // Instantiate optionals
             messageTemplate.Substitute("$SIZE", std::to_string(messageStreamOut.size).c_str());
             messageTemplate.Substitute("$SCHEMA", schemaType.str().c_str());
+            messageTemplate.Substitute("$BASE", messageStreamOut.base.c_str());
 
             // Instantiate message
             if (!messageTemplate.Substitute("$NAME", name.c_str()) ||
                 !messageTemplate.Substitute("$ID", hash.c_str()) ||
+                !messageTemplate.Substitute("$HEADER", header.str().c_str()) ||
+                !messageTemplate.Substitute("$FOOTER", footer.str().c_str()) ||
+                !messageTemplate.Substitute("$CHUNKS", chunksStream.str().c_str()) ||
                 !messageTemplate.Substitute("$TYPES", typeStream.str().c_str()) ||
                 !messageTemplate.Substitute("$FUNCTIONS", functionStream.str().c_str()) ||
                 !messageTemplate.Substitute("$MEMBERS", memberStream.str().c_str())) {

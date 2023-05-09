@@ -1,7 +1,11 @@
+$HEADER
+
 struct ALIGN_PACK $NAME {
 	static constexpr MessageID kID = $ID;
 
 	using Schema = $SCHEMA;
+
+$CHUNKS
 
 $TYPES
 
@@ -10,3 +14,4 @@ $FUNCTIONS
 $MEMBERS
 };
 
+$FOOTER

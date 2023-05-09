@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AttributeMap.h"
+#include "Chunk.h"
 #include "Field.h"
 
 #include <vector>
@@ -12,6 +13,9 @@ struct Message {
 
     /// Name of this message
     std::string name;
+
+    /// All chunks
+    std::vector<Chunk> chunks;
 
     /// All attributes of this message
     AttributeMap attributes;

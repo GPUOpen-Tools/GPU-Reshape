@@ -10,7 +10,7 @@
 
 struct ShaderInstrumentationKey {
     auto AsTuple() const {
-        return std::make_tuple(featureBitSet, physicalMapping->signatureHash);
+        return std::make_tuple(featureBitSet, combinedHash);
     }
 
     bool operator<(const ShaderInstrumentationKey& key) const {

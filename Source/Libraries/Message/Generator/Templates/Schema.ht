@@ -3,6 +3,7 @@
 
 // Common
 #include <Common/Align.h>
+#include <Common/Enum.h>
 
 // Message
 #include <Message/MessageStream.h>

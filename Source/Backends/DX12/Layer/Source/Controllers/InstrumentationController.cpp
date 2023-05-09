@@ -189,8 +189,8 @@ void InstrumentationController::Handle(const MessageStream *streams, uint32_t co
 void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstIterator &it) {
     switch (it.GetID()) {
         // Config
-        case SetInstrumentationConfigMessage::kID: {
-            auto *message = it.Get<SetInstrumentationConfigMessage>();
+        case SetApplicationInstrumentationConfigMessage::kID: {
+            auto *message = it.Get<SetApplicationInstrumentationConfigMessage>();
             synchronousRecording = message->synchronousRecording;
             break;
         }

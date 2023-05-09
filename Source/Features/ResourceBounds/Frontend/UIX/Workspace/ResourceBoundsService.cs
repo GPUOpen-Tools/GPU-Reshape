@@ -49,10 +49,10 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsStatic(ResourceIndexOutOfBoundsMessage.ID))
+            if (!streams.GetSchema().IsChunked(ResourceIndexOutOfBoundsMessage.ID))
                 return;
 
-            var view = new StaticMessageView<ResourceIndexOutOfBoundsMessage>(streams);
+            var view = new ChunkedMessageView<ResourceIndexOutOfBoundsMessage>(streams);
 
             // Latent update set
             var lookup = new Dictionary<uint, ResourceIndexOutOfBoundsMessage>();

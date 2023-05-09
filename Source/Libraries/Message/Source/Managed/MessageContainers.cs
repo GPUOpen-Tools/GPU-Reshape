@@ -79,6 +79,12 @@ namespace Message.CLR
             MemoryMarshal.Write<T>(_memory.Slice(ThisOffset + index * ByteWidth, ByteWidth).AsRefSpan(), ref value);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Store(ByteSpan span)
+        {
+            span.AsRefSpan().CopyTo(_memory.Slice(ThisOffset, span.Length).AsRefSpan());
+        }
+
         // Offset to current structure
         public int ThisOffset
         {

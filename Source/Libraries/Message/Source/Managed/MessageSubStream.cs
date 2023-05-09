@@ -10,6 +10,27 @@ namespace Message.CLR
     {
         public ByteSpan Memory { set => _memory = value; }
 
+        // Store a stream to this sub stream
+        public void Store(IMessageStream stream)
+        {
+            if (stream.GetCount() == 0)
+            {
+                return;
+            }
+
+            // Write schema
+            MessageSchema schema = stream.GetSchema();
+            MemoryMarshal.Write<MessageSchemaType>(_memory.Slice(0, 4).AsRefSpan(), ref schema.type);
+            MemoryMarshal.Write<uint>(_memory.Slice(4, 4).AsRefSpan(), ref schema.id);
+            
+            // Write count
+            ulong count = stream.GetCount();
+            MemoryMarshal.Write<ulong>(_memory.Slice(8, 8).AsRefSpan(), ref count);
+            
+            // Write data
+            Data.Store(stream.GetSpan());
+        }
+
         // Get the schema of this sub stream
         public MessageSchema Schema
         {
@@ -19,7 +40,7 @@ namespace Message.CLR
                 return new MessageSchema
                 {
                     type = MemoryMarshal.Read<MessageSchemaType>(_memory.Slice(0, 4).AsRefSpan()),
-                    id = MemoryMarshal.Read<uint>(_memory.Slice(4, 8).AsRefSpan())
+                    id = MemoryMarshal.Read<uint>(_memory.Slice(4, 4).AsRefSpan())
                 };
             }
         }
@@ -30,7 +51,7 @@ namespace Message.CLR
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                return MemoryMarshal.Read<ulong>(_memory.Slice(8, 16).AsRefSpan());
+                return MemoryMarshal.Read<ulong>(_memory.Slice(8, 8).AsRefSpan());
             }
         }
 

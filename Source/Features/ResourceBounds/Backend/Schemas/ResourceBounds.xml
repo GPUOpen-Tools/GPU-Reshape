@@ -1,5 +1,10 @@
 <schema>
     <shader-export name="ResourceIndexOutOfBounds">
+        <chunk name="Detail">
+            <field name="token" type="uint32"/>
+            <field name="coordinate" type="array" element="uint32" length="3"/>
+        </chunk>
+
         <field name="isTexture" type="uint32" bits="1"/>
         <field name="isWrite" type="uint32" bits="1"/>
     </shader-export>

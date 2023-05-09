@@ -1612,7 +1612,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             }
             case IL::OpCode::Export: {
                 auto *_export = instr.As<IL::ExportInstruction>();
-                table.shaderExport.Export(stream, _export->exportID, idMap.Get(_export->value));
+
+                // Map all values
+                auto values = ALLOCA_ARRAY(IL::ID, _export->values.count);
+                for (uint32_t i = 0; i < _export->values.count; i++) {
+                    values[i] = idMap.Get(_export->values[i]);
+                }
+                
+                table.shaderExport.Export(stream, _export->exportID, values, _export->values.count);
                 break;
             }
             case IL::OpCode::ResourceToken: {

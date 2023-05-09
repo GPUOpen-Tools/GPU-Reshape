@@ -160,7 +160,7 @@ private:
 #endif // _MSC_VER
 
         // Make the recording wait for compilation
-        auto config = view.Add<SetInstrumentationConfigMessage>();
+        auto config = view.Add<SetApplicationInstrumentationConfigMessage>();
         config->synchronousRecording = 1u;
 
         // Specialization stream
@@ -169,8 +169,8 @@ private:
 
 #if SAFE_GUARDED
         // Mark as safe-guarded
-        auto set = specializationView.Add<SetSafeGuardMessage>();
-        set->enabled = 1u;
+        auto set = specializationView.Add<SetInstrumentationConfigMessage>();
+        set->safeGuard = 1u;
 #endif // SAFE_GUARDED
 
         // Global instrumentation

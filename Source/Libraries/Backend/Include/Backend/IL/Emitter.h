@@ -925,13 +925,14 @@ namespace IL {
         InstructionRef <ExportInstruction> Export(ShaderExportID exportID, ID value) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
-            ExportInstruction instr{};
-            instr.opCode = OpCode::Export;
-            instr.source = Source::Invalid();
-            instr.result = map->AllocID();
-            instr.exportID = exportID;
-            instr.value = value;
-            return Op(instr);
+            auto instr = ALLOCA_SIZE(IL::ExportInstruction, IL::ExportInstruction::GetSize(1u));
+            instr->opCode = OpCode::Export;
+            instr->source = Source::Invalid();
+            instr->result = map->AllocID();
+            instr->exportID = exportID;
+            instr->values.count = 1u;
+            instr->values[0] = value;
+            return Op(*instr);
         }
 
         /// Construct and export a shader export
@@ -940,13 +941,21 @@ namespace IL {
         /// \return instruction reference
         template<typename T>
         InstructionRef <ExportInstruction> Export(ShaderExportID exportID, const T& value) {
-            ExportInstruction instr{};
-            instr.opCode = OpCode::Export;
-            instr.source = Source::Invalid();
-            instr.result = map->AllocID();
-            instr.exportID = exportID;
-            instr.value = value.Construct(*this);
-            return Op(instr);
+            // Query number of dwords requested
+            uint32_t dwordCount{};
+            value.Construct(*this, &dwordCount, nullptr);
+
+            // Alloca on count
+            auto instr = ALLOCA_SIZE(IL::ExportInstruction, IL::ExportInstruction::GetSize(dwordCount));
+            instr->opCode = OpCode::Export;
+            instr->source = Source::Invalid();
+            instr->result = map->AllocID();
+            instr->exportID = exportID;
+            instr->values.count = dwordCount;
+
+            // Fill dwords
+            value.Construct(*this, &dwordCount, &instr->values[0]);
+            return Op(*instr);
         }
 
         /// Alloca a varaible

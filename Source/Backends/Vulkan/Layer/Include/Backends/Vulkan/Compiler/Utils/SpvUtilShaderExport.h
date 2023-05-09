@@ -24,7 +24,7 @@ struct SpvUtilShaderExport {
     /// \param stream the current spirv stream
     /// \param exportID the <compile time> identifier
     /// \param value the value to be exported
-    void Export(SpvStream& stream, uint32_t exportID, IL::ID value);
+    void Export(SpvStream& stream, uint32_t exportID, const IL::ID* value, uint32_t count);
 
     /// Copy to a new block
     /// \param remote the new block table

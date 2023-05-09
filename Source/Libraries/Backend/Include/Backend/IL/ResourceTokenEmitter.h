@@ -38,6 +38,11 @@ namespace IL {
             return srb = emitter.BitAnd(emitter.BitShiftRight(token, emitter.UInt32(kResourceTokenSRBShift)), emitter.UInt32(kResourceTokenSRBMask));
         }
 
+        /// Get the token
+        ::IL::ID GetToken() const {
+            return token;
+        }
+
     private:
         /// Underlying token
         ::IL::ID token;

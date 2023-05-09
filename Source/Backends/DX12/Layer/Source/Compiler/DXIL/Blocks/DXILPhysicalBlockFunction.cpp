@@ -4627,17 +4627,39 @@ void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const
 
         ops[6] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = static_cast<uint32_t>(1)}
+            Backend::IL::IntConstant{.value = static_cast<uint32_t>(_instr->values.count)}
         )->id);
 
         // Invoke
         block->AddRecord(CompileIntrinsicCall(atomicHead, intrinsic, 7, ops));
     }
 
-    // Store the given non-structured message
+    // Store the message
+    for (uint32_t i = 0; i < _instr->values.count; i++)
     {
         // Get intrinsic
         const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBufferStoreI32);
+
+        // Head offset for the current value
+        IL::ID valueHead = atomicHead;
+
+        // Increment if needed
+        if (i > 0) {
+            valueHead = program.GetIdentifierMap().AllocID();
+
+            // AtomicHead + i
+            LLVMRecord addRecord(static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp));
+            addRecord.SetUser(true, ~0u, valueHead);
+            addRecord.opCount = 3u;
+            addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+            addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(atomicHead);
+            addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                Backend::IL::IntConstant{.value = i}
+            )->id);
+            addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Add);
+            block->AddRecord(addRecord);
+        }
 
         /*
          * ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
@@ -4662,17 +4684,17 @@ void DXILPhysicalBlockFunction::CompileExportInstruction(LLVMBlock *block, const
 
         ops[1] = table.idRemapper.EncodeRedirectedUserOperand(exportStreamHandles[_instr->exportID]);
 
-        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(atomicHead);
+        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(valueHead);
 
         ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
             Backend::IL::UndefConstant{}
         )->id);
 
-        ops[4] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-        ops[5] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-        ops[6] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-        ops[7] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+        ops[4] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i]);
+        ops[5] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i]);
+        ops[6] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i]);
+        ops[7] = table.idRemapper.EncodeRedirectedUserOperand(_instr->values[i]);
 
         ops[8] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),

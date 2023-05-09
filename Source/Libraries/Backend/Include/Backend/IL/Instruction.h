@@ -543,7 +543,21 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::Export;
 
         ShaderExportID exportID;
-        ID value;
+
+        /// Get size of this instruction
+        /// \param valueCount number of values
+        /// \return byte size
+        static uint64_t GetSize(uint32_t valueCount) {
+            return sizeof(ExportInstruction) + InlineArray<IL::ID>::ElementSize(valueCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(ExportInstruction) + values.ElementSize();
+        }
+
+        InlineArray<IL::ID> values;
     };
 
     struct AllocaInstruction : public Instruction {
@@ -625,7 +639,7 @@ namespace IL {
             case OpCode::BitShiftRight:
                 return sizeof(BitShiftRightInstruction);
             case OpCode::Export:
-                return sizeof(ExportInstruction);
+                return static_cast<const ExportInstruction*>(instruction)->GetSize();
             case OpCode::Alloca:
                 return sizeof(AllocaInstruction);
             case OpCode::StoreTexture:

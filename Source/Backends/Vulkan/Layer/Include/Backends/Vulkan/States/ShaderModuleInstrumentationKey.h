@@ -8,11 +8,7 @@
 
 struct ShaderModuleInstrumentationKey {
     auto AsTuple() const {
-#if PRMT_METHOD == PRMT_METHOD_UB_PC
-        return std::make_tuple(pipelineLayoutUserSlots, featureBitSet, pipelineLayoutDataPCOffset, pipelineLayoutPRMTPCOffset);
-#else // PRMT_METHOD == PRMT_METHOD_UB_PC
-        return std::make_tuple(pipelineLayoutUserSlots, featureBitSet, pipelineLayoutDataPCOffset);
-#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+        return std::make_tuple(featureBitSet, combinedHash);
     }
 
     bool operator<(const ShaderModuleInstrumentationKey& key) const {
@@ -29,6 +25,9 @@ struct ShaderModuleInstrumentationKey {
     /// PRMT push constant offset after the user PC data
     uint32_t pipelineLayoutPRMTPCOffset{0};
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
+    /// Final hash
+    uint64_t combinedHash{0};
 
     /// Feature bit set
     uint64_t featureBitSet{0};
