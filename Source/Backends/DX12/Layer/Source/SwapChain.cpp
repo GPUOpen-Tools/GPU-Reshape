@@ -5,6 +5,8 @@
 #include <Backends/DX12/States/CommandQueueState.h>
 
 static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count) {
+    auto deviceTable = GetTable(state->parent);
+    
     // Set count
     state->buffers.resize(count);
 
@@ -20,8 +22,11 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
         auto* bufferState = new (state->allocators, kAllocStateResource) ResourceState();
         bufferState->allocators = state->allocators;
         bufferState->object = bottomBuffer;
-        bufferState->dimension = bottomBuffer->GetDesc().Dimension;
+        bufferState->desc = bottomBuffer->GetDesc();
         bufferState->parent = state->parent;
+
+        // Add state
+        deviceTable.state->states_Resources.Add(bufferState);
 
         // Create detours
         state->buffers[i] = CreateDetour(state->allocators, bottomBuffer, bufferState);

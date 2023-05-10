@@ -16,6 +16,7 @@
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 #include <Backends/DX12/IncrementalFence.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
+#include <Backends/DX12/Controllers/VersioningController.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -679,6 +680,7 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
         // Copy into stream
         MessageStream messageStream;
         messageStream.SetSchema(streamInfo.typeInfo.messageSchema);
+        messageStream.SetVersionID(segment->versionSegPoint.id);
         messageStream.SetData(stream, size, static_cast<uint32_t>(size / streamInfo.typeInfo.typeSize));
 
         // Add output
@@ -691,6 +693,10 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
     // Unmap host
     deviceAllocator->Unmap(counterMirror.host);
 
+    // Inform the versioning controller of a collapse
+    ASSERT(segment->versionSegPoint.id != UINT32_MAX, "Untracked versioning");
+    device->versioningController->CollapseOnFork(segment->versionSegPoint);
+
     // Done!
     return true;
 }
@@ -701,6 +707,9 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     // Remove fence reference
     segment->fence = nullptr;
     segment->fenceNextCommitId = 0;
+
+    // Reset versioning
+    segment->versionSegPoint = {};
 
     // Release all descriptors to their respective owners
     for (const ShaderExportSegmentDescriptorAllocation& allocation : segment->segmentDescriptors) {

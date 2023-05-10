@@ -54,48 +54,28 @@ void MemoryBridge::Commit() {
     storageConsumeCache.resize(streamCount);
     sharedStorage.ConsumeStreams(&streamCount, storageConsumeCache.data());
 
-    // TODO: Don't waste memory
-    storageOrderedCache.clear();
-
-    // Collect all ordered streams
+    // Invoke streams in-order
+    // TODO: This can be bucketed pretty easily if performance becomes a problem
     for (MessageStream& stream : storageConsumeCache) {
-        // Skip unordered
-        if (stream.GetSchema().type != MessageSchemaType::Ordered) {
-            continue;
-        }
+        if (stream.GetSchema().type == MessageSchemaType::Ordered) {
+            for (const ComRef<IBridgeListener>& listener : orderedListeners) {
+                listener->Handle(&stream, 1u);
+            }
+        } else {
+            // No listener?
+            auto bucketIt = buckets.find(stream.GetSchema().id);
+            if (bucketIt == buckets.end()) {
+                // TODO: Log warning
+                continue;
+            }
 
-        storageOrderedCache.emplace_back().Swap(stream);
-    }
+            // Get the bucket
+            MessageBucket& bucket = bucketIt->second;
 
-    // Invoke ordered listeners
-    if (!storageOrderedCache.empty()) {
-        for (const ComRef<IBridgeListener>& listener : orderedListeners) {
-            listener->Handle(storageOrderedCache.data(), static_cast<uint32_t>(storageOrderedCache.size()));
-        }
-    }
-
-    // Process all streams
-    for (const MessageStream& stream : storageConsumeCache) {
-        MessageSchema schema = stream.GetSchema();
-
-        // Skip ordered
-        if (schema.type == MessageSchemaType::Ordered) {
-            continue;
-        }
-
-        // No listener?
-        auto bucketIt = buckets.find(schema.id);
-        if (bucketIt == buckets.end()) {
-            // TODO: Log warning
-            continue;
-        }
-
-        // Get the bucket
-        MessageBucket& bucket = bucketIt->second;
-
-        // Pass through all listeners
-        for (const ComRef<IBridgeListener>& listener : bucket.listeners) {
-            listener->Handle(&stream, 1);
+            // Pass through all listeners
+            for (const ComRef<IBridgeListener>& listener : bucket.listeners) {
+                listener->Handle(&stream, 1);
+            }
         }
     }
 }

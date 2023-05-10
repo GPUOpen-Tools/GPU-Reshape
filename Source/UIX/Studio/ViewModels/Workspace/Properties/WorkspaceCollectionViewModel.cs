@@ -128,6 +128,12 @@ namespace Studio.ViewModels.Workspace.Properties
             {
                 ConnectionViewModel = ConnectionViewModel
             });
+            
+            // Register versioning service
+            Services.Add(new VersioningService()
+            {
+                ConnectionViewModel = ConnectionViewModel
+            });
         }
 
         /// <summary>

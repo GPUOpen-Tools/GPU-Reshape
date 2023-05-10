@@ -28,7 +28,6 @@ private:
 
     /// Caches
     std::vector<MessageStream> storageConsumeCache;
-    std::vector<MessageStream> storageOrderedCache;
 
 private:
     struct MessageBucket {

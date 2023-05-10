@@ -192,6 +192,7 @@ add_library(
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Controllers/FeatureController.cpp
     Layer/Source/Controllers/MetadataController.cpp
+    Layer/Source/Controllers/VersioningController.cpp
     Layer/Source/Export/ShaderExportHost.cpp
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
     Layer/Source/Export/ShaderExportDescriptorAllocator.cpp

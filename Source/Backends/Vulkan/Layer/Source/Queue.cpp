@@ -6,6 +6,7 @@
 #include <Backends/Vulkan/States/QueueState.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
+#include <Backends/Vulkan/Controllers/VersioningController.h>
 
 void CreateQueueState(DeviceDispatchTable *table, VkQueue queue, uint32_t familyIndex) {
     // Create the state
@@ -134,6 +135,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
 
     // Create streamer allocation
     ShaderExportStreamSegment* segment = table->exportStreamer->AllocateSegment();
+
+    // Inform the controller of the segmentation point
+    segment->versionSegPoint = table->versioningController->BranchOnSegmentationPoint();
 
     // Unwrapped submits
     auto* vkSubmits = ALLOCA_ARRAY(VkSubmitInfo, submitCount + 1);

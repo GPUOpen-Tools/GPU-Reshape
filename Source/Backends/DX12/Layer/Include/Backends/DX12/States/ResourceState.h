@@ -19,9 +19,15 @@ struct __declspec(uuid("09175D5B-BA8A-4531-9553-BC1CD024A1FE")) ResourceState {
     /// Owning allocator
     Allocators allocators;
 
-    /// Resource dimension
-    D3D12_RESOURCE_DIMENSION dimension;
+    /// Resource creation
+    D3D12_RESOURCE_DESC desc;
+
+    /// Optional debug name
+    char* debugName{nullptr};
 
     /// Resource mapping
     VirtualResourceMapping virtualMapping;
+
+    /// Unique ID
+    uint64_t uid{0};
 };

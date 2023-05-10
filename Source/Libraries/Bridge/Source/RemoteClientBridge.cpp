@@ -171,6 +171,7 @@ uint64_t RemoteClientBridge::OnReadAsync(const void *data, uint64_t size) {
 
     // Create the stream
     MessageStream stream(protocol->schema);
+    stream.SetVersionID(protocol->versionID);
     stream.SetData(static_cast<const uint8_t *>(data) + sizeof(MessageStreamHeaderProtocol), protocol->size, 0);
     memoryBridge.GetOutput()->AddStream(stream);
 
@@ -228,6 +229,7 @@ void RemoteClientBridge::Commit() {
     for (const MessageStream &stream: streamCache) {
         MessageStreamHeaderProtocol protocol;
         protocol.schema = stream.GetSchema();
+        protocol.versionID = stream.GetVersionID();
         protocol.size = stream.GetByteSize();
 
         // Send header and stream data (sync)

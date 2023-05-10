@@ -2,6 +2,7 @@
 #include <Backends/DX12/Table.Gen.h>
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/Controllers/VersioningController.h>
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
@@ -24,8 +25,14 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     auto* state = new (table.state->allocators, kAllocStateResource) ResourceState();
     state->allocators = table.state->allocators;
     state->object = resource;
-    state->dimension = desc->Dimension;
+    state->desc = *desc;
     state->parent = parent;
+
+    // Add state
+    table.state->states_Resources.Add(state);
+
+    // Inform controller
+    table.state->versioningController->CreateOrRecommitResource(state);
 
     // Allocate PUID
     state->virtualMapping.puid = table.state->physicalResourceIdentifierMap.AllocatePUID();
@@ -248,6 +255,27 @@ HRESULT WINAPI HookID3D12ResourceGetDevice(ID3D12Resource* _this, REFIID riid, v
     return table.state->parent->QueryInterface(riid, ppDevie);
 }
 
+HRESULT WINAPI HookID3D12ResourceSetName(ID3D12Resource* _this, LPCWSTR name) {
+    auto table = GetTable(_this);
+
+    // Get device
+    auto deviceTable = GetTable(table.state->parent);
+
+    // Get length
+    size_t length;
+    ENSURE(SUCCEEDED(wcstombs_s(&length, nullptr, 0u, name, 0u)), "Failed to determine length");
+
+    // Copy string
+    table.state->debugName = new (table.state->allocators) char[length];
+    ENSURE(SUCCEEDED(wcstombs_s(&length, table.state->debugName, length, name, length)), "Failed to convert string");
+
+    // Inform controller of the change
+    deviceTable.state->versioningController->CreateOrRecommitResource(table.state);
+
+    // Pass to device query
+    return table.state->parent->SetName(name);
+}
+
 ResourceState::~ResourceState() {
     auto table = GetTable(parent);
 
@@ -257,11 +285,17 @@ ResourceState::~ResourceState() {
     }
 
     // Remove mapping
-    switch (dimension) {
+    switch (desc.Dimension) {
         default:
             break;
         case D3D12_RESOURCE_DIMENSION_BUFFER:
             table.state->virtualAddressTable.Remove(object->GetGPUVirtualAddress());
             break;
     }
+
+    // Inform controller
+    table.state->versioningController->DestroyResource(this);
+
+    // Remove state
+    table.state->states_Resources.Remove(this);
 }

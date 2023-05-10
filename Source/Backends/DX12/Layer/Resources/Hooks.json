@@ -162,7 +162,8 @@
       "state": "ResourceState",
       "hooks": [
         "Map",
-        "GetDevice"
+        "GetDevice",
+        "SetName"
       ]
     },
     "ID3D12RootSignature": {

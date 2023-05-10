@@ -5,6 +5,7 @@
 #include <Backends/Vulkan/States/PipelineState.h>
 #include <Backends/Vulkan/Export/DescriptorInfo.h>
 #include <Backends/Vulkan/Resource/DescriptorDataSegment.h>
+#include <Backends/Vulkan/Controllers/Versioning.h>
 
 // Common
 #include <Common/Containers/BucketPoolAllocator.h>
@@ -108,6 +109,9 @@ struct ShaderExportStreamSegment {
 
     /// Combined descriptor data segments, lifetime bound to this segment
     std::vector<DescriptorDataSegment> descriptorDataSegments;
+
+    /// Versioning segmentation point during submission
+    VersionSegmentationPoint versionSegPoint{};
 };
 
 /// The queue state

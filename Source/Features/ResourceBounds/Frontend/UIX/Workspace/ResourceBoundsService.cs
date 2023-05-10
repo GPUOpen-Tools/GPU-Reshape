@@ -7,6 +7,7 @@ using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
@@ -38,6 +39,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
 
             // Get services
             _shaderMappingService = viewModel.PropertyCollection.GetService<IShaderMappingService>();
+            _versioningService = ViewModel.PropertyCollection.GetService<IVersioningService>();
         }
 
         /// <summary>
@@ -111,6 +113,12 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                 {
                     ResourceIndexOutOfBoundsMessage.DetailChunk detailChunk = message.GetDetailChunk();
 
+                    // To token
+                    var token = new ResourceToken()
+                    {
+                        Token = detailChunk.token
+                    };
+
                     // TODO: Optimize the hell out of this, current version is not good enough
 
                     // Get detailed view model
@@ -130,8 +138,17 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                         _reducedDetails.Add(message.Key, detailViewModel);
                     }
 
+                    // Try to find resource
+                    Resource resource = _versioningService?.GetResource(token.PUID, streams.VersionID) ?? new Resource()
+                    {
+                        PUID = token.PUID,
+                        Version = streams.VersionID,
+                        Name = $"#{token.PUID}",
+                        IsUnknown = true
+                    };
+                    
                     // Get resource
-                    ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(detailChunk.token);
+                    ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
 
                     // Read coordinate
                     uint[] coordinate = detailChunk.coordinate;
@@ -201,5 +218,10 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// Validation container
         /// </summary>
         private IMessageCollectionViewModel? _messageCollectionViewModel;
+
+        /// <summary>
+        /// Versioning service
+        /// </summary>
+        private IVersioningService? _versioningService;
     }
 }

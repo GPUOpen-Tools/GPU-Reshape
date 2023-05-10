@@ -44,6 +44,12 @@ struct MessageStream {
         schema = value;
     }
 
+    /// Set the new version
+    /// \param value
+    void SetVersionID(uint32_t value) {
+        versionID = value;
+    }
+
     /// Validate against a schema or set a new one
     /// \param value
     void ValidateOrSetSchema(const MessageSchema& value) {
@@ -137,6 +143,7 @@ struct MessageStream {
     void ClearWithSchemaInvalidate() {
         count = 0;
         schema = {};
+        versionID = 0;
         buffer.clear();
     }
 
@@ -146,6 +153,7 @@ struct MessageStream {
         ValidateOrSetSchema(other.schema);
 
         std::swap(count, other.count);
+        std::swap(versionID, other.versionID);
         buffer.swap(other.buffer);
     }
 
@@ -184,6 +192,12 @@ struct MessageStream {
         return schema;
     }
 
+    /// Get the stream version
+    [[nodiscard]]
+    uint32_t GetVersionID() const {
+        return versionID;
+    }
+
     /// Get the number of messages within this stream
     [[nodiscard]]
     uint64_t GetCount() const {
@@ -202,6 +216,9 @@ private:
 
     /// Number of messages in this stream
     uint64_t count{0};
+
+    /// Version of this stream
+    uint32_t versionID{0};
 
     /// The underlying memory
     std::vector<uint8_t> buffer;

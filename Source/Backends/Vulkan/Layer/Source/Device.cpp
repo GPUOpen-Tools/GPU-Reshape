@@ -7,6 +7,7 @@
 #include <Backends/Vulkan/Controllers/InstrumentationController.h>
 #include <Backends/Vulkan/Controllers/FeatureController.h>
 #include <Backends/Vulkan/Controllers/MetadataController.h>
+#include <Backends/Vulkan/Controllers/VersioningController.h>
 #include <Backends/Vulkan/Compiler/ShaderCompiler.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Export/ShaderExportDescriptorAllocator.h>
@@ -301,6 +302,10 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->metadataController = table->registry.New<MetadataController>(table);
     ENSURE(table->metadataController->Install(), "Failed to install metadata controller");
 
+    // Install the versioning controller
+    table->versioningController = table->registry.New<VersioningController>(table);
+    ENSURE(table->versioningController->Install(), "Failed to install versioning controller");
+
     // Create the physical resource table
     table->prmTable = table->registry.New<PhysicalResourceMappingTable>(table);
     ENSURE(table->prmTable->Install(), "Failed to install PRM table");
@@ -343,6 +348,7 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
     table->exportStreamer->Process();
 
     // Manual uninstalls
+    table->versioningController->Uninstall();
     table->metadataController->Uninstall();
     table->instrumentationController->Uninstall();
     table->featureController->Uninstall();
@@ -371,6 +377,7 @@ void BridgeDeviceSyncPoint(DeviceDispatchTable *table) {
     table->instrumentationController->Commit();
     table->featureController->Commit();
     table->metadataController->Commit();
+    table->versioningController->Commit();
 
     // Commit instance
     BridgeInstanceSyncPoint(table->parent);

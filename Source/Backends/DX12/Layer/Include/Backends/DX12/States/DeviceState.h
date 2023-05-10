@@ -27,10 +27,12 @@ class ShaderSet;
 class IFeature;
 struct ShaderState;
 struct CommandQueueState;
+struct ResourceState;
 struct PipelineState;
 class InstrumentationController;
 class FeatureController;
 class MetadataController;
+class VersioningController;
 class IBridge;
 class ShaderExportHost;
 class ShaderDataHost;
@@ -45,6 +47,7 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
           states_Shaders(allocators.Tag(kAllocTracking)),
           states_Pipelines(allocators.Tag(kAllocTracking)),
           states_Queues(allocators.Tag(kAllocTracking)),
+          states_Resources(allocators.Tag(kAllocTracking)),
           cpuHeapTable(allocators.Tag(kAllocTracking)),
           gpuHeapTable(allocators.Tag(kAllocTracking)),
           virtualAddressTable(allocators.Tag(kAllocTracking)),
@@ -86,6 +89,7 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     TrackedObject<ShaderState> states_Shaders;
     TrackedObject<PipelineState> states_Pipelines;
     TrackedObject<CommandQueueState> states_Queues;
+    TrackedObject<ResourceState> states_Resources;
 
     /// Sorted heap tables
     HeapTable cpuHeapTable;
@@ -104,6 +108,7 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     ComRef<InstrumentationController> instrumentationController{nullptr};
     ComRef<FeatureController> featureController{nullptr};
     ComRef<MetadataController> metadataController{nullptr};
+    ComRef<VersioningController> versioningController{nullptr};
 
     /// User programs
     ComRef<ShaderProgramHost> shaderProgramHost{nullptr};

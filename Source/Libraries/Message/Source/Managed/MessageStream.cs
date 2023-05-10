@@ -49,6 +49,9 @@ namespace Message.CLR
         // Get the schema of this stream
         MessageSchema GetSchema();
 
+        // Get the version of this stream
+        uint GetVersionID();
+
         // Get the schema of this stream
         MessageSchema GetOrSetSchema(MessageSchema schema);
 
@@ -67,6 +70,11 @@ namespace Message.CLR
         public MessageSchema GetSchema()
         {
             return Schema;
+        }
+
+        public uint GetVersionID()
+        {
+            return VersionID;
         }
 
         public MessageSchema GetOrSetSchema(MessageSchema schema)
@@ -103,6 +111,9 @@ namespace Message.CLR
         // Top schema type
         public MessageSchema Schema;
 
+        // Stream version
+        public uint VersionID;
+
         // Data address
         public unsafe byte* Ptr;
 
@@ -118,6 +129,11 @@ namespace Message.CLR
         public MessageSchema GetSchema()
         {
             return Schema;
+        }
+
+        public uint GetVersionID()
+        {
+            return VersionID;
         }
 
         public MessageSchema GetOrSetSchema(MessageSchema schema)
@@ -160,6 +176,7 @@ namespace Message.CLR
                     Pin = span.Pin,
                     Ptr = span.Data,
                     Schema = Schema,
+                    VersionID = VersionID,
                     Size = (ulong)span.Length
                 };
             }
@@ -184,6 +201,9 @@ namespace Message.CLR
 
         // Number of messages
         public ulong Count;
+
+        // Stream version
+        public uint VersionID;
 
         // Read write stream
         public MemoryStream Data = new MemoryStream();

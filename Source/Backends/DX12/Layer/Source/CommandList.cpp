@@ -9,6 +9,7 @@
 #include <Backends/DX12/States/DescriptorHeapState.h>
 #include <Backends/DX12/Command/UserCommandBuffer.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
+#include <Backends/DX12/Controllers/VersioningController.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backend/IFeature.h>
@@ -863,6 +864,9 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
 
     // Allocate submission segment
     ShaderExportStreamSegment* segment = device.state->exportStreamer->AllocateSegment();
+    
+    // Inform the controller of the segmentation point
+    segment->versionSegPoint = device.state->versioningController->BranchOnSegmentationPoint();
 
     // Allocate unwrapped, +1 for patch
     auto *unwrapped = ALLOCA_ARRAY(ID3D12CommandList*, count + 1);

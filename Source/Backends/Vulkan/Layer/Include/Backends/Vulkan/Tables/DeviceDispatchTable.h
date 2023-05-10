@@ -49,6 +49,7 @@ class IBridge;
 class InstrumentationController;
 class FeatureController;
 class MetadataController;
+class VersioningController;
 class ShaderExportStreamer;
 class ShaderExportDescriptorAllocator;
 class ShaderSGUIDHost;
@@ -141,6 +142,7 @@ struct DeviceDispatchTable {
     ComRef<InstrumentationController> instrumentationController{nullptr};
     ComRef<FeatureController> featureController{nullptr};
     ComRef<MetadataController> metadataController{nullptr};
+    ComRef<VersioningController> versioningController{nullptr};
 
     /// User controllers
     ComRef<ShaderSGUIDHost> sguidHost{nullptr};

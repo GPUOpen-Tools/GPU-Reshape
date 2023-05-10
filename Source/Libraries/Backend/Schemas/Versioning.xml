@@ -1,0 +1,26 @@
+<schema>
+    <message name="ResourceVersion">
+        <field name="puid" type="uint32"/>
+        <field name="version" type="uint32"/>
+        <field name="name" type="string"/>
+        <field name="width" type="uint32"/>
+        <field name="height" type="uint32"/>
+        <field name="depth" type="uint32"/>
+    </message>
+    
+    <message name="GetVersionSummarization">
+        <field name="ignore" type="uint32"/>
+    </message>
+
+    <message name="VersionSummarization">
+        <field name="head" type="uint32"/>
+    </message>
+
+    <message name="VersionBranch">
+        <field name="head" type="uint32"/>
+    </message>
+
+    <message name="VersionCollapse">
+        <field name="head" type="uint32"/>
+    </message>
+</schema>

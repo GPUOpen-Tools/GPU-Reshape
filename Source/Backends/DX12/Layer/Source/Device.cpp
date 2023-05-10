@@ -15,6 +15,7 @@
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Controllers/FeatureController.h>
 #include <Backends/DX12/Controllers/MetadataController.h>
+#include <Backends/DX12/Controllers/VersioningController.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
@@ -247,9 +248,13 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         state->featureController = state->registry.AddNew<FeatureController>(state);
         ENSURE(state->featureController->Install(), "Failed to install feature controller");
 
-        // Install the instrumentation controller
+        // Install the metadata controller
         state->metadataController = state->registry.AddNew<MetadataController>(state);
         ENSURE(state->metadataController->Install(), "Failed to install metadata controller");
+
+        // Install the versioning controller
+        state->versioningController = state->registry.AddNew<VersioningController>(state);
+        ENSURE(state->versioningController->Install(), "Failed to install versioning controller");
 
         // Install all user programs, done after feature creation for data pooling
         ENSURE(state->shaderProgramHost->InstallPrograms(), "Failed to install shader program host programs");
@@ -518,6 +523,7 @@ DeviceState::~DeviceState() {
     exportStreamer->Process();
 
     // Manual uninstalls
+    versioningController->Uninstall();
     metadataController->Uninstall();
     instrumentationController->Uninstall();
 
@@ -557,6 +563,7 @@ void BridgeDeviceSyncPoint(DeviceState *device) {
     device->instrumentationController->Commit();
     device->featureController->Commit();
     device->metadataController->Commit();
+    device->versioningController->Commit();
 
     // Commit all logging to bridge
     device->logBuffer.Commit(device->bridge.GetUnsafe());

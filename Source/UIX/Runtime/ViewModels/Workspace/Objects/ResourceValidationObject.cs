@@ -2,14 +2,12 @@
 using System.Collections.ObjectModel;
 using DynamicData;
 using ReactiveUI;
+using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
     public class ResourceValidationObject : ReactiveObject
     {
-        /// <summary>
-        /// Name of this object
-        /// </summary>
         public string DecoratedName
         {
             get => _decoratedName;
@@ -17,10 +15,18 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
-        /// Identifier of this object, immutable
+        /// Name of this object
         /// </summary>
-        public uint ID { get; set; }
-        
+        public Resource Resource
+        {
+            get => _resource;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _resource, value);
+                DecoratedName = $"{_resource.Name} : {_resource.Version}";
+            }
+        }
+
         /// <summary>
         /// All instances associated to this object
         /// </summary>
@@ -54,8 +60,13 @@ namespace Studio.ViewModels.Workspace.Objects
         private Dictionary<string, ResourceValidationInstance> _unique = new();
 
         /// <summary>
+        /// Internal resource
+        /// </summary>
+        private Resource _resource;
+
+        /// <summary>
         /// Internal name
         /// </summary>
-        private string _decoratedName = string.Empty;
+        private string _decoratedName;
     }
 }

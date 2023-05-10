@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using ReactiveUI;
+using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
 {
@@ -39,21 +40,28 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Find or add a resource
         /// </summary>
-        /// <param name="id"></param>
+        /// <param name="resource"></param>
         /// <returns></returns>
-        public ResourceValidationObject FindOrAddResource(uint id)
+        public ResourceValidationObject FindOrAddResource(Resource resource)
         {
+            ulong key = resource.Key;
+            
             // Existing?
-            if (_lookup.TryGetValue(id, out ResourceValidationObject? validationObject))
+            if (_lookup.TryGetValue(key, out ResourceValidationObject? validationObject))
             {
+                // Recommit the resource info if needed
+                if (validationObject.Resource.IsUnknown && !resource.IsUnknown)
+                {
+                    validationObject.Resource = resource;
+                }
+                
                 return validationObject;
             }
 
             // Not found, create it
             validationObject = new ResourceValidationObject()
             {
-                ID = id,
-                DecoratedName = $"${id}"
+                Resource = resource
             };
 
             // Auto-assign if none
@@ -63,7 +71,7 @@ namespace Studio.ViewModels.Workspace.Objects
             }
             
             // Add to lookups
-            _lookup.Add(id, validationObject);
+            _lookup.Add(key, validationObject);
             Resources.Add(validationObject);
             
             // OK
@@ -73,7 +81,7 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Lookup table
         /// </summary>
-        private Dictionary<uint, ResourceValidationObject> _lookup = new();
+        private Dictionary<ulong, ResourceValidationObject> _lookup = new();
 
         /// <summary>
         /// Internal selection

@@ -3,6 +3,7 @@
 #include <Backends/Vulkan/States/BufferState.h>
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/States/SamplerState.h>
+#include <Backends/Vulkan/Controllers/VersioningController.h>
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
@@ -20,6 +21,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     auto state = new(table->allocators) BufferState;
     state->object = *pBuffer;
     state->table = table;
+    state->createInfo = *pCreateInfo;
 
     // Create mapping template
     state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
@@ -28,6 +30,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
 
     // Store lookup
     table->states_buffer.Add(*pBuffer, state);
+
+    // Inform controller
+    table->versioningController->CreateOrRecommitBuffer(state);
 
     // OK
     return VK_SUCCESS;
@@ -70,6 +75,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
     auto state = new(table->allocators) ImageState;
     state->object = *pImage;
     state->table = table;
+    state->createInfo = *pCreateInfo;
 
     // Create mapping template
     state->virtualMappingTemplate.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
@@ -78,6 +84,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
 
     // Store lookup
     table->states_image.Add(*pImage, state);
+
+    // Inform controller
+    table->versioningController->CreateOrRecommitImage(state);
 
     // OK
     return VK_SUCCESS;
@@ -141,6 +150,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyBuffer(VkDevice device, VkBuffer buffer
         return;
     }
 
+    // Get state
+    BufferState* state = table->states_buffer.Get(buffer);
+
+    // Free memory
+    destroy(state->debugName, table->allocators);
+    
+    // Inform controller
+    table->versioningController->DestroyBuffer(state);
+
     // Remove the state
     table->states_buffer.Remove(buffer);
 
@@ -170,6 +188,15 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyImage(VkDevice device, VkImage image, c
     if (!image) {
         return;
     }
+
+    // Get state
+    ImageState* state = table->states_image.Get(image);
+
+    // Free memory
+    destroy(state->debugName, table->allocators);
+
+    // Inform controller
+    table->versioningController->DestroyImage(state);
 
     // Remove the state
     table->states_image.Remove(image);

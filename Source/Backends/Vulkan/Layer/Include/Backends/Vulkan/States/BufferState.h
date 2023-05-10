@@ -24,6 +24,12 @@ struct BufferState {
     /// Allocated mapping
     VirtualResourceMapping virtualMapping;
 
+    /// Creation info
+    VkBufferCreateInfo createInfo;
+
+    /// Optional debug name
+    char* debugName{nullptr};
+
     /// Unique identifier, unique for the type
     uint64_t uid;
 };

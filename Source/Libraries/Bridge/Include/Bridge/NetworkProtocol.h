@@ -11,8 +11,12 @@ struct MessageStreamHeaderProtocol {
     /// Schema of the stream
     MessageSchema schema;
 
+    /// Version of the stream
+    uint32_t versionID;
+    uint32_t : 32;
+
     /// Size of the succeeding stream
     uint64_t size{};
 };
 
-static_assert(sizeof(MessageStreamHeaderProtocol) == 24, "Unexpected message stream protocol size");
+static_assert(sizeof(MessageStreamHeaderProtocol) == 32, "Unexpected message stream protocol size");

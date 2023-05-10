@@ -5,6 +5,7 @@
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/ImmediateCommandList.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorInfo.h>
+#include <Backends/DX12/Controllers/Versioning.h>
 
 // Common
 #include <Common/Containers/BucketPoolAllocator.h>
@@ -169,6 +170,9 @@ struct ShaderExportStreamSegment {
 
     /// Synchronization fence (optional)
     IncrementalFence* fence{nullptr};
+
+    /// Segmentation point during submission
+    VersionSegmentationPoint versionSegPoint{};
 };
 
 /// The queue state

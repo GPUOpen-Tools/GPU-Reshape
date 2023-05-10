@@ -27,6 +27,7 @@ void Bridge::CLR::BridgeMessageStorage::AddStream(Message::CLR::IMessageStream^ 
 	// Convert to native stream
 	MessageStream native;
 	native.SetSchema(schema);
+	native.SetVersionID(stream->GetVersionID());
 	native.SetData(span.Data, span.Length, stream->GetCount());
 	storage->AddStream(native);
 }

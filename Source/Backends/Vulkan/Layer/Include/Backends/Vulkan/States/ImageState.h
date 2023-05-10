@@ -24,6 +24,12 @@ struct ImageState {
     /// Allocated mapping
     VirtualResourceMapping virtualMappingTemplate;
 
+    /// Creation info
+    VkImageCreateInfo createInfo;
+
+    /// Optional debug name
+    char* debugName{nullptr};
+
     /// Unique identifier, unique for the type
     uint64_t uid;
 };

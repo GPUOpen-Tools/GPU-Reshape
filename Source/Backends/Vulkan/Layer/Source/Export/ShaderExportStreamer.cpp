@@ -14,6 +14,7 @@
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Resource/DescriptorData.h>
+#include <Backends/Vulkan/Controllers/VersioningController.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -521,6 +522,7 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
         // Copy into stream
         MessageStream messageStream;
         messageStream.SetSchema(streamInfo.typeInfo.messageSchema);
+        messageStream.SetVersionID(segment->versionSegPoint.id);
         messageStream.SetData(stream, size, static_cast<uint32_t>(size / streamInfo.typeInfo.typeSize));
 
         // Add output
@@ -532,6 +534,10 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
 
     // Unmap host
     deviceAllocator->Unmap(counterMirror.host);
+
+    // Inform the versioning controller of a collapse
+    ASSERT(segment->versionSegPoint.id != UINT32_MAX, "Untracked versioning");
+    table->versioningController->CollapseOnFork(segment->versionSegPoint);
 
     // Done!
     return true;
@@ -575,6 +581,9 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
     // Remove fence reference
     segment->fence = nullptr;
     segment->fenceNextCommitId = 0;
+
+    // Reset versioning
+    segment->versionSegPoint = {};
 
     // Release command buffer
     queueState->PushCommandBuffer(segment->patchCommandBuffer);

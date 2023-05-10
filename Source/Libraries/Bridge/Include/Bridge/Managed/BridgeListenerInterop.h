@@ -27,6 +27,7 @@ namespace Bridge::CLR {
                 clrStream->Ptr = const_cast<uint8_t*>(stream.GetDataBegin());
                 clrStream->Size = stream.GetByteSize();
                 clrStream->Count = stream.GetCount();
+                clrStream->VersionID = stream.GetVersionID();
                 clrStream->Schema.type = static_cast<Message::CLR::MessageSchemaType>(stream.GetSchema().type);
                 clrStream->Schema.id = stream.GetSchema().id;
                 handle->Handle(clrStream, 1);
