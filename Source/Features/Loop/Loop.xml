@@ -1,0 +1,8 @@
+<spec>
+    <backend>
+        <plugin name="GRS.Features.Loop.Backend"/>
+    </backend>
+    <uix>
+        <plugin name="GRS.Features.Loop.UIX"/>
+    </uix>
+</spec>

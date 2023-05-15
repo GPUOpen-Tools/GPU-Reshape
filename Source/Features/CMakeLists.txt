@@ -8,6 +8,7 @@ add_subdirectory(ExportStability)
 add_subdirectory(Concurrency)
 add_subdirectory(Descriptor)
 add_subdirectory(Initialization)
+add_subdirectory(Loop)
 
 # Proxy object
 add_custom_target(Features)

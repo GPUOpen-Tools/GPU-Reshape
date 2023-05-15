@@ -1,0 +1,5 @@
+<schema>
+    <shader-export name="LoopTermination">
+        <field name="padding" type="uint32" bits="16"/>
+    </shader-export>
+</schema>
