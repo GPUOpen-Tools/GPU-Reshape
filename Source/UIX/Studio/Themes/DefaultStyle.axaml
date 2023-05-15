@@ -189,4 +189,9 @@
             </DataTemplate>
         </Setter>
     </Style>
+    
+    <!-- Specialized docking -->
+    <StyleInclude Source="avares://GPUReshape/Themes/Dock/ToolChromeControl.xaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/Dock/ToolControl.xaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/Dock/DockControl.xaml" />
 </Styles>

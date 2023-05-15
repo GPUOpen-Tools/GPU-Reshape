@@ -2,16 +2,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
+using Avalonia.Media;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using ReactiveUI;
+using Runtime.ViewModels.Tools;
 using Studio.Services;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Tools
 {
-    public class PropertyViewModel : Tool
+    public class PropertyViewModel : ToolViewModel
     {
+        /// <summary>
+        /// Tooling icon
+        /// </summary>
+        public override StreamGeometry? Icon => ResourceLocator.GetIcon("ToolProperty");
+        
         /// <summary>
         /// All configurations
         /// </summary>

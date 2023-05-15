@@ -1,0 +1,118 @@
+﻿<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Dock.Model.Core;assembly=Dock.Model"
+        xmlns:controls="clr-namespace:Dock.Model.Controls;assembly=Dock.Model"
+        xmlns:controls1="clr-namespace:Dock.Model.ReactiveUI.Controls;assembly=Dock.Model.ReactiveUI"
+        xmlns:themes="clr-namespace:Studio.ViewModels.Controls.Themes">
+    <Design.PreviewWith>
+        <DockControl Width="600" Height="400" />
+    </Design.PreviewWith>
+
+    <!-- Modified DockControl implementation from https://github.com/wieslawsoltes/Dock/ -->
+    <Style Selector="DockControl">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ContentControl x:Name="PART_ContentControl"
+                                Content="{TemplateBinding Layout}"
+                                x:DataType="core:IDock"
+                                x:CompileBindings="True">
+                    <ContentControl.DataTemplates>
+                        <!-- Document Content -->
+                        <DataTemplate DataType="controls:IDocumentContent">
+                            <DockableControl TrackingMode="Visible">
+                                <ContentControl Content="{Binding}"
+                                                ContentTemplate="{Binding}" />
+                            </DockableControl>
+                        </DataTemplate>
+                        <!-- Tool Content -->
+                        <DataTemplate DataType="controls:IToolContent">
+                            <DockableControl TrackingMode="Visible">
+                                <ContentControl Content="{Binding}"
+                                                ContentTemplate="{Binding}" />
+                            </DockableControl>
+                        </DataTemplate>
+                        <!-- Proportional Splitter -->
+                        <DataTemplate DataType="controls:IProportionalDockSplitter">
+                            <ProportionalStackPanelSplitter Background="Transparent" />
+                        </DataTemplate>
+                        <!-- Document Dock -->
+                        <DataTemplate DataType="controls:IDocumentDock">
+                            <DockableControl TrackingMode="Visible"
+                                             ProportionalStackPanelSplitter.Proportion="{Binding Proportion}">
+                                <DocumentControl IsActive="{Binding IsActive}" />
+                            </DockableControl>
+                        </DataTemplate>
+                        <!-- Tool Dock -->
+                        <DataTemplate DataType="controls:IToolDock">
+                            <DockPanel ProportionalStackPanelSplitter.Proportion="{Binding Proportion}">
+                                <ToolPinnedControl
+                                    DockPanel.Dock="{Binding Alignment, Converter={x:Static AlignmentConverter.Instance}}" />
+                                <DockableControl TrackingMode="Visible">
+                                    <ToolControl />
+                                    <ToolChromeControl IsActive="{Binding IsActive}"
+                                                       IsVisible="{Binding IsExpanded}" />
+                                </DockableControl>
+                            </DockPanel>
+                        </DataTemplate>
+                        <!-- Proportional Dock -->
+                        <DataTemplate DataType="controls:IProportionalDock">
+                            <DockableControl TrackingMode="Visible"
+                                             ProportionalStackPanelSplitter.Proportion="{Binding Proportion}">
+                                <ItemsControl Items="{Binding VisibleDockables}">
+                                    <ItemsControl.Styles>
+                                        <Style Selector="ItemsControl > ContentPresenter > :is(core|IDock)"
+                                               x:DataType="core:IDock">
+                                            <Setter Property="(ProportionalStackPanelSplitter.Proportion)"
+                                                    Value="{Binding Proportion}" />
+                                        </Style>
+                                        <Style
+                                            Selector="ItemsControl > ContentPresenter > :is(controls1|ProportionalDockSplitter)"
+                                            x:DataType="controls1:ProportionalDockSplitter">
+                                            <Setter Property="(ProportionalStackPanelSplitter.Proportion)" Value="0" />
+                                        </Style>
+                                    </ItemsControl.Styles>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <themes:CollapsableProportionalStackPanel
+                                                DockProperties.IsDropArea="True"
+                                                Background="Transparent"
+                                                Orientation="{Binding Orientation, Converter={x:Static OrientationConverter.Instance}}" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </DockableControl>
+                        </DataTemplate>
+                        <!-- Dock Dock -->
+                        <DataTemplate DataType="controls:IDockDock">
+                            <DockableControl TrackingMode="Visible">
+                                <ItemsControl Items="{Binding VisibleDockables}">
+                                    <ItemsControl.Styles>
+                                        <Style Selector="ItemsControl > ContentPresenter" x:DataType="core:IDock">
+                                            <Setter Property="(DockPanel.Dock)"
+                                                    Value="{Binding Dock, Converter={x:Static DockModeConverter.Instance}}" />
+                                        </Style>
+                                    </ItemsControl.Styles>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <DockPanel DockProperties.IsDropArea="True"
+                                                       Background="Transparent"
+                                                       LastChildFill="{Binding LastChildFill}" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </DockableControl>
+                        </DataTemplate>
+                        <!-- Root Dock -->
+                        <DataTemplate DataType="controls:IRootDock">
+                            <DockableControl TrackingMode="Visible">
+                                <DockPanel DockProperties.IsDropArea="False" Background="Transparent">
+                                    <ContentControl Content="{Binding ActiveDockable}" />
+                                </DockPanel>
+                            </DockableControl>
+                        </DataTemplate>
+                    </ContentControl.DataTemplates>
+                </ContentControl>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>

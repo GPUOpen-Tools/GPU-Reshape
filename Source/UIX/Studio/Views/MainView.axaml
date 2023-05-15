@@ -13,7 +13,7 @@
              xmlns:controls="clr-namespace:Studio.Views.Controls"
              xmlns:m="clr-namespace:Studio.ViewModels.Menu;assembly=UIX.Studio.Runtime"
              mc:Ignorable="d"
-             d:DesignWidth="1000" d:DesignHeight="550"
+             d:DesignWidth="1400" d:DesignHeight="845"
              x:DataType="vm:MainWindowViewModel" x:CompileBindings="True">
     <Design.DataContext>
         <vm:MainWindowViewModel />

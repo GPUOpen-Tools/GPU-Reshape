@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Reactive.Linq;
+using System.Windows.Input;
 using Studio.Models.Documents;
 using Studio.Models.Tools;
 using Studio.ViewModels.Docks;
@@ -11,29 +13,64 @@ using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Model.ReactiveUI;
 using Dock.Model.ReactiveUI.Controls;
+using ReactiveUI;
 
 namespace Studio.ViewModels
 {
     public class DockFactory : Factory
     {
         public IDocumentDock? Documents => _documentDock;
+        
+        /// <summary>
+        /// Invoked on tooling expansion toggling
+        /// </summary>
+        public ICommand HideDockable { get; }
 
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public DockFactory(object context)
         {
             _context = context;
+            
+            // Create commands
+            HideDockable = ReactiveCommand.Create<IDockable>(OnHideDockable);
+        }
+
+        /// <summary>
+        /// On expansion changes
+        /// </summary>
+        /// <param name="dockable"></param>
+        private void OnHideDockable(IDockable dockable)
+        {
+            if (dockable.Owner is IToolDock toolDock)
+            {
+                // Mark as collapsed
+                toolDock.IsExpanded = false;
+                toolDock.ActiveDockable = null;
+                
+                // Subscribe to changes
+                toolDock.WhenAnyValue(x => x.ActiveDockable).WhereNotNull().Subscribe(_ =>
+                {
+                    if (!toolDock.IsExpanded)
+                    {
+                        toolDock.IsExpanded = true;
+                    }
+                });
+            }
         }
 
         public override IDocumentDock CreateDocumentDock() => new StandardDocumentDock();
 
         public override IRootDock CreateLayout()
         {
-            var welcome = new WelcomeViewModel {Id = "WelcomeDocument", Title = "Welcome"};
-            var workspace = new WorkspaceViewModel {Id = "WorkspaceTool", Title = "Workspace"};
-            var connections = new ConnectionViewModel {Id = "ConnectionTool", Title = "Connections"};
-            var log = new LogViewModel {Id = "LogTool", Title = "Log"};
-            var properties = new PropertyViewModel {Id = "PropertiesTool", Title = "Properties"};
-            var shaders = new ShaderTreeViewModel() {Id = "ShadersTool", Title = "Shaders"};
-            var pipelines = new PipelineTreeViewModel() {Id = "PipelinesTool", Title = "Pipelines"};
+            var welcome = new WelcomeViewModel {Id = "WelcomeDocument", Title = "Welcome" };
+            var workspace = new WorkspaceViewModel {Id = "WorkspaceTool", Title = "Workspace", CanClose = false};
+            var connections = new ConnectionViewModel {Id = "ConnectionTool", Title = "Connections", CanClose = false};
+            var log = new LogViewModel {Id = "LogTool", Title = "Log", CanClose = false};
+            var properties = new PropertyViewModel {Id = "PropertiesTool", Title = "Properties", CanClose = false};
+            var shaders = new ShaderTreeViewModel() {Id = "ShadersTool", Title = "Shaders", CanClose = false};
+            var pipelines = new PipelineTreeViewModel() {Id = "PipelinesTool", Title = "Pipelines", CanClose = false};
 
             var leftDock = new ProportionalDock
             {
@@ -46,6 +83,7 @@ namespace Studio.ViewModels
                     new ToolDock
                     {
                         ActiveDockable = workspace,
+                        IsExpanded = true,
                         VisibleDockables = CreateList<IDockable>(workspace, connections),
                         Alignment = Alignment.Left
                     }
@@ -65,6 +103,7 @@ namespace Studio.ViewModels
                     new ToolDock
                     {
                         ActiveDockable = shaders,
+                        IsExpanded = true,
                         VisibleDockables = CreateList<IDockable>(properties, shaders, pipelines),
                         Alignment = Alignment.Right,
                         GripMode = GripMode.Visible
@@ -82,8 +121,9 @@ namespace Studio.ViewModels
                     new ToolDock
                     {
                         ActiveDockable = log,
+                        IsExpanded = true,
                         VisibleDockables = CreateList<IDockable>(log),
-                        Alignment = Alignment.Right,
+                        Alignment = Alignment.Bottom,
                         GripMode = GripMode.Visible
                     }
                 )
@@ -175,10 +215,19 @@ namespace Studio.ViewModels
             base.InitLayout(layout);
         }
         
+        /// <summary>
+        /// Internal context
+        /// </summary>
         private readonly object _context;
         
+        /// <summary>
+        /// Root dock
+        /// </summary>
         private IRootDock? _rootDock;
         
+        /// <summary>
+        /// Central document dock
+        /// </summary>
         private IDocumentDock? _documentDock;
     }
 }

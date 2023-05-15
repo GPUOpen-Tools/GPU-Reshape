@@ -1,0 +1,66 @@
+﻿<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls1="clr-namespace:Dock.Model.Controls;assembly=Dock.Model"
+        xmlns:themes="clr-namespace:Studio.ValueConverters.Themes">
+
+    <!-- Modified ToolChromeControl implementation from https://github.com/wieslawsoltes/Dock/ -->
+    <Style Selector="ToolChromeControl">
+        <Setter Property="Background" Value="{DynamicResource DockThemeBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DockThemeBorderLowBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="{Binding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid RowDefinitions="Auto,*" x:DataType="controls1:IToolDock" x:CompileBindings="True">
+                    <ContentPresenter x:Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      Content="{TemplateBinding Content}"
+                                      Padding="{TemplateBinding Padding}"
+                                      Grid.Row="1" />
+                    <Border x:Name="PART_Border"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            VerticalAlignment="Top"
+                            Grid.Row="{Binding GripMode, Converter={x:Static GripModeConverters.GridRowAutoHideConverter}}">
+                        <Grid x:Name="PART_Grip">
+                            <DockPanel LastChildFill="True" Margin="8 0">
+                                <Panel DockPanel.Dock="Left">
+                                    <TextBlock x:Name="PART_Title"
+                                               Text="{Binding ActiveDockable.Title, FallbackValue=TITLE}" />
+                                </Panel>
+                                <Button x:Name="PART_CloseButton"
+                                        Command="{Binding Owner.Factory.CloseDockable}"
+                                        CommandParameter="{Binding ActiveDockable}"
+                                        IsVisible="{Binding ActiveDockable.CanClose, FallbackValue=False}"
+                                        DockPanel.Dock="Right"
+                                        x:CompileBindings="False">
+                                    <Viewbox>
+                                        <Path x:Name="PART_ClosePath" />
+                                    </Viewbox>
+                                </Button>
+                                <Button x:Name="PART_PinButton"
+                                        Command="{Binding Owner.Factory.HideDockable}"
+                                        CommandParameter="{Binding ActiveDockable}"
+                                        DockPanel.Dock="Right"
+                                        x:CompileBindings="False">
+                                    <Viewbox>
+                                        <Path x:Name="PART_PinPath" />
+                                    </Viewbox>
+                                </Button>
+                                <Grid x:Name="PART_Grid" />
+                            </DockPanel>
+                        </Grid>
+                    </Border>
+                    <Panel x:Name="PART_Panel"
+                           Background="{TemplateBinding BorderBrush}"
+                           Height="1"
+                           VerticalAlignment="Top"
+                           Grid.Row="{Binding GripMode, Converter={x:Static GripModeConverters.GridRowAutoHideConverter}}" />
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>

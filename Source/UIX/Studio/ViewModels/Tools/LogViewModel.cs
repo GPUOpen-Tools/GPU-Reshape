@@ -2,17 +2,24 @@ using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Media;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using ReactiveUI;
+using Runtime.ViewModels.Tools;
 using Studio.Models.Logging;
 using Studio.Services;
 using Studio.ViewModels.Logging;
 
 namespace Studio.ViewModels.Tools
 {
-    public class LogViewModel : Tool
+    public class LogViewModel : ToolViewModel
     {
+        /// <summary>
+        /// Tooling icon
+        /// </summary>
+        public override StreamGeometry? Icon => ResourceLocator.GetIcon("ToolLog");
+        
         /// <summary>
         /// Refresh all items
         /// </summary>

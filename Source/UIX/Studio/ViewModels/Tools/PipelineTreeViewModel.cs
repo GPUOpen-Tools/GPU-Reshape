@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Bridge.CLR;
 using Dock.Model.ReactiveUI.Controls;
@@ -12,14 +13,20 @@ using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
 using Runtime.ViewModels.Objects;
+using Runtime.ViewModels.Tools;
 using Studio.Models.Logging;
 using Studio.Services;
 using Studio.ViewModels.Workspace;
 
 namespace Studio.ViewModels.Tools
 {
-    public class PipelineTreeViewModel : Tool, IBridgeListener
+    public class PipelineTreeViewModel : ToolViewModel, IBridgeListener
     {
+        /// <summary>
+        /// Tooling icon
+        /// </summary>
+        public override StreamGeometry? Icon => ResourceLocator.GetIcon("ToolPipelineTree");
+        
         /// <summary>
         /// All identifiers
         /// </summary>

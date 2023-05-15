@@ -5,9 +5,11 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using ReactiveUI;
+using Runtime.ViewModels.Tools;
 using Studio.Services;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
@@ -15,8 +17,13 @@ using Studio.Views;
 
 namespace Studio.ViewModels.Tools
 {
-    public class WorkspaceViewModel : Tool
+    public class WorkspaceViewModel : ToolViewModel
     {
+        /// <summary>
+        /// Tooling icon
+        /// </summary>
+        public override StreamGeometry? Icon => ResourceLocator.GetIcon("ToolWorkspace");
+        
         /// <summary>
         /// Connect to new workspace
         /// </summary>

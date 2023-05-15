@@ -162,6 +162,7 @@ namespace Studio.ViewModels.Workspace.Listeners
                             {
                                 Branch branch = _branches[rangeIndex];
                                 
+                                // Beyond segmentation point?
                                 if (branch.Head >= versionCollapse.head)
                                 {
                                     break;
