@@ -103,6 +103,11 @@ namespace IL {
             }
         }
 
+        /// Get the entry point block
+        IL::BasicBlock* GetEntryPoint() const {
+            return basicBlocks[0];
+        }
+
         /// Iterator accessors
         Container::iterator begin() { return basicBlocks.begin(); }
         Container::reverse_iterator rbegin() { return basicBlocks.rbegin(); }

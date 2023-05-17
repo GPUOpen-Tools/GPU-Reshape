@@ -143,6 +143,11 @@ namespace IL {
             return functionType;
         }
 
+        /// Get the identifier map
+        IdentifierMap &GetIdentifierMap() {
+            return map;
+        }
+
     private:
         Allocators allocators;
 
