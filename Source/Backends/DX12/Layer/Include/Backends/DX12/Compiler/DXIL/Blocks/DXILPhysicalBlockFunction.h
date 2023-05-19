@@ -137,6 +137,7 @@ private:
     uint32_t samplerPRMTHandle;
     uint32_t descriptorHandle;
     uint32_t eventHandle;
+    uint32_t constantHandle;
 
     /// All stream handles
     TrivialStackVector<uint32_t, 64> exportStreamHandles;
@@ -164,6 +165,10 @@ private:
     /// Create the event handle
     /// \param block appended block
     void CreateEventHandle(const DXJob &job, struct LLVMBlock* block);
+
+    /// Create the event handle
+    /// \param block appended block
+    void CreateConstantHandle(const DXJob &job, struct LLVMBlock* block);
 
 private:
     struct DynamicRootSignatureUserMapping {

@@ -89,6 +89,10 @@ namespace Backend::IL {
         return program.GetTypeMap().FindTypeOrAdd(BoolType{});
     }
 
+    inline const Type* ResultOf(Program& program, const AtomicAndInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->value);
+    }
+
     inline const Type* ResultOf(Program& program, const AtomicOrInstruction* instr) {
         return program.GetTypeMap().GetType(instr->value);
     }

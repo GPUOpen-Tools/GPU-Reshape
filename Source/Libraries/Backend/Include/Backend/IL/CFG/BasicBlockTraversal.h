@@ -45,7 +45,7 @@ namespace IL {
             // Handle terminator
             switch (terminator->opCode) {
                 default:
-                ASSERT(false, "Unknown terminator");
+                    // ASSERT(false, "Unknown terminator");
                     break;
                 case OpCode::Branch: {
                     auto *instr = terminator->As<BranchInstruction>();

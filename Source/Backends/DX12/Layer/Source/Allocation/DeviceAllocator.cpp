@@ -54,6 +54,7 @@ Allocation DeviceAllocator::Allocate(const D3D12_RESOURCE_DESC& desc, Allocation
             state = D3D12_RESOURCE_STATE_COMMON;
             break;
         case AllocationResidency::Host:
+        case AllocationResidency::HostVisible:
             allocDesc.HeapType = D3D12_HEAP_TYPE_CUSTOM;
             state = D3D12_RESOURCE_STATE_COPY_DEST;
 
@@ -83,7 +84,12 @@ MirrorAllocation DeviceAllocator::AllocateMirror(const D3D12_RESOURCE_DESC& desc
         case AllocationResidency::Host: {
             allocation.device = Allocate(desc, AllocationResidency::Host);
             allocation.host = allocation.device;
-            break; 
+            break;
+        }
+        case AllocationResidency::HostVisible: {
+            allocation.device = Allocate(desc, AllocationResidency::HostVisible);
+            allocation.host = allocation.device;
+            break;
         }
     }
 
@@ -116,4 +122,8 @@ void *DeviceAllocator::Map(const Allocation &allocation) {
 
 void DeviceAllocator::Unmap(const Allocation &allocation) {
     allocation.resource->Unmap(0, nullptr);
+}
+
+void DeviceAllocator::FlushMappedRange(const Allocation &allocation, uint64_t offset, uint64_t length) {
+    // None needed
 }

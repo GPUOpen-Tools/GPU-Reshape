@@ -218,7 +218,8 @@ private:
     /// \param descriptors descriptors to be bound
     /// \param resourceHeap resource heap to bind against
     /// \param samplerHeap sampler heap to bind against
-    void MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap);
+    /// \param constantsChunk constants to bind against
+    void MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, const D3D12_CONSTANT_BUFFER_VIEW_DESC& constantsChunk);
 
     /// Process all segments within a queue
     /// \param queue the queue state
@@ -260,6 +261,9 @@ private:
 
     /// All free descriptor segments
     Vector<DescriptorDataSegmentEntry> freeDescriptorDataSegmentEntries;
+
+    /// All free constant buffers
+    Vector<ConstantShaderDataBuffer> freeConstantShaderDataBuffers;
 
     /// Components
     ComRef<DeviceAllocator> deviceAllocator{nullptr};

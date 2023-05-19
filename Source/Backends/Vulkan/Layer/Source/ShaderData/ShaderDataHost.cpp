@@ -1,14 +1,21 @@
+#include "Backend/ShaderData/ShaderDataType.h"
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Translation.h>
+#include <algorithm>
+#include <vulkan/vulkan_core.h>
 
 ShaderDataHost::ShaderDataHost(DeviceDispatchTable *table) : table(table) {
 
 }
 
 ShaderDataHost::~ShaderDataHost() {
-    for (const ResourceEntry& entry : resources) {
+    for (const ResourceEntry &entry: resources) {
+        if (!entry.buffer) {
+            continue;
+        }
+
         // Destroy handles
         table->next_vkDestroyBufferView(table->object, entry.view, nullptr);
         table->next_vkDestroyBuffer(table->object, entry.buffer, nullptr);
@@ -48,7 +55,7 @@ void ShaderDataHost::CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffs
                 break;
             }
             case ShaderDataType::Buffer: {
-                VkWriteDescriptorSet& descriptorWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
+                VkWriteDescriptorSet &descriptorWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
                 descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
                 descriptorWrite.descriptorCount = 1u;
                 descriptorWrite.pTexelBufferView = &entry.view;
@@ -106,7 +113,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     table->next_vkGetBufferMemoryRequirements(table->object, entry.buffer, &requirements);
 
     // Create the allocation
-    entry.allocation = deviceAllocator->Allocate(requirements);
+    entry.allocation = deviceAllocator->Allocate(requirements, info.hostVisible ? AllocationResidency::HostVisible : AllocationResidency::Device);
 
     // Bind against the allocation
     deviceAllocator->BindBuffer(entry.allocation, entry.buffer);
@@ -151,6 +158,53 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
 
     // OK
     return rid;
+}
+
+ShaderDataID ShaderDataHost::CreateDescriptorData(const ShaderDataDescriptorInfo &info) {
+    // Determine index
+    ShaderDataID rid;
+    if (freeIndices.empty()) {
+        // Allocate at end
+        rid = static_cast<uint32_t>(indices.size());
+        indices.emplace_back();
+    } else {
+        // Consume free index
+        rid = freeIndices.back();
+        freeIndices.pop_back();
+    }
+
+    // Set index
+    indices[rid] = static_cast<uint32_t>(resources.size());
+
+    // Create allocation
+    ResourceEntry &entry = resources.emplace_back();
+    entry.allocation = {};
+    entry.info.id = rid;
+    entry.info.type = ShaderDataType::Descriptor;
+    entry.info.descriptor = info;
+
+    // OK
+    return rid;
+}
+
+void *ShaderDataHost::Map(ShaderDataID rid) {
+    uint32_t index = indices[rid];
+
+    // Entry to map
+    ResourceEntry &entry = resources[index];
+
+    // Map it!
+    return deviceAllocator->Map(entry.allocation);
+}
+
+void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) {
+    uint32_t index = indices[rid];
+
+    // Entry to flush
+    ResourceEntry &entry = resources[index];
+
+    // Flush the range
+    deviceAllocator->FlushMappedRange(entry.allocation, offset, length);
 }
 
 void ShaderDataHost::Destroy(ShaderDataID rid) {
@@ -203,4 +257,65 @@ void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataT
 
         *count = value;
     }
+}
+
+ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
+    ConstantShaderDataBuffer out;
+
+    // Total dword count
+    uint32_t dwordCount = 0;
+
+    // Summarize size
+    for (uint32_t i = 0; i < resources.size(); i++) {
+        if (resources[i].info.type == ShaderDataType::Descriptor) {
+            dwordCount += resources[i].info.descriptor.dwordCount;
+        }
+    }
+
+    // Disallow dummy buffer
+    if (!dwordCount) {
+        return {};
+    }
+
+    // Buffer info
+    VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferInfo.size = sizeof(uint32_t) * dwordCount;
+
+    // Attempt to create the buffer
+    if (table->next_vkCreateBuffer(table->object, &bufferInfo, nullptr, &out.buffer) != VK_SUCCESS) {
+        return {};
+    }
+
+    // Get the requirements
+    VkMemoryRequirements requirements;
+    table->next_vkGetBufferMemoryRequirements(table->object, out.buffer, &requirements);
+
+    // Create the allocation
+    out.allocation = deviceAllocator->Allocate(requirements);
+
+    // Bind against the allocation
+    deviceAllocator->BindBuffer(out.allocation, out.buffer);
+
+    // OK
+    return out;
+}
+
+ShaderConstantsRemappingTable ShaderDataHost::CreateConstantMappingTable() {
+    ShaderConstantsRemappingTable out(indices.size());
+
+    // Current offset
+    uint32_t dwordOffset = 0;
+
+    // Accumulate offsets
+    for (uint32_t i = 0; i < resources.size(); i++) {
+        if (resources[i].info.type == ShaderDataType::Descriptor) {
+            out[resources[i].info.id] = dwordOffset;
+            dwordOffset += resources[i].info.descriptor.dwordCount;
+        }
+    }
+
+    // OK
+    return out;
 }

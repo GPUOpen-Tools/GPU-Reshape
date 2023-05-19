@@ -38,6 +38,12 @@ public:
         return D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = base.ptr + samplerPRMTOffset};
     }
 
+    /// Get the shader constants handle
+    /// \param base base address
+    D3D12_CPU_DESCRIPTOR_HANDLE GetShaderConstants(D3D12_CPU_DESCRIPTOR_HANDLE base) {
+        return D3D12_CPU_DESCRIPTOR_HANDLE{.ptr = base.ptr + shaderConstantOffset};
+    }
+
     /// Get the shader data handle
     /// \param base base address
     D3D12_CPU_DESCRIPTOR_HANDLE GetShaderData(D3D12_CPU_DESCRIPTOR_HANDLE base, uint32_t index) {
@@ -65,6 +71,9 @@ private:
     /// Offsets to the PRMT data
     uint32_t resourcePRMTOffset{0};
     uint32_t samplerPRMTOffset{0};
+
+    /// Offsets to the shader constants
+    uint32_t shaderConstantOffset{0};
 
     /// Offset to the shader datas
     uint32_t shaderDataOffset{0};

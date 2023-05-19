@@ -57,7 +57,7 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
 
     // Create allocation
     ResourceEntry &entry = resources.emplace_back();
-    entry.allocation = device->deviceAllocator->Allocate(desc);
+    entry.allocation = device->deviceAllocator->Allocate(desc, info.hostVisible ? AllocationResidency::HostVisible : AllocationResidency::Device);
     entry.info.id = rid;
     entry.info.type = ShaderDataType::Buffer;
     entry.info.buffer = info;
@@ -91,6 +91,53 @@ ShaderDataID ShaderDataHost::CreateEventData(const ShaderDataEventInfo &info) {
 
     // OK
     return rid;
+}
+
+ShaderDataID ShaderDataHost::CreateDescriptorData(const ShaderDataDescriptorInfo &info) {
+    // Determine index
+    ShaderDataID rid;
+    if (freeIndices.empty()) {
+        // Allocate at end
+        rid = static_cast<uint32_t>(indices.size());
+        indices.emplace_back();
+    } else {
+        // Consume free index
+        rid = freeIndices.back();
+        freeIndices.pop_back();
+    }
+
+    // Set index
+    indices[rid] = static_cast<uint32_t>(resources.size());
+
+    // Create allocation
+    ResourceEntry &entry = resources.emplace_back();
+    entry.allocation = {};
+    entry.info.id = rid;
+    entry.info.type = ShaderDataType::Descriptor;
+    entry.info.descriptor = info;
+
+    // OK
+    return rid;
+}
+
+void *ShaderDataHost::Map(ShaderDataID rid) {
+    uint32_t index = indices[rid];
+
+    // Entry to map
+    ResourceEntry &entry = resources[index];
+
+    // Map it!
+    return device->deviceAllocator->Map(entry.allocation);
+}
+
+void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) {
+    uint32_t index = indices[rid];
+
+    // Entry to flush
+    ResourceEntry &entry = resources[index];
+
+    // Flush the range
+    device->deviceAllocator->FlushMappedRange(entry.allocation, offset, length);
 }
 
 void ShaderDataHost::Destroy(ShaderDataID rid) {
@@ -187,4 +234,64 @@ void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescripto
         // Next!
         offset++;
     }
+}
+
+ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
+    ConstantShaderDataBuffer out;
+
+    // Total dword count
+    uint32_t dwordCount = 0;
+
+    // Summarize size
+    for (uint32_t i = 0; i < resources.size(); i++) {
+        if (resources[i].info.type == ShaderDataType::Descriptor) {
+            dwordCount += resources[i].info.descriptor.dwordCount;
+        }
+    }
+
+    // Disallow dummy buffer
+    if (!dwordCount) {
+        return {};
+    }
+
+    // Mapped description
+    D3D12_RESOURCE_DESC desc{};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    desc.Alignment = 0;
+    desc.Width = std::max<uint32_t>(sizeof(uint32_t) * dwordCount, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    desc.Height = 1;
+    desc.DepthOrArraySize = 1;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    desc.Format = DXGI_FORMAT_UNKNOWN;
+    desc.MipLevels = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.SampleDesc.Count = 1;
+
+    // Allocate buffer data on host, let the drivers handle page swapping
+    out.allocation = device->deviceAllocator->Allocate(desc, AllocationResidency::Host);
+
+    // Set up view
+    out.view.BufferLocation = out.allocation.resource->GetGPUVirtualAddress();
+    out.view.SizeInBytes = desc.Width;
+
+    // OK
+    return out;
+}
+
+ShaderConstantsRemappingTable ShaderDataHost::CreateConstantMappingTable() {
+    ShaderConstantsRemappingTable out(indices.size());
+
+    // Current offset
+    uint32_t dwordOffset = 0;
+
+    // Accumulate offsets
+    for (uint32_t i = 0; i < resources.size(); i++) {
+        if (resources[i].info.type == ShaderDataType::Descriptor) {
+            out[resources[i].info.id] = dwordOffset;
+            dwordOffset += resources[i].info.descriptor.dwordCount;
+        }
+    }
+
+    // OK
+    return out;
 }

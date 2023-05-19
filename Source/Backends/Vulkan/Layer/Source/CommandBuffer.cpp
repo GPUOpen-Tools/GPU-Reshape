@@ -22,6 +22,9 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
         // Get the hook table
         FeatureHookTable hookTable = feature->GetHookTable();
 
+        // Append
+        table->featureHookTables.push_back(hookTable);
+
         /** Create all relevant proxies */
 
         if (hookTable.drawInstanced.IsValid()) {
@@ -183,6 +186,15 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     commandBuffer->userContext.eventStack.Flush();
     commandBuffer->userContext.eventStack.SetRemapping(commandBuffer->table->eventRemappingTable);
     commandBuffer->userContext.buffer.Clear();
+    commandBuffer->userContext.handle = reinterpret_cast<CommandContextHandle>(commandBuffer);
+
+    // Set stream context handle
+    commandBuffer->streamState->commandContextHandle = commandBuffer->userContext.handle;
+
+    // Invoke proxies
+    for (const FeatureHookTable &table: commandBuffer->table->featureHookTables) {
+        table.open.TryInvoke(&commandBuffer->userContext);
+    }
 
     // OK
     return VK_SUCCESS;
@@ -412,6 +424,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *comm
 
     // End the streaming state
     commandBuffer->table->exportStreamer->EndCommandBuffer(commandBuffer->streamState, commandBuffer);
+
+    // Invoke proxies
+    for (const FeatureHookTable &table: commandBuffer->table->featureHookTables) {
+        table.close.TryInvoke(commandBuffer->userContext.handle);
+    }
 
     // Pass down callchain
     return commandBuffer->table->next_vkEndCommandBuffer(commandBuffer->object);

@@ -134,6 +134,20 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
         }
     });
 
+    // Shader constant data
+    cbvs.Add(DXBCPSVBindInfoRevision1 {
+        .info0 = DXBCPSVBindInfo0{
+            .type = DXBCPSVBindInfoType::CBuffer,
+            .space = bindingInfo.space,
+            .low = bindingInfo.shaderDataConstantRegister,
+            .high = bindingInfo.shaderDataConstantRegister
+        },
+        .info1 = DXBCPSVBindInfo1{
+            .kind = DXBCPSVBindInfoKind::CBuffer,
+            .flags = 0
+        }
+    });
+
     // Descriptor data
     cbvs.Add(DXBCPSVBindInfoRevision1 {
         .info0 = DXBCPSVBindInfo0{

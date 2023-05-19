@@ -15,6 +15,9 @@ struct RootRegisterBindingInfo {
     uint32_t resourcePRMTBaseRegister;
     uint32_t samplerPRMTBaseRegister;
 
+    /// Shader data register
+    uint32_t shaderDataConstantRegister;
+
     /// Descriptor constant register
     uint32_t descriptorConstantBaseRegister;
 

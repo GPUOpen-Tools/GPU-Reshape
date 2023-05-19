@@ -18,6 +18,9 @@ struct DXILBindingInfo {
     uint32_t resourcePRMTHandleId{};
     uint32_t samplerPRMTHandleId{};
 
+    /// Handle for constant data
+    uint32_t shaderDataConstantsHandleId{};
+
     /// Handle for descriptor data
     uint32_t descriptorConstantsHandleId{};
 

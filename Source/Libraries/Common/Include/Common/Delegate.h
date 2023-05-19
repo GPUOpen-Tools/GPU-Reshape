@@ -21,6 +21,15 @@ struct Delegate<R(A...)> {
         return handle(frame, args...);
     }
 
+    /// Invoke the delegate
+    void TryInvoke(A... args) const {
+        if (!IsValid()) {
+            return;
+        }
+
+        handle(frame, args...);
+    }
+
     /// Is this delegate valid?
     bool IsValid() const {
         return handle != nullptr;

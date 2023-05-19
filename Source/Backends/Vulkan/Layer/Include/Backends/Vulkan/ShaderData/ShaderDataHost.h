@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/Vulkan/Allocation/Allocation.h>
+#include <Backends/Vulkan/ShaderData/ConstantShaderDataBuffer.h>
 
 // Backend
 #include <Backend/ShaderData/IShaderDataHost.h>
@@ -32,9 +33,20 @@ public:
     /// \param bindingOffset offset to the binding data, filled linearly from there
     void CreateDescriptors(VkDescriptorSet set, uint32_t bindingOffset);
 
+    /// Create a constant data buffer
+    /// \return buffer
+    ConstantShaderDataBuffer CreateConstantDataBuffer();
+
+    /// Create an up to date constant mapping table
+    /// \return table
+    ShaderConstantsRemappingTable CreateConstantMappingTable();
+
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info) override;
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;
+    ShaderDataID CreateDescriptorData(const ShaderDataDescriptorInfo &info) override;
+    void *Map(ShaderDataID rid) override;
+    void FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) override;
     void Destroy(ShaderDataID rid) override;
     void Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
 

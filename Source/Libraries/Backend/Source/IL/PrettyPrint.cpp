@@ -366,7 +366,7 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
                 line << "%" << _export->values[i];
             }
 
-            line << " exportID:" << _export->exportID;
+            line << "] exportID:" << _export->exportID;
             break;
         }
         case OpCode::Alloca: {

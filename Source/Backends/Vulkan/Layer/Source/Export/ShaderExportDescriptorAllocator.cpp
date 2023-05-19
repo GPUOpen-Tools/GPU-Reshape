@@ -90,6 +90,14 @@ bool ShaderExportDescriptorAllocator::Install() {
     descriptorDataLayout.binding = bindingInfo.descriptorDataDescriptorOffset;
     bindingFlags.Add(0x0);
 
+    // Binding for constants data
+    VkDescriptorSetLayoutBinding& constantsDataLayout = bindings.Add({});
+    constantsDataLayout.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    constantsDataLayout.stageFlags = VK_SHADER_STAGE_ALL;
+    constantsDataLayout.descriptorCount = 1;
+    constantsDataLayout.binding = bindingInfo.shaderDataConstantsDescriptorOffset;
+    bindingFlags.Add(0x0);
+
     // Create data bindings
     for (uint32_t i = 0; i < dataResourceBound; i++) {
         VkDescriptorSetLayoutBinding& dataLayout = bindings.Add({});
@@ -145,6 +153,10 @@ void ShaderExportDescriptorAllocator::CreateBindingLayout() {
     // Descriptor data
     bindingInfo.descriptorDataDescriptorOffset = offset;
     bindingInfo.descriptorDataDescriptorLength = std::min<uint32_t>(table->physicalDeviceProperties.limits.maxUniformBufferRange, 256'000);
+    offset++;
+
+    // Constants descriptor
+    bindingInfo.shaderDataConstantsDescriptorOffset = offset;
     offset++;
 
     // Data resources
@@ -330,7 +342,7 @@ void ShaderExportDescriptorAllocator::Free(const ShaderExportSegmentDescriptorIn
     }
 }
 
-void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentDescriptorInfo &info, VkBuffer descriptorChunk) {
+void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentDescriptorInfo &info, VkBuffer descriptorChunk, VkBuffer constantsChunk) {
     TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites(allocators);
 
     // Get prmt view
@@ -346,10 +358,10 @@ void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentD
     prmtWrite.dstBinding = bindingInfo.prmtDescriptorOffset;
 
     // Chunk info
-    VkDescriptorBufferInfo bufferInfo;
-    bufferInfo.buffer = descriptorChunk;
-    bufferInfo.offset = 0;
-    bufferInfo.range = VK_WHOLE_SIZE;
+    VkDescriptorBufferInfo chunkBufferInfo;
+    chunkBufferInfo.buffer = descriptorChunk;
+    chunkBufferInfo.offset = 0;
+    chunkBufferInfo.range = VK_WHOLE_SIZE;
 
     // Has descriptor data?
     if (descriptorChunk) {
@@ -361,10 +373,28 @@ void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentD
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
         descriptorWrite.descriptorCount = 1u;
-        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrite.pBufferInfo = &chunkBufferInfo;
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.dstSet = info.set;
         descriptorWrite.dstBinding = bindingInfo.descriptorDataDescriptorOffset;
+    }
+
+    // Constants info
+    VkDescriptorBufferInfo constantsInfo;
+    constantsInfo.buffer = constantsChunk;
+    constantsInfo.offset = 0;
+    constantsInfo.range = VK_WHOLE_SIZE;
+
+    // Has constant data?
+    if (constantsChunk) {
+        // Write descriptor
+        VkWriteDescriptorSet& descriptorWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1u;
+        descriptorWrite.pBufferInfo = &constantsInfo;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.dstSet = info.set;
+        descriptorWrite.dstBinding = bindingInfo.shaderDataConstantsDescriptorOffset;
     }
 
     // Update the descriptor set

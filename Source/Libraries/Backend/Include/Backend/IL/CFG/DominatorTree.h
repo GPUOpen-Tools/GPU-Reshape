@@ -132,10 +132,21 @@ namespace IL {
             return blocks.at(bb->GetID()).predecessors;
         }
 
+        /// Get the successprs of a basic block
+        /// \param bb basic block
+        /// \return successors
+        const BlockView& GetSuccessors(BasicBlock* bb) const {
+            return blocks.at(bb->GetID()).successors;
+        }
+
         /// Get the post order traversal
         /// \return traversal
         const BasicBlockTraversal& GetPostOrderTraversal() const {
             return poTraversal;
+        }
+
+        Function* GetFunction() const {
+            return function;
         }
 
     private:
@@ -145,6 +156,9 @@ namespace IL {
 
             /// All predecessors
             BlockView predecessors;
+
+            /// All successors
+            BlockView successors;
 
             /// Ordering index
             uint32_t orderIndex{0};
@@ -192,7 +206,7 @@ namespace IL {
                 // Handle terminator
                 switch (terminator->opCode) {
                     default:
-                    ASSERT(false, "Unknown terminator");
+                        // ASSERT(false, "Unknown terminator");
                         break;
                     case OpCode::Branch: {
                         auto* instr = terminator->As<BranchInstruction>();
@@ -217,6 +231,7 @@ namespace IL {
         /// \param from given predecessor
         void AddPredecessor(BasicBlock* block, BasicBlock* from) {
             blocks[block->GetID()].predecessors.push_back(from);
+            blocks[from->GetID()].successors.push_back(block);
         }
 
     private:

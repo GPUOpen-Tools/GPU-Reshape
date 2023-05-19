@@ -1,5 +1,4 @@
-#include "Backend/IL/ID.h"
-#include "Backend/IL/Instruction.h"
+
 #include <Features/Loop/Feature.h>
 #include <Features/Descriptor/Feature.h>
 
@@ -8,8 +7,12 @@
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
-#include <Backend/IL/ResourceTokenEmitter.h>
+#include <Backend/IL/InstructionCommon.h>
 #include <Backend/CommandContext.h>
+#include <Backend/IL/CFG/DominatorTree.h>
+#include <Backend/IL/CFG/LoopTree.h>
+#include <Backend/ShaderData/ShaderDataDescriptorInfo.h>
+#include <Backend/Command/CommandBuilder.h>
 
 // Generated schema
 #include <Schemas/Features/Loop.h>
@@ -20,6 +23,18 @@
 // Common
 #include <Common/Registry.h>
 #include <Common/Sink.h>
+
+LoopFeature::LoopFeature() {
+    // Start the heart beat thread
+    heartBeatThread = std::thread(&LoopFeature::HeartBeatThreadWorker, this);
+}
+
+LoopFeature::~LoopFeature() {
+    heartBeatExitFlag = true;
+
+    // Wait for the heart beat
+    heartBeatThread.join();
+}
 
 bool LoopFeature::Install() {
     // Must have the export host
@@ -37,11 +52,20 @@ bool LoopFeature::Install() {
     // Shader data host
     shaderDataHost = registry->Get<IShaderDataHost>();
 
-    // Allocate lock buffer
-    //   ? Each respective PUID takes one lock integer, representing the current event id
-    terminationBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
+    // Allocate termination buffer
+    terminationBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo{
         .elementCount = kMaxTrackedSubmissions,
-        .format = Backend::IL::Format::R32UInt
+        .format = Backend::IL::Format::R32UInt,
+        .hostVisible = true
+    });
+
+    // Map the termination buffer
+    terminationData = static_cast<uint32_t*>(shaderDataHost->Map(terminationBufferID));
+    std::memset(terminationData, 0x0, sizeof(uint32_t) * kMaxTrackedSubmissions);
+
+    // Allocate allocation data
+    terminationAllocationID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo{
+        .dwordCount = 1u
     });
 
     // OK
@@ -50,6 +74,9 @@ bool LoopFeature::Install() {
 
 FeatureHookTable LoopFeature::GetHookTable() {
     FeatureHookTable table{};
+    table.open = BindDelegate(this, LoopFeature::OnOpen);
+    table.submit = BindDelegate(this, LoopFeature::OnSubmit);
+    table.join = BindDelegate(this, LoopFeature::OnJoin);
     return table;
 }
 
@@ -64,21 +91,144 @@ void LoopFeature::CollectMessages(IMessageStorage *storage) {
 void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Get the data ids
     IL::ID terminationBufferDataID = program.GetShaderDataMap().Get(terminationBufferID)->id;
-    GRS_SINK(terminationBufferDataID);
+    IL::ID terminationAllocationDataID = program.GetShaderDataMap().Get(terminationAllocationID)->id;
 
-    // Visit all instructions
-    IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
-        auto* instr = it->Cast<IL::BranchConditionalInstruction>();
+    // Get the program capabilities
+    const IL::CapabilityTable &capabilityTable = program.GetCapabilityTable();
 
-        // Instruction of interest?
-        // Only interested in _continue control flow
-        if (!instr || instr->controlFlow._continue == IL::InvalidID) {
-            return it;
+    // If the program has structured control flow, we can take quite a few liberties in instrumentation
+    if (capabilityTable.hasControlFlow) {
+        // Visit all instructions
+        IL::VisitUserInstructions(program, [&](IL::VisitContext &context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
+            IL::BranchControlFlow controlFlow;
+
+            // Must have a continue based, i.e. loop styled, control flow
+            if (!Backend::IL::GetControlFlow(it, controlFlow) || controlFlow._continue == IL::InvalidID) {
+                return it;
+            }
+
+            // Bind the SGUID
+            ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
+
+            // Expected entry point
+            IL::BasicBlock* entryBlock = nullptr;
+
+            // Determine entry point
+            switch (it->opCode) {
+                default: {
+                    return it;
+                }
+                case IL::OpCode::Branch: {
+                    auto* instr = it->As<IL::BranchInstruction>();
+                    entryBlock = context.function.GetBasicBlocks().GetBlock(instr->branch);
+                    break;
+                }
+                case IL::OpCode::BranchConditional: {
+                    auto* instr = it->As<IL::BranchConditionalInstruction>();
+                    entryBlock = context.function.GetBasicBlocks().GetBlock(instr->pass != controlFlow.merge ? instr->pass : instr->fail);
+                    break;
+                }
+            }
+
+            // Allocate blocks
+            IL::BasicBlock *postEntry = context.function.GetBasicBlocks().AllocBlock();
+            IL::BasicBlock *terminationBlock = context.function.GetBasicBlocks().AllocBlock();
+
+            // Split just prior to loop entry
+            entryBlock->Split(postEntry, entryBlock->begin());
+
+            // Emit into pre-guard
+            {
+                IL::Emitter<> pre(program, *entryBlock);
+
+                // Atomically read the termination data
+                IL::ID terminationID = pre.AtomicAnd(pre.AddressOf(terminationBufferDataID, terminationAllocationDataID), pre.UInt32(1u));
+
+                // Early exit if termination was requested
+                pre.BranchConditional(
+                    pre.Equal(terminationID, pre.UInt32(1u)),
+                    terminationBlock,
+                    postEntry,
+                    IL::ControlFlow::Selection(postEntry)
+                );
+            }
+
+            // Emit into termination block
+            {
+                IL::Emitter<> term(program, *terminationBlock);
+
+                // Export the message
+                LoopTerminationMessage::ShaderExport msg;
+                msg.sguid = term.UInt32(sguid);
+                msg.padding = term.UInt32(0);
+                term.Export(exportID, msg);
+
+                // Branch to the merge block
+                term.Branch(context.function.GetBasicBlocks().GetBlock(controlFlow.merge));
+            }
+
+            // Iterate next on this instruction
+            return postEntry->begin();
+        });
+    } else {
+        // The program does not have structured control flow, therefore we need to perform cfg loop analysis, and pray.
+        for (IL::Function *fn: program.GetFunctionList()) {
+            // Computer all dominators
+            IL::DominatorTree dominatorTree(fn);
+            dominatorTree.Compute();
+
+            // Compute all loops
+            IL::LoopTree loopTree(dominatorTree);
+            loopTree.Compute();
+
+            // Instrument each loop
+            for (const IL::Loop& loop : loopTree.GetView()) {
+                // No clue how to handle loops with multiple exit blocks
+                if (true || loop.exitBlocks.Size() != 1u) {
+                    continue;
+                }
+
+                IL::BasicBlock* postGuardBlock = fn->GetBasicBlocks().AllocBlock();
+                IL::BasicBlock *terminationBlock = fn->GetBasicBlocks().AllocBlock();
+
+                // Bind the SGUID
+                ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, loop.header->GetTerminator()) : InvalidShaderSGUID;
+
+                // Split just prior to loop header
+                loop.header->Split(postGuardBlock, loop.header->GetTerminator());
+
+                // Emit into pre-guard
+                {
+                    IL::Emitter<> pre(program, *loop.header);
+
+                    // Atomically read the termination data
+                    IL::ID terminationID = pre.AtomicAnd(pre.AddressOf(terminationBufferDataID, terminationAllocationDataID), pre.UInt32(1u));
+
+                    // Early exit if termination was requested
+                    pre.BranchConditional(
+                        pre.Equal(terminationID, pre.UInt32(1u)),
+                        terminationBlock,
+                        postGuardBlock,
+                        IL::ControlFlow::None()
+                    );
+                }
+
+                // Emit into termination block
+                {
+                    IL::Emitter<> term(program, *terminationBlock);
+
+                    // Export the message
+                    LoopTerminationMessage::ShaderExport msg;
+                    msg.sguid = term.UInt32(sguid);
+                    msg.padding = term.UInt32(0);
+                    term.Export(exportID, msg);
+
+                    // Branch to the merge block
+                    term.Branch(loop.exitBlocks[0]);
+                }
+            }
         }
-
-        // TODO: ...
-        return it;
-    });
+    }
 }
 
 FeatureInfo LoopFeature::GetInfo() {
@@ -86,4 +236,93 @@ FeatureInfo LoopFeature::GetInfo() {
     info.name = "Loop";
     info.description = "Instrumentation and validation of infinite loops";
     return info;
+}
+
+uint32_t LoopFeature::AllocateTerminationIDNoLock() {
+    // Set id
+    uint32_t id = submissionAllocationCounter++;
+
+    // Cycle back if needed
+    if (id == kMaxTrackedSubmissions) {
+        id = 0;
+    }
+
+    // OK
+    return id;
+}
+
+void LoopFeature::OnOpen(CommandContext *context) {
+    std::lock_guard guard(mutex);
+
+    // Create new state
+    CommandContextState &state = contextStates[context->handle];
+    state.pending = false;
+    state.terminationID = AllocateTerminationIDNoLock();
+
+    // Update the descriptor data
+    CommandBuilder builder(context->buffer);
+    builder.SetDescriptorData(terminationAllocationID, state.terminationID);
+}
+
+void LoopFeature::OnSubmit(CommandContextHandle contextHandle) {
+    std::lock_guard guard(mutex);
+
+    // Validation
+    ASSERT(contextStates.contains(contextHandle), "Desynchronized command context states");
+
+    // Mark as pending and record time
+    CommandContextState &state = contextStates[contextHandle];
+    state.submissionStamp = std::chrono::high_resolution_clock::now();
+    state.pending = true;
+}
+
+void LoopFeature::OnJoin(CommandContextHandle contextHandle) {
+    std::lock_guard guard(mutex);
+
+    // Validation
+    ASSERT(contextStates.contains(contextHandle), "Desynchronized command context states");
+
+    // Remove state, no longer needed for heart beat thread
+    contextStates.erase(contextHandle);
+}
+
+void LoopFeature::HeartBeatThreadWorker() {
+    // Note: The OS doesn't actually guarantee that the thread will be scheduled back in, but, it's likely good enough
+    static constexpr uint32_t PulseIntervalMS = 25;
+
+    // TODO: Exactly what is the right magical figure here?
+    static constexpr uint32_t DistanceTerminationMS = 750;
+
+    // Worker loop
+    while (!heartBeatExitFlag.load()) {
+        // Innocent yield
+        std::this_thread::sleep_for(std::chrono::milliseconds(PulseIntervalMS));
+
+        // Current time
+        std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+
+        // Serial!
+        std::lock_guard guard(mutex);
+
+        // Check all pending contexts
+        for (auto&& [key, value] : contextStates) {
+            if (!value.pending) {
+                continue;
+            }
+
+            // Determine the current distance
+            uint64_t distanceMS = std::chrono::duration_cast<std::chrono::milliseconds>(now - value.submissionStamp).count();
+
+            // Within accepted pulse time?
+            if (distanceMS < DistanceTerminationMS) {
+                continue;
+            }
+
+            // Mark as terminated
+            terminationData[value.terminationID] = 1u;
+
+            // Flush the effective range
+            shaderDataHost->FlushMappedRange(terminationBufferID, sizeof(uint32_t) * value.terminationID, sizeof(uint32_t));
+        }
+    }
 }

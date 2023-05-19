@@ -9,6 +9,7 @@
 #include <Backends/DX12/Resource/ResourceVirtualAddressTable.h>
 #include <Backends/DX12/Resource/PhysicalResourceIdentifierMap.h>
 #include <Backends/DX12/FeatureProxies.Gen.h>
+#include <Backends/DX12/ShaderData/ConstantShaderDataBuffer.h>
 
 // Backend
 #include <Backend/Environment.h>
@@ -53,7 +54,8 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
           virtualAddressTable(allocators.Tag(kAllocTracking)),
           physicalResourceIdentifierMap(allocators.Tag(kAllocPRMT)),
           dependencies_shaderPipelines(allocators.Tag(kAllocTracking)),
-          features(allocators) { }
+          features(allocators),
+          featureHookTables(allocators) { }
     
     ~DeviceState();
 
@@ -115,6 +117,7 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Shared remapping table
     EventDataStack::RemappingTable eventRemappingTable;
+    ShaderConstantsRemappingTable  constantRemappingTable;
 
     /// Pre-populated proxies
     ID3D12GraphicsCommandListFeatureProxies commandListProxies;
@@ -127,4 +130,5 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// All features
     Vector<ComRef<IFeature>> features;
+    Vector<FeatureHookTable> featureHookTables;
 };

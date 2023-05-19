@@ -1100,6 +1100,7 @@ void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job)
 void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXJob& job) {
     CreateShaderExportHandle(job);
     CreatePRMTHandle(job);
+    CreateConstantsHandle(job);
     CreateDescriptorHandle(job);
     CreateEventHandle(job);
     CreateShaderDataHandles(job);
@@ -1317,6 +1318,78 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXJob &job) {
 
     // Set binding info
     table.bindingInfo.eventConstantsHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
+}
+
+void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXJob &job) {
+    IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
+
+    // Requested dword count
+    uint32_t dwordCount = 0;
+
+    // Aggregate dword count
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (info.type == ShaderDataType::Descriptor) {
+            dwordCount += info.descriptor.dwordCount;
+        }
+    }
+
+    // i32
+    const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=false});
+
+    // Determine number of dwords
+    uint32_t alignedDWords = dwordCount / 4;
+
+    // Emit aligned data
+    Backend::IL::StructType eventStruct;
+    for (uint32_t i = 0; i < alignedDWords; i++) {
+        eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+            .containedType = i32,
+            .dimension = 4
+        }));
+    }
+
+    // Number of unaligned dwords
+    uint32_t unalignedDWords = dwordCount % 4;
+
+    // Emit final unaligned (to the end offset) data
+    if (unalignedDWords) {
+        // Naked single?
+        if (unalignedDWords == 1) {
+            eventStruct.memberTypes.push_back(i32);
+        } else {
+            eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+                .containedType = i32,
+                .dimension = static_cast<uint8_t>(unalignedDWords)
+            }));
+        }
+    }
+
+    // {[4xN] N-1}
+    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(eventStruct);
+
+    // Compile as named
+    table.type.typeMap.CompileNamedType(cbufferType, "CBufferConstantData");
+
+    // {...}*
+    const Backend::IL::Type* cbufferTypePtr = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType{
+        .pointee = cbufferType,
+        .addressSpace = Backend::IL::AddressSpace::Function
+    });
+
+    // Create handle
+    HandleEntry& handle = handles.emplace_back();
+    handle.name = "CBufferConstantData";
+    handle.type = cbufferTypePtr;
+    handle.bindSpace = job.instrumentationKey.bindingInfo.space;
+    handle.registerBase = job.instrumentationKey.bindingInfo.shaderDataConstantRegister;
+    handle.registerRange = 1u;
+
+    // Append handle to class
+    MappedRegisterClass& _class = FindOrAddRegisterClass(DXILShaderResourceClass::CBVs);
+    _class.handles.push_back(static_cast<uint32_t>(handles.size()) - 1);
+
+    // Set binding info
+    table.bindingInfo.shaderDataConstantsHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
 }
 
 void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXJob& job) {

@@ -17,6 +17,7 @@
 #include <Backends/DX12/IncrementalFence.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Controllers/VersioningController.h>
+#include <Backends/DX12/ShaderData/ShaderDataHost.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -36,7 +37,8 @@ ShaderExportStreamer::ShaderExportStreamer(DeviceState *device)
       streamStatePool(device->allocators),
       segmentPool(device->allocators),
       queuePool(device->allocators),
-      freeDescriptorDataSegmentEntries(allocators) {
+      freeDescriptorDataSegmentEntries(allocators),
+      freeConstantShaderDataBuffers(allocators) {
 
 }
 
@@ -90,6 +92,11 @@ ShaderExportStreamer::~ShaderExportStreamer() {
     // Free all segments
     for (ShaderExportStreamSegment* segment : segmentPool) {
         streamAllocator->FreeSegment(segment->allocation);
+    }
+
+    // Free all stream states
+    for (ShaderExportStreamState* state : streamStatePool) {
+        device->deviceAllocator->Free(state->constantShaderDataBuffer.allocation);
     }
 }
 
@@ -187,8 +194,16 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
     allocation.allocator = sharedGPUHeapAllocator;
     state->segmentDescriptors.push_back(allocation);
 
+    // Assign constant data buffer
+    if (freeConstantShaderDataBuffers.empty()) {
+        state->constantShaderDataBuffer = device->shaderDataHost->CreateConstantDataBuffer();
+    } else {
+        state->constantShaderDataBuffer = freeConstantShaderDataBuffers.back();
+        freeConstantShaderDataBuffers.pop_back();
+    }
+
     // No user heap provided, map immutable to nothing
-    MapImmutableDescriptors(allocation, nullptr, nullptr);
+    MapImmutableDescriptors(allocation, nullptr, nullptr, state->constantShaderDataBuffer.view);
 
     // Set current for successive binds
     state->currentSegment = allocation.info;
@@ -248,7 +263,7 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
     state->segmentDescriptors.push_back(allocation);
 
     // Map immutable to current heap
-    MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap);
+    MapImmutableDescriptors(allocation, state->resourceHeap, state->samplerHeap, state->constantShaderDataBuffer.view);
 
     // Set current for successive binds
     state->currentSegment = allocation.info;
@@ -418,7 +433,7 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
     state->pipelineSegmentMask |= pipeline->type;
 }
 
-void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap) {
+void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, const D3D12_CONSTANT_BUFFER_VIEW_DESC& constantsChunk) {
     if (resourceHeap) {
         // Create view to PRMT buffer
         device->object->CreateShaderResourceView(
@@ -439,6 +454,9 @@ void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDesc
             descriptorLayout.GetSamplerPRMT(descriptors.info.cpuHandle)
         );
     }
+
+    // Create constants CBV
+    device->object->CreateConstantBufferView(&constantsChunk, descriptorLayout.GetShaderConstants(descriptors.info.cpuHandle));
 }
 
 void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {
@@ -465,6 +483,14 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
         segment->descriptorDataSegments.push_back(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
     }
+
+    // Move constant ownership to the segment
+    segment->constantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
+    state->constantShaderDataBuffer = {};
+
+    // Add context handle
+    ASSERT(state->commandContextHandle != kInvalidCommandContextHandle, "Unmapped command context handle");
+    segment->commandContextHandles.push_back(state->commandContextHandle);
 
     // Move ownership to the segment
     segment->segmentDescriptors.insert(segment->segmentDescriptors.end(), state->segmentDescriptors.begin(), state->segmentDescriptors.end());
@@ -697,6 +723,13 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
     ASSERT(segment->versionSegPoint.id != UINT32_MAX, "Untracked versioning");
     device->versioningController->CollapseOnFork(segment->versionSegPoint);
 
+    // Invoke proxies for all handles
+    for (CommandContextHandle handle : segment->commandContextHandles) {
+        for (const FeatureHookTable &proxyTable: device->featureHookTables) {
+            proxyTable.join.TryInvoke(handle);
+        }
+    }
+
     // Done!
     return true;
 }
@@ -731,6 +764,26 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
         freeDescriptorDataSegmentEntries.push_back(dataSegment.entries.back());
     }
 
+    // Release all constant data buffers
+    for (ConstantShaderDataBuffer& constantData : segment->constantShaderDataBuffers) {
+        // Cleanup the staging data
+        if (!constantData.staging.empty()) {
+            // Free all staging allocations except the last
+            for (size_t i = 0; i < constantData.staging.size() - 1u; i++) {
+                device->deviceAllocator->Free(constantData.staging[i].allocation);
+            }
+
+            // Remove all but the last
+            constantData.staging.erase(constantData.staging.begin(), constantData.staging.begin() + (constantData.staging.size() - 1u));
+
+            // Reset head counter
+            constantData.staging.back().head = 0;
+        }
+
+        // Add to free pool
+        freeConstantShaderDataBuffers.push_back(constantData);
+    }
+
     // Release patch descriptors
     sharedCPUHeapAllocator->Free(segment->patchDeviceCPUDescriptor);
     sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
@@ -744,6 +797,8 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     segment->immediatePatch = {};
     segment->patchDeviceCPUDescriptor = {};
     segment->patchDeviceGPUDescriptor = {};
+    segment->commandContextHandles.clear();
+    segment->constantShaderDataBuffers.clear();
 
     // Add back to pool
     segmentPool.Push(segment);

@@ -151,6 +151,13 @@ struct TrivialStackVector {
         return data[offset];
     }
 
+    /// Pop the last value
+    /// \return 
+    T PopBack() {
+        ASSERT(size > 0, "Out of bounds");
+        return data[--size];
+    }
+
     /// Size of this container
     size_t Size() const {
         return size;

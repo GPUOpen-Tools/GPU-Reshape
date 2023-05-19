@@ -73,6 +73,11 @@ struct SetEventDataCommand : public TCommand<SetEventDataCommand, CommandType::S
     uint32_t value;
 };
 
+struct SetDescriptorDataCommand : public TCommand<SetEventDataCommand, CommandType::SetDescriptorData> {
+    ShaderDataID id;
+    uint32_t value;
+};
+
 struct DispatchCommand : public TCommand<DispatchCommand, CommandType::Dispatch> {
     uint32_t groupCountX;
     uint32_t groupCountY;

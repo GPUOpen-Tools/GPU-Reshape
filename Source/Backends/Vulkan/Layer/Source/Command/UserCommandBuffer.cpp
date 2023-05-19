@@ -148,6 +148,57 @@ void CommitCommands(CommandBufferObject* commandBuffer) {
                 );
                 break;
             }
+            case CommandType::SetDescriptorData: {
+                auto* cmd = command.As<SetDescriptorDataCommand>();
+
+                // Get offset
+                uint32_t dwordOffset = commandBuffer->table->constantRemappingTable[cmd->id];
+
+                // Shader Read -> Transfer Write
+                VkBufferMemoryBarrier barrier{};
+                barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.buffer = commandBuffer->streamState->constantShaderDataBuffer.buffer;
+                barrier.offset = sizeof(uint32_t) * dwordOffset;
+                barrier.size = sizeof(uint32_t);
+
+                // Stall the pipeline
+                commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(
+                    commandBuffer->object,
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                    0x0,
+                    0, nullptr,
+                    1, &barrier,
+                    0, nullptr
+                );
+
+                // Update the buffer with inline command buffer storage (simplifies my life)
+                commandBuffer->dispatchTable.next_vkCmdUpdateBuffer(
+                    commandBuffer->object,
+                    commandBuffer->streamState->constantShaderDataBuffer.buffer,
+                    sizeof(uint32_t) * dwordOffset,
+                    sizeof(uint32_t),
+                    &cmd->value
+                );
+
+                // Transfer Write -> Shader Read
+                barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+                // Stall the pipeline
+                commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(
+                    commandBuffer->object,
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                    0x0,
+                    0, nullptr,
+                    1, &barrier,
+                    0, nullptr
+                );
+                break;
+            }
             case CommandType::Dispatch: {
                 auto* cmd = command.As<DispatchCommand>();
 

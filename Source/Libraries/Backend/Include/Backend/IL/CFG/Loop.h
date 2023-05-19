@@ -11,7 +11,13 @@ namespace IL {
         /// Header of the natural loop
         BasicBlock* header{nullptr};
 
+        /// All blocks within this loop
+        TrivialStackVector<BasicBlock*, 16u> blocks;
+
+        /// All exit blocks
+        TrivialStackVector<BasicBlock*, 4u> exitBlocks;
+
         /// All back edges
-        TrivialStackVector<BasicBlock*, 4u> backEdges;
+        TrivialStackVector<BasicBlock*, 4u> backEdgeBlocks;
     };
 }

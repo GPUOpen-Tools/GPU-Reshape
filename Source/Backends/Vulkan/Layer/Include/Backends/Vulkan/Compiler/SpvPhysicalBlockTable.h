@@ -10,6 +10,7 @@
 #include "Utils/SpvUtilShaderExport.h"
 #include "Utils/SpvUtilShaderPRMT.h"
 #include "Utils/SpvUtilShaderDescriptorConstantData.h"
+#include "Utils/SpvUtilShaderConstantData.h"
 
 /// Combined physical block table
 struct SpvPhysicalBlockTable {
@@ -51,4 +52,5 @@ struct SpvPhysicalBlockTable {
     SpvUtilShaderExport shaderExport;
     SpvUtilShaderPRMT shaderPRMT;
     SpvUtilShaderDescriptorConstantData shaderDescriptorConstantData;
+    SpvUtilShaderConstantData shaderConstantData;
 };

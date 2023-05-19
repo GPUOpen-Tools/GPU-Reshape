@@ -26,6 +26,10 @@ void ShaderExportDescriptorLayout::Install(DeviceState *device, uint32_t stride)
     samplerPRMTOffset = descriptorOffset;
     descriptorOffset += descriptorStride;
 
+    // Shader constant data cbv
+    shaderConstantOffset = descriptorOffset;
+    descriptorOffset += descriptorStride;
+
     // Number of resources
     uint32_t resourceCount;
     device->shaderDataHost->Enumerate(&resourceCount, nullptr, ShaderDataType::DescriptorMask);

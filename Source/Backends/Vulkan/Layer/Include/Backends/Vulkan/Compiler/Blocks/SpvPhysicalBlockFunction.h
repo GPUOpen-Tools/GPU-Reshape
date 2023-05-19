@@ -79,6 +79,10 @@ private:
     /// \param job parent job
     void CreateDataResourceMap(const SpvJob& job);
 
+    /// Create the user fed data map
+    /// \param job parent job
+    void CreateDataConstantMap(const SpvJob& job, SpvStream& stream, SpvIdMap& idMap);
+
     /// Create the data lookups
     /// \param job parent job
     /// \param stream function scope

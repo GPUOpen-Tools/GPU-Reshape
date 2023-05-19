@@ -16,6 +16,8 @@
 
 // Std
 #include <atomic>
+#include <unordered_map>
+#include <chrono>
 
 // Forward declarations
 class IShaderSGUIDHost;
@@ -23,6 +25,12 @@ class IShaderSGUIDHost;
 class LoopFeature final : public IFeature, public IShaderFeature {
 public:
     COMPONENT(LoopFeature);
+
+    /// Constructor
+    LoopFeature();
+
+    /// Destructor
+    ~LoopFeature();
 
     /// IFeature
     bool Install() override;
@@ -49,22 +57,63 @@ public:
     }
 
 private:
+    /// Feature hooks
+    void OnOpen(CommandContext *context);
+    void OnSubmit(CommandContextHandle contextHandle);
+    void OnJoin(CommandContextHandle contextHandle);
+
+private:
     /// Max number of live submissions
     static constexpr uint32_t kMaxTrackedSubmissions = 16384;
 
+    /// Cyclic event counter
+    uint32_t submissionAllocationCounter{0};
+
+    /// Allocate a new termination id
+    uint32_t AllocateTerminationIDNoLock();
+
 private:
+    struct CommandContextState {
+        /// Time point of the submission
+        std::chrono::high_resolution_clock::time_point submissionStamp;
+
+        /// Is this state pending?
+        bool pending{false};
+
+        /// Allocated termination id
+        uint32_t terminationID{0};
+    };
+
+    /// Async heart beat thread
+    std::thread heartBeatThread;
+
+    /// Async exit flag
+    std::atomic<bool> heartBeatExitFlag{false};
+
+    /// All known context states
+    std::unordered_map<CommandContextHandle, CommandContextState> contextStates;
+
+    /// Internal worker
+    void HeartBeatThreadWorker();
+
+private:
+    /// Shader data
+    ShaderDataID terminationBufferID{InvalidShaderDataID};
+    ShaderDataID terminationAllocationID{InvalidShaderDataID};
+
+    /// Permanently mapped termination data
+    uint32_t* terminationData{nullptr};
+
+private:
+    /// Shared mutex
+    std::mutex mutex;
+
     /// Hosts
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
     ComRef<IShaderDataHost> shaderDataHost{nullptr};
 
     /// Export id for this feature
     ShaderExportID exportID{};
-
-    /// Shader data
-    ShaderDataID terminationBufferID{InvalidShaderDataID};
-
-    /// Cyclic event counter
-    std::atomic<uint32_t> submissionAllocationCounter{0};
 
     /// Shared stream
     MessageStream stream;

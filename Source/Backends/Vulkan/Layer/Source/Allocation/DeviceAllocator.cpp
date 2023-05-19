@@ -57,6 +57,11 @@ Allocation DeviceAllocator::Allocate(const VkMemoryRequirements& requirements, A
         case AllocationResidency::Host:
             createInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
             break;
+        case AllocationResidency::HostVisible:
+            createInfo.usage = VMA_MEMORY_USAGE_UNKNOWN;
+            createInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            createInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            break;
     }
 
     // Attempt to allocate the memory
@@ -78,6 +83,10 @@ MirrorAllocation DeviceAllocator::AllocateMirror(const VkMemoryRequirements& req
             break;
         case AllocationResidency::Host:
             allocation.device = Allocate(requirements, AllocationResidency::Host);
+            allocation.host = allocation.device;
+            break;
+        case AllocationResidency::HostVisible:
+            allocation.device = Allocate(requirements, AllocationResidency::HostVisible);
             allocation.host = allocation.device;
             break;
     }
@@ -102,6 +111,10 @@ bool DeviceAllocator::BindBuffer(const Allocation &allocation, VkBuffer buffer) 
 }
 
 void *DeviceAllocator::Map(const Allocation &allocation) {
+    if (allocation.info.pMappedData) {
+        return allocation.info.pMappedData;
+    }
+
     void* data{nullptr};
     vmaMapMemory(allocator, allocation.allocation, &data);
 
@@ -110,4 +123,8 @@ void *DeviceAllocator::Map(const Allocation &allocation) {
 
 void DeviceAllocator::Unmap(const Allocation &allocation) {
     vmaUnmapMemory(allocator, allocation.allocation);
+}
+
+void DeviceAllocator::FlushMappedRange(const Allocation &allocation, uint64_t offset, uint64_t length) {
+    vmaFlushAllocation(allocator, allocation.allocation, offset, length);
 }

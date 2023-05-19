@@ -54,6 +54,12 @@ public:
     /// \param allocation the mapped allocation
     void Unmap(const Allocation& allocation);
 
+    /// Flush a mapped allocation
+    /// \param allocation the mapped allocation
+    /// \param offset byte offset
+    /// \param length byte length
+    void FlushMappedRange(const Allocation& allocation, uint64_t offset, uint64_t length);
+
 private:
     /// Underlying allocator
     D3D12MA::Allocator* allocator{nullptr};

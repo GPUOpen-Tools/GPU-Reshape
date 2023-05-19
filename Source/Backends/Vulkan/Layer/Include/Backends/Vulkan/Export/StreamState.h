@@ -6,6 +6,10 @@
 #include <Backends/Vulkan/Export/DescriptorInfo.h>
 #include <Backends/Vulkan/Resource/DescriptorDataSegment.h>
 #include <Backends/Vulkan/Controllers/Versioning.h>
+#include <Backends/Vulkan/ShaderData/ConstantShaderDataBuffer.h>
+
+// Backend
+#include <Backend/CommandContextHandle.h>
 
 // Common
 #include <Common/Containers/BucketPoolAllocator.h>
@@ -88,6 +92,12 @@ struct ShaderExportStreamState {
 
     /// Current push constant data
     std::vector<uint8_t> persistentPushConstantData;
+
+    /// Shared constants buffer
+    ConstantShaderDataBuffer constantShaderDataBuffer;
+
+    /// Top context handle
+    CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
 };
 
 /// Single stream segment, i.e. submission
@@ -109,6 +119,9 @@ struct ShaderExportStreamSegment {
 
     /// Combined descriptor data segments, lifetime bound to this segment
     std::vector<DescriptorDataSegment> descriptorDataSegments;
+
+    /// Combined context handles
+    std::vector<CommandContextHandle> commandContextHandles;
 
     /// Versioning segmentation point during submission
     VersionSegmentationPoint versionSegPoint{};

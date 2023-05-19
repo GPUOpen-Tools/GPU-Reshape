@@ -15,6 +15,7 @@
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Resource/DescriptorData.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
+#include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -52,6 +53,12 @@ ShaderExportStreamer::~ShaderExportStreamer() {
     for (ShaderExportStreamSegment* segment : segmentPool) {
         streamAllocator->FreeSegment(segment->allocation);
     }
+
+    // Free all stream states
+    for (ShaderExportStreamState* state : streamStatePool) {
+        table->next_vkDestroyBuffer(table->object, state->constantShaderDataBuffer.buffer, nullptr);
+        deviceAllocator->Free(state->constantShaderDataBuffer.allocation);
+    }
 }
 
 ShaderExportQueueState *ShaderExportStreamer::AllocateQueueState(QueueState* queue) {
@@ -74,6 +81,9 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
 
     // Create a new state
     auto* state = new (allocators) ShaderExportStreamState();
+
+    // Create the constants data buffer
+    state->constantShaderDataBuffer = table->dataHost->CreateConstantDataBuffer();
 
     // Create descriptor data allocator
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
@@ -169,7 +179,7 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Co
         state->segmentDescriptors.push_back(allocation);
 
         // Update all immutable descriptors, no descriptor data yet
-        descriptorAllocator->UpdateImmutable(allocation.info, nullptr);
+        descriptorAllocator->UpdateImmutable(allocation.info, nullptr, state->constantShaderDataBuffer.buffer);
 
         // Set current for successive binds
         bindState.currentSegment = allocation;
@@ -266,7 +276,7 @@ void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBind
             state->segmentDescriptors.push_back(allocation);
 
             // Update all immutable descriptors
-            descriptorAllocator->UpdateImmutable(allocation.info, bindState.currentSegment.descriptorRollChunk);
+            descriptorAllocator->UpdateImmutable(allocation.info, bindState.currentSegment.descriptorRollChunk, state->constantShaderDataBuffer.buffer);
 
             // Set current for successive binds
             bindState.currentSegment = allocation;
@@ -464,6 +474,10 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
         segment->descriptorDataSegments.push_back(bindState.descriptorDataAllocator->ReleaseSegment());
     }
 
+    // Add context handle
+    ASSERT(state->commandContextHandle != kInvalidCommandContextHandle, "Unmapped command context handle");
+    segment->commandContextHandles.push_back(state->commandContextHandle);
+
     // Move ownership to the segment
     segment->segmentDescriptors.insert(segment->segmentDescriptors.end(), state->segmentDescriptors.begin(), state->segmentDescriptors.end());
 
@@ -539,6 +553,13 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
     ASSERT(segment->versionSegPoint.id != UINT32_MAX, "Untracked versioning");
     table->versioningController->CollapseOnFork(segment->versionSegPoint);
 
+    // Invoke proxies for all handles
+    for (CommandContextHandle handle : segment->commandContextHandles) {
+        for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+            proxyTable.join.TryInvoke(handle);
+        }
+    }
+
     // Done!
     return true;
 }
@@ -577,6 +598,7 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
     // Cleanup
     segment->segmentDescriptors.clear();
     segment->descriptorDataSegments.clear();
+    segment->commandContextHandles.clear();
 
     // Remove fence reference
     segment->fence = nullptr;

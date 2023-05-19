@@ -48,6 +48,12 @@ namespace IL {
                         .signedness = false
                     }));
                     break;
+                case ShaderDataType::Descriptor:
+                    Add(info.id, typeMap.FindTypeOrAdd(Backend::IL::IntType {
+                        .bitWidth = 32,
+                        .signedness = false
+                    }));
+                    break;
             }
         }
 

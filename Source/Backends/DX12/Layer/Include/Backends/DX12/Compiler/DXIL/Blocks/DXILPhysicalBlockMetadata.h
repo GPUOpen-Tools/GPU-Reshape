@@ -330,6 +330,9 @@ public:
     /// Compile the event handles
     void CreateEventHandle(const DXJob& job);
 
+    /// Compile the event handles
+    void CreateConstantsHandle(const DXJob& job);
+
     /// Compile class record metadata
     LLVMRecordView CompileResourceClassRecord(const MappedRegisterClass& mapped);
 

@@ -216,6 +216,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Create remapping table
         CreateEventRemappingTable(state);
 
+        // Create constant remapping table
+        state->constantRemappingTable = state->shaderDataHost->CreateConstantMappingTable();
+
         // Create the proxies / associations between the backend DX12 commands and the features
         CreateDeviceCommandProxies(state);
 

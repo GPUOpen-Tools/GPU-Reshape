@@ -4,6 +4,7 @@
 #include "ShaderDataType.h"
 #include "ShaderDataBufferInfo.h"
 #include "ShaderDataEventInfo.h"
+#include "ShaderDataDescriptorInfo.h"
 #include "ShaderData.h"
 
 struct ShaderDataInfo {
@@ -22,5 +23,6 @@ struct ShaderDataInfo {
     {
         ShaderDataBufferInfo buffer;
         ShaderDataEventInfo event;
+        ShaderDataDescriptorInfo descriptor;
     };
 };

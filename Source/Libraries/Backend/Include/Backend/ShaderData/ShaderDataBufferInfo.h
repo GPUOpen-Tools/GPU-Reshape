@@ -12,4 +12,7 @@ struct ShaderDataBufferInfo {
 
     /// Format of each element
     Backend::IL::Format format{Backend::IL::Format::None};
+
+    /// Is this buffer visible from the host?
+    bool hostVisible{false};
 };

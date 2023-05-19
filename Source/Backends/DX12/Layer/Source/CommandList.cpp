@@ -32,6 +32,9 @@ void CreateDeviceCommandProxies(DeviceState *state) {
         // Get the hook table
         FeatureHookTable hookTable = feature->GetHookTable();
 
+        // Append
+        state->featureHookTables.push_back(hookTable);
+
         /* Create all relevant proxies */
 
         if (hookTable.dispatch.IsValid()) {
@@ -314,6 +317,15 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
     // Cleanup user context
     state->userContext.eventStack.Flush();
     state->userContext.eventStack.SetRemapping(device->eventRemappingTable);
+    state->userContext.handle = reinterpret_cast<CommandContextHandle>(state);
+
+    // Set stream context handle
+    state->streamState->commandContextHandle = state->userContext.handle;
+
+    // Invoke proxies
+    for (const FeatureHookTable &table: device->featureHookTables) {
+        table.open.TryInvoke(&state->userContext);
+    }
 }
 
 HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandList, D3D12_COMMAND_LIST_TYPE type, ID3D12PipelineState *initialState, ID3D12PipelineState* hotSwap, const IID &riid, void **pCommandList) {
@@ -812,6 +824,11 @@ HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList *list) {
     // Inform the streamer
     device.state->exportStreamer->CloseCommandList(table.state->streamState);
 
+    // Invoke proxies
+    for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
+        proxyTable.close.TryInvoke(table.state->userContext.handle);
+    }
+
     // Pass down callchain
     return table.bottom->next_Close(table.next);
 }
@@ -887,6 +904,16 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
 
     // Pass down callchain
     table.bottom->next_ExecuteCommandLists(table.next, count + 1, unwrapped);
+
+    // Process all again for proxies
+    for (uint32_t i = 0; i < count; i++) {
+        auto listTable = GetTable(lists[i]);
+
+        // Invoke all proxies
+        for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
+            proxyTable.submit.TryInvoke(listTable.state->userContext.handle);
+        }
+    }
 
     // Notify streamer of submission
     device.state->exportStreamer->Enqueue(table.state, segment);

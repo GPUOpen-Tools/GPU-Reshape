@@ -125,6 +125,15 @@ void DXBCPhysicalBlockRootSignature::CompileShaderExport() {
         samplerPRMTRange.flags = 0x0;
         samplerPRMTRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
+        // Create shader data constant range
+        DXBCRootSignatureDescriptorRange1& constantRange = parameter.descriptorTable.ranges.emplace_back();
+        constantRange.type = DXBCRootSignatureRangeType::CBV;
+        constantRange.space = bindingInfo.space;
+        constantRange._register = bindingInfo.shaderDataConstantRegister;
+        constantRange.descriptorCount = 1u;
+        constantRange.flags = 0x0;
+        constantRange.offsetFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
         // Create user range
         DXBCRootSignatureDescriptorRange1& userRange = parameter.descriptorTable.ranges.emplace_back();
         userRange.type = DXBCRootSignatureRangeType::UAV;

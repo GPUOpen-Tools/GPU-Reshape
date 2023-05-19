@@ -6,5 +6,8 @@ enum class AllocationResidency {
     Device,
 
     /// Resident on host (CPU) memory
-    Host
+    Host,
+
+    /// Visible to the host and device
+    HostVisible
 };

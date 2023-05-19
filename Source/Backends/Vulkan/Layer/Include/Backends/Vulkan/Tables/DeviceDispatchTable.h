@@ -6,6 +6,7 @@
 #include <Backends/Vulkan/TrackedObject.h>
 #include <Backends/Vulkan/DependentObject.h>
 #include <Backends/Vulkan/DeepCopyObjects.Gen.h>
+#include <Backends/Vulkan/ShaderData/ConstantShaderDataBuffer.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceIdentifierMap.h>
 
 // Common
@@ -232,11 +233,13 @@ struct DeviceDispatchTable {
     std::mutex                 commandBufferMutex;
     CommandBufferDispatchTable commandBufferDispatchTable;
 
-    /// Shared remapping table
+    /// Shared remapping tables
     EventDataStack::RemappingTable eventRemappingTable;
+    ShaderConstantsRemappingTable  constantRemappingTable;
 
     /// All features
     std::vector<ComRef<IFeature>> features;
+    std::vector<FeatureHookTable> featureHookTables;
 
 private:
     /// Lookup

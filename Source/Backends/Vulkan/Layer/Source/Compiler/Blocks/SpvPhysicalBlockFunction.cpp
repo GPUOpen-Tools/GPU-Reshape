@@ -1009,6 +1009,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
         if (isModifiedScope) {
             // Create user data ids
             CreateDataLookups(job, block->stream, idMap);
+            CreateDataConstantMap(job, block->stream, idMap);
         }
     }
 
@@ -2123,6 +2124,31 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
 
         // Next!
         shaderDataOffset++;
+    }
+}
+
+void SpvPhysicalBlockFunction::CreateDataConstantMap(const SpvJob &job, SpvStream& stream, SpvIdMap& idMap) {
+    // Get data map
+    IL::ShaderDataMap& shaderDataMap = program.GetShaderDataMap();
+
+    // Current offset
+    uint32_t dwordOffset = 0;
+
+    // Aggregate dword count
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (info.type != ShaderDataType::Descriptor) {
+            continue;
+        }
+
+        // Get variable
+        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+
+        // Set the identifier redirect, the frontend exposes the event ids as constant IDs independent of the function.
+        // However, as multiple functions can be instrumented we have to load them per function, use the redirector in this case.
+        idMap.Set(variable->id, table.shaderConstantData.GetConstantData(stream, dwordOffset));
+
+        // Next!
+        dwordOffset += info.descriptor.dwordCount;
     }
 }
 

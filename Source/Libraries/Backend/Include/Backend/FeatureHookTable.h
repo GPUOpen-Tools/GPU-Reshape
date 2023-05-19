@@ -1,5 +1,8 @@
 #pragma once
 
+// Backend
+#include "CommandContextHandle.h"
+
 // Common
 #include <Common/Delegate.h>
 
@@ -29,6 +32,12 @@ namespace Hooks {
     /// Render pass
     using BeginRenderPass = Delegate<void(CommandContext* context, const RenderPassInfo& passInfo)>;
     using EndRenderPass = Delegate<void(CommandContext* context)>;
+
+    /// Submission
+    using Open = Delegate<void(CommandContext* context)>;
+    using Close = Delegate<void(CommandContextHandle contextHandle)>;
+    using Submit = Delegate<void(CommandContextHandle contextHandle)>;
+    using Join = Delegate<void(CommandContextHandle contextHandle)>;
 }
 
 /// Contains the required hooks for a given feature
@@ -48,4 +57,10 @@ public:
     /// Render pass
     Hooks::BeginRenderPass beginRenderPass;
     Hooks::EndRenderPass endRenderPass;
+
+    /// Submission
+    Hooks::Open open;
+    Hooks::Close close;
+    Hooks::Submit submit;
+    Hooks::Join join;
 };

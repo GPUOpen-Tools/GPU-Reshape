@@ -3878,6 +3878,7 @@ void DXILPhysicalBlockFunction::CreateHandles(const DXJob &job, struct LLVMBlock
     CreatePRMTHandle(job, block);
     CreateDescriptorHandle(job, block);
     CreateEventHandle(job, block);
+    CreateConstantHandle(job, block);
     CreateShaderDataHandle(job, block);
 }
 
@@ -4100,6 +4101,135 @@ void DXILPhysicalBlockFunction::CreateEventHandle(const DXJob &job, struct LLVMB
     // Create shader data mappings to handle
     for (const ShaderDataInfo& info : shaderDataMap) {
         if (info.type != ShaderDataType::Event) {
+            continue;
+        }
+
+        // Get variable
+        const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
+
+        // Extract respective value
+        LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+        recordExtract.SetUser(true, ~0u, variable->id);
+        recordExtract.opCount = 2;
+        recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+        recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyRows[dwordOffset / 4]);
+        recordExtract.ops[1] = dwordOffset % 4;
+        block->AddRecord(recordExtract);
+
+        // Next!
+        dwordOffset++;
+    }
+}
+
+void DXILPhysicalBlockFunction::CreateConstantHandle(const DXJob &job, struct LLVMBlock *block) {
+    IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
+
+    // Allocate shared counter
+    constantHandle = program.GetIdentifierMap().AllocID();
+
+    // Create handle
+    {
+        // Get intrinsic
+        const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCreateHandle);
+
+        /*
+         * DXIL Specification
+         *   declare %dx.types.Handle @dx.op.createHandle(
+         *       i32,                  ; opcode
+         *       i8,                   ; resource class: SRV=0, UAV=1, CBV=2, Sampler=3
+         *       i32,                  ; resource range ID (constant)
+         *       i32,                  ; index into the range
+         *       i1)                   ; non-uniform resource index: false or true
+         */
+
+        uint64_t ops[5];
+
+        ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CreateHandle)}
+        )->id);
+
+        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=8, .signedness=true}),
+            Backend::IL::IntConstant{.value = 2}
+        )->id);
+
+        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = table.bindingInfo.shaderDataConstantsHandleId}
+        )->id);
+
+        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = table.bindingInfo.bindingInfo.shaderDataConstantRegister}
+        )->id);
+
+        ops[4] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
+            Backend::IL::BoolConstant{.value = false}
+        )->id);
+
+        // Create shared counter handle
+        block->AddRecord(CompileIntrinsicCall(constantHandle, intrinsic, 5, ops));
+    }
+
+    // Requested dword count
+    uint32_t dwordCount = 0;
+
+    // Aggregate dword count
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (info.type == ShaderDataType::Descriptor) {
+            dwordCount += info.descriptor.dwordCount;
+        }
+    }
+
+    // Number of effective rows
+    uint32_t rowCount = (dwordCount + 3) / 4;
+
+    // All rows for later swizzling
+    TrivialStackVector<uint32_t, 16u> legacyRows(allocators);
+
+    // Create all row loads
+    for (uint32_t row = 0; row < rowCount; row++) {
+        // Allocate ids
+        uint32_t rowLegacyLoad = legacyRows.Add(program.GetIdentifierMap().AllocID());
+
+        // Get intrinsic
+        const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCBufferLoadLegacyI32);
+
+        /*
+          *  ; overloads: SM5.1: f32|i32|f64,  future SM: possibly deprecated
+          *    %dx.types.CBufRet.f32 = type { float, float, float, float }
+          *    declare %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(
+          *       i32,                  ; opcode
+          *       %dx.types.Handle,     ; resource handle
+          *       i32)                  ; 0-based row index (row = 16-byte DXBC register)
+         */
+
+        uint64_t ops[3];
+
+        ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::CBufferLoadLegacy)}
+        )->id);
+
+        ops[1] = table.idRemapper.EncodeRedirectedUserOperand(constantHandle);
+
+        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = static_cast<int64_t>(row)}
+        )->id);
+
+        // Invoke
+        block->AddRecord(CompileIntrinsicCall(rowLegacyLoad, intrinsic, 3, ops));
+    }
+
+    // Current dword offset
+    uint32_t dwordOffset = 0;
+
+    // Create shader data mappings to handle
+    for (const ShaderDataInfo& info : shaderDataMap) {
+        if (info.type != ShaderDataType::Descriptor) {
             continue;
         }
 

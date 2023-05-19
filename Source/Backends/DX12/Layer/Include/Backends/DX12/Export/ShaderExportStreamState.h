@@ -6,6 +6,10 @@
 #include <Backends/DX12/States/ImmediateCommandList.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorInfo.h>
 #include <Backends/DX12/Controllers/Versioning.h>
+#include <Backends/DX12/ShaderData/ConstantShaderDataBuffer.h>
+
+// Backend
+#include <Backend/CommandContextHandle.h>
 
 // Common
 #include <Common/Containers/BucketPoolAllocator.h>
@@ -141,11 +145,21 @@ struct ShaderExportStreamState {
 
     /// All segment descriptors, lifetime bound to deferred segment
     Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
+
+    /// Shared constants buffer
+    ConstantShaderDataBuffer constantShaderDataBuffer;
+
+    /// Top level context handle
+    CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
 };
 
 /// Single stream segment, i.e. submission
 struct ShaderExportStreamSegment {
-    ShaderExportStreamSegment(const Allocators& allocators) : segmentDescriptors(allocators), descriptorDataSegments(allocators) {
+    ShaderExportStreamSegment(const Allocators& allocators) :
+        segmentDescriptors(allocators),
+        descriptorDataSegments(allocators),
+        constantShaderDataBuffers(allocators),
+        commandContextHandles(allocators) {
         
     }
     
@@ -164,6 +178,12 @@ struct ShaderExportStreamSegment {
 
     /// Combined descriptor data segments, lifetime bound to this segment
     Vector<DescriptorDataSegment> descriptorDataSegments;
+
+    /// Combined context handles
+    Vector<ConstantShaderDataBuffer> constantShaderDataBuffers;
+
+    /// Combined context handles
+    Vector<CommandContextHandle> commandContextHandles;
 
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{UINT64_MAX};

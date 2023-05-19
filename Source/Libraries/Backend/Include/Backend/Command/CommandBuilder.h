@@ -25,6 +25,16 @@ struct CommandBuilder {
         });
     }
 
+    /// Set descriptor data
+    /// \param id event data to be mapped
+    /// \param value value to be written
+    void SetDescriptorData(ShaderDataID id, uint32_t value) {
+        buffer.Add(SetDescriptorDataCommand {
+            .id = id,
+            .value = value
+        });
+    }
+
     /// Dispatch the bound shader program
     /// \param groupCountX number of groups X
     /// \param groupCountY number of groups Y

@@ -60,6 +60,10 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
     bindingInfo.samplerPRMTBaseRegister = registerOffset;
     registerOffset += 1u;
 
+    // Set base register for shader data constants
+    bindingInfo.shaderDataConstantRegister = registerOffset;
+    registerOffset += 1u;
+
     // Set base register for descriptor constants
     bindingInfo.descriptorConstantBaseRegister = registerOffset;
     registerOffset += 1u;
@@ -279,6 +283,15 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
             .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
         },
 
+        // Constant range
+        {
+            .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+            .NumDescriptors = 1u,
+            .BaseShaderRegister = outRoot->shaderDataConstantRegister,
+            .RegisterSpace = outRoot->space,
+            .OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
+        },
+
         // Shader Data range
         {
             .RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
@@ -293,7 +306,7 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     Parameter& exportParameter = parameters[source.NumParameters + 0u] = {};
     exportParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     exportParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    exportParameter.DescriptorTable.NumDescriptorRanges = 4u;
+    exportParameter.DescriptorTable.NumDescriptorRanges = 5u;
     exportParameter.DescriptorTable.pDescriptorRanges = ranges;
 
     // Range version 1.1 assumes STATIC registers, explicitly say otherwise

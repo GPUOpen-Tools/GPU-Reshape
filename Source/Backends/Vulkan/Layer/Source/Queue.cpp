@@ -7,6 +7,7 @@
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
+#include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 
 void CreateQueueState(DeviceDispatchTable *table, VkQueue queue, uint32_t familyIndex) {
     // Create the state
@@ -193,6 +194,18 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     VkResult result = table->next_vkQueueSubmit(queue, submitCount + 1, vkSubmits, fenceState->object);
     if (result != VK_SUCCESS) {
         return result;
+    }
+
+    // Unwrap once again for proxies
+    for (uint32_t i = 0; i < submitCount; i++) {
+        for (uint32_t bufferIndex = 0; bufferIndex < pSubmits[i].commandBufferCount; bufferIndex++) {
+            auto *unwrapped = reinterpret_cast<CommandBufferObject *>(pSubmits[i].pCommandBuffers[bufferIndex]);
+
+            // Invoke all proxies
+            for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+                proxyTable.submit.TryInvoke(unwrapped->userContext.handle);
+            }
+        }
     }
 
     // Notify streamer of submission, enqueue increments reference count

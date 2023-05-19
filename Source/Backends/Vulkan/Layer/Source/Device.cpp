@@ -267,6 +267,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Create remapping table
     CreateEventRemappingTable(table);
 
+    // Create constant remapping table
+    table->constantRemappingTable = table->dataHost->CreateConstantMappingTable();
+
     // Create the proxies / associations between the backend vulkan commands and the features
     CreateDeviceCommandProxies(table);
 
