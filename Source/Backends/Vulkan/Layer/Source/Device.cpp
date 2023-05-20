@@ -21,6 +21,7 @@
 #include <Backends/Vulkan/States/QueueState.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/Vulkan/ShaderProgram/ShaderProgramHost.h>
+#include <Backends/Vulkan/Scheduler/Scheduler.h>
 
 // Common
 #include <Common/Registry.h>
@@ -151,6 +152,73 @@ static void CreateEventRemappingTable(DeviceDispatchTable* table) {
     }
 }
 
+static uint32_t FindQueueWithFlags(DeviceDispatchTable* table, VkQueueFlags flags) {
+    uint32_t candidate = UINT32_MAX;
+    uint32_t distance  = UINT32_MAX;
+
+    // Visit all families
+    for (size_t i = 0; i < table->queueFamilyProperties.size(); i++) {
+        const VkQueueFamilyProperties& properties = table->queueFamilyProperties[i];
+
+        // Contains requested flags?
+        if ((properties.queueFlags & flags) != flags) {
+            continue;
+        }
+
+        // Better match?
+        if (properties.queueFlags < distance) {
+            candidate = i;
+            distance = properties.queueFlags;
+        }
+    }
+
+    // OK
+    return candidate;
+}
+
+static ExclusiveQueue RequestExclusiveQueueOfType(DeviceDispatchTable* table, VkQueueFlags flags, std::vector<VkDeviceQueueCreateInfo>& out) {
+    ExclusiveQueue queue;
+
+    // Find the most appropriate family
+    queue.familyIndex = FindQueueWithFlags(table, flags);
+
+    // May not be supported
+    if (queue.familyIndex == UINT32_MAX) {
+        return queue;
+    }
+
+    // Get family
+    const VkQueueFamilyProperties& family = table->queueFamilyProperties[queue.familyIndex];
+
+    // Check all existing queues
+    for (VkDeviceQueueCreateInfo& createInfo : out) {
+        if (createInfo.queueFamilyIndex != queue.familyIndex) {
+            continue;
+        }
+
+        // Exceeded queue count?
+        // Just use the last one
+        if (createInfo.queueCount == family.queueCount) {
+            queue.queueIndex = createInfo.queueCount - 1u;
+            return queue;
+        }
+
+        // Queues are available, increment
+        queue.queueIndex = createInfo.queueCount;
+        createInfo.queueCount++;
+        return queue;
+    }
+
+    // No match was found, append a new request
+    VkDeviceQueueCreateInfo& createInfo = out.emplace_back() = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+    createInfo.queueFamilyIndex = queue.familyIndex;
+    createInfo.queueCount = 1;
+    queue.queueIndex = 0;
+
+    // OK
+    return queue;
+}
+
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     auto chainInfo = static_cast<VkLayerDeviceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
@@ -225,6 +293,26 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->createInfo->ppEnabledExtensionNames = extensions.data();
     table->createInfo->enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 
+    // Get the number of families
+    uint32_t queueFamilyPropertyCount;
+    table->parent->next_vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertyCount, nullptr);
+
+    // Get all families
+    table->queueFamilyProperties.resize(queueFamilyPropertyCount);
+    table->parent->next_vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertyCount, table->queueFamilyProperties.data());
+
+    // Copy queues
+    std::vector<VkDeviceQueueCreateInfo> queues(table->createInfo->pQueueCreateInfos, table->createInfo->pQueueCreateInfos + table->createInfo->queueCreateInfoCount);
+
+    // Request exclusive queues of given type
+    table->preferredExclusiveGraphicsQueue = RequestExclusiveQueueOfType(table, VK_QUEUE_GRAPHICS_BIT, queues);
+    table->preferredExclusiveComputeQueue  = RequestExclusiveQueueOfType(table, VK_QUEUE_COMPUTE_BIT, queues);
+    table->preferredExclusiveTransferQueue = RequestExclusiveQueueOfType(table, VK_QUEUE_TRANSFER_BIT, queues);
+
+    // Set new queues
+    table->createInfo->pQueueCreateInfos = queues.data();
+    table->createInfo->queueCreateInfoCount = static_cast<uint32_t>(queues.size());
+
     // Pass down the chain
     VkResult result = reinterpret_cast<PFN_vkCreateDevice>(getInstanceProcAddr(nullptr, "vkCreateDevice"))(physicalDevice, &table->createInfo.createInfo, pAllocator, pDevice);
     if (result != VK_SUCCESS) {
@@ -260,6 +348,10 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Create the program host
     table->shaderProgramHost = table->registry.AddNew<ShaderProgramHost>(table);
     ENSURE(table->shaderProgramHost->Install(), "Failed to install shader program host");
+
+    // Install the scheduler
+    table->scheduler = table->registry.AddNew<Scheduler>(table);
+    ENSURE(table->scheduler->Install(), "Failed to install scheduler");
 
     // Install all features
     ENSURE(PoolAndInstallFeatures(table), "Failed to install features");
@@ -317,8 +409,8 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     ENSURE(table->shaderProgramHost->InstallPrograms(), "Failed to install shader program host programs");
 
     // Create queue states
-    for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
-        const VkDeviceQueueCreateInfo& info = pCreateInfo->pQueueCreateInfos[i];
+    for (uint32_t i = 0; i < table->createInfo->queueCreateInfoCount; i++) {
+        const VkDeviceQueueCreateInfo& info = table->createInfo->pQueueCreateInfos[i];
 
         // All queues
         for (uint32_t queueIndex = 0; queueIndex < info.queueCount; queueIndex++) {
@@ -349,6 +441,9 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
 
     // Process all remaining work
     table->exportStreamer->Process();
+
+    // Wait for all pending submissions
+    table->scheduler->WaitForPending();
 
     // Manual uninstalls
     table->versioningController->Uninstall();

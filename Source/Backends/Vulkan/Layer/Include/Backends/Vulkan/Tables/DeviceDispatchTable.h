@@ -8,12 +8,13 @@
 #include <Backends/Vulkan/DeepCopyObjects.Gen.h>
 #include <Backends/Vulkan/ShaderData/ConstantShaderDataBuffer.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceIdentifierMap.h>
+#include <Backends/Vulkan/States/ExclusiveQueue.h>
 
 // Common
-#include "Common/Allocators.h"
-#include "Common/ComRef.h"
-#include "Common/Registry.h"
-#include "Common/Containers/ObjectPool.h"
+#include <Common/Allocators.h>
+#include <Common/ComRef.h>
+#include <Common/Registry.h>
+#include <Common/Containers/ObjectPool.h>
 
 // Generated
 #include "Backends/Vulkan/CommandBufferDispatchTable.Gen.h"
@@ -57,6 +58,7 @@ class ShaderSGUIDHost;
 class ShaderDataHost;
 class PhysicalResourceMappingTable;
 class ShaderProgramHost;
+class Scheduler;
 
 struct DeviceDispatchTable {
     /// Add a new table
@@ -138,6 +140,9 @@ struct DeviceDispatchTable {
 
     /// User programs
     ComRef<ShaderProgramHost> shaderProgramHost{nullptr};
+
+    /// Shared scheduler
+    ComRef<Scheduler> scheduler;
 
     /// Controllers
     ComRef<InstrumentationController> instrumentationController{nullptr};
@@ -228,6 +233,14 @@ struct DeviceDispatchTable {
     VkPhysicalDeviceFeatures2                  physicalDeviceFeatures{};
     VkPhysicalDeviceDescriptorIndexingFeatures physicalDeviceDescriptorIndexingFeatures{};
     VkPhysicalDeviceRobustness2FeaturesEXT     physicalDeviceRobustness2Features{};
+
+    /// All queue families
+    std::vector<VkQueueFamilyProperties> queueFamilyProperties;
+
+    /// Exclusive properties
+    ExclusiveQueue preferredExclusiveGraphicsQueue;
+    ExclusiveQueue preferredExclusiveComputeQueue;
+    ExclusiveQueue preferredExclusiveTransferQueue;
 
     /// Command buffer dispatch table
     std::mutex                 commandBufferMutex;

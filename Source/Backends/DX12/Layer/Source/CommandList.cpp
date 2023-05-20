@@ -300,11 +300,11 @@ static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState
 
 static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D12PipelineState* initialState, bool isHotSwap) {
     // Inform the streamer
-    device->exportStreamer->BeginCommandList(state->streamState, state);
+    device->exportStreamer->BeginCommandList(state->streamState, state->object);
 
     // Inform the streamer of a new pipeline
     if (initialState) {
-        device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), initialState, isHotSwap, state);
+        device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), initialState, isHotSwap, state->object);
     }
 
     // Copy proxy table
@@ -448,7 +448,7 @@ void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UIN
     // Let the streamer handle allocations
     for (uint32_t i = 0; i < NumDescriptorHeaps; i++) {
         auto heapTable = GetTable(ppDescriptorHeaps[i]);
-        device.state->exportStreamer->SetDescriptorHeap(table.state->streamState, heapTable.state, table.state);
+        device.state->exportStreamer->SetDescriptorHeap(table.state->streamState, heapTable.state, table.state->object);
     }
 }
 
@@ -619,7 +619,7 @@ static void CommitGraphics(DeviceState* device, CommandListState* list) {
     CommitCommands(list);
 
     // Inform the streamer
-    device->exportStreamer->CommitGraphics(list->streamState, list);
+    device->exportStreamer->CommitGraphics(list->streamState, list->object);
 
     // TODO: Update the event data in batches
     if (uint64_t bitMask = list->userContext.eventStack.GetGraphicsDirtyMask()) {
@@ -645,7 +645,7 @@ static void CommitCompute(DeviceState* device, CommandListState* list) {
     CommitCommands(list);
 
     // Inform the streamer
-    device->exportStreamer->CommitCompute(list->streamState, list);
+    device->exportStreamer->CommitCompute(list->streamState, list->object);
 
     // TODO: Update the event data in batches
     if (uint64_t bitMask = list->userContext.eventStack.GetComputeDirtyMask()) {
@@ -768,12 +768,12 @@ void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12
 
     // Commit compute if needed
     if (signatureTable.state->activeTypes & PipelineType::Compute) {
-        device.state->exportStreamer->CommitCompute(table.state->streamState, table.state);
+        device.state->exportStreamer->CommitCompute(table.state->streamState, table.state->object);
     }
     
     // Commit graphics if needed
     if (signatureTable.state->activeTypes & PipelineType::Graphics) {
-        device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state);
+        device.state->exportStreamer->CommitGraphics(table.state->streamState, table.state->object);
     }
 
     // Pass down callchain
@@ -798,7 +798,7 @@ void WINAPI HookID3D12CommandListSetGraphicsRootSignature(ID3D12CommandList* lis
     table.bottom->next_SetGraphicsRootSignature(table.next, rsTable.next);
 
     // Inform the streamer of a new root signature
-    device.state->exportStreamer->SetGraphicsRootSignature(table.state->streamState, rsTable.state, table.state);
+    device.state->exportStreamer->SetGraphicsRootSignature(table.state->streamState, rsTable.state, table.state->object);
 }
 
 void WINAPI HookID3D12CommandListSetComputeRootSignature(ID3D12CommandList* list, ID3D12RootSignature* rootSignature) {
@@ -812,7 +812,7 @@ void WINAPI HookID3D12CommandListSetComputeRootSignature(ID3D12CommandList* list
     table.bottom->next_SetComputeRootSignature(table.next, rsTable.next);
 
     // Inform the streamer of a new root signature
-    device.state->exportStreamer->SetComputeRootSignature(table.state->streamState, rsTable.state, table.state);
+    device.state->exportStreamer->SetComputeRootSignature(table.state->streamState, rsTable.state, table.state->object);
 }
 
 HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList *list) {
@@ -846,7 +846,7 @@ void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D1
     table.bottom->next_SetPipelineState(table.next, hotSwap ? hotSwap : Next(pipeline));
 
     // Inform the streamer of a new pipeline
-    device.state->exportStreamer->BindPipeline(table.state->streamState, GetState(pipeline), hotSwap, hotSwap != nullptr, table.state);
+    device.state->exportStreamer->BindPipeline(table.state->streamState, GetState(pipeline), hotSwap, hotSwap != nullptr, table.state->object);
 }
 
 AGSReturnCode HookAMDAGSDestroyDevice(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences) {

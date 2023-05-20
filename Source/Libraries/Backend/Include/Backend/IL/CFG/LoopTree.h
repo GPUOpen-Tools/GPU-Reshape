@@ -62,10 +62,16 @@ namespace IL {
         void MapBackEdgePredecessors(Loop& loop) {
             TrivialStackVector<BasicBlock *, 32u> reverseWalkStack;
 
+            // Cleanup
             ClearVisitationStates();
+
+            // Append header
+            AcquireVisitation(loop.header);
+            loop.blocks.Add(loop.header);
 
             // Add all back edges
             for (BasicBlock *backEdge: loop.backEdgeBlocks) {
+                AcquireVisitation(backEdge);
                 reverseWalkStack.Add(backEdge);
             }
 
@@ -73,15 +79,15 @@ namespace IL {
             while (reverseWalkStack.Size()) {
                 BasicBlock* bb = reverseWalkStack.PopBack();
 
+                // Add as block
+                loop.blocks.Add(bb);
+
                 // Visit all predecessors
                 for (BasicBlock* predecessor : dominatorTree.GetPredecessors(bb)) {
                     // Back at header?
-                    if (predecessor == loop.header || !AcquireVisitation(predecessor)) {
+                    if (!AcquireVisitation(predecessor)) {
                         continue;
                     }
-
-                    // Add as block
-                    loop.blocks.Add(predecessor);
 
                     // Visit predecessor
                     reverseWalkStack.Add(predecessor);

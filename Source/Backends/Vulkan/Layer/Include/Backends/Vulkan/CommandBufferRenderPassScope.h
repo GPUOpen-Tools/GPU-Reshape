@@ -6,24 +6,26 @@
 
 class CommandBufferRenderPassScope {
 public:
-    CommandBufferRenderPassScope(CommandBufferObject* object) : object(object) {
+    CommandBufferRenderPassScope(DeviceDispatchTable* table, VkCommandBuffer commandBuffer, ShaderExportRenderPassState* renderPassState) : table(table), renderPassState(renderPassState), commandBuffer(commandBuffer) {
         // Temporarily end render pass
-        if (object->streamState->renderPass.insideRenderPass) {
-            object->dispatchTable.next_vkCmdEndRenderPass(object->object);
+        if (renderPassState->insideRenderPass) {
+            table->commandBufferDispatchTable.next_vkCmdEndRenderPass(commandBuffer);
         }
     }
 
     ~CommandBufferRenderPassScope() {
         // Reconstruct render pass if needed
-        if (object->streamState->renderPass.insideRenderPass) {
-            object->dispatchTable.next_vkCmdBeginRenderPass(
-                object->object,
-                &object->streamState->renderPass.deepCopy.createInfo,
-                object->streamState->renderPass.subpassContents
+        if (renderPassState->insideRenderPass) {
+            table->commandBufferDispatchTable.next_vkCmdBeginRenderPass(
+                commandBuffer,
+                &renderPassState->deepCopy.createInfo,
+                renderPassState->subpassContents
             );
         }
     }
 
 private:
-    CommandBufferObject* object;
+    DeviceDispatchTable* table;
+    ShaderExportRenderPassState* renderPassState;
+    VkCommandBuffer commandBuffer;
 };

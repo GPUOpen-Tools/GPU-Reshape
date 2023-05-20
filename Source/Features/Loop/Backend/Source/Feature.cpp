@@ -1,4 +1,3 @@
-
 #include <Features/Loop/Feature.h>
 #include <Features/Descriptor/Feature.h>
 
@@ -13,6 +12,7 @@
 #include <Backend/IL/CFG/LoopTree.h>
 #include <Backend/ShaderData/ShaderDataDescriptorInfo.h>
 #include <Backend/Command/CommandBuilder.h>
+#include <Backend/Scheduler/IScheduler.h>
 
 // Generated schema
 #include <Schemas/Features/Loop.h>
@@ -52,16 +52,14 @@ bool LoopFeature::Install() {
     // Shader data host
     shaderDataHost = registry->Get<IShaderDataHost>();
 
+    // Scheduler
+    scheduler = registry->Get<IScheduler>();
+
     // Allocate termination buffer
     terminationBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo{
         .elementCount = kMaxTrackedSubmissions,
-        .format = Backend::IL::Format::R32UInt,
-        .hostVisible = true
+        .format = Backend::IL::Format::R32UInt
     });
-
-    // Map the termination buffer
-    terminationData = static_cast<uint32_t*>(shaderDataHost->Map(terminationBufferID));
-    std::memset(terminationData, 0x0, sizeof(uint32_t) * kMaxTrackedSubmissions);
 
     // Allocate allocation data
     terminationAllocationID = shaderDataHost->CreateDescriptorData(ShaderDataDescriptorInfo{
@@ -183,16 +181,17 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
 
             // Instrument each loop
             for (const IL::Loop& loop : loopTree.GetView()) {
-                // No clue how to handle loops with multiple exit blocks
-                if (true || loop.exitBlocks.Size() != 1u) {
-                    continue;
+                // Ignore flagged blocks
+                if (loop.header->HasFlag(BasicBlockFlag::NoInstrumentation)) {
+                   continue;
                 }
 
-                IL::BasicBlock* postGuardBlock = fn->GetBasicBlocks().AllocBlock();
+                // Allocate blocks
+                IL::BasicBlock* postGuardBlock   = fn->GetBasicBlocks().AllocBlock();
                 IL::BasicBlock *terminationBlock = fn->GetBasicBlocks().AllocBlock();
 
                 // Bind the SGUID
-                ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, loop.header->GetTerminator()) : InvalidShaderSGUID;
+                ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, loop.backEdgeBlocks[0]->GetTerminator()) : InvalidShaderSGUID;
 
                 // Split just prior to loop header
                 loop.header->Split(postGuardBlock, loop.header->GetTerminator());
@@ -223,8 +222,8 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                     msg.padding = term.UInt32(0);
                     term.Export(exportID, msg);
 
-                    // Branch to the merge block
-                    term.Branch(loop.exitBlocks[0]);
+                    // Exit the kernel entirely
+                    term.Return();
                 }
             }
         }
@@ -257,6 +256,7 @@ void LoopFeature::OnOpen(CommandContext *context) {
     // Create new state
     CommandContextState &state = contextStates[context->handle];
     state.pending = false;
+    state.terminated = false;
     state.terminationID = AllocateTerminationIDNoLock();
 
     // Update the descriptor data
@@ -304,9 +304,13 @@ void LoopFeature::HeartBeatThreadWorker() {
         // Serial!
         std::lock_guard guard(mutex);
 
+        // Command buffer for stages
+        CommandBuffer  transferBuffer;
+        CommandBuilder builder(transferBuffer);
+
         // Check all pending contexts
         for (auto&& [key, value] : contextStates) {
-            if (!value.pending) {
+            if (!value.pending || value.terminated) {
                 continue;
             }
 
@@ -318,11 +322,19 @@ void LoopFeature::HeartBeatThreadWorker() {
                 continue;
             }
 
-            // Mark as terminated
-            terminationData[value.terminationID] = 1u;
+            // Termination staging value
+            uint32_t stagedValue = 1u;
 
-            // Flush the effective range
-            shaderDataHost->FlushMappedRange(terminationBufferID, sizeof(uint32_t) * value.terminationID, sizeof(uint32_t));
+            // Perform staging, ideally with atomic writes
+            builder.StageBuffer(terminationBufferID, sizeof(uint32_t) * value.terminationID, sizeof(uint32_t), &stagedValue, StageBufferFlag::Atomic32);
+
+            // Mark as terminated
+            value.terminated = true;
+        }
+
+        // Any commands?
+        if (transferBuffer.Count()) {
+            scheduler->Schedule(Queue::Compute, transferBuffer);
         }
     }
 }

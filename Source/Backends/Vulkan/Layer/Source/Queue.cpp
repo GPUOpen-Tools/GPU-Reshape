@@ -190,10 +190,15 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     patchInfo.commandBufferCount = 1;
     patchInfo.pCommandBuffers = &patchCommandBuffer;
 
-    // Pass down callchain
-    VkResult result = table->next_vkQueueSubmit(queue, submitCount + 1, vkSubmits, fenceState->object);
-    if (result != VK_SUCCESS) {
-        return result;
+    // Serialize queue access
+    {
+        std::lock_guard guard(queueState->mutex);
+
+        // Pass down callchain
+        VkResult result = table->next_vkQueueSubmit(queue, submitCount + 1, vkSubmits, fenceState->object);
+        if (result != VK_SUCCESS) {
+            return result;
+        }
     }
 
     // Unwrap once again for proxies

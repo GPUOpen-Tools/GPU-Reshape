@@ -75,17 +75,17 @@ public:
     /// Invoked during command buffer recording
     /// \param state the stream state
     /// \param commandBuffer the command buffer
-    void BeginCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer);
+    void BeginCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer);
 
     /// Invoked during command buffer resetting
     /// \param state the stream state
     /// \param commandBuffer the command buffer
-    void ResetCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer);
+    void ResetCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer);
 
     /// Invoked during command buffer closing
     /// \param state the stream state
     /// \param commandBuffer the command buffer
-    void EndCommandBuffer(ShaderExportStreamState* state, CommandBufferObject* commandBuffer);
+    void EndCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer);
 
     /// Invoked during pipeline binding
     /// \param state the stream state
@@ -93,7 +93,7 @@ public:
     /// \param object the backend state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandBuffer the command buffer
-    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, VkPipeline object, bool instrumented, CommandBufferObject* commandBuffer);
+    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, VkPipeline object, bool instrumented, VkCommandBuffer commandBuffer);
 
     /// Invoked during descriptor binding
     /// \param state the stream state
@@ -102,7 +102,7 @@ public:
     /// \param count the number of sets
     /// \param sets the sets to be bound
     /// \param commandBuffer command buffer being invoked
-    void BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets, CommandBufferObject* commandBuffer);
+    void BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets, VkCommandBuffer commandBuffer);
 
     /// Map a stream state pre submission
     /// \param state the stream state
@@ -113,20 +113,20 @@ public:
     /// \param state state to be committed to
     /// \param bindPoint destination binding point
     /// \param commandBufferObject object committing from
-    void Commit(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, CommandBufferObject* commandBufferObject);
+    void Commit(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkCommandBuffer commandBufferObject);
 
     /// Bind the shader export for a pipeline
     /// \param state the stream state
     /// \param slot the slot to be bound to
     /// \param type the expected pipeline type
     /// \param commandBuffer the command buffer
-    void BindShaderExport(ShaderExportStreamState* state, PipelineType type, VkPipelineLayout layout, VkPipeline pipeline, uint32_t prmtPushConstantOffset, uint32_t slot, CommandBufferObject* commandBuffer);
+    void BindShaderExport(ShaderExportStreamState* state, PipelineType type, VkPipelineLayout layout, VkPipeline pipeline, uint32_t prmtPushConstantOffset, uint32_t slot, VkCommandBuffer commandBuffer);
 
     /// Bind the shader export for a pipeline
     /// \param state the stream state
     /// \param pipeline the pipeline to bind for
     /// \param commandBuffer the command buffer
-    void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, CommandBufferObject* commandBuffer);
+    void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, VkCommandBuffer commandBuffer);
 
 public:
     /// Whole device sync point
@@ -141,7 +141,7 @@ private:
     /// \param state the stream state
     /// \param pipeline the new pipeline
     /// \param commandBuffer the command buffer
-    void MigrateDescriptorEnvironment(ShaderExportStreamState* state, const PipelineState* pipeline, CommandBufferObject* commandBuffer);
+    void MigrateDescriptorEnvironment(ShaderExportStreamState* state, const PipelineState* pipeline, VkCommandBuffer commandBuffer);
 
     /// Process all segments within a queue
     /// \param queue the queue state

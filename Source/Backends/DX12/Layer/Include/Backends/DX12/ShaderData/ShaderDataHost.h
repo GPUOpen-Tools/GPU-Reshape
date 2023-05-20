@@ -40,6 +40,11 @@ public:
     /// \return table
     ShaderConstantsRemappingTable CreateConstantMappingTable();
 
+    /// Get the allocation of a resource
+    /// \param rid resource identifier
+    /// \return given allocation
+    Allocation GetResourceAllocation(ShaderDataID rid);
+
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info) override;
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;

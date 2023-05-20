@@ -207,6 +207,17 @@ void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t le
     deviceAllocator->FlushMappedRange(entry.allocation, offset, length);
 }
 
+VkBuffer ShaderDataHost::GetResourceBuffer(ShaderDataID rid) {
+    uint32_t index = indices[rid];
+
+    // Entry to map
+    ResourceEntry &entry = resources[index];
+    ASSERT(entry.info.type == ShaderDataType::Buffer, "Invalid resource");
+
+    // OK
+    return entry.buffer;
+}
+
 void ShaderDataHost::Destroy(ShaderDataID rid) {
     uint32_t index = indices[rid];
 

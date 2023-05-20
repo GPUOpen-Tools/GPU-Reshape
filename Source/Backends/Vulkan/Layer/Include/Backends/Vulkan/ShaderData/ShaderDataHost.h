@@ -41,6 +41,11 @@ public:
     /// \return table
     ShaderConstantsRemappingTable CreateConstantMappingTable();
 
+    /// Get the underlying buffer of a resource
+    /// \param rid resource id
+    /// \return buffer object
+    VkBuffer GetResourceBuffer(ShaderDataID rid);
+
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info) override;
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;

@@ -8,12 +8,13 @@
 
 [numthreads(1, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
-    bufferRW[dtid] = 1.0f;
-
     float sum = 0.0f;
 
-    // ! MESSAGE LoopTermination[>0]
+    //! MESSAGE LoopTermination[{true}]
     for (uint i = 1; sum != -1.0f; i++) {
-        sum += max(0, bufferRW[i % 64]);
+        sum += bufferRW[i % 64];
     }
+
+    // No-opt!
+    bufferRW[dtid] = sum;
 }

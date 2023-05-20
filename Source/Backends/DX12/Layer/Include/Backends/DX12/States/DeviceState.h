@@ -41,6 +41,7 @@ class ShaderExportStreamer;
 class ShaderSGUIDHost;
 class DeviceAllocator;
 class ShaderProgramHost;
+class Scheduler;
 
 struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     DeviceState(const Allocators& allocators)
@@ -80,6 +81,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Shared export streamer
     ComRef<ShaderExportStreamer> exportStreamer;
+
+    /// Shared scheduler
+    ComRef<Scheduler> scheduler;
 
     /// Shared device allocator
     ComRef<DeviceAllocator> deviceAllocator;

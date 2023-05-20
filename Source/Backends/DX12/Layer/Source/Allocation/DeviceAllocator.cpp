@@ -21,15 +21,15 @@ bool DeviceAllocator::Install(ID3D12Device* device, IDXGIAdapter* adapter) {
     }
 
     // Attempt to create special host pool
-    D3D12MA::POOL_DESC poolDesc{};
-    poolDesc.Flags = D3D12MA::POOL_FLAG_NONE;
-    poolDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
-    poolDesc.HeapProperties.CreationNodeMask = 1u;
-    poolDesc.HeapProperties.VisibleNodeMask = 1u;
-    poolDesc.HeapProperties.Type = D3D12_HEAP_TYPE_CUSTOM;
-    poolDesc.HeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE;
-    poolDesc.HeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
-    if (FAILED(allocator->CreatePool(&poolDesc, &wcHostPool))) {
+    D3D12MA::POOL_DESC wcHostPoolDesc{};
+    wcHostPoolDesc.Flags = D3D12MA::POOL_FLAG_NONE;
+    wcHostPoolDesc.HeapFlags = D3D12_HEAP_FLAG_NONE;
+    wcHostPoolDesc.HeapProperties.CreationNodeMask = 1u;
+    wcHostPoolDesc.HeapProperties.VisibleNodeMask = 1u;
+    wcHostPoolDesc.HeapProperties.Type = D3D12_HEAP_TYPE_CUSTOM;
+    wcHostPoolDesc.HeapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE;
+    wcHostPoolDesc.HeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+    if (FAILED(allocator->CreatePool(&wcHostPoolDesc, &wcHostPool))) {
         return false;
     }
 
@@ -49,18 +49,20 @@ Allocation DeviceAllocator::Allocate(const D3D12_RESOURCE_DESC& desc, Allocation
     // Translate residency
     D3D12_RESOURCE_DESC filteredDesc = desc;
     switch (residency) {
-        case AllocationResidency::Device:
+        case AllocationResidency::Device: {
             allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
             state = D3D12_RESOURCE_STATE_COMMON;
             break;
+        }
         case AllocationResidency::Host:
-        case AllocationResidency::HostVisible:
+        case AllocationResidency::HostVisible: {
             allocDesc.HeapType = D3D12_HEAP_TYPE_CUSTOM;
             state = D3D12_RESOURCE_STATE_COPY_DEST;
 
             // Set to special write-combine pool
             allocDesc.CustomPool = wcHostPool;
             break;
+        }
     }
 
     // Attempt to allocate the resource

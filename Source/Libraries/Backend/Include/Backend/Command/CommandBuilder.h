@@ -35,6 +35,26 @@ struct CommandBuilder {
         });
     }
 
+    /// Stage a buffer
+    /// \param id buffer id
+    /// \param offset offset into buffer
+    /// \param length length of data to stage
+    /// \param data data to stage
+    /// \param flags optional flags
+    void StageBuffer(ShaderDataID id, size_t offset, size_t length, void* data, StageBufferFlagSet flags = StageBufferFlag::None) {
+        ASSERT(length < (1u << 16u) - sizeof(StageBufferCommand), "Inline staging buffer exceeds max size");
+
+        StageBufferCommand command;
+        command.commandSize += length;
+        command.id = id;
+        command.offset = offset;
+        command.flags = flags;
+
+        buffer.Append(&command, sizeof(command));
+        buffer.Append(data, length);
+        buffer.Increment();
+    }
+
     /// Dispatch the bound shader program
     /// \param groupCountX number of groups X
     /// \param groupCountY number of groups Y

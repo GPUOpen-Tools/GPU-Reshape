@@ -327,10 +327,12 @@ add_library(
     Layer/Source/Export/ShaderExportStreamer.cpp
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
     Layer/Source/Export/ShaderExportDescriptorLayout.cpp
+    Layer/Source/Export/ShaderExportConstantAllocator.cpp
     Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
     Layer/Source/Allocation/DeviceAllocator.cpp
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
     Layer/Source/ShaderData/ShaderDataHost.cpp
+    Layer/Source/Scheduler/Scheduler.cpp
     Layer/Source/IncrementalFence.cpp
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
     Layer/Source/Command/UserCommandBuffer.cpp

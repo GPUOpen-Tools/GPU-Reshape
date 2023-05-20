@@ -76,14 +76,15 @@ struct InstanceDispatchTable {
     VkApplicationInfoDeepCopy applicationInfo;
 
     /// Callbacks
-    PFN_vkGetInstanceProcAddr                   next_vkGetInstanceProcAddr;
-    PFN_vkDestroyInstance                       next_vkDestroyInstance;
-    PFN_vkGetPhysicalDeviceMemoryProperties     next_vkGetPhysicalDeviceMemoryProperties;
-    PFN_vkGetPhysicalDeviceMemoryProperties2KHR next_vkGetPhysicalDeviceMemoryProperties2KHR;
-    PFN_vkGetPhysicalDeviceProperties           next_vkGetPhysicalDeviceProperties;
-    PFN_vkGetPhysicalDeviceFeatures2            next_vkGetPhysicalDeviceFeatures2;
-    PFN_vkEnumerateDeviceLayerProperties        next_vkEnumerateDeviceLayerProperties;
-    PFN_vkEnumerateDeviceExtensionProperties    next_vkEnumerateDeviceExtensionProperties;
+    PFN_vkGetInstanceProcAddr                    next_vkGetInstanceProcAddr;
+    PFN_vkDestroyInstance                        next_vkDestroyInstance;
+    PFN_vkGetPhysicalDeviceMemoryProperties      next_vkGetPhysicalDeviceMemoryProperties;
+    PFN_vkGetPhysicalDeviceMemoryProperties2KHR  next_vkGetPhysicalDeviceMemoryProperties2KHR;
+    PFN_vkGetPhysicalDeviceProperties            next_vkGetPhysicalDeviceProperties;
+    PFN_vkGetPhysicalDeviceFeatures2             next_vkGetPhysicalDeviceFeatures2;
+    PFN_vkEnumerateDeviceLayerProperties         next_vkEnumerateDeviceLayerProperties;
+    PFN_vkEnumerateDeviceExtensionProperties     next_vkEnumerateDeviceExtensionProperties;
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties next_vkGetPhysicalDeviceQueueFamilyProperties;
 
 private:
     /// Lookup

@@ -23,6 +23,7 @@
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 #include <Backends/DX12/ShaderProgram/ShaderProgramHost.h>
+#include <Backends/DX12/Scheduler/Scheduler.h>
 #include <Backends/DX12/WRL.h>
 #include <Backends/DX12/Layer.h>
 
@@ -209,6 +210,10 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Create the program host
         state->shaderProgramHost = state->registry.AddNew<ShaderProgramHost>(state);
         ENSURE(state->shaderProgramHost->Install(), "Failed to install shader program host");
+
+        // Install the scheduler
+        state->scheduler = state->registry.AddNew<Scheduler>(state);
+        ENSURE(state->scheduler->Install(), "Failed to install scheduler");
 
         // Install all features
         ENSURE(PoolAndInstallFeatures(state), "Failed to install features");
@@ -525,6 +530,9 @@ DeviceState::~DeviceState() {
     // Process all remaining work
     exportStreamer->Process();
 
+    // Wait for all pending submissions
+    scheduler->WaitForPending();
+
     // Manual uninstalls
     versioningController->Uninstall();
     metadataController->Uninstall();
@@ -573,6 +581,9 @@ void BridgeDeviceSyncPoint(DeviceState *device) {
 
     // Commit bridge
     device->bridge->Commit();
+
+    // Sync the scheduler
+    device->scheduler->SyncPoint();
 
     // Debugging helper
 #ifndef NDEBUG

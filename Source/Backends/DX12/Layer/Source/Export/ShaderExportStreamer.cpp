@@ -1,4 +1,5 @@
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
+#include <Backends/DX12/Export/ShaderExportConstantAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamState.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
@@ -38,7 +39,8 @@ ShaderExportStreamer::ShaderExportStreamer(DeviceState *device)
       segmentPool(device->allocators),
       queuePool(device->allocators),
       freeDescriptorDataSegmentEntries(allocators),
-      freeConstantShaderDataBuffers(allocators) {
+      freeConstantShaderDataBuffers(allocators),
+      freeConstantAllocators(allocators) {
 
 }
 
@@ -174,7 +176,7 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
     queueState->exportState->liveSegments.push_back(segment);
 }
 
-void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, CommandListState* commandList) {
+void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
     std::lock_guard guard(mutex);
 
     // Reset state
@@ -185,47 +187,56 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, Comm
     state->pipelineObject = nullptr;
     state->isInstrumented = false;
 
-    // Set initial heap
-    commandList->object->SetDescriptorHeaps(1u, &sharedGPUHeap);
+    // Uses descriptors?
+    if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY) {
+        // Set initial heap
+        commandList->SetDescriptorHeaps(1u, &sharedGPUHeap);
 
-    // Allocate initial segment from shared allocator
-    ShaderExportSegmentDescriptorAllocation allocation;
-    allocation.info = sharedGPUHeapAllocator->Allocate(descriptorLayout.Count());
-    allocation.allocator = sharedGPUHeapAllocator;
-    state->segmentDescriptors.push_back(allocation);
+        // Allocate initial segment from shared allocator
+        ShaderExportSegmentDescriptorAllocation allocation;
+        allocation.info = sharedGPUHeapAllocator->Allocate(descriptorLayout.Count());
+        allocation.allocator = sharedGPUHeapAllocator;
+        state->segmentDescriptors.push_back(allocation);
 
-    // Assign constant data buffer
-    if (freeConstantShaderDataBuffers.empty()) {
-        state->constantShaderDataBuffer = device->shaderDataHost->CreateConstantDataBuffer();
-    } else {
-        state->constantShaderDataBuffer = freeConstantShaderDataBuffers.back();
-        freeConstantShaderDataBuffers.pop_back();
+        // Assign constant data buffer
+        if (freeConstantShaderDataBuffers.empty()) {
+            state->constantShaderDataBuffer = device->shaderDataHost->CreateConstantDataBuffer();
+        } else {
+            state->constantShaderDataBuffer = freeConstantShaderDataBuffers.back();
+            freeConstantShaderDataBuffers.pop_back();
+        }
+
+        // No user heap provided, map immutable to nothing
+        MapImmutableDescriptors(allocation, nullptr, nullptr, state->constantShaderDataBuffer.view);
+
+        // Set current for successive binds
+        state->currentSegment = allocation.info;
+
+        // Recycle free data segments if available
+        for (uint32_t i = 0; !freeDescriptorDataSegmentEntries.empty() && i < static_cast<uint32_t>(PipelineType::Count); i++) {
+            state->bindStates[i].descriptorDataAllocator->SetChunk(freeDescriptorDataSegmentEntries.back());
+            freeDescriptorDataSegmentEntries.pop_back();
+        }
+
+        // Reset bind states
+        for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+            ShaderExportStreamBindState& bindState = state->bindStates[i];
+
+            // Free all allocations, but keep the blocks themselves alive
+            bindState.rootConstantAllocator.ClearSubAllocations();
+
+            // Clear all persistent parameters
+            std::fill_n(bindState.persistentRootParameters, MaxRootSignatureDWord, ShaderExportRootParameterValue {});
+
+            // Reset state
+            bindState.rootSignature = nullptr;
+        }
     }
 
-    // No user heap provided, map immutable to nothing
-    MapImmutableDescriptors(allocation, nullptr, nullptr, state->constantShaderDataBuffer.view);
-
-    // Set current for successive binds
-    state->currentSegment = allocation.info;
-
-    // Recycle free data segments if available
-    for (uint32_t i = 0; !freeDescriptorDataSegmentEntries.empty() && i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        state->bindStates[i].descriptorDataAllocator->SetChunk(freeDescriptorDataSegmentEntries.back());
-        freeDescriptorDataSegmentEntries.pop_back();
-    }
-
-    // Reset bind states
-    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        ShaderExportStreamBindState& bindState = state->bindStates[i];
-
-        // Free all allocations, but keep the blocks themselves alive
-        bindState.rootConstantAllocator.ClearSubAllocations();
-
-        // Clear all persistent parameters
-        std::fill_n(bindState.persistentRootParameters, MaxRootSignatureDWord, ShaderExportRootParameterValue {});
-
-        // Reset state
-        bindState.rootSignature = nullptr;
+    // Pop constant allocator if available
+    if (!freeConstantAllocators.empty()) {
+        state->constantAllocator = freeConstantAllocators.back();
+        freeConstantAllocators.pop_back();
     }
 }
 
@@ -235,7 +246,7 @@ void ShaderExportStreamer::CloseCommandList(ShaderExportStreamState *state) {
     }
 }
 
-void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, CommandListState* commandList) {
+void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, ID3D12GraphicsCommandList* commandList) {
     // Set heap
     switch (heap->type) {
         case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
@@ -282,7 +293,7 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
     }
 }
 
-void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, CommandListState* commandList) {
+void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, ID3D12GraphicsCommandList* commandList) {
     // Bind state
     ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
 
@@ -303,7 +314,7 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
     }
 }
 
-void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, CommandListState* commandList) {
+void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, ID3D12GraphicsCommandList* commandList) {
     // Bind state
     ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
 
@@ -324,26 +335,26 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
     }
 }
 
-void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, CommandListState* commandList) {
+void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
     // Bind state
     ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
 
     // If the allocator has rolled, a new segment is pending binding
     if (bindState.descriptorDataAllocator->HasRolled()) {
-        commandList->object->SetComputeRootConstantBufferView(bindState.rootSignature->userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
+        commandList->SetComputeRootConstantBufferView(bindState.rootSignature->userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
     }
 
     // Begin new segment
     bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->userRootCount, true);
 }
 
-void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, CommandListState* commandList) {
+void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
     // Bind state
     ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
 
     // If the allocator has rolled, a new segment is pending binding
     if (bindState.descriptorDataAllocator->HasRolled()) {
-        commandList->object->SetGraphicsRootConstantBufferView(bindState.rootSignature->userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
+        commandList->SetGraphicsRootConstantBufferView(bindState.rootSignature->userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
     }
 
     // Begin new segment
@@ -370,7 +381,7 @@ ShaderExportStreamBindState& ShaderExportStreamer::GetBindStateFromPipeline(Shad
     return state->bindStates[static_cast<uint32_t>(slot)];
 }
 
-void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, ID3D12PipelineState* pipelineObject, bool instrumented, CommandListState* commandList) {
+void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const PipelineState *pipeline, ID3D12PipelineState* pipelineObject, bool instrumented, ID3D12GraphicsCommandList* commandList) {
     // Get bind state from slot
     ShaderExportStreamBindState& bindState = GetBindStateFromPipeline(state, pipeline);
 
@@ -403,21 +414,21 @@ void ShaderExportStreamer::Process(CommandQueueState* queueState) {
     ProcessSegmentsNoQueueLock(queueState);
 }
 
-void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, uint32_t slot, PipelineType type, CommandListState *commandList) {
+void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, uint32_t slot, PipelineType type, ID3D12GraphicsCommandList *commandList) {
     switch (type) {
         default:
             ASSERT(false, "Invalid pipeline");
             break;
         case PipelineType::Graphics:
-            commandList->object->SetGraphicsRootDescriptorTable(slot, state->currentSegment.gpuHandle);
+            commandList->SetGraphicsRootDescriptorTable(slot, state->currentSegment.gpuHandle);
             break;
         case PipelineType::Compute:
-            commandList->object->SetComputeRootDescriptorTable(slot, state->currentSegment.gpuHandle);
+            commandList->SetComputeRootDescriptorTable(slot, state->currentSegment.gpuHandle);
             break;
     }
 }
 
-void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, const PipelineState *pipeline, CommandListState* commandList) {
+void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, const PipelineState *pipeline, ID3D12GraphicsCommandList* commandList) {
     // Skip if already mapped
     if (state->pipelineSegmentMask & pipeline->type) {
         return;
@@ -487,6 +498,12 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
     // Move constant ownership to the segment
     segment->constantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
     state->constantShaderDataBuffer = {};
+
+    // Move constant allocator to the segment
+    if (!state->constantAllocator.staging.empty()) {
+        segment->constantAllocator.push_back(state->constantAllocator);
+        state->constantAllocator = {};
+    }
 
     // Add context handle
     ASSERT(state->commandContextHandle != kInvalidCommandContextHandle, "Unmapped command context handle");
@@ -734,6 +751,25 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
     return true;
 }
 
+void ShaderExportStreamer::FreeConstantAllocator(ShaderExportConstantAllocator& allocator) {
+    // Cleanup the staging data
+    if (!allocator.staging.empty()) {
+        // Free all staging allocations except the last
+        for (size_t i = 0; i < allocator.staging.size() - 1u; i++) {
+            device->deviceAllocator->Free(allocator.staging[i].allocation);
+        }
+
+        // Remove all but the last
+        allocator.staging.erase(allocator.staging.begin(), allocator.staging.begin() + (allocator.staging.size() - 1u));
+
+        // Reset head counter
+        allocator.staging.back().head = 0;
+    }
+
+    // Add to free pool
+    freeConstantAllocators.push_back(allocator);
+}
+
 void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, ShaderExportStreamSegment *segment) {
     std::lock_guard guard(mutex);
     
@@ -766,22 +802,12 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
 
     // Release all constant data buffers
     for (ConstantShaderDataBuffer& constantData : segment->constantShaderDataBuffers) {
-        // Cleanup the staging data
-        if (!constantData.staging.empty()) {
-            // Free all staging allocations except the last
-            for (size_t i = 0; i < constantData.staging.size() - 1u; i++) {
-                device->deviceAllocator->Free(constantData.staging[i].allocation);
-            }
-
-            // Remove all but the last
-            constantData.staging.erase(constantData.staging.begin(), constantData.staging.begin() + (constantData.staging.size() - 1u));
-
-            // Reset head counter
-            constantData.staging.back().head = 0;
-        }
-
-        // Add to free pool
         freeConstantShaderDataBuffers.push_back(constantData);
+    }
+
+    // Release all constant allocators
+    for (ShaderExportConstantAllocator& constantAllocator : segment->constantAllocator) {
+        FreeConstantAllocator(constantAllocator);
     }
 
     // Release patch descriptors

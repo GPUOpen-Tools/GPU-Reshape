@@ -4,9 +4,13 @@
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/States/FenceState.h>
 
+// Common
+#include <Common/Containers/ObjectPool.h>
+
 // Std
 #include <cstdint>
 #include <vector>
+#include <mutex>
 
 // Forward declarations
 struct ShaderExportQueueState;
@@ -39,6 +43,9 @@ struct QueueState {
 
     /// Current export state
     ShaderExportQueueState* exportState{nullptr};
+
+    /// Shared lock
+    std::mutex mutex;
 
     /// Unique identifier, unique for the type
     uint64_t uid;

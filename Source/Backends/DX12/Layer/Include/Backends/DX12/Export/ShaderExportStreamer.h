@@ -4,6 +4,7 @@
 #include <Backends/DX12/DX12.h>
 #include <Backends/DX12/Export/ShaderExportStreamState.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorLayout.h>
+#include <Backends/DX12/Export/ShaderExportConstantAllocator.h>
 
 // Common
 #include <Common/IComponent.h>
@@ -78,38 +79,38 @@ public:
     /// Invoked during command list recording
     /// \param state the stream state
     /// \param commandList the command list
-    void BeginCommandList(ShaderExportStreamState* state, CommandListState* commandList);
+    void BeginCommandList(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList);
 
     /// Invoked during pipeline binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandList the command list
-    void SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, CommandListState* commandList);
+    void SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, ID3D12GraphicsCommandList* commandList);
 
     /// Invoked during root signature binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandList the command list
-    void SetComputeRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, CommandListState* commandList);
+    void SetComputeRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, ID3D12GraphicsCommandList* commandList);
 
     /// Invoked during root signature binding
     /// \param state the stream state
     /// \param pipeline the pipeline state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandList the command list
-    void SetGraphicsRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, CommandListState* commandList);
+    void SetGraphicsRootSignature(ShaderExportStreamState* state, const RootSignatureState* rootSignature, ID3D12GraphicsCommandList* commandList);
 
     /// Commit all compute data
     /// \param state given state
     /// \param commandList current command list
-    void CommitCompute(ShaderExportStreamState* state, CommandListState* commandList);
+    void CommitCompute(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList);
 
     /// Commit all graphics data
     /// \param state given state
     /// \param commandList current command list
-    void CommitGraphics(ShaderExportStreamState* state, CommandListState* commandList);
+    void CommitGraphics(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList);
 
     /// Invoked during pipeline binding
     /// \param state the stream state
@@ -117,7 +118,7 @@ public:
     /// \param pipelineObject active backend state being bound
     /// \param instrumented true if an instrumented pipeline has been bound
     /// \param commandList the command list
-    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, ID3D12PipelineState* pipelineObject, bool instrumented, CommandListState* list);
+    void BindPipeline(ShaderExportStreamState* state, const PipelineState* pipeline, ID3D12PipelineState* pipelineObject, bool instrumented, ID3D12GraphicsCommandList* list);
 
     /// Map a stream state pre submission
     /// \param state the stream state
@@ -197,13 +198,13 @@ public:
     /// \param slot destination slot
     /// \param type destination pipeline type
     /// \param commandList the command list
-    void BindShaderExport(ShaderExportStreamState* state, uint32_t slot, PipelineType type, CommandListState* commandList);
+    void BindShaderExport(ShaderExportStreamState* state, uint32_t slot, PipelineType type, ID3D12GraphicsCommandList* commandList);
 
     /// Bind the shader export for a pipeline
     /// \param state the stream state
     /// \param pipeline the pipeline to bind for
     /// \param commandList the command list
-    void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, CommandListState* commandList);
+    void BindShaderExport(ShaderExportStreamState* state, const PipelineState* pipeline, ID3D12GraphicsCommandList* commandList);
 
 public:
     /// Whole device sync point
@@ -230,6 +231,9 @@ private:
 
     /// Free a segment
     void FreeSegmentNoQueueLock(CommandQueueState* queue, ShaderExportStreamSegment* segment);
+
+    /// Free a constant allocator
+    void FreeConstantAllocator(ShaderExportConstantAllocator& allocator);
 
     /// Get the expected bind state of a pipeline
     ShaderExportStreamBindState& GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline);
@@ -264,6 +268,9 @@ private:
 
     /// All free constant buffers
     Vector<ConstantShaderDataBuffer> freeConstantShaderDataBuffers;
+
+    /// All free constant allocators
+    Vector<ShaderExportConstantAllocator> freeConstantAllocators;
 
     /// Components
     ComRef<DeviceAllocator> deviceAllocator{nullptr};

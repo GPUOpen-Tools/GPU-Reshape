@@ -7,6 +7,7 @@
 
 // Common
 #include <Common/Assert.h>
+#include <Common/Enum.h>
 
 // Std
 #include <cstdint>
@@ -76,6 +77,19 @@ struct SetEventDataCommand : public TCommand<SetEventDataCommand, CommandType::S
 struct SetDescriptorDataCommand : public TCommand<SetEventDataCommand, CommandType::SetDescriptorData> {
     ShaderDataID id;
     uint32_t value;
+};
+
+enum class StageBufferFlag {
+    None = 0,
+    Atomic32 = BIT(1)
+};
+
+BIT_SET(StageBufferFlag);
+
+struct StageBufferCommand : public TCommand<StageBufferCommand, CommandType::StageBuffer> {
+    ShaderDataID id;
+    size_t offset;
+    StageBufferFlagSet flags;
 };
 
 struct DispatchCommand : public TCommand<DispatchCommand, CommandType::Dispatch> {

@@ -5,6 +5,7 @@
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/ImmediateCommandList.h>
 #include <Backends/DX12/Export/ShaderExportDescriptorInfo.h>
+#include <Backends/DX12/Export/ShaderExportConstantAllocator.h>
 #include <Backends/DX12/Controllers/Versioning.h>
 #include <Backends/DX12/ShaderData/ConstantShaderDataBuffer.h>
 
@@ -149,6 +150,9 @@ struct ShaderExportStreamState {
     /// Shared constants buffer
     ConstantShaderDataBuffer constantShaderDataBuffer;
 
+    /// Shared constants allocator
+    ShaderExportConstantAllocator constantAllocator;
+
     /// Top level context handle
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
 };
@@ -159,6 +163,7 @@ struct ShaderExportStreamSegment {
         segmentDescriptors(allocators),
         descriptorDataSegments(allocators),
         constantShaderDataBuffers(allocators),
+        constantAllocator(allocators),
         commandContextHandles(allocators) {
         
     }
@@ -181,6 +186,9 @@ struct ShaderExportStreamSegment {
 
     /// Combined context handles
     Vector<ConstantShaderDataBuffer> constantShaderDataBuffers;
+
+    /// Combined constant allocators
+    Vector<ShaderExportConstantAllocator> constantAllocator;
 
     /// Combined context handles
     Vector<CommandContextHandle> commandContextHandles;

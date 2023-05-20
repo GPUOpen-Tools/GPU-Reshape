@@ -183,7 +183,7 @@ void PhysicalResourceMappingTable::Update(CommandBufferObject* object) {
     }
 
     // Guard against render passes
-    CommandBufferRenderPassScope renderPassScope(object);
+    CommandBufferRenderPassScope renderPassScope(table, object->object, &object->streamState->renderPass);
 
     // Copy host to device
     VkBufferCopy copyRegion;

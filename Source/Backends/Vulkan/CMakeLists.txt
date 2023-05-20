@@ -198,6 +198,7 @@ add_library(
     Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
     Layer/Source/Export/ShaderExportStreamer.cpp
     Layer/Source/Symbolizer/ShaderSGUIDHost.cpp
+    Layer/Source/Scheduler/Scheduler.cpp
     Layer/Source/Compiler/SpvSourceMap.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockAnnotation.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockCapability.cpp

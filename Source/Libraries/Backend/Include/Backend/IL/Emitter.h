@@ -731,6 +731,18 @@ namespace IL {
             return Op(instr);
         }
 
+        /// Add return instruction
+        /// \param value optional value to return
+        /// \return instruction reference
+        InstructionRef <BranchConditionalInstruction> Return(ID value = IL::InvalidID) {
+            ReturnInstruction instr{};
+            instr.opCode = OpCode::Return;
+            instr.source = Source::Invalid();
+            instr.result = IL::InvalidID;
+            instr.value = value;
+            return Op(instr);
+        }
+
         /// Add phi instruction
         /// \param first first case basic block
         /// \param firstValue first case value produced by first basic block

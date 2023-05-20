@@ -15,14 +15,14 @@
 
 class DescriptorDataAppendAllocator {
 public:
-    DescriptorDataAppendAllocator(DeviceDispatchTable* table, const ComRef<DeviceAllocator>& allocator, size_t maxChunkSize) : maxChunkSize(maxChunkSize), allocator(allocator), table(table) {
+    DescriptorDataAppendAllocator(DeviceDispatchTable* table, const ComRef<DeviceAllocator>& allocator, ShaderExportRenderPassState* renderPass, size_t maxChunkSize) : maxChunkSize(maxChunkSize), allocator(allocator), renderPass(renderPass), table(table) {
 
     }
 
     /// Set the chunk
     /// \param commandBuffer upload command buffer
     /// \param segmentEntry segment to be bound to
-    void SetChunk(CommandBufferObject* commandBuffer, const DescriptorDataSegmentEntry& segmentEntry) {
+    void SetChunk(VkCommandBuffer commandBuffer, const DescriptorDataSegmentEntry& segmentEntry) {
         // Set inherited width
         chunkSize = segmentEntry.width / sizeof(uint32_t);
 
@@ -33,14 +33,14 @@ public:
         mapped = static_cast<uint32_t*>(allocator->Map(segmentEntry.allocation.host));
 
         // Guard against render passes
-        CommandBufferRenderPassScope renderPassScope(commandBuffer);
+        CommandBufferRenderPassScope renderPassScope(table, commandBuffer, renderPass);
 
         // Copy host to device
         VkBufferCopy copy;
         copy.srcOffset = 0;
         copy.dstOffset = 0;
         copy.size = segmentEntry.width;
-        commandBuffer->dispatchTable.next_vkCmdCopyBuffer(commandBuffer->object, segmentEntry.bufferHost, segmentEntry.bufferDevice, 1u, &copy);
+        table->commandBufferDispatchTable.next_vkCmdCopyBuffer(commandBuffer, segmentEntry.bufferHost, segmentEntry.bufferDevice, 1u, &copy);
 
         // Transfer to shader barrier
         VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
@@ -52,7 +52,7 @@ public:
         barrier.size = segmentEntry.width;
         barrier.offset = 0u;
         table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
-            commandBuffer->object,
+            commandBuffer,
             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0x0,
             0, nullptr,
             1u, &barrier,
@@ -72,7 +72,7 @@ public:
     /// \param commandBuffer upload command buffer
     /// \param offset current root offset
     /// \param value value at root offset
-    void Set(CommandBufferObject* commandBuffer, uint32_t offset, uint32_t value) {
+    void Set(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t value) {
         if (pendingRoll) {
             RollChunk(commandBuffer);
         }
@@ -85,7 +85,7 @@ public:
     /// \param commandBuffer upload command buffer
     /// \param offset current root offset
     /// \param value value at root offset
-    void SetOrAllocate(CommandBufferObject* commandBuffer, uint32_t offset, uint32_t allocationSize, uint32_t value) {
+    void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, uint32_t value) {
         // Begin a new segment if the previous does not suffice, may be allocated dynamically
         if (offset >= mappedSegmentLength) {
             ASSERT(allocationSize > offset, "Chunk allocation size must be larger than the expected offset");
@@ -148,7 +148,7 @@ public:
 private:
     /// Roll the current chunk
     /// \param commandBuffer upload command buffer
-    void RollChunk(CommandBufferObject* commandBuffer) {
+    void RollChunk(VkCommandBuffer commandBuffer) {
         // Advance current offset
         uint64_t nextMappedOffset = mappedOffset + mappedSegmentLength;
 
@@ -194,7 +194,7 @@ private:
 
     /// Create a new chunk
     /// \param commandBuffer upload command buffer
-    void CreateChunk(CommandBufferObject* commandBuffer) {
+    void CreateChunk(VkCommandBuffer commandBuffer) {
         // Release existing chunk if needed
         if (mapped) {
             allocator->Unmap(segment.entries.back().allocation.host);
@@ -263,6 +263,9 @@ private:
 
     /// Device allocator
     ComRef<DeviceAllocator> allocator;
+
+    /// Streaming render pass state
+    ShaderExportRenderPassState* renderPass;
 
     /// Parent table
     DeviceDispatchTable* table;

@@ -4,9 +4,12 @@ enum class CommandType {
     /// Shader program
     SetShaderProgram,
 
-    /// Data
+    /// Immediate data
     SetEventData,
     SetDescriptorData,
+
+    /// Resources
+    StageBuffer,
 
     /// Invokes
     Dispatch

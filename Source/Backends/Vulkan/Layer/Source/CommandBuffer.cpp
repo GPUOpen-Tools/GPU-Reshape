@@ -174,7 +174,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     }
 
     // Begin the streaming state
-    commandBuffer->table->exportStreamer->BeginCommandBuffer(commandBuffer->streamState, commandBuffer);
+    commandBuffer->table->exportStreamer->BeginCommandBuffer(commandBuffer->streamState, commandBuffer->object);
 
     // Update the PRMT data
     commandBuffer->table->prmTable->Update(commandBuffer);
@@ -209,7 +209,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetCommandBuffer(CommandBufferObject *co
 
     // Reset export state if present
     if (commandBuffer->streamState) {
-        commandBuffer->table->exportStreamer->ResetCommandBuffer(commandBuffer->streamState, commandBuffer);
+        commandBuffer->table->exportStreamer->ResetCommandBuffer(commandBuffer->streamState, commandBuffer->object);
     }
 
     // Reset the context
@@ -246,7 +246,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
     commandBuffer->dispatchTable.next_vkCmdBindPipeline(commandBuffer->object, pipelineBindPoint, pipeline);
 
     // Migrate environments
-    commandBuffer->table->exportStreamer->BindPipeline(commandBuffer->streamState, state, pipeline, hotSwapObject != nullptr, commandBuffer);
+    commandBuffer->table->exportStreamer->BindPipeline(commandBuffer->streamState, state, pipeline, hotSwapObject != nullptr, commandBuffer->object);
 
     // Update context
     commandBuffer->context.pipeline = state;
@@ -259,7 +259,7 @@ static void CommitCompute(CommandBufferObject* commandBuffer) {
     CommitCommands(commandBuffer);
 
     // Inform the streamer
-    table->exportStreamer->Commit(commandBuffer->streamState, VK_PIPELINE_BIND_POINT_COMPUTE, commandBuffer);
+    table->exportStreamer->Commit(commandBuffer->streamState, VK_PIPELINE_BIND_POINT_COMPUTE, commandBuffer->object);
 
     // TODO: Update the event data in batches
     if (uint64_t bitMask = commandBuffer->userContext.eventStack.GetGraphicsDirtyMask()) {
@@ -291,7 +291,7 @@ static void CommitGraphics(CommandBufferObject* commandBuffer) {
     CommitCommands(commandBuffer);
 
     // Inform the streamer
-    table->exportStreamer->Commit(commandBuffer->streamState, VK_PIPELINE_BIND_POINT_GRAPHICS, commandBuffer);
+    table->exportStreamer->Commit(commandBuffer->streamState, VK_PIPELINE_BIND_POINT_GRAPHICS, commandBuffer->object);
 
     // TODO: Update the event data in batches
     if (uint64_t bitMask = commandBuffer->userContext.eventStack.GetGraphicsDirtyMask()) {
@@ -423,7 +423,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *comm
     commandBuffer->context = {};
 
     // End the streaming state
-    commandBuffer->table->exportStreamer->EndCommandBuffer(commandBuffer->streamState, commandBuffer);
+    commandBuffer->table->exportStreamer->EndCommandBuffer(commandBuffer->streamState, commandBuffer->object);
 
     // Invoke proxies
     for (const FeatureHookTable &table: commandBuffer->table->featureHookTables) {

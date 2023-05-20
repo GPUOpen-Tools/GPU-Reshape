@@ -21,6 +21,7 @@
 
 // Forward declarations
 class IShaderSGUIDHost;
+class IScheduler;
 
 class LoopFeature final : public IFeature, public IShaderFeature {
 public:
@@ -80,6 +81,9 @@ private:
         /// Is this state pending?
         bool pending{false};
 
+        /// Is this state pending?
+        bool terminated{false};
+
         /// Allocated termination id
         uint32_t terminationID{0};
     };
@@ -108,9 +112,10 @@ private:
     /// Shared mutex
     std::mutex mutex;
 
-    /// Hosts
+    /// Components
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
-    ComRef<IShaderDataHost> shaderDataHost{nullptr};
+    ComRef<IShaderDataHost>  shaderDataHost{nullptr};
+    ComRef<IScheduler>       scheduler{nullptr};
 
     /// Export id for this feature
     ShaderExportID exportID{};

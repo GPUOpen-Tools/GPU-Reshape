@@ -21,6 +21,7 @@ void InstanceDispatchTable::Populate(VkInstance instance, PFN_vkGetInstanceProcA
     next_vkGetPhysicalDeviceFeatures2 = reinterpret_cast<PFN_vkGetPhysicalDeviceFeatures2>(getProcAddr(object, "vkGetPhysicalDeviceFeatures2"));
     next_vkEnumerateDeviceLayerProperties = reinterpret_cast<PFN_vkEnumerateDeviceLayerProperties>(getProcAddr(object, "vkEnumerateDeviceLayerProperties"));
     next_vkEnumerateDeviceExtensionProperties = reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(getProcAddr(object, "vkEnumerateDeviceExtensionProperties"));
+    next_vkGetPhysicalDeviceQueueFamilyProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceQueueFamilyProperties>(getProcAddr(object, "vkGetPhysicalDeviceQueueFamilyProperties"));
 }
 
 PFN_vkVoidFunction InstanceDispatchTable::GetHookAddress(const char *name) {

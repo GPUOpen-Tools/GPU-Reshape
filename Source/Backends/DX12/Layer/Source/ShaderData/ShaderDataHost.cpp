@@ -140,6 +140,16 @@ void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t le
     device->deviceAllocator->FlushMappedRange(entry.allocation, offset, length);
 }
 
+Allocation ShaderDataHost::GetResourceAllocation(ShaderDataID rid) {
+    uint32_t index = indices[rid];
+
+    // Entry to map
+    ResourceEntry &entry = resources[index];
+
+    // OK
+    return entry.allocation;
+}
+
 void ShaderDataHost::Destroy(ShaderDataID rid) {
     uint32_t index = indices[rid];
 

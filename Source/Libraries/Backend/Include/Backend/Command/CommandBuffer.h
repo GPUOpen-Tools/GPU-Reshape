@@ -70,6 +70,18 @@ struct CommandBuffer {
         count++;
     }
 
+    /// Add new comamnd
+    /// \param command command data, must be top type
+    void Append(const void* commandData, size_t length) {
+        const auto* dataU8 = static_cast<const uint8_t*>(commandData);
+        data.insert(data.end(), dataU8, dataU8 + length);
+    }
+
+    /// Increment the number of commands
+    void Increment() {
+        count++;
+    }
+
     /// Clear all command data
     void Clear() {
         data.clear();
