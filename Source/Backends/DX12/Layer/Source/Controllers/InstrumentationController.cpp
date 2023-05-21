@@ -478,17 +478,6 @@ void InstrumentationController::SetInstrumentationInfo(InstrumentationInfo &info
 void InstrumentationController::CommitInstrumentation() {
     uint64_t featureBitSet = 0;
     
-    // Resummarize and commit the feature set if needed
-    if (pendingResummarization) {
-        featureBitSet = SummarizeFeatureBitSet();
-
-        // Set the enabled feature bit set
-        SetDeviceCommandFeatureSetAndCommit(device, featureBitSet);
-
-        // Mark as summarized
-        pendingResummarization = false;
-    }
-    
     // Early out
     if (immediateBatch.dirtyObjects.empty()) {
         return;
@@ -516,12 +505,22 @@ void InstrumentationController::CommitInstrumentation() {
         PropagateInstrumentationInfo(state);
     }
 
+    // Resummarize and commit the feature set if needed
+    if (pendingResummarization) {
+        featureBitSet = SummarizeFeatureBitSet();
+
+        // Set the enabled feature bit set
+        SetDeviceCommandFeatureSetAndCommit(device, featureBitSet);
+
+        // Mark as summarized
+        pendingResummarization = false;
+    }
+
     // Copy batch
     auto *batch = new(registry->GetAllocators(), kAllocInstrumentation) Batch(immediateBatch);
     batch->stampBegin = std::chrono::high_resolution_clock::now();
 
     // Summarize the needed feature set
-    ASSERT(featureBitSet != 0, "Pending commit without resummarization, events out of sync");
     batch->featureBitSet = featureBitSet;
 
     // Task group

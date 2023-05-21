@@ -22,7 +22,7 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// <summary>
         /// Constructed pipeline filter
         /// </summary>
-        public PipelineFilterQueryViewModel Filter
+        public PipelineFilterQueryViewModel? Filter
         {
             get => _filter;
             set
@@ -116,6 +116,11 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// </summary>
         private void OnFilterChanged()
         {
+            if (Filter == null)
+            {
+                return;
+            }
+            
             Name = Filter.Decorator;
         }
 
@@ -149,6 +154,11 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// <param name="stream"></param>
         public void Commit(OrderedMessageView<ReadWriteMessageStream> stream)
         {
+            if (Filter == null)
+            {
+                return;
+            }
+            
             // Create new state
             InstrumentationState = new InstrumentationState()
             {
@@ -200,7 +210,7 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// <summary>
         /// Internal query
         /// </summary>
-        private PipelineFilterQueryViewModel _filter;
+        private PipelineFilterQueryViewModel? _filter;
         
         /// <summary>
         /// Unique guid to this filter
