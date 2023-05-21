@@ -177,12 +177,13 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
 }
 
 void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
-    std::lock_guard guard(mutex);
-
     // Recycle old data if needed
     if (state->pending) {
         RecycleCommandList(state);
     }
+
+    // Serial
+    std::lock_guard guard(mutex);
 
     // Reset state
     state->resourceHeap = nullptr;
@@ -421,6 +422,7 @@ void ShaderExportStreamer::Process(CommandQueueState* queueState) {
 }
 
 void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
+    std::lock_guard guard(mutex);
     ASSERT(state->pending, "Recycling non-pending stream state");
 
     // Move descriptor data ownership to segment
