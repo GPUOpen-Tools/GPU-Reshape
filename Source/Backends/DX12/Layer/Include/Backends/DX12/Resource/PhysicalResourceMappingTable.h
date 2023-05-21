@@ -10,6 +10,7 @@
 
 // Std
 #include <vector>
+#include <mutex>
 
 // Forward declarations
 class DeviceAllocator;
@@ -27,18 +28,6 @@ public:
     /// Update the table for use on a given list
     /// \param list list to be updated on
     void Update(ID3D12GraphicsCommandList* list);
-
-    /// Modify mappings at a given range
-    /// \param offset starting index
-    /// \param count number of mappings
-    /// \return mapping base
-    VirtualResourceMapping* ModifyMappings(uint32_t offset, uint32_t count);
-
-    /// Get the mappings at a given range
-    /// \param offset starting index
-    /// \param count number of mappings
-    /// \return mapping base
-    const VirtualResourceMapping* GetMappings(uint32_t offset, uint32_t count);
 
     /// Write a single mapping at a given offset
     /// \param offset offset to be written
@@ -92,6 +81,9 @@ private:
 private:
     /// All states
     Vector<ResourceState*> states;
+
+    /// Shared lock
+    std::mutex mutex;
 
 private:
     ComRef<DeviceAllocator> allocator{};

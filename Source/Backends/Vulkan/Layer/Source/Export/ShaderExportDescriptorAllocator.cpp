@@ -219,6 +219,9 @@ ShaderExportDescriptorAllocator::~ShaderExportDescriptorAllocator() {
 }
 
 ShaderExportSegmentDescriptorInfo ShaderExportDescriptorAllocator::Allocate() {
+    std::lock_guard guard(mutex);
+
+    // Get pool
     PoolInfo &pool = FindOrAllocatePool();
 
     // Decrement available sets
@@ -330,6 +333,9 @@ ShaderExportDescriptorAllocator::PoolInfo &ShaderExportDescriptorAllocator::Find
 }
 
 void ShaderExportDescriptorAllocator::Free(const ShaderExportSegmentDescriptorInfo &info) {
+    std::lock_guard guard(mutex);
+
+    // Get pool
     PoolInfo &pool = pools[info.poolIndex];
 
     // Increment set count

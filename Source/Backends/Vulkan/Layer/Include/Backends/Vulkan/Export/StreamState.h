@@ -81,6 +81,9 @@ struct ShaderExportRenderPassState {
 
 /// Single stream state
 struct ShaderExportStreamState {
+    /// Is this state pending?
+    bool pending{false};
+    
     /// All bind points
     ShaderExportPipelineBindState pipelineBindPoints[static_cast<uint32_t>(PipelineType::Count)];
 

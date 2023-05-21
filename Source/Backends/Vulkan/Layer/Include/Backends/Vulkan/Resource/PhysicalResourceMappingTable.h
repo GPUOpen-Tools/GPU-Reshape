@@ -13,6 +13,7 @@
 
 // Std
 #include <vector>
+#include <mutex>
 
 // Forward declarations
 struct DeviceDispatchTable;
@@ -50,18 +51,13 @@ public:
     /// Write a single mapping at a given offset
     /// \param offset offset to be written
     /// \param mapping mapping to write
-    VirtualResourceMapping* ModifyMappings(PhysicalResourceSegmentID id, uint32_t offset, uint32_t count);
-
-    /// Write a single mapping at a given offset
-    /// \param offset offset to be written
-    /// \param mapping mapping to write
     void WriteMapping(PhysicalResourceSegmentID id, uint32_t offset, const VirtualResourceMapping& mapping);
 
     /// Get an existing mapping within a segment
     /// \param id segment identifier
     /// \param offset offset within the segment
     /// \return written mapping
-    VirtualResourceMapping GetMapping(PhysicalResourceSegmentID id, uint32_t offset) const;
+    VirtualResourceMapping GetMapping(PhysicalResourceSegmentID id, uint32_t offset);
 
     /// Get the underlying buffer
     VkBuffer GetDeviceBuffer() const {
@@ -123,6 +119,9 @@ private:
 
 private:
     DeviceDispatchTable* table;
+
+    /// Shared lock
+    std::mutex mutex;
 
     /// Components
     ComRef<DeviceAllocator> deviceAllocator{};

@@ -40,6 +40,8 @@ uint32_t PhysicalResourceMappingTable::GetHeadOffset() const {
 }
 
 PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count) {
+    std::lock_guard guard(mutex);
+    
     uint32_t head = GetHeadOffset();
 
     // Out of (potentially fragmented) space?
@@ -78,6 +80,8 @@ PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count)
 }
 
 void PhysicalResourceMappingTable::Free(PhysicalResourceSegmentID id) {
+    std::lock_guard guard(mutex);
+    
     uint32_t index = indices[id];
 
     // Last segments do not require segmentation
@@ -161,6 +165,8 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
 }
 
 void PhysicalResourceMappingTable::Update(CommandBufferObject* object) {
+    std::lock_guard guard(mutex);
+    
     if (!isDirty || !liveSegmentCount) {
         return;
     }
@@ -208,18 +214,8 @@ void PhysicalResourceMappingTable::Update(CommandBufferObject* object) {
     isDirty = false;
 }
 
-VirtualResourceMapping* PhysicalResourceMappingTable::ModifyMappings(PhysicalResourceSegmentID id, uint32_t offset, uint32_t count) {
-    isDirty = true;
-
-    // Get the underlying segment
-    PhysicalResourceMappingTableSegment& segment = segments.at(indices.at(id));
-
-    // Get mapping start
-    ASSERT(offset + count <= segment.length, "Physical segment offset out of bounds");
-    return virtualMappings + (segment.offset + offset);
-}
-
 void PhysicalResourceMappingTable::WriteMapping(PhysicalResourceSegmentID id, uint32_t offset, const VirtualResourceMapping &mapping) {
+    std::lock_guard guard(mutex);
     isDirty = true;
 
     // Get the underlying segment
@@ -289,10 +285,13 @@ void PhysicalResourceMappingTable::Defragment() {
 }
 
 PhysicalResourceMappingTableSegment PhysicalResourceMappingTable::GetSegmentShader(PhysicalResourceSegmentID id) {
+    std::lock_guard guard(mutex);
     return segments.at(indices.at(id));
 }
 
-VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(PhysicalResourceSegmentID id, uint32_t offset) const {
+VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(PhysicalResourceSegmentID id, uint32_t offset) {
+    std::lock_guard guard(mutex);
+    
     // Get the underlying segment
     const PhysicalResourceMappingTableSegment& segment = segments.at(indices.at(id));
 

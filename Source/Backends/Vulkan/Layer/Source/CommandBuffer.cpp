@@ -209,11 +209,38 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetCommandBuffer(CommandBufferObject *co
 
     // Reset export state if present
     if (commandBuffer->streamState) {
-        commandBuffer->table->exportStreamer->ResetCommandBuffer(commandBuffer->streamState, commandBuffer->object);
+        commandBuffer->table->exportStreamer->ResetCommandBuffer(commandBuffer->streamState);
     }
 
     // Reset the context
     commandBuffer->context = {};
+
+    // OK
+    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkResetCommandPool(VkDevice device, VkCommandPool pool, VkCommandPoolResetFlags flags) {
+    DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Get pool state
+    CommandPoolState *poolState = table->states_commandPool.Get(pool);
+
+    // Pass down callchain
+    VkResult result = table->next_vkResetCommandPool(device, pool, flags);
+    if (result != VK_SUCCESS) {
+        return result;
+    }
+
+    // Reset all internal command states
+    for (CommandBufferObject* commandBuffer : poolState->commandBuffers) {
+        // Reset export state if present
+        if (commandBuffer->streamState) {
+            commandBuffer->table->exportStreamer->ResetCommandBuffer(commandBuffer->streamState);
+        }
+
+        // Reset the context
+        commandBuffer->context = {};
+    }
 
     // OK
     return VK_SUCCESS;

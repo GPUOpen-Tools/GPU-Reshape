@@ -6,6 +6,7 @@ PhysicalResourceMappingTable::PhysicalResourceMappingTable(const Allocators& all
 }
 
 void PhysicalResourceMappingTable::Install(uint32_t count) {
+    std::lock_guard guard(mutex);
     virtualMappingCount = count;
 
     // Mapped description
@@ -59,6 +60,9 @@ void PhysicalResourceMappingTable::Install(uint32_t count) {
 }
 
 void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
+    std::lock_guard guard(mutex);
+
+    // May not need updates
     if (!isDirty) {
         return;
     }
@@ -84,36 +88,34 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
     isDirty = false;
 }
 
-const VirtualResourceMapping *PhysicalResourceMappingTable::GetMappings(uint32_t offset, uint32_t count) {
-    ASSERT(offset + count <= virtualMappingCount, "Out of bounds mapping");
-    return &virtualMappings[offset];
-}
-
-VirtualResourceMapping *PhysicalResourceMappingTable::ModifyMappings(uint32_t offset, uint32_t count) {
-    isDirty = true;
-
-    ASSERT(offset + count <= virtualMappingCount, "Out of bounds mapping");
-    return &virtualMappings[offset];
-}
-
 void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, const VirtualResourceMapping &mapping) {
-    isDirty = true;
+    std::lock_guard guard(mutex);
 
     ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
     virtualMappings[offset] = mapping;
+    
+    isDirty = true;
 }
 
 void PhysicalResourceMappingTable::SetMappingState(uint32_t offset, ResourceState *state) {
+    std::lock_guard guard(mutex);
     ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
     states[offset] = state;
 }
 
 ResourceState *PhysicalResourceMappingTable::GetMappingState(uint32_t offset) {
+    std::lock_guard guard(mutex);
     ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
     return states[offset];
 }
 
 void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, ResourceState *state, const VirtualResourceMapping &mapping) {
-    WriteMapping(offset, mapping);
-    SetMappingState(offset, state);
+    std::lock_guard guard(mutex);
+
+    ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
+    
+    virtualMappings[offset] = mapping;
+    states[offset] = state;
+    
+    isDirty = true;
 }

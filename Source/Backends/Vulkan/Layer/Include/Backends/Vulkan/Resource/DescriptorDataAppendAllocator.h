@@ -87,7 +87,7 @@ public:
     /// \param value value at root offset
     void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, uint32_t value) {
         // Begin a new segment if the previous does not suffice, may be allocated dynamically
-        if (offset >= mappedSegmentLength) {
+        if (offset >= mappedSegmentLength || (pendingRoll && offset >= pendingRootCount)) {
             ASSERT(allocationSize > offset, "Chunk allocation size must be larger than the expected offset");
             BeginSegment(allocationSize, mappedSegmentLength == allocationSize);
         }
@@ -118,6 +118,7 @@ public:
 
         // Unmap range
         allocator->Unmap(entry.allocation.host);
+        mapped = nullptr;
     }
 
     /// Get the current segment address
@@ -143,6 +144,11 @@ public:
 
         // Release the segment
         return std::move(segment);
+    }
+
+    /// Validate this append allocator
+    void ValidateReleased() {
+        ASSERT(chunkSize == 0 && mapped == nullptr, "Unexpected state");
     }
 
 private:

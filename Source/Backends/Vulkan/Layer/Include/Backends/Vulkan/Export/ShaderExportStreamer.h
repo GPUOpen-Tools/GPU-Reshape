@@ -79,8 +79,7 @@ public:
 
     /// Invoked during command buffer resetting
     /// \param state the stream state
-    /// \param commandBuffer the command buffer
-    void ResetCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer);
+    void ResetCommandBuffer(ShaderExportStreamState* state);
 
     /// Invoked during command buffer closing
     /// \param state the stream state
@@ -153,6 +152,9 @@ private:
     /// Free a segment
     void FreeSegmentNoQueueLock(ShaderExportQueueState* queue, ShaderExportStreamSegment* segment);
 
+    /// Release a descriptor data segment
+    void ReleaseDescriptorDataSegment(const DescriptorDataSegment& dataSegment);
+    
 private:
     DeviceDispatchTable* table;
 

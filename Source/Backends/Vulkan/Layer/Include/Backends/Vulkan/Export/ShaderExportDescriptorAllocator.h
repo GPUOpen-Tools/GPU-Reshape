@@ -4,6 +4,7 @@
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/Allocation/Allocation.h>
 #include <Backends/Vulkan/Export/DescriptorInfo.h>
+#include <Backends/Vulkan/States/PipelineLayoutBindingInfo.h>
 
 // Backend
 #include <Backend/ShaderData/ShaderDataInfo.h>
@@ -14,7 +15,7 @@
 
 // Std
 #include <vector>
-#include <Backends/Vulkan/States/PipelineLayoutBindingInfo.h>
+#include <mutex>
 
 // Forward declarations
 struct DeviceDispatchTable;
@@ -105,6 +106,9 @@ private:
 
 private:
     DeviceDispatchTable* table;
+
+    /// Shared lock
+    std::mutex mutex;
 
     /// Components
     ComRef<DeviceAllocator> deviceAllocator;

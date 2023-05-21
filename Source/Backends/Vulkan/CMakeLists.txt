@@ -67,6 +67,7 @@ set(
     vkCmdExecuteCommands
     vkBeginCommandBuffer
     vkResetCommandBuffer
+    vkResetCommandPool
     vkEndCommandBuffer
     vkCmdBindPipeline
     vkCmdBindDescriptorSets

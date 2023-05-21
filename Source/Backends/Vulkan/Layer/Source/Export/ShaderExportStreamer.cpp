@@ -131,7 +131,7 @@ ShaderExportStreamSegment *ShaderExportStreamer::AllocateSegment() {
 
 void ShaderExportStreamer::Enqueue(ShaderExportQueueState* queue, ShaderExportStreamSegment *segment, FenceState* fence) {
     ASSERT(!segment->fence, "Segment double submission");
-
+    
     // Keep the fence alive
     fence->AddUser();
 
@@ -144,6 +144,12 @@ void ShaderExportStreamer::Enqueue(ShaderExportQueueState* queue, ShaderExportSt
 }
 
 void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer) {
+    // Recycle old data if needed
+    if (state->pending) {
+        ResetCommandBuffer(state);
+    }
+
+    // Serial
     std::lock_guard guard(mutex);
 
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
@@ -159,6 +165,9 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Vk
 
     // Reset render pass state
     state->renderPass.insideRenderPass = false;
+    
+    // Mark as pending
+    state->pending = true;
 
     // Clear push data
     state->persistentPushConstantData.resize(table->physicalDeviceProperties.limits.maxPushConstantsSize);
@@ -172,6 +181,8 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Vk
         if (!freeDescriptorDataSegmentEntries.empty()) {
             bindState.descriptorDataAllocator->SetChunk(commandBuffer, freeDescriptorDataSegmentEntries.back());
             freeDescriptorDataSegmentEntries.pop_back();
+        } else {
+            bindState.descriptorDataAllocator->ValidateReleased();
         }
 
         // Allocate a new descriptor set
@@ -187,18 +198,23 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Vk
     }
 }
 
-void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, VkCommandBuffer commandBuffer) {
+void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state) {
+    std::lock_guard guard(mutex);
+
+    // Release all bind points
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
         for (ShaderExportDescriptorState& descriptorState : bindState.persistentDescriptorState) {
             // Free all dynamic offsets
             if (descriptorState.dynamicOffsets) {
-                std::lock_guard guard(mutex);
                 dynamicOffsetAllocator.Free(descriptorState.dynamicOffsets);
             }
         }
 
         // Commit dangling data
         bindState.descriptorDataAllocator->Commit();
+
+        // Move descriptor data ownership to segment
+        ReleaseDescriptorDataSegment(bindState.descriptorDataAllocator->ReleaseSegment());
 
         // Reset descriptor state
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
@@ -209,9 +225,14 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state, Vk
     // Clear push data
     state->persistentPushConstantData.resize(table->physicalDeviceProperties.limits.maxPushConstantsSize);
     std::fill(state->persistentPushConstantData.begin(), state->persistentPushConstantData.end(), 0u);
+
+    // OK
+    state->pending = false;
 }
 
 void ShaderExportStreamer::EndCommandBuffer(ShaderExportStreamState* state, VkCommandBuffer commandBuffer) {
+    ASSERT(state->pending, "Recycling non-pending stream state");
+    
     for (ShaderExportPipelineBindState& bindState : state->pipelineBindPoints) {
         for (ShaderExportDescriptorState& descriptorState : bindState.persistentDescriptorState) {
             // Free all dynamic offsets
@@ -484,6 +505,9 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
 
     // Empty out
     state->segmentDescriptors.clear();
+
+    // Data has been migrated
+    state->pending = false;
 }
 
 void ShaderExportStreamer::ProcessSegmentsNoQueueLock(ShaderExportQueueState* queue) {
@@ -583,17 +607,7 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
 
     // Release all descriptor data
     for (const DescriptorDataSegment& dataSegment : segment->descriptorDataSegments) {
-        if (dataSegment.entries.empty()) {
-            continue;
-        }
-
-        // Free all re-chunked allocations
-        for (size_t i = 0; i < dataSegment.entries.size() - 1; i++) {
-            deviceAllocator->Free(dataSegment.entries[i].allocation);
-        }
-
-        // Mark the last, and largest, chunk as free
-        freeDescriptorDataSegmentEntries.push_back(dataSegment.entries.back());
+        ReleaseDescriptorDataSegment(dataSegment);
     }
 
     // Cleanup
@@ -613,6 +627,20 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
 
     // Add back to pool
     segmentPool.Push(segment);
+}
+
+void ShaderExportStreamer::ReleaseDescriptorDataSegment(const DescriptorDataSegment &dataSegment) {
+    if (dataSegment.entries.empty()) {
+        return;
+    }
+
+    // Free all re-chunked allocations
+    for (size_t i = 0; i < dataSegment.entries.size() - 1; i++) {
+        deviceAllocator->Free(dataSegment.entries[i].allocation);
+    }
+
+    // Mark the last, and largest, chunk as free
+    freeDescriptorDataSegmentEntries.push_back(dataSegment.entries.back());
 }
 
 VkCommandBuffer ShaderExportStreamer::RecordPatchCommandBuffer(ShaderExportQueueState* state, ShaderExportStreamSegment* segment) {

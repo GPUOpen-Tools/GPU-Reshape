@@ -166,6 +166,7 @@ struct DeviceDispatchTable {
     PFN_vkAllocateCommandBuffers          next_vkAllocateCommandBuffers;
     PFN_vkBeginCommandBuffer              next_vkBeginCommandBuffer;
     PFN_vkResetCommandBuffer              next_vkResetCommandBuffer;
+    PFN_vkResetCommandPool                next_vkResetCommandPool;
     PFN_vkEndCommandBuffer                next_vkEndCommandBuffer;
     PFN_vkFreeCommandBuffers              next_vkFreeCommandBuffers;
     PFN_vkDestroyCommandPool              next_vkDestroyCommandPool;
