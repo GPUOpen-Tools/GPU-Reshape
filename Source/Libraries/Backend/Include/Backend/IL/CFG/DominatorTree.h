@@ -198,7 +198,7 @@ namespace IL {
                 BasicBlock* bb = view[i];
 
                 // Assign order index, used for finger comparison
-                blocks[bb->GetID()].orderIndex = i + 1;
+                blocks[bb->GetID()].orderIndex = static_cast<uint32_t>(i) + 1;
 
                 // Get the terminator
                 const Instruction* terminator = bb->GetTerminator();

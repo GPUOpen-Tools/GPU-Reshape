@@ -282,8 +282,9 @@ void LoopFeature::OnJoin(CommandContextHandle contextHandle) {
     // Validation
     ASSERT(contextStates.contains(contextHandle), "Desynchronized command context states");
 
-    // Remove state, no longer needed for heart beat thread
-    contextStates.erase(contextHandle);
+    // Update state
+    CommandContextState &state = contextStates[contextHandle];
+    state.pending = false;
 }
 
 void LoopFeature::HeartBeatThreadWorker() {

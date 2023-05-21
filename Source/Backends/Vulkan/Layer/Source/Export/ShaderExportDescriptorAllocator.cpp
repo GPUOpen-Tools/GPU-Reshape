@@ -291,10 +291,10 @@ ShaderExportDescriptorAllocator::PoolInfo &ShaderExportDescriptorAllocator::Find
             .descriptorCount = static_cast<uint32_t>(1u + exportBound + dataResources.size()) * setsPerPool
         },
 
-        // PRMT
+        // PRMT + Constants
         {
             .type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-            .descriptorCount = 1u * setsPerPool
+            .descriptorCount = 2u * setsPerPool
         },
 
         // Descriptor

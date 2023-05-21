@@ -3,10 +3,10 @@
 
 ShaderExportConstantAllocation ShaderExportConstantAllocator::Allocate(const ComRef<DeviceAllocator>& deviceAllocator, size_t length) {
     // Needs a staging roll?
-    if (staging.empty() || staging.back().CanAccomodate(length)) {
+    if (staging.empty() || !staging.back().CanAccomodate(length)) {
         // Next byte count
         const size_t lastByteCount = staging.empty() ? 16'384 : staging.back().size;
-        const size_t byteCount = std::max<size_t>(length, lastByteCount) * 1.5f;
+        const size_t byteCount = static_cast<size_t>(static_cast<float>(std::max<size_t>(length, lastByteCount)) * 1.5f);
 
         // Mapped description
         D3D12_RESOURCE_DESC desc{};

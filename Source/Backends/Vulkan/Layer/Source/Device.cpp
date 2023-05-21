@@ -167,7 +167,7 @@ static uint32_t FindQueueWithFlags(DeviceDispatchTable* table, VkQueueFlags flag
 
         // Better match?
         if (properties.queueFlags < distance) {
-            candidate = i;
+            candidate = static_cast<uint32_t>(i);
             distance = properties.queueFlags;
         }
     }

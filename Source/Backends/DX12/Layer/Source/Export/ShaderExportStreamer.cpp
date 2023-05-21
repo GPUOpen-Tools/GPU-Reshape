@@ -825,6 +825,7 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     segment->patchDeviceGPUDescriptor = {};
     segment->commandContextHandles.clear();
     segment->constantShaderDataBuffers.clear();
+    segment->constantAllocator.clear();
 
     // Add back to pool
     segmentPool.Push(segment);

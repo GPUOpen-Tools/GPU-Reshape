@@ -282,7 +282,7 @@ ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
 
     // Set up view
     out.view.BufferLocation = out.allocation.resource->GetGPUVirtualAddress();
-    out.view.SizeInBytes = desc.Width;
+    out.view.SizeInBytes = static_cast<uint32_t>(desc.Width);
 
     // OK
     return out;

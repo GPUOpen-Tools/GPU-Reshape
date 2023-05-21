@@ -45,7 +45,7 @@ struct CommandBuilder {
         ASSERT(length < (1u << 16u) - sizeof(StageBufferCommand), "Inline staging buffer exceeds max size");
 
         StageBufferCommand command;
-        command.commandSize += length;
+        command.commandSize += static_cast<uint32_t>(length);
         command.id = id;
         command.offset = offset;
         command.flags = flags;
