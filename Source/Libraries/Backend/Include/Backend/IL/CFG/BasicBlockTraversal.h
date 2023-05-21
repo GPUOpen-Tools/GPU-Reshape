@@ -94,7 +94,7 @@ namespace IL {
             // Determine the effective bound
             uint32_t bound = 0;
             for (BasicBlock* bb : function->GetBasicBlocks()) {
-                bound = std::max(bound, bb->GetID());
+                bound = std::max(bound, bb->GetID() + 1u);
             }
 
             // Set number of visitation states
