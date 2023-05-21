@@ -16,6 +16,9 @@ struct ShaderExportConstantAllocation {
     /// Underlying resource
     ID3D12Resource* resource{nullptr};
 
+    /// Staging memory
+    void* staging{nullptr};
+
     /// Offset into resource
     uint64_t offset{0};
 };
@@ -30,6 +33,9 @@ struct ShaderExportConstantSegment {
 
     /// Underlying allocation
     Allocation allocation;
+
+    /// Staging memory
+    void* staging{nullptr};
 
     /// Total size of this allocation
     size_t size{0};

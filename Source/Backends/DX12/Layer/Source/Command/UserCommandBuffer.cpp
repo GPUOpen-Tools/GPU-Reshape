@@ -133,20 +133,8 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 // Allocate staging data
                 ShaderExportConstantAllocation stagingAllocation = streamState->constantAllocator.Allocate(device->deviceAllocator, dwordCount * sizeof(uint32_t));
 
-                // Opaque data
-                void* mapped{nullptr};
-
-                // Map effective range
-                D3D12_RANGE range{};
-                range.Begin = stagingAllocation.offset;
-                range.End = stagingAllocation.offset + dwordCount * sizeof(uint32_t);
-                stagingAllocation.resource->Map(0u, &range, &mapped);
-
                 // Update data
-                std::memcpy(mapped, &cmd->value, sizeof(uint32_t));
-
-                // Unmap
-                stagingAllocation.resource->Unmap(0u, &range);
+                std::memcpy(stagingAllocation.staging, &cmd->value, sizeof(uint32_t));
 
                 // Copy from staging
                 commandList->CopyBufferRegion(
@@ -175,20 +163,8 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 // Allocate staging data
                 ShaderExportConstantAllocation stagingAllocation = streamState->constantAllocator.Allocate(device->deviceAllocator, length);
 
-                // Opaque data
-                void* mapped{nullptr};
-
-                // Map effective range
-                D3D12_RANGE range{};
-                range.Begin = stagingAllocation.offset;
-                range.End = stagingAllocation.offset + length;
-                stagingAllocation.resource->Map(0u, &range, &mapped);
-
                 // Update data
-                std::memcpy(mapped, reinterpret_cast<const uint8_t*>(cmd) + sizeof(StageBufferCommand), length);
-
-                // Unmap
-                stagingAllocation.resource->Unmap(0u, &range);
+                std::memcpy(stagingAllocation.staging, reinterpret_cast<const uint8_t*>(cmd) + sizeof(StageBufferCommand), length);
 
                 // Using atomic copies?
                 if (cmd->flags & StageBufferFlag::Atomic32) {

@@ -25,6 +25,10 @@ ShaderExportConstantAllocation ShaderExportConstantAllocator::Allocate(const Com
         ShaderExportConstantSegment& segment = staging.emplace_back();
         segment.allocation = deviceAllocator->Allocate(desc, AllocationResidency::Host);
         segment.size = desc.Width;
+
+        // Map staging memory
+        D3D12_RANGE range{0, 0};
+        segment.allocation.resource->Map(0, &range, &segment.staging);
     }
 
     // Assume last staging
@@ -33,6 +37,7 @@ ShaderExportConstantAllocation ShaderExportConstantAllocator::Allocate(const Com
     // Create sub-allocation
     ShaderExportConstantAllocation out;
     out.resource = segment.allocation.resource;
+    out.staging = static_cast<uint8_t*>(segment.staging) + segment.head;
     out.offset = segment.head;
 
     // Offset head address
