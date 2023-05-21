@@ -31,6 +31,11 @@ static const T& Unwrap(const T& top) {
     return top;
 }
 
+/// Unwrap a component
+IUnknown* UnwrapObject(IUnknown* object) {
+    return Unwrap(object);
+}
+
 
 /* Hooks */
 

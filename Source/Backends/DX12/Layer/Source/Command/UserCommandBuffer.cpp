@@ -80,6 +80,9 @@ static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *com
 void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
     UserCommandState state;
 
+    // Is this a compute command list?
+    const bool isCompute = commandList->GetType() == D3D12_COMMAND_LIST_TYPE_COMPUTE;
+    
     // Handle all commands
     for (const Command &command: buffer) {
         switch (static_cast<CommandType>(command.commandType)) {
@@ -118,6 +121,14 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
             case CommandType::SetDescriptorData: {
                 auto *cmd = command.As<SetDescriptorDataCommand>();
 
+                // Expected read state
+                D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+                // Graphics bit?
+                if (!isCompute) {
+                    readState |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                }
+
                 // Get offset
                 uint32_t dwordOffset = device->constantRemappingTable[cmd->id];
                 uint32_t dwordCount = 1u;
@@ -126,7 +137,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 D3D12_RESOURCE_BARRIER barrier{};
                 barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                 barrier.Transition.pResource = streamState->constantShaderDataBuffer.allocation.resource;
-                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                barrier.Transition.StateBefore = readState;
                 barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
                 commandList->ResourceBarrier(1u, &barrier);
 
@@ -146,7 +157,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 );
 
                 // Copy Dest -> Shader Read
-                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                barrier.Transition.StateAfter = readState;
                 barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
                 commandList->ResourceBarrier(1u, &barrier);
                 break;

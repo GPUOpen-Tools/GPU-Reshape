@@ -34,3 +34,12 @@ template<typename T>
 static auto GetState(T* object) -> decltype(GetTable(object).state) {
     return object ? GetTable(object).state : nullptr;
 }
+
+/// Unwrap a component
+IUnknown* UnwrapObject(IUnknown* object);
+
+/// Unwrap a typed component
+template<typename T>
+static inline T* UnwrapObject(T* object) {
+    return static_cast<T*>(UnwrapObject(static_cast<IUnknown*>(object)));
+}

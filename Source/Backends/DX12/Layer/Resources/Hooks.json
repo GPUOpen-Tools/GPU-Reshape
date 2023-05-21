@@ -71,7 +71,12 @@
         "CreateRenderTargetView",
         "CreateSampler",
         "CreateCommandSignature",
-        "CreatePipelineLibrary"
+        "CreatePipelineLibrary",
+        "SetEventOnMultipleFenceCompletion",
+        "SetResidencyPriority",
+        "MakeResident",
+        "EnqueueMakeResident",
+        "Evict"
       ]
     },
     "ID3D12CommandQueue": {

@@ -276,6 +276,58 @@ HRESULT WINAPI HookID3D12ResourceSetName(ID3D12Resource* _this, LPCWSTR name) {
     return table.state->parent->SetName(name);
 }
 
+HRESULT WINAPI HookID3D12DeviceSetResidencyPriority(ID3D12Device* _this, UINT NumObjects, ID3D12Pageable* const* ppObjects, const D3D12_RESIDENCY_PRIORITY* pPriorities){
+    auto table = GetTable(_this);
+    
+    // Unwrap all objects
+    auto* unwrapped = ALLOCA_ARRAY(ID3D12Pageable*, NumObjects);
+    for (uint32_t i = 0; i < NumObjects; i++) {
+        unwrapped[i] = UnwrapObject(ppObjects[i]);
+    }
+
+    // Pass down callchain
+    return table.next->SetResidencyPriority(NumObjects, unwrapped, pPriorities);
+}
+
+HRESULT WINAPI HookID3D12DeviceMakeResident(ID3D12Device* _this, UINT NumObjects, ID3D12Pageable* const* ppObjects){
+    auto table = GetTable(_this);
+    
+    // Unwrap all objects
+    auto* unwrapped = ALLOCA_ARRAY(ID3D12Pageable*, NumObjects);
+    for (uint32_t i = 0; i < NumObjects; i++) {
+        unwrapped[i] = UnwrapObject(ppObjects[i]);
+    }
+
+    // Pass down callchain
+    return table.next->MakeResident(NumObjects, unwrapped);
+}
+
+HRESULT WINAPI HookID3D12DeviceEnqueueMakeResident(ID3D12Device* _this, D3D12_RESIDENCY_FLAGS Flags, UINT NumObjects, ID3D12Pageable* const* ppObjects, ID3D12Fence* pFenceToSignal, UINT64 FenceValueToSignal){
+    auto table = GetTable(_this);
+    
+    // Unwrap all objects
+    auto* unwrapped = ALLOCA_ARRAY(ID3D12Pageable*, NumObjects);
+    for (uint32_t i = 0; i < NumObjects; i++) {
+        unwrapped[i] = UnwrapObject(ppObjects[i]);
+    }
+
+    // Pass down callchain
+    return table.next->EnqueueMakeResident(Flags, NumObjects, unwrapped, Next(pFenceToSignal), FenceValueToSignal);
+}
+
+HRESULT WINAPI HookID3D12DeviceEvict(ID3D12Device* _this, UINT NumObjects, ID3D12Pageable* const* ppObjects) {
+    auto table = GetTable(_this);
+    
+    // Unwrap all objects
+    auto* unwrapped = ALLOCA_ARRAY(ID3D12Pageable*, NumObjects);
+    for (uint32_t i = 0; i < NumObjects; i++) {
+        unwrapped[i] = UnwrapObject(ppObjects[i]);
+    }
+
+    // Pass down callchain
+    return table.next->Evict(NumObjects, unwrapped);
+}
+
 ResourceState::~ResourceState() {
     auto table = GetTable(parent);
 

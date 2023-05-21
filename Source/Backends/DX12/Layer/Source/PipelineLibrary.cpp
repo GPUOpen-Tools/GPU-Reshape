@@ -75,11 +75,14 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
 
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;
+    
+    // External user
+    state->AddUser();
 
     // Pass down callchain
     HRESULT hr = table.bottom->next_LoadGraphicsPipeline(table.next, pName, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
-        destroy(state, state->allocators);
+        destroyRef(state, state->allocators);
         return hr;
     }
 
@@ -171,11 +174,14 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
 
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;
+    
+    // External user
+    state->AddUser();
 
     // Pass down callchain
     HRESULT hr = table.bottom->next_LoadComputePipeline(table.next, pName, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
-        destroy(state, state->allocators);
+        destroyRef(state, state->allocators);
         return hr;
     }
 

@@ -13,3 +13,8 @@ HRESULT WINAPI HookID3D12DeviceCreateReservedResource(ID3D12Device*, const D3D12
 HRESULT WINAPI HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const D3D12_RANGE* readRange, void** blob);
 HRESULT WINAPI HookID3D12ResourceGetDevice(ID3D12Resource* _this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12ResourceSetName(ID3D12Resource* _this, LPCWSTR name);
+HRESULT WINAPI HookID3D12DeviceSetResidencyPriority(ID3D12Device* _this, UINT NumObjects, ID3D12Pageable* const* ppObjects, const D3D12_RESIDENCY_PRIORITY* pPriorities);
+HRESULT WINAPI HookID3D12DeviceMakeResident(ID3D12Device* _this, UINT NumObjects, ID3D12Pageable* const* ppObjects);
+HRESULT WINAPI HookID3D12DeviceEnqueueMakeResident(ID3D12Device* _this, D3D12_RESIDENCY_FLAGS Flags, UINT NumObjects, ID3D12Pageable* const* ppObjects, ID3D12Fence* pFenceToSignal, UINT64 FenceValueToSignal);
+HRESULT WINAPI HookID3D12DeviceEvict(ID3D12Device* _this, UINT NumObjects, ID3D12Pageable* const* ppObjects);
+    

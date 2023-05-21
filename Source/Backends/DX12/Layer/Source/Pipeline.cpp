@@ -277,7 +277,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     // Pass down callchain
     HRESULT hr = table.bottom->next_CreateGraphicsPipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
-        destroy(state, state->allocators);
+        destroyRef(state, state->allocators);
         return hr;
     }
 
@@ -373,7 +373,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     // Pass down callchain
     HRESULT hr = table.bottom->next_CreateComputePipelineState(table.next, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
     if (FAILED(hr)) {
-        destroy(state, state->allocators);
+        destroyRef(state, state->allocators);
         return hr;
     }
 

@@ -65,3 +65,16 @@ uint64_t FenceState::GetLatestCommit() {
     // Return new commit
     return cpuSignalCommitId;
 }
+
+HRESULT WINAPI HookID3D12DeviceSetEventOnMultipleFenceCompletion(ID3D12Device* _this, ID3D12Fence* const* ppFences, const UINT64* pFenceValues, UINT NumFences, D3D12_MULTIPLE_FENCE_WAIT_FLAGS Flags, HANDLE hEvent) {
+    auto table = GetTable(_this);
+
+    // Unwrap all objects
+    auto* unwrapped = ALLOCA_ARRAY(ID3D12Fence*, NumFences);
+    for (uint32_t i = 0; i < NumFences; i++) {
+        unwrapped[i] = Next(ppFences[i]);
+    }
+
+    // Pass down call chain
+    return table.next->SetEventOnMultipleFenceCompletion(unwrapped, pFenceValues, NumFences, Flags, hEvent);
+}
