@@ -242,8 +242,8 @@ uint32_t LoopFeature::AllocateTerminationIDNoLock() {
     uint32_t id = submissionAllocationCounter++;
 
     // Cycle back if needed
-    if (id == kMaxTrackedSubmissions) {
-        id = 0;
+    if (submissionAllocationCounter == kMaxTrackedSubmissions) {
+        submissionAllocationCounter = 0;
     }
 
     // OK

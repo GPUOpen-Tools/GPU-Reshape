@@ -121,6 +121,9 @@ struct ShaderExportStreamState {
     ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators) {
         
     }
+
+    /// Is this state pending?
+    bool pending{false};
     
     /// Currently bound heaps
     DescriptorHeapState* resourceHeap{nullptr};

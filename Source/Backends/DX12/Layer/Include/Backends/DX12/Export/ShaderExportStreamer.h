@@ -193,6 +193,14 @@ public:
     /// \param state parent stream state
     void CloseCommandList(ShaderExportStreamState* state);
 
+    /// Close a command list
+    /// \param state parent stream state
+    void ResetCommandList(ShaderExportStreamState* state);
+
+    /// Recycle a command list
+    /// \param state parent stream state, must be pending
+    void RecycleCommandList(ShaderExportStreamState* state);
+
     /// Bind the shader export for a pipeline
     /// \param state the stream state
     /// \param slot destination slot
@@ -234,6 +242,9 @@ private:
 
     /// Free a constant allocator
     void FreeConstantAllocator(ShaderExportConstantAllocator& allocator);
+
+    /// Free a descriptor data segment
+    void FreeDescriptorDataSegment(const DescriptorDataSegment& dataSegment);
 
     /// Get the expected bind state of a pipeline
     ShaderExportStreamBindState& GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline);

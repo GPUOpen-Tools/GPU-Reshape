@@ -179,6 +179,11 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
 void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
     std::lock_guard guard(mutex);
 
+    // Recycle old data if needed
+    if (state->pending) {
+        RecycleCommandList(state);
+    }
+
     // Reset state
     state->resourceHeap = nullptr;
     state->samplerHeap = nullptr;
@@ -186,6 +191,7 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
     state->pipeline = nullptr;
     state->pipelineObject = nullptr;
     state->isInstrumented = false;
+    state->pending = true;
 
     // Uses descriptors?
     if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY) {
@@ -414,6 +420,35 @@ void ShaderExportStreamer::Process(CommandQueueState* queueState) {
     ProcessSegmentsNoQueueLock(queueState);
 }
 
+void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
+    ASSERT(state->pending, "Recycling non-pending stream state");
+
+    // Move descriptor data ownership to segment
+    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+        FreeDescriptorDataSegment(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
+    }
+
+    // Move constant ownership to the segment
+    freeConstantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
+
+    // Move constant allocator to the segment
+    if (!state->constantAllocator.staging.empty()) {
+        FreeConstantAllocator(state->constantAllocator);
+    }
+
+    // Move ownership to the segment
+    for (const ShaderExportSegmentDescriptorAllocation& segmentDescriptor : state->segmentDescriptors) {
+        segmentDescriptor.allocator->Free(segmentDescriptor.info);
+    }
+
+    // Cleanup
+    state->constantShaderDataBuffer = {};
+    state->segmentDescriptors.clear();
+
+    // OK
+    state->pending = false;
+}
+
 void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, uint32_t slot, PipelineType type, ID3D12GraphicsCommandList *commandList) {
     switch (type) {
         default:
@@ -514,6 +549,9 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
 
     // Empty out
     state->segmentDescriptors.clear();
+
+    // Data has been migrated
+    state->pending = false;
 }
 
 void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
@@ -770,6 +808,20 @@ void ShaderExportStreamer::FreeConstantAllocator(ShaderExportConstantAllocator& 
     freeConstantAllocators.push_back(allocator);
 }
 
+void ShaderExportStreamer::FreeDescriptorDataSegment(const DescriptorDataSegment &dataSegment) {
+    if (dataSegment.entries.empty()) {
+        return;
+    }
+
+    // Free all re-chunked allocations
+    for (size_t i = 0; i < dataSegment.entries.size() - 1; i++) {
+        deviceAllocator->Free(dataSegment.entries[i].allocation);
+    }
+
+    // Mark the last, and largest, chunk as free
+    freeDescriptorDataSegmentEntries.push_back(dataSegment.entries.back());
+}
+
 void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, ShaderExportStreamSegment *segment) {
     std::lock_guard guard(mutex);
     
@@ -787,17 +839,7 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
 
     // Release all descriptor data
     for (const DescriptorDataSegment& dataSegment : segment->descriptorDataSegments) {
-        if (dataSegment.entries.empty()) {
-            continue;
-        }
-
-        // Free all re-chunked allocations
-        for (size_t i = 0; i < dataSegment.entries.size() - 1; i++) {
-            deviceAllocator->Free(dataSegment.entries[i].allocation);
-        }
-
-        // Mark the last, and largest, chunk as free
-        freeDescriptorDataSegmentEntries.push_back(dataSegment.entries.back());
+        FreeDescriptorDataSegment(dataSegment);
     }
 
     // Release all constant data buffers

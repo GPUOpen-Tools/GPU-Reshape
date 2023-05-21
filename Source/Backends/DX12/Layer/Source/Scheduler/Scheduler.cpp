@@ -62,6 +62,9 @@ void Scheduler::SyncPoint() {
                 break;
             }
 
+            // Let the streamer recycle it
+            device->exportStreamer->RecycleCommandList(it->streamState);
+
             // Add as free
             bucket.freeSubmissions.push_back(*it);
         }
