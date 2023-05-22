@@ -1,5 +1,8 @@
 #pragma once
 
+// Common
+#include <Common/Allocators.h>
+
 // Std
 #include <string>
 #include <vector>
@@ -10,10 +13,9 @@
 #include "SpvSourceAssociation.h"
 
 struct SpvSourceMap {
-    /// Set the spv bound
-    /// \param bound
-    void SetBound(SpvId bound);
-
+    /// Constructor
+    SpvSourceMap(const Allocators& allocators);
+    
     /// Add a new physical source section, may represent a single file
     /// \param id the spv identifier used
     /// \param language the source language
@@ -25,6 +27,9 @@ struct SpvSourceMap {
     /// \param id the spv identifier, must have an associated physical source
     /// \param source the source code to be added
     void AddSource(SpvId id, const std::string_view& source);
+
+    /// Finalize the source map
+    void Finalize();
 
     /// Get a specific line from this source map
     /// \param fileIndex the file index
@@ -65,9 +70,13 @@ struct SpvSourceMap {
 
     /// Get the file index for a given spv identifier (physical source)
     uint32_t GetFileIndex(SpvId id) const {
+        if (id >= sourceMappings.size()) {
+            return 0u;
+        }
+        
         return sourceMappings.at(id);
     }
-
+    
 private:
     /// Fragment of source code
     struct Fragment {
@@ -86,21 +95,45 @@ private:
 
     /// Complete source section
     struct PhysicalSource {
+        /// Source language
         SpvSourceLanguage language{SpvSourceLanguageMax};
+
+        /// Source version
         uint32_t version{0};
+
+        /// Filename of this source
         std::string_view filename;
+
+        /// Code wise view
+        std::string_view source;
+        
+        /// All pending chunks for finalization
+        std::vector<std::string_view> pendingSourceChunks;
+
+        /// Optional storage for multi-chunk sources
+        std::string sourceStorage;
+
+        /// All final fragments
         std::vector<Fragment> fragments;
     };
 
     /// Get a source section
-    PhysicalSource& GetOrAllocate(const std::string_view& view, SpvId id);
+    PhysicalSource* GetOrAllocate(const std::string_view& view, SpvId id);
 
     /// Get a source section
-    PhysicalSource& GetOrAllocate(const std::string_view& view);
+    PhysicalSource* GetOrAllocate(const std::string_view& view);
+
+    /// Finalize a given source
+    void FinalizeSource(PhysicalSource* source);
+
+    /// Finalize all fragments within a source
+    void FinalizeFragments(PhysicalSource* source);
 
 private:
+    Allocators allocators;
+    
     /// All sections
-    std::vector<PhysicalSource> physicalSources;
+    std::vector<PhysicalSource*> physicalSources;
 
     /// All mappings
     std::unordered_map<uint32_t, SpvSourceAssociation> sourceAssociations;

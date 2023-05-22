@@ -2,12 +2,17 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
 
+SpvPhysicalBlockDebugStringSource::SpvPhysicalBlockDebugStringSource(const Allocators &allocators, Backend::IL::Program &program, SpvPhysicalBlockTable &table)
+    : SpvPhysicalBlockSection(allocators, program, table),
+      sourceMap(allocators) {
+    
+}
+
 void SpvPhysicalBlockDebugStringSource::Parse() {
     block = table.scan.GetPhysicalBlock(SpvPhysicalBlockType::DebugStringSource);
 
     // Set entry count
     debugMap.SetBound(table.scan.header.bound);
-    sourceMap.SetBound(table.scan.header.bound);
 
     // Current source being processed
     uint32_t pendingSource{};
@@ -69,6 +74,9 @@ void SpvPhysicalBlockDebugStringSource::Parse() {
         // Next instruction
         ctx.Next();
     }
+
+    // Finalize all sources
+    sourceMap.Finalize();
 }
 
 void SpvPhysicalBlockDebugStringSource::CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockDebugStringSource &out) {
