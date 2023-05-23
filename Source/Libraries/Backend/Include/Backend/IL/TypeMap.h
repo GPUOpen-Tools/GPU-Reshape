@@ -72,12 +72,13 @@ namespace Backend::IL {
         const T* AddType(ID id, const T &type) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &typePtr = sortMap[type.SortKey()];
-            if (!typePtr) {
-                typePtr = AllocateType<T>(id, InvalidOffset, type);
+            T* allocation = AllocateType<T>(id, InvalidOffset, type);
+
+            if (auto &typePtr = sortMap[type.SortKey()]; !typePtr) {
+                typePtr = allocation;
             }
 
-            return typePtr;
+            return allocation;
         }
 
         /// Add a type to this map, must be unique
@@ -86,12 +87,13 @@ namespace Backend::IL {
         const T* AddType(ID id, uint32_t sourceOffset, const T &type) {
             auto&& sortMap = GetSortMap<T>();
 
-            auto &typePtr = sortMap[type.SortKey()];
-            if (!typePtr) {
-                typePtr = AllocateType<T>(id, sourceOffset, type);
+            T* allocation = AllocateType<T>(id, sourceOffset, type);
+
+            if (auto &typePtr = sortMap[type.SortKey()]; !typePtr) {
+                typePtr = allocation;
             }
 
-            return typePtr;
+            return allocation;
         }
 
         /// Add an undeclared type to this map

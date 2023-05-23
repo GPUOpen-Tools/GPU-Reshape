@@ -75,6 +75,18 @@ private:
     /// \return false if not applicable
     bool PostPatchLoopContinueInstruction(IL::Instruction* instruction, IL::ID original, IL::ID redirect);
 
+    /// Patch the selection merge construct instruction
+    /// \param instruction the instruction
+    /// \param original original merge block to test for
+    /// \param redirect the block to redirect to
+    /// \return true if redirected
+    bool PostPatchLoopSelectionMergeInstruction(IL::Instruction* instruction, IL::ID original, IL::ID redirect);
+
+    /// Patch all selection construct merges
+    /// \param outerUser the outer user to test for selection merges
+    /// \param bridgeBlockId the block to patch against
+    void PostPatchLoopSelectionMerge(const IL::OpaqueInstructionRef& outerUser, IL::ID bridgeBlockId);
+
     /// Create the user fed data map
     /// \param job parent job
     void CreateDataResourceMap(const SpvJob& job);

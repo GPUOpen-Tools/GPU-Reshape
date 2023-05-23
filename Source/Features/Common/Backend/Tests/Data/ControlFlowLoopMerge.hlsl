@@ -31,6 +31,17 @@ void main(uint dtid : SV_DispatchThreadID) {
 
     GroupMemoryBarrierWithGroupSync();
 
+    // Test selection constructs in loops
+    for (uint j = 0; j < 64; j++) {
+        if (j % (j / 2) == 0) {
+            continue;
+        }
+
+        data += bufferRW[dtid.x + j];
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
     // Write back
 	bufferRW[dtid.x] = data;
 }

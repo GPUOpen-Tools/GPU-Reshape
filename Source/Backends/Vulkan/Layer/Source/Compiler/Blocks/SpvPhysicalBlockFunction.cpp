@@ -798,7 +798,11 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                             break;
                         }
                         case Backend::IL::TypeKind::Matrix: {
-                            elementType = elementType->As<Backend::IL::MatrixType>()->containedType;
+                            const auto* matrixType = elementType->As<Backend::IL::MatrixType>();
+                            elementType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+                                .containedType = matrixType->containedType,
+                                .dimension = matrixType->rows
+                            });
                             break;
                         }
                         case Backend::IL::TypeKind::Pointer:{
@@ -1971,9 +1975,16 @@ bool SpvPhysicalBlockFunction::PostPatchLoopContinueInstruction(IL::Instruction 
         default:
             return false;
         case IL::OpCode::Branch: {
-            auto* branch = instruction->As<IL::BranchInstruction>();
-            branch->branch = redirect;
-            return true;
+            auto *branch = instruction->As<IL::BranchInstruction>();
+
+            // Test branch
+            if (branch->branch == original) {
+                branch->branch = redirect;
+                return true;
+            }
+
+            // No need
+            return false;
         }
         case IL::OpCode::BranchConditional: {
             auto* branch = instruction->As<IL::BranchConditionalInstruction>();
@@ -1996,6 +2007,71 @@ bool SpvPhysicalBlockFunction::PostPatchLoopContinueInstruction(IL::Instruction 
     }
 }
 
+bool SpvPhysicalBlockFunction::PostPatchLoopSelectionMergeInstruction(IL::Instruction *instruction, IL::ID original, IL::ID redirect) {
+    switch (instruction->opCode) {
+        default: {
+            return false;
+        }
+        case IL::OpCode::Branch: {
+            auto *branch = instruction->As<IL::BranchInstruction>();
+
+            // Test merge
+            if (branch->controlFlow.merge == original) {
+                branch->controlFlow.merge = redirect;
+                return true;
+            }
+
+            // No need
+            return false;
+        }
+        case IL::OpCode::BranchConditional: {
+            auto* branch = instruction->As<IL::BranchConditionalInstruction>();
+
+            // Test merge
+            if (branch->controlFlow.merge == original) {
+                branch->controlFlow.merge = redirect;
+                return true;
+            }
+
+            // No need
+            return false;
+        }
+    }
+}
+
+void SpvPhysicalBlockFunction::PostPatchLoopSelectionMerge(const IL::OpaqueInstructionRef& outerUser, IL::ID bridgeBlockId) {
+    // All removed users
+    TrivialStackVector<IL::OpaqueInstructionRef, 128> innerRemoved(allocators);
+
+    // Visit all users of the potential control-flow merge region, and redirect the merge block to the bridge block
+    for (const IL::OpaqueInstructionRef& innerUser : program.GetIdentifierMap().GetBlockUsers(outerUser.basicBlock->GetID())) {
+        // TODO: This is ugly
+        IL::Instruction* instr = innerUser.basicBlock->GetRelocationInstruction(innerUser.basicBlock->GetTerminator().Ref().relocationOffset);
+
+        // Try to patch the merge block
+        if (!PostPatchLoopSelectionMergeInstruction(instr, outerUser.basicBlock->GetID(), bridgeBlockId)) {
+            continue;
+        }
+
+        // Add new block user
+        program.GetIdentifierMap().AddBlockUser(bridgeBlockId, innerUser);
+
+        // Mark user instruction as dirty
+        instr->source = instr->source.Modify();
+
+        // Mark the branch block as dirty to ensure recompilation
+        innerUser.basicBlock->MarkAsDirty();
+
+        // Latent removal
+        innerRemoved.Add(outerUser);
+    }
+
+    // Remove references
+    for (const IL::OpaqueInstructionRef& innerRef : innerRemoved) {
+        program.GetIdentifierMap().RemoveBlockUser(outerUser.basicBlock->GetID(), innerRef);
+    }
+}
+
 void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
     for (const LoopContinueBlock& block : loopContinueBlocks) {
         IL::ID bridgeBlockId = program.GetIdentifierMap().AllocID();
@@ -2011,6 +2087,9 @@ void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
             if (!PostPatchLoopContinueInstruction(instruction, block.block, bridgeBlockId)) {
                 continue;
             }
+
+            // If the user is the merge block of a selection construct, we must redirect the CF merge block to the bridge block
+            PostPatchLoopSelectionMerge(ref, bridgeBlockId);
 
             // Add new block user
             program.GetIdentifierMap().AddBlockUser(bridgeBlockId, ref);

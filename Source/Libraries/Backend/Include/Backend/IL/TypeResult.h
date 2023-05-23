@@ -299,7 +299,11 @@ namespace Backend::IL {
                     break;
                 }
                 case Backend::IL::TypeKind::Matrix: {
-                    type = type->As<Backend::IL::MatrixType>()->containedType;
+                    auto* matrix = type->As<Backend::IL::MatrixType>();
+                    type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+                        .containedType = matrix->containedType,
+                        .dimension = matrix->rows
+                    });
                     break;
                 }
                 case Backend::IL::TypeKind::Pointer:{
