@@ -196,6 +196,14 @@ namespace Studio.ViewModels.Workspace.Listeners
         {
             lock (this)
             {
+                // If no branch is available this implies we're snooping on message streams
+                // submitted before the summarization request.
+                if (_branches.Count == 0)
+                {
+                    return;
+                }
+            
+                // Always append on last
                 Branch branch = _branches.Last();
                 
                 // Add all resources
