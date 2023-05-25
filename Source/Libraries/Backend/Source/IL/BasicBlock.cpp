@@ -101,8 +101,7 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
                         continue;
                     }
 
-                    ASSERT(false, "Cannot split continue control flow blocks");
-                    return {};
+                    break;
                 }
                 case OpCode::Phi: {
                     auto* phi = instruction->As<PhiInstruction>();

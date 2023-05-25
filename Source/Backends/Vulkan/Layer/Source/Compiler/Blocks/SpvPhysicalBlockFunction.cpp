@@ -2073,6 +2073,28 @@ void SpvPhysicalBlockFunction::PostPatchLoopSelectionMerge(const IL::OpaqueInstr
 }
 
 void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
+#if 1
+    // Allow instrumentation after the loop continue block
+    for (const LoopContinueBlock& block : loopContinueBlocks) {
+        IL::BasicBlock* continueBlock = fn->GetBasicBlocks().GetBlock(block.block);
+
+        // Allocate post block
+        IL::BasicBlock* postMergeBlock = fn->GetBasicBlocks().AllocBlock();
+
+        // Move all instructions to post merge
+        continueBlock->Split(postMergeBlock, continueBlock->begin());
+
+        // Never instrument the source loop block
+        continueBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
+
+        // Branch back to the loop header
+        IL::Emitter<> emitter(program, *continueBlock);
+        emitter.Branch(postMergeBlock);
+    }
+
+    // Empty out
+    loopContinueBlocks.clear();
+#else // 1
     for (const LoopContinueBlock& block : loopContinueBlocks) {
         IL::ID bridgeBlockId = program.GetIdentifierMap().AllocID();
 
@@ -2144,6 +2166,7 @@ void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
             emitter.Branch(block.instruction.basicBlock);
         }
     }
+#endif // 1
 
     // Empty out
     loopContinueBlocks.clear();

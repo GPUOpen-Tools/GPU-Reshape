@@ -17,8 +17,12 @@ void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
 }
 
 void SpvSourceMap::Finalize() {
+    size_t sourceCount = physicalSources.size();
+    
     // Finalize all sources
-    for (PhysicalSource* source: physicalSources) {
+    for (size_t i = 0; i < sourceCount; i++) {
+        PhysicalSource* source = physicalSources[i];
+
         FinalizeSource(source);
         FinalizeFragments(source);
     }

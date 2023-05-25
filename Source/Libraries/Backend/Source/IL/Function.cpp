@@ -27,7 +27,7 @@ struct TraversalState {
     std::unordered_map<IL::ID, bool> visitationStack;
 
     /// Number of users on the current candidate
-    uint32_t candidateUsers{UINT32_MAX};
+    int32_t candidateUsers{INT32_MAX};
 
     /// Current candidate
     IL::ID candidate{IL::InvalidID};
@@ -47,7 +47,7 @@ static void GetLeastDependent(TraversalState &state, IL::BasicBlockList &basicBl
     state.visitationStack[blockID] = true;
 
     // Get number of users
-    const uint32_t users = state.userMap[blockID];
+    const int32_t users = state.userMap[blockID];
 
     // Potential candidate?
     if (users && users < state.candidateUsers) {
@@ -109,7 +109,7 @@ static void AddSuccessor(TraversalState &state, IL::BasicBlockList &basicBlocks,
         }
 
         // Skip loop back continue block for order resolving
-        if (controlFlow._continue == block->GetID()) {
+        if (controlFlow._continue != IL::InvalidID && state.userMap[successor] > 0) {
             return;
         }
     }
@@ -170,7 +170,7 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
 
                     // Add producers for values
                     for (uint32_t i = 0; i < phi->values.count; i++) {
-                        if (controlFlow._continue == phi->values[i].branch) {
+                        if (controlFlow._continue != IL::InvalidID) {
                             continue;
                         }
 
@@ -196,8 +196,8 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
         // Find candidate
         for (auto it = blocks.begin(); it != blocks.end(); it++) {
             // Find first with free users
-            uint32_t users = state.userMap[(*it)->GetID()];
-            if (users) {
+            int32_t users = state.userMap[(*it)->GetID()];
+            if (users > 0) {
                 continue;
             }
 
