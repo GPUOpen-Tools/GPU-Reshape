@@ -2081,8 +2081,16 @@ void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
         // Allocate post block
         IL::BasicBlock* postMergeBlock = fn->GetBasicBlocks().AllocBlock();
 
+        // Final split point
+        IL::BasicBlock::Iterator splitPoint = continueBlock->begin();
+
+        // Do not split any phi operations
+        while (splitPoint != continueBlock->end() && splitPoint->Is<IL::PhiInstruction>()) {
+            splitPoint++;
+        }
+
         // Move all instructions to post merge
-        continueBlock->Split(postMergeBlock, continueBlock->begin());
+        continueBlock->Split(postMergeBlock, splitPoint);
 
         // Never instrument the source loop block
         continueBlock->AddFlag(BasicBlockFlag::NoInstrumentation);

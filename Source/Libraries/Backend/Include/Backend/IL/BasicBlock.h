@@ -99,6 +99,13 @@ namespace IL {
                 return reinterpret_cast<const Instruction *>(ptr);
             }
 
+            /// Get the instruction
+            Instruction *GetMutable() const {
+                Validate();
+
+                return reinterpret_cast<Instruction *>(ptr);
+            }
+
             /// Dereference
             const Instruction *operator*() const {
                 return Get();
@@ -189,7 +196,7 @@ namespace IL {
             }
 
             /// Current offset
-            const uint8_t *ptr{nullptr};
+            uint8_t *ptr{nullptr};
 
             /// Relocation index for references
             uint32_t relocationIndex{0};
@@ -559,14 +566,14 @@ namespace IL {
         /// \param destBlock the destination basic block in which all [splitIterator, end) will be inserted
         /// \param splitIterator the iterator from which on the block is splitted, inclusive
         /// \return the first iterator in the new basic block
-        Iterator Split(BasicBlock* destBlock, const Iterator& splitIterator, BasicBlockSplitFlagSet splitFlags = BasicBlockSplitFlag::All);
+        Iterator Split(BasicBlock* destBlock, const Iterator& splitIterator, BasicBlockSplitFlagSet splitFlags = BasicBlockSplitFlag::RedirectAll);
 
         /// Split this basic block from an iterator onwards
         /// \param destBlock the destination basic block in which all [splitIterator, end) will be inserted
         /// \param splitIterator the iterator from which on the block is splitted, inclusive
         /// \return the first iterator in the new basic block
         template<typename T>
-        TypedIterator<T> Split(BasicBlock* destBlock, const Iterator& splitIterator, BasicBlockSplitFlagSet splitFlags = BasicBlockSplitFlag::All) {
+        TypedIterator<T> Split(BasicBlock* destBlock, const Iterator& splitIterator, BasicBlockSplitFlagSet splitFlags = BasicBlockSplitFlag::RedirectAll) {
             return Split(destBlock, splitIterator, splitFlags);
         }
 
@@ -575,7 +582,7 @@ namespace IL {
         /// \param splitIterator the iterator from which on the block is splitted, inclusive
         /// \return the first iterator in the new basic block
         template<typename T>
-        TypedIterator<T> Split(BasicBlock* destBlock, const TypedIterator<T>& splitIterator, BasicBlockSplitFlagSet splitFlags = BasicBlockSplitFlag::All) {
+        TypedIterator<T> Split(BasicBlock* destBlock, const TypedIterator<T>& splitIterator, BasicBlockSplitFlagSet splitFlags = BasicBlockSplitFlag::RedirectAll) {
             return Split(destBlock, static_cast<Iterator>(splitIterator), splitFlags);
         }
 

@@ -22,7 +22,7 @@ enum class BasicBlockSplitFlag : uint32_t {
     RedirectBranchUsers = BIT(1),
 
     /// All of the above
-    All = ~0u
+    RedirectAll = RedirectBranchUsers,
 };
 
 BIT_SET(BasicBlockSplitFlag);
