@@ -115,7 +115,7 @@ namespace IL {
 
             // Determine the effective bound
             uint32_t bound = 0;
-            for (BasicBlock* bb : dominatorTree.GetFunction()->GetBasicBlocks()) {
+            for (BasicBlock* bb : dominatorTree.GetBasicBlocks()) {
                 bound = std::max(bound, bb->GetID() + 1u);
             }
 

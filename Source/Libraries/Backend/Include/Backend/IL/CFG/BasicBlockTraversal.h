@@ -1,7 +1,7 @@
 #pragma once
 
 // Backend
-#include <Backend/IL/Function.h>
+#include <Backend/IL/BasicBlockList.h>
 
 // Std
 #include <variant>
@@ -13,12 +13,12 @@ namespace IL {
         using BlockView = std::vector<BasicBlock *>;
 
         /// Perform post-order traversal
-        /// \param function given function to traverse
-        void PostOrder(Function *function) {
-            Clear(function);
+        /// \param basicBlocks all basic blocks
+        void PostOrder(BasicBlockList& basicBlocks) {
+            Clear(basicBlocks);
 
             // Invoke traversal
-            TraversePostOrder(function, function->GetBasicBlocks().GetEntryPoint());
+            TraversePostOrder(basicBlocks, basicBlocks.GetEntryPoint());
         }
 
         /// Get the current traversal view
@@ -28,16 +28,13 @@ namespace IL {
 
     private:
         /// Perform post-order traversal
-        /// \param function given function to traverse
+        /// \param basicBlocks all basic blocks
         /// \param bb basic block to traverse
-        void TraversePostOrder(Function* function, BasicBlock *bb) {
+        void TraversePostOrder(BasicBlockList& basicBlocks, BasicBlock *bb) {
             // Attempt to acquire the basic block
             if (!Acquire(bb)) {
                 return;
             }
-
-            // All basic blocks
-            IL::BasicBlockList &basicBlocks = function->GetBasicBlocks();
 
             // Get terminator
             const Instruction *terminator = bb->GetTerminator();
@@ -49,13 +46,13 @@ namespace IL {
                     break;
                 case OpCode::Branch: {
                     auto *instr = terminator->As<BranchInstruction>();
-                    TraversePostOrder(function, basicBlocks.GetBlock(instr->branch));
+                    TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->branch));
                     break;
                 }
                 case OpCode::BranchConditional: {
                     auto *instr = terminator->As<BranchConditionalInstruction>();
-                    TraversePostOrder(function, basicBlocks.GetBlock(instr->pass));
-                    TraversePostOrder(function, basicBlocks.GetBlock(instr->fail));
+                    TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->pass));
+                    TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->fail));
                     break;
                 }
                 case OpCode::Return: {
@@ -85,15 +82,15 @@ namespace IL {
         }
 
         /// Clear the state
-        /// \param function function to clear to
-        void Clear(Function* function) {
+        /// \param basicBlocks all basic blocks
+        void Clear(BasicBlockList& basicBlocks) {
             // Cleanup
             visitedStates.clear();
             blocks.clear();
 
             // Determine the effective bound
             uint32_t bound = 0;
-            for (BasicBlock* bb : function->GetBasicBlocks()) {
+            for (BasicBlock* bb : basicBlocks) {
                 bound = std::max(bound, bb->GetID() + 1u);
             }
 

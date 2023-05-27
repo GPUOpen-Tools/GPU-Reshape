@@ -172,7 +172,7 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
         // The program does not have structured control flow, therefore we need to perform cfg loop analysis, and pray.
         for (IL::Function *fn: program.GetFunctionList()) {
             // Computer all dominators
-            IL::DominatorTree dominatorTree(fn);
+            IL::DominatorTree dominatorTree(fn->GetBasicBlocks());
             dominatorTree.Compute();
 
             // Compute all loops

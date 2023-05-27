@@ -88,6 +88,23 @@ namespace IL {
             return static_cast<uint32_t>(basicBlocks.size());
         }
 
+        /// Get the maximum block id
+        uint32_t GetBlockMaxID() const {
+            uint32_t id = 0;
+
+            // Get max id
+            for (BasicBlock* bb : basicBlocks) {
+                id = std::max(id, bb->GetID());
+            }
+
+            return id;
+        }
+
+        /// Get the maximum block id
+        uint32_t GetBlockBound() const {
+            return GetBlockMaxID() + 1u;
+        }
+
         /// Copy this basicBlock
         /// \param copyMap the new identifier map
         void CopyTo(BasicBlockList& out) const {

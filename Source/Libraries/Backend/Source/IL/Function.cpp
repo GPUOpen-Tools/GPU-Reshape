@@ -1,11 +1,14 @@
 #include <Backend/IL/Function.h>
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/PrettyPrint.h>
+#include <Backend/IL/CFG/DominatorTree.h>
 
 // Common
+#include <Common/Containers/BitArray.h>
 #include <Common/FileSystem.h>
 
 // Std
+#include <unordered_set>
 #ifndef NDEBUG
 #include <sstream>
 #include <fstream>
@@ -18,262 +21,57 @@
 #   undef max
 #endif
 
-// TODO: Can be array lookups
-struct TraversalState {
-    /// Block user counters
-    std::unordered_map<IL::ID, int32_t> userMap;
-
-    /// Visitation state stack
-    std::unordered_map<IL::ID, bool> visitationStack;
-
-    /// Number of users on the current candidate
-    int32_t candidateUsers{INT32_MAX};
-
-    /// Current candidate
-    IL::ID candidate{IL::InvalidID};
-};
-
-/// Get the least dependent basic block
-/// \param state traversal state
-/// \param basicBlocks all basic blocks in the function
-/// \param blockID the current block
-static void GetLeastDependent(TraversalState &state, IL::BasicBlockList &basicBlocks, IL::ID blockID) {
-    // Skip if already visited
-    if (state.visitationStack[blockID]) {
-        return;
-    }
-
-    // Mark as visited
-    state.visitationStack[blockID] = true;
-
-    // Get number of users
-    const int32_t users = state.userMap[blockID];
-
-    // Potential candidate?
-    if (users && users < state.candidateUsers) {
-        state.candidateUsers = users;
-        state.candidate = blockID;
-        return;
-    }
-
-    // Get block, may not be submitted to the function chain yet
-    IL::BasicBlock *block = basicBlocks.GetBlock(blockID);
-    if (!block) {
-        return;
-    }
-
-    // Must have terminator
-    auto terminator = block->GetTerminator();
-    ASSERT(terminator, "Must have terminator");
-
-    // Terminator type
-    switch (terminator.GetOpCode()) {
-        default: {
-            break;
-        }
-        case IL::OpCode::Branch: {
-            auto _terminator = terminator.As<IL::BranchInstruction>();
-            GetLeastDependent(state, basicBlocks, _terminator->branch);
-            break;
-        }
-        case IL::OpCode::BranchConditional: {
-            auto _terminator = terminator.As<IL::BranchConditionalInstruction>();
-            GetLeastDependent(state, basicBlocks, _terminator->pass);
-            GetLeastDependent(state, basicBlocks, _terminator->fail);
-            break;
-        }
-    }
-}
-
-static void AddSuccessor(TraversalState &state, IL::BasicBlockList &basicBlocks, IL::BasicBlock *block, IL::ID successor, bool hasControlFlow) {
-    IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
-    ASSERT(successorBlock, "Successor block invalid");
-
-    // Control flow is not guaranteed
-    if (hasControlFlow) {
-        // Must have terminator
-        auto terminator = successorBlock->GetTerminator();
-        ASSERT(terminator, "Must have terminator");
-
-        // Get control flow, if present
-        IL::BranchControlFlow controlFlow;
-        switch (terminator.GetOpCode()) {
-            default:
-                break;
-            case IL::OpCode::Branch:
-                controlFlow = terminator.As<IL::BranchInstruction>()->controlFlow;
-                break;
-            case IL::OpCode::BranchConditional:
-                controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
-                break;
-        }
-
-        // Skip loop back continue block for order resolving
-        if (controlFlow._continue != IL::InvalidID && state.userMap[successor] > 0) {
-            return;
-        }
-    }
-
-    state.userMap[successor]++;
-}
-
 bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
-    TraversalState state;
+    IL::BasicBlock* entryPoint = basicBlocks.GetEntryPoint();
 
-    // Phi instruction producers
-    std::unordered_map<IL::ID, std::vector<IL::ID>> phiProducers;
+    // Construct dominance tree from current basic blocks
+    DominatorTree dominatorTree(GetBasicBlocks());
+    dominatorTree.Compute();
 
-    // Accumulate users
-    for (IL::BasicBlock *block: basicBlocks) {
-        // Must have terminator
-        auto terminator = block->GetTerminator();
-        ASSERT(terminator, "Must have terminator");
+    // Block acquisition lookup
+    BitArray blockAcquiredArray(basicBlocks.GetBlockBound());
 
-        // Get control flow, if present
-        IL::BranchControlFlow controlFlow;
-        switch (terminator.GetOpCode()) {
-            default:
-                break;
-            case IL::OpCode::Branch:
-                controlFlow = terminator.As<IL::BranchInstruction>()->controlFlow;
-                break;
-            case IL::OpCode::BranchConditional:
-                controlFlow = terminator.As<IL::BranchConditionalInstruction>()->controlFlow;
-                break;
-        }
-
-        for (auto &&instr: *block) {
-            switch (instr->opCode) {
-                default:
-                    break;
-                case IL::OpCode::Branch: {
-                    AddSuccessor(state, basicBlocks, block, instr->As<IL::BranchInstruction>()->branch, hasControlFlow);
-                    break;
-                }
-                case IL::OpCode::BranchConditional: {
-                    AddSuccessor(state, basicBlocks, block, instr->As<IL::BranchConditionalInstruction>()->pass, hasControlFlow);
-                    AddSuccessor(state, basicBlocks, block, instr->As<IL::BranchConditionalInstruction>()->fail, hasControlFlow);
-                    break;
-                }
-                case IL::OpCode::Switch: {
-                    auto *_switch = instr->As<IL::SwitchInstruction>();
-                    AddSuccessor(state, basicBlocks, block, _switch->_default, hasControlFlow);
-
-                    // Add cases
-                    for (uint32_t i = 0; i < _switch->cases.count; i++) {
-                        AddSuccessor(state, basicBlocks, block, _switch->cases[i].branch, hasControlFlow);
-                    }
-                    break;
-                }
-                case IL::OpCode::Phi: {
-                    auto *phi = instr->As<IL::PhiInstruction>();
-
-                    // Add producers for values
-                    for (uint32_t i = 0; i < phi->values.count; i++) {
-                        if (controlFlow._continue != IL::InvalidID) {
-                            continue;
-                        }
-
-                        phiProducers[phi->values[i].branch].push_back(block->GetID());
-
-                        if (hasControlFlow) {
-                            state.userMap[block->GetID()]++;
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
+    // Swap local blocks
     BasicBlockList::Container blocks;
     basicBlocks.SwapBlocks(blocks);
 
-    // Mutation loop
-    for (;;) {
+    // Always mark the entry point as acquired
+    basicBlocks.Add(entryPoint);
+    blockAcquiredArray[entryPoint->GetID()] = true;
+
+    // Resolve loop
+    for (size_t resolvedBlocks = 1; resolvedBlocks != blocks.size();) {
         bool mutated = false;
 
-        // Find candidate
-        for (auto it = blocks.begin(); it != blocks.end(); it++) {
-            // Find first with free users
-            int32_t users = state.userMap[(*it)->GetID()];
-            if (users > 0) {
+        // Visit all non-acquired blocks
+        for (IL::BasicBlock* basicBlock : blocks) {
+            if (blockAcquiredArray[basicBlock->GetID()]) {
                 continue;
             }
 
-            // Get terminator
-            auto &&terminator = (*it)->GetTerminator();
-            ASSERT(terminator, "Must have terminator");
-
-            // Handle terminators
-            switch (terminator->opCode) {
-                default:
-                    break;
-                case IL::OpCode::Branch: {
-                    state.userMap[terminator->As<IL::BranchInstruction>()->branch]--;
-                    break;
-                }
-                case IL::OpCode::BranchConditional: {
-                    state.userMap[terminator->As<IL::BranchConditionalInstruction>()->pass]--;
-                    state.userMap[terminator->As<IL::BranchConditionalInstruction>()->fail]--;
-                    break;
-                }
-                case IL::OpCode::Switch: {
-                    auto *_switch = terminator->As<IL::SwitchInstruction>();
-                    state.userMap[_switch->_default]--;
-
-                    // Remove cases
-                    for (uint32_t i = 0; i < _switch->cases.count; i++) {
-                        state.userMap[_switch->cases[i].branch]--;
-                    }
-                    break;
-                }
+            // If the immediate dominator has been pushed, or there's none available (unreachable)
+            BasicBlock* immediateDominator = dominatorTree.GetImmediateDominator(basicBlock);
+            if (immediateDominator && !blockAcquiredArray[immediateDominator->GetID()]) {
+                continue;
             }
 
-            // Handle producers
-            if (hasControlFlow) {
-                for (IL::ID acceptor: phiProducers[(*it)->GetID()]) {
-                    state.userMap[acceptor]--;
-                }
-            }
+            // Acquire block
+            blockAcquiredArray[basicBlock->GetID()] = true;
+            basicBlocks.Add(basicBlock);
 
-            // Move block back to function
-            basicBlocks.Add(std::move(*it));
-            blocks.erase(it);
-
-            // Mark as mutated
+            // Mutate
+            resolvedBlocks++;
             mutated = true;
-
-            // Reach around
-            break;
         }
 
-        // If no more mutations, stop
+        // If no mutation, exit
         if (!mutated) {
-            // In case there is no control flow, and still blocks to resolve
-            if (!hasControlFlow && !blocks.empty()) {
-                state.visitationStack.clear();
-                state.candidate = IL::InvalidID;
-                state.candidateUsers = UINT32_MAX;
-
-                // Find the least dependent block and simply consider this a candidate
-                //   ! This is not a solution but a workaround, please don't think ill of me...
-                GetLeastDependent(state, basicBlocks, (*basicBlocks.begin())->GetID());
-
-                // If found, mark as valid for next iteration
-                if (state.candidate != IL::InvalidID) {
-                    state.userMap[state.candidate] = 0;
-                    continue;
-                }
-            }
-
-            // Stop iteration
             break;
         }
     }
 
     // Must have moved all
-    if (!blocks.empty()) {
+    if (blocks.size() != basicBlocks.GetBlockCount()) {
 #ifndef NDEBUG
         // Ensure crash is serial
         static std::mutex mutex;
@@ -282,6 +80,10 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
 
         // Move unresolved blocks black
         for (IL::BasicBlock *block: blocks) {
+            if (blockAcquiredArray[block->GetID()]) {
+                continue;
+            }
+
             basicBlocks.Add(block);
         }
 

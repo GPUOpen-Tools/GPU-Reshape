@@ -3,7 +3,7 @@
 // Backend
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/Instruction.h>
-#include <Backend/IL/Function.h>
+#include <Backend/IL/BasicBlockList.h>
 #include <Backend/IL/CFG/BasicBlockTraversal.h>
 
 // Std
@@ -16,8 +16,8 @@ namespace IL {
         using BlockView = std::vector<BasicBlock*>;
 
         /// Constructor
-        /// \param function to perform domination analysis on
-        DominatorTree(Function* function) : function(function) {
+        /// \param basicBlocks all basic blocks
+        DominatorTree(BasicBlockList& basicBlocks) : basicBlocks(basicBlocks) {
 
         }
 
@@ -27,9 +27,6 @@ namespace IL {
 
             // Initialize all blocks
             InitializeBlocks();
-
-            // Get block list
-            IL::BasicBlockList& basicBlocks = function->GetBasicBlocks();
 
             // Get entry point
             IL::BasicBlock* entryPoint = basicBlocks.GetEntryPoint();
@@ -101,7 +98,7 @@ namespace IL {
         /// \param second block being dominated
         /// \return true if first dominates second
         bool Dominates(BasicBlock* first, BasicBlock* second) const {
-            BasicBlock* entryPoint = function->GetBasicBlocks().GetEntryPoint();
+            BasicBlock* entryPoint = basicBlocks.GetEntryPoint();
             if (first == entryPoint) {
                 return true;
             }
@@ -145,8 +142,9 @@ namespace IL {
             return poTraversal;
         }
 
-        Function* GetFunction() const {
-            return function;
+        /// Get all basic blocks
+        BasicBlockList& GetBasicBlocks() const {
+            return basicBlocks;
         }
 
     private:
@@ -175,7 +173,7 @@ namespace IL {
             blocks.clear();
 
             // Reset block states
-            for (BasicBlock* bb : function->GetBasicBlocks()) {
+            for (BasicBlock* bb : basicBlocks) {
                 Block& block = blocks[bb->GetID()];
                 block.immediateDominator = nullptr;
                 block.predecessors.clear();
@@ -185,10 +183,8 @@ namespace IL {
 
         /// Map out all blocks
         void MapBlocks() {
-            IL::BasicBlockList& basicBlocks = function->GetBasicBlocks();
-
             // Perform post-order traversal
-            poTraversal.PostOrder(function);
+            poTraversal.PostOrder(basicBlocks);
 
             // Get final order
             const BasicBlockTraversal::BlockView& view = poTraversal.GetView();
@@ -239,8 +235,8 @@ namespace IL {
         std::unordered_map<IL::ID, Block> blocks;
 
     private:
-        /// Source function
-        Function* function;
+        /// Source basic blocks
+        BasicBlockList& basicBlocks;
 
         /// Post-order traversal
         BasicBlockTraversal poTraversal;
