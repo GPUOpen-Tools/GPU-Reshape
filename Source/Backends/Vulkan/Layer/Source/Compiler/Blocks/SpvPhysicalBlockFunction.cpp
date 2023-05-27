@@ -1731,7 +1731,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                     case Backend::IL::TypeKind::Texture: {
                         auto* texture = resourceType->As<Backend::IL::TextureType>();
 
-                        if (texture->samplerMode == Backend::IL::ResourceSamplerMode::Compatible) {
+                        if (texture->samplerMode == Backend::IL::ResourceSamplerMode::Compatible && !texture->multisampled) {
                             uint32_t constantZeroId = table.scan.header.bound++;
 
                             // UInt32
