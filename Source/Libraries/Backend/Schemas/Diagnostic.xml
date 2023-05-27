@@ -4,4 +4,8 @@
             Number of remaining jobs, opaque in nature
         </field>
     </message>
+
+    <message name="PresentDiagnostic">
+        <field name="intervalMS" type="float"/>
+    </message>
 </schema>

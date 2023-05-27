@@ -13,21 +13,30 @@
         <ScrollViewer>
             <StackPanel Orientation="Vertical" Margin="2.5">
                 <controls:WorkspacePropertyView Title="Workspace">
-                    <Grid ColumnDefinitions="100,*" HorizontalAlignment="Stretch">
-                        <StackPanel Orientation="Vertical" Grid.Column="0">
-                            <TextBlock Text="Application"/>
-                            <TextBlock Text="Process"/>
-                            <TextBlock Text="Process ID"/>
-                            <TextBlock Text="Local Time"/>
-                            <TextBlock Text="GUID"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Vertical" Grid.Column="1">
-                            <TextBlock Text="{Binding Workspace.Connection.Application.Name, FallbackValue=[Application]}"/>
-                            <TextBlock Text="{Binding Workspace.Connection.Application.Process, FallbackValue=[Process]}"/>
-                            <TextBlock Text="{Binding Workspace.Connection.Application.Pid, FallbackValue=[Process ID]}"/>
-                            <TextBlock Text="{Binding Workspace.Connection.LocalTime, FallbackValue=[LocalTime]}"/>
-                            <TextBlock Text="{Binding Workspace.Connection.Application.Guid, FallbackValue=[GUID]}"/>
-                        </StackPanel>
+                    <Grid>
+                        <Grid ColumnDefinitions="100,*" HorizontalAlignment="Stretch">
+                            <StackPanel Orientation="Vertical" Grid.Column="0">
+                                <TextBlock Text="Application"/>
+                                <TextBlock Text="Process"/>
+                                <TextBlock Text="Process ID"/>
+                                <TextBlock Text="Local Time"/>
+                                <TextBlock Text="GUID"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Vertical" Grid.Column="1">
+                                <TextBlock Text="{Binding Workspace.Connection.Application.Name, FallbackValue=[Application]}"/>
+                                <TextBlock Text="{Binding Workspace.Connection.Application.Process, FallbackValue=[Process]}"/>
+                                <TextBlock Text="{Binding Workspace.Connection.Application.Pid, FallbackValue=[Process ID]}"/>
+                                <TextBlock Text="{Binding Workspace.Connection.LocalTime, FallbackValue=[LocalTime]}"/>
+                                <TextBlock Text="{Binding Workspace.Connection.Application.Guid, FallbackValue=[GUID]}"/>
+                            </StackPanel>
+                        </Grid>
+                        
+                        <controls:DiagnosticPlot 
+                            x:Name="DiagnosticPlot"
+                            Width="350"
+                            Height="80"
+                            Padding="0"
+                            HorizontalAlignment="Right"/>
                     </Grid>
                 </controls:WorkspacePropertyView>
                 

@@ -43,6 +43,7 @@
         <PackageReference Include="AvaloniaGraphControl" Version="0.4.1" />
         <PackageReference Include="Dock.Avalonia" Version="0.10.18" />
         <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.18" />
+        <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.0-beta.710" />
         <PackageReference Include="mameolan.Avalonia.ExtendedToolkit" Version="1.0.0-CI-20220410-063959" />
         <PackageReference Include="Markdown.Avalonia" Version="0.10.12" />
         <PackageReference Include="MessageBox.Avalonia" Version="2.0.2" />

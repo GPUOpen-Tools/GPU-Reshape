@@ -103,7 +103,7 @@ bool ShaderCompilerDebug::Validate(const uint32_t* spirvCode, uint64_t spirvSize
 
     // Failed validation, disassemble the SPIRV
     std::string disassembled;
-    if (!tools->Disassemble(spirvCode, spirvSize, &disassembled, SPV_BINARY_TO_TEXT_OPTION_NO_HEADER)) {
+    if (!tools->Disassemble(spirvCode, spirvSize, &disassembled)) {
         return false;
     }
 
@@ -175,7 +175,7 @@ void ShaderCompilerDebug::Add(const std::filesystem::path& basePath, const std::
     std::ofstream outSPIRVDis(categoryPath + ".spirv.txt");
     if (outSPIRVDis.is_open()) {
         std::string disassembled;
-        if (!tools->Disassemble(static_cast<const uint32_t*>(spirvCode), spirvSize / sizeof(uint32_t), &disassembled, SPV_BINARY_TO_TEXT_OPTION_NO_HEADER)) {
+        if (!tools->Disassemble(static_cast<const uint32_t*>(spirvCode), spirvSize / sizeof(uint32_t), &disassembled)) {
             outSPIRVDis << "Failed to disassemble SPIRV\n";
         }
 

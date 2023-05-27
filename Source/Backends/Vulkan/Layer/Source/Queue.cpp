@@ -4,10 +4,20 @@
 #include <Backends/Vulkan/Tables/InstanceDispatchTable.h>
 #include <Backends/Vulkan/States/FenceState.h>
 #include <Backends/Vulkan/States/QueueState.h>
+#include <Backends/Vulkan/States/SwapchainState.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
+
+// Bridge
+#include <Bridge/IBridge.h>
+
+// Message
+#include <Message/OrderedMessageStorage.h>
+
+// Schemas
+#include <Schemas/Diagnostic.h>
 
 void CreateQueueState(DeviceDispatchTable *table, VkQueue queue, uint32_t familyIndex) {
     // Create the state
@@ -269,6 +279,31 @@ VkResult Hook_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentI
     if (result != VK_SUCCESS) {
         return result;
     }
+
+    // Current time
+    std::chrono::time_point<std::chrono::high_resolution_clock> presentTime = std::chrono::high_resolution_clock::now();
+
+    // Setup stream
+    MessageStream stream;
+    MessageStreamView view(stream);
+
+    // Record all elapsed timings
+    for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
+        SwapchainState* state = table->states_swapchain.Get(pPresentInfo->pSwapchains[i]);
+
+        // Determine elapsed
+        float elapsedMS = std::chrono::duration_cast<std::chrono::nanoseconds>(presentTime - state->lastPresentTime).count() / 1e6f;
+
+        // Add message
+        auto* diagnostic = view.Add<PresentDiagnosticMessage>();
+        diagnostic->intervalMS = elapsedMS;
+
+        // Set new present time
+        state->lastPresentTime = presentTime;
+    }
+
+    // Commit stream
+    table->bridge->GetOutput()->AddStream(stream);
 
     // Commit bridge data
     BridgeDeviceSyncPoint(table);

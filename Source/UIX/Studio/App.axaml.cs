@@ -6,6 +6,9 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Styling;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.Themes;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels;
@@ -41,6 +44,23 @@ namespace Studio
 
             // Load app
             AvaloniaXamlLoader.Load(this);
+
+            // Install additional packages
+            InstallLiveChart();
+        }
+        
+        private void InstallLiveChart()
+        {
+            LiveCharts.Configure(
+                settings => settings
+                    .AddDefaultMappers()
+                    .AddSkiaSharp()
+                    .AddDarkTheme(
+                        theme =>
+                            theme
+                                .HasRuleForLineSeries(lineSeries => { lineSeries.LineSmoothness = 0.65; })
+                                .HasRuleForBarSeries(barSeries => { })
+                    ));
         }
 
         private void InstallServices()

@@ -4,6 +4,15 @@
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/States/CommandQueueState.h>
 
+// Bridge
+#include <Bridge/IBridge.h>
+
+// Message
+#include <Message/OrderedMessageStorage.h>
+
+// Schemas
+#include <Schemas/Diagnostic.h>
+
 static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count) {
     auto deviceTable = GetTable(state->parent);
     
@@ -273,8 +282,36 @@ HRESULT WINAPI HookIDXGISwapChainGetBuffer(IDXGISwapChain1 * swapchain, UINT Buf
     return table.state->buffers[Buffer]->QueryInterface(riid, ppSurface);
 }
 
+void HandlePresent(DeviceState* device, SwapChainState* swapchain) {
+    // Current time
+    std::chrono::time_point<std::chrono::high_resolution_clock> presentTime = std::chrono::high_resolution_clock::now();
+
+    // Setup stream
+    MessageStream stream;
+    MessageStreamView view(stream);
+
+    // Determine elapsed
+    float elapsedMS = std::chrono::duration_cast<std::chrono::nanoseconds>(presentTime - swapchain->lastPresentTime).count() / 1e6f;
+
+    // Add message
+    auto* diagnostic = view.Add<PresentDiagnosticMessage>();
+    diagnostic->intervalMS = elapsedMS;
+
+    // Set new present time
+    swapchain->lastPresentTime = presentTime;
+
+    // Commit stream
+    device->bridge->GetOutput()->AddStream(stream);
+
+    // Add bridge sync
+    BridgeDeviceSyncPoint(device);
+}
+
 HRESULT WINAPI HookIDXGISwapChainPresent(IDXGISwapChain1* swapchain, UINT SyncInterval, UINT PresentFlags) {
     auto table = GetTable(swapchain);
+
+    // Get device
+    auto deviceTable = GetTable(table.state->parent);
 
     // Pass down callchain
     HRESULT hr = table.bottom->next_Present(table.next, SyncInterval, PresentFlags);
@@ -282,8 +319,8 @@ HRESULT WINAPI HookIDXGISwapChainPresent(IDXGISwapChain1* swapchain, UINT SyncIn
         return hr;
     }
 
-    // Add bridge sync
-    BridgeDeviceSyncPoint(GetTable(table.state->parent).state);
+    // Handle it
+    HandlePresent(deviceTable.state, table.state);
 
     // OK
     return S_OK;
@@ -292,14 +329,17 @@ HRESULT WINAPI HookIDXGISwapChainPresent(IDXGISwapChain1* swapchain, UINT SyncIn
 HRESULT WINAPI HookIDXGISwapChainPresent1(IDXGISwapChain1* swapchain, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS *pPresentParameters) {
     auto table = GetTable(swapchain);
 
+    // Get device
+    auto deviceTable = GetTable(table.state->parent);
+
     // Pass down callchain
     HRESULT hr = table.bottom->next_Present1(table.next, SyncInterval, PresentFlags, pPresentParameters);
     if (FAILED(hr)) {
         return hr;
     }
 
-    // Add bridge sync
-    BridgeDeviceSyncPoint(GetTable(table.state->parent).state);
+    // Handle it
+    HandlePresent(deviceTable.state, table.state);
 
     // OK
     return S_OK;

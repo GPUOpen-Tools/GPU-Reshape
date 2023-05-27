@@ -1,5 +1,10 @@
+using System;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using ReactiveUI;
+using Studio.Extensions;
+using Studio.ViewModels.Controls;
+using Studio.ViewModels.Documents;
 
 namespace Studio.Views.Documents
 {
@@ -8,11 +13,14 @@ namespace Studio.Views.Documents
         public WorkspaceOverviewView()
         {
             InitializeComponent();
-        }
 
-        private void InitializeComponent()
-        {
-            AvaloniaXamlLoader.Load(this);
+            this.WhenAnyValue(x => x.DataContext).CastNullable<WorkspaceOverviewViewModel>().Subscribe(vm =>
+            {
+                DiagnosticPlot.DataContext = new DiagnosticPlotViewModel()
+                {
+                    Workspace = vm.Workspace
+                };
+            });
         }
     }
 }
