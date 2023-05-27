@@ -488,7 +488,7 @@ IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJo
     }
 
     // Create type
-    pushConstantBlockType = ilTypeMap.FindTypeOrAdd(structDecl);
+    pushConstantBlockType = ilTypeMap.AddType(program.GetIdentifierMap().AllocID(), structDecl);
     
     // SpvIds
     SpvId pcBlockTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(pushConstantBlockType);
