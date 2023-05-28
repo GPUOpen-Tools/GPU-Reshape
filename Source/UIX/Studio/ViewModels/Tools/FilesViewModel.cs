@@ -26,11 +26,6 @@ namespace Studio.ViewModels.Tools
         public override StreamGeometry? Icon => ResourceLocator.GetIcon("ToolFiles");
         
         /// <summary>
-        /// All identifiers
-        /// </summary>
-        public ObservableCollection<PipelineIdentifierViewModel> PipelineIdentifiers { get; } = new();
-
-        /// <summary>
         /// Is the help message visible?
         /// </summary>
         public bool IsHelpVisible => (ShaderViewModel?.Shader?.FileViewModels.Count ?? 0) == 0;
@@ -68,15 +63,14 @@ namespace Studio.ViewModels.Tools
             Expand = ReactiveCommand.Create(OnExpand);
             Collapse = ReactiveCommand.Create(OnCollapse);
             
-            // Bind visibility
-            PipelineIdentifiers.ToObservableChangeSet(x => x)
-                .OnItemAdded(_ => this.RaisePropertyChanged(nameof(IsHelpVisible)))
-                .Subscribe();
-            
             // Bind selected workspace
             App.Locator.GetService<IWorkspaceService>()?
                 .WhenAnyValue(x => x.SelectedShader)
-                .Subscribe(x => ShaderViewModel = x);
+                .Subscribe(x =>
+                {
+                    ShaderViewModel = x;
+                    Owner?.Factory?.SetActiveDockable(this);
+                });
         }
 
         /// <summary>
@@ -159,6 +153,9 @@ namespace Studio.ViewModels.Tools
             {
                 CollapseNode(child, Files);
             }
+
+            // Events
+            this.RaisePropertyChanged(nameof(IsHelpVisible));
         }
 
         /// <summary>

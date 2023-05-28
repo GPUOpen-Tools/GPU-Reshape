@@ -218,7 +218,7 @@ namespace Studio.ViewModels.Tools
                     return;
 
                 ShaderIdentifierViewModel shaderIdentifierViewModel = _lookup[uid];
-                shaderIdentifierViewModel.Descriptor = $"Shader {uid} - {filename}";
+                shaderIdentifierViewModel.Descriptor = $"Shader {uid} - {System.IO.Path.GetFileName(filename)}";
             });
         }
 

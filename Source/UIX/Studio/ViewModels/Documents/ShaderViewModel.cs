@@ -40,29 +40,7 @@ namespace Studio.ViewModels.Documents
                 _descriptor = descriptor;
             }
         }
-
-        /// <summary>
-        /// Construct from a given descriptor
-        /// </summary>
-        /// <param name="descriptor"></param>
-        private void ConstructDescriptor(ShaderDescriptor descriptor)
-        {
-            Id = $"Shader{descriptor.GUID}";
-            Title = $"Loading ...";
-            PropertyCollection = descriptor.PropertyCollection;
-            GUID = descriptor.GUID;
-        }
-
-        /// <summary>
-        /// Invoked on selection
-        /// </summary>
-        public override void OnSelected()
-        {
-            base.OnSelected();
-            
-            // Proxy to current selection
-            SelectedShaderContentViewModel?.OnSelected?.Execute(Unit.Default);
-        }
+        
 
         /// <summary>
         /// Document icon
@@ -168,6 +146,29 @@ namespace Studio.ViewModels.Documents
         }
 
         /// <summary>
+        /// Construct from a given descriptor
+        /// </summary>
+        /// <param name="descriptor"></param>
+        private void ConstructDescriptor(ShaderDescriptor descriptor)
+        {
+            Id = $"Shader{descriptor.GUID}";
+            Title = $"Loading ...";
+            PropertyCollection = descriptor.PropertyCollection;
+            GUID = descriptor.GUID;
+        }
+
+        /// <summary>
+        /// Invoked on selection
+        /// </summary>
+        public override void OnSelected()
+        {
+            base.OnSelected();
+            
+            // Proxy to current selection
+            SelectedShaderContentViewModel?.OnSelected?.Execute(Unit.Default);
+        }
+
+        /// <summary>
         /// Invoked on object changes
         /// </summary>
         private void OnObjectChanged()
@@ -180,7 +181,7 @@ namespace Studio.ViewModels.Documents
                 }
                 else
                 {
-                    Title = $"{_object!.Filename} ({_object.GUID})";
+                    Title = $"{System.IO.Path.GetFileName(_object!.Filename)} ({_object.GUID})";
                 }
             });
         }
