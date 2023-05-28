@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
 using Studio.ViewModels.Documents;
@@ -28,6 +29,11 @@ namespace Studio.ViewModels.Shader
             get => _icon;
             set => this.RaiseAndSetIfChanged(ref _icon, value);
         }
+
+        /// <summary>
+        /// Selection command
+        /// </summary>
+        public ICommand? OnSelected { get; }
         
         /// <summary>
         /// Workspace within this overview

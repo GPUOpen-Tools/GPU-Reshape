@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Reactive.Linq;
-using Avalonia;
+﻿using Avalonia;
 using DynamicData;
-using DynamicData.Binding;
 using ReactiveUI;
+using Runtime.ViewModels.Shader;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
@@ -42,6 +37,15 @@ namespace Studio.Services
         {
             get => _selectedProperty;
             set => this.RaiseAndSetIfChanged(ref _selectedProperty, value);
+        }
+
+        /// <summary>
+        /// Current selected property
+        /// </summary>
+        public ShaderNavigationViewModel? SelectedShader
+        {
+            get => _selectedShader;
+            set => this.RaiseAndSetIfChanged(ref _selectedShader, value);
         }
 
         public WorkspaceService()
@@ -138,5 +142,9 @@ namespace Studio.Services
         /// </summary>
         private IPropertyViewModel? _selectedProperty;
 
+        /// <summary>
+        /// Internal selected shader
+        /// </summary>
+        private ShaderNavigationViewModel? _selectedShader;
     }
 }

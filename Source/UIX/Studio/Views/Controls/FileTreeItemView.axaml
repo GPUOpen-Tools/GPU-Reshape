@@ -1,0 +1,25 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:Studio.ViewModels.Controls"
+             xmlns:vc="using:Studio.ValueConverters"
+             mc:Ignorable="d" d:DesignWidth="150" d:DesignHeight="20"
+             x:Class="Studio.Views.Controls.FileTreeItemView"
+             x:DataType="vm:FileTreeItemViewModel">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <vc:FileToIconConverter x:Key="FileToIconConverter" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <StackPanel Orientation="Horizontal">
+        <PathIcon
+            x:Name="Icon" 
+            Data="{Binding ViewModel, FallbackValue={StaticResource DotsGrid}, Converter={StaticResource FileToIconConverter}}" 
+            Width="{Binding ViewModel, FallbackValue=9, Converter={StaticResource FileToIconConverter}}" 
+            Foreground="{Binding StatusColor, FallbackValue=White}"
+            Margin="0,-2,0,0" />
+        <Label Content="{Binding Text, FallbackValue=None}" Margin="4,-2,0,0" />
+    </StackPanel>
+</UserControl>

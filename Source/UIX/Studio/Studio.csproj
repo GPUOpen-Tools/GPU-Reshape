@@ -151,6 +151,14 @@
       </Compile>
       <AvaloniaResource Include="Resources\TextMate\Themes\DarkIL.json" />
       <AvaloniaResource Include="Resources\TextMate\Grammars\IL.json" />
+      <Compile Update="Views\Tools\FilesView.axaml.cs">
+        <DependentUpon>FilesView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Controls\FileTreeItemView.axaml.cs">
+        <DependentUpon>FileTreeItemView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

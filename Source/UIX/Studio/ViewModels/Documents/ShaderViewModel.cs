@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Reactive.Linq;
-using System.Windows.Input;
+using System.Reactive;
 using Avalonia.Media;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
@@ -52,6 +51,17 @@ namespace Studio.ViewModels.Documents
             Title = $"Loading ...";
             PropertyCollection = descriptor.PropertyCollection;
             GUID = descriptor.GUID;
+        }
+
+        /// <summary>
+        /// Invoked on selection
+        /// </summary>
+        public override void OnSelected()
+        {
+            base.OnSelected();
+            
+            // Proxy to current selection
+            SelectedShaderContentViewModel?.OnSelected?.Execute(Unit.Default);
         }
 
         /// <summary>

@@ -2,6 +2,7 @@
 using System.Reactive.Subjects;
 using DynamicData;
 using ReactiveUI;
+using Runtime.ViewModels.Shader;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -28,6 +29,11 @@ namespace Studio.Services
         /// Current selected property
         /// </summary>
         public IPropertyViewModel? SelectedProperty { get; set; }
+        
+        /// <summary>
+        /// Current selected property
+        /// </summary>
+        public ShaderNavigationViewModel? SelectedShader { get; set; }
         
         /// <summary>
         /// Add a new workspace

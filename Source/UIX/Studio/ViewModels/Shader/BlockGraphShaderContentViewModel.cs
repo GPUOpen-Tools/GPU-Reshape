@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
 using Studio.ViewModels.Documents;
@@ -19,6 +20,11 @@ namespace Studio.ViewModels.Shader
                 
             }
         }
+
+        /// <summary>
+        /// Selection command
+        /// </summary>
+        public ICommand? OnSelected { get; }
         
         /// <summary>
         /// View icon

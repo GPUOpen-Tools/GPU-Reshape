@@ -144,7 +144,7 @@ namespace Studio.ViewModels.Controls
             bool requiresStep = false;
 
             // Default values
-            double presentIntervalMS = _presentIntervalSeries.Values.LastOrDefault();
+            double presentIntervalMS = _lastPresentInterval;
             double consumedJobs      = -1;
 
             // Visit all messages
@@ -171,8 +171,11 @@ namespace Studio.ViewModels.Controls
                     {
                         var msg = message.Get<PresentDiagnosticMessage>();
                         
-                        // Mark as step
+                        // Set interval
                         presentIntervalMS = msg.intervalMS;
+                        
+                        // Mark as step
+                        _lastPresentInterval = presentIntervalMS;
                         requiresStep = true;
                         break;
                     }
@@ -238,6 +241,11 @@ namespace Studio.ViewModels.Controls
         /// </summary>
         private readonly uint _maxFrameCount = 175;
 
+        /// <summary>
+        /// Last present interval
+        /// </summary>
+        private double _lastPresentInterval = 0.0;
+        
         /// <summary>
         /// Last tracked job count
         /// </summary>

@@ -2,12 +2,15 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Subjects;
+using System.Windows.Input;
+using Avalonia;
 using Avalonia.Media;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
 using Studio.Models.Workspace.Objects;
+using Studio.Services;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Properties;
@@ -45,6 +48,11 @@ namespace Studio.ViewModels.Shader
             get => _propertyCollection;
             set => this.RaiseAndSetIfChanged(ref _propertyCollection, value);
         }
+
+        /// <summary>
+        /// Selection command
+        /// </summary>
+        public ICommand? OnSelected { get; }
 
         /// <summary>
         /// Is this model active?
@@ -88,6 +96,31 @@ namespace Studio.ViewModels.Shader
         {
             get => _selectedSelectedShaderFileViewModel;
             set => this.RaiseAndSetIfChanged(ref _selectedSelectedShaderFileViewModel, value);
+        }
+
+        public CodeShaderContentViewModel()
+        {
+            OnSelected = ReactiveCommand.Create(OnParentSelected);
+        }
+
+        /// <summary>
+        /// Invoked on parent selection
+        /// </summary>
+        private void OnParentSelected()
+        {
+            if (App.Locator.GetService<IWorkspaceService>() is { } service)
+            {
+                // Create navigation vm
+                service.SelectedShader = new ShaderNavigationViewModel()
+                {
+                    Shader = Object,
+                    SelectedFile = _selectedSelectedShaderFileViewModel
+                };
+
+                // Bind selection
+                service.SelectedShader.WhenAnyValue(x => x.SelectedFile)
+                    .Subscribe(x => SelectedShaderFileViewModel = x);
+            }
         }
 
         /// <summary>

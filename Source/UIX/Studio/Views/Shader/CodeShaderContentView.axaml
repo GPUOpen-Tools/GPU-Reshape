@@ -12,46 +12,24 @@
              x:Class="Studio.Views.Shader.CodeShaderContentView"
              x:DataType="shader:CodeShaderContentViewModel"
              x:CompileBindings="True">
-    <Grid ColumnDefinitions="150,4,*">
-        <Grid Grid.Column="0">
-            <TreeView 
-                x:Name="FileViewTree"
-                SelectedItem="{Binding SelectedShaderFileViewModel}"
-                Items="{Binding Object.FileViewModels}">
-                <TreeView.Styles>
-                    <Style Selector="TreeViewItem">
-                        <Setter Property="IsExpanded" Value="True"/>
-                    </Style>
-                </TreeView.Styles>
-                <TreeView.ItemTemplate>
-                    <DataTemplate DataType="svm:ShaderFileViewModel">
-                        <TextBlock Text="{Binding Filename}"/>
-                    </DataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
-        </Grid>
-
-        <GridSplitter Grid.Column="1" />
-
-        <Grid Grid.Column="2">
-            <avaloniaEdit:TextEditor
-                x:Name="Editor"
-                FontFamily="Consolas,Menlo,Monospace"
-                Foreground="#D4D4D4"
-                Background="{StaticResource TextBlockColor}"
-                HorizontalScrollBarVisibility="Visible"
-                VerticalScrollBarVisibility="Visible"
-                FontWeight="Light"
-                FontSize="14"
-                HorizontalAlignment="Stretch"
-                VerticalAlignment="Stretch"
-                ShowLineNumbers="True"
-                IsReadOnly="True"
-                Text="..." />
-            
-            <Grid x:Name="DetailGrid" Margin="18 0 18 18">
-                <controls:LocatorViewHost x:Name="DetailViewHost" HorizontalAlignment="Stretch" VerticalAlignment="Top"/>
-            </Grid>
+    <Grid>
+        <avaloniaEdit:TextEditor
+            x:Name="Editor"
+            FontFamily="Consolas,Menlo,Monospace"
+            Foreground="#D4D4D4"
+            Background="{StaticResource TextBlockColor}"
+            HorizontalScrollBarVisibility="Visible"
+            VerticalScrollBarVisibility="Visible"
+            FontWeight="Light"
+            FontSize="14"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            ShowLineNumbers="True"
+            IsReadOnly="True"
+            Text="..." />
+        
+        <Grid x:Name="DetailGrid" Margin="18 0 18 18">
+            <controls:LocatorViewHost x:Name="DetailViewHost" HorizontalAlignment="Stretch" VerticalAlignment="Top"/>
         </Grid>
     </Grid>
 </UserControl>
