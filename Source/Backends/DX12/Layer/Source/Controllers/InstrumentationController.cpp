@@ -129,7 +129,28 @@ void InstrumentationController::PropagateInstrumentationInfo(PipelineState *stat
     state->instrumentationInfo.specializationHash = BufferCRC64(
         state->instrumentationInfo.specialization.GetDataBegin(),
         state->instrumentationInfo.specialization.GetByteSize()
-    );
+        );
+
+    // Clean previous dependent streams
+    state->dependentInstrumentationInfo.specializations.resize(state->shaders.size());
+    for (MessageStream& dependentStream : state->dependentInstrumentationInfo.specializations) {
+        dependentStream.ClearWithSchemaInvalidate();
+    }
+
+    // Summarize dependent specialization states
+    for (size_t i = 0; i < state->shaders.size(); i++) {
+        ShaderState *dependentState = state->shaders[i];
+        
+        // Nothing to enqueue?
+        if (state->instrumentationInfo.specialization.IsEmpty() && dependentState->instrumentationInfo.specialization.IsEmpty()) {
+            continue;
+        }
+
+        // Summarize the shader specialization followed by pipeline specialization
+        MessageStream& stream = state->dependentInstrumentationInfo.specializations[i];
+        stream.Append(dependentState->instrumentationInfo.specialization);
+        stream.Append(state->instrumentationInfo.specialization);
+    }
 }
 
 void InstrumentationController::PropagateInstrumentationInfo(ShaderState *state) {
@@ -590,6 +611,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *da
 
             // Combine hashes
             instrumentationKey.combinedHash = dependentObject->instrumentationInfo.specializationHash;
+            CombineHash(instrumentationKey.combinedHash, state->instrumentationInfo.specializationHash);
             CombineHash(instrumentationKey.combinedHash, dependentObject->signature->physicalMapping->signatureHash);
 
             // Attempt to reserve
@@ -597,8 +619,16 @@ void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *da
                 continue;
             }
 
+            // Determine the shader module index within the dependent object
+            uint64_t dependentIndex = std::ranges::find(dependentObject->shaders, state) - dependentObject->shaders.begin();
+
             // Inject the feedback state
-            shaderCompiler->Add(state, &batch->shaderCompilerDiagnostic, instrumentationKey, bucket);
+            shaderCompiler->Add(ShaderJob {
+                .state = state,
+                .instrumentationKey = instrumentationKey,
+                .diagnostic = &batch->shaderCompilerDiagnostic,
+                .dependentSpecialization = &dependentObject->dependentInstrumentationInfo.specializations[dependentIndex]
+            }, bucket);
         }
     }
 }
@@ -638,9 +668,12 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         for (uint32_t shaderIndex = 0; shaderIndex < state->shaders.size(); shaderIndex++) {
             uint64_t featureBitSet = 0;
 
+            // Get shader
+            ShaderState* shaderState = state->shaders[shaderIndex];
+
             // Create super feature bit set (shader -> pipeline)
             // ? Pipeline specific bit set fed back during shader compilation
-            featureBitSet |= state->shaders[shaderIndex]->instrumentationInfo.featureBitSet;
+            featureBitSet |= shaderState->instrumentationInfo.featureBitSet;
             featureBitSet |= state->instrumentationInfo.featureBitSet;
 
             // Summarize
@@ -657,14 +690,15 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
             // Combine hashes
             instrumentationKey.combinedHash = state->instrumentationInfo.specializationHash;
+            CombineHash(instrumentationKey.combinedHash, shaderState->instrumentationInfo.specializationHash);
             CombineHash(instrumentationKey.combinedHash, state->signature->physicalMapping->signatureHash);
 
             // Assign key
             job.shaderInstrumentationKeys[shaderIndex] = instrumentationKey;
 
             // Shader may have failed to compile for whatever reason, skip if need be
-            if (!job.state->shaders[shaderIndex]->HasInstrument(instrumentationKey)) {
-                rejectedKeys.push_back(std::make_pair(job.state->shaders[shaderIndex], instrumentationKey));
+            if (!shaderState->HasInstrument(instrumentationKey)) {
+                rejectedKeys.push_back(std::make_pair(shaderState, instrumentationKey));
                 isSkipped = true;
             }
         }

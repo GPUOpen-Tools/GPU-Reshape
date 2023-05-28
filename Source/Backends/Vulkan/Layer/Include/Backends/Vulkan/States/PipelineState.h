@@ -72,6 +72,9 @@ struct PipelineState : public ReferenceObject {
     /// Instrumentation info
     InstrumentationInfo instrumentationInfo;
 
+    /// Shader dependent instrumentation info
+    DependentInstrumentationInfo dependentInstrumentationInfo;
+
     /// Instrumented objects lookup
     /// TODO: How do we manage lifetimes here?
     std::map<uint64_t, VkPipeline> instrumentObjects;

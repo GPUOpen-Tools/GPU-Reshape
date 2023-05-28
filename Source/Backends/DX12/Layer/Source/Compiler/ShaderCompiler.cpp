@@ -67,13 +67,8 @@ bool ShaderCompiler::Install() {
     return true;
 }
 
-void ShaderCompiler::Add(ShaderState *state, ShaderCompilerDiagnostic* diagnostic, const ShaderInstrumentationKey& instrumentationKey, DispatcherBucket *bucket) {
-    auto data = new(registry->GetAllocators(), kAllocInstrumentation) ShaderJob{
-        .state = state,
-        .diagnostic = diagnostic,
-        .instrumentationKey = instrumentationKey
-    };
-
+void ShaderCompiler::Add(const ShaderJob& job, DispatcherBucket *bucket) {
+    auto data = new(registry->GetAllocators(), kAllocInstrumentation) ShaderJob(job);
     dispatcher->Add(BindDelegate(this, ShaderCompiler::Worker), data, bucket);
 }
 
@@ -154,7 +149,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         }
 
         // Inject marked shader feature
-        shaderFeatures[i]->Inject(*module->GetProgram(), job.state->instrumentationInfo.specialization);
+        shaderFeatures[i]->Inject(*module->GetProgram(), *job.dependentSpecialization);
     }
 
     // Instrumentation job

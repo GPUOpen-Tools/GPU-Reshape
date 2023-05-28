@@ -21,6 +21,20 @@ class IShaderFeature;
 class ShaderCompilerDebug;
 class ShaderExportDescriptorAllocator;
 
+struct ShaderJob {
+    /// State to compile
+    ShaderModuleState* state{ nullptr };
+
+    /// Instrumentation key to apply
+    ShaderModuleInstrumentationKey instrumentationKey;
+
+    /// Optional diagnostics
+    ShaderCompilerDiagnostic* diagnostic{nullptr};
+
+    /// Pipeline dependent specialization stream
+    MessageStream* dependentSpecialization{nullptr};
+};
+
 class ShaderCompiler : public TComponent<ShaderCompiler> {
 public:
     COMPONENT(ShaderCompiler);
@@ -31,26 +45,22 @@ public:
     bool Install();
 
     /// Add a shader job
-    /// \param state the state to be compiled
-    /// \param diagnostic shader diagnostic
-    /// \param featureBitSet the enabled feature set
+    /// \param job job to enqueue
     /// \param bucket optional, the dispatcher bucket
-    void Add(DeviceDispatchTable* table, ShaderModuleState *state, ShaderCompilerDiagnostic* diagnostic, const ShaderModuleInstrumentationKey& instrumentationKey, DispatcherBucket *bucket = nullptr);
+    void Add(DeviceDispatchTable* table, const ShaderJob& job, DispatcherBucket *bucket = nullptr);
 
     /// Ensure a module is initialized
     /// \param state shader state
     bool InitializeModule(ShaderModuleState* state);
 
 protected:
-    struct ShaderJob {
+    struct ShaderJobEntry {
         DeviceDispatchTable *table;
-        ShaderModuleState *state;
-        ShaderCompilerDiagnostic* diagnostic;
-        ShaderModuleInstrumentationKey instrumentationKey;
+        ShaderJob info;
     };
 
     /// Compile a given job
-    void CompileShader(const ShaderJob &job);
+    void CompileShader(const ShaderJobEntry &job);
 
     /// Worker entry
     void Worker(void *userData);

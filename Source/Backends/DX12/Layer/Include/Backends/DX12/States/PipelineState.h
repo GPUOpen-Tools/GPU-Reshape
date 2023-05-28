@@ -79,6 +79,9 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
     /// Instrumentation info
     InstrumentationInfo instrumentationInfo;
 
+    /// Shader dependent instrumentation info
+    DependentInstrumentationInfo dependentInstrumentationInfo;
+
     /// Instrumented objects lookup
     /// TODO: How do we manage lifetimes here?
     std::map<uint64_t, ID3D12PipelineState*> instrumentObjects;

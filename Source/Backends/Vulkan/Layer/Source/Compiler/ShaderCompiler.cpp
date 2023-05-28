@@ -61,12 +61,10 @@ bool ShaderCompiler::Install() {
     return true;
 }
 
-void ShaderCompiler::Add(DeviceDispatchTable *table, ShaderModuleState *state, ShaderCompilerDiagnostic* diagnostic, const ShaderModuleInstrumentationKey& instrumentationKey, DispatcherBucket *bucket) {
-    auto data = new(registry->GetAllocators()) ShaderJob{
+void ShaderCompiler::Add(DeviceDispatchTable *table, const ShaderJob& job, DispatcherBucket *bucket) {
+    auto data = new(registry->GetAllocators()) ShaderJobEntry {
         .table = table,
-        .state = state,
-        .diagnostic = diagnostic,
-        .instrumentationKey = instrumentationKey
+        .info = job,
     };
 
     dispatcher->Add(BindDelegate(this, ShaderCompiler::Worker), data, bucket);
@@ -94,12 +92,12 @@ bool ShaderCompiler::InitializeModule(ShaderModuleState *state) {
 }
 
 void ShaderCompiler::Worker(void *data) {
-    auto *job = static_cast<ShaderJob *>(data);
+    auto *job = static_cast<ShaderJobEntry *>(data);
     CompileShader(*job);
     destroy(job, allocators);
 }
 
-void ShaderCompiler::CompileShader(const ShaderJob &job) {
+void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
 #if SHADER_COMPILER_SERIAL
     static std::mutex mutex;
     std::lock_guard guard(mutex);
@@ -119,8 +117,8 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 #endif
 
     // Ensure state is initialized
-    if (!InitializeModule(job.state)) {
-        ++job.diagnostic->failedJobs;
+    if (!InitializeModule(job.info.state)) {
+        ++job.info.diagnostic->failedJobs;
         return;
     }
 
@@ -131,17 +129,17 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     std::filesystem::path debugPath;
     if (debug) {
         // Allocate path
-        debugPath = debug->AllocatePath(job.state->spirvModule);
+        debugPath = debug->AllocatePath(job.info.state->spirvModule);
 
         // Dump source
-        debug->Add(debugPath, "source", job.state->spirvModule, job.state->createInfoDeepCopy.createInfo.pCode, job.state->createInfoDeepCopy.createInfo.codeSize);
+        debug->Add(debugPath, "source", job.info.state->spirvModule, job.info.state->createInfoDeepCopy.createInfo.pCode, job.info.state->createInfoDeepCopy.createInfo.codeSize);
 
         // Validate the source module
-        validSource = debug->Validate(job.state->createInfoDeepCopy.createInfo.pCode, job.state->createInfoDeepCopy.createInfo.codeSize / sizeof(uint32_t));
+        validSource = debug->Validate(job.info.state->createInfoDeepCopy.createInfo.pCode, job.info.state->createInfoDeepCopy.createInfo.codeSize / sizeof(uint32_t));
     }
 
     // Create a copy of the module, don't modify the source
-    SpvModule *module = job.state->spirvModule->Copy();
+    SpvModule *module = job.info.state->spirvModule->Copy();
 
     // Get user map
     IL::ShaderDataMap& shaderDataMap = module->GetProgram()->GetShaderDataMap();
@@ -153,32 +151,32 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Pass through all features
     for (size_t i = 0; i < shaderFeatures.size(); i++) {
-        if (!(job.instrumentationKey.featureBitSet & (1ull << i))) {
+        if (!(job.info.instrumentationKey.featureBitSet & (1ull << i))) {
             continue;
         }
 
         // Inject marked shader feature
-        shaderFeatures[i]->Inject(*module->GetProgram(), job.state->instrumentationInfo.specialization);
+        shaderFeatures[i]->Inject(*module->GetProgram(), *job.info.dependentSpecialization);
     }
 
     // Spv job
     SpvJob spvJob;
-    spvJob.instrumentationKey = job.instrumentationKey;
+    spvJob.instrumentationKey = job.info.instrumentationKey;
     spvJob.bindingInfo = shaderExportDescriptorAllocator->GetBindingInfo();
 
     // Recompile the program
     if (!module->Recompile(
-        job.state->createInfoDeepCopy.createInfo.pCode,
-        static_cast<uint32_t>(job.state->createInfoDeepCopy.createInfo.codeSize / 4u),
+        job.info.state->createInfoDeepCopy.createInfo.pCode,
+        static_cast<uint32_t>(job.info.state->createInfoDeepCopy.createInfo.codeSize / 4u),
         spvJob
     )) {
-        ++job.diagnostic->failedJobs;
+        ++job.info.diagnostic->failedJobs;
         return;
     }
 
     // Copy the deep creation info
     //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
-    VkShaderModuleCreateInfo createInfo = job.state->createInfoDeepCopy.createInfo;
+    VkShaderModuleCreateInfo createInfo = job.info.state->createInfoDeepCopy.createInfo;
     createInfo.pCode = module->GetCode();
     createInfo.codeSize = module->GetSize();
 
@@ -202,12 +200,12 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     // Attempt to compile the program
     VkResult result = job.table->next_vkCreateShaderModule(job.table->object, &createInfo, nullptr, &instrument);
     if (result != VK_SUCCESS) {
-        ++job.diagnostic->failedJobs;
+        ++job.info.diagnostic->failedJobs;
         return;
     }
 
     // Assign the instrument
-    job.state->AddInstrument(job.instrumentationKey, instrument);
+    job.info.state->AddInstrument(job.info.instrumentationKey, instrument);
 
     // Destroy the module
     destroy(module, allocators);

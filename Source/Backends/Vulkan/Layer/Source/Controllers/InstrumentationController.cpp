@@ -127,6 +127,27 @@ void InstrumentationController::PropagateInstrumentationInfo(PipelineState *stat
         state->instrumentationInfo.specialization.GetDataBegin(),
         state->instrumentationInfo.specialization.GetByteSize()
     );
+
+    // Clean previous dependent streams
+    state->dependentInstrumentationInfo.specializations.resize(state->shaderModules.size());
+    for (MessageStream& dependentStream : state->dependentInstrumentationInfo.specializations) {
+        dependentStream.ClearWithSchemaInvalidate();
+    }
+
+    // Summarize dependent specialization states
+    for (size_t i = 0; i < state->shaderModules.size(); i++) {
+        ShaderModuleState *dependentState = state->shaderModules[i];
+        
+        // Nothing to enqueue?
+        if (state->instrumentationInfo.specialization.IsEmpty() && dependentState->instrumentationInfo.specialization.IsEmpty()) {
+            continue;
+        }
+
+        // Summarize the shader specialization followed by pipeline specialization
+        MessageStream& stream = state->dependentInstrumentationInfo.specializations[i];
+        stream.Append(dependentState->instrumentationInfo.specialization);
+        stream.Append(state->instrumentationInfo.specialization);
+    }
 }
 
 void InstrumentationController::PropagateInstrumentationInfo(ShaderModuleState *state) {
@@ -596,6 +617,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 
             // Combine hashes
             instrumentationKey.combinedHash = dependentObject->instrumentationInfo.specializationHash;
+            CombineHash(instrumentationKey.combinedHash, state->instrumentationInfo.specializationHash);
             CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutUserSlots);
             CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutDataPCOffset);
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
@@ -607,8 +629,16 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
                 continue;
             }
 
+            // Determine the shader module index within the dependent object
+            uint64_t dependentIndex = std::ranges::find(dependentObject->shaderModules, state) - dependentObject->shaderModules.begin();
+
             // Inject the feedback state
-            shaderCompiler->Add(table, state, &batch->shaderCompilerDiagnostic, instrumentationKey, bucket);
+            shaderCompiler->Add(table, ShaderJob {
+                .state = state,
+                .instrumentationKey = instrumentationKey,
+                .diagnostic = &batch->shaderCompilerDiagnostic,
+                .dependentSpecialization = &dependentObject->dependentInstrumentationInfo.specializations[dependentIndex]
+            }, bucket);
         }
     }
 }
@@ -648,9 +678,12 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         for (uint32_t shaderIndex = 0; shaderIndex < state->shaderModules.size(); shaderIndex++) {
             uint64_t featureBitSet = 0;
 
+            // Get shader
+            ShaderModuleState* shaderState = state->shaderModules[shaderIndex];
+
             // Create super feature bit set (shader -> pipeline)
             // ? Pipeline specific bit set fed back during shader compilation
-            featureBitSet |= state->shaderModules[shaderIndex]->instrumentationInfo.featureBitSet;
+            featureBitSet |= shaderState->instrumentationInfo.featureBitSet;
             featureBitSet |= state->instrumentationInfo.featureBitSet;
 
             // Summarize
@@ -677,6 +710,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
             // Combine hashes
             instrumentationKey.combinedHash = state->instrumentationInfo.specializationHash;
+            CombineHash(instrumentationKey.combinedHash, shaderState->instrumentationInfo.specializationHash);
             CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutUserSlots);
             CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutDataPCOffset);
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
@@ -687,8 +721,8 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             job.shaderModuleInstrumentationKeys[shaderIndex] = instrumentationKey;
 
             // Shader may have failed to compile for whatever reason, skip if need be
-            if (!job.state->shaderModules[shaderIndex]->HasInstrument(instrumentationKey)) {
-                rejectedKeys.push_back(std::make_pair(job.state->shaderModules[shaderIndex], instrumentationKey));
+            if (!shaderState->HasInstrument(instrumentationKey)) {
+                rejectedKeys.push_back(std::make_pair(shaderState, instrumentationKey));
                 isSkipped = true;
             }
         }

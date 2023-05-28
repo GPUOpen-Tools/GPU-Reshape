@@ -24,6 +24,20 @@ class ShaderCompilerDebug;
 class DXILSigner;
 class DXBCSigner;
 
+struct ShaderJob {
+    /// State to compile
+    ShaderState* state{ nullptr };
+
+    /// Instrumentation key to apply
+    ShaderInstrumentationKey instrumentationKey;
+
+    /// Optional diagnostics
+    ShaderCompilerDiagnostic* diagnostic{nullptr};
+
+    /// Pipeline dependent specialization info
+    MessageStream* dependentSpecialization{nullptr};
+};
+
 class ShaderCompiler : public TComponent<ShaderCompiler> {
 public:
     COMPONENT(ShaderCompiler);
@@ -34,23 +48,15 @@ public:
     bool Install();
 
     /// Add a shader job
-    /// \param state the state to be compiled
-    /// \param diagnostic shader diagnostics
-    /// \param featureBitSet the enabled feature set
+    /// \param job job to enqueue
     /// \param bucket optional, the dispatcher bucket
-    void Add(ShaderState* state, ShaderCompilerDiagnostic* diagnostic, const ShaderInstrumentationKey& instrumentationKey, DispatcherBucket *bucket = nullptr);
+    void Add(const ShaderJob& job, DispatcherBucket *bucket = nullptr);
 
     /// Ensure a module is initialized
     /// \param state shader state
     bool InitializeModule(ShaderState* state);
 
 protected:
-    struct ShaderJob {
-        ShaderState *state;
-        ShaderCompilerDiagnostic* diagnostic;
-        ShaderInstrumentationKey instrumentationKey;
-    };
-
     /// Compile a given job
     void CompileShader(const ShaderJob &job);
 

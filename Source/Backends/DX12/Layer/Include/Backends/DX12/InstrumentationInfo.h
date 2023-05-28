@@ -17,3 +17,8 @@ struct InstrumentationInfo {
     /// Specialization stream
     MessageStream specialization;
 };
+
+struct DependentInstrumentationInfo {
+    /// All specializations
+    std::vector<MessageStream> specializations;
+};
