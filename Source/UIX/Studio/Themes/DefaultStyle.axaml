@@ -49,6 +49,8 @@
         <SolidColorBrush x:Key="ThemeBackgroundBrush" Color="#3B3B3B" />
         <SolidColorBrush x:Key="TextBlockColor" Color="#262626" />
         <SolidColorBrush x:Key="ToggleButtonCheckColorBrush">#2C2C2C</SolidColorBrush>
+        <SolidColorBrush x:Key="LinkForeground">#8B529E</SolidColorBrush>
+        <SolidColorBrush x:Key="LinkForegroundHighlight">#A869BB</SolidColorBrush>
 
         <!-- Connection strings -->
         <Color x:Key="ConnectionKeyIP">#4C4C4C</Color>
@@ -194,4 +196,7 @@
     <StyleInclude Source="avares://GPUReshape/Themes/Dock/ToolChromeControl.xaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/Dock/ToolControl.xaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/Dock/DockControl.xaml" />
+    
+    <!-- Custom controls -->
+    <StyleInclude Source="avares://GPUReshape/Themes/Hyperlink.axaml" />
 </Styles>

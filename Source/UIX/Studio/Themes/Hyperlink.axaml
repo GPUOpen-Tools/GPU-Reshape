@@ -1,0 +1,41 @@
+﻿<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Button Classes="Link" Width="100" Height="25" Content="Click me!" />
+    </Design.PreviewWith>
+
+    <!-- Simple hyperlink -->
+    <Style Selector="Button.Link">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Foreground" Value="{StaticResource LinkForeground}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}">
+                    <ContentPresenter.Styles>
+                        <Style Selector="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Foreground" Value="{TemplateBinding Foreground}"/>
+                            <Setter Property="FontSize" Value="{TemplateBinding FontSize}"/>
+                        </Style>
+                    </ContentPresenter.Styles>
+                </ContentPresenter>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    
+    <Style Selector="Button.Link:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource LinkForegroundHighlight}" />
+    </Style>
+    
+    <Style Selector="Button.Link:pressed">
+        <Setter Property="Foreground" Value="{StaticResource LinkForeground}" />
+    </Style>
+    
+    <Style Selector="Button.Link:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+</Styles>

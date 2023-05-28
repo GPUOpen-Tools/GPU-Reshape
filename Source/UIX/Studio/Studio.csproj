@@ -205,10 +205,6 @@
       <ProjectReference Include="..\Runtime\Runtime.csproj" />
     </ItemGroup>
     <ItemGroup>
-      <None Remove="Resources\Documentation\Welcome.md" />
-      <AvaloniaResource Include="Resources\Documentation\Welcome.md" />
-    </ItemGroup>
-    <ItemGroup>
       <AvaloniaXaml Include="Themes\Dock\DockControl.xaml" />
       <AvaloniaXaml Include="Themes\Dock\ToolControl.xaml" />
       <AvaloniaXaml Include="Themes\Dock\ToolChromeControl.xaml" />

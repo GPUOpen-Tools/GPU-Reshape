@@ -10,25 +10,32 @@
              mc:Ignorable="d"
              d:DesignWidth="600" d:DesignHeight="600"
              x:DataType="vm:WelcomeViewModel" x:CompileBindings="True">
-  <Grid Focusable="True" Background="{StaticResource InfoMediumBackground}">
-    <md:MarkdownScrollViewer
-        Margin="10 0 0 0"
-        Markdown="{markupExtensions:File 'Resources/Documentation/Welcome.md'}"
-        MarkdownStyleName="Standard">
-        <md:MarkdownScrollViewer.Styles>
-            <Style Selector="ctxt|CTextBlock.Heading1">
-                <Setter Property="Foreground" Value="{StaticResource InfoMediumForeground}"/>
-            </Style>
-            <Style Selector="ctxt|CTextBlock.Heading2">
-                <Setter Property="Foreground" Value="{StaticResource InfoMediumForeground}"/>
-            </Style>
-            <Style Selector="ctxt|CTextBlock.Heading3">
-                <Setter Property="Foreground" Value="{StaticResource InfoMediumForeground}"/>
-            </Style>
-            <Style Selector="ctxt|CTextBlock">
-                <Setter Property="Foreground" Value="{StaticResource InfoMediumForeground}"/>
-            </Style>
-        </md:MarkdownScrollViewer.Styles>
-    </md:MarkdownScrollViewer>
-  </Grid>
+    <Grid Focusable="True" Background="{StaticResource InfoMediumBackground}">
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock
+                Margin="0 0 0 5"
+                Foreground="{StaticResource InfoMediumForeground}"
+                FontSize="23">
+                No workspace open
+            </TextBlock>
+
+            <Button Classes="Link" Margin="0 10 0 0" 
+                    HorizontalAlignment="Center" FontSize="15"
+                    Command="{Binding CreateConnection}">
+                Create connection
+            </Button>
+            
+            <Button Classes="Link" Margin="0 10 0 0" 
+                    HorizontalAlignment="Center" FontSize="15"
+                    Command="{Binding LaunchApplication}">
+                Launch application
+            </Button>
+            
+            <Button Classes="Link" Margin="0 10 0 0" 
+                    HorizontalAlignment="Center" FontSize="15"
+                    Command="{Binding Close}">
+                Close
+            </Button>
+        </StackPanel>
+    </Grid>
 </UserControl>
