@@ -132,7 +132,12 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
 
                         // Create the missing detail view model
                         detailViewModel = new ResourceValidationDetailViewModel();
-                        validationObject.DetailViewModel = detailViewModel;
+                        
+                        // Assign on UI thread
+                        Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            validationObject.DetailViewModel = detailViewModel;
+                        });
                         
                         // Add lookup
                         _reducedDetails.Add(message.Key, detailViewModel);

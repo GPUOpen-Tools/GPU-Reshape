@@ -23,6 +23,7 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.PipelineFilterViewModel), typeof(Views.PipelineFilter));
             
             // Object types
+            AddDerived(typeof(ViewModels.Workspace.Objects.MissingDetailViewModel), typeof(Views.Workspace.Objects.MissingDetailView));
             AddDerived(typeof(ViewModels.Workspace.Objects.ResourceValidationDetailViewModel), typeof(Views.Workspace.Objects.ResourceValidationDetailView));
         }
 

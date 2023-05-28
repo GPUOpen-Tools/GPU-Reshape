@@ -49,6 +49,12 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// <param name="state"></param>
         public void Commit(InstrumentationState state)
         {
+            // Reduce stream size if not needed
+            if (!_safeGuard && !_detail)
+            {
+                return;
+            }
+            
             // Submit request
             var request = state.SpecializationStream.Add<SetInstrumentationConfigMessage>();
             request.safeGuard = _safeGuard ? 1 : 0;

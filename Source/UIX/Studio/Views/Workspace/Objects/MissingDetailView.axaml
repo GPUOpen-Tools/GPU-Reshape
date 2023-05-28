@@ -1,0 +1,25 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:objects="clr-namespace:Studio.ViewModels.Workspace.Objects;assembly=UIX.Studio.Runtime"
+             mc:Ignorable="d" d:DesignWidth="800"
+             Height="25"
+             x:Class="Studio.Views.Workspace.Objects.MissingDetailView"
+             x:DataType="objects:MissingDetailViewModel">
+    <StackPanel Orientation="Vertical" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="{StaticResource InfoMediumBackground}">
+        <StackPanel 
+            Orientation="Horizontal" 
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+            <TextBlock Height="20" Text="Compiling with detailed exports "/>
+            <ProgressBar 
+                IsIndeterminate="True"
+                Margin="15 0 0 0"
+                MinHeight="5" Height="5"
+                MinWidth="150" Width="150"
+                Foreground="{StaticResource DockApplicationAccentBrushHigh}"
+                Background="{StaticResource DockThemeBorderLowBrush}"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

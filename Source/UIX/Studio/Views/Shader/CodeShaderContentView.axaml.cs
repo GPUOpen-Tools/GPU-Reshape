@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Avalonia;
@@ -12,6 +13,7 @@ using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
+using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
@@ -151,7 +153,7 @@ namespace Studio.Views.Shader
                 });
 
             // Bind object change
-            ValidationObjectChanged
+            _validationObjectChanged
                 .Window(() => Observable.Timer(TimeSpan.FromMilliseconds(250)))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ => OnValidationObjectChanged());
@@ -210,6 +212,12 @@ namespace Studio.Views.Shader
         private void OnTextPointerPressed(PointerPressedEventArgs e)
         {
             ValidationObject? validationObject = _validationTextMarkerService.FindObjectUnder(Editor.TextArea.TextView, e.GetPosition(Editor.TextArea.TextView));
+            if (validationObject == null)
+            {
+                _validationTextMarkerService.SelectedObject = null;
+                DetailViewHost.ViewHost.ViewModel = null;
+                return;
+            }
 
             // Always handled at this point
             e.Handled = true;
@@ -219,9 +227,18 @@ namespace Studio.Views.Shader
             {
                 return;
             }
-
-            // Set detail context
-            DetailViewHost.ViewHost.ViewModel = validationObject?.DetailViewModel;
+            
+            // Bind detail context
+            validationObject?.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
+            {
+                var vm = DataContext as CodeShaderContentViewModel;
+                
+                DetailViewHost.ViewHost.ViewModel = x ?? new MissingDetailViewModel()
+                {
+                    Object = vm?.Object,
+                    PropertyCollection = vm?.PropertyCollection
+                };
+            }).DisposeWithClear(_detailDisposable);
 
             // Update selected and redraw
             _validationTextMarkerService.SelectedObject = validationObject;
@@ -263,7 +280,7 @@ namespace Studio.Views.Shader
             // Bind count and contents
             validationObject
                 .WhenAnyValue(x => x.Count, x => x.Content)
-                .Subscribe(x => ValidationObjectChanged.OnNext(new Unit()));
+                .Subscribe(x => _validationObjectChanged.OnNext(new Unit()));
 
             _validationTextMarkerService.Add(validationObject);
         }
@@ -290,6 +307,11 @@ namespace Studio.Views.Shader
         /// <summary>
         /// Internal proxy observable
         /// </summary>
-        private ISubject<Unit> ValidationObjectChanged = new Subject<Unit>();
+        private ISubject<Unit> _validationObjectChanged = new Subject<Unit>();
+
+        /// <summary>
+        /// Disposable for detailed data
+        /// </summary>
+        private CompositeDisposable _detailDisposable = new();
     }
 }

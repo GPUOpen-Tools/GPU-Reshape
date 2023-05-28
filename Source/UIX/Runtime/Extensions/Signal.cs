@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using DynamicData;
@@ -29,6 +30,25 @@ namespace Studio.Extensions
         public static IObservable<T> CastNullable<T>(this IObservable<object?> source) where T : class
         {
             return source.WhereNotNull().Cast<T>().WhereNotNull();
+        }
+        
+        /// <summary>
+        /// Dispose with a composite disposable with a pre-clear
+        /// </summary>
+        /// <param name="item">item to dispose with</param>
+        /// <param name="compositeDisposable">container to dispose to</param>
+        /// <returns>item</returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static T DisposeWithClear<T>(this T item, CompositeDisposable compositeDisposable) where T : IDisposable
+        {
+            if (compositeDisposable is null)
+            {
+                throw new ArgumentNullException(nameof(compositeDisposable));
+            }
+
+            compositeDisposable.Clear();
+            compositeDisposable.Add(item);
+            return item;
         }
     }
 }

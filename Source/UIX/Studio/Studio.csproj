@@ -159,6 +159,10 @@
         <DependentUpon>FileTreeItemView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Workspace\Objects\MissingDetailView.axaml.cs">
+        <DependentUpon>MissingDetailView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
