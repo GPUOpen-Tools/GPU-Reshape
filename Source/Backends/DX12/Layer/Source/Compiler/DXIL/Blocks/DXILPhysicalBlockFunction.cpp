@@ -3606,13 +3606,10 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
         table.idRemapper.AllocSourceMapping(declaration->parameters[i]);
     }
 
-    // Visit function records
+    // Visit function records, pass one, allocates results
     //   ? +1, Skip DeclareBlocks
     for (size_t recordIdx = 1; recordIdx < block->records.size(); recordIdx++) {
         LLVMRecord &record = block->records[recordIdx];
-
-        // Setup writer
-        DXILValueWriter writer(table, record);
 
         // Current remapping anchor
         DXILIDRemapper::Anchor anchor = table.idRemapper.GetAnchor();
@@ -3622,9 +3619,27 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             table.idRemapper.AllocRecordMapping(record);
         }
 
+        // Steal result as anchor
+        record.result = anchor.stitchAnchor;
+    }
+
+    // Visit function records, pass two, stitches operands
+    //   ? +1, Skip DeclareBlocks
+    for (size_t recordIdx = 1; recordIdx < block->records.size(); recordIdx++) {
+        LLVMRecord &record = block->records[recordIdx];
+
+        // Setup writer
+        DXILValueWriter writer(table, record);
+
+        // Current remapping anchor
+        DXILIDRemapper::Anchor anchor{record.result};
+
         // Handle instruction
         switch (static_cast<LLVMFunctionRecord>(record.id)) {
             default: {
+                // If we reached this branch this is technically a failure
+                ASSERT(false, "Unexpected record in stitch operation");
+                
                 // Force remap all operands as references
                 for (uint32_t i = 0; i < record.opCount; i++) {
                     table.idRemapper.RemapRelative(anchor, record, record.ops[i]);
@@ -3663,7 +3678,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
 
             case LLVMFunctionRecord::InstBinOp: {
                 writer.RemapRelativeValue(anchor);
-                writer.RemapRelativeValue(anchor);
+                writer.RemapRelative(anchor);
                 break;
             }
 
