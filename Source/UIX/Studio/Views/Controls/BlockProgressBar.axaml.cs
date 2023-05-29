@@ -17,13 +17,15 @@ namespace Studio.Views.Controls
             get => _jobPeak;
             set
             {
-                // Update peak and count
+                // Update peak
                 _jobPeak = Math.Max(_jobPeak, value);
-                _jobCount = value;
 
-                // Reset peak
-                if (value == 0)
-                    _jobPeak = 0;
+                // Reset peak, if the value exceeds the last count, this is a re-peak
+                if (value == 0 || value > _jobCount)
+                    _jobPeak = value;
+                
+                // Set value
+                _jobCount = value;
                 
                 // Force redraw
                 this.InvalidateMeasure();
