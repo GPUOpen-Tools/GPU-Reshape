@@ -32,7 +32,7 @@ namespace Message.CLR
         {
             unsafe
             {
-                return new ByteSpan(Pin, Data + offset, Length - offset);
+                return new ByteSpan(Pin, Data + offset, Math.Max(0, Length - offset));
             }
         }
 
