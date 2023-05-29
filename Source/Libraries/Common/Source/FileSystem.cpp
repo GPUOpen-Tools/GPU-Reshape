@@ -115,3 +115,51 @@ std::string ReadAllText(const std::filesystem::path &path) {
     stream.read(&str[0], size);
     return str;
 }
+
+static bool IsPathDelim(char _char) {
+    switch (_char) {
+        default:
+            return false;
+        case '\\':
+        case '/':
+            return true;
+    }
+}
+
+std::string SanitizePath(const std::string_view &view) {
+    std::string path;
+    path.reserve(view.length());
+
+    // Was the last character a delimiter?
+    bool wasDelim = false;
+
+    // Construct new string
+    for (size_t i = 0; i < view.length(); i++) {
+        bool isDelim = IsPathDelim(view[i]);
+        
+        // Skip if the last was a delimiter
+        if (wasDelim && isDelim) {
+            continue;
+        }
+
+        // Set state
+        wasDelim = isDelim;
+        
+        // Sanitize delims
+        char _char;
+        switch (view[i]) {
+            default:
+                _char = view[i];
+                break;
+            case '/':
+                _char = '\\';
+                break;
+        }
+
+        // Add character
+        path.insert(path.end(), _char);
+    }
+
+    // OK
+    return path;
+}

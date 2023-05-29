@@ -37,3 +37,6 @@ std::filesystem::path GetIntermediateDebugPath();
 
 /// Get the cache path
 std::filesystem::path GetIntermediateCachePath();
+
+/// Sanitize a given path
+std::string SanitizePath(const std::string_view &view);

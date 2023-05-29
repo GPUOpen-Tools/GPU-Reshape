@@ -1,5 +1,8 @@
 #include <Backends/Vulkan/Compiler/SpvSourceMap.h>
 
+// Common
+#include <Common/FileSystem.h>
+
 SpvSourceMap::SpvSourceMap(const Allocators &allocators) : allocators(allocators) {
     
 }
@@ -8,7 +11,7 @@ void SpvSourceMap::AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint3
     PhysicalSource *source = GetOrAllocate(filename, id);
     source->language = language;
     source->version = version;
-    source->filename = filename;
+    source->filename = SanitizePath(filename);
 }
 
 void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
@@ -106,7 +109,7 @@ void SpvSourceMap::FinalizeFragments(PhysicalSource* source) {
             }
 
             // Get filename
-            std::string_view file = code.substr(start, i - start);
+            std::string file = SanitizePath(code.substr(start, i - start));
 
             // Eat until next line
             while (i < code.length() && code[i] != '\n') {
@@ -118,7 +121,7 @@ void SpvSourceMap::FinalizeFragments(PhysicalSource* source) {
 
             // Get file
             PhysicalSource *extendedSource = GetOrAllocate(file);
-            extendedSource->filename = file;
+            extendedSource->filename = std::move(file);
             extendedSource->version = version;
             extendedSource->language = language;
 

@@ -37,7 +37,8 @@
             x:Name="FilesTree" 
             ContextMenu="{StaticResource ReactiveContextMenu}" 
             Tag="{Binding}"
-            Items="{Binding Files}">
+            Items="{Binding Files}"
+            AutoScrollToSelectedItem="False">
             <TreeView.Styles>
                 <Style Selector="TreeViewItem">
                     <Setter Property="IsExpanded" Value="{Binding Path=(cvm:IObservableTreeItem).IsExpanded}"/>

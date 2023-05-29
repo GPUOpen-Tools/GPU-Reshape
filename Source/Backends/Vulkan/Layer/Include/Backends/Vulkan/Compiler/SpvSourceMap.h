@@ -102,7 +102,7 @@ private:
         uint32_t version{0};
 
         /// Filename of this source
-        std::string_view filename;
+        std::string filename;
 
         /// Code wise view
         std::string_view source;

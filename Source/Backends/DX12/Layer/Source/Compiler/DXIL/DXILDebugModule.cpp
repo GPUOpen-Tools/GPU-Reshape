@@ -2,6 +2,9 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordStringView.h>
 
+// Common
+#include <Common/FileSystem.h>
+
 DXILDebugModule::DXILDebugModule(const Allocators &allocators)
     : scan(allocators),
       sourceFragments(allocators),
@@ -329,6 +332,9 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                 LLVMRecordStringView filename(block->records[record.Op(1) - 1], 0);
                 fragment.filename.resize(filename.Length());
                 filename.Copy(fragment.filename.data());
+
+                // Cleanup
+                fragment.filename = SanitizePath(fragment.filename);
                 break;
             }
 
@@ -464,33 +470,18 @@ uint32_t DXILDebugModule::GetLinearFileUID(uint32_t scopeMdId) {
     return fileMd.file.linearFileUID;
 }
 
-static char SanitizeSourceFragmentPathChar(char ch) {
-    switch (ch) {
-        default:
-            return ch;
-        case '/':
-        case '\\':
-            return '\\';
-    }
-}
-
 DXILDebugModule::SourceFragment *DXILDebugModule::FindOrCreateSourceFragment(const LLVMRecordStringView &view) {
+    // Copy to temporary string
+    std::string filename;
+    filename.resize(view.Length());
+    view.Copy(filename.data());
+
+    // Cleanup
+    filename = SanitizePath(filename);
+    
     // Find fragment
     for (SourceFragment& candidate : sourceFragments) {
-        if (candidate.filename.length() != view.Length()) {
-            continue;
-        }
-
-        bool isMatch = true;
-
-        for (uint32_t i = 0; i < view.Length(); i++) {
-            if (SanitizeSourceFragmentPathChar(candidate.filename[i]) != SanitizeSourceFragmentPathChar(view[i])) {
-                isMatch = false;
-                break;
-            }
-        }
-
-        if (isMatch) {
+        if (candidate.filename == filename) {
             return &candidate;
         }
     }
@@ -498,10 +489,9 @@ DXILDebugModule::SourceFragment *DXILDebugModule::FindOrCreateSourceFragment(con
     // The fragment doesn't exist, likely indicating that it was not used in the shader
     SourceFragment& fragment = sourceFragments.emplace_back(allocators);
 
-    // Copy filename
-    fragment.filename.resize(view.Length());
-    view.Copy(fragment.filename.data());
+    // Assign filename
+    fragment.filename = std::move(filename);
     
-    // None
+    // OK
     return &fragment;
 }
