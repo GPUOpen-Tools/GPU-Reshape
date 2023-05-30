@@ -7,11 +7,23 @@ SpvSourceMap::SpvSourceMap(const Allocators &allocators) : allocators(allocators
     
 }
 
+static std::string SanitizeCompilerPath(const std::string_view& view) {
+    std::string path = SanitizePath(view);
+
+    // Remove dangling delims
+    if (path.ends_with("\\")) {
+        path.erase(path.end());
+    }
+
+    // OK
+    return path;
+}
+
 void SpvSourceMap::AddPhysicalSource(SpvId id, SpvSourceLanguage language, uint32_t version, const std::string_view &filename) {
     PhysicalSource *source = GetOrAllocate(filename, id);
     source->language = language;
     source->version = version;
-    source->filename = SanitizePath(filename);
+    source->filename = SanitizeCompilerPath(filename);
 }
 
 void SpvSourceMap::AddSource(SpvId id, const std::string_view &code) {
@@ -86,6 +98,10 @@ void SpvSourceMap::FinalizeFragments(PhysicalSource* source) {
                 continue;
             }
 
+            // Consume last offset
+            ASSERT(!fragment->lineOffsets.empty(), "No offset to consume");
+            fragment->lineOffsets.pop_back();
+
             // Eat until number
             while (i < code.length() && !isdigit(code[i])) {
                 i++;
@@ -109,7 +125,7 @@ void SpvSourceMap::FinalizeFragments(PhysicalSource* source) {
             }
 
             // Get filename
-            std::string file = SanitizePath(code.substr(start, i - start));
+            std::string file = SanitizeCompilerPath(code.substr(start, i - start));
 
             // Eat until next line
             while (i < code.length() && code[i] != '\n') {
@@ -189,6 +205,11 @@ std::string_view SpvSourceMap::GetLine(uint32_t fileIndex, uint32_t line) const 
         if (line >= fragment.lineStart && line < fragment.lineStart + fragment.lineOffsets.size()) {
             uint32_t offset = fragment.lineOffsets.at(line - fragment.lineStart);
 
+            // End?
+            if (offset == fragment.source.size()) {
+                return {};
+            }
+            
             // Segment offsets
             const char *begin = &fragment.source[offset];
             const char *end = std::strchr(begin, '\n');

@@ -14,6 +14,18 @@ DXILDebugModule::DXILDebugModule(const Allocators &allocators)
       thinValues(allocators),
       allocators(allocators) { }
 
+static std::string SanitizeCompilerPath(const std::string_view& view) {
+    std::string path = SanitizePath(view);
+
+    // Remove dangling delims
+    if (path.ends_with("\\")) {
+        path.erase(path.end());
+    }
+
+    // OK
+    return path;
+}
+
 DXSourceAssociation DXILDebugModule::GetSourceAssociation(uint32_t codeOffset) {
     if (codeOffset >= instructionMetadata.size()) {
         return {};
@@ -334,7 +346,7 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
                 filename.Copy(fragment.filename.data());
 
                 // Cleanup
-                fragment.filename = SanitizePath(fragment.filename);
+                fragment.filename = SanitizeCompilerPath(fragment.filename);
                 break;
             }
 
@@ -477,7 +489,7 @@ DXILDebugModule::SourceFragment *DXILDebugModule::FindOrCreateSourceFragment(con
     view.Copy(filename.data());
 
     // Cleanup
-    filename = SanitizePath(filename);
+    filename = SanitizeCompilerPath(filename);
     
     // Find fragment
     for (SourceFragment& candidate : sourceFragments) {
