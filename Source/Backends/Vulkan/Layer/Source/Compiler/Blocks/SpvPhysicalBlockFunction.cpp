@@ -135,7 +135,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpLine: {
-                sourceAssociation.fileUID = table.debugStringSource.sourceMap.GetFileIndex(ctx++);
+                sourceAssociation.fileUID = table.debugStringSource.GetFileIndex(ctx++);
                 sourceAssociation.line = (ctx++) - 1;
                 sourceAssociation.column = (ctx++) - 1;
 

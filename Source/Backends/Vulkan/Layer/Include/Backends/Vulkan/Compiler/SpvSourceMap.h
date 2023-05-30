@@ -69,12 +69,22 @@ struct SpvSourceMap {
     }
 
     /// Get the file index for a given spv identifier (physical source)
-    uint32_t GetFileIndex(SpvId id) const {
+    uint32_t GetFileIndex(SpvId id, const std::string_view& view) {
         if (id >= sourceMappings.size()) {
-            return 0u;
+            sourceMappings.resize(id + 1, InvalidSpvId);
         }
-        
-        return sourceMappings.at(id);
+
+        // Get mapping
+        uint32_t& index = sourceMappings.at(id);
+
+        // Not assigned?
+        if (index == InvalidSpvId) {
+            index = Find(view);
+            ASSERT(index != InvalidSpvId, "Failed to associate shader source");
+        }
+
+        // OK
+        return index;
     }
     
 private:
@@ -116,6 +126,9 @@ private:
         /// All final fragments
         std::vector<Fragment> fragments;
     };
+
+    /// Get a source section
+    uint32_t Find(const std::string_view& view);
 
     /// Get a source section
     PhysicalSource* GetOrAllocate(const std::string_view& view, SpvId id);

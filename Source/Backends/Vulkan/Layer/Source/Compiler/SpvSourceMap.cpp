@@ -155,6 +155,22 @@ void SpvSourceMap::FinalizeFragments(PhysicalSource* source) {
     }
 }
 
+uint32_t SpvSourceMap::Find(const std::string_view &view) {
+    // Sanitize the input path
+    std::string sanitized = SanitizeCompilerPath(view);
+
+    // Try to match all sources
+    for (size_t i = 0; i < physicalSources.size(); i++) {
+        PhysicalSource *source = physicalSources[i];
+        if (source->filename == sanitized) {
+            return static_cast<uint32_t>(i);
+        }
+    }
+
+    // Not found
+    return InvalidSpvId;
+}
+
 SpvSourceMap::PhysicalSource *SpvSourceMap::GetOrAllocate(const std::string_view &view, SpvId id) {
     if (sourceMappings.size() <= id) {
         sourceMappings.resize(id + 1, InvalidSpvId);
