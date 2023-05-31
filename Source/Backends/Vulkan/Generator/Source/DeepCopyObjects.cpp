@@ -57,6 +57,11 @@ bool Generators::DeepCopyObjects(const GeneratorInfo& info, TemplateEngine& temp
         objects << "\t" << name << "* operator->() {\n";
         objects << "\t\treturn &createInfo;\n";
         objects << "\t}\n\n";
+        
+        // Deep copy accessor
+        objects << "\tconst " << name << "* operator->() const {\n";
+        objects << "\t\treturn &createInfo;\n";
+        objects << "\t}\n\n";
 
         // Creation info
         objects << "\t" << name << " createInfo{};\n";

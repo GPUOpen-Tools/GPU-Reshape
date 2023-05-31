@@ -69,6 +69,9 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkDestroyFrameBuffer = reinterpret_cast<PFN_vkDestroyFramebuffer>(getDeviceProcAddr(object, "vkDestroyFramebuffer"));
     next_vkBindBufferMemory = reinterpret_cast<PFN_vkBindBufferMemory>(getDeviceProcAddr(object, "vkBindBufferMemory"));
     next_vkUpdateDescriptorSets = reinterpret_cast<PFN_vkUpdateDescriptorSets>(getDeviceProcAddr(object, "vkUpdateDescriptorSets"));
+    next_vkCreateDescriptorUpdateTemplate = reinterpret_cast<PFN_vkCreateDescriptorUpdateTemplate>(getDeviceProcAddr(object, "vkCreateDescriptorUpdateTemplate"));
+    next_vkDestroyDescriptorUpdateTemplate = reinterpret_cast<PFN_vkDestroyDescriptorUpdateTemplate>(getDeviceProcAddr(object, "vkDestroyDescriptorUpdateTemplate"));
+    next_vkUpdateDescriptorSetWithTemplate = reinterpret_cast<PFN_vkUpdateDescriptorSetWithTemplate>(getDeviceProcAddr(object, "vkUpdateDescriptorSetWithTemplate"));
     next_vkGetDeviceQueue = reinterpret_cast<PFN_vkGetDeviceQueue>(getDeviceProcAddr(object, "vkGetDeviceQueue"));
     next_vkCreateImage = reinterpret_cast<PFN_vkCreateImage>(getDeviceProcAddr(object, "vkCreateImage"));
     next_vkDestroyImage = reinterpret_cast<PFN_vkDestroyImage>(getDeviceProcAddr(object, "vkDestroyImage"));
@@ -214,6 +217,15 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkUpdateDescriptorSets"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkUpdateDescriptorSets);
+
+    if (!std::strcmp(name, "vkCreateDescriptorUpdateTemplate"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateDescriptorUpdateTemplate);
+
+    if (!std::strcmp(name, "vkDestroyDescriptorUpdateTemplate"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyDescriptorUpdateTemplate);
+
+    if (!std::strcmp(name, "vkUpdateDescriptorSetWithTemplate"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkUpdateDescriptorSetWithTemplate);
 
     if (!std::strcmp(name, "vkCreateBuffer"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateBuffer);

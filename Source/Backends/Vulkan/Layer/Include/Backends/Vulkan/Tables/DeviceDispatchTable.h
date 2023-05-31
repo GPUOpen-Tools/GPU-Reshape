@@ -32,6 +32,7 @@ struct CommandPoolState;
 struct ShaderModuleState;
 struct DescriptorSetLayoutState;
 struct DescriptorSetState;
+struct DescriptorUpdateTemplateState;
 struct DescriptorPoolState;
 struct SamplerState;
 struct BufferState;
@@ -111,23 +112,24 @@ struct DeviceDispatchTable {
     ComRef<IBridge> bridge;
 
     /// Tracked objects
-    TrackedObject<VkCommandPool, CommandPoolState>                 states_commandPool;
-    TrackedObject<VkShaderModule, ShaderModuleState>               states_shaderModule;
-    TrackedObject<VkDescriptorSetLayout, DescriptorSetLayoutState> states_descriptorSetLayout;
-    TrackedObject<VkDescriptorSet, DescriptorSetState>             states_descriptorSet;
-    TrackedObject<VkDescriptorPool, DescriptorPoolState>           states_descriptorPool;
-    TrackedObject<VkSampler, SamplerState>                         states_sampler;
-    TrackedObject<VkBuffer, BufferState>                           states_buffer;
-    TrackedObject<VkSwapchainKHR, SwapchainState>                  states_swapchain;
-    TrackedObject<VkBufferView, BufferViewState>                   states_bufferView;
-    TrackedObject<VkImage, ImageState>                             states_image;
-    TrackedObject<VkImageView, ImageViewState>                     states_imageView;
-    TrackedObject<VkPipelineLayout, PipelineLayoutState>           states_pipelineLayout;
-    TrackedObject<VkRenderPass, RenderPassState>                   states_renderPass;
-    TrackedObject<VkFramebuffer, FrameBufferState>                 states_frameBuffers;
-    TrackedObject<VkFence, FenceState>                             states_fence;
-    TrackedObject<VkQueue, QueueState>                             states_queue;
-    TrackedObject<VkPipeline, PipelineState>                       states_pipeline;
+    TrackedObject<VkCommandPool, CommandPoolState>                           states_commandPool;
+    TrackedObject<VkShaderModule, ShaderModuleState>                         states_shaderModule;
+    TrackedObject<VkDescriptorSetLayout, DescriptorSetLayoutState>           states_descriptorSetLayout;
+    TrackedObject<VkDescriptorSet, DescriptorSetState>                       states_descriptorSet;
+    TrackedObject<VkDescriptorUpdateTemplate, DescriptorUpdateTemplateState> states_descriptorUpdateTemplateState;
+    TrackedObject<VkDescriptorPool, DescriptorPoolState>                     states_descriptorPool;
+    TrackedObject<VkSampler, SamplerState>                                   states_sampler;
+    TrackedObject<VkBuffer, BufferState>                                     states_buffer;
+    TrackedObject<VkSwapchainKHR, SwapchainState>                            states_swapchain;
+    TrackedObject<VkBufferView, BufferViewState>                             states_bufferView;
+    TrackedObject<VkImage, ImageState>                                       states_image;
+    TrackedObject<VkImageView, ImageViewState>                               states_imageView;
+    TrackedObject<VkPipelineLayout, PipelineLayoutState>                     states_pipelineLayout;
+    TrackedObject<VkRenderPass, RenderPassState>                             states_renderPass;
+    TrackedObject<VkFramebuffer, FrameBufferState>                           states_frameBuffers;
+    TrackedObject<VkFence, FenceState>                                       states_fence;
+    TrackedObject<VkQueue, QueueState>                                       states_queue;
+    TrackedObject<VkPipeline, PipelineState>                                 states_pipeline;
 
     /// Dependency objects
     DependentObject<ShaderModuleState, PipelineState> dependencies_shaderModulesPipelines;
@@ -204,6 +206,9 @@ struct DeviceDispatchTable {
     PFN_vkCreateFramebuffer               next_vkCreateFrameBuffer;
     PFN_vkDestroyFramebuffer              next_vkDestroyFrameBuffer;
     PFN_vkUpdateDescriptorSets            next_vkUpdateDescriptorSets;
+    PFN_vkCreateDescriptorUpdateTemplate  next_vkCreateDescriptorUpdateTemplate;
+    PFN_vkDestroyDescriptorUpdateTemplate next_vkDestroyDescriptorUpdateTemplate;
+    PFN_vkUpdateDescriptorSetWithTemplate next_vkUpdateDescriptorSetWithTemplate;
     PFN_vkBindBufferMemory                next_vkBindBufferMemory;
     PFN_vkGetDeviceQueue                  next_vkGetDeviceQueue;
     PFN_vkCreateImage                     next_vkCreateImage;
