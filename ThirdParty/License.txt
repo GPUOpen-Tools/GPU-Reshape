@@ -2,42 +2,60 @@ Third party licensing
 
 Library
     Detour
-    ArgParse
+    ArgParse (p-ranav)
     Catch2
     Asio
-    Fmt
+    Fmt (Fmtlib)
     SPIRVHeaders
-    TinyXML2
-    nlohmann/json
-    VMA
+    TinyXML2 (Leethomason)
+    json (Nlohmann)
+    VulkanMemoryAllocator
     VulkanHeaders
     VulkanLoader
     libClang
     Avalonia
+    AMD-AGS
+    Avalonia
+    BTree (Frozenca)
+    D3D12MemoryAllocator
+    DxbcSigner
+    UnorderedDense (Martinus)
+
+Gists:
+    CRC32
+        https://gist.github.com/iwanders/8e1cb7b92af2ccf8d1a73450d771f483
+        .\Source\Libraries\Common\Include\Common\CRC.h
 
 Nuget (UIX)
+    Avalonia
     Avalonia.AvaloniaEdit
+    Avalonia.Controls.PanAndZoom
     Avalonia.Controls.TreeDataGrid
     Avalonia.Desktop
-    Avalonia.Diagnostics
     Avalonia.ReactiveUI
-    Avalonia
+    Avalonia.ReactiveUI.Events
+    AvaloniaEdit.TextMate
     Dock.Avalonia
     Dock.Model.ReactiveUI
+    LiveChartsCore.SkiaSharpView.Avalonia
+    Markdown.Avalonia
     MessageBox.Avalonia
+    Microsoft.CodeAnalysis
     Microsoft.CodeAnalysis.Common
     Microsoft.CodeAnalysis.Compilers
-    Microsoft.CodeAnalysis.CSharp.Scripting
     Microsoft.CodeAnalysis.CSharp
+    Microsoft.CodeAnalysis.CSharp.Scripting
     Microsoft.CodeAnalysis.Scripting.Common
-    Microsoft.CodeAnalysis
     Microsoft.Net.Compilers
-    Projektanker.Icons.Avalonia.FontAwesome
+    Newtonsoft.Json
     Projektanker.Icons.Avalonia
+    Projektanker.Icons.Avalonia.FontAwesome
+    TextMateSharp.Grammars
     XamlNameReferenceGenerator
-    Avalonia.ReactiveUI.Events
+    AvaloniaGraphControl
+    mameolan.Avalonia.ExtendedToolkit
 
-Test dependencies
+Test dependencies (wont be packaged in release builds)
     SPIRVTools
     DirectXShaderCompiler
     GraphViz
