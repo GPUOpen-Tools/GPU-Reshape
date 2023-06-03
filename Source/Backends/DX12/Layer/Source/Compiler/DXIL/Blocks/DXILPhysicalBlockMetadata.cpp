@@ -1,7 +1,7 @@
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockMetadata.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockScan.h>
-#include <Backends/DX12/Compiler/DXJob.h>
+#include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordView.h>
 
 // Backend
@@ -782,7 +782,7 @@ ComponentType DXILPhysicalBlockMetadata::GetFormatComponent(Backend::IL::Format 
 void DXILPhysicalBlockMetadata::CompileMetadata(struct LLVMBlock *block) {
 }
 
-void DXILPhysicalBlockMetadata::CompileMetadata(const DXJob& job) {
+void DXILPhysicalBlockMetadata::CompileMetadata(const DXCompileJob& job) {
     // Compile all flags
     CompileProgramFlags(job);
 
@@ -1033,7 +1033,7 @@ void DXILPhysicalBlockMetadata::AddProgramFlag(DXILProgramShaderFlagSet flags) {
     programMetadata.internalShaderFlags |= flags;
 }
 
-void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job) {
+void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXCompileJob &job) {
     // Program may already have a list
     if (resources.uid != ~0u) {
         return;
@@ -1097,7 +1097,7 @@ void DXILPhysicalBlockMetadata::EnsureProgramResourceClassList(const DXJob &job)
     mdBlock->AddRecord(dxResourceRecord);
 }
 
-void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXJob& job) {
+void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXCompileJob& job) {
     CreateShaderExportHandle(job);
     CreatePRMTHandle(job);
     CreateConstantsHandle(job);
@@ -1106,7 +1106,7 @@ void DXILPhysicalBlockMetadata::CreateResourceHandles(const DXJob& job) {
     CreateShaderDataHandles(job);
 }
 
-void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXJob& job) {
+void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXCompileJob& job) {
     // i32
     const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});
 
@@ -1148,7 +1148,7 @@ void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXJob& job) {
     table.bindingInfo.shaderExportHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
 }
 
-void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXJob &job) {
+void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXCompileJob &job) {
     // i32
     const Backend::IL::Type* i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32,.signedness=true});
 
@@ -1207,7 +1207,7 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXJob &job) {
     }
 }
 
-void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXJob &job) {
+void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) {
     // i32
     const Backend::IL::Type *i32 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true});
     const Backend::IL::Type *i32x4 = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{.containedType=i32, .dimension=4});
@@ -1248,7 +1248,7 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXJob &job) {
     table.bindingInfo.descriptorConstantsHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
 }
 
-void DXILPhysicalBlockMetadata::CreateEventHandle(const DXJob &job) {
+void DXILPhysicalBlockMetadata::CreateEventHandle(const DXCompileJob &job) {
     IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
 
     // Requested dword count
@@ -1320,7 +1320,7 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXJob &job) {
     table.bindingInfo.eventConstantsHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
 }
 
-void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXJob &job) {
+void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
     IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
 
     // Requested dword count
@@ -1392,7 +1392,7 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXJob &job) {
     table.bindingInfo.shaderDataConstantsHandleId = static_cast<uint32_t>(_class.handles.size()) - 1;
 }
 
-void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXJob& job) {
+void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXCompileJob& job) {
     IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
 
     // All shader Datas are UAVs
@@ -1502,7 +1502,7 @@ LLVMRecordView DXILPhysicalBlockMetadata::CompileResourceClassRecord(const Mappe
     return classRecord;
 }
 
-void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXJob &job) {
+void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXCompileJob &job) {
     // Get mapped
     MappedRegisterClass& mapped = FindOrAddRegisterClass(DXILShaderResourceClass::SRVs);
 
@@ -1571,7 +1571,7 @@ void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXJob &job) {
 }
 
 
-void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXJob &job) {
+void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXCompileJob &job) {
     // Get mapped
     MappedRegisterClass& mapped = FindOrAddRegisterClass(DXILShaderResourceClass::UAVs);
 
@@ -1598,7 +1598,7 @@ void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXJob &job) {
     }
 }
 
-void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXJob &job) {
+void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXCompileJob &job) {
     // Get mapped
     MappedRegisterClass& mapped = FindOrAddRegisterClass(DXILShaderResourceClass::UAVs);
 
@@ -1668,7 +1668,7 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXJob &job) {
     }
 }
 
-void DXILPhysicalBlockMetadata::CompileCBVResourceClass(const DXJob &job) {
+void DXILPhysicalBlockMetadata::CompileCBVResourceClass(const DXCompileJob &job) {
     // Get mapped
     MappedRegisterClass& mapped = FindOrAddRegisterClass(DXILShaderResourceClass::CBVs);
 

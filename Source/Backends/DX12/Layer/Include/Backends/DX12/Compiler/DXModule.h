@@ -10,7 +10,8 @@
 #include <cstdint>
 
 // Forward declarations
-struct DXJob;
+struct DXParseJob;
+struct DXCompileJob;
 struct DXStream;
 class IDXDebugModule;
 namespace IL {
@@ -23,10 +24,9 @@ public:
     virtual ~DXModule() = default;
 
     /// Scan the DXIL bytecode
-    /// \param byteCode code start
-    /// \param byteLength byte size of code
+    /// \param job job
     /// \return success state
-    virtual bool Parse(const void* byteCode, uint64_t byteLength) = 0;
+    virtual bool Parse(const DXParseJob& job) = 0;
 
     /// Copy this module
     /// \return
@@ -35,7 +35,7 @@ public:
     /// Recompile this module
     /// \param out lifetime owned by this module
     /// \return
-    virtual bool Compile(const DXJob& job, DXStream& out) = 0;
+    virtual bool Compile(const DXCompileJob& job, DXStream& out) = 0;
 
     /// Get the program of this module
     /// \return program

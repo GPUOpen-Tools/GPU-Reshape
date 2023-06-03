@@ -3,12 +3,13 @@
 #include <Backends/DX12/Export/ShaderExportDescriptorAllocator.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
-#include <Backends/DX12/Compiler/DXJob.h>
+#include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Modules/InbuiltTemplateModuleD3D12.h>
 #include <Backends/DX12/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 #include <Backends/DX12/Export/ShaderExportHost.h>
+#include <Backends/DX12/Compiler/DXParseJob.h>
 #include <Backends/DX12/RootSignature.h>
 
 // Backend
@@ -29,11 +30,14 @@ ShaderProgramHost::ShaderProgramHost(DeviceState* device) :
 bool ShaderProgramHost::Install() {
     templateModule = new(registry->GetAllocators(), kAllocInstrumentation) DXBCModule(allocators, 0ull, GlobalUID::New());
 
+    // Prepare job
+    DXParseJob job;
+    job.byteCode = reinterpret_cast<const uint32_t*>(kSPIRVInbuiltTemplateModuleD3D12);
+    job.byteLength = static_cast<uint32_t>(sizeof(kSPIRVInbuiltTemplateModuleD3D12));
+    job.pdbController = device->pdbController;
+
     // Attempt to parse template data
-    if (!templateModule->Parse(
-        reinterpret_cast<const uint32_t*>(kSPIRVInbuiltTemplateModuleD3D12),
-        static_cast<uint32_t>(sizeof(kSPIRVInbuiltTemplateModuleD3D12))
-    )) {
+    if (!templateModule->Parse(job)) {
         return false;
     }
 
@@ -110,7 +114,7 @@ bool ShaderProgramHost::InstallPrograms() {
         entry.program->Inject(*entry.module->GetProgram());
 
         // Describe job
-        DXJob compileJob{};
+        DXCompileJob compileJob{};
         compileJob.instrumentationKey.bindingInfo = rootBindingInfo;
         compileJob.instrumentationKey.physicalMapping = rootPhysicalMapping;
         compileJob.streamCount = exportCount;

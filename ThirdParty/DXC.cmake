@@ -23,6 +23,29 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
     # Default arguments
     set(SupressArguments -Wno-unknown-attributes -Wno-ignored-attributes)
 
+    # Backend specific arguments
+    cmake_parse_arguments(
+        ARGS
+        "" # Options
+        "D3D12;VULKAN" # One Value
+        "" # Multi Value
+        ${ARGN}
+    )
+
+    # D3D12 defaults
+    if ("${ARGS_D3D12}" STREQUAL "")
+        set(ARGS_D3D12 "-Zi -Qembed_debug")
+    endif ()
+
+    # Vulkan defaults
+    if ("${ARGS_VULKAN}" STREQUAL "")
+        set(ARGS_VULKAN "-Zi -Qembed_debug")
+    endif ()
+
+    # Parse additional args
+    separate_arguments(ArgsD3D12 WINDOWS_COMMAND ${ARGS_D3D12})
+    separate_arguments(ArgsVulkan WINDOWS_COMMAND ${ARGS_VULKAN})
+
     # Generate vulkan
     if (${ENABLE_BACKEND_VULKAN})
         add_custom_command(
@@ -39,7 +62,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
                 -Fh ${HEADER}Vulkan.h
                 -Vn ${VAR}Vulkan
                 ${SupressArguments}
-                ${Args}
+                ${Args} ${ArgsVulkan}
         )
 
         # Add output
@@ -55,13 +78,11 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
                 ${Hlsl}
             COMMAND ${CompilerPath}
                 -T${PROFILE}
-                -Zi
-                -Qembed_debug
                 ${Hlsl}
                 -Fh ${HEADER}D3D12.h
                 -Vn ${VAR}D3D12
                 ${SupressArguments}
-                ${Args}
+                ${Args} ${ArgsD3D12}
         )
 
         # Add output
@@ -75,12 +96,10 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
                     ${Hlsl}
                 COMMAND ${CompilerPath}
                     -T${PROFILE}
-                    -Zi
-                    -Qembed_debug
                     ${Hlsl}
                     -Fc ${HEADER}D3D12.dxil.txt
                     ${SupressArguments}
-                    ${Args}
+                    ${Args} ${ArgsD3D12}
             )
 
             # Add output

@@ -1,7 +1,11 @@
 #pragma once
 
+// Common
+#include <Common/Assert.h>
+
 // Std
 #include <cstdint>
+#include <cstring>
 
 /// DXBC parsing context
 struct DXBCParseContext {

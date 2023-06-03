@@ -13,7 +13,7 @@
 #include <string_view>
 
 // Forward declarations
-struct DXJob;
+struct DXCompileJob;
 struct DXILValueReader;
 
 /// Function block
@@ -42,7 +42,7 @@ public:
 public:
     /// Compile a function
     /// \param block block
-    void CompileFunction(const DXJob &job, struct LLVMBlock *block);
+    void CompileFunction(const DXCompileJob &job, struct LLVMBlock *block);
 
     /// Compile a module function
     /// \param record record
@@ -144,31 +144,31 @@ private:
 
     /// Create an export handle
     /// \param block appended block
-    void CreateHandles(const DXJob &job, struct LLVMBlock* block);
+    void CreateHandles(const DXCompileJob &job, struct LLVMBlock* block);
 
     /// Create an export handle
     /// \param block appended block
-    void CreateExportHandle(const DXJob &job, struct LLVMBlock* block);
+    void CreateExportHandle(const DXCompileJob &job, struct LLVMBlock* block);
 
     /// Create the PRMT handle
     /// \param block appended block
-    void CreatePRMTHandle(const DXJob &job, struct LLVMBlock* block);
+    void CreatePRMTHandle(const DXCompileJob &job, struct LLVMBlock* block);
 
     /// Create the shader data handles
     /// \param block appended block
-    void CreateShaderDataHandle(const DXJob &job, struct LLVMBlock* block);
+    void CreateShaderDataHandle(const DXCompileJob &job, struct LLVMBlock* block);
 
     /// Create the descriptor handle
     /// \param block appended block
-    void CreateDescriptorHandle(const DXJob &job, struct LLVMBlock* block);
+    void CreateDescriptorHandle(const DXCompileJob &job, struct LLVMBlock* block);
 
     /// Create the event handle
     /// \param block appended block
-    void CreateEventHandle(const DXJob &job, struct LLVMBlock* block);
+    void CreateEventHandle(const DXCompileJob &job, struct LLVMBlock* block);
 
     /// Create the event handle
     /// \param block appended block
-    void CreateConstantHandle(const DXJob &job, struct LLVMBlock* block);
+    void CreateConstantHandle(const DXCompileJob &job, struct LLVMBlock* block);
 
 private:
     struct DynamicRootSignatureUserMapping {
@@ -184,7 +184,7 @@ private:
     /// \param source source records
     /// \param resource resource to be fetched
     /// \return empty if not found
-    DynamicRootSignatureUserMapping GetResourceUserMapping(const DXJob& job, const Vector<LLVMRecord>& source, IL::ID resource);
+    DynamicRootSignatureUserMapping GetResourceUserMapping(const DXCompileJob& job, const Vector<LLVMRecord>& source, IL::ID resource);
 
 private:
     /// Compile an export instruction
@@ -197,7 +197,7 @@ private:
     /// \param block destination block
     /// \param source all source instructions
     /// \param _instr instruction to be compiled
-    void CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source , const IL::ResourceTokenInstruction* _instr);
+    void CompileResourceTokenInstruction(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source , const IL::ResourceTokenInstruction* _instr);
 
 private:
     /// Does the record have a result?

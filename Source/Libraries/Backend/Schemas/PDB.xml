@@ -1,0 +1,15 @@
+<schema>
+    <message name="SetPDBConfig">
+        <field name="pathCount" type="uint32"/>
+        <field name="recursive" type="bool"/>
+    </message>
+
+    <message name="SetPDBPath">
+        <field name="index" type="uint32"/>
+        <field name="path" type="string"/>
+    </message>
+
+    <message name="IndexPDPaths">
+        <field name="ignore" type="uint32"/>
+    </message>
+</schema>

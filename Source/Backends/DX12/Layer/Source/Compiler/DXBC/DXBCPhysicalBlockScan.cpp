@@ -3,7 +3,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 #include <Backends/DX12/Compiler/DXStream.h>
-#include <Backends/DX12/Compiler/DXJob.h>
+#include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Config.h>
 
 // Special includes
@@ -44,8 +44,12 @@ static DXBCPhysicalBlockType FilterChunkType(uint32_t type) {
             return DXBCPhysicalBlockType::Shader4;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::Shader5):
             return DXBCPhysicalBlockType::Shader5;
+        case static_cast<uint32_t>(DXBCPhysicalBlockType::ShaderHash):
+            return DXBCPhysicalBlockType::ShaderHash;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::ILDB):
             return DXBCPhysicalBlockType::ILDB;
+        case static_cast<uint32_t>(DXBCPhysicalBlockType::ILDN):
+            return DXBCPhysicalBlockType::ILDN;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::DXIL):
             return DXBCPhysicalBlockType::DXIL;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::ShaderDebug1):
@@ -109,7 +113,7 @@ bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
     return true;
 }
 
-void DXBCPhysicalBlockScan::Stitch(const DXJob& job, DXStream &out) {
+void DXBCPhysicalBlockScan::Stitch(const DXCompileJob& job, DXStream &out) {
     // Write header out
     uint64_t headerOffset = out.Append(header);
 

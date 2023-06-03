@@ -21,7 +21,7 @@
 #include <string>
 
 // Forward declarations
-struct DXJob;
+struct DXCompileJob;
 struct DXStream;
 
 struct DXILPhysicalBlockTable {
@@ -36,7 +36,7 @@ struct DXILPhysicalBlockTable {
     /// Compile the table
     /// \param job the job to compile against
     /// \return success state
-    bool Compile(const DXJob& job);
+    bool Compile(const DXCompileJob& job);
 
     /// Stitch the compiled table
     /// \param out destination stream

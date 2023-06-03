@@ -25,10 +25,10 @@ public:
 
     /// Overrides
     DXModule* Copy() override;
-    bool Parse(const void* byteCode, uint64_t byteLength) override;
+    bool Parse(const DXParseJob& job) override;
     IL::Program *GetProgram() override;
     GlobalUID GetInstrumentationGUID() override;
-    bool Compile(const DXJob& job, DXStream& out) override;
+    bool Compile(const DXCompileJob& job, DXStream& out) override;
     IDXDebugModule *GetDebug() override;
 
 private:

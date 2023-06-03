@@ -34,6 +34,7 @@ class InstrumentationController;
 class FeatureController;
 class MetadataController;
 class VersioningController;
+class PDBController;
 class IBridge;
 class ShaderExportHost;
 class ShaderDataHost;
@@ -115,6 +116,7 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     ComRef<FeatureController> featureController{nullptr};
     ComRef<MetadataController> metadataController{nullptr};
     ComRef<VersioningController> versioningController{nullptr};
+    ComRef<PDBController> pdbController{nullptr};
 
     /// User programs
     ComRef<ShaderProgramHost> shaderProgramHost{nullptr};

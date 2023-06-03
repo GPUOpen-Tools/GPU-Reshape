@@ -1,4 +1,5 @@
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
+#include <Backends/DX12/Compiler/DXParseJob.h>
 #include <Backends/DX12/Compiler/Tags.h>
 
 DXILModule::DXILModule(const Allocators &allocators) : DXILModule(allocators, new(allocators, kAllocModuleDXIL) IL::Program(allocators, 0x0)) {
@@ -22,14 +23,14 @@ DXModule* DXILModule::Copy() {
     return nullptr;
 }
 
-bool DXILModule::Parse(const void *byteCode, uint64_t byteLength) {
+bool DXILModule::Parse(const DXParseJob& job) {
     IL::CapabilityTable &capabilities = program->GetCapabilityTable();
 
     // LLVM integers are not unique to the sign, exposed through the operations instead
     capabilities.integerSignIsUnique = false;
 
     // Parse byte code
-    return table.Parse(byteCode, byteLength);
+    return table.Parse(job.byteCode, job.byteLength);
 }
 
 IL::Program *DXILModule::GetProgram() {
@@ -40,7 +41,7 @@ GlobalUID DXILModule::GetInstrumentationGUID() {
     return {};
 }
 
-bool DXILModule::Compile(const DXJob& job, DXStream& out) {
+bool DXILModule::Compile(const DXCompileJob& job, DXStream& out) {
     // Try to recompile for the given job
     if (!table.Compile(job)) {
         return false;

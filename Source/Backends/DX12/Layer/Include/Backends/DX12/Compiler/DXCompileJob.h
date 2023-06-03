@@ -11,7 +11,7 @@ class DXILSigner;
 class DXBCSigner;
 
 /// Job description
-struct DXJob {
+struct DXCompileJob {
     /// The instrumentation key
     ShaderInstrumentationKey instrumentationKey{};
 

@@ -40,3 +40,6 @@ std::filesystem::path GetIntermediateCachePath();
 
 /// Sanitize a given path
 std::string SanitizePath(const std::string_view &view);
+
+/// Check if a path exists
+bool PathExists(const std::string& view);

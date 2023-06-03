@@ -14,6 +14,7 @@ function(Project_AddBackendTest_Common OUT_GENERATED FEATURE_NAME)
     Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/Intrinsics.hlsl)
     Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/Structural.hlsl)
     Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/GroupShared.hlsl)
+    Project_AddBackendTest(Generated "-Od" ${FEATURE_NAME} ${DataDir}/ExternalPDB.hlsl D3D12 "-Zi -Qstrip_debug -Fd ExternalPDB.pdb")
 
     # Set output
     set(${OUT_GENERATED} "${${OUT_GENERATED}};${Generated}" PARENT_SCOPE)

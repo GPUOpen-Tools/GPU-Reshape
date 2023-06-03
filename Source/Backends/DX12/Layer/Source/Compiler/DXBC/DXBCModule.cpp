@@ -1,6 +1,7 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
-#include <Backends/DX12/Config.h>
 #include <Backends/DX12/Compiler/Tags.h>
+#include <Backends/DX12/Compiler/DXParseJob.h>
+#include <Backends/DX12/Config.h>
 
 // Common
 #include <Common/FileSystem.h>
@@ -47,7 +48,7 @@ DXModule *DXBCModule::Copy() {
     return module;
 }
 
-bool DXBCModule::Parse(const void *byteCode, uint64_t byteLength) {
+bool DXBCModule::Parse(const DXParseJob& job) {
 #if SHADER_COMPILER_DEBUG_FILE
     std::ifstream in(GetIntermediateDebugPath() / "scan.dxbc", std::ios_base::binary);
 
@@ -66,7 +67,7 @@ bool DXBCModule::Parse(const void *byteCode, uint64_t byteLength) {
 #endif // SHADER_COMPILER_DEBUG_FILE
 
     // Try to parse
-    if (!table.Parse(byteCode, byteLength)) {
+    if (!table.Parse(job)) {
         return false;
     }
 
@@ -82,7 +83,7 @@ GlobalUID DXBCModule::GetInstrumentationGUID() {
     return instrumentationGUID;
 }
 
-bool DXBCModule::Compile(const DXJob& job, DXStream& out) {
+bool DXBCModule::Compile(const DXCompileJob& job, DXStream& out) {
     // Try to recompile for the given job
     if (!table.Compile(job)) {
         return false;

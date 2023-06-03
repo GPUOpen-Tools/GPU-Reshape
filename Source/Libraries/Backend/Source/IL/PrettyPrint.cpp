@@ -512,6 +512,9 @@ void IL::PrettyPrint(Backend::IL::Format format, PrettyPrintContext out) {
         case Backend::IL::Format::R32Float:
             line << "R32Float";
             break;
+        case Backend::IL::Format::R32Unorm:
+            line << "R32UNorm";
+            break;
         case Backend::IL::Format::RGBA8:
             line << "RGBA8";
             break;

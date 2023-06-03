@@ -8,7 +8,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBitStreamReader.h>
 #include <Backends/DX12/Compiler/Tags.h>
-#include <Backends/DX12/Compiler/DXJob.h>
+#include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Resource/VirtualResourceMapping.h>
 
 // Backend
@@ -1902,7 +1902,7 @@ static bool IsFunctionPostRecordDependentBlock(LLVMReservedBlock block) {
     }
 }
 
-void DXILPhysicalBlockFunction::CompileFunction(const DXJob& job, struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct LLVMBlock *block) {
     const uint32_t functionIndex = static_cast<uint32_t>(functionBlocks.Size());
 
     // Definition order is linear to the function blocks
@@ -3812,7 +3812,7 @@ void DXILPhysicalBlockFunction::CopyTo(DXILPhysicalBlockFunction &out) {
     out.internalLinkedFunctions = internalLinkedFunctions;
 }
 
-void DXILPhysicalBlockFunction::CreateExportHandle(const DXJob &job, struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CreateExportHandle(const DXCompileJob &job, struct LLVMBlock *block) {
     // Allocate sharted counter
     exportCounterHandle = program.GetIdentifierMap().AllocID();
 
@@ -3888,7 +3888,7 @@ DXILFunctionDeclaration *DXILPhysicalBlockFunction::AddDeclaration(const DXILFun
     return functions.Add(new (allocators, kAllocModuleDXIL) DXILFunctionDeclaration(declaration));
 }
 
-void DXILPhysicalBlockFunction::CreateHandles(const DXJob &job, struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CreateHandles(const DXCompileJob &job, struct LLVMBlock *block) {
     CreateExportHandle(job, block);
     CreatePRMTHandle(job, block);
     CreateDescriptorHandle(job, block);
@@ -3897,7 +3897,7 @@ void DXILPhysicalBlockFunction::CreateHandles(const DXJob &job, struct LLVMBlock
     CreateShaderDataHandle(job, block);
 }
 
-void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXJob &job, struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXCompileJob &job, struct LLVMBlock *block) {
     // Allocate sharted counter
     resourcePRMTHandle     = program.GetIdentifierMap().AllocID();
     samplerPRMTHandle = program.GetIdentifierMap().AllocID();
@@ -3959,7 +3959,7 @@ void DXILPhysicalBlockFunction::CreatePRMTHandle(const DXJob &job, struct LLVMBl
     block->AddRecord(CompileIntrinsicCall(samplerPRMTHandle, intrinsic, 5, ops));
 }
 
-void DXILPhysicalBlockFunction::CreateDescriptorHandle(const DXJob &job, struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CreateDescriptorHandle(const DXCompileJob &job, struct LLVMBlock *block) {
     // Allocate sharted counter
     descriptorHandle = program.GetIdentifierMap().AllocID();
 
@@ -4007,7 +4007,7 @@ void DXILPhysicalBlockFunction::CreateDescriptorHandle(const DXJob &job, struct 
     block->AddRecord(CompileIntrinsicCall(descriptorHandle, intrinsic, 5, ops));
 }
 
-void DXILPhysicalBlockFunction::CreateEventHandle(const DXJob &job, struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CreateEventHandle(const DXCompileJob &job, struct LLVMBlock *block) {
     IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
 
     // Allocate sharted counter
@@ -4136,7 +4136,7 @@ void DXILPhysicalBlockFunction::CreateEventHandle(const DXJob &job, struct LLVMB
     }
 }
 
-void DXILPhysicalBlockFunction::CreateConstantHandle(const DXJob &job, struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, struct LLVMBlock *block) {
     IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
 
     // Allocate shared counter
@@ -4265,7 +4265,7 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXJob &job, struct LL
     }
 }
 
-void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXJob &job, struct LLVMBlock *block) {
+void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXCompileJob &job, struct LLVMBlock *block) {
     IL::ShaderDataMap& shaderDataMap = table.program.GetShaderDataMap();
 
     // Get intrinsic
@@ -4328,7 +4328,7 @@ void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXJob &job, struct 
     }
 }
 
-DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunction::GetResourceUserMapping(const DXJob& job, const Vector<LLVMRecord>& source, IL::ID resource) {
+DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunction::GetResourceUserMapping(const DXCompileJob& job, const Vector<LLVMRecord>& source, IL::ID resource) {
     DynamicRootSignatureUserMapping out;
 
     // TODO: This will not hold true for everything
@@ -4445,7 +4445,7 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
     return out;
 }
 
-void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
+void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
     DynamicRootSignatureUserMapping userMapping = GetResourceUserMapping(job, source, _instr->resource);
     ASSERT(userMapping.source, "Fallback user mappings not supported yet");
 

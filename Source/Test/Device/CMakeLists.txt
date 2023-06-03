@@ -45,7 +45,7 @@ function(Project_AddShaderType OUT_GENERATED ARGS HLSL)
 
     # Compile the hlsl for all relevant backends
     set(HlslGenerated "")
-    Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${HLSL} Source/HLSL/${HLSLName} kShaderCode)
+    Project_AddHLSL(HlslGenerated cs_6_0 "${ARGS}" ${HLSL} Source/HLSL/${HLSLName} kShaderCode ${ARGN})
 
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir GRS.Test.Device.Generator SOURCE_DIR)
@@ -75,7 +75,7 @@ endfunction()
 # Test helper
 function(Project_AddBackendTest OUT_GENERATED ARGS FEATURE_NAME TEST)
     # Create shader
-    Project_AddShaderType(${OUT_GENERATED} ${ARGS} ${TEST})
+    Project_AddShaderType(${OUT_GENERATED} ${ARGS} ${TEST} ${ARGN})
 
     # Get the source directory of the generator
     get_target_property(GeneratorSourceDir GRS.Libraries.Message.Generator SOURCE_DIR)

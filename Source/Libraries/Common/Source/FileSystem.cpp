@@ -163,3 +163,8 @@ std::string SanitizePath(const std::string_view &view) {
     // OK
     return path;
 }
+
+bool PathExists(const std::string& view) {
+    struct stat buffer;
+    return (stat (view.c_str(), &buffer) == 0); 
+}

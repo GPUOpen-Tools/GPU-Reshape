@@ -3,7 +3,8 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 #include <Backends/DX12/Compiler/ShaderCompilerDebug.h>
-#include <Backends/DX12/Compiler/DXJob.h>
+#include <Backends/DX12/Compiler/DXCompileJob.h>
+#include <Backends/DX12/Compiler/DXParseJob.h>
 #include <Backends/DX12/Compiler/DXStream.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
@@ -99,8 +100,14 @@ bool ShaderCompiler::InitializeModule(ShaderState *state) {
             }
         }
 
+        // Prepare job
+        DXParseJob job;
+        job.byteCode = state->key.byteCode.pShaderBytecode;
+        job.byteLength = state->key.byteCode.BytecodeLength;
+        job.pdbController = device->pdbController;
+
         // Try to parse the bytecode
-        if (!state->module->Parse(state->key.byteCode.pShaderBytecode, state->key.byteCode.BytecodeLength)) {
+        if (!state->module->Parse(job)) {
             return false;
         }
     }
@@ -153,7 +160,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     }
 
     // Instrumentation job
-    DXJob compileJob;
+    DXCompileJob compileJob;
     compileJob.instrumentationKey = job.instrumentationKey;
     compileJob.streamCount = exportCount;
     compileJob.dxilSigner = dxilSigner;

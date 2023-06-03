@@ -396,3 +396,29 @@ struct DXILSignatureElement {
     uint16_t pad;
     DXILSignatureElementPrecision precision;
 };
+
+struct DXILShaderDebugName {
+    uint16_t flags;
+    uint16_t nameLength;
+};
+
+struct DXILDigest {
+    uint8_t digest[16];
+};
+
+struct DXILShaderHash {
+    uint32_t flags;
+    DXILDigest digest;
+};
+
+enum class DXILPDBVersion : uint32_t {
+
+};
+
+struct DXILPDBHeader {
+    DXILPDBVersion version;
+    uint32_t signature;
+    uint32_t age;
+    DXILDigest digest;
+    uint32_t ignore[7];
+};

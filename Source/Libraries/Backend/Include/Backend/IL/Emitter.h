@@ -18,14 +18,14 @@ namespace IL {
 
             /// Operation
             template<typename T>
-            static InstructionRef <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, const T &instruction) {
+            static BasicBlock::TypedIterator <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, const T &instruction) {
                 if (insertionPoint.IsValid()) {
                     auto value = basicBlock->Insert(insertionPoint, instruction);
                     insertionPoint = std::next(value);
-                    return value.template Ref<T>();
+                    return value;
                 } else {
                     auto value = basicBlock->Append(instruction);
-                    return value.template Ref<T>();
+                    return value;
                 }
             }
         };
@@ -36,12 +36,12 @@ namespace IL {
 
             /// Operation
             template<typename T>
-            static InstructionRef <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, const T &instruction) {
+            static BasicBlock::TypedIterator <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, const T &instruction) {
                 ASSERT(insertionPoint.IsValid(), "Must have insertion point");
 
                 auto value = basicBlock->Replace(insertionPoint, instruction);
                 insertionPoint = value;
-                return value.template Ref<T>();
+                return value;
             }
         };
 
@@ -51,7 +51,7 @@ namespace IL {
 
             /// Operation
             template<typename T>
-            static InstructionRef <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, T &instruction) {
+            static BasicBlock::TypedIterator <T> Op(BasicBlock *basicBlock, Opaque &insertionPoint, T &instruction) {
                 ASSERT(insertionPoint.IsValid(), "Must have insertion point");
 
                 // Instrumentation must inherit the source instruction for specialized backend operands
@@ -60,7 +60,7 @@ namespace IL {
 
                 auto value = basicBlock->Replace(insertionPoint, instruction);
                 insertionPoint = value;
-                return value.template Ref<T>();
+                return value;
             }
         };
     }
@@ -77,6 +77,13 @@ namespace IL {
         Emitter(Program &program, BasicBlock &basicBlock, const Opaque &ref = {}) {
             SetProgram(&program);
             SetBasicBlock(&basicBlock);
+            SetInsertionPoint(ref);
+        }
+
+        /// Constructor
+        Emitter(Program &program, const Opaque &ref = {}) {
+            SetProgram(&program);
+            SetBasicBlock(ref.basicBlock);
             SetInsertionPoint(ref);
         }
 
@@ -112,7 +119,7 @@ namespace IL {
         /// \param bitWidth the bit width of the type
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Integral(uint8_t bitWidth, int64_t value, bool signedness) {
+        BasicBlock::TypedIterator <LiteralInstruction> Integral(uint8_t bitWidth, int64_t value, bool signedness) {
             LiteralInstruction instr{};
             instr.opCode = OpCode::Literal;
             instr.source = Source::Invalid();
@@ -128,7 +135,7 @@ namespace IL {
         /// \param bitWidth the bit width of the type
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Int(uint8_t bitWidth, int64_t value) {
+        BasicBlock::TypedIterator <LiteralInstruction> Int(uint8_t bitWidth, int64_t value) {
             return Integral(bitWidth, value, true);
         }
 
@@ -136,49 +143,49 @@ namespace IL {
         /// \param bitWidth the bit width of the type
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> UInt(uint8_t bitWidth, int64_t value) {
+        BasicBlock::TypedIterator <LiteralInstruction> UInt(uint8_t bitWidth, int64_t value) {
             return Integral(bitWidth, value, false);
         }
 
         /// Add a 32 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Int32(int32_t value) {
+        BasicBlock::TypedIterator <LiteralInstruction> Int32(int32_t value) {
             return Int(32, value);
         }
 
         /// Add a 16 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Int16(int16_t value) {
+        BasicBlock::TypedIterator <LiteralInstruction> Int16(int16_t value) {
             return Int(16, value);
         }
 
         /// Add a 8 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> Int8(int8_t value) {
+        BasicBlock::TypedIterator <LiteralInstruction> Int8(int8_t value) {
             return Int(8, value);
         }
 
         /// Add a 32 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> UInt32(uint32_t value) {
+        BasicBlock::TypedIterator <LiteralInstruction> UInt32(uint32_t value) {
             return UInt(32, value);
         }
 
         /// Add a 16 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> UInt16(uint16_t value) {
+        BasicBlock::TypedIterator <LiteralInstruction> UInt16(uint16_t value) {
             return UInt(16, value);
         }
 
         /// Add a 8 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> UInt8(uint8_t value) {
+        BasicBlock::TypedIterator <LiteralInstruction> UInt8(uint8_t value) {
             return UInt(8, value);
         }
 
@@ -187,7 +194,7 @@ namespace IL {
         /// \param bitWidth the bit width of the type
         /// \param value the constant value
         /// \return instruction reference
-        InstructionRef <LiteralInstruction> FP(uint8_t bitWidth, double value) {
+        BasicBlock::TypedIterator <LiteralInstruction> FP(uint8_t bitWidth, double value) {
             LiteralInstruction instr{};
             instr.opCode = OpCode::Literal;
             instr.source = Source::Invalid();
@@ -202,7 +209,7 @@ namespace IL {
         /// Load an address
         /// \param address the address to be loaded
         /// \return instruction reference
-        InstructionRef <LoadInstruction> Load(ID address) {
+        BasicBlock::TypedIterator <LoadInstruction> Load(ID address) {
             ASSERT(IsMapped(address), "Unmapped identifier");
 
             LoadInstruction instr{};
@@ -217,7 +224,7 @@ namespace IL {
         /// \param address the address to be stored to
         /// \param value the value to be stored
         /// \return instruction reference
-        InstructionRef <StoreInstruction> Store(ID address, ID value) {
+        BasicBlock::TypedIterator <StoreInstruction> Store(ID address, ID value) {
             ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
 
             StoreInstruction instr{};
@@ -234,7 +241,7 @@ namespace IL {
         /// \param index the index of the element
         /// \param value the element data
         /// \return instruction reference
-        InstructionRef <StoreBufferInstruction> StoreBuffer(ID buffer, ID index, ID value) {
+        BasicBlock::TypedIterator <StoreBufferInstruction> StoreBuffer(ID buffer, ID index, ID value) {
             ASSERT(IsMapped(buffer) && IsMapped(index) && IsMapped(value), "Unmapped identifier");
 
             StoreBufferInstruction instr{};
@@ -252,7 +259,7 @@ namespace IL {
         /// \param buffer the destination buffer
         /// \param index the index of the element
         /// \return instruction reference
-        InstructionRef <LoadBufferInstruction> LoadBuffer(ID buffer, ID index) {
+        BasicBlock::TypedIterator <LoadBufferInstruction> LoadBuffer(ID buffer, ID index) {
             ASSERT(IsMapped(buffer) && IsMapped(index), "Unmapped identifier");
 
             LoadBufferInstruction instr{};
@@ -267,7 +274,7 @@ namespace IL {
         /// Get the size of a resource
         /// \param resource the resource to be queried
         /// \return instruction reference
-        InstructionRef <ResourceSizeInstruction> ResourceSize(ID resource) {
+        BasicBlock::TypedIterator <ResourceSizeInstruction> ResourceSize(ID resource) {
             ASSERT(IsMapped(resource), "Unmapped identifier");
 
             ResourceSizeInstruction instr{};
@@ -281,7 +288,7 @@ namespace IL {
         /// Get the identifier of a resource
         /// \param resource the resource to be queried
         /// \return instruction reference
-        InstructionRef <ResourceTokenInstruction> ResourceToken(ID resource) {
+        BasicBlock::TypedIterator <ResourceTokenInstruction> ResourceToken(ID resource) {
             ASSERT(IsMapped(resource), "Unmapped identifier");
 
             ResourceTokenInstruction instr{};
@@ -296,7 +303,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <BitCastInstruction> BitCast(ID value, const Backend::IL::Type* type) {
+        BasicBlock::TypedIterator <BitCastInstruction> BitCast(ID value, const Backend::IL::Type* type) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
             BitCastInstruction instr{};
@@ -312,7 +319,7 @@ namespace IL {
         /// \param index the uniform index
         /// \return instruction reference
         template<typename... IX>
-        InstructionRef <AddressChainInstruction> AddressOf(ID composite, IX... ix) {
+        BasicBlock::TypedIterator <AddressChainInstruction> AddressOf(ID composite, IX... ix) {
             ASSERT(IsMapped(composite), "Unmapped identifier");
 
             // Fold it down
@@ -337,7 +344,7 @@ namespace IL {
         /// \param composite the base composite
         /// \param index the index
         /// \return instruction reference
-        InstructionRef <ExtractInstruction> Extract(ID composite, uint32_t index) {
+        BasicBlock::TypedIterator <ExtractInstruction> Extract(ID composite, uint32_t index) {
             ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
 
             ExtractInstruction instr{};
@@ -353,7 +360,7 @@ namespace IL {
         /// \param composite the base composite
         /// \param index the value to be inserted
         /// \return instruction reference
-        InstructionRef <InsertInstruction> Insert(ID composite, ID value) {
+        BasicBlock::TypedIterator <InsertInstruction> Insert(ID composite, ID value) {
             ASSERT(IsMapped(composite) && IsMapped(value), "Unmapped identifier");
 
             InsertInstruction instr{};
@@ -369,7 +376,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <SelectInstruction> Select(ID condition, ID pass, ID fail) {
+        BasicBlock::TypedIterator <SelectInstruction> Select(ID condition, ID pass, ID fail) {
             ASSERT(IsMapped(condition) && IsMapped(pass) && IsMapped(fail), "Unmapped identifier");
 
             SelectInstruction instr{};
@@ -386,7 +393,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <AddInstruction> Add(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <AddInstruction> Add(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             AddInstruction instr{};
@@ -402,7 +409,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <SubInstruction> Sub(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <SubInstruction> Sub(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             SubInstruction instr{};
@@ -418,7 +425,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <DivInstruction> Div(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <DivInstruction> Div(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             DivInstruction instr{};
@@ -434,7 +441,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <MulInstruction> Mul(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <MulInstruction> Mul(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             MulInstruction instr{};
@@ -450,7 +457,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <EqualInstruction> Equal(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <EqualInstruction> Equal(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             EqualInstruction instr{};
@@ -466,7 +473,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <NotEqualInstruction> NotEqual(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <NotEqualInstruction> NotEqual(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             NotEqualInstruction instr{};
@@ -482,7 +489,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <GreaterThanInstruction> GreaterThan(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <GreaterThanInstruction> GreaterThan(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             GreaterThanInstruction instr{};
@@ -498,7 +505,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <GreaterThanEqualInstruction> GreaterThanEqual(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <GreaterThanEqualInstruction> GreaterThanEqual(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             GreaterThanEqualInstruction instr{};
@@ -514,7 +521,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <LessThanInstruction> LessThan(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <LessThanInstruction> LessThan(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             LessThanInstruction instr{};
@@ -530,7 +537,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <LessThanEqualInstruction> LessThanEqual(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <LessThanEqualInstruction> LessThanEqual(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             LessThanEqualInstruction instr{};
@@ -545,7 +552,7 @@ namespace IL {
         /// Check if a value is infinite
         /// \param value value operand
         /// \return instruction reference
-        InstructionRef <IsInfInstruction> IsInf(ID value) {
+        BasicBlock::TypedIterator <IsInfInstruction> IsInf(ID value) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
             IsInfInstruction instr{};
@@ -559,7 +566,7 @@ namespace IL {
         /// Check if a value is NaN
         /// \param value value operand
         /// \return instruction reference
-        InstructionRef <IsNaNInstruction> IsNaN(ID value) {
+        BasicBlock::TypedIterator <IsNaNInstruction> IsNaN(ID value) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
             IsNaNInstruction instr{};
@@ -574,7 +581,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <BitOrInstruction> BitOr(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <BitOrInstruction> BitOr(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             BitOrInstruction instr{};
@@ -590,7 +597,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <BitAndInstruction> BitAnd(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <BitAndInstruction> BitAnd(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             BitAndInstruction instr{};
@@ -606,7 +613,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <OrInstruction> Or(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <OrInstruction> Or(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             OrInstruction instr{};
@@ -622,7 +629,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <AndInstruction> And(ID lhs, ID rhs) {
+        BasicBlock::TypedIterator <AndInstruction> And(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
             AndInstruction instr{};
@@ -638,7 +645,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <AllInstruction> All(ID value) {
+        BasicBlock::TypedIterator <AllInstruction> All(ID value) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
             AllInstruction instr{};
@@ -653,7 +660,7 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
-        InstructionRef <AnyInstruction> Any(ID value) {
+        BasicBlock::TypedIterator <AnyInstruction> Any(ID value) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
             AnyInstruction instr{};
@@ -668,7 +675,7 @@ namespace IL {
         /// \param lhs value the value to be shifted
         /// \param rhs shift the bit shift count
         /// \return instruction reference
-        InstructionRef <BitShiftLeftInstruction> BitShiftLeft(ID value, ID shift) {
+        BasicBlock::TypedIterator <BitShiftLeftInstruction> BitShiftLeft(ID value, ID shift) {
             ASSERT(IsMapped(value) && IsMapped(shift), "Unmapped identifier");
 
             BitShiftLeftInstruction instr{};
@@ -684,7 +691,7 @@ namespace IL {
         /// \param lhs value the value to be shifted
         /// \param rhs shift the bit shift count
         /// \return instruction reference
-        InstructionRef <BitShiftRightInstruction> BitShiftRight(ID value, ID shift) {
+        BasicBlock::TypedIterator <BitShiftRightInstruction> BitShiftRight(ID value, ID shift) {
             ASSERT(IsMapped(value) && IsMapped(shift), "Unmapped identifier");
 
             BitShiftRightInstruction instr{};
@@ -699,7 +706,7 @@ namespace IL {
         /// Branch to a block
         /// \param branch the destination block
         /// \return instruction reference
-        InstructionRef <BranchInstruction> Branch(BasicBlock* branch) {
+        BasicBlock::TypedIterator <BranchInstruction> Branch(BasicBlock* branch) {
             ASSERT(branch, "Invalid branch");
 
             BranchInstruction instr{};
@@ -716,7 +723,7 @@ namespace IL {
         /// \param fail the block branched ot if cond is false
         /// \param merge the structured control flow
         /// \return instruction reference
-        InstructionRef <BranchConditionalInstruction> BranchConditional(ID cond, BasicBlock* pass, BasicBlock* fail, ControlFlow controlFlow) {
+        BasicBlock::TypedIterator <BranchConditionalInstruction> BranchConditional(ID cond, BasicBlock* pass, BasicBlock* fail, ControlFlow controlFlow) {
             ASSERT(IsMapped(cond), "Unmapped identifier");
             ASSERT(pass && fail, "Invalid branch");
 
@@ -734,7 +741,7 @@ namespace IL {
         /// Add return instruction
         /// \param value optional value to return
         /// \return instruction reference
-        InstructionRef <BranchConditionalInstruction> Return(ID value = IL::InvalidID) {
+        BasicBlock::TypedIterator <ReturnInstruction> Return(ID value = IL::InvalidID) {
             ReturnInstruction instr{};
             instr.opCode = OpCode::Return;
             instr.source = Source::Invalid();
@@ -749,7 +756,7 @@ namespace IL {
         /// \param second second case basic block
         /// \param secondValue second case value produced by first basic block
         /// \return instruction reference
-        InstructionRef <PhiInstruction> Phi(BasicBlock* first, ID firstValue, BasicBlock* second, ID secondValue) {
+        BasicBlock::TypedIterator <PhiInstruction> Phi(BasicBlock* first, ID firstValue, BasicBlock* second, ID secondValue) {
             return Phi(map->AllocID(), first, firstValue, second, secondValue);
         }
 
@@ -760,7 +767,7 @@ namespace IL {
         /// \param second second case basic block
         /// \param secondValue second case value produced by first basic block
         /// \return instruction reference
-        InstructionRef <PhiInstruction> Phi(IL::ID result, BasicBlock* first, ID firstValue, BasicBlock* second, ID secondValue) {
+        BasicBlock::TypedIterator <PhiInstruction> Phi(IL::ID result, BasicBlock* first, ID firstValue, BasicBlock* second, ID secondValue) {
             ASSERT(IsMapped(firstValue) && IsMapped(secondValue), "Unmapped identifier");
             ASSERT(first && second, "Invalid branch");
 
@@ -783,7 +790,7 @@ namespace IL {
         /// \param second second case basic block
         /// \param secondValue second case value produced by first basic block
         /// \return instruction reference
-        InstructionRef <PhiInstruction> Phi(IL::ID result, uint32_t count, PhiValue* values) {
+        BasicBlock::TypedIterator <PhiInstruction> Phi(IL::ID result, uint32_t count, PhiValue* values) {
             auto instr = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(count));
             instr->opCode = OpCode::Phi;
             instr->source = Source::Invalid();
@@ -804,7 +811,7 @@ namespace IL {
         /// \param address base address
         /// \param value value
         /// \return original value
-        InstructionRef<AtomicOrInstruction> AtomicOr(ID address, ID value) {
+        BasicBlock::TypedIterator<AtomicOrInstruction> AtomicOr(ID address, ID value) {
             ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
 
             AtomicOrInstruction instr{};
@@ -820,7 +827,7 @@ namespace IL {
         /// \param address base address
         /// \param value value
         /// \return original value
-        InstructionRef<AtomicXOrInstruction> AtomicXOr(ID address, ID value) {
+        BasicBlock::TypedIterator<AtomicXOrInstruction> AtomicXOr(ID address, ID value) {
             ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
 
             AtomicXOrInstruction instr{};
@@ -836,7 +843,7 @@ namespace IL {
         /// \param address base address
         /// \param value value
         /// \return original value
-        InstructionRef<AtomicAndInstruction> AtomicAnd(ID address, ID value) {
+        BasicBlock::TypedIterator<AtomicAndInstruction> AtomicAnd(ID address, ID value) {
             ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
 
             AtomicAndInstruction instr{};
@@ -852,7 +859,7 @@ namespace IL {
         /// \param address base address
         /// \param value value
         /// \return original value
-        InstructionRef<AtomicAddInstruction> AtomicAdd(ID address, ID value) {
+        BasicBlock::TypedIterator<AtomicAddInstruction> AtomicAdd(ID address, ID value) {
             ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
 
             AtomicAddInstruction instr{};
@@ -868,7 +875,7 @@ namespace IL {
         /// \param address base address
         /// \param value value
         /// \return original value
-        InstructionRef<AtomicMinInstruction> AtomicMin(ID address, ID value) {
+        BasicBlock::TypedIterator<AtomicMinInstruction> AtomicMin(ID address, ID value) {
             ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
 
             AtomicMinInstruction instr{};
@@ -884,7 +891,7 @@ namespace IL {
         /// \param address base address
         /// \param value value
         /// \return original value
-        InstructionRef<AtomicMaxInstruction> AtomicMax(ID address, ID value) {
+        BasicBlock::TypedIterator<AtomicMaxInstruction> AtomicMax(ID address, ID value) {
             ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
 
             AtomicMaxInstruction instr{};
@@ -900,7 +907,7 @@ namespace IL {
         /// \param address base address
         /// \param value value
         /// \return original value
-        InstructionRef<AtomicExchangeInstruction> AtomicExchange(ID address, ID value) {
+        BasicBlock::TypedIterator<AtomicExchangeInstruction> AtomicExchange(ID address, ID value) {
             ASSERT(IsMapped(address) && IsMapped(value), "Unmapped identifier");
 
             AtomicExchangeInstruction instr{};
@@ -917,7 +924,7 @@ namespace IL {
         /// \param comparator base value to be compared against for successful exchange
         /// \param value value
         /// \return original value
-        InstructionRef<AtomicCompareExchangeInstruction> AtomicCompareExchange(ID address, ID comparator, ID value) {
+        BasicBlock::TypedIterator<AtomicCompareExchangeInstruction> AtomicCompareExchange(ID address, ID comparator, ID value) {
             ASSERT(IsMapped(address) && IsMapped(comparator) && IsMapped(value), "Unmapped identifier");
 
             AtomicCompareExchangeInstruction instr{};
@@ -934,7 +941,7 @@ namespace IL {
         /// \param exportID the allocation id for the export
         /// \param value the value to be exported
         /// \return instruction reference
-        InstructionRef <ExportInstruction> Export(ShaderExportID exportID, ID value) {
+        BasicBlock::TypedIterator <ExportInstruction> Export(ShaderExportID exportID, ID value) {
             ASSERT(IsMapped(value), "Unmapped identifier");
 
             auto instr = ALLOCA_SIZE(IL::ExportInstruction, IL::ExportInstruction::GetSize(1u));
@@ -952,7 +959,7 @@ namespace IL {
         /// \param value the value to be exported, constructed internally
         /// \return instruction reference
         template<typename T>
-        InstructionRef <ExportInstruction> Export(ShaderExportID exportID, const T& value) {
+        BasicBlock::TypedIterator <ExportInstruction> Export(ShaderExportID exportID, const T& value) {
             // Query number of dwords requested
             uint32_t dwordCount{};
             value.Construct(*this, &dwordCount, nullptr);
@@ -973,7 +980,7 @@ namespace IL {
         /// Alloca a varaible
         /// \param type the varaible type
         /// \return instruction reference
-        InstructionRef <AllocaInstruction> Alloca(ID type) {
+        BasicBlock::TypedIterator <AllocaInstruction> Alloca(ID type) {
             ASSERT(IsMapped(type), "Unmapped identifier");
 
             AllocaInstruction instr{};
@@ -1012,7 +1019,7 @@ namespace IL {
 
         /// Perform the operation
         template<typename T>
-        InstructionRef <T> Op(T &instruction) {
+        BasicBlock::TypedIterator <T> Op(T &instruction) {
             // Set type of the instruction if relevant
             if (const Backend::IL::Type* type = Backend::IL::ResultOf(*program, &instruction)) {
                 program->GetTypeMap().SetType(instruction.result, type);
@@ -1024,7 +1031,7 @@ namespace IL {
 
         /// Perform the operation
         template<typename T>
-        InstructionRef <T> Op(T &instruction, const Backend::IL::Type* type) {
+        BasicBlock::TypedIterator <T> Op(T &instruction, const Backend::IL::Type* type) {
             // Set type of the instruction
             program->GetTypeMap().SetType(instruction.result, type);
 

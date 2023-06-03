@@ -1,6 +1,6 @@
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMHeader.h>
-#include <Backends/DX12/Compiler/DXJob.h>
+#include <Backends/DX12/Compiler/DXCompileJob.h>
 
 DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL::Program &program) :
     scan(allocators),
@@ -136,7 +136,7 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
     return true;
 }
 
-bool DXILPhysicalBlockTable::Compile(const DXJob &job) {
+bool DXILPhysicalBlockTable::Compile(const DXCompileJob &job) {
     LLVMBlock &root = scan.GetRoot();
 
     // Set table binding info

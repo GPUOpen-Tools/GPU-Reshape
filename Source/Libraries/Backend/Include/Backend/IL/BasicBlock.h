@@ -121,6 +121,11 @@ namespace IL {
                 return Get();
             }
 
+            /// To implicit ID
+            operator ID() const {
+                return Get()->result;
+            }
+
             /// Reinterpret instruction
             template<typename T>
             const T* As() const {
@@ -228,6 +233,11 @@ namespace IL {
                 return Ref<T>();
             }
 
+            /// To implicit ID
+            operator ID() const {
+                return Get()->result;
+            }
+
             /// Dereference
             const T *operator*() const {
                 return As<T>();
@@ -279,6 +289,11 @@ namespace IL {
             /// Implicit instruction
             operator const Instruction *() const {
                 return Get();
+            }
+
+            /// To implicit ID
+            operator ID() const {
+                return Get()->result;
             }
 
             /// Get a const instruction reference
@@ -539,17 +554,19 @@ namespace IL {
             size_t size = GetSize(ptr);
             size_t offset = instruction.relocationOffset->offset;
 
+            size_t replacementSize = GetSize(&replacement);
+
             // Compare size
-            if (size > sizeof(T)) {
+            if (size > replacementSize) {
                 // Current instruction is too large, remove unused space
-                data.erase(data.begin() + offset + sizeof(T), data.begin() + offset + size);
-            } else if (size < sizeof(T)) {
+                data.erase(data.begin() + offset + replacementSize, data.begin() + offset + size);
+            } else if (size < replacementSize) {
                 // Current instruction is too small, add new space
-                data.insert(data.begin() + offset + size, sizeof(T) - size, 0x0);
+                data.insert(data.begin() + offset + size, replacementSize - size, 0x0);
             }
 
             // Replace the instruction data
-            std::memcpy(data.data() + offset, &replacement, sizeof(T));
+            std::memcpy(data.data() + offset, &replacement, replacementSize);
 
             if (replacement.result != InvalidID) {
                 map.AddInstruction(instruction, replacement.result);

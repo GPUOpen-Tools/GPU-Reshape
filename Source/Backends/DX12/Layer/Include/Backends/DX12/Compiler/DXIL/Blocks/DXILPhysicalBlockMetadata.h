@@ -11,7 +11,7 @@
 #include <vector>
 
 // Forward declarations
-struct DXJob;
+struct DXCompileJob;
 
 /// Type block
 struct DXILPhysicalBlockMetadata : public DXILPhysicalBlockSection {
@@ -40,7 +40,7 @@ public:
     void CompileMetadata(struct LLVMBlock *block);
 
     /// Compile global metadata
-    void CompileMetadata(const DXJob& job);
+    void CompileMetadata(const DXCompileJob& job);
 
     /// Stitch all records
     void StitchMetadata(struct LLVMBlock *block);
@@ -57,7 +57,7 @@ public:
 
     /// Create all resource handles
     /// \param job job to be compiled against
-    void CreateResourceHandles(const DXJob& job);
+    void CreateResourceHandles(const DXCompileJob& job);
 
 private:
     void CompileProgramEntryPoints();
@@ -313,40 +313,40 @@ private:
 
 public:
     /// Compile the export resource metadata
-    void EnsureProgramResourceClassList(const DXJob& job);
+    void EnsureProgramResourceClassList(const DXCompileJob& job);
 
     /// Compile the shader export handles
-    void CreateShaderExportHandle(const DXJob& job);
+    void CreateShaderExportHandle(const DXCompileJob& job);
 
     /// Compile the PRMT handles
-    void CreatePRMTHandle(const DXJob& job);
+    void CreatePRMTHandle(const DXCompileJob& job);
 
     /// Compile the shader data handles
-    void CreateShaderDataHandles(const DXJob& job);
+    void CreateShaderDataHandles(const DXCompileJob& job);
 
     /// Compile the descriptor data handles
-    void CreateDescriptorHandle(const DXJob& job);
+    void CreateDescriptorHandle(const DXCompileJob& job);
 
     /// Compile the event handles
-    void CreateEventHandle(const DXJob& job);
+    void CreateEventHandle(const DXCompileJob& job);
 
     /// Compile the event handles
-    void CreateConstantsHandle(const DXJob& job);
+    void CreateConstantsHandle(const DXCompileJob& job);
 
     /// Compile class record metadata
     LLVMRecordView CompileResourceClassRecord(const MappedRegisterClass& mapped);
 
     /// Compile UAV metadata
-    void CompileUAVResourceClass(const DXJob& job);
+    void CompileUAVResourceClass(const DXCompileJob& job);
 
     /// Compile SRV metadata
-    void CompileSRVResourceClass(const DXJob& job);
+    void CompileSRVResourceClass(const DXCompileJob& job);
 
     /// Compile CBV metadata
-    void CompileCBVResourceClass(const DXJob& job);
+    void CompileCBVResourceClass(const DXCompileJob& job);
 
     /// Compile all flags
-    void CompileProgramFlags(const DXJob& job);
+    void CompileProgramFlags(const DXCompileJob& job);
 
 private:
     struct ShadingModel {

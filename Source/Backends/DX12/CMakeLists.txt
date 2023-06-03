@@ -303,6 +303,7 @@ add_library(
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockRootSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockInputSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockFeatureInfo.cpp
+    Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockDebug.cpp
     Layer/Source/Compiler/DXBC/DXBCSigner.cpp
     Layer/Source/Compiler/DXIL/DXILModule.cpp
     Layer/Source/Compiler/DXIL/DXILPhysicalBlockScan.cpp
@@ -322,6 +323,7 @@ add_library(
     Layer/Source/Controllers/MetadataController.cpp
     Layer/Source/Controllers/VersioningController.cpp
     Layer/Source/Controllers/FeatureController.cpp
+    Layer/Source/Controllers/PDBController.cpp
     Layer/Source/Export/ExportHost.cpp
     Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
     Layer/Source/Export/ShaderExportStreamer.cpp
