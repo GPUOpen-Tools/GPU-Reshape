@@ -59,8 +59,8 @@ std::string_view DXILDebugModule::GetLine(uint32_t fileUID, uint32_t line) {
 }
 
 bool DXILDebugModule::Parse(const void *byteCode, uint64_t byteLength) {
-    // Disable debug writing
-    scan.SetEnableDebugging(false);
+    // Postfix
+    scan.SetDebugPostfix(".debug");
 
     // Scan data
     if (!scan.Scan(byteCode, byteLength)) {

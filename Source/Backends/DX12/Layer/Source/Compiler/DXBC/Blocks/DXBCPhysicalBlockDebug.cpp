@@ -40,15 +40,14 @@ bool DXBCPhysicalBlockDebug::Parse(const DXParseJob& job) {
         std::memcpy(path, &ctx.Get<const char>(), sizeof(char) * debugName.nameLength);
         path[debugName.nameLength] = '\0';
 
-        // The path may exist relative to the executable, or be an absolute path (f.x. local iteration)
-        if (PathExists(path)) {
-            ildbBlock = TryParsePDB(path);
-        } else {
-            // Check all PDB candidates
-            for (const std::string& candidate : job.pdbController->GetCandidateList(path)) {
-                if ((ildbBlock = TryParsePDB(candidate))) {
-                    break;
-                }
+        // Search for possible candidates
+        PDBCandidateList candidates(allocators);
+        job.pdbController->GetCandidateList(path, candidates);
+
+        // Check all PDB candidates
+        for (const std::string_view& candidate : candidates) {
+            if ((ildbBlock = TryParsePDB(candidate))) {
+                break;
             }
         }
     }
@@ -75,7 +74,7 @@ bool DXBCPhysicalBlockDebug::Parse(const DXParseJob& job) {
     return true;
 }
 
-DXBCPhysicalBlock * DXBCPhysicalBlockDebug::TryParsePDB(const std::string &path) {
+DXBCPhysicalBlock * DXBCPhysicalBlockDebug::TryParsePDB(const std::string_view &path) {
     std::ifstream in(path, std::ios_base::binary);
     if (!in.good()) {
         return nullptr;

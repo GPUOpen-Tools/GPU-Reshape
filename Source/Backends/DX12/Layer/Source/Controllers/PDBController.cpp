@@ -13,6 +13,7 @@
 
 // Common
 #include <Common/CRC.h>
+#include <Common/FileSystem.h>
 
 // Std
 #include <filesystem>
@@ -68,26 +69,72 @@ void PDBController::OnMessage(const struct SetPDBConfigMessage &message) {
     recursive = message.recursive;
 }
 
-void PDBController::IndexPath(const std::filesystem::path &path) {
-    std::string filenameView = path.filename().string();
+void PDBController::IndexPathCandidates(const std::string_view& base, const std::filesystem::path &path) {
+    // May create a copy
+    std::string filename = path.string();
+    
+    // Local view
+    std::string_view view = filename;
 
+    // Remove up to the base directory
+    view = view.substr(base.length());
+    IndexPath(view, path);
+
+    // Strip directory information
+    if (auto delim = view.find_last_of("\\/"); delim != std::string::npos) {
+        view = view.substr(delim + 1u);
+        IndexPath(view, path);
+    }
+
+    // Strip extension information
+    if (auto ext = view.find_last_of("."); ext != std::string::npos) {
+        view = view.substr(0, ext);
+        IndexPath(view, path);
+    }
+}
+
+void PDBController::IndexPath(const std::string_view& view, const std::filesystem::path &path) {
     // Insert to crc64 of the filename
-    uint64_t crc64 = BufferCRC64(filenameView.data(), filenameView.size() * sizeof(char));
+    uint64_t crc64 = BufferCRC64(view.data(), view.size() * sizeof(char));
     indexed[crc64].push_back(path.string());
 }
 
-const PDBCandidateList &PDBController::GetCandidateList(const std::string_view &view) {
-    std::lock_guard guard(mutex);
-    std::string_view path = view;
+void PDBController::AppendCandidates(const std::string_view &path, PDBCandidateList &candidates) {
+    // Check crc64 of the filename
+    uint64_t crc64 = BufferCRC64(path.data(), path.size() * sizeof(char));
+    for (const std::string& candidate : indexed[crc64]) {
+        candidates.Add(candidate);
+    }
+}
 
-    // This is a secondary lookup, cut all directory information
-    if (auto delim = path.find_last_of("\\/"); delim != std::string::npos) {
-        path = path.substr(delim + 1u);
+void PDBController::GetCandidateList(const char* path, PDBCandidateList& candidates) {
+    /** TODO: Is there some universally accepted way to index debug files? */
+    
+    // The path may exist relative to the executable, or be an absolute path (f.x. local iteration)
+    if (PathExists(path)) {
+        candidates.Add(path);
     }
 
-    // Get candidates for hash
-    uint64_t crc64 = BufferCRC64(path.data(), path.size() * sizeof(char));
-    return indexed[crc64];
+    // Serial
+    std::lock_guard guard(mutex);
+
+    // Local view
+    std::string_view view = path;
+
+    // Relative to pdb root candidates
+    AppendCandidates(view, candidates);
+    
+    // Strip directory information
+    if (auto delim = view.find_last_of("\\/"); delim != std::string::npos) {
+        view = view.substr(delim + 1u);
+        AppendCandidates(view, candidates);
+    }
+
+    // Strip extension information
+    if (auto ext = view.find_last_of("."); ext != std::string::npos) {
+        view = view.substr(0, ext);
+        AppendCandidates(view, candidates);
+    }
 }
 
 void PDBController::OnMessage(const struct SetPDBPathMessage &message) {
@@ -106,7 +153,7 @@ void PDBController::OnMessage(const struct IndexPDPathsMessage &message) {
                     continue;
                 }
 
-                IndexPath(entry.path());
+                IndexPathCandidates(path, entry.path());
             }
         } else {
             for (auto &&entry: std::filesystem::directory_iterator(path)) {
@@ -114,7 +161,7 @@ void PDBController::OnMessage(const struct IndexPDPathsMessage &message) {
                     continue;
                 }
 
-                IndexPath(entry.path());
+                IndexPathCandidates(path, entry.path());
             }
         }
     }

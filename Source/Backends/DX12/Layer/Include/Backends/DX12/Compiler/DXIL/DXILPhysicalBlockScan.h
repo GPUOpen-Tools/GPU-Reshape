@@ -33,10 +33,10 @@ public:
     /// \param shlBitMask
     void SetBlockFilter(uint64_t shlBitMask);
 
-    /// Set debugging functionality
-    /// \param _enableDebugging
-    void SetEnableDebugging(bool _enableDebugging) {
-        enableDebugging = _enableDebugging;
+    /// Set debugging postfix
+    /// \param postfix
+    void SetDebugPostfix(const char* postfix) {
+        debugPostfix = postfix;
     }
 
     /// Scan the DXIL bytecode
@@ -185,8 +185,8 @@ private:
     /// Current filter
     uint64_t shlBlockFilter = UINT64_MAX;
 
-    /// Enable debugging functionality
-    bool enableDebugging = true;
+    /// Debugging postfix
+    const char* debugPostfix = "";
 
     /// Cache for flat operand scanning
     Vector<uint64_t> recordOperandCache;

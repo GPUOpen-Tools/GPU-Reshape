@@ -17,7 +17,7 @@ private:
     /// Try to parse a PDB file
     /// \param path given path
     /// \return nullptr if failed
-    DXBCPhysicalBlock* TryParsePDB(const std::string& path);
+    DXBCPhysicalBlock* TryParsePDB(const std::string_view& path);
 
 private:
     /// Scanner for external pdbs

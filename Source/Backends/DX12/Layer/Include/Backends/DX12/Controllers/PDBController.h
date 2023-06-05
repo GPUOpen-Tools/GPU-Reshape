@@ -9,6 +9,7 @@
 // Common
 #include <Common/ComRef.h>
 #include <Common/Allocator/Vector.h>
+#include <Common/Containers/TrivialStackVector.h>
 
 // Std
 #include <string_view>
@@ -23,7 +24,7 @@ struct DeviceState;
 struct ResourceState;
 
 /// Candidate list
-using PDBCandidateList = std::vector<std::string>;
+using PDBCandidateList = TrivialStackVector<std::string_view, 32u>;
 
 class PDBController final : public IController, public IBridgeListener {
 public:
@@ -42,8 +43,8 @@ public:
 
     /// Get the candidates for a given path
     /// \param view path
-    /// \return candidate list, may be empty
-    const PDBCandidateList& GetCandidateList(const std::string_view& view);
+    /// \param candidates candidate list, may be empty
+    void GetCandidateList(const char* path, PDBCandidateList& candidates);
 
 protected:
     /// Message handlers
@@ -52,9 +53,20 @@ protected:
     void OnMessage(const struct IndexPDPathsMessage& message);
 
 private:
+    /// Index a given path and its candidates
+    /// \param base pdb root
+    /// \param path candidate path
+    void IndexPathCandidates(const std::string_view& base, const std::filesystem::path& path);
+    
     /// Index a given path
-    /// \param path path to index
-    void IndexPath(const std::filesystem::path& path);
+    /// \param base pdb root
+    /// \param path candidate path
+    void IndexPath(const std::string_view& base, const std::filesystem::path& path);
+
+    /// Append a given set of candidates
+    /// \param view search path
+    /// \param candidates all candidates
+    void AppendCandidates(const std::string_view& view, PDBCandidateList& candidates);
 
 private:
     DeviceState* device;
@@ -69,7 +81,7 @@ private:
     bool recursive{false};
 
     /// All indexed paths
-    std::unordered_map<uint64_t, PDBCandidateList> indexed;
+    std::unordered_map<uint64_t, std::vector<std::string>> indexed;
 
     /// Shared lock
     std::mutex mutex;
