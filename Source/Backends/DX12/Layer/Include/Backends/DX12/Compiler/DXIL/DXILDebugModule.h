@@ -88,6 +88,10 @@ private:
     /// \param view filename view
     SourceFragment* FindOrCreateSourceFragment(const LLVMRecordStringView& view);
 
+    /// Find or create a source fragment
+    /// \param view filename view
+    SourceFragment* FindOrCreateSourceFragment(const std::string_view& view);
+
     /// All source fragments within a module
     Vector<SourceFragment> sourceFragments;
 

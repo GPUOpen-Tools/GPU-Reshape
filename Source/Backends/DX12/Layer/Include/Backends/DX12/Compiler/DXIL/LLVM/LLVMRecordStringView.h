@@ -78,6 +78,58 @@ struct LLVMRecordStringView {
         return true;
     }
 
+    /// Check if this string at a given offset starts with
+    bool StartsWithOffset(uint64_t offset, const std::string_view& str) const {
+        if (str.length() > operandCount - offset) {
+            return false;
+        }
+
+        for (uint32_t i = 0; i < str.length(); i++) {
+            if (str[i] != static_cast<char>(operands[offset + i])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// Substr this view
+    void SubStr(uint64_t begin, uint64_t end, char* buffer) const {
+        for (size_t i = begin; i < end; i++) {
+            buffer[i - begin] = static_cast<char>(operands[i]);
+        }
+    }
+
+    /// Substr this view with null termination
+    void SubStrTerminated(uint64_t begin, uint64_t end, char* buffer) const {
+        for (size_t i = begin; i < end; i++) {
+            buffer[i - begin] = static_cast<char>(operands[i]);
+        }
+
+        // Terminator
+        buffer[end - begin] = '\0';
+    }
+
+    /// Copy until a given condition is met
+    template<typename F>
+    void CopyUntilTerminated(uint64_t begin, char* buffer, uint32_t length, F&& functor) {
+        size_t i;
+        for (i = begin; i < std::min<size_t>(begin + length - 1, operandCount); i++) {
+            char ch = static_cast<char>(operands[i]);
+
+            // Break?
+            if (!functor(ch)) {
+                break;
+            }
+
+            // Append
+            buffer[i - begin] = ch;
+        }
+
+        // Terminator
+        buffer[i - begin] = '\0';
+    }
+
     /// Accessor
     char operator[](uint32_t i) const {
         ASSERT(i < operandCount, "Out of bounds index");
