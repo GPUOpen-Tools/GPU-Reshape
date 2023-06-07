@@ -55,9 +55,9 @@ private:
     /// \param it source instruction reference from which instrumentation occurs, potentially safe-guarded
     /// \param resource resource to validate
     /// \param compileTypeLiteral expected compile type value
-    /// \param isSafeGuarded to safeguard, or not to safeguard
+    /// \param config instrumentation configuration
     /// \return moved iterator
-    IL::BasicBlock::Iterator InjectForResource(IL::Program& program, IL::Function& function, IL::BasicBlock::Iterator it, IL::ID resource, Backend::IL::ResourceTokenType compileTypeLiteral, bool isSafeGuarded);
+    IL::BasicBlock::Iterator InjectForResource(IL::Program& program, IL::Function& function, IL::BasicBlock::Iterator it, IL::ID resource, Backend::IL::ResourceTokenType compileTypeLiteral, const struct SetInstrumentationConfigMessage& config);
 
 private:
     /// Hosts

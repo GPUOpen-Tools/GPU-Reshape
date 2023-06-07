@@ -55,11 +55,11 @@ void DescriptorFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &program, IL::Function& function, IL::BasicBlock::Iterator it, IL::ID resource, Backend::IL::ResourceTokenType compileTypeLiteral, bool isSafeGuarded) {
+IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &program, IL::Function& function, IL::BasicBlock::Iterator it, IL::ID resource, Backend::IL::ResourceTokenType compileTypeLiteral, const SetInstrumentationConfigMessage& config) {
     IL::BasicBlock* basicBlock = it.block;
 
     // Do we need a merge (phi) for result data?
-    const bool needsSafeGuardCFMerge = isSafeGuarded && it->result != IL::InvalidID;
+    const bool needsSafeGuardCFMerge = config.safeGuard && it->result != IL::InvalidID;
 
     // Resulting type of the instruction (safe-guarding)
     const Backend::IL::Type* resultType;
@@ -75,7 +75,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
 
     // Split this basic block, move all instructions post and including the instrumented instruction to resume
     // ! iterator invalidated
-    auto instr = basicBlock->Split(resumeBlock, isSafeGuarded ? std::next(it) : it);
+    auto instr = basicBlock->Split(resumeBlock, config.safeGuard ? std::next(it) : it);
 
     // Safeguard identifiers, later merged with phi
     IL::ID safeGuardValue    = it->result;
@@ -84,7 +84,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
 
     // If needed, move offending instruction to a safeguarded block
     IL::BasicBlock* matchBlock;
-    if (isSafeGuarded) {
+    if (config.safeGuard) {
         // Allocate match block
         matchBlock = function.GetBasicBlocks().AllocBlock();
 
@@ -107,6 +107,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
     mismatchBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
 
     // Shared data
+    IL::ID packedToken;
     IL::ID compileType;
     IL::ID runtimeType;
     IL::ID runtimePUID;
@@ -117,6 +118,9 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
 
         // Get global id of resource
         IL::ResourceTokenEmitter token(pre, resource);
+
+        // Keep token
+        packedToken = token.GetToken();
 
         // Get the ids
         compileType = pre.UInt32(static_cast<uint32_t>(compileTypeLiteral));
@@ -132,7 +136,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(
             cond,
-            mismatchBlock, isSafeGuarded ? matchBlock : resumeBlock,
+            mismatchBlock, config.safeGuard ? matchBlock : resumeBlock,
             IL::ControlFlow::Selection(resumeBlock)
         );
     }
@@ -145,13 +149,21 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
         IL::ID isUndefined   = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDInvalidUndefined));
         IL::ID isOutOfBounds = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDInvalidOutOfBounds));
 
-        // Export the message
+        // Setup message
         DescriptorMismatchMessage::ShaderExport msg;
         msg.sguid = mismatch.UInt32(sguid);
         msg.compileType = compileType;
         msg.runtimeType = runtimeType;
         msg.isUndefined = mismatch.Select(isUndefined, mismatch.UInt32(1), mismatch.UInt32(0));
         msg.isOutOfBounds = mismatch.Select(isOutOfBounds, mismatch.UInt32(1), mismatch.UInt32(0));
+        
+        // Detailed instrumentation?
+        if (config.detail) {
+            msg.chunks |= DescriptorMismatchMessage::Chunk::Detail;
+            msg.detail.token = packedToken;
+        }
+        
+        // Export the message
         mismatch.Export(exportID, msg);
 
         // If safe-guarded, allocate null fallback constant
@@ -176,7 +188,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
     }
 
     // OK
-    return isSafeGuarded ? matchBlock->begin() : instr;
+    return config.safeGuard ? matchBlock->begin() : instr;
 }
 
 void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
@@ -190,16 +202,16 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
             default:
                 return it;
             case IL::OpCode::LoadBuffer: {
-                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config.safeGuard);
+                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
             }
             case IL::OpCode::StoreBuffer: {
-                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config.safeGuard);
+                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
             }
             case IL::OpCode::StoreTexture: {
-                return InjectForResource(program, context.function, it, it->As<IL::StoreTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config.safeGuard);
+                return InjectForResource(program, context.function, it, it->As<IL::StoreTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config);
             }
             case IL::OpCode::LoadTexture: {
-                return InjectForResource(program, context.function, it, it->As<IL::LoadTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config.safeGuard);
+                return InjectForResource(program, context.function, it, it->As<IL::LoadTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config);
             }
             case IL::OpCode::SampleTexture: {
                 auto* instr = it->As<IL::SampleTextureInstruction>();
@@ -209,7 +221,7 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
                 IL::ID sampler = instr->sampler;
 
                 // Validate texture
-                IL::BasicBlock::Iterator next = InjectForResource(program, context.function, it, texture, Backend::IL::ResourceTokenType::Texture, config.safeGuard);
+                IL::BasicBlock::Iterator next = InjectForResource(program, context.function, it, texture, Backend::IL::ResourceTokenType::Texture, config);
 
                 // Samplers are not guaranteed (can be combined)
                 if (sampler == IL::InvalidID) {
@@ -217,7 +229,7 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
                 }
 
                 // Validate sampler
-                return InjectForResource(program, context.function, next, sampler, Backend::IL::ResourceTokenType::Sampler, config.safeGuard);
+                return InjectForResource(program, context.function, next, sampler, Backend::IL::ResourceTokenType::Sampler, config);
             }
         }
     });

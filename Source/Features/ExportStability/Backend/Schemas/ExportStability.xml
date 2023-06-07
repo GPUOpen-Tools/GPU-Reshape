@@ -1,5 +1,9 @@
 <schema>
     <shader-export name="UnstableExport">
+        <chunk name="Detail">
+            <field name="token" type="uint32"/>
+        </chunk>
+
         <field name="isNaN" type="uint32" bits="1"/>
     </shader-export>
 </schema>

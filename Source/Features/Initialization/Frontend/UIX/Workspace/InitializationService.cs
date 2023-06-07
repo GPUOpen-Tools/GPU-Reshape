@@ -8,6 +8,7 @@ using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Listeners;
 using Studio.ViewModels.Workspace.Objects;
@@ -39,6 +40,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
             
             // Get services
             _shaderMappingService = viewModel.PropertyCollection.GetService<IShaderMappingService>();
+            _versioningService = ViewModel.PropertyCollection.GetService<IVersioningService>();
         }
 
         /// <summary>
@@ -49,53 +51,41 @@ namespace GRS.Features.Initialization.UIX.Workspace
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsStatic(UninitializedResourceMessage.ID))
+            if (!streams.GetSchema().IsChunked(UninitializedResourceMessage.ID))
                 return;
 
-            var view = new StaticMessageView<UninitializedResourceMessage>(streams);
+            var view = new ChunkedMessageView<UninitializedResourceMessage>(streams);
 
             // Latent update set
-            var lookup = new Dictionary<uint, UninitializedResourceMessage>();
             var enqueued = new Dictionary<uint, uint>();
 
-            // Consume all messages
-            foreach (UninitializedResourceMessage message in view)
+            // Preallocate initial latents
+            foreach (var kv in _reducedMessages)
             {
-                if (enqueued.TryGetValue(message.sguid, out uint enqueuedCount))
-                {
-                    enqueued[message.sguid] = enqueuedCount + 1;
-                }
-                else
-                {
-                    lookup.Add(message.sguid, message);
-                    enqueued.Add(message.sguid, 1);
-                }
+                enqueued.Add(kv.Key, 0);
             }
-            
+
             // Type lookup
             string[] typeLookup = new[] { "Texture", "Buffer", "CBuffer", "Sampler" };
 
-            foreach (var kv in enqueued)
+            foreach (UninitializedResourceMessage message in view)
             {
-                // Add to reduced set
-                if (_reducedMessages.ContainsKey(kv.Key))
+                // Add to latent set
+                if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
                 {
-                    Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        _reducedMessages[kv.Key].Count += kv.Value;
-                    });
+                    enqueued[message.Key] = enqueuedCount + 1u;
                 }
                 else
                 {
-                    // Get from key
-                    var message = lookup[kv.Key];
-
                     // Create object
                     var validationObject = new ValidationObject()
                     {
                         Content = $"Uninitialized resource read",
-                        Count = kv.Value
+                        Count = 1u
                     };
+                    
+                    // Register with latent
+                    enqueued.Add(message.Key, 1u);
 
                     // Shader view model injection
                     validationObject.WhenAnyValue(x => x.Segment).WhereNotNull().Subscribe(x =>
@@ -116,10 +106,71 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     _shaderMappingService?.EnqueueMessage(validationObject, message.sguid);
 
                     // Insert lookup
-                    _reducedMessages.Add(kv.Key, validationObject);
+                    _reducedMessages.Add(message.Key, validationObject);
 
                     // Add to UI visible collection
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
+                }
+
+                // Detailed?
+                if (message.HasChunk(UninitializedResourceMessage.Chunk.Detail))
+                {
+                    UninitializedResourceMessage.DetailChunk detailChunk = message.GetDetailChunk();
+
+                    // To token
+                    var token = new ResourceToken()
+                    {
+                        Token = detailChunk.token
+                    };
+
+                    // Get detailed view model
+                    if (!_reducedDetails.TryGetValue(message.Key, out ResourceValidationDetailViewModel? detailViewModel))
+                    {
+                        // Not found, find the object
+                        if (!_reducedMessages.TryGetValue(message.Key, out ValidationObject? validationObject))
+                        {
+                            continue;
+                        }
+
+                        // Create the missing detail view model
+                        detailViewModel = new ResourceValidationDetailViewModel();
+                        
+                        // Assign on UI thread
+                        Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            validationObject.DetailViewModel = detailViewModel;
+                        });
+                        
+                        // Add lookup
+                        _reducedDetails.Add(message.Key, detailViewModel);
+                    }
+
+                    // Try to find resource
+                    Resource resource = _versioningService?.GetResource(token.PUID, streams.VersionID) ?? new Resource()
+                    {
+                        PUID = token.PUID,
+                        Version = streams.VersionID,
+                        Name = $"#{token.PUID}",
+                        IsUnknown = true
+                    };
+                    
+                    // Get resource
+                    ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
+
+                    // Compose detailed message
+                    resourceValidationObject.AddUniqueInstance(_reducedMessages[message.Key].Content);
+                }
+            }
+            
+            // Update counts on main thread
+            foreach (var kv in enqueued)
+            {
+                if (_reducedMessages.TryGetValue(kv.Key, out ValidationObject? value))
+                {
+                    if (kv.Value > 0)
+                    {
+                        Dispatcher.UIThread.InvokeAsync(() => { value.Count += kv.Value; });
+                    }
                 }
             }
         }
@@ -158,6 +209,11 @@ namespace GRS.Features.Initialization.UIX.Workspace
         private Dictionary<uint, ValidationObject> _reducedMessages = new();
 
         /// <summary>
+        /// All reduced resource messages
+        /// </summary>
+        private Dictionary<uint, ResourceValidationDetailViewModel> _reducedDetails = new();
+
+        /// <summary>
         /// Segment mapping
         /// </summary>
         private IShaderMappingService? _shaderMappingService;
@@ -166,5 +222,10 @@ namespace GRS.Features.Initialization.UIX.Workspace
         /// Validation container
         /// </summary>
         private IMessageCollectionViewModel? _messageCollectionViewModel;
+        
+        /// <summary>
+        /// Versioning service
+        /// </summary>
+        private IVersioningService? _versioningService;
     }
 }

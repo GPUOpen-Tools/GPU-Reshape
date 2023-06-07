@@ -90,6 +90,9 @@ void InitializationFeature::CollectMessages(IMessageStorage *storage) {
 }
 
 void InitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
+    // Options
+    const SetInstrumentationConfigMessage config = FindOrDefault<SetInstrumentationConfigMessage>(specialization);
+    
     // Get the data ids
     IL::ID initializationMaskBufferDataID = program.GetShaderDataMap().Get(initializationMaskBufferID)->id;
 
@@ -182,10 +185,18 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(cond, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
 
-        // Export the message
+        // Setup message
         UninitializedResourceMessage::ShaderExport msg;
         msg.sguid = mismatch.UInt32(sguid);
         msg.LUID = PUID;
+
+        // Detailed instrumentation?
+        if (config.detail) {
+            msg.chunks |= UninitializedResourceMessage::Chunk::Detail;
+            msg.detail.token = token.GetToken();
+        }
+        
+        // Export the message
         mismatch.Export(exportID, msg);
 
         // Branch back

@@ -1,5 +1,9 @@
 <schema>
     <shader-export name="DescriptorMismatch">
+        <chunk name="Detail">
+            <field name="token" type="uint32"/>
+        </chunk>
+
         <field name="compileType" type="uint32" bits="2"/>
         <field name="runtimeType" type="uint32" bits="2"/>
         <field name="isUndefined" type="uint32" bits="1"/>

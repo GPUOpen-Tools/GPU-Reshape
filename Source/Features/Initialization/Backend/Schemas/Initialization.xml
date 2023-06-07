@@ -1,5 +1,9 @@
 <schema>
     <shader-export name="UninitializedResource">
+        <chunk name="Detail">
+            <field name="token" type="uint32"/>
+        </chunk>
+
         <field name="LUID" type="uint32" bits="16"/>
     </shader-export>
 </schema>

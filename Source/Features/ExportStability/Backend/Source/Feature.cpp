@@ -5,12 +5,15 @@
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
+#include <Backend/IL/ResourceTokenEmitter.h>
 
 // Generated schema
 #include <Schemas/Features/ExportStability.h>
+#include <Schemas/Instrumentation.h>
 
 // Message
 #include <Message/IMessageStorage.h>
+#include <Message/MessageStreamCommon.h>
 
 // Common
 #include <Common/Registry.h>
@@ -45,18 +48,24 @@ void ExportStabilityFeature::CollectMessages(IMessageStorage *storage) {
 }
 
 void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
+    // Options
+    const SetInstrumentationConfigMessage config = FindOrDefault<SetInstrumentationConfigMessage>(specialization);
+
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
         // Instruction of interest?
         IL::ID value;
+        IL::ID resource = IL::InvalidID;
         switch (it->opCode) {
             default:
                 return it;
             case IL::OpCode::StoreBuffer:
                 value = it->As<IL::StoreBufferInstruction>()->value;
+                resource = it->As<IL::StoreBufferInstruction>()->buffer;
                 break;
             case IL::OpCode::StoreTexture:
                 value = it->As<IL::StoreTextureInstruction>()->texel;
+                resource = it->As<IL::StoreTextureInstruction>()->texture;
                 break;
             case IL::OpCode::StoreOutput:
                 value = it->As<IL::StoreOutputInstruction>()->value;
@@ -107,10 +116,18 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
         IL::Emitter<> oob(program, *context.function.GetBasicBlocks().AllocBlock());
         oob.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
 
-        // Export the message
+        // Setup message
         UnstableExportMessage::ShaderExport msg;
         msg.sguid = oob.UInt32(sguid);
         msg.isNaN = oob.Select(isNaN, oob.UInt32(1), oob.UInt32(0));
+
+        // Detailed instrumentation?
+        if (config.detail && resource != IL::InvalidID) {
+            msg.chunks |= UnstableExportMessage::Chunk::Detail;
+            msg.detail.token = IL::ResourceTokenEmitter(oob, resource).GetToken();
+        }
+
+        // Export the message
         oob.Export(exportID, msg);
 
         // Branch back

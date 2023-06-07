@@ -333,7 +333,7 @@ bool MessageGenerator::GenerateCPP(const Message &message, MessageStream &out) {
 
         // Emit dynamic message length utility for schema
         out.chunks << "\n";
-        out.chunks << "\tstatic uint32_t MessageSize(const ResourceIndexOutOfBoundsMessage* message) {\n";
+        out.chunks << "\tstatic uint32_t MessageSize(const " << message.name << "Message* message) {\n";
         out.chunks << "\t\tuint32_t mask = *reinterpret_cast<const uint32_t*>(message) >> (32u - static_cast<uint32_t>(Chunk::Count));\n";
         out.chunks << "\t\tuint32_t lut[static_cast<uint32_t>(Chunk::Mask) + 1u] = {\n";
 
