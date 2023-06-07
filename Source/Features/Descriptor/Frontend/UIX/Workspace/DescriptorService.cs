@@ -89,11 +89,26 @@ namespace GRS.Features.Descriptor.UIX.Workspace
                 {
                     // Get from key
                     var message = lookup[kv.Key];
+                    
+                    // Composed message
+                    string contents;
+                    if (message.isUndefined != 0)
+                    {
+                        contents = $"Descriptor is undefined";
+                    }
+                    else if (message.isOutOfBounds != 0)
+                    {
+                        contents = $"Descriptor indexing out of bounds";
+                    }
+                    else
+                    {
+                        contents = $"Descriptor mismatch detected, shader expected {typeLookup[message.Flat.compileType]} but received {typeLookup[message.Flat.runtimeType]}";
+                    }
 
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Descriptor mismatch detected, shader expected {typeLookup[message.Flat.compileType]} but received {typeLookup[message.Flat.runtimeType]}",
+                        Content = contents,
                         Count = kv.Value
                     };
 
