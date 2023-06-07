@@ -666,7 +666,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         // Setup the job
         PipelineJob& job = jobs[dirtyIndex];
         job.state = state;
-        job.featureBitSet = state->instrumentationInfo.featureBitSet;
+        job.combinedHash = 0x0;
 
         // Allocate feature bit sets
         job.shaderModuleInstrumentationKeys = new (registry->GetAllocators()) ShaderModuleInstrumentationKey[state->shaderModules.size()];
@@ -720,6 +720,9 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             // Assign key
             job.shaderModuleInstrumentationKeys[shaderIndex] = instrumentationKey;
 
+            // Combine parent hash
+            CombineHash(job.combinedHash, instrumentationKey.combinedHash);
+            
             // Shader may have failed to compile for whatever reason, skip if need be
             if (!shaderState->HasInstrument(instrumentationKey)) {
                 rejectedKeys.push_back(std::make_pair(shaderState, instrumentationKey));
@@ -739,6 +742,12 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             destroy(job.shaderModuleInstrumentationKeys, allocators);
             continue;
         }
+
+        // Append commit entry
+        batch->commitEntries.push_back(Batch::CommitEntry {
+            .state = state,
+            .combinedHash = job.combinedHash,
+        });
 
         // Next job
         enqueuedJobs++;
@@ -778,6 +787,13 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Commit all sguid changes
     auto bridge = registry->Get<IBridge>();
     table->sguidHost->Commit(bridge.GetUnsafe());
+    
+    // Commit all pending entries
+    for (Batch::CommitEntry entry : batch->commitEntries) {
+        if (auto pipeline = entry.state->GetInstrument(entry.combinedHash)) {
+            entry.state->hotSwapObject.store(pipeline);
+        }
+    }
 
     // Diagnostic
 #if LOG_INSTRUMENTATION

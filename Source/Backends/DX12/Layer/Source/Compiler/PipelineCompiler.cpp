@@ -281,10 +281,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
         }
 
         // Add pipeline
-        state->AddInstrument(job.featureBitSet, pipeline);
-
-        // Set the hot swapped object
-        state->hotSwapObject.store(pipeline);
+        state->AddInstrument(job.combinedHash, pipeline);
     }
 
     // Free bit sets
@@ -370,10 +367,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         }
 
         // Add pipeline
-        state->AddInstrument(job.featureBitSet, pipeline);
-
-        // Set the hot swapped object
-        state->hotSwapObject.store(pipeline);
+        state->AddInstrument(job.combinedHash, pipeline);
     }
 
     // Free bit sets

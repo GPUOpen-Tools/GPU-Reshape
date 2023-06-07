@@ -168,11 +168,8 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
         PipelineJob &job = batch.jobs[i];
         PipelineState *state = job.state;
 
-        // Set the instrument for the given feature set
-        state->AddInstrument(job.featureBitSet, pipelines[i]);
-
-        // Set the hot swapped object
-        state->hotSwapObject.store(pipelines[i]);
+        // Set the instrument for the given hash
+        state->AddInstrument(job.combinedHash, pipelines[i]);
     }
 
     // Free bit sets
@@ -223,10 +220,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         PipelineState *state = job.state;
 
         // Set the instrument for the given feature set
-        state->AddInstrument(job.featureBitSet, pipelines[i]);
-
-        // Set the hot swapped object
-        state->hotSwapObject.store(pipelines[i]);
+        state->AddInstrument(job.combinedHash, pipelines[i]);
     }
 
     // Free bit sets

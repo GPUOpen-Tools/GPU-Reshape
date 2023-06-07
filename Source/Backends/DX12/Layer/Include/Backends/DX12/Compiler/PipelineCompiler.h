@@ -24,8 +24,8 @@ struct PipelineJob {
     /// TODO: Stack fallback
     ShaderInstrumentationKey* shaderInstrumentationKeys{nullptr};
 
-    /// Pipeline specific feature bit set
-    uint64_t featureBitSet{ 0 };
+    /// Pipeline specific hash
+    uint64_t combinedHash{ 0 };
 };
 
 class PipelineCompiler : public TComponent<PipelineCompiler> {

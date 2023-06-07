@@ -142,7 +142,15 @@ private:
 
 private:
     struct Batch {
-        Batch(const Allocators& allocators) : dirtyShaders(allocators), dirtyPipelines(allocators) {
+        struct CommitEntry {
+            /// Pending entry
+            PipelineState* state{nullptr};
+
+            /// Expected hash
+            uint64_t combinedHash{0};
+        };
+        
+        Batch(const Allocators& allocators) : commitEntries(allocators), dirtyShaders(allocators), dirtyPipelines(allocators) {
             
         }
 
@@ -152,6 +160,9 @@ private:
         /// Compiler diagnostics
         ShaderCompilerDiagnostic shaderCompilerDiagnostic;
         PipelineCompilerDiagnostic pipelineCompilerDiagnostic;
+
+        /// All pending entries
+        Vector<CommitEntry> commitEntries;
 
         /// Time stamps
         std::chrono::high_resolution_clock::time_point stampBegin;

@@ -137,6 +137,14 @@ private:
 
 private:
     struct Batch {
+        struct CommitEntry {
+            /// Pending entry
+            PipelineState* state{nullptr};
+
+            /// Expected hash
+            uint64_t combinedHash{0};
+        };
+        
         /// Given feature set
         uint64_t featureBitSet;
 
@@ -148,6 +156,9 @@ private:
         std::chrono::high_resolution_clock::time_point stampBegin;
         std::chrono::high_resolution_clock::time_point stampBeginShaders;
         std::chrono::high_resolution_clock::time_point stampBeginPipelines;
+
+        /// All pending entries
+        std::vector<CommitEntry> commitEntries;
 
         /// Dirty objects
         std::set<ReferenceObject*> dirtyObjects;

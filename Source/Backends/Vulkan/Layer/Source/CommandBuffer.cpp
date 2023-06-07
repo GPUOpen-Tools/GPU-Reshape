@@ -176,9 +176,6 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     // Begin the streaming state
     commandBuffer->table->exportStreamer->BeginCommandBuffer(commandBuffer->streamState, commandBuffer->object);
 
-    // Update the PRMT data
-    commandBuffer->table->prmTable->Update(commandBuffer);
-
     // Sanity (redundant), reset the context
     commandBuffer->context = {};
 
