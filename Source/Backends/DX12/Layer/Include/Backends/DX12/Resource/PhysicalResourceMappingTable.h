@@ -40,6 +40,11 @@ public:
     /// \param mapping mapping to write
     void WriteMapping(uint32_t offset, ResourceState* state, const VirtualResourceMapping& mapping);
 
+    /// Copy a mapping
+    /// \param source source offset
+    /// \param dest dest offset
+    void CopyMapping(uint32_t source, uint32_t dest);
+
     /// Set the state of a mapping
     /// \param offset offset to be written
     /// \param state given state
@@ -49,6 +54,11 @@ public:
     /// \param offset given offset
     /// \return state, nullptr if not found
     ResourceState* GetMappingState(uint32_t offset);
+
+    /// Get the mapping from an offset
+    /// \param offset given offset
+    /// \return mapping
+    VirtualResourceMapping GetMapping(uint32_t offset);
 
     /// Get the underlying resource
     /// \return

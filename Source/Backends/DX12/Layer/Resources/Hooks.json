@@ -70,6 +70,8 @@
         "CreateDepthStencilView",
         "CreateRenderTargetView",
         "CreateSampler",
+        "CopyDescriptors",
+        "CopyDescriptorsSimple",
         "CreateCommandSignature",
         "CreatePipelineLibrary",
         "SetEventOnMultipleFenceCompletion",

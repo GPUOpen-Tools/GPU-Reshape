@@ -128,13 +128,33 @@ ResourceState *PhysicalResourceMappingTable::GetMappingState(uint32_t offset) {
     return states[offset];
 }
 
+VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(uint32_t offset) {
+    std::lock_guard guard(mutex);
+    ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
+    return virtualMappings[offset];
+}
+
 void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, ResourceState *state, const VirtualResourceMapping &mapping) {
     std::lock_guard guard(mutex);
 
+    // Validation
     ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
-    
+
+    // Write contents
     virtualMappings[offset] = mapping;
     states[offset] = state;
-    
+    isDirty = true;
+}
+
+void PhysicalResourceMappingTable::CopyMapping(uint32_t source, uint32_t dest) {
+    std::lock_guard guard(mutex);
+
+    // Validation
+    ASSERT(source < virtualMappingCount, "Out of bounds mapping");
+    ASSERT(dest < virtualMappingCount, "Out of bounds mapping");
+
+    // Copy contents
+    virtualMappings[dest] = virtualMappings[source];
+    states[dest] = states[source];
     isDirty = true;
 }

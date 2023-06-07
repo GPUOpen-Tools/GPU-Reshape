@@ -310,6 +310,104 @@ void WINAPI HookID3D12DeviceCreateSampler(ID3D12Device* _this, const D3D12_SAMPL
     table.next->CreateSampler(pDesc, DestDescriptor);
 }
 
+void WINAPI HookID3D12DeviceCopyDescriptors(ID3D12Device* _this, UINT NumDestDescriptorRanges, const D3D12_CPU_DESCRIPTOR_HANDLE* pDestDescriptorRangeStarts, const UINT* pDestDescriptorRangeSizes, UINT NumSrcDescriptorRanges, const D3D12_CPU_DESCRIPTOR_HANDLE* pSrcDescriptorRangeStarts, const UINT* pSrcDescriptorRangeSizes, D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapsType) {
+    auto table = GetTable(_this);
+
+    // Get iteration for the heap type
+    const uint32_t incrementForHeap = table.next->GetDescriptorHandleIncrementSize(DescriptorHeapsType);
+
+    // Source iteration
+    uint32_t srcRangeOffset = 0;
+    uint32_t srcDescriptorOffset = 0;
+
+    // Handle all ranges
+    for (uint32_t rangeIndex = 0; rangeIndex < NumDestDescriptorRanges; rangeIndex++) {
+        D3D12_CPU_DESCRIPTOR_HANDLE dst = pDestDescriptorRangeStarts[rangeIndex];
+
+        // Get destination heap
+        // Note: Heaps may change between each range, no guarantee
+        const DescriptorHeapState* dstHeap = table.state->cpuHeapTable.Find(DescriptorHeapsType, dst.ptr);
+        
+        // Default the range size
+        const uint32_t dstRangeSize = pDestDescriptorRangeSizes ? pDestDescriptorRangeSizes[rangeIndex] : 1u;
+
+        // Handle all descriptors within the range
+        for (uint32_t descriptorIndex = 0; descriptorIndex < dstRangeSize; descriptorIndex++) {
+            // Deduce source handle
+            const D3D12_CPU_DESCRIPTOR_HANDLE src = {pSrcDescriptorRangeStarts[srcRangeOffset].ptr + incrementForHeap * (srcDescriptorOffset++)};
+
+            // Get source heap
+            // Note: Heaps may change between each range, no guarantee
+            DescriptorHeapState* srcHeap = table.state->cpuHeapTable.Find(DescriptorHeapsType, src.ptr);
+
+            // Valid heaps?
+            if (srcHeap && dstHeap) {
+                const uint32_t srcOffset = srcHeap->GetOffsetFromHeapHandle(src);
+                
+                // Copy the mapping
+                dstHeap->prmTable->WriteMapping(
+                    dstHeap->GetOffsetFromHeapHandle(dst),
+                    srcHeap->prmTable->GetMappingState(srcOffset),
+                    srcHeap->prmTable->GetMapping(srcOffset)
+                );
+            }
+
+            // Default the source range size
+            const uint32_t srcRangeSize = pSrcDescriptorRangeSizes ? pSrcDescriptorRangeSizes[srcRangeOffset] : 1u;
+
+            // Exceeded source range? Roll!
+            if (srcDescriptorOffset >= srcRangeSize) {
+                srcDescriptorOffset = 0;
+                srcRangeOffset++;
+            }
+
+            // Increment destination offset
+            dst.ptr += incrementForHeap;
+        }
+    }
+
+    // Pass down callchain
+    table.next->CopyDescriptors(NumDestDescriptorRanges, pDestDescriptorRangeStarts, pDestDescriptorRangeSizes, NumSrcDescriptorRanges, pSrcDescriptorRangeStarts, pSrcDescriptorRangeSizes, DescriptorHeapsType);
+}
+
+void WINAPI HookID3D12DeviceCopyDescriptorsSimple(ID3D12Device* _this, UINT NumDescriptors, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptorRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapsType) {
+    auto table = GetTable(_this);
+    
+    // Get iteration for the heap type
+    const uint32_t incrementForHeap = table.next->GetDescriptorHandleIncrementSize(DescriptorHeapsType);
+
+    // Get heaps
+    const DescriptorHeapState* dstHeap = table.state->cpuHeapTable.Find(DescriptorHeapsType, DestDescriptorRangeStart.ptr);
+    const DescriptorHeapState* srcHeap = table.state->cpuHeapTable.Find(DescriptorHeapsType, SrcDescriptorRangeStart.ptr);
+
+    // Valid heaps?
+    if (srcHeap && dstHeap) {
+        D3D12_CPU_DESCRIPTOR_HANDLE dst = DestDescriptorRangeStart;
+        D3D12_CPU_DESCRIPTOR_HANDLE src = SrcDescriptorRangeStart;
+        
+        // Handle all ranges
+        for (uint32_t descriptorIndex = 0; descriptorIndex < NumDescriptors; descriptorIndex++) {
+            // Get offsets
+            const uint32_t dstOffset = dstHeap->GetOffsetFromHeapHandle(dst);
+            const uint32_t srcOffset = srcHeap->GetOffsetFromHeapHandle(src);
+            
+            // Copy the mapping
+            dstHeap->prmTable->WriteMapping(
+                dstOffset,
+                srcHeap->prmTable->GetMappingState(srcOffset),
+                srcHeap->prmTable->GetMapping(srcOffset)
+            );
+
+            // Increment destination offset
+            dst.ptr += incrementForHeap;
+            src.ptr += incrementForHeap;
+        }
+    }
+
+    // Pass down callchain
+    table.next->CopyDescriptorsSimple(NumDescriptors, DestDescriptorRangeStart, SrcDescriptorRangeStart, DescriptorHeapsType);
+}
+
 HRESULT WINAPI HookID3D12DescriptorHeapGetDevice(ID3D12DescriptorHeap*_this, const IID &riid, void **ppDevice) {
     auto table = GetTable(_this);
 
@@ -329,20 +427,29 @@ DescriptorHeapState::~DescriptorHeapState() {
     }
 }
 
-ResourceState * DescriptorHeapState::GetStateFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {
+uint32_t DescriptorHeapState::GetOffsetFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {
     // Get base offset from heap
     uint64_t offset = handle.ptr - cpuDescriptorBase.ptr;
     ASSERT(offset % stride == 0, "Invalid heap offset");
 
-    // Get from PRMT
-    return prmTable->GetMappingState(static_cast<uint32_t>(offset / stride));
+    // As offset
+    return static_cast<uint32_t>(offset / stride);
 }
 
-ResourceState * DescriptorHeapState::GetStateFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const {
+uint32_t DescriptorHeapState::GetOffsetFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const {
     // Get base offset from heap
     uint64_t offset = handle.ptr - gpuDescriptorBase.ptr;
     ASSERT(offset % stride == 0, "Invalid heap offset");
 
+    // As offset
+    return static_cast<uint32_t>(offset / stride);
+}
+
+ResourceState * DescriptorHeapState::GetStateFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {
     // Get from PRMT
-    return prmTable->GetMappingState(static_cast<uint32_t>(offset / stride));
+    return prmTable->GetMappingState(GetOffsetFromHeapHandle(handle));
+}
+
+ResourceState * DescriptorHeapState::GetStateFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const {
+    return prmTable->GetMappingState(GetOffsetFromHeapHandle(handle));
 }
