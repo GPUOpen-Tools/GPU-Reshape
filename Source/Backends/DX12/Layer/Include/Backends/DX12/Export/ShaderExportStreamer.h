@@ -67,7 +67,13 @@ public:
     /// \param queueState the queue to record for
     /// \param state the segment state
     /// \return command list to be submitted
-    ID3D12GraphicsCommandList* RecordPatchCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* state);
+    ID3D12GraphicsCommandList* RecordPreCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* state);
+
+    /// Record a patch command list for submissions
+    /// \param queueState the queue to record for
+    /// \param state the segment state
+    /// \return command list to be submitted
+    ID3D12GraphicsCommandList* RecordPostCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* state);
 
     /// Enqueue a submitted segment
     /// \param queue the queue state that was submitted on

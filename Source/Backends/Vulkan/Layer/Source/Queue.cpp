@@ -151,8 +151,16 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     segment->versionSegPoint = table->versioningController->BranchOnSegmentationPoint();
 
     // Unwrapped submits
-    auto* vkSubmits = ALLOCA_ARRAY(VkSubmitInfo, submitCount + 1);
+    TrivialStackVector<VkSubmitInfo, 32u> vkSubmits;
+    
+    // Record the streaming pre patching
+    VkCommandBuffer prePatchCommandBuffer = table->exportStreamer->RecordPreCommandBuffer(queueState->exportState, segment);
 
+    // Fill patch submission info
+    VkSubmitInfo& prePatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
+    prePatchInfo.commandBufferCount = 1;
+    prePatchInfo.pCommandBuffers = &prePatchCommandBuffer;
+    
     // Number of command buffers
     uint32_t commandBufferCount = 0;
     for (uint32_t i = 0; i < submitCount; i++) {
@@ -175,37 +183,40 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
             vkCommandBuffers[bufferIndex] = unwrapped->object;
         }
 
+        // Destination
+        VkSubmitInfo& submit = vkSubmits.Add();
+
         // Copy non wrapped info
-        vkSubmits[i].pNext                = pSubmits[i].pNext;
-        vkSubmits[i].sType                = pSubmits[i].sType;
-        vkSubmits[i].pSignalSemaphores    = pSubmits[i].pSignalSemaphores;
-        vkSubmits[i].signalSemaphoreCount = pSubmits[i].signalSemaphoreCount;
-        vkSubmits[i].pWaitSemaphores      = pSubmits[i].pWaitSemaphores;
-        vkSubmits[i].waitSemaphoreCount   = pSubmits[i].waitSemaphoreCount;
-        vkSubmits[i].pWaitDstStageMask    = pSubmits[i].pWaitDstStageMask;
+        submit.pNext                = pSubmits[i].pNext;
+        submit.sType                = pSubmits[i].sType;
+        submit.pSignalSemaphores    = pSubmits[i].pSignalSemaphores;
+        submit.signalSemaphoreCount = pSubmits[i].signalSemaphoreCount;
+        submit.pWaitSemaphores      = pSubmits[i].pWaitSemaphores;
+        submit.waitSemaphoreCount   = pSubmits[i].waitSemaphoreCount;
+        submit.pWaitDstStageMask    = pSubmits[i].pWaitDstStageMask;
 
         // Assign unwrapped states
-        vkSubmits[i].commandBufferCount   = pSubmits[i].commandBufferCount;
-        vkSubmits[i].pCommandBuffers      = vkCommandBuffers;
+        submit.commandBufferCount   = pSubmits[i].commandBufferCount;
+        submit.pCommandBuffers      = vkCommandBuffers;
 
         // Advance buffers
-        vkCommandBuffers += vkSubmits[i].commandBufferCount;
+        vkCommandBuffers += submit.commandBufferCount;
     }
 
     // Record the streaming patching
-    VkCommandBuffer patchCommandBuffer = table->exportStreamer->RecordPatchCommandBuffer(queueState->exportState, segment);
+    VkCommandBuffer postPatchCommandBuffer = table->exportStreamer->RecordPostCommandBuffer(queueState->exportState, segment);
 
     // Fill patch submission info
-    VkSubmitInfo& patchInfo = (vkSubmits[submitCount] = {VK_STRUCTURE_TYPE_SUBMIT_INFO});
-    patchInfo.commandBufferCount = 1;
-    patchInfo.pCommandBuffers = &patchCommandBuffer;
+    VkSubmitInfo& postPatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
+    postPatchInfo.commandBufferCount = 1;
+    postPatchInfo.pCommandBuffers = &postPatchCommandBuffer;
 
     // Serialize queue access
     {
         std::lock_guard guard(queueState->mutex);
 
         // Pass down callchain
-        VkResult result = table->next_vkQueueSubmit(queue, submitCount + 1, vkSubmits, fenceState->object);
+        VkResult result = table->next_vkQueueSubmit(queue, static_cast<uint32_t>(vkSubmits.Size()), vkSubmits.Data(), fenceState->object);
         if (result != VK_SUCCESS) {
             return result;
         }

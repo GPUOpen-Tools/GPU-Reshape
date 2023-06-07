@@ -32,7 +32,7 @@ public:
 
     /// Update the table for use on a given list
     /// \param commandBuffer buffer to be updated on
-    void Update(CommandBufferObject* object);
+    void Update(VkCommandBuffer commandBuffer);
 
     /// Allocate a new segment
     /// \param count number of descriptors

@@ -623,7 +623,8 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
     segment->versionSegPoint = {};
 
     // Release command buffer
-    queueState->PushCommandBuffer(segment->patchCommandBuffer);
+    queueState->PushCommandBuffer(segment->prePatchCommandBuffer);
+    queueState->PushCommandBuffer(segment->postPatchCommandBuffer);
 
     // Add back to pool
     segmentPool.Push(segment);
@@ -643,21 +644,49 @@ void ShaderExportStreamer::ReleaseDescriptorDataSegment(const DescriptorDataSegm
     freeDescriptorDataSegmentEntries.push_back(dataSegment.entries.back());
 }
 
-VkCommandBuffer ShaderExportStreamer::RecordPatchCommandBuffer(ShaderExportQueueState* state, ShaderExportStreamSegment* segment) {
+VkCommandBuffer ShaderExportStreamer::RecordPreCommandBuffer(ShaderExportQueueState* state, ShaderExportStreamSegment* segment) {
     std::lock_guard guard(mutex);
 
     // Get queue
     QueueState* queueState = table->states_queue.Get(state->queue);
 
     // Pop a new command buffer
-    segment->patchCommandBuffer = queueState->PopCommandBuffer();
+    segment->prePatchCommandBuffer = queueState->PopCommandBuffer();
 
     // Begin info
     VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     // Attempt to begin
-    if (table->next_vkBeginCommandBuffer(segment->patchCommandBuffer, &beginInfo) != VK_SUCCESS) {
+    if (table->next_vkBeginCommandBuffer(segment->prePatchCommandBuffer, &beginInfo) != VK_SUCCESS) {
+        return nullptr;
+    }
+
+    // Update all PRM data
+    table->prmTable->Update(segment->prePatchCommandBuffer);
+
+    // Done
+    table->next_vkEndCommandBuffer(segment->prePatchCommandBuffer);
+
+    // OK
+    return segment->prePatchCommandBuffer;
+}
+
+VkCommandBuffer ShaderExportStreamer::RecordPostCommandBuffer(ShaderExportQueueState* state, ShaderExportStreamSegment* segment) {
+    std::lock_guard guard(mutex);
+
+    // Get queue
+    QueueState* queueState = table->states_queue.Get(state->queue);
+
+    // Pop a new command buffer
+    segment->postPatchCommandBuffer = queueState->PopCommandBuffer();
+
+    // Begin info
+    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    // Attempt to begin
+    if (table->next_vkBeginCommandBuffer(segment->postPatchCommandBuffer, &beginInfo) != VK_SUCCESS) {
         return nullptr;
     }
 
@@ -669,7 +698,7 @@ VkCommandBuffer ShaderExportStreamer::RecordPatchCommandBuffer(ShaderExportQueue
     barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
     barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_HOST_READ_BIT;
     table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
-        segment->patchCommandBuffer,
+        segment->postPatchCommandBuffer,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0x0,
         1, &barrier,
         0, nullptr,
@@ -679,13 +708,13 @@ VkCommandBuffer ShaderExportStreamer::RecordPatchCommandBuffer(ShaderExportQueue
     // Copy the counter from device to host
     VkBufferCopy copy{};
     copy.size = sizeof(ShaderExportCounter) * segment->allocation->streams.size();
-    table->commandBufferDispatchTable.next_vkCmdCopyBuffer(segment->patchCommandBuffer, counter.buffer, counter.bufferHost, 1u, &copy);
+    table->commandBufferDispatchTable.next_vkCmdCopyBuffer(segment->postPatchCommandBuffer, counter.buffer, counter.bufferHost, 1u, &copy);
 
     // Flush all queue work
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_HOST_READ_BIT;
     barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
     table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
-            segment->patchCommandBuffer,
+            segment->postPatchCommandBuffer,
             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0x0,
             1, &barrier,
             0, nullptr,
@@ -693,13 +722,13 @@ VkCommandBuffer ShaderExportStreamer::RecordPatchCommandBuffer(ShaderExportQueue
     );
 
     // Clear device counters
-    table->commandBufferDispatchTable.next_vkCmdFillBuffer(segment->patchCommandBuffer, counter.buffer, 0u, copy.size, 0x0);
+    table->commandBufferDispatchTable.next_vkCmdFillBuffer(segment->postPatchCommandBuffer, counter.buffer, 0u, copy.size, 0x0);
 
     // Done
-    table->next_vkEndCommandBuffer(segment->patchCommandBuffer);
+    table->next_vkEndCommandBuffer(segment->postPatchCommandBuffer);
 
     // OK
-    return segment->patchCommandBuffer;
+    return segment->postPatchCommandBuffer;
 }
 
 void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets, VkCommandBuffer commandBuffer) {

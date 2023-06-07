@@ -67,22 +67,41 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
         return;
     }
 
-    // Flush all pending work and transition to src
-    D3D12_RESOURCE_BARRIER barrier{};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = allocation.host.resource;
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-    list->ResourceBarrier(1u, &barrier);
+    // Final barriers
+    D3D12_RESOURCE_BARRIER barriers[2];
+    
+    // HOST: CopyDest -> CopySource
+    D3D12_RESOURCE_BARRIER& hostBarrier = barriers[0];
+    hostBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    hostBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    hostBarrier.Transition.pResource = allocation.host.resource;
+    hostBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    hostBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+    
+    // DEVICE: ShaderResource -> CopyDest
+    D3D12_RESOURCE_BARRIER& deviceBarrier = barriers[1];
+    deviceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    deviceBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    deviceBarrier.Transition.pResource = allocation.device.resource;
+    deviceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    deviceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+
+    // Submit barriers
+    list->ResourceBarrier(2u, barriers);
 
     // Copy host data to device
     list->CopyBufferRegion(allocation.device.resource, 0u, allocation.host.resource, 0, sizeof(uint32_t) * virtualMappingCount);
 
-    // Flush all pending work and transition to src
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-    list->ResourceBarrier(1u, &barrier);
+    // HOST: CopySource -> CopyDest
+    hostBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+    hostBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+
+    // DEVICE: CopyDest -> ShaderResource
+    deviceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    deviceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    
+    // Submit barriers
+    list->ResourceBarrier(2u, barriers);
 
     // OK
     isDirty = false;

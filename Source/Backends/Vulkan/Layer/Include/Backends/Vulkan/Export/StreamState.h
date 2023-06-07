@@ -111,8 +111,9 @@ struct ShaderExportStreamSegment {
     /// Shared fence for this segment
     FenceState* fence{nullptr};
 
-    /// The patch command buffer, optional
-    VkCommandBuffer patchCommandBuffer{VK_NULL_HANDLE};
+    /// The patch command buffers, optional
+    VkCommandBuffer prePatchCommandBuffer{VK_NULL_HANDLE};
+    VkCommandBuffer postPatchCommandBuffer{VK_NULL_HANDLE};
 
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{0};

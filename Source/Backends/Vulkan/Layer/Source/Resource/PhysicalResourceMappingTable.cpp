@@ -164,7 +164,7 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
     }
 }
 
-void PhysicalResourceMappingTable::Update(CommandBufferObject* object) {
+void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
     std::lock_guard guard(mutex);
     
     if (!isDirty || !liveSegmentCount) {
@@ -188,22 +188,19 @@ void PhysicalResourceMappingTable::Update(CommandBufferObject* object) {
         Defragment();
     }
 
-    // Guard against render passes
-    CommandBufferRenderPassScope renderPassScope(table, object->object, &object->streamState->renderPass);
-
     // Copy host to device
     VkBufferCopy copyRegion;
     copyRegion.size = virtualMappingCount * sizeof(VirtualResourceMapping);
     copyRegion.srcOffset = 0;
     copyRegion.dstOffset = 0;
-    table->commandBufferDispatchTable.next_vkCmdCopyBuffer(object->object, hostBuffer, deviceBuffer, 1u, &copyRegion);
+    table->commandBufferDispatchTable.next_vkCmdCopyBuffer(commandBuffer, hostBuffer, deviceBuffer, 1u, &copyRegion);
 
     // Flush the copy for shader reads
     VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
-        object->object,
+        commandBuffer,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0x0,
         1, &barrier,
         0, nullptr,

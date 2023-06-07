@@ -118,7 +118,7 @@ struct ShaderExportStreamBindState {
 
 /// Single stream state
 struct ShaderExportStreamState {
-    ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators) {
+    ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators), referencedHeaps(allocators) {
         
     }
 
@@ -150,6 +150,9 @@ struct ShaderExportStreamState {
     /// All segment descriptors, lifetime bound to deferred segment
     Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
 
+    /// All references heaps
+    Vector<DescriptorHeapState*> referencedHeaps;
+
     /// Shared constants buffer
     ConstantShaderDataBuffer constantShaderDataBuffer;
 
@@ -164,6 +167,7 @@ struct ShaderExportStreamState {
 struct ShaderExportStreamSegment {
     ShaderExportStreamSegment(const Allocators& allocators) :
         segmentDescriptors(allocators),
+        referencedHeaps(allocators),
         descriptorDataSegments(allocators),
         constantShaderDataBuffers(allocators),
         constantAllocator(allocators),
@@ -174,8 +178,9 @@ struct ShaderExportStreamSegment {
     /// Allocation for this segment
     ShaderExportSegmentInfo* allocation{nullptr};
 
-    /// The patch command list, optional
-    ImmediateCommandList immediatePatch;
+    /// The patch command lists, optional
+    ImmediateCommandList immediatePrePatch;
+    ImmediateCommandList immediatePostPatch;
 
     /// Patch descriptors
     ShaderExportSegmentDescriptorInfo patchDeviceCPUDescriptor;
@@ -183,6 +188,9 @@ struct ShaderExportStreamSegment {
 
     /// Combined segment descriptors, lifetime bound to this segment
     Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
+
+    /// All references heaps
+    Vector<DescriptorHeapState*> referencedHeaps;
 
     /// Combined descriptor data segments, lifetime bound to this segment
     Vector<DescriptorDataSegment> descriptorDataSegments;

@@ -266,6 +266,9 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
             return;
     }
 
+    // Add as referenced
+    state->referencedHeaps.push_back(heap);
+
     // No need to recreate if not resource heap
     if (!state->resourceHeap) {
         return;
@@ -446,6 +449,7 @@ void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
     // Cleanup
     state->constantShaderDataBuffer = {};
     state->segmentDescriptors.clear();
+    state->referencedHeaps.clear();
 
     // OK
     state->pending = false;
@@ -548,9 +552,11 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
 
     // Move ownership to the segment
     segment->segmentDescriptors.insert(segment->segmentDescriptors.end(), state->segmentDescriptors.begin(), state->segmentDescriptors.end());
+    segment->referencedHeaps.insert(segment->referencedHeaps.end(), state->referencedHeaps.begin(), state->referencedHeaps.end());
 
     // Empty out
     state->segmentDescriptors.clear();
+    state->referencedHeaps.clear();
 
     // Data has been migrated
     state->pending = false;
@@ -859,12 +865,15 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     sharedGPUHeapAllocator->Free(segment->patchDeviceGPUDescriptor);
 
     // Release command list
-    queue->PushCommandList(segment->immediatePatch);
+    queue->PushCommandList(segment->immediatePrePatch);
+    queue->PushCommandList(segment->immediatePostPatch);
 
     // Cleanup
     segment->segmentDescriptors.clear();
+    segment->referencedHeaps.clear();
     segment->descriptorDataSegments.clear();
-    segment->immediatePatch = {};
+    segment->immediatePrePatch = {};
+    segment->immediatePostPatch = {};
     segment->patchDeviceCPUDescriptor = {};
     segment->patchDeviceGPUDescriptor = {};
     segment->commandContextHandles.clear();
@@ -875,7 +884,34 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
     segmentPool.Push(segment);
 }
 
-ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* segment) {
+ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPreCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* segment) {
+    std::lock_guard guard(mutex);
+
+    // Pop a new command list
+    segment->immediatePrePatch = queueState->PopCommandList();
+    
+    // Ease of use
+    ID3D12GraphicsCommandList* patchList = segment->immediatePrePatch.commandList;
+
+    // Patch all referenced heaps
+    // Note: Internally dirty tested, duplicates are fine
+    for (DescriptorHeapState* state : segment->referencedHeaps) {
+        if (state->prmTable) {
+            state->prmTable->Update(patchList);
+        }
+    }
+
+    // Done
+    HRESULT hr = patchList->Close();
+    if (FAILED(hr)) {
+        return nullptr;
+    }
+
+    // OK
+    return patchList;
+}
+
+ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPostCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* segment) {
     std::lock_guard guard(mutex);
     
     segment->patchDeviceCPUDescriptor = sharedCPUHeapAllocator->Allocate(1);
@@ -899,10 +935,10 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPatchCommandList(CommandQ
     );
 
     // Pop a new command list
-    segment->immediatePatch = queueState->PopCommandList();
+    segment->immediatePostPatch = queueState->PopCommandList();
     
     // Ease of use
-    ID3D12GraphicsCommandList* patchList = segment->immediatePatch.commandList;
+    ID3D12GraphicsCommandList* patchList = segment->immediatePostPatch.commandList;
 
     // Set heap
     patchList->SetDescriptorHeaps(1u, &sharedGPUHeap);

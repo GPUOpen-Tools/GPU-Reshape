@@ -432,13 +432,6 @@ void WINAPI HookID3D12CommandListSetDescriptorHeaps(ID3D12CommandList* list, UIN
     auto *unwrapped = ALLOCA_ARRAY(ID3D12DescriptorHeap*, NumDescriptorHeaps);
     for (uint32_t i = 0; i < NumDescriptorHeaps; i++) {
         auto heapTable = GetTable(ppDescriptorHeaps[i]);
-
-        // Update any potential mappings
-        if (heapTable.state->prmTable) {
-            heapTable.state->prmTable->Update(table.next);
-        }
-
-        // Unwrap
         unwrapped[i] = heapTable.next;
     }
 
@@ -885,8 +878,11 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     // Inform the controller of the segmentation point
     segment->versionSegPoint = device.state->versioningController->BranchOnSegmentationPoint();
 
-    // Allocate unwrapped, +1 for patch
-    auto *unwrapped = ALLOCA_ARRAY(ID3D12CommandList*, count + 1);
+    // Final list of commands to submit
+    TrivialStackVector<ID3D12CommandList*, 64u> unwrapped;
+    
+    // Record the streaming pre patching
+    unwrapped.Add(device.state->exportStreamer->RecordPreCommandList(table.state, segment));
 
     // Process all lists
     for (uint32_t i = 0; i < count; i++) {
@@ -896,14 +892,14 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
         device.state->exportStreamer->MapSegment(listTable.state->streamState, segment);
 
         // Pass down unwrapped
-        unwrapped[i] = listTable.next;
+        unwrapped.Add(listTable.next);
     }
 
-    // Record the streaming patching
-    unwrapped[count] = device.state->exportStreamer->RecordPatchCommandList(table.state, segment);
+    // Record the streaming post patching
+    unwrapped.Add(device.state->exportStreamer->RecordPostCommandList(table.state, segment));
 
     // Pass down callchain
-    table.bottom->next_ExecuteCommandLists(table.next, count + 1, unwrapped);
+    table.bottom->next_ExecuteCommandLists(table.next, static_cast<uint32_t>(unwrapped.Size()), unwrapped.Data());
 
     // Process all again for proxies
     for (uint32_t i = 0; i < count; i++) {
