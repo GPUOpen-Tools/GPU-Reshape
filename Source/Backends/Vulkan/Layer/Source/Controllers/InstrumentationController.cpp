@@ -664,7 +664,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         bool isSkipped = false;
 
         // Setup the job
-        PipelineJob& job = jobs[dirtyIndex];
+        PipelineJob& job = jobs[enqueuedJobs];
         job.state = state;
         job.combinedHash = 0x0;
 
