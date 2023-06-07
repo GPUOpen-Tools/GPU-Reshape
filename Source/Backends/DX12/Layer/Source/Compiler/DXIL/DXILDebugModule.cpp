@@ -405,91 +405,92 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
     // Last known offset
     uint64_t lastSourceOffset = 0;
 
-    // Append initial fragment
+    /** TODO: This is such a mess! I'll clean this up when it's matured a bit. */
+
+    // Append initial line
     fragment->lineOffsets.push_back(0);
 
     // Summarize the line offsets
     for (uint32_t i = 0; i < contents.Length(); i++) {
-        if (contents[i] == '#') {
-            constexpr const char *kLineDirective = "#line";
+        constexpr const char *kLineDirective = "#line";
 
-            // Start of directive
-            uint32_t directiveStart = i;
+        // Start of directive
+        uint32_t directiveStart = i;
 
-            // Is line directive?
-            if (!contents.StartsWithOffset(i, kLineDirective)) {
-                continue;
-            }
+        // Is line directive?
+        if (!contents.StartsWithOffset(i, kLineDirective)) {
+            continue;
+        }
 
-            // Consume last offset
-            ASSERT(!fragment->lineOffsets.empty(), "No offset to consume");
-            fragment->lineOffsets.pop_back();
-
-            // Eat until number
-            while (i < contents.Length() && !isdigit(contents[i])) {
-                i++;
-            }
-
-            // Copy offset
-            char offsetBuffer[255];
-            contents.CopyUntilTerminated(i, offsetBuffer, sizeof(offsetBuffer) / sizeof(char), [](char ch) { return std::isdigit(ch); });
-
-            // Parse line offset
-            const uint32_t offset = atoi(offsetBuffer);
-
-            // Eat until start of string
-            while (i < contents.Length() && contents[i] != '"') {
-                i++;
-            }
-
-            // Eat "
+        // Eat until number
+        while (i < contents.Length() && !isdigit(contents[i])) {
             i++;
-
-            // Eat until end of string
-            const uint32_t start = i;
-            while (i < contents.Length() && contents[i] != '"') {
-                i++;
-            }
-
-            // Copy offset
-            auto fileChunk = ALLOCA_ARRAY(char, i - start + 1);
-            contents.SubStrTerminated(start, i, fileChunk);
-
-            // Get filename
-            std::string file = SanitizeCompilerPath(fileChunk);
-
-            // Eat until next line
-            while (i < contents.Length() && contents[i] != '\n') {
-                i++;
-            }
-
-            // Deduce length
-            size_t fragmentLength = directiveStart - lastSourceOffset;
-
-            // Copy contents
-            size_t contentOffset = fragment->contents.length();
-            fragment->contents.resize(contentOffset + fragmentLength);
-            contents.SubStr(lastSourceOffset, directiveStart, fragment->contents.data() + contentOffset);
-            
-            // Extend fragments
-            fragment = FindOrCreateSourceFragment(file);
-
-            // Append expected newlines to new fragment
-            for (size_t j = fragment->lineOffsets.size(); j < offset; j++) {
-                ASSERT(fragment->lineOffsets.empty() || fragment->lineOffsets.back() <= static_cast<uint32_t>(fragment->contents.size()), "Invalid offset");
-                fragment->lineOffsets.push_back(static_cast<uint32_t>(fragment->contents.size()));
-                fragment->contents.push_back('\n');
-            }
-
-            // New offset
-            lastSourceOffset = i;
         }
 
-        else if (contents[i] == '\n') {
-            auto localOffset = static_cast<uint32_t>(fragment->contents.size() + (i - lastSourceOffset));
-            ASSERT(fragment->lineOffsets.back() <= localOffset, "Invalid offset");
-            fragment->lineOffsets.push_back(localOffset);
+        // Copy offset
+        char offsetBuffer[255];
+        contents.CopyUntilTerminated(i, offsetBuffer, sizeof(offsetBuffer) / sizeof(char), [](char ch) { return std::isdigit(ch); });
+
+        // Parse line offset
+        const uint32_t offset = atoi(offsetBuffer);
+
+        // Eat until start of string
+        while (i < contents.Length() && contents[i] != '"') {
+            i++;
         }
+
+        // Eat "
+        i++;
+
+        // Eat until end of string
+        const uint32_t start = i;
+        while (i < contents.Length() && contents[i] != '"') {
+            i++;
+        }
+
+        // Copy offset
+        auto fileChunk = ALLOCA_ARRAY(char, i - start + 1);
+        contents.SubStrTerminated(start, i, fileChunk);
+
+        // Get filename
+        std::string file = SanitizeCompilerPath(fileChunk);
+
+        // Eat until next line
+        while (i < contents.Length() && contents[i] != '\n') {
+            i++;
+        }
+
+        // Deduce length
+        size_t fragmentLength = directiveStart - lastSourceOffset;
+
+        // Copy contents
+        size_t contentOffset = fragment->contents.length();
+        fragment->contents.resize(contentOffset + fragmentLength);
+        contents.SubStr(lastSourceOffset, directiveStart, fragment->contents.data() + contentOffset);
+
+        // Summarize line endings
+        for (size_t j = contentOffset; j < fragment->contents.size(); j++) {
+            if (fragment->contents[j] == '\n') {
+                fragment->lineOffsets.push_back(static_cast<uint32_t>(j + 1));
+            }
+        }
+
+        // Extend fragments
+        fragment = FindOrCreateSourceFragment(file);
+
+        // Append initial line
+        if (fragment->lineOffsets.empty()) {
+            fragment->lineOffsets.push_back(0);
+        }
+
+        // Append expected newlines to new fragment
+        for (size_t j = fragment->lineOffsets.size(); j < offset; j++) {
+            fragment->contents.push_back('\n'); 
+            fragment->lineOffsets.push_back(static_cast<uint32_t>(fragment->contents.size()));
+        }
+
+        // New offset
+        lastSourceOffset = i + 1;
     }
 
     // Pending last fragment?
@@ -501,6 +502,19 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
         size_t contentOffset = fragment->contents.length();
         fragment->contents.resize(contentOffset + fragmentLength);
         contents.SubStr(lastSourceOffset, contents.Length(), fragment->contents.data() + contentOffset);
+
+        // Summarize line endings
+        for (size_t j = contentOffset; j < fragment->contents.size(); j++) {
+            if (fragment->contents[j] == '\n') {
+                fragment->lineOffsets.push_back(static_cast<uint32_t>(j + 1));
+            }
+        }
+    }
+
+    // Validation
+    for (const SourceFragment& fragment : sourceFragments) {
+        size_t lineCount = std::count(fragment.contents.begin(), fragment.contents.end(), '\n');
+        ASSERT(fragment.lineOffsets.size() == lineCount + 1u, "Line summarization failed");
     }
 }
 
