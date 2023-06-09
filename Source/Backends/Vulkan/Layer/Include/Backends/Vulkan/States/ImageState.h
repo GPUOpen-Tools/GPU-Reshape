@@ -4,12 +4,8 @@
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/Resource/VirtualResourceMapping.h>
 
-// Common
-#include "Common/Containers/ReferenceObject.h"
-
 // Std
 #include <cstdint>
-#include <vector>
 
 // Forward declarations
 struct DeviceDispatchTable;
@@ -27,7 +23,10 @@ struct ImageState {
     /// Creation info
     VkImageCreateInfo createInfo;
 
-    /// Optional debug name
+    /// Optional, owner of this image, f.x. a swapchain
+    uint64_t owningHandle{0u};
+
+    /// Optional, debug name
     char* debugName{nullptr};
 
     /// Unique identifier, unique for the type

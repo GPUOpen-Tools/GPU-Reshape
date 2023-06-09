@@ -34,20 +34,29 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSwapchainKHR(VkDevice device, const 
 
     // Create image states
     for (uint32_t i = 0; i < pCreateInfo->minImageCount; i++) {
-        auto imageState = new(table->allocators) ImageState;
-        imageState->object = images[i];
-        imageState->table = table;
+        ImageState* imageState = table->states_image.TryGet(images[i]);
 
-        // Create mapping template
-        imageState->virtualMappingTemplate.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-        imageState->virtualMappingTemplate.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-        imageState->virtualMappingTemplate.srb = ~0u;
+        // Fresh swapchain?
+        if (!imageState) {
+            // Create new object
+            imageState = new(table->allocators) ImageState;
+            imageState->object = images[i];
+            imageState->table = table;
 
-        // Store lookup
-        table->states_image.Add(imageState->object, imageState);
+            // Create mapping template
+            imageState->virtualMappingTemplate.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+            imageState->virtualMappingTemplate.puid = table->physicalResourceIdentifierMap.AllocatePUID();
+            imageState->virtualMappingTemplate.srb = ~0u;
+
+            // Store lookup
+            table->states_image.Add(imageState->object, imageState);
+        }
 
         // Keep internal track
         state->imageStates.push_back(imageState);
+
+        // Reassign owner
+        imageState->owningHandle = reinterpret_cast<uint64_t>(*pSwapchain);
     }
 
     // Store lookup
@@ -70,6 +79,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroySwapchainKHR(VkDevice device, VkSwapcha
 
     // Free all images
     for (ImageState* imageState : state->imageStates) {
+        // May no longer be the owner if the swapchain was recreated
+        if (imageState->owningHandle != reinterpret_cast<uint64_t>(swapchain)) {
+            continue;
+        }
+        
         // Release the token
         table->physicalResourceIdentifierMap.FreePUID(imageState->virtualMappingTemplate.puid);
 

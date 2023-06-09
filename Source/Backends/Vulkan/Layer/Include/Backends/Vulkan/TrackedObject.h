@@ -75,9 +75,21 @@ struct TrackedObject {
         return GetNoLock(object);
     }
 
+    /// Get a tracked object
+    U* TryGet(T object) {
+        std::lock_guard<std::mutex> guard(mutex);
+        return TryGetNoLock(object);
+    }
+
     /// Get a tracked object, not thread safe
     U* GetNoLock(T object) {
         return map.at(object);
+    }
+
+    /// Get a tracked object, not thread safe
+    U* TryGetNoLock(T object) {
+        auto it = map.find(object);
+        return it != map.end() ? it->second : nullptr;
     }
 
     /// Remove an object
