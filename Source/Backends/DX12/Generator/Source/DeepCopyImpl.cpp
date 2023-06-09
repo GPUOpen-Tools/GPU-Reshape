@@ -306,6 +306,12 @@ static bool DeepCopyObjectTree(const GeneratorInfo& info, DeepCopyState &state, 
             // Name of the contained type
             std::string containedName = memberType["name"].get<std::string>();
 
+            // Never copy shader bytecode
+            if (containedName == "D3D12_SHADER_BYTECODE") {
+                state.deepCopy << Pad(indent) << destAccessorPrefix << memberName << " = " << sourceAccessorPrefix << memberName << ";\n";
+                continue;
+            }
+
             // If end, this is a POD type
             if (IsPOD(info, containedName)) {
                 state.deepCopy << Pad(indent) << destAccessorPrefix << memberName << " = " << sourceAccessorPrefix << memberName << ";\n";

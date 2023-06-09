@@ -49,8 +49,10 @@ struct ShaderState : public ReferenceObject {
     bool Reserve(const ShaderInstrumentationKey& instrumentationKey);
 
     /// Originating key
-    ///   ! Shader memory owned
     ShaderStateKey key;
+
+    /// Byte code copy
+    D3D12_SHADER_BYTECODE byteCode;
 
     /// Backwards reference
     DeviceState* parent{nullptr};

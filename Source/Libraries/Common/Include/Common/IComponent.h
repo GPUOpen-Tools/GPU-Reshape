@@ -39,7 +39,7 @@ struct ComponentName {
 
 /// ID implementation
 #define CLASS_ID(CLASS) \
-    static constexpr ComponentID kID = std::integral_constant<ComponentID, crcdetail::compute(#CLASS, sizeof(#CLASS)-1)>::value; \
+    static constexpr ComponentID kID = std::integral_constant<ComponentID, StringCRC32Short(#CLASS, sizeof(#CLASS)-1)>::value; \
     static constexpr ComponentName kName = {kID, #CLASS}
 
 /// Interface implementation

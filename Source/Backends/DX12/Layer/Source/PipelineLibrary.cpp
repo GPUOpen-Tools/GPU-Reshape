@@ -130,6 +130,13 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
         deviceTable.state->dependencies_shaderPipelines.Add(state->ps, state);
     }
 
+    // Empty shader deep copies
+    state->deepCopy->VS = {};
+    state->deepCopy->GS = {};
+    state->deepCopy->HS = {};
+    state->deepCopy->DS = {};
+    state->deepCopy->VS = {};
+
     // Add to state
     deviceTable.state->states_Pipelines.Add(state);
 
@@ -196,6 +203,9 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
         // Add dependency, shader module -> pipeline
         deviceTable.state->dependencies_shaderPipelines.Add(state->cs, state);
     }
+
+    // Empty shader deep copies
+    state->deepCopy->CS = {};
 
     // Add to state
     deviceTable.state->states_Pipelines.Add(state);

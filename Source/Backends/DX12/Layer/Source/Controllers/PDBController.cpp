@@ -95,13 +95,13 @@ void PDBController::IndexPathCandidates(const std::string_view& base, const std:
 
 void PDBController::IndexPath(const std::string_view& view, const std::filesystem::path &path) {
     // Insert to crc64 of the filename
-    uint64_t crc64 = BufferCRC64(view.data(), view.size() * sizeof(char));
+    uint64_t crc64 = BufferCRC32Short(view.data(), view.size() * sizeof(char));
     indexed[crc64].push_back(path.string());
 }
 
 void PDBController::AppendCandidates(const std::string_view &path, PDBCandidateList &candidates) {
     // Check crc64 of the filename
-    uint64_t crc64 = BufferCRC64(path.data(), path.size() * sizeof(char));
+    uint64_t crc64 = BufferCRC32Short(path.data(), path.size() * sizeof(char));
     for (const std::string& candidate : indexed[crc64]) {
         candidates.Add(candidate);
     }

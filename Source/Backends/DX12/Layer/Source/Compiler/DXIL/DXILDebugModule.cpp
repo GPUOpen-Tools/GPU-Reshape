@@ -360,7 +360,7 @@ void DXILDebugModule::ParseMetadata(LLVMBlock *block) {
 
 void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, uint32_t anchor, const LLVMRecord &record, const struct LLVMRecordStringView& name) {
     switch (name.GetHash()) {
-        case CRC64("dx.source.contents"): {
+        case GRS_CRC32("dx.source.contents"): {
             if (name != "dx.source.contents") {
                 return;
             }
@@ -372,7 +372,7 @@ void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, uint32_t anchor, cons
             break;
         }
 
-        case CRC64("dx.source.mainFileName"): {
+        case GRS_CRC32("dx.source.mainFileName"): {
             if (name != "dx.source.mainFileName") {
                 return;
             }
@@ -509,12 +509,6 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
                 fragment->lineOffsets.push_back(static_cast<uint32_t>(j + 1));
             }
         }
-    }
-
-    // Validation
-    for (const SourceFragment& fragment : sourceFragments) {
-        size_t lineCount = std::count(fragment.contents.begin(), fragment.contents.end(), '\n');
-        ASSERT(fragment.lineOffsets.size() == lineCount + 1u, "Line summarization failed");
     }
 }
 

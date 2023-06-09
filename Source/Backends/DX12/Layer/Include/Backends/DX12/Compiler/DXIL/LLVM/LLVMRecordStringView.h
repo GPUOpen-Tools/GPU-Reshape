@@ -148,11 +148,14 @@ struct LLVMRecordStringView {
 
 private:
     void ComputeHash() {
-        hash = hash ^ 0xFFFFFFFFU;
+        hash = ~0u;
+
+        // Compute CRC
         for (uint32_t i = 0; i < operandCount; i++) {
-            hash = crcdetail::table[static_cast<char>(operands[i]) ^ (hash & 0xFF)] ^ (hash >> 8);
+            hash = kCRC32Table[static_cast<unsigned char>(operands[i]) ^ (hash & 0xFFu)] ^ (hash >> 8u);
         }
-        hash = hash ^ 0xFFFFFFFFU;
+
+        hash = ~hash;
     }
 
 private:
@@ -163,5 +166,5 @@ private:
     uint32_t operandCount{0};
 
     /// Precomputed hash
-    uint64_t hash{0};
+    uint32_t hash{0};
 };

@@ -1209,7 +1209,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *       i1)                   ; non-uniform resource index: false or true
          */
 
-        case CRC64("dx.op.createHandle"): {
+        case GRS_CRC32("dx.op.createHandle"): {
             if (view != "dx.op.createHandle") {
                 return false;
             }
@@ -1259,7 +1259,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *       float)                          ; value to store
          */
 
-        case CRC64("dx.op.storeOutput.f32"): {
+        case GRS_CRC32("dx.op.storeOutput.f32"): {
             if (view != "dx.op.storeOutput.f32") {
                 return false;
             }
@@ -1298,8 +1298,8 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *       i32,                  ; coordinate c0
          */
 
-        case CRC64("dx.op.bufferLoad.f32"):
-        case CRC64("dx.op.bufferLoad.i32"): {
+        case GRS_CRC32("dx.op.bufferLoad.f32"):
+        case GRS_CRC32("dx.op.bufferLoad.i32"): {
             if (!view.StartsWith("dx.op.bufferLoad.")) {
                 return false;
             }
@@ -1341,8 +1341,8 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *       i8)                   ; write mask
          */
 
-        case CRC64("dx.op.bufferStore.f32"):
-        case CRC64("dx.op.bufferStore.i32"): {
+        case GRS_CRC32("dx.op.bufferStore.f32"):
+        case GRS_CRC32("dx.op.bufferStore.i32"): {
             if (!view.StartsWith("dx.op.bufferStore.")) {
                 return false;
             }
@@ -1402,10 +1402,10 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
              *      i32)                  ; offset o2
              */
 
-        case CRC64("dx.op.textureLoad.f32"):
-        case CRC64("dx.op.textureLoad.f16"):
-        case CRC64("dx.op.textureLoad.i32"):
-        case CRC64("dx.op.textureLoad.i16"): {
+        case GRS_CRC32("dx.op.textureLoad.f32"):
+        case GRS_CRC32("dx.op.textureLoad.f16"):
+        case GRS_CRC32("dx.op.textureLoad.i32"):
+        case GRS_CRC32("dx.op.textureLoad.i16"): {
             if (!view.StartsWith("dx.op.textureLoad.")) {
                 return false;
             }
@@ -1463,14 +1463,14 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *      i32,                      ; offset o1
          *      i32,                      ; offset o2
          */
-        case CRC64("dx.op.sample.f32"):
-        case CRC64("dx.op.sample.f16"):
-        case CRC64("dx.op.sampleBias.f32"):
-        case CRC64("dx.op.sampleBias.f16"):
-        case CRC64("dx.op.sampleLevel.f32"):
-        case CRC64("dx.op.sampleLevel.f16"):
-        case CRC64("dx.op.sampleGrad.f32"):
-        case CRC64("dx.op.sampleGrad.f16"): {
+        case GRS_CRC32("dx.op.sample.f32"):
+        case GRS_CRC32("dx.op.sample.f16"):
+        case GRS_CRC32("dx.op.sampleBias.f32"):
+        case GRS_CRC32("dx.op.sampleBias.f16"):
+        case GRS_CRC32("dx.op.sampleLevel.f32"):
+        case GRS_CRC32("dx.op.sampleLevel.f16"):
+        case GRS_CRC32("dx.op.sampleGrad.f32"):
+        case GRS_CRC32("dx.op.sampleGrad.f16"): {
             if (!view.StartsWith("dx.op.sample")) {
                 return false;
             }
@@ -1601,10 +1601,10 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
              *       i8)                   ; write mask
              */
 
-        case CRC64("dx.op.textureStore.f32"):
-        case CRC64("dx.op.textureStore.f16"):
-        case CRC64("dx.op.textureStore.i32"):
-        case CRC64("dx.op.textureStore.i16"): {
+        case GRS_CRC32("dx.op.textureStore.f32"):
+        case GRS_CRC32("dx.op.textureStore.f16"):
+        case GRS_CRC32("dx.op.textureStore.i32"):
+        case GRS_CRC32("dx.op.textureStore.i16"): {
             if (!view.StartsWith("dx.op.textureStore.")) {
                 return false;
             }
@@ -1652,8 +1652,8 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             return true;
         }
 
-        case CRC64("dx.op.isSpecialFloat.f32"):
-        case CRC64("dx.op.isSpecialFloat.f16"): {
+        case GRS_CRC32("dx.op.isSpecialFloat.f32"):
+        case GRS_CRC32("dx.op.isSpecialFloat.f16"): {
             if (!view.StartsWith("dx.op.isSpecialFloat.")) {
                 return false;
             }

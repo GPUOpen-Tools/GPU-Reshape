@@ -6,6 +6,7 @@ add_library(
     Source/FileSystem.cpp
     Source/CrashHandler.cpp
     Source/GlobalUID.cpp
+    Source/CRC.cpp
     Source/Plugin/PluginResolver.cpp
     Source/Dispatcher/ConditionVariable.cpp
     Source/Dispatcher/Mutex.cpp
@@ -34,4 +35,5 @@ target_include_directories(GRS.Libraries.Common PUBLIC Include)
 ExternalProject_Link(GRS.Libraries.Common TinyXML2 tinyxml2)
 ExternalProject_Link(GRS.Libraries.Common UnorderedDense)
 ExternalProject_Link(GRS.Libraries.Common BTree)
+ExternalProject_Link(GRS.Libraries.Common ZLIB $<$<CONFIG:Debug>:zlibstaticd> $<$<CONFIG:Release>:zlibstatic> $<$<CONFIG:RelWithDebInfo>:zlibstatic>)
 ExternalProject_Link(GRS.Libraries.Common Fmt $<$<CONFIG:Debug>:fmtd> $<$<CONFIG:Release>:fmt> $<$<CONFIG:RelWithDebInfo>:fmt>)

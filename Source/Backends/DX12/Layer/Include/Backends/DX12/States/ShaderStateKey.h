@@ -11,15 +11,8 @@ struct ShaderStateKey {
     /// \param rhs
     /// \return
     bool operator==(const ShaderStateKey& rhs) const {
-        if (hash != rhs.hash || byteCode.BytecodeLength != rhs.byteCode.BytecodeLength) {
-            return false;
-        }
-
-        return !std::memcmp(byteCode.pShaderBytecode, rhs.byteCode.pShaderBytecode, byteCode.BytecodeLength);
+        return hash == rhs.hash;
     }
-
-    /// User byteCode
-    D3D12_SHADER_BYTECODE byteCode;
 
     /// Bytecode hash
     uint64_t hash{};

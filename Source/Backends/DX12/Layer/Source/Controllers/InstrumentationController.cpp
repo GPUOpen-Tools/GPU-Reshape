@@ -126,7 +126,7 @@ void InstrumentationController::PropagateInstrumentationInfo(PipelineState *stat
     }
 
     // Compute hash
-    state->instrumentationInfo.specializationHash = BufferCRC64(
+    state->instrumentationInfo.specializationHash = BufferCRC32Short(
         state->instrumentationInfo.specialization.GetDataBegin(),
         state->instrumentationInfo.specialization.GetByteSize()
         );
@@ -168,7 +168,7 @@ void InstrumentationController::PropagateInstrumentationInfo(ShaderState *state)
     }
 
     // Compute hash
-    state->instrumentationInfo.specializationHash = BufferCRC64(
+    state->instrumentationInfo.specializationHash = BufferCRC32Short(
         state->instrumentationInfo.specialization.GetDataBegin(),
         state->instrumentationInfo.specialization.GetByteSize()
     );

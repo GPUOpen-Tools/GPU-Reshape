@@ -86,7 +86,7 @@ bool ShaderCompiler::InitializeModule(ShaderState *state) {
     // Create the module on demand
     if (!state->module) {
         // Get type
-        uint32_t type = *static_cast<const uint32_t *>(state->key.byteCode.pShaderBytecode);
+        uint32_t type = *static_cast<const uint32_t *>(state->byteCode.pShaderBytecode);
 
         // Create the module
         switch (type) {
@@ -102,8 +102,8 @@ bool ShaderCompiler::InitializeModule(ShaderState *state) {
 
         // Prepare job
         DXParseJob job;
-        job.byteCode = state->key.byteCode.pShaderBytecode;
-        job.byteLength = state->key.byteCode.BytecodeLength;
+        job.byteCode = state->byteCode.pShaderBytecode;
+        job.byteLength = state->byteCode.BytecodeLength;
         job.pdbController = device->pdbController;
 
         // Try to parse the bytecode

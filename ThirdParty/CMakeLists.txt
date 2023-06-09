@@ -31,6 +31,7 @@ include(D3D12MA.cmake)
 include(AMDAGS.cmake)
 include(UnorderedDense.cmake)
 include(BTree.cmake)
+include(ZLIB.cmake)
 
 # UI?
 if (${BUILD_UIX})

@@ -19,7 +19,7 @@ struct AllocationTag {
 
 /// Tag literal
 GRS_CONSTEVAL AllocationTag operator "" _AllocTag(const char* data, size_t len) {
-    return AllocationTag(crcdetail::compute(data, len), data);
+    return AllocationTag(StringCRC32Short(data, len), data);
 }
 
 /// Default tag

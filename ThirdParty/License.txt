@@ -20,11 +20,7 @@ Library
     D3D12MemoryAllocator
     DxbcSigner
     UnorderedDense (Martinus)
-
-Gists:
-    CRC32
-        https://gist.github.com/iwanders/8e1cb7b92af2ccf8d1a73450d771f483
-        .\Source\Libraries\Common\Include\Common\CRC.h
+	ZLIB
 
 Nuget (UIX)
     Avalonia

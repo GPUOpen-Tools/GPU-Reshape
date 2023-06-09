@@ -118,7 +118,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
                 // Add to hash
                 CombineHash(mapping->signatureHash, parameter.DescriptorTable.NumDescriptorRanges);
-                CombineHash(mapping->signatureHash, BufferCRC64(parameter.DescriptorTable.pDescriptorRanges, sizeof(D3D12_DESCRIPTOR_RANGE1) * parameter.DescriptorTable.NumDescriptorRanges));
+                CombineHash(mapping->signatureHash, BufferCRC32Short(parameter.DescriptorTable.pDescriptorRanges, sizeof(D3D12_DESCRIPTOR_RANGE1) * parameter.DescriptorTable.NumDescriptorRanges));
 
                 // Current descriptor offset
                 uint32_t descriptorOffset = 0;
@@ -172,7 +172,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             }
             case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
                 // Add to hash
-                CombineHash(mapping->signatureHash, BufferCRC64(&parameter.Constants, sizeof(parameter.Constants)));
+                CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Constants, sizeof(parameter.Constants)));
 
                 // Create mapping
                 RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.Constants.RegisterSpace, parameter.Constants.ShaderRegister);
@@ -183,7 +183,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV: {
                 // Add to hash
-                CombineHash(mapping->signatureHash, BufferCRC64(&parameter.Descriptor, sizeof(parameter.Descriptor)));
+                CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Descriptor, sizeof(parameter.Descriptor)));
 
                 // Create mapping
                 RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
@@ -194,7 +194,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             }
             case D3D12_ROOT_PARAMETER_TYPE_SRV: {
                 // Add to hash
-                CombineHash(mapping->signatureHash, BufferCRC64(&parameter.Descriptor, sizeof(parameter.Descriptor)));
+                CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Descriptor, sizeof(parameter.Descriptor)));
 
                 // Create mapping
                 RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::SRV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
@@ -205,7 +205,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             }
             case D3D12_ROOT_PARAMETER_TYPE_UAV: {
                 // Add to hash
-                CombineHash(mapping->signatureHash, BufferCRC64(&parameter.Descriptor, sizeof(parameter.Descriptor)));
+                CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Descriptor, sizeof(parameter.Descriptor)));
 
                 // Create mapping
                 RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::UAV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
@@ -222,7 +222,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
         const D3D12_STATIC_SAMPLER_DESC& sampler = staticSamplers[i];
 
         // Add to hash
-        CombineHash(mapping->signatureHash, BufferCRC64(&sampler, sizeof(sampler)));
+        CombineHash(mapping->signatureHash, BufferCRC32Short(&sampler, sizeof(sampler)));
 
         // Create mapping
         RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::Sampler, sampler.RegisterSpace, sampler.ShaderRegister);

@@ -6,8 +6,10 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 #include <Backends/DX12/SubObjectReader.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCUtils.h>
 
 // Common
+#include <Common/Allocator/TrackedAllocator.h>
 #include <Common/CRC.h>
 
 // Special includes
@@ -22,11 +24,24 @@
 ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTECODE &byteCode) {
     // Create key
     ShaderStateKey key;
-    key.byteCode = byteCode;
-    key.hash = BufferCRC64(byteCode.pShaderBytecode, byteCode.BytecodeLength);
+    key.hash = GetOrComputeDXBCShaderHash(byteCode.pShaderBytecode, byteCode.BytecodeLength);
 
     // Sync shader states
     std::lock_guard guard(device->states_Shaders.GetLock());
+
+    // Debugging helper
+#ifndef NDEBUG
+    if (false) {
+        extern TrackedAllocator trackedAllocator;
+
+        // Format
+        std::stringstream stream;
+        trackedAllocator.Dump(stream);
+
+        // Dump to console
+        OutputDebugStringA(stream.str().c_str());
+    }
+#endif // NDEBUG
 
     // Attempt existing state
     ShaderState* shaderState = device->shaderSet.Get(key);
@@ -41,14 +56,16 @@ ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTE
     shaderState->key = key;
 
     // Copy key memory
-    auto shader = new (device->allocators, kAllocStateShader) uint8_t[key.byteCode.BytecodeLength];
-    std::memcpy(shader, key.byteCode.pShaderBytecode, key.byteCode.BytecodeLength);
-    shaderState->key.byteCode.pShaderBytecode = shader;
+    auto shader = new (device->allocators, kAllocStateShader) uint8_t[byteCode.BytecodeLength];
+    std::memcpy(shader, byteCode.pShaderBytecode, byteCode.BytecodeLength);
+    shaderState->byteCode.BytecodeLength = byteCode.BytecodeLength;
+    shaderState->byteCode.pShaderBytecode = shader;
 
     // Add owning user
     shaderState->AddUser();
 
     // Add to state
+    device->shaderSet.Add(key, shaderState);
     device->states_Shaders.AddNoLock(shaderState);
 
     // OK
@@ -325,6 +342,13 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
         table.state->dependencies_shaderPipelines.Add(state->ps, state);
     }
 
+    // Empty shader deep copies
+    state->deepCopy->VS = {};
+    state->deepCopy->GS = {};
+    state->deepCopy->HS = {};
+    state->deepCopy->DS = {};
+    state->deepCopy->VS = {};
+
     // Add to state
     table.state->states_Pipelines.Add(state);
 
@@ -388,6 +412,9 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
         // Add dependency, shader module -> pipeline
         table.state->dependencies_shaderPipelines.Add(state->cs, state);
     }
+
+    // Empty shader deep copies
+    state->deepCopy->CS = {};
 
     // Add to state
     table.state->states_Pipelines.Add(state);
@@ -474,7 +501,7 @@ ShaderState::~ShaderState() {
 
 D3D12_SHADER_BYTECODE ShaderState::GetInstrument(const ShaderInstrumentationKey &instrumentationKey) {
     if (!instrumentationKey.featureBitSet) {
-        return key.byteCode; 
+        return byteCode; 
     }
 
     // Instrumented request

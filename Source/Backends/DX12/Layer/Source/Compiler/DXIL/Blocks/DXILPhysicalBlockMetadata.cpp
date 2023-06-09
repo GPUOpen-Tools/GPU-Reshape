@@ -106,7 +106,7 @@ void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
 void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, const struct LLVMBlock *block, const LLVMRecord &record, const LLVMRecordStringView &name, uint32_t index) {
     switch (name.GetHash()) {
         // Resource declaration record
-        case CRC64("dx.rootSignature"): {
+        case GRS_CRC32("dx.rootSignature"): {
             if (name != "dx.rootSignature") {
                 return;
             }
@@ -116,7 +116,7 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
         }
 
         // Resource declaration record
-        case CRC64("dx.resources"): {
+        case GRS_CRC32("dx.resources"): {
             if (name != "dx.resources") {
                 return;
             }
@@ -139,7 +139,7 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
         }
 
         // Program entrypoints
-        case CRC64("dx.entryPoints"): {
+        case GRS_CRC32("dx.entryPoints"): {
             if (name != "dx.entryPoints") {
                 return;
             }
@@ -174,7 +174,7 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
         }
 
         // Program entrypoints
-        case CRC64("dx.valver"): {
+        case GRS_CRC32("dx.valver"): {
             if (name != "dx.valver") {
                 return;
             }
@@ -191,7 +191,7 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
         }
 
             // Program shader model
-        case CRC64("dx.shaderModel"): {
+        case GRS_CRC32("dx.shaderModel"): {
             if (name != "dx.shaderModel") {
                 return;
             }
