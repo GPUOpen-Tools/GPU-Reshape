@@ -142,6 +142,14 @@ namespace IL {
             return poTraversal;
         }
 
+        /// Get a block
+        /// \param id block identifier
+        /// \return nullptr if not found
+        BasicBlock* GetBlock(IL::ID id) const {
+            auto it = blocks.find(id);
+            return it != blocks.end() ? it->second.basicBlock : nullptr;
+        }
+        
         /// Get all basic blocks
         BasicBlockList& GetBasicBlocks() const {
             return basicBlocks;
@@ -149,6 +157,9 @@ namespace IL {
 
     private:
         struct Block {
+            /// Underlying basic block
+            BasicBlock* basicBlock{nullptr};
+            
             /// Current immediate dominator
             BasicBlock* immediateDominator{nullptr};
 
@@ -175,6 +186,7 @@ namespace IL {
             // Reset block states
             for (BasicBlock* bb : basicBlocks) {
                 Block& block = blocks[bb->GetID()];
+                block.basicBlock = bb;
                 block.immediateDominator = nullptr;
                 block.predecessors.clear();
                 block.orderIndex = 0;
@@ -213,6 +225,14 @@ namespace IL {
                         auto* instr = terminator->As<BranchConditionalInstruction>();
                         AddPredecessor(basicBlocks.GetBlock(instr->pass), bb);
                         AddPredecessor(basicBlocks.GetBlock(instr->fail), bb);
+                        break;
+                    }
+                    case OpCode::Switch: {
+                        auto* instr = terminator->As<SwitchInstruction>();
+                        AddPredecessor(basicBlocks.GetBlock(instr->_default), bb);
+                        for (uint32_t caseIndex = 0; caseIndex < instr->cases.count; caseIndex++) {
+                            AddPredecessor(basicBlocks.GetBlock(instr->cases[caseIndex].branch), bb);
+                        }
                         break;
                     }
                     case OpCode::Return: {

@@ -55,6 +55,14 @@ namespace IL {
                     TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->fail));
                     break;
                 }
+                case OpCode::Switch: {
+                    auto *instr = terminator->As<SwitchInstruction>();
+                    TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->_default));
+                    for (uint32_t caseIndex = 0; caseIndex < instr->cases.count; caseIndex++) {
+                        TraversePostOrder(basicBlocks, basicBlocks.GetBlock(instr->cases[caseIndex].branch));
+                    }
+                    break;
+                }
                 case OpCode::Return: {
                     break;
                 }
