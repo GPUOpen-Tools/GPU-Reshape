@@ -398,6 +398,10 @@ namespace IL {
     };
 
     struct BranchControlFlow {
+        bool Contains(ID id) const {
+            return merge == id || _continue == id;
+        }
+        
         ID merge{InvalidID};
         ID _continue{InvalidID};
     };

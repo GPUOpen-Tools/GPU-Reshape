@@ -105,8 +105,23 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 return it;
             }
 
+            // All basic blocks
+            IL::BasicBlockList& basicBlocks = context.function.GetBasicBlocks();
+
             // Bind the SGUID
             ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
+
+            // Get merge block
+            // On termination this is the block we reach
+            IL::BasicBlock* mergeBlock = context.function.GetBasicBlocks().GetBlock(controlFlow.merge);
+            
+            // Allocate blocks
+            IL::BasicBlock *postEntry = context.function.GetBasicBlocks().AllocBlock();
+            IL::BasicBlock *terminationBlock = context.function.GetBasicBlocks().AllocBlock();
+
+            // The selection merge target, typically this is the post entry (i.e. the split body entry point block),
+            // however, if the continue block is the body, then we need to split things further.
+            IL::BasicBlock* selectionMerge = postEntry;
 
             // Expected entry point
             IL::BasicBlock* entryBlock = nullptr;
@@ -118,19 +133,33 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 }
                 case IL::OpCode::Branch: {
                     auto* instr = it->As<IL::BranchInstruction>();
-                    entryBlock = context.function.GetBasicBlocks().GetBlock(instr->branch);
+                    entryBlock = basicBlocks.GetBlock(instr->branch);
                     break;
                 }
                 case IL::OpCode::BranchConditional: {
                     auto* instr = it->As<IL::BranchConditionalInstruction>();
                     entryBlock = context.function.GetBasicBlocks().GetBlock(instr->pass != controlFlow.merge ? instr->pass : instr->fail);
+
+                    // If the body is the continue block, we effectively need another block. Selection merges
+                    // within a loop construct must merge to another block inside said construct, continue blocks
+                    // are not part of this construct.
+                    if (entryBlock->GetID() == controlFlow._continue) {
+                        selectionMerge = context.function.GetBasicBlocks().AllocBlock();
+
+                        // Branch to the real continue block
+                        IL::Emitter<>(program, *selectionMerge).Branch(postEntry);
+
+                        // Replace the original loop branch, re-route the continue block
+                        IL::Emitter<IL::Op::Replace>(program, it).BranchConditional(
+                            instr->cond,
+                            basicBlocks.GetBlock(instr->pass),
+                            basicBlocks.GetBlock(instr->fail),
+                            IL::ControlFlow::Loop(basicBlocks.GetBlock(controlFlow.merge), postEntry)
+                        );
+                    }
                     break;
                 }
             }
-
-            // Allocate blocks
-            IL::BasicBlock *postEntry = context.function.GetBasicBlocks().AllocBlock();
-            IL::BasicBlock *terminationBlock = context.function.GetBasicBlocks().AllocBlock();
 
             // Split just prior to loop entry
             entryBlock->Split(postEntry, entryBlock->begin());
@@ -146,8 +175,8 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 pre.BranchConditional(
                     pre.Equal(terminationID, pre.UInt32(1u)),
                     terminationBlock,
-                    postEntry,
-                    IL::ControlFlow::Selection(postEntry)
+                    selectionMerge,
+                    IL::ControlFlow::Selection(selectionMerge)
                 );
             }
 
@@ -162,7 +191,28 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 term.Export(exportID, msg);
 
                 // Branch to the merge block
-                term.Branch(context.function.GetBasicBlocks().GetBlock(controlFlow.merge));
+                term.Branch(mergeBlock);
+            }
+
+            // Short out merge phis
+            for (auto phiIt = mergeBlock->begin(); phiIt != mergeBlock->end() && phiIt->Is<IL::PhiInstruction>();) {
+                auto phiInstr = phiIt->As<IL::PhiInstruction>();
+
+                // Number of phi values
+                const uint32_t valueCount = phiInstr->values.count;
+
+                // Copy known values
+                auto* values = ALLOCA_ARRAY(IL::PhiValue, valueCount + 1u);
+                std::memcpy(values, &phiInstr->values[0], sizeof(IL::PhiValue) * valueCount);
+
+                // Create new incoming phi block value, default to null
+                values[valueCount] = IL::PhiValue {
+                    .value = program.GetConstants().FindConstantOrAdd(program.GetTypeMap().GetType(phiInstr->result), IL::NullConstant {})->id,
+                    .branch = terminationBlock->GetID()
+                };
+
+                // Replace the phi instruction
+                phiIt = std::next(IL::Emitter<IL::Op::Replace>(program, phiIt).Phi(phiInstr->result, valueCount + 1u, values));
             }
 
             // Iterate next on this instruction
