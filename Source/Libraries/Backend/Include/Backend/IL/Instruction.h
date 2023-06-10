@@ -107,9 +107,9 @@ namespace IL {
     struct StoreOutputInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::StoreOutput;
 
-        uint32_t index;
-        uint32_t row;
-        uint32_t column;
+        ID index;
+        ID row;
+        ID column;
         ID value;
     };
 

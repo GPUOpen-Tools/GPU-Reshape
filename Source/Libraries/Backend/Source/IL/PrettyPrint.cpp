@@ -715,6 +715,9 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
                 case Backend::IL::AddressSpace::RootConstant:
                     line << "RootConstant";
                     break;
+                case Backend::IL::AddressSpace::Output:
+                    line << "Output";
+                    break;
             }
             break;
         }

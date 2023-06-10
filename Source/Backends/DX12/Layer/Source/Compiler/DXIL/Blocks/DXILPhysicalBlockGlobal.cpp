@@ -129,10 +129,20 @@ void DXILPhysicalBlockGlobal::ParseGlobalVar(struct LLVMRecord& record) {
     const Backend::IL::Type* pointeeType = table.type.typeMap.GetType(static_cast<uint32_t>(record.ops[0]));
 
     // Always stored as pointer to
-    program.GetTypeMap().SetType(id, program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+    const Backend::IL::Type* pointerType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
         .pointee = pointeeType,
         .addressSpace = Backend::IL::AddressSpace::Function
-    }));
+    });
+
+    // Set type
+    program.GetTypeMap().SetType(id, pointerType);
+
+    // Add variable
+    program.GetVariableList().Add(Backend::IL::Variable {
+        .id = id,
+        .addressSpace = Backend::IL::AddressSpace::Function,
+        .type = pointerType
+    });
 }
 
 void DXILPhysicalBlockGlobal::ParseAlias(LLVMRecord &record) {

@@ -162,14 +162,30 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpStore: {
-                // Append
-                IL::StoreInstruction instr{};
-                instr.opCode = IL::OpCode::Store;
-                instr.result = IL::InvalidID;
-                instr.source = source;
-                instr.address = ctx++;
-                instr.value = ctx++;
-                basicBlock->Append(instr);
+                IL::ID address = ctx++;
+                IL::ID value = ctx++;
+
+                // Get pointer type
+                auto pointerType = program.GetTypeMap().GetType(address)->As<Backend::IL::PointerType>();
+
+                // Append as output instruction if needed
+                if (pointerType->addressSpace == Backend::IL::AddressSpace::Output) {
+                    IL::StoreOutputInstruction instr{};
+                    instr.opCode = IL::OpCode::StoreOutput;
+                    instr.result = IL::InvalidID;
+                    instr.source = source;
+                    instr.index = address;
+                    instr.value = value;
+                    basicBlock->Append(instr);
+                } else {
+                    IL::StoreInstruction instr{};
+                    instr.opCode = IL::OpCode::Store;
+                    instr.result = IL::InvalidID;
+                    instr.source = source;
+                    instr.address = address;
+                    instr.value = value;
+                    basicBlock->Append(instr);
+                }
                 break;
             }
 
@@ -1655,6 +1671,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
 
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpStore, 3, store->source);
                 spv[1] = idMap.Get(store->address);
+                spv[2] = idMap.Get(store->value);
+                break;
+            }
+            case IL::OpCode::StoreOutput: {
+                auto *store = instr.As<IL::StoreOutputInstruction>();
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpStore, 3, store->source);
+                spv[1] = idMap.Get(store->index);
                 spv[2] = idMap.Get(store->value);
                 break;
             }

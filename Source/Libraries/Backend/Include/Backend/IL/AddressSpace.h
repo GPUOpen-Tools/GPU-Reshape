@@ -9,6 +9,7 @@ namespace Backend::IL {
         Resource,
         GroupShared,
         RootConstant,
+        Output,
         Unexposed
     };
 }
