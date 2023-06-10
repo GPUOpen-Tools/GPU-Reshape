@@ -1135,7 +1135,14 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 // Additional operands?
                 if (imageOperandCount) {
                     // Emit mask
-                    uint32_t& mask = spv[offset++] = 0;
+                    uint32_t& mask = spv[offset++];
+
+                    // Reset existing mask if not templated
+                    if (!instr->source.IsValid()) {
+                        mask = 0x0;
+                    }
+
+                    // Custom masks
                     mask |= (sampleTexture->bias != IL::InvalidID) * SpvImageOperandsBiasMask;
                     mask |= (sampleTexture->lod != IL::InvalidID) * SpvImageOperandsLodMask;
                     mask |= (sampleTexture->ddx != IL::InvalidID) * SpvImageOperandsGradMask;
