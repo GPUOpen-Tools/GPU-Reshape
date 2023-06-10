@@ -355,6 +355,7 @@ bool Generators::DeepCopyImpl(const GeneratorInfo &info, TemplateEngine &templat
         deepCopy << state.byteSize.str();
 
         deepCopy << "\n\t// Create the blob allocation\n";
+        deepCopy << "\tvalid = true;\n";
         deepCopy << "\tif (length < blobSize) {\n";
         deepCopy << "\t\tdestroy(blob, allocators);\n\n";
         deepCopy << "\t\tblob = new (allocators) uint8_t[blobSize];\n";

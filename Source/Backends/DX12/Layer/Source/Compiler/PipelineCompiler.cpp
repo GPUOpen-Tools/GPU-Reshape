@@ -136,7 +136,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
         ID3D12PipelineState* pipeline{nullptr};
 
         // Stream based?
-        if (!graphicsState->deepCopy.blob) {
+        if (!graphicsState->deepCopy.valid) {
             if (!streamDevice) {
                 continue;
             }
@@ -322,7 +322,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         auto computeState = static_cast<ComputePipelineState *>(state);
 
         // Stream based?
-        if (!computeState->deepCopy.blob) {
+        if (!computeState->deepCopy.valid) {
             if (!streamDevice) {
                 ++batch.diagnostic->failedJobs;
                 continue;

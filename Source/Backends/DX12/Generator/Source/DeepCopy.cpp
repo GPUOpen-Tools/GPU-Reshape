@@ -29,6 +29,7 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
 
         // Deep copy accessor
         ss << "\t" << name << "* operator->() {\n";
+        ss << "\t\tASSERT(valid, \"Object not created\");\n";
         ss << "\t\treturn &desc;\n";
         ss << "\t}\n\n";
 
@@ -43,6 +44,9 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
 
         // Indirection size
         ss << "\tuint64_t length{0u};\n";
+
+        // Indirection size
+        ss << "\tbool valid{false};\n";
 
         // End object
         ss << "};\n\n";
