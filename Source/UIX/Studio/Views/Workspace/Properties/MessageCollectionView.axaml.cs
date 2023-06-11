@@ -27,6 +27,11 @@ namespace Studio.Views.Workspace.Properties
                 .CastNullable<MessageCollectionViewModel>()
                 .Subscribe(viewModel =>
                 {
+                    // Update arrangement
+                    viewModel.ValidationObjects.ToObservableChangeSet()
+                        .OnItemAdded(x => this.InvalidateArrange())
+                        .Subscribe();
+                    
                     // Bind signals
                     MessageDataGrid.Events().DoubleTapped
                         .Select(_ => MessageDataGrid.SelectedItem as ValidationObject)
