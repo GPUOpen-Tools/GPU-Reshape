@@ -72,11 +72,23 @@ namespace Studio.ViewModels.Workspace.Objects
             
             // Add to lookups
             _lookup.Add(key, validationObject);
-            Resources.Add(validationObject);
+            Resources.Insert(0, validationObject);
+
+            // Trim
+            while (Resources.Count > MaxResources)
+            {
+                _lookup.Remove(Resources[^1].Resource.Key);
+                Resources.RemoveAt(Resources.Count - 1);
+            }
             
             // OK
             return validationObject;
         }
+
+        /// <summary>
+        /// Max number of resources
+        /// </summary>
+        private static int MaxResources = 100;
 
         /// <summary>
         /// Lookup table

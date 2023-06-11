@@ -50,9 +50,21 @@ namespace Studio.ViewModels.Workspace.Objects
             instance.Message = message;
             
             // Add to trackers
-            Instances.Add(instance);
+            Instances.Insert(0, instance);
             _unique.Add(message, instance);
+            
+            // Trim
+            while (Instances.Count > MaxInstances)
+            {
+                _unique.Remove(Instances[^1].Message);
+                Instances.RemoveAt(Instances.Count - 1);
+            }
         }
+
+        /// <summary>
+        /// Max number of instances
+        /// </summary>
+        private static int MaxInstances = 1024;
         
         /// <summary>
         /// Unique lookup table

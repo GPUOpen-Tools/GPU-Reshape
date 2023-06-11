@@ -26,7 +26,8 @@
             VerticalAlignment="Stretch"
             ShowLineNumbers="True"
             IsReadOnly="True"
-            Text="..." />
+            Text="...">
+        </avaloniaEdit:TextEditor>
         
         <Grid x:Name="DetailGrid" Margin="18 0 18 18">
             <controls:LocatorViewHost x:Name="DetailViewHost" HorizontalAlignment="Stretch" VerticalAlignment="Top"/>

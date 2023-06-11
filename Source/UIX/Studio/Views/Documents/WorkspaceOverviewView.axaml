@@ -6,9 +6,16 @@
              xmlns:vm="using:Studio.ViewModels.Documents"
              xmlns:controls="clr-namespace:Studio.Views.Controls"
              xmlns:properties="clr-namespace:Studio.ViewModels.Workspace.Properties;assembly=UIX.Studio.Runtime"
+             xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
              mc:Ignorable="d"
              d:DesignWidth="700" d:DesignHeight="400"
              x:DataType="vm:WorkspaceOverviewViewModel" x:CompileBindings="True">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <valueConverters:PropertyVisibilityConverter x:Key="PropertyVisibilityConverter" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
     <Grid Focusable="True">
         <ScrollViewer>
             <StackPanel Orientation="Vertical" Margin="2.5">
@@ -36,6 +43,7 @@
                             Width="350"
                             Height="80"
                             Padding="0"
+                            Margin="0 0 -60 0"
                             HorizontalAlignment="Right"/>
                     </Grid>
                 </controls:WorkspacePropertyView>
@@ -46,7 +54,9 @@
                     Items="{Binding Properties}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="properties:IPropertyViewModel">
-                            <controls:WorkspacePropertyView Title="{Binding Name, FallbackValue=[PropertyName]}">
+                            <controls:WorkspacePropertyView
+                                Title="{Binding Name, FallbackValue=[PropertyName]}"
+                                IsExpanded="{Binding Visibility, Mode=OneTime, Converter={StaticResource PropertyVisibilityConverter}}">
                                 <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
                             </controls:WorkspacePropertyView>
                         </DataTemplate>

@@ -30,8 +30,8 @@ namespace Studio.ValueConverters.Themes
             else if (targetType == typeof(Thickness))
             {
                 return tool.Alignment == Alignment.Right
-                    ? new Thickness(0, 0, 34, 0)
-                    : new Thickness(34, 0, 0, 0);
+                    ? new Thickness(0, 0, 30, 0)
+                    : new Thickness(30, 0, 0, 0);
             }
             else if (targetType == typeof(VerticalAlignment))
             {

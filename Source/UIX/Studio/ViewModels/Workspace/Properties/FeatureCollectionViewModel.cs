@@ -25,7 +25,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Visibility of this property
         /// </summary>
-        public PropertyVisibility Visibility => PropertyVisibility.WorkspaceOverview;
+        public PropertyVisibility Visibility => PropertyVisibility.WorkspaceOverview | PropertyVisibility.HiddenByDefault;
 
         /// <summary>
         /// Parent property

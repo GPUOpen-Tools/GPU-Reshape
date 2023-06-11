@@ -2,7 +2,7 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:Studio.Views.Controls">
     <Design.PreviewWith>
         <local:WorkspacePropertyView Width="250" Height="100" Title="Poof">
@@ -11,17 +11,31 @@
     </Design.PreviewWith>
 
     <Style Selector="local|WorkspacePropertyView">
-        <Setter Property="HorizontalAlignment" Value="Stretch"/>
-        <Setter Property="VerticalAlignment" Value="Stretch"/>
-        <Setter Property="Margin" Value="0,0,0,2.5"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="Margin" Value="0,0,0,2.5" />
         <Setter Property="Template">
             <ControlTemplate>
                 <Border Background="{StaticResource DockApplicationAccentBrushLow}" Padding="10">
                     <Grid>
-                        <TextBlock Text="{TemplateBinding Title}" FontSize="16" />
+                        <Button Background="Transparent"
+                                VerticalAlignment="Top"
+                                HorizontalAlignment="Left"
+                                Padding="0"
+                                BorderThickness="0"
+                                Command="{TemplateBinding ExpandCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{TemplateBinding Title}" FontSize="16" />
+                                <PathIcon 
+                                    Data="{TemplateBinding ExpansionIcon}" 
+                                    Margin=" 7 3 3 3"
+                                    Width="10" />
+                            </StackPanel>
+                        </Button>
 
                         <ContentPresenter
                             Margin="0,30,0,0"
+                            IsVisible="{TemplateBinding IsExpanded}"
                             Content="{TemplateBinding Content}" />
                     </Grid>
                 </Border>

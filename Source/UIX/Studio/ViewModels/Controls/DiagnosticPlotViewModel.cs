@@ -47,7 +47,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Default margin
         /// </summary>
-        private LiveChartsCore.Measure.Margin DrawMargin { get; set; } = new(55, 7.5f);
+        private LiveChartsCore.Measure.Margin DrawMargin { get; set; } = new(60, 7.5f);
 
         /// <summary>
         /// All x axes

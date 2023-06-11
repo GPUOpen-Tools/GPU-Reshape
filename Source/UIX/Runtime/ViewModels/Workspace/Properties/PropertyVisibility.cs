@@ -24,5 +24,10 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Property tool data section
         /// </summary>
         Configuration = 4,
+        
+        /// <summary>
+        /// Views are hidden by default
+        /// </summary>
+        HiddenByDefault = 8,
     }
 }

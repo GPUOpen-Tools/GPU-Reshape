@@ -197,6 +197,9 @@
     <StyleInclude Source="avares://GPUReshape/Themes/Dock/ToolControl.xaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/Dock/DockControl.xaml" />
     
+    <!-- Specialized textedit -->
+    <StyleInclude Source="avares://GPUReshape/Themes/TextEditor.axaml" />
+    
     <!-- Custom controls -->
     <StyleInclude Source="avares://GPUReshape/Themes/Hyperlink.axaml" />
 </Styles>

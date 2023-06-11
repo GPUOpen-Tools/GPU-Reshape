@@ -114,7 +114,7 @@ namespace Studio.ViewModels
 
             var bottomDock = new ProportionalDock
             {
-                Proportion = 0.25,
+                Proportion = 0.15,
                 Orientation = Orientation.Horizontal,
                 ActiveDockable = null,
                 VisibleDockables = CreateList<IDockable>

@@ -8,7 +8,7 @@
     <Style Selector="ToolControl">
         <Setter Property="HeaderTemplate">
             <DataTemplate DataType="core:IDockable">
-                <PathIcon Data="{Binding (tools:ToolViewModel).Icon}" Width="20" Height="25" />
+                <PathIcon Data="{Binding (tools:ToolViewModel).Icon}" Width="18" Height="20" />
             </DataTemplate>
         </Setter>
 
@@ -146,8 +146,9 @@
     <Style Selector="ToolControl /template/ TabStrip#PART_TabStrip TabStripItem:selected">
         <Setter Property="Background" Value="{DynamicResource DockThemeBackgroundBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource DockApplicationAccentBrushMed}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource DockThemeBorderLowBrush}" />
-        <Setter Property="BorderThickness" Value="1 0 1 1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+        <Setter Property="BorderThickness" Value="0 0 0 0" />
+        <Setter Property="CornerRadius" Value="10" />
         <Setter Property="Margin" Value="0 -1 0 0" />
         <Setter Property="Padding" Value="4 2 4 0" />
     </Style>

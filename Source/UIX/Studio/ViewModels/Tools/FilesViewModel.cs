@@ -145,6 +145,12 @@ namespace Studio.ViewModels.Tools
             // Populate node tree
             foreach (ShaderFileViewModel shaderFileViewModel in ShaderViewModel.Shader.FileViewModels)
             {
+                // Skip effectively empty files
+                if (string.IsNullOrWhiteSpace(shaderFileViewModel.Contents))
+                {
+                    continue;
+                }
+                
                 InsertNode(root, shaderFileViewModel);
             }
             
@@ -153,7 +159,7 @@ namespace Studio.ViewModels.Tools
             {
                 CollapseNode(child, Files);
             }
-
+            
             // Events
             this.RaisePropertyChanged(nameof(IsHelpVisible));
         }
@@ -193,12 +199,22 @@ namespace Studio.ViewModels.Tools
                 // Create item
                 var treeItem = new FileTreeItemViewModel()
                 {
-                    Text = filename,
+                    Text = filename == string.Empty ? "//" : filename,
                     ViewModel = node.File
                 };
 
+                // First file index
+                int firstFileIndex = 0;
+                for (; firstFileIndex < collection.Count; firstFileIndex++)
+                {
+                    if (collection[firstFileIndex].ViewModel != null)
+                    {
+                        break;
+                    }
+                }
+
                 // OK
-                collection.Add(treeItem);
+                collection.Insert(firstFileIndex, treeItem);
                 collection = treeItem.Items;
             }
             
