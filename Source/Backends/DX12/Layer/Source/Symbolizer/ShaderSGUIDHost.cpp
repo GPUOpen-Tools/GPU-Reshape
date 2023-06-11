@@ -172,9 +172,19 @@ std::string_view ShaderSGUIDHost::GetSource(const ShaderSourceMapping &mapping) 
     // Get view for line
     std::string_view view = debugModule->GetLine(mapping.fileUID, mapping.line);
 
+    // Default to no column offsets
+#if 1
+    // Cut whitespaces if possible
+    if (auto it = view.find_first_not_of(" \t\r\n"); it != std::string::npos) {
+        return view.substr(it);
+    } else {
+        return view;
+    }
+#else // 1
     // Safe column count
     uint32_t column = std::min<uint32_t>(mapping.column, std::max(static_cast<uint32_t>(view.length()), 1u) - 1);
 
     // Offset by column
     return view.substr(column, view.length() - column);
+#endif // 1
 }
