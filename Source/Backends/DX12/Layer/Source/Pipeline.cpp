@@ -495,8 +495,12 @@ PipelineState::~PipelineState() {
 }
 
 ShaderState::~ShaderState() {
-    // Remove tracked object
-    parent->states_Shaders.Remove(this);
+    // Sync shader states
+    std::lock_guard guard(parent->states_Shaders.GetLock());
+    
+    // Remove tracked objects
+    parent->states_Shaders.RemoveNoLock(this);
+    parent->shaderSet.Remove(key);
 }
 
 D3D12_SHADER_BYTECODE ShaderState::GetInstrument(const ShaderInstrumentationKey &instrumentationKey) {

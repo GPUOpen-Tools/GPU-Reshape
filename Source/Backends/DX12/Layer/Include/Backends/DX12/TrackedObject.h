@@ -78,6 +78,11 @@ struct TrackedObject {
     /// Remove an object
     void Remove(T* object) {
         std::lock_guard<std::mutex> guard(mutex);
+        RemoveNoLock(object);
+    }
+
+    /// Remove an object without a lock
+    void RemoveNoLock(T* object) {
         const MapEntry& entry = uidMap.at(object->uid);
 
         // Relocate entry with back

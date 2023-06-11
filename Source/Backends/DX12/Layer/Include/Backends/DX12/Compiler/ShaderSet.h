@@ -30,8 +30,15 @@ public:
     /// \param key shader key
     /// \param state shader state
     void Add(const ShaderStateKey& key, ShaderState* state) {
-        ASSERT(states.find(key) == states.end(), "Duplicate key");
+        ASSERT(!states.contains(key), "Duplicate key");
         states[key] = state;
+    }
+
+    /// Remove a shader state
+    /// \param key shader key
+    void Remove(const ShaderStateKey& key) {
+        ASSERT(states.contains(key), "Missing key");
+        states.erase(key);
     }
 
 private:
