@@ -2,7 +2,9 @@
 
 General instructions for front end use.
 
-_(Please don't close or move the dockables out of their sockets, a work in progress)_
+Notes:
+- Please don't close or move the dockables out of their sockets (such as the workspace explorer), a work in progress.
+- Descriptor "mismatch" false positives are a known issue, tracking them all down.
 
 <!-- TOC -->
 ### Table of Contents
