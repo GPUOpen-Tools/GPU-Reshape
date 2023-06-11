@@ -1,7 +1,5 @@
 <h1><img align="center" height="75" src="/Source/UIX/Studio/Resources/Icons/Icon_Frame.png"> <a>GPU Reshape</a></h1>
 
-**(Notice: Lack of commits last month was due to vacation)**
-
 **GPU Reshape** offers API agnostic instrumentation of GPU side operations to perform, e.g., validation of potentially undefined behaviour, supporting both Vulkan and D3D12 (DXIL).
 No application side integration is required.
 
@@ -19,6 +17,7 @@ GPU Reshape is an open collaboration between **Miguel Petersen** (author), **Adv
 ---
 
 <p align="center">
+  <a href="Documentation/QuickStart.md">Quick Start</a> -
   <a href="Documentation/Build.md">Build</a> -
   <a href="Documentation/UIX.md">UIX</a> -
   <a href="Documentation/API.md">API</a> -

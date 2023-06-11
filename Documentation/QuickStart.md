@@ -4,6 +4,37 @@ General instructions for front end use.
 
 _(Please don't close or move the dockables out of their sockets, a work in progress)_
 
+<!-- TOC -->
+### Table of Contents
+* [1. Launching](#1-launching)
+* [2. Features](#2-features)
+* [3. Quick start example](#3-quick-start-example)
+* [4. Usage](#4-usage)
+  * [4.1. Workspace Tools](#41-workspace-tools)
+  * [4.2. Object tools](#42-object-tools)
+  * [4.3. Instrumentation mode and discoverability](#43-instrumentation-mode-and-discoverability)
+  * [4.4. Logging](#44-logging)
+  * [4.5. Menu](#45-menu)
+    * [4.5.1. File](#451-file)
+    * [4.5.2. Workspace](#452-workspace)
+    * [4.5.1. Window](#451-window)
+    * [4.5.1. Help](#451-help)
+  * [4.6. Documents](#46-documents)
+* [5. Workspace Explorer](#5-workspace-explorer)
+* [6. File Explorer](#6-file-explorer)
+* [7. Shader Objects](#7-shader-objects)
+* [8. Pipeline Objects](#8-pipeline-objects)
+* [9. Properties](#9-properties)
+  * [9.1. Workspace Properties](#91-workspace-properties)
+  * [9.2. Instrumentation Properties](#92-instrumentation-properties)
+* [10. Workspaces](#10-workspaces)
+  * [10.1. Workspace Instrumentation](#101-workspace-instrumentation)
+* [11. Shaders](#11-shaders)
+* [12. Discoverability](#12-discoverability)
+* [13. Instrumentation mode](#13-instrumentation-mode)
+* [14. Application Launching](#14-application-launching)
+<!-- TOC -->
+
 ## 1. Launching
 
 To start GPU Reshape, please navigate to the built package and launch `GPUReshape.exe`.
@@ -74,7 +105,7 @@ For typical usage, please refer to the four areas highlighted below.
 
 ![img_16.png](Resources/Documentation/img_16.png)
 
-### 4.1 Workspace Tools
+### 4.1. Workspace Tools
 
 The workspace tools support manipulation of workspaces and selected objects. See sections below:
 - [Workspace Explorer](#5-workspace-explorer)
@@ -84,13 +115,13 @@ The workspace tools support manipulation of workspaces and selected objects. See
 Not all applications are eligible for a connection, either the [application has been launched](#14-application-launching) with the tool, or
 [discovery](#12-discoverability) has been enabled.
 
-### 4.2 Object tools
+### 4.2. Object tools
 
 The object tools allow for manipulation of objects within a workspace. See sections below:
 - [Shader Objects](#7-shader-objects)
 - [Pipeline Objects](#8-pipeline-objects)
 
-### 4.3 Instrumentation mode and discoverability
+### 4.3. Instrumentation mode and discoverability
 
 The current [Instrumentation State](#13-instrumentation-mode) and [Discoverability](#12-discoverability).
 
@@ -98,15 +129,15 @@ The current [Instrumentation State](#13-instrumentation-mode) and [Discoverabili
 
 Standard logging view, provides a list of events and their severity.
 
-#### 4.5 Menu
+#### 4.5. Menu
 
 The menu contains an additional set of operations. Typical usage does not require the menu.
 
-#### 4.5.1 File
+#### 4.5.1. File
 
 Currently, only contains the Settings menu.
 
-#### 4.5.2 Workspace
+#### 4.5.2. Workspace
 
 ![img_9.png](Resources/Documentation/img_9.png)
 
@@ -114,15 +145,15 @@ This menu allows for workspace creation and destruction, however, atypical to th
 [launching an application](#14-application-launching). In case that discoverability is not desired, applications can be launched
 manually from the tool with instrumentation enabled.
 
-#### 4.5.1 Window
+#### 4.5.1. Window
 
 Layout manipulation.
 
-#### 4.5.1 Help
+#### 4.5.1. Help
 
 About window and documentation links.
 
-### 4.6 Documents
+### 4.6. Documents
 
 All documents live in this pane, such as [workspaces](#10-workspaces) and [shader objects](#7-shader-objects).
 
