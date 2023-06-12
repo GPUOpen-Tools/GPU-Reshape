@@ -68,7 +68,6 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     state->allocators = deviceTable.state->allocators;
     state->parent = table.state->parent;
     state->type = PipelineType::Graphics;
-    state->object = state->object;
 
     // Perform deep copy
     state->deepCopy.DeepCopy(state->allocators, *pDesc);
@@ -79,12 +78,18 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     // External user
     state->AddUser();
 
+    // Final object
+    ID3D12PipelineState* pipeline{nullptr};
+
     // Pass down callchain
-    HRESULT hr = table.bottom->next_LoadGraphicsPipeline(table.next, pName, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
+    HRESULT hr = table.bottom->next_LoadGraphicsPipeline(table.next, pName, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
     if (FAILED(hr)) {
         destroyRef(state, state->allocators);
         return hr;
     }
+
+    // Set object
+    state->object = pipeline;
 
     // Add reference to signature
     pDesc->pRootSignature->AddRef();
@@ -141,11 +146,11 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     deviceTable.state->states_Pipelines.Add(state);
 
     // Create detours
-    state->object = CreateDetour(state->allocators, state->object, state);
+    pipeline = CreateDetour(state->allocators, pipeline, state);
 
     // Query to external object if requested
     if (ppPipelineState) {
-        hr = state->object->QueryInterface(riid, ppPipelineState);
+        hr = pipeline->QueryInterface(riid, ppPipelineState);
         if (FAILED(hr)) {
             return hr;
         }
@@ -155,7 +160,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     }
 
     // Cleanup
-    state->object->Release();
+    pipeline->Release();
 
     // OK
     return S_OK;
@@ -185,12 +190,18 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     // External user
     state->AddUser();
 
+    // Final object
+    ID3D12PipelineState* pipeline{nullptr};
+
     // Pass down callchain
-    HRESULT hr = table.bottom->next_LoadComputePipeline(table.next, pName, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&state->object));
+    HRESULT hr = table.bottom->next_LoadComputePipeline(table.next, pName, &state->deepCopy.desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
     if (FAILED(hr)) {
         destroyRef(state, state->allocators);
         return hr;
     }
+
+    // Set object
+    state->object = pipeline;
 
     // Add reference to signature
     pDesc->pRootSignature->AddRef();
@@ -211,11 +222,11 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     deviceTable.state->states_Pipelines.Add(state);
 
     // Create detours
-    state->object = CreateDetour(state->allocators, state->object, state);
+    pipeline = CreateDetour(state->allocators, pipeline, state);
 
     // Query to external object if requested
     if (ppPipelineState) {
-        hr = state->object->QueryInterface(riid, ppPipelineState);
+        hr = pipeline->QueryInterface(riid, ppPipelineState);
         if (FAILED(hr)) {
             return hr;
         }
@@ -225,7 +236,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     }
 
     // Cleanup
-    state->object->Release();
+    pipeline->Release();
 
     // OK
     return S_OK;
