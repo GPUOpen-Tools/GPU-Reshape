@@ -16,6 +16,7 @@
 
 // Std
 #include <fstream>
+#include <istream>
 
 DXBCPhysicalBlockDebug::DXBCPhysicalBlockDebug(const Allocators &allocators, IL::Program &program, DXBCPhysicalBlockTable &table) :
     DXBCPhysicalBlockSection(allocators, program, table),
@@ -75,7 +76,7 @@ bool DXBCPhysicalBlockDebug::Parse(const DXParseJob& job) {
 }
 
 DXBCPhysicalBlock * DXBCPhysicalBlockDebug::TryParsePDB(const std::string_view &path) {
-    std::ifstream in(path, std::ios_base::binary);
+    std::ifstream in(std::string(path), std::ios_base::binary);
     if (!in.good()) {
         return nullptr;
     }

@@ -3,6 +3,9 @@
 // Layer
 #include "DXBCPhysicalBlockSection.h"
 
+// Std
+#include <string_view>
+
 // Forward declarations
 struct DXParseJob;
 
