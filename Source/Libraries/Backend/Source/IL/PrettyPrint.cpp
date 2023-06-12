@@ -530,6 +530,9 @@ void IL::PrettyPrint(Backend::IL::Format format, PrettyPrintContext out) {
         case Backend::IL::Format::R11G11B10Float:
             line << "R11G11B10Float";
             break;
+        case Backend::IL::Format::R16Unorm:
+            line << "R16Unorm";
+            break;
         case Backend::IL::Format::R16Float:
             line << "R16Float";
             break;

@@ -174,6 +174,9 @@ void DXILDebugModule::ParseModuleFunction(const LLVMRecord& record) {
 }
 
 void DXILDebugModule::ParseFunction(LLVMBlock *block) {
+    // Keep current head
+    const size_t valueHead = thinValues.size();
+    
     for(LLVMBlock* child : block->blocks) {
         switch (child->As<LLVMReservedBlock>()) {
             default:
@@ -262,6 +265,9 @@ void DXILDebugModule::ParseFunction(LLVMBlock *block) {
             }
         }
     }
+
+    // Reset head, value indices reset after function blocks
+    thinValues.resize(valueHead);
 }
 
 void DXILDebugModule::ParseConstants(LLVMBlock *block) {

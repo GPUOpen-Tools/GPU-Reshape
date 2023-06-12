@@ -62,14 +62,20 @@ bool DXBCModule::Parse(const DXParseJob& job) {
     in.read(data.data(), size);
 
     // Set new data
-    byteCode = data.data();
-    byteLength = data.size();
-#endif // SHADER_COMPILER_DEBUG_FILE
+    DXParseJob jobProxy = job;
+    jobProxy.byteCode = data.data();
+    jobProxy.byteLength = data.size();
 
+    // Try to parse
+    if (!table.Parse(jobProxy)) {
+        return false;
+    }
+#else // SHADER_COMPILER_DEBUG_FILE
     // Try to parse
     if (!table.Parse(job)) {
         return false;
     }
+#endif // SHADER_COMPILER_DEBUG_FILE
 
     // OK
     return true;

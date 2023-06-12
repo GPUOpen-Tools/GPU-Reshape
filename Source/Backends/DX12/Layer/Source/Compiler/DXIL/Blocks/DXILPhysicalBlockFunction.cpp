@@ -2006,7 +2006,7 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
             // If it's valid, copy record
             if (instr->source.IsValid()) {
                 // Set relocation index
-                functionBlock.recordRelocation[instr->source.codeOffset] = static_cast<uint32_t>(block->records.size());
+                functionBlock.recordRelocation[instr->source.codeOffset - 1u] = static_cast<uint32_t>(block->records.size()) - 1u;
 
                 // Copy the source
                 record = source[instr->source.codeOffset];
