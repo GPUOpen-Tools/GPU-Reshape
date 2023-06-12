@@ -881,8 +881,8 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     // Final list of commands to submit
     TrivialStackVector<ID3D12CommandList*, 64u> unwrapped;
     
-    // Record the streaming pre patching
-    unwrapped.Add(device.state->exportStreamer->RecordPreCommandList(table.state, segment));
+    // Reserve a slot for the streaming pre patching
+    unwrapped.Add(nullptr);
 
     // Process all lists
     for (uint32_t i = 0; i < count; i++) {
@@ -894,6 +894,9 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
         // Pass down unwrapped
         unwrapped.Add(listTable.next);
     }
+
+    // Record the streaming pre patching
+    unwrapped[0] = device.state->exportStreamer->RecordPreCommandList(table.state, segment);
 
     // Record the streaming post patching
     unwrapped.Add(device.state->exportStreamer->RecordPostCommandList(table.state, segment));

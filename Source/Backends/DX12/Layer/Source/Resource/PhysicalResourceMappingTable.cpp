@@ -67,11 +67,19 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
         return;
     }
 
+    // Generic shader read visibility
+    D3D12_RESOURCE_STATES genericShaderRead = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+    // Add graphics visibility if needed
+    if (list->GetType() != D3D12_COMMAND_LIST_TYPE_COMPUTE) {
+        genericShaderRead |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    }
+
     // Final barriers
     D3D12_RESOURCE_BARRIER barriers[2];
     
     // HOST: CopyDest -> CopySource
-    D3D12_RESOURCE_BARRIER& hostBarrier = barriers[0];
+    D3D12_RESOURCE_BARRIER& hostBarrier = (barriers[0] = {});
     hostBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     hostBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
     hostBarrier.Transition.pResource = allocation.host.resource;
@@ -79,11 +87,11 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
     hostBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
     
     // DEVICE: ShaderResource -> CopyDest
-    D3D12_RESOURCE_BARRIER& deviceBarrier = barriers[1];
+    D3D12_RESOURCE_BARRIER& deviceBarrier = (barriers[1] = {});
     deviceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     deviceBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
     deviceBarrier.Transition.pResource = allocation.device.resource;
-    deviceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    deviceBarrier.Transition.StateBefore = genericShaderRead;
     deviceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
 
     // Submit barriers
@@ -98,7 +106,7 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
 
     // DEVICE: CopyDest -> ShaderResource
     deviceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-    deviceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+    deviceBarrier.Transition.StateAfter = genericShaderRead;
     
     // Submit barriers
     list->ResourceBarrier(2u, barriers);
