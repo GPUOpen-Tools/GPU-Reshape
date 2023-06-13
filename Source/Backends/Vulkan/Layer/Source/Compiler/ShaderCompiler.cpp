@@ -71,6 +71,9 @@ void ShaderCompiler::Add(DeviceDispatchTable *table, const ShaderJob& job, Dispa
 }
 
 bool ShaderCompiler::InitializeModule(ShaderModuleState *state) {
+    // Initial state parsing is *always* serial
+    std::lock_guard guard(state->mutex);
+    
     // Create the module on demand
     if (!state->spirvModule) {
         state->spirvModule = new(registry->GetAllocators()) SpvModule(allocators, state->uid);
