@@ -2,6 +2,8 @@
 
 // Layer
 #include "Backends/Vulkan/Vulkan.h"
+#include "Backends/Vulkan/States/DescriptorLayoutPhysicalMapping.h"
+#include "Backends/Vulkan/DeepCopyObjects.Gen.h"
 
 // Std
 #include <cstdint>
@@ -9,6 +11,9 @@
 struct DescriptorSetLayoutState {
     /// User pipeline
     VkDescriptorSetLayout object{VK_NULL_HANDLE};
+
+    /// Physical mapping
+    DescriptorLayoutPhysicalMapping physicalMapping;
 
     /// Hash for compatability tests
     uint64_t compatabilityHash{0};

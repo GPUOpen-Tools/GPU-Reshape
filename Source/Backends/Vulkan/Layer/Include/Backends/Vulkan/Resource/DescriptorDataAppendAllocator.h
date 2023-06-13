@@ -86,8 +86,8 @@ public:
     /// \param offset current root offset
     /// \param value value at root offset
     void SetOrAllocate(VkCommandBuffer commandBuffer, uint32_t offset, uint32_t allocationSize, uint32_t value) {
-        // Begin a new segment if the previous does not suffice, may be allocated dynamically
-        if (offset >= mappedSegmentLength || (pendingRoll && offset >= pendingRootCount)) {
+        // Begin a new segment if the previous does not suffice, may be allocated dynamically 
+        if (offset >= mappedSegmentLength || (pendingRoll && allocationSize >= pendingRootCount)) {
             ASSERT(allocationSize > offset, "Chunk allocation size must be larger than the expected offset");
             BeginSegment(allocationSize, mappedSegmentLength == allocationSize);
         }

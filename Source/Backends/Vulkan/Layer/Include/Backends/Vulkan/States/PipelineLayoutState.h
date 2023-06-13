@@ -2,6 +2,7 @@
 
 // Layer
 #include "Backends/Vulkan/Vulkan.h"
+#include "Backends/Vulkan/States/PipelineLayoutPhysicalMapping.h"
 #include "PipelineLayoutBindingInfo.h"
 
 // Common
@@ -26,6 +27,9 @@ struct PipelineLayoutState : public ReferenceObject {
 
     /// Has this layout exhausted all its user slots?
     bool exhausted{false};
+
+    /// Physical mapping
+    PipelineLayoutPhysicalMapping physicalMapping;
 
     /// Combined pipeline hash
     uint64_t compatabilityHash{0};

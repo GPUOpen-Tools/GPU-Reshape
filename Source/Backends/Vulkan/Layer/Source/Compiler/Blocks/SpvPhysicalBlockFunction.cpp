@@ -1109,7 +1109,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 uint32_t imageOperandCount = 0;
                 imageOperandCount += sampleTexture->bias != IL::InvalidID;
                 imageOperandCount += sampleTexture->lod != IL::InvalidID;
-                imageOperandCount += sampleTexture->ddx != IL::InvalidID;
+                imageOperandCount += sampleTexture->ddx != IL::InvalidID ? 2u : 0u;
 
                 // Operand mask
                 if (imageOperandCount) {
@@ -1652,7 +1652,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             }
             case IL::OpCode::ResourceToken: {
                 auto *token = instr.As<IL::ResourceTokenInstruction>();
-                table.shaderPRMT.GetToken(stream, idMap.Get(token->resource), token->result);
+                table.shaderPRMT.GetToken(job, stream, idMap.Get(token->resource), token->result);
                 break;
             }
             case IL::OpCode::Alloca: {

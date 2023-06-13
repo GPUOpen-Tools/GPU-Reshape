@@ -24,6 +24,9 @@ struct DescriptorSetState {
     /// Allocated segment
     PhysicalResourceSegmentID segmentID{0};
 
+    /// Precomputed PRMT offsets
+    std::vector<uint32_t> prmtOffsets;
+
     /// Linear swap index
     uint32_t poolSwapIndex{0};
 

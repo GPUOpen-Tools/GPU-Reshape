@@ -614,6 +614,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
             instrumentationKey.pipelineLayoutPRMTPCOffset = pipelineLayoutPRMTPCOffset;
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+            instrumentationKey.physicalMapping = &dependentObject->layout->physicalMapping;
 
             // Combine hashes
             instrumentationKey.combinedHash = dependentObject->instrumentationInfo.specializationHash;
@@ -623,6 +624,7 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
             CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutPRMTPCOffset);
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+            CombineHash(instrumentationKey.combinedHash, instrumentationKey.physicalMapping->layoutHash);
 
             // Attempt to reserve
             if (!state->Reserve(instrumentationKey)) {
@@ -707,6 +709,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
             instrumentationKey.pipelineLayoutPRMTPCOffset = pipelineLayoutPRMTPCOffset;
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+            instrumentationKey.physicalMapping = &state->layout->physicalMapping;
 
             // Combine hashes
             instrumentationKey.combinedHash = state->instrumentationInfo.specializationHash;
@@ -716,6 +719,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
             CombineHash(instrumentationKey.combinedHash, instrumentationKey.pipelineLayoutPRMTPCOffset);
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+            CombineHash(instrumentationKey.combinedHash, instrumentationKey.physicalMapping->layoutHash);
 
             // Assign key
             job.shaderModuleInstrumentationKeys[shaderIndex] = instrumentationKey;

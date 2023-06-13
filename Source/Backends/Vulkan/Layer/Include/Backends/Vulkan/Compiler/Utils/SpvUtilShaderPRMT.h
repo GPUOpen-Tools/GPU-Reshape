@@ -23,9 +23,11 @@ struct SpvUtilShaderPRMT {
     void CompileRecords(const SpvJob &job);
 
     /// Export a given value
+    /// \param job source job
     /// \param stream the current spirv stream
-    /// \param value the resource id
-    void GetToken(SpvStream& stream, IL::ID resource, IL::ID result);
+    /// \param resource source resource
+    /// \param result output result
+    void GetToken(const SpvJob& job, SpvStream& stream, IL::ID resource, IL::ID result);
 
     /// Copy to a new block
     /// \param remote the new block table
@@ -42,10 +44,11 @@ private:
     };
 
     /// Get the PRMT offset for a given resource
+    /// \param job source job
     /// \param stream current stream
     /// \param resource resource to be tracked
     /// \return allocated identifier
-    SpvPRMTOffset GetResourcePRMTOffset(SpvStream& stream, IL::ID resource);
+    SpvPRMTOffset GetResourcePRMTOffset(const SpvJob& job, SpvStream& stream, IL::ID resource);
 
 private:
     struct DynamicSpvValueDecoration {
@@ -60,9 +63,10 @@ private:
     };
 
     /// Find the originating resource decoration
+    /// \param job source job
     /// \param resource resource to be traced
     /// \return found decoration
-    DynamicSpvValueDecoration GetSourceResourceDecoration(SpvStream& stream, IL::ID resource);
+    DynamicSpvValueDecoration GetSourceResourceDecoration(const SpvJob& job, SpvStream& stream, IL::ID resource);
 
 private:
     /// Shared allocators

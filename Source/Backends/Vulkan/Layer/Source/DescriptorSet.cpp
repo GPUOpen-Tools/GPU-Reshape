@@ -35,10 +35,13 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, 
     state->object = *pSetLayout;
     state->compatabilityHash = 0x0;
     state->descriptorCount = 0;
-
+    
     // Hash
     CombineHash(state->compatabilityHash, pCreateInfo->bindingCount);
 
+    // Total number of bindings
+    uint32_t bindingCount = 0;
+    
     // Check all binding types
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
         const VkDescriptorSetLayoutBinding& binding = pCreateInfo->pBindings[i];
@@ -56,8 +59,27 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, 
         CombineHash(state->compatabilityHash, binding.descriptorCount);
         CombineHash(state->compatabilityHash, binding.binding);
 
-        // Accumulate bound
-        state->descriptorCount = std::max(state->descriptorCount, binding.binding + binding.descriptorCount);
+        // Cache counts
+        bindingCount = std::max(bindingCount, binding.binding + 1u);
+    }
+    
+    // Cache counts
+    std::vector<uint32_t> bindingSizes(bindingCount);
+    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+        const VkDescriptorSetLayoutBinding& binding = pCreateInfo->pBindings[i];
+        bindingSizes.at(binding.binding) = binding.descriptorCount;
+    }
+
+    // Accumulate PRMT offsets
+    state->physicalMapping.prmtOffsets.resize(bindingCount, 0u);
+    for (uint32_t i = 1; i < bindingCount; i++) {
+        state->physicalMapping.prmtOffsets.at(i) = state->physicalMapping.prmtOffsets[i - 1u] + bindingSizes[i - 1u];
+    }
+
+    // Total number of descriptors
+    if (!state->physicalMapping.prmtOffsets.empty()) {
+        // Append from last PRMT offset
+        state->descriptorCount = state->physicalMapping.prmtOffsets.back() + bindingSizes.back();
     }
 
     // Store lookup
@@ -107,6 +129,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         
         // Get layout
         const DescriptorSetLayoutState* layout = table->states_descriptorSetLayout.Get(pAllocateInfo->pSetLayouts[i]);
+
+        // Copy offsets
+        state->prmtOffsets.resize(layout->physicalMapping.prmtOffsets.size());
+        std::memcpy(state->prmtOffsets.data(), layout->physicalMapping.prmtOffsets.data(), sizeof(uint32_t) * state->prmtOffsets.size());
 
         // Allocate segment for given layout
         state->segmentID = table->prmTable->Allocate(layout->descriptorCount);
@@ -316,8 +342,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t
                 }
             }
 
+            // Map current binding to an offset
+            const uint32_t prmtOffset = state->prmtOffsets.at(write.dstBinding);
+
             // Update the table
-            table->prmTable->WriteMapping(state->segmentID, write.dstBinding + write.dstArrayElement, mapping);
+            table->prmTable->WriteMapping(state->segmentID, prmtOffset + write.dstArrayElement + descriptorIndex, mapping);
         }
     }
 
@@ -329,13 +358,17 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t
         const DescriptorSetState* stateSrc = table->states_descriptorSet.Get(copy.srcSet);
         const DescriptorSetState* stateDst = table->states_descriptorSet.Get(copy.dstSet);
 
+        // Map bindings to offsets
+        const uint32_t srcPrmtOffset = stateSrc->prmtOffsets.at(copy.srcBinding);
+        const uint32_t dstPrmtOffset = stateDst->prmtOffsets.at(copy.dstBinding);
+
         // Create mappings for all descriptors copied
         for (uint32_t descriptorIndex = 0; descriptorIndex < copy.descriptorCount; descriptorIndex++) {
             // Get the original mapping
-            VirtualResourceMapping srcMapping = table->prmTable->GetMapping(stateSrc->segmentID, copy.srcBinding + copy.srcArrayElement);
+            VirtualResourceMapping srcMapping = table->prmTable->GetMapping(stateSrc->segmentID, srcPrmtOffset + copy.srcArrayElement + descriptorIndex);
 
             // Write as new mapping
-            table->prmTable->WriteMapping(stateDst->segmentID, copy.dstBinding + copy.dstArrayElement, srcMapping);
+            table->prmTable->WriteMapping(stateDst->segmentID, dstPrmtOffset + copy.dstArrayElement + descriptorIndex, srcMapping);
         }
     }
 
@@ -477,8 +510,11 @@ VKAPI_ATTR void VKAPI_PTR Hook_vkUpdateDescriptorSetWithTemplate(VkDevice device
                 }
             }
 
+            // Map current binding to an offset
+            const uint32_t prmtOffset = setState->prmtOffsets.at(entry.dstBinding);
+
             // Update the table
-            table->prmTable->WriteMapping(setState->segmentID, entry.dstBinding + entry.dstArrayElement + descriptorIndex, mapping);
+            table->prmTable->WriteMapping(setState->segmentID, prmtOffset + entry.dstArrayElement + descriptorIndex, mapping);
         }
     }
 }
@@ -592,6 +628,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
     state->exhausted = exhausted;
     state->descriptorDynamicOffsets.resize(pCreateInfo->setLayoutCount);
     state->compatabilityHashes.resize(pCreateInfo->setLayoutCount);
+    state->physicalMapping.descriptorSets.resize(pCreateInfo->setLayoutCount);
 
     // Copy set layout info
     for (uint32_t i = 0; i < pCreateInfo->setLayoutCount; i++) {
@@ -601,9 +638,15 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
         state->descriptorDynamicOffsets[i] = setLayoutState->dynamicOffsets;
         state->compatabilityHashes[i] = setLayoutState->compatabilityHash;
 
+        // Copy set layout physical mappings
+        state->physicalMapping.descriptorSets[i] = setLayoutState->physicalMapping;
+
         // Combine layout hash
         CombineHash(state->compatabilityHash, setLayoutState->compatabilityHash);
     }
+
+    // Inherit compatability hash
+    state->physicalMapping.layoutHash = state->compatabilityHash;
 
     // External user
     state->AddUser();

@@ -65,7 +65,7 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
     spvCounterBinding[3] = job.bindingInfo.prmtDescriptorOffset;
 }
 
-SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(SpvStream &stream, IL::ID resource) {
+SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const SpvJob& job, SpvStream &stream, IL::ID resource) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Output
@@ -81,7 +81,7 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(SpvStr
     });
 
     // Get decoration
-    DynamicSpvValueDecoration valueDecoration = GetSourceResourceDecoration(stream, resource);
+    DynamicSpvValueDecoration valueDecoration = GetSourceResourceDecoration(job, stream, resource);
 
     // Get the descriptor fed offset into the PRM table
     IL::ID baseOffsetId = table.shaderDescriptorConstantData.GetDescriptorData(stream, valueDecoration.source.descriptorSet * kDescriptorDataDWordCount + kDescriptorDataOffsetDWord);
@@ -113,7 +113,7 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(SpvStr
     return out;
 }
 
-void SpvUtilShaderPRMT::GetToken(SpvStream &stream, IL::ID resource, IL::ID result) {
+void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID resource, IL::ID result) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // UInt32
@@ -133,7 +133,7 @@ void SpvUtilShaderPRMT::GetToken(SpvStream &stream, IL::ID resource, IL::ID resu
     uint32_t texelId = table.scan.header.bound++;
 
     // Get offset
-    SpvPRMTOffset mappingOffset = GetResourcePRMTOffset(stream, resource);
+    SpvPRMTOffset mappingOffset = GetResourcePRMTOffset(job, stream, resource);
 
     // SpvIds
     uint32_t buffer32UIId = table.typeConstantVariable.typeMap.GetSpvTypeId(buffer32UI);
@@ -188,18 +188,24 @@ void SpvUtilShaderPRMT::GetToken(SpvStream &stream, IL::ID resource, IL::ID resu
     }
 }
 
-SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourceDecoration(SpvStream& stream, IL::ID resource) {
+SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourceDecoration(const SpvJob& job, SpvStream& stream, IL::ID resource) {
     // Source binding?
     if (table.annotation.IsDecoratedBinding(resource)) {
         DynamicSpvValueDecoration dynamic;
         dynamic.source = table.annotation.GetDecoration(resource);
         dynamic.dynamicOffset = table.scan.header.bound++;
 
+        // Get the sets physical mapping
+        const DescriptorLayoutPhysicalMapping& descriptorSetPhysicalMapping = job.instrumentationKey.physicalMapping->descriptorSets.at(dynamic.source.descriptorSet);
+
+        // Get the statically known PRMT offset for this binding (descriptor offsets are always the bindings)
+        const uint32_t prmtOffset = descriptorSetPhysicalMapping.prmtOffsets.at(dynamic.source.descriptorOffset);
+
         // Offset
         SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
         spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
         spvOffset[2] = dynamic.dynamicOffset;
-        spvOffset[3] = dynamic.source.descriptorOffset;
+        spvOffset[3] = prmtOffset;
 
         // OK
         return dynamic;
@@ -222,7 +228,7 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
             ASSERT(addressChain->chains.count == 1, "Unexpected address chain on descriptor data");
 
             // Get base decoration
-            DynamicSpvValueDecoration dynamic = GetSourceResourceDecoration(stream, addressChain->composite);
+            DynamicSpvValueDecoration dynamic = GetSourceResourceDecoration(job, stream, addressChain->composite);
 
             // Address could be constant, but easier to just assume dynamic indexing at this point
             dynamic.checkOutOfBounds = true;
@@ -244,7 +250,7 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
             return dynamic;
         }
         case IL::OpCode::Load: {
-            return GetSourceResourceDecoration(stream, ref->As<IL::LoadInstruction>()->address);
+            return GetSourceResourceDecoration(job, stream, ref->As<IL::LoadInstruction>()->address);
         }
     }
 }

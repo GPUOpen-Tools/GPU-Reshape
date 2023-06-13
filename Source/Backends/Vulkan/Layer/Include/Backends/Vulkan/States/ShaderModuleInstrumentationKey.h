@@ -2,6 +2,7 @@
 
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
+#include <Backends/Vulkan/States/PipelineLayoutPhysicalMapping.h>
 
 // Std
 #include <cstdint>
@@ -25,6 +26,9 @@ struct ShaderModuleInstrumentationKey {
     /// PRMT push constant offset after the user PC data
     uint32_t pipelineLayoutPRMTPCOffset{0};
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
+    /// Physical mapping
+    PipelineLayoutPhysicalMapping* physicalMapping{nullptr};
 
     /// Final hash
     uint64_t combinedHash{0};
