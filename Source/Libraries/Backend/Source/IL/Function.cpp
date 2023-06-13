@@ -74,6 +74,24 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
                 }
             }
         }
+        
+        // Append unreachable blocks
+        for (BasicBlock* basicBlock : blocks) {
+            if (!blockAcquiredArray.Acquire(basicBlock->GetID())) {
+                continue;
+            }
+
+            // If truly unreachable, there's no predecessors
+            ASSERT(dominatorTree.GetPredecessors(basicBlock).empty(), "Unappended block was reachable");
+
+            // If truly unreachable, and by SPIRV standard, the successors are already present
+            for (BasicBlock* successor : dominatorTree.GetSuccessors(basicBlock)) {
+                ASSERT(!blockAcquiredArray[successor->GetID()], "Successor to unreachable not appended");
+            }
+            
+            // Accept as resolved
+            basicBlocks.Add(basicBlock);
+        }
     } else {
         // Always mark the entry point as acquired
         basicBlocks.Add(entryPoint);
