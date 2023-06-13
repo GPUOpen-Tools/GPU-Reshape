@@ -80,6 +80,11 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
             return it;
         }
 
+        // TODO: Matrix types not handled (for now)
+        if (valueType->Is<Backend::IL::MatrixType>()) {
+            return it;
+        }
+
         // Instrumentation Segmentation
         //
         //             BEFORE                                 AFTER
