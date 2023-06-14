@@ -37,6 +37,10 @@ public:
 
         // Set mapped
         mapped = static_cast<uint32_t*>(mappedOpaque);
+#ifndef NDEBUG
+        memset(mapped, 0u, chunkSize * sizeof(uint32_t));
+        localSegmentBindMask = 0u;
+#endif // NDEBUG
     }
 
     /// Begin a new segment
@@ -55,9 +59,30 @@ public:
             RollChunk();
         }
 
+#ifndef NDEBUG
+        localSegmentBindMask |= (1ull << offset);
+#endif // NDEBUG
+        
         ASSERT(offset < mappedSegmentLength, "Out of bounds descriptor segment offset");
         mapped[mappedOffset + offset] = value;
     }
+
+#ifndef NDEBUG
+    /// Validate current mask against another
+    void ValidateAgainst(uint64_t mask) {
+        ASSERT((localSegmentBindMask & mask) == mask, "Lost descriptor data");
+    }
+
+    /// Get the binding mask
+    uint64_t GetBindMask() const {
+        return localSegmentBindMask;
+    }
+
+    /// Get a value
+    uint64_t Get(uint32_t offset) const {
+        return mapped[mappedOffset + offset];
+    }
+#endif // NDEBUG
 
     /// Has this allocator been rolled? i.e. a new segment has begun
     /// \return
@@ -97,6 +122,10 @@ public:
         chunkSize = 0;
         mapped = nullptr;
 
+#ifndef NDEBUG
+        localSegmentBindMask = 0u;
+#endif // NDEBUG
+
         // Release the segment
         return std::move(segment);
     }
@@ -106,6 +135,11 @@ private:
     void RollChunk() {
         // Advance current offset
         uint64_t nextMappedOffset = mappedOffset + std::max<size_t>(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT / sizeof(uint32_t), mappedSegmentLength);
+
+#ifndef NDEBUG
+        uint64_t lastSegmentBindMask = localSegmentBindMask;
+        localSegmentBindMask = 0u;
+#endif // NDEBUG
 
         // Out of memory?
         if (nextMappedOffset + pendingRootCount >= chunkSize) {
@@ -125,13 +159,21 @@ private:
             // Migrate last segment?
             if (migrateLastSegment) {
                 ASSERT(pendingRootCount == lastSegmentLength, "Requested migration with mismatched root counts");
-                std::memcpy(mapped + nextMappedOffset, lastChunkDwords, sizeof(uint32_t) * lastSegmentLength);
+                std::memcpy(mapped, lastChunkDwords, sizeof(uint32_t) * lastSegmentLength);
+
+#ifndef NDEBUG
+                localSegmentBindMask = lastSegmentBindMask;
+#endif // NDEBUG
             }
         } else {
             // Migrate last segment?
             if (mappedSegmentLength == pendingRootCount) {
                 ASSERT(pendingRootCount == mappedSegmentLength, "Requested migration with mismatched root counts");
                 std::memcpy(mapped + nextMappedOffset, mapped + mappedOffset, sizeof(uint32_t) * mappedSegmentLength);
+
+#ifndef NDEBUG
+                localSegmentBindMask = lastSegmentBindMask;
+#endif // NDEBUG
             }
             
             // Set new offset
@@ -180,6 +222,11 @@ private:
         segmentEntry.allocation = allocator->Allocate(desc, AllocationResidency::Host);
         SetChunk(segmentEntry);
     }
+
+#ifndef NDEBUG
+    /// Current validation binding mask
+    uint64_t localSegmentBindMask{0u};
+#endif // NDEBUG
 
 private:
     /// Current mapping offset for the segment

@@ -22,8 +22,9 @@ public:
     PhysicalResourceMappingTable(const Allocators& allocators, const ComRef<DeviceAllocator>& allocator);
 
     /// Install the table
+    /// \param type type of the descriptors
     /// \param count number of descriptors
-    void Install(uint32_t count);
+    void Install(D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t count);
 
     /// Update the table for use on a given list
     /// \param list list to be updated on
@@ -89,6 +90,9 @@ private:
     D3D12_SHADER_RESOURCE_VIEW_DESC view{};
 
 private:
+    /// Underlying heap type
+    D3D12_DESCRIPTOR_HEAP_TYPE type;
+    
     /// All states
     Vector<ResourceState*> states;
 

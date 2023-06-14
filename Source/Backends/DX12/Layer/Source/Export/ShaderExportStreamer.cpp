@@ -19,6 +19,7 @@
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Controllers/VersioningController.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
+#include <Backends/DX12/States/RootSignaturePhysicalMapping.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -237,6 +238,9 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
 
             // Reset state
             bindState.rootSignature = nullptr;
+#ifndef NDEBUG
+            bindState.bindMask = 0;
+#endif // NDEBUG
         }
     }
 
@@ -312,11 +316,16 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
         state->pipelineSegmentMask &= ~PipelineTypeSet(PipelineType::Compute);
     }
 
+    // Create initial descriptor segments
+    if (bindState.rootSignature != rootSignature) {
+        bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount, false);
+#ifndef NDEBUG
+        bindState.bindMask = 0x0;
+#endif // NDEBUG
+    }
+    
     // Keep state
     bindState.rootSignature = rootSignature;
-
-    // Create initial descriptor segments
-    bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount, false);
 
     // Ensure the shader export states are bound
     if (state->pipeline && state->pipeline->type == PipelineType::Compute && state->isInstrumented) {
@@ -333,11 +342,16 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
         state->pipelineSegmentMask &= ~PipelineTypeSet(PipelineType::Graphics);
     }
 
+    // Create initial descriptor segments
+    if (bindState.rootSignature != rootSignature) {
+        bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount, false);
+#ifndef NDEBUG
+        bindState.bindMask = 0x0;
+#endif // NDEBUG
+    }
+    
     // Keep state
     bindState.rootSignature = rootSignature;
-
-    // Create initial descriptor segments
-    bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount, false);
 
     // Ensure the shader export states are bound
     if (state->pipeline && state->pipeline->type == PipelineType::Graphics && state->isInstrumented) {
@@ -348,6 +362,10 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
 void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
     // Bind state
     ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
+
+#ifndef NDEBUG
+    bindState.descriptorDataAllocator->ValidateAgainst(bindState.bindMask);
+#endif // NDEBUG
 
     // If the allocator has rolled, a new segment is pending binding
     if (bindState.descriptorDataAllocator->HasRolled()) {
@@ -362,6 +380,10 @@ void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, ID3D12
     // Bind state
     ShaderExportStreamBindState& bindState = state->bindStates[static_cast<uint32_t>(PipelineType::GraphicsSlot)];
 
+#ifndef NDEBUG
+    bindState.descriptorDataAllocator->ValidateAgainst(bindState.bindMask);
+#endif // NDEBUG
+    
     // If the allocator has rolled, a new segment is pending binding
     if (bindState.descriptorDataAllocator->HasRolled()) {
         commandList->SetGraphicsRootConstantBufferView(bindState.rootSignature->userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
@@ -487,6 +509,8 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
 
 void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, const D3D12_CONSTANT_BUFFER_VIEW_DESC& constantsChunk) {
     if (resourceHeap) {
+        ASSERT(resourceHeap->type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Mismatch heap type");
+        
         // Create view to PRMT buffer
         device->object->CreateShaderResourceView(
             resourceHeap->prmTable->GetResource(),
@@ -499,6 +523,8 @@ void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDesc
     }
 
     if (samplerHeap) {
+        ASSERT(samplerHeap->type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, "Mismatch heap type");
+        
         // Create view to PRMT buffer
         device->object->CreateShaderResourceView(
             samplerHeap->prmTable->GetResource(),
@@ -568,19 +594,33 @@ void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::Descriptor(baseDescriptor);
+#ifndef NDEBUG
+    bindState.bindMask |= (1ull << rootParameterIndex);
+#endif // NDEBUG
 
-    // If the address is outside the SRV heap, then it's originating from a foreign heap
-    // This could be intentional, say a sampler heap, or a bug from the parent application
-    if (!state->resourceHeap->IsInBounds(baseDescriptor)) {
+    // Referenced heap
+    DescriptorHeapState* heap{nullptr};
+
+    // Determine the referenced heap
+    // Note that it's faster to check the cached heap bounds instead of doing a binary lookup
+    if (state->resourceHeap && state->resourceHeap->IsInBounds(baseDescriptor)) {
+        heap = state->resourceHeap;
+    } else if (state->samplerHeap && state->samplerHeap->IsInBounds(baseDescriptor)) {
+        heap = state->samplerHeap;
+    } else {
+        ASSERT(false, "Binding descriptor table of unknown or unbound heap");
         return;
     }
 
     // Get offset
-    uint64_t offset = baseDescriptor.ptr - state->resourceHeap->gpuDescriptorBase.ptr;
-    ASSERT(offset % state->resourceHeap->stride == 0, "Mismatched heap stride");
+    uint64_t offset = baseDescriptor.ptr - heap->gpuDescriptorBase.ptr;
+    ASSERT(offset % heap->stride == 0, "Mismatched heap stride");
 
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->resourceHeap->stride));
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
+#ifndef NDEBUG
+    ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
+#endif // NDEBUG
 }
 
 void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE baseDescriptor) {
@@ -589,19 +629,33 @@ void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamStat
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::Descriptor(baseDescriptor);
+#ifndef NDEBUG
+    bindState.bindMask |= (1ull << rootParameterIndex);
+#endif // NDEBUG
 
-    // If the address is outside the SRV heap, then it's originating from a foreign heap
-    // This could be intentional, say a sampler heap, or a bug from the parent application
-    if (!state->resourceHeap->IsInBounds(baseDescriptor)) {
+    // Referenced heap
+    DescriptorHeapState* heap{nullptr};
+
+    // Determine the referenced heap
+    // Note that it's faster to check the cached heap bounds instead of doing a binary lookup
+    if (state->resourceHeap && state->resourceHeap->IsInBounds(baseDescriptor)) {
+        heap = state->resourceHeap;
+    } else if (state->samplerHeap && state->samplerHeap->IsInBounds(baseDescriptor)) {
+        heap = state->samplerHeap;
+    } else {
+        ASSERT(false, "Binding descriptor table of unknown or unbound heap");
         return;
     }
-
+    
     // Get offset
-    uint64_t offset = baseDescriptor.ptr - state->resourceHeap->gpuDescriptorBase.ptr;
-    ASSERT(offset % state->resourceHeap->stride == 0, "Mismatched heap stride");
+    uint64_t offset = baseDescriptor.ptr - heap->gpuDescriptorBase.ptr;
+    ASSERT(offset % heap->stride == 0, "Mismatched heap stride");
 
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / state->resourceHeap->stride));
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
+#ifndef NDEBUG
+    ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
+#endif // NDEBUG
 }
 
 void ShaderExportStreamer::SetComputeRootShaderResourceView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
@@ -610,10 +664,16 @@ void ShaderExportStreamer::SetComputeRootShaderResourceView(ShaderExportStreamSt
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::SRV, bufferLocation);
+#ifndef NDEBUG
+    bindState.bindMask |= (1ull << rootParameterIndex);
+#endif // NDEBUG
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
     bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+#ifndef NDEBUG
+    ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
+#endif // NDEBUG
 }
 
 void ShaderExportStreamer::SetGraphicsRootShaderResourceView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
@@ -622,10 +682,16 @@ void ShaderExportStreamer::SetGraphicsRootShaderResourceView(ShaderExportStreamS
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::SRV, bufferLocation);
+#ifndef NDEBUG
+    bindState.bindMask |= (1ull << rootParameterIndex);
+#endif // NDEBUG
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
     bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+#ifndef NDEBUG
+    ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
+#endif // NDEBUG
 }
 
 void ShaderExportStreamer::SetComputeRootUnorderedAccessView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
@@ -634,10 +700,16 @@ void ShaderExportStreamer::SetComputeRootUnorderedAccessView(ShaderExportStreamS
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::UAV, bufferLocation);
+#ifndef NDEBUG
+    bindState.bindMask |= (1ull << rootParameterIndex);
+#endif // NDEBUG
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
     bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+#ifndef NDEBUG
+    ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
+#endif // NDEBUG
 }
 
 void ShaderExportStreamer::SetGraphicsRootUnorderedAccessView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
@@ -646,10 +718,16 @@ void ShaderExportStreamer::SetGraphicsRootUnorderedAccessView(ShaderExportStream
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::UAV, bufferLocation);
+#ifndef NDEBUG
+    bindState.bindMask |= (1ull << rootParameterIndex);
+#endif // NDEBUG
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
     bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+#ifndef NDEBUG
+    ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
+#endif // NDEBUG
 }
     
 void ShaderExportStreamer::SetComputeRootConstantBufferView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
@@ -658,10 +736,16 @@ void ShaderExportStreamer::SetComputeRootConstantBufferView(ShaderExportStreamSt
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::CBV, bufferLocation);
+#ifndef NDEBUG
+    bindState.bindMask |= (1ull << rootParameterIndex);
+#endif // NDEBUG
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
     bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+#ifndef NDEBUG
+    ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
+#endif // NDEBUG
 }
 
 void ShaderExportStreamer::SetGraphicsRootConstantBufferView(ShaderExportStreamState* state, UINT rootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS bufferLocation) {
@@ -670,10 +754,16 @@ void ShaderExportStreamer::SetGraphicsRootConstantBufferView(ShaderExportStreamS
 
     // Store persistent
     bindState.persistentRootParameters[rootParameterIndex] = ShaderExportRootParameterValue::VirtualAddress(ShaderExportRootParameterValueType::CBV, bufferLocation);
+#ifndef NDEBUG
+    bindState.bindMask |= (1ull << rootParameterIndex);
+#endif // NDEBUG
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
     bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+#ifndef NDEBUG
+    ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
+#endif // NDEBUG
 }
 
 void ShaderExportStreamer::SetGraphicsRootConstants(ShaderExportStreamState* state, UINT rootParameterIndex, const void* data, uint64_t size, uint64_t offset) {

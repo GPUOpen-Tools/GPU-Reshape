@@ -1,13 +1,17 @@
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 
+// Backend
+#include <Backend/IL/ResourceTokenType.h>
+
 PhysicalResourceMappingTable::PhysicalResourceMappingTable(const Allocators& allocators, const ComRef<DeviceAllocator> &allocator) : states(allocators), allocator(allocator) {
 
 }
 
-void PhysicalResourceMappingTable::Install(uint32_t count) {
+void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType, uint32_t count) {
     std::lock_guard guard(mutex);
     virtualMappingCount = count;
+    type = valueType;
 
     // Mapped description
     D3D12_RESOURCE_DESC desc{};
@@ -118,6 +122,28 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
 void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, const VirtualResourceMapping &mapping) {
     std::lock_guard guard(mutex);
 
+    // Validate type
+    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.type)) {
+        case Backend::IL::ResourceTokenType::Texture:
+            ASSERT(
+                type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||
+                type == D3D12_DESCRIPTOR_HEAP_TYPE_RTV ||
+                type == D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+                "Invalid heap type" 
+            );
+            break;
+        case Backend::IL::ResourceTokenType::Buffer:
+        case Backend::IL::ResourceTokenType::CBuffer:
+            ASSERT(type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Invalid heap type");
+            break;
+        case Backend::IL::ResourceTokenType::Sampler:
+            ASSERT(type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, "Invalid heap type");
+            break;
+        default:
+            ASSERT(false, "Invalid heap type");
+            break;
+    }
+
     ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
     virtualMappings[offset] = mapping;
     
@@ -144,6 +170,28 @@ VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(uint32_t offset)
 
 void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, ResourceState *state, const VirtualResourceMapping &mapping) {
     std::lock_guard guard(mutex);
+
+    // Validate type
+    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.type)) {
+        case Backend::IL::ResourceTokenType::Texture:
+            ASSERT(
+                type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||
+                type == D3D12_DESCRIPTOR_HEAP_TYPE_RTV ||
+                type == D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+                "Invalid heap type"
+            );
+            break;
+        case Backend::IL::ResourceTokenType::Buffer:
+        case Backend::IL::ResourceTokenType::CBuffer:
+            ASSERT(type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Invalid heap type");
+            break;
+        case Backend::IL::ResourceTokenType::Sampler:
+            ASSERT(type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, "Invalid heap type");
+            break;
+        default:
+            ASSERT(false, "Invalid heap type");
+            break;
+    }
 
     // Validation
     ASSERT(offset < virtualMappingCount, "Out of bounds mapping");

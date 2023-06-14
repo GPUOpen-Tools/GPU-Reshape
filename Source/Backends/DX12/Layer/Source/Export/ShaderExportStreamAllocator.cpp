@@ -80,7 +80,7 @@ ShaderExportSegmentInfo *ShaderExportStreamAllocator::AllocateSegment() {
     }
 
 #if LOG_ALLOCATION
-    table->parent->logBuffer.Add("Vulkan", Format("Allocated segment with {} streams", segment->streams.size()));
+    device->parent->logBuffer.Add("Vulkan", Format("Allocated segment with {} streams", segment->streams.size()));
 #endif
 
     // OK

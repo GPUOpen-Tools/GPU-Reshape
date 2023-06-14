@@ -51,11 +51,6 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
         if (heap) {
             // Set count
             state->physicalDescriptorCount = desc->NumDescriptors + bound;
-            
-            // GPU base if heap supports
-            if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
-                state->gpuDescriptorBase = heap->GetGPUDescriptorHandleForHeapStart();
-            }
 
             // Create unique allocator
             state->allocator = new (table.state->allocators, kAllocShaderExport) ShaderExportDescriptorAllocator(table.state->allocators.Tag(kAllocShaderExport), table.next, heap, bound);
@@ -72,6 +67,11 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
             return hr;
         }
     }
+            
+    // GPU base if heap supports
+    if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
+        state->gpuDescriptorBase = heap->GetGPUDescriptorHandleForHeapStart();
+    }
 
     // Set base
     state->cpuDescriptorBase = heap->GetCPUDescriptorHandleForHeapStart();
@@ -81,7 +81,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     state->prmTable = new (table.state->allocators, kAllocPRMT) PhysicalResourceMappingTable(table.state->allocators.Tag(kAllocPRMT), table.state->deviceAllocator);
 
     // Initialize table with count
-    state->prmTable->Install(state->physicalDescriptorCount);
+    state->prmTable->Install(state->type, state->physicalDescriptorCount);
 
     // Register heap in shared table
     table.state->cpuHeapTable.Add(state->type, state, state->cpuDescriptorBase.ptr, state->physicalDescriptorCount, state->stride);
@@ -216,6 +216,8 @@ void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12
         } else {
             heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
+    } else {
+        ASSERT(false, "Failed to associate descriptor handle to heap");
     }
 
     // Pass down callchain
@@ -241,6 +243,8 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
         } else {
             heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
+    } else {
+        ASSERT(false, "Failed to associate descriptor handle to heap");
     }
 
     // Pass down callchain
@@ -260,6 +264,8 @@ void WINAPI HookID3D12DeviceCreateRenderTargetView(ID3D12Device* _this, ID3D12Re
 
             // TODO: SRB masking
             heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state, resource.state->virtualMapping);
+        } else {
+            ASSERT(false, "Failed to associate descriptor handle to heap");
         }
     }
 
@@ -280,6 +286,8 @@ void WINAPI HookID3D12DeviceCreateDepthStencilView(ID3D12Device* _this, ID3D12Re
 
             // TODO: SRB masking
             heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state, resource.state->virtualMapping);
+        } else {
+            ASSERT(false, "Failed to associate descriptor handle to heap");
         }
     }
 
@@ -304,6 +312,8 @@ void WINAPI HookID3D12DeviceCreateSampler(ID3D12Device* _this, const D3D12_SAMPL
             .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler),
             .srb  = 0x1
         });
+    } else {
+        ASSERT(false, "Failed to associate descriptor handle to heap");
     }
 
     // Pass down callchain
@@ -340,6 +350,9 @@ void WINAPI HookID3D12DeviceCopyDescriptors(ID3D12Device* _this, UINT NumDestDes
             // Note: Heaps may change between each range, no guarantee
             DescriptorHeapState* srcHeap = table.state->cpuHeapTable.Find(DescriptorHeapsType, src.ptr);
 
+            // Validation
+            ASSERT(srcHeap && dstHeap, "Failed to associate descriptor handle to heap");
+            
             // Valid heaps?
             if (srcHeap && dstHeap) {
                 const uint32_t srcOffset = srcHeap->GetOffsetFromHeapHandle(src);
@@ -380,6 +393,9 @@ void WINAPI HookID3D12DeviceCopyDescriptorsSimple(ID3D12Device* _this, UINT NumD
     const DescriptorHeapState* dstHeap = table.state->cpuHeapTable.Find(DescriptorHeapsType, DestDescriptorRangeStart.ptr);
     const DescriptorHeapState* srcHeap = table.state->cpuHeapTable.Find(DescriptorHeapsType, SrcDescriptorRangeStart.ptr);
 
+    // Validation
+    ASSERT(dstHeap && srcHeap, "Failed to associate descriptor handle to heap");
+    
     // Valid heaps?
     if (srcHeap && dstHeap) {
         D3D12_CPU_DESCRIPTOR_HANDLE dst = DestDescriptorRangeStart;

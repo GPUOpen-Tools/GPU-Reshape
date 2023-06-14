@@ -4417,16 +4417,44 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
             break;
     }
 
+    // Translate shading model to visibility
+    RootParameterVisibility rootVisibility;
+    switch (table.metadata.shadingModel._class) {
+        default:
+            ASSERT(false, "Invalid shading model");
+            rootVisibility = RootParameterVisibility::Compute;
+            break;
+        case DXILShadingModelClass::CS:
+            rootVisibility = RootParameterVisibility::Compute;
+            break;
+        case DXILShadingModelClass::VS:
+            rootVisibility = RootParameterVisibility::Vertex;
+            break;
+        case DXILShadingModelClass::PS:
+            rootVisibility = RootParameterVisibility::Pixel;
+            break;
+        case DXILShadingModelClass::GS:
+            rootVisibility = RootParameterVisibility::Geometry;
+            break;
+        case DXILShadingModelClass::HS:
+            rootVisibility = RootParameterVisibility::Hull;
+            break;
+        case DXILShadingModelClass::DS:
+            rootVisibility = RootParameterVisibility::Domain;
+            break;
+    }
+
     // Get user space
-    const RootSignatureUserClass& userClass = job.instrumentationKey.physicalMapping->spaces[static_cast<uint32_t>(classType)];
-    const RootSignatureUserSpace& userSpace = userClass.spaces[handle->bindSpace];
+    const RootSignatureVisibilityClass& visibilityClass = job.instrumentationKey.physicalMapping->visibility[static_cast<uint32_t>(rootVisibility)];
+    const RootSignatureUserClass&       userClass       = visibilityClass.spaces[static_cast<uint32_t>(classType)];
+    const RootSignatureUserSpace&       userSpace       = userClass.spaces[handle->bindSpace];
 
     // If the range index is beyond the accessible mappings, it implies arrays or similar
-    if (rangeIndex >= userSpace.mappings.Size()) {
+    if (rangeIndex >= userSpace.mappings.size()) {
         ASSERT(out.dynamicOffset == IL::InvalidID, "Dynamic mapping with out of bounds range index");
 
         // Effective distance, +1 due to end of mappings
-        const uint32_t distanceFromEnd = 1u + (rangeIndex - static_cast<uint32_t>(userSpace.mappings.Size()));
+        const uint32_t distanceFromEnd = 1u + (rangeIndex - static_cast<uint32_t>(userSpace.mappings.size()));
 
         // Assign distance as the dynamic offset to validate
         out.dynamicOffset = program.GetConstants().FindConstantOrAdd(
@@ -4435,7 +4463,7 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
         )->id;
 
         // Set to last index
-        rangeIndex = static_cast<uint32_t>(userSpace.mappings.Size()) - 1u;
+        rangeIndex = static_cast<uint32_t>(userSpace.mappings.size()) - 1u;
     }
 
     // Assign source

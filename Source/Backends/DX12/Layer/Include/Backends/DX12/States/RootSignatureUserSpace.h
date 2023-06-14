@@ -8,5 +8,5 @@
 
 struct RootSignatureUserSpace {
     /// All mappings within this user space
-    TrivialStackVector<RootSignatureUserMapping, 64u> mappings;
+    std::vector<RootSignatureUserMapping> mappings;
 };

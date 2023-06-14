@@ -84,25 +84,71 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
     return bindingInfo;
 }
 
-RootSignatureUserMapping& GetRootMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserClassType type, uint32_t space, uint32_t offset) {
-    RootSignatureUserClass& _class = mapping->spaces[static_cast<uint32_t>(type)];
+void WriteRootVisibilityMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserClassType type, RootParameterVisibility visibility, uint32_t space, uint32_t offset, const RootSignatureUserMapping& value) {
+    // TODO: This is a lot of indirections, perhaps a linear approach is more favorable?
 
-    if (_class.spaces.size() <= space) {
-        _class.spaces.resize(space + 1);
+    // Get visibility class
+    RootSignatureVisibilityClass& visibilityClass = mapping->visibility[static_cast<uint32_t>(visibility)];
+
+    // Get user class
+    RootSignatureUserClass& userClass = visibilityClass.spaces[static_cast<uint32_t>(type)];
+
+    // Ensure user space length
+    if (userClass.spaces.size() <= space) {
+        userClass.spaces.resize(space + 1);
     }
 
-    RootSignatureUserSpace& userSpace = _class.spaces[space];
+    // Get user space
+    RootSignatureUserSpace& userSpace = userClass.spaces[space];
 
-    if (userSpace.mappings.Size() <= offset) {
-        userSpace.mappings.Resize(offset + 1);
+    // Ensure mappings length
+    if (userSpace.mappings.size() <= offset) {
+        userSpace.mappings.resize(offset + 1);
     }
 
-    return userSpace.mappings[offset];
+    // Write mapping
+    userSpace.mappings[offset] = value;
+}
+
+void WriteRootMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserClassType type, D3D12_SHADER_VISIBILITY visibility, uint32_t space, uint32_t offset, const RootSignatureUserMapping& value) {
+    if (visibility == D3D12_SHADER_VISIBILITY_ALL) {
+        // Write to all visibilities
+        for (uint32_t i = 0; i < static_cast<uint32_t>(RootParameterVisibility::Count); i++) {
+            WriteRootVisibilityMapping(mapping, type, static_cast<RootParameterVisibility>(i), space, offset, value);
+        }
+    } else {
+        // Translate local visibility
+        RootParameterVisibility localVisibility;
+        switch (visibility) {
+            default:
+                ASSERT(false, "Invalid visibility");
+                localVisibility = RootParameterVisibility::Vertex;
+                break;
+            case D3D12_SHADER_VISIBILITY_VERTEX:
+                localVisibility = RootParameterVisibility::Vertex;
+                break;
+            case D3D12_SHADER_VISIBILITY_HULL:
+                localVisibility = RootParameterVisibility::Hull;
+                break;
+            case D3D12_SHADER_VISIBILITY_DOMAIN:
+                localVisibility = RootParameterVisibility::Domain;
+                break;
+            case D3D12_SHADER_VISIBILITY_GEOMETRY:
+                localVisibility = RootParameterVisibility::Geometry;
+                break;
+            case D3D12_SHADER_VISIBILITY_PIXEL:
+                localVisibility = RootParameterVisibility::Pixel;
+                break;
+        }
+
+        // Write value
+        WriteRootVisibilityMapping(mapping, type, localVisibility, space, offset, value);
+    }
 }
 
 template<typename T>
 static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount, const D3D12_STATIC_SAMPLER_DESC* staticSamplers, uint32_t staticSamplerCount) {
-    auto* mapping = new (state->allocators, kAllocStateRootSignature) RootSignaturePhysicalMapping(state->allocators.Tag(kAllocStateRootSignature));
+    auto* mapping = new (state->allocators, kAllocStateRootSignature) RootSignaturePhysicalMapping;
 
     // TODO: Could do a pre-pass
 
@@ -147,10 +193,11 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                     // Account for unbounded ranges
                     if (range.NumDescriptors == UINT_MAX) {
                         // Create at space[base + idx]
-                        RootSignatureUserMapping& user = GetRootMapping(mapping, classType, range.RegisterSpace, range.BaseShaderRegister);
+                        RootSignatureUserMapping user;
                         user.rootParameter = i;
                         user.offset = descriptorOffset;
                         user.isUnbounded = true;
+                        WriteRootMapping(mapping, classType, parameter.ShaderVisibility, range.RegisterSpace, range.BaseShaderRegister, user);
 
                         // Next!
                         ASSERT(rangeIdx + 1 == parameter.DescriptorTable.NumDescriptorRanges, "Unbounded range must be last slot");
@@ -158,9 +205,10 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                         // Create a mapping per internal register
                         for (uint32_t registerIdx = 0; registerIdx < range.NumDescriptors; registerIdx++) {
                             // Create at space[base + idx]
-                            RootSignatureUserMapping& user = GetRootMapping(mapping, classType, range.RegisterSpace, range.BaseShaderRegister + registerIdx);
+                            RootSignatureUserMapping user;
                             user.rootParameter = i;
                             user.offset = descriptorOffset + registerIdx;
+                            WriteRootMapping(mapping, classType, parameter.ShaderVisibility, range.RegisterSpace, range.BaseShaderRegister + registerIdx, user);
                         }
 
                         // Next!
@@ -175,10 +223,11 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Constants, sizeof(parameter.Constants)));
 
                 // Create mapping
-                RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.Constants.RegisterSpace, parameter.Constants.ShaderRegister);
+                RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
                 user.offset = 0;
+                WriteRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.ShaderVisibility, parameter.Constants.RegisterSpace, parameter.Constants.ShaderRegister, user);
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV: {
@@ -186,10 +235,11 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Descriptor, sizeof(parameter.Descriptor)));
 
                 // Create mapping
-                RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
+                RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
                 user.offset = 0;
+                WriteRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.ShaderVisibility, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister, user);
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_SRV: {
@@ -197,10 +247,11 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Descriptor, sizeof(parameter.Descriptor)));
 
                 // Create mapping
-                RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::SRV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
+                RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
                 user.offset = 0;
+                WriteRootMapping(mapping, RootSignatureUserClassType::SRV, parameter.ShaderVisibility, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister, user);
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_UAV: {
@@ -208,10 +259,11 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Descriptor, sizeof(parameter.Descriptor)));
 
                 // Create mapping
-                RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::UAV, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister);
+                RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
                 user.offset = 0;
+                WriteRootMapping(mapping, RootSignatureUserClassType::UAV, parameter.ShaderVisibility, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister, user);
                 break;
             }
         }
@@ -225,11 +277,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
         CombineHash(mapping->signatureHash, BufferCRC32Short(&sampler, sizeof(sampler)));
 
         // Create mapping
-        RootSignatureUserMapping& user = GetRootMapping(mapping, RootSignatureUserClassType::Sampler, sampler.RegisterSpace, sampler.ShaderRegister);
+        RootSignatureUserMapping user;
         user.isRootResourceParameter = true;
         user.isStaticSampler = true;
         user.rootParameter = i;
         user.offset = 0;
+        WriteRootMapping(mapping, RootSignatureUserClassType::Sampler, sampler.ShaderVisibility, sampler.RegisterSpace, sampler.ShaderRegister, user);
     }
 
     // OK

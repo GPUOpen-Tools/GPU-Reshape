@@ -348,7 +348,6 @@ public:
     /// Compile all flags
     void CompileProgramFlags(const DXCompileJob& job);
 
-private:
     struct ShadingModel {
         DXILShadingModelClass _class;
     } shadingModel;

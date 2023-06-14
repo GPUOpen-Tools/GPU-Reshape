@@ -114,6 +114,11 @@ struct ShaderExportStreamBindState {
 
     /// All currently bound root data
     ShaderExportRootParameterValue persistentRootParameters[MaxRootSignatureDWord];
+
+#ifndef NDEBUG
+    /// Validation binding mask
+    uint64_t bindMask{0};
+#endif // NDEBUG
 };
 
 /// Single stream state
