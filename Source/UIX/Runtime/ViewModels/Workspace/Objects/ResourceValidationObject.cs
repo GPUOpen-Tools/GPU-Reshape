@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using DynamicData;
 using ReactiveUI;
+using Runtime.Threading;
 using Studio.Models.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Objects
@@ -32,6 +33,12 @@ namespace Studio.ViewModels.Workspace.Objects
         /// </summary>
         public ObservableCollection<ResourceValidationInstance> Instances { get; } = new();
 
+        public ResourceValidationObject()
+        {
+            // Bind pump
+            pump.Bind(Instances);
+        }
+
         /// <summary>
         /// Add a unique instance, only filtered against other invocations of AddUniqueInstance
         /// </summary>
@@ -50,14 +57,14 @@ namespace Studio.ViewModels.Workspace.Objects
             instance.Message = message;
             
             // Add to trackers
-            Instances.Insert(0, instance);
+            pump.Insert(0, instance);
             _unique.Add(message, instance);
             
             // Trim
-            while (Instances.Count > MaxInstances)
+            while (pump.Count > MaxInstances)
             {
-                _unique.Remove(Instances[^1].Message);
-                Instances.RemoveAt(Instances.Count - 1);
+                _unique.Remove(pump[^1].Message);
+                pump.RemoveAt(pump.Count - 1);
             }
         }
 
@@ -70,6 +77,11 @@ namespace Studio.ViewModels.Workspace.Objects
         /// Unique lookup table
         /// </summary>
         private Dictionary<string, ResourceValidationInstance> _unique = new();
+
+        /// <summary>
+        /// Pump for main collection
+        /// </summary>
+        private PumpedList<ResourceValidationInstance> pump = new();
 
         /// <summary>
         /// Internal resource
