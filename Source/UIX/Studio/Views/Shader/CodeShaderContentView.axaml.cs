@@ -268,7 +268,7 @@ namespace Studio.Views.Shader
         /// </summary>
         private void OnValidationObjectChanged()
         {
-            Editor.TextArea.TextView.Redraw();
+            Editor.TextArea.TextView.InvalidateVisual();
         }
 
         /// <summary>
