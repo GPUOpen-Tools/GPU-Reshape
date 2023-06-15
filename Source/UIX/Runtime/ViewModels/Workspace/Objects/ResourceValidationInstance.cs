@@ -14,12 +14,30 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
+        /// Instance message
+        /// </summary>
+        public string MessageNoNotify
+        {
+            get => _message;
+            set => _message = value;
+        }
+
+        /// <summary>
         /// Number of occurrences
         /// </summary>
         public ulong Count
         {
             get => _count;
             set => this.RaiseAndSetIfChanged(ref _count, value);
+        }
+
+        /// <summary>
+        /// Number of occurrences
+        /// </summary>
+        public ulong CountNoNotify
+        {
+            get => _count;
+            set => _count = value;
         }
 
         /// <summary>

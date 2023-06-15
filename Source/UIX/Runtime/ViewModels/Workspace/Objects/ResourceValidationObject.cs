@@ -48,13 +48,13 @@ namespace Studio.ViewModels.Workspace.Objects
             // Existing?
             if (_unique.TryGetValue(message, out ResourceValidationInstance? instance))
             {
-                instance.Count++;
+                instance.CountNoNotify++;
                 return;
             }
 
             // Create new instance
             instance = new ResourceValidationInstance();
-            instance.Message = message;
+            instance.MessageNoNotify = message;
             
             // Add to trackers
             pump.Insert(0, instance);
