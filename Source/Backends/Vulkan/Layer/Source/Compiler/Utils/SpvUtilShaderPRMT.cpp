@@ -199,7 +199,7 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
         const DescriptorLayoutPhysicalMapping& descriptorSetPhysicalMapping = job.instrumentationKey.physicalMapping->descriptorSets.at(dynamic.source.descriptorSet);
 
         // Get the statically known PRMT offset for this binding (descriptor offsets are always the bindings)
-        const uint32_t prmtOffset = descriptorSetPhysicalMapping.prmtOffsets.at(dynamic.source.descriptorOffset);
+        const uint32_t prmtOffset = descriptorSetPhysicalMapping.bindings.at(dynamic.source.descriptorOffset).prmtOffset;
 
         // Offset
         SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);

@@ -1,10 +1,12 @@
 ﻿#pragma once
 
+// Layer
+#include "BindingPhysicalMapping.h"
+
 // Std
 #include <vector>
-#include <cstdint>
 
 struct DescriptorLayoutPhysicalMapping {
-    /// Precomputed PRMT offsets
-    std::vector<uint32_t> prmtOffsets;
+    /// All mappings
+    std::vector<BindingPhysicalMapping> bindings;
 };

@@ -62,24 +62,36 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, 
         // Cache counts
         bindingCount = std::max(bindingCount, binding.binding + 1u);
     }
+
+    // Reserve mappings
+    state->physicalMapping.bindings.resize(bindingCount);
     
     // Cache counts
-    std::vector<uint32_t> bindingSizes(bindingCount);
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
         const VkDescriptorSetLayoutBinding& binding = pCreateInfo->pBindings[i];
-        bindingSizes.at(binding.binding) = binding.descriptorCount;
+
+        // Update mapping
+        BindingPhysicalMapping& mapping = state->physicalMapping.bindings[binding.binding];
+        mapping.type = binding.descriptorType;
+        mapping.immutableSamplers = binding.pImmutableSamplers != nullptr;
+        mapping.bindingCount = binding.descriptorCount;
     }
 
-    // Accumulate PRMT offsets
-    state->physicalMapping.prmtOffsets.resize(bindingCount, 0u);
+    // Accumulate offsets
     for (uint32_t i = 1; i < bindingCount; i++) {
-        state->physicalMapping.prmtOffsets.at(i) = state->physicalMapping.prmtOffsets[i - 1u] + bindingSizes[i - 1u];
+        const BindingPhysicalMapping& last = state->physicalMapping.bindings[i - 1u];
+
+        // Update offset
+        BindingPhysicalMapping& current = state->physicalMapping.bindings[i];
+        current.prmtOffset = last.prmtOffset + last.bindingCount;
     }
 
     // Total number of descriptors
-    if (!state->physicalMapping.prmtOffsets.empty()) {
+    if (!state->physicalMapping.bindings.empty()) {
+        const BindingPhysicalMapping& last = state->physicalMapping.bindings.back();
+        
         // Append from last PRMT offset
-        state->descriptorCount = state->physicalMapping.prmtOffsets.back() + bindingSizes.back();
+        state->descriptorCount = last.prmtOffset + last.bindingCount;
     }
 
     // Store lookup
@@ -130,12 +142,31 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         // Get layout
         const DescriptorSetLayoutState* layout = table->states_descriptorSetLayout.Get(pAllocateInfo->pSetLayouts[i]);
 
-        // Copy offsets
-        state->prmtOffsets.resize(layout->physicalMapping.prmtOffsets.size());
-        std::memcpy(state->prmtOffsets.data(), layout->physicalMapping.prmtOffsets.data(), sizeof(uint32_t) * state->prmtOffsets.size());
-
         // Allocate segment for given layout
         state->segmentID = table->prmTable->Allocate(layout->descriptorCount);
+
+        // Preallocate
+        state->prmtOffsets.reserve(layout->physicalMapping.bindings.size());
+
+        // Prepare bindings
+        for (const BindingPhysicalMapping& mapping : layout->physicalMapping.bindings) {
+            // Copy PRMT offset
+            state->prmtOffsets.push_back(mapping.prmtOffset);
+
+            // Immutable exclusive samplers?
+            if (mapping.immutableSamplers && mapping.type == VK_DESCRIPTOR_TYPE_SAMPLER) {
+                // Prepare mapping
+                VirtualResourceMapping virtualMapping;
+                virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
+                virtualMapping.puid = IL::kResourceTokenPUIDReservedNullSampler;
+                virtualMapping.srb = ~0u;
+            
+                // Update the table with immutable samplers
+                for (uint32_t descriptorIndex = 0; descriptorIndex < mapping.bindingCount; descriptorIndex++) {
+                    table->prmTable->WriteMapping(state->segmentID, mapping.prmtOffset + descriptorIndex, virtualMapping);
+                }
+            }
+        }
 
         // Store lookup
         table->states_descriptorSet.Add(pDescriptorSets[i], state);
