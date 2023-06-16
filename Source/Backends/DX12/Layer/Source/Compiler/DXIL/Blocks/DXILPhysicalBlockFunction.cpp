@@ -3498,6 +3498,13 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         }
                     }
 
+                    // Remap source derived data
+                    for (uint64_t& op : ops) {
+                        if (DXILIDRemapper::IsSourceOperand(op)) {
+                            op = DXILIDRemapper::EncodeUserOperand(table.idMap.GetMappedRelative(sourceRecord->sourceAnchor, static_cast<uint32_t>(op)));
+                        }
+                    }
+
                     // Invoke into result
                     block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, static_cast<uint32_t>(ops.Size()), ops.Data()));
                     break;
