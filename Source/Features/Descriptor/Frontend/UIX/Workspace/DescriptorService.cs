@@ -81,11 +81,11 @@ namespace GRS.Features.Descriptor.UIX.Workspace
                     string contents;
                     if (message.isUndefined != 0)
                     {
-                        contents = $"Descriptor is undefined";
+                        contents = $"Descriptor is undefined, shader expected {typeLookup[message.Flat.compileType]}";
                     }
                     else if (message.isOutOfBounds != 0)
                     {
-                        contents = $"Descriptor indexing out of bounds";
+                        contents = $"Descriptor indexing out of bounds, shader expected {typeLookup[message.Flat.compileType]}";
                     }
                     else
                     {
