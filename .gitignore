@@ -2,6 +2,9 @@
 .idea/
 .idea_modules/
 
+# Python
+venv/
+
 # CMake
 cmake-build-*/
 
