@@ -5,11 +5,14 @@
 #include <Message/MessageStream.h>
 
 void MemoryBridge::Register(MessageID mid, const ComRef<IBridgeListener>& listener) {
+    MutexGuard guard(mutex);
+    
     MessageBucket& bucket = buckets[mid];
     bucket.listeners.push_back(listener);
 }
 
 void MemoryBridge::Deregister(MessageID mid, const ComRef<IBridgeListener>& listener) {
+    MutexGuard guard(mutex);
     MessageBucket& bucket = buckets[mid];
 
     auto&& it = std::find(bucket.listeners.begin(), bucket.listeners.end(), listener);
@@ -19,10 +22,13 @@ void MemoryBridge::Deregister(MessageID mid, const ComRef<IBridgeListener>& list
 }
 
 void MemoryBridge::Register(const ComRef<IBridgeListener>& listener) {
+    MutexGuard guard(mutex);
     orderedListeners.push_back(listener);
 }
 
 void MemoryBridge::Deregister(const ComRef<IBridgeListener>& listener) {
+    MutexGuard guard(mutex);
+    
     auto&& it = std::find(orderedListeners.begin(), orderedListeners.end(), listener);
     if (it != orderedListeners.end()) {
         orderedListeners.erase(it);
