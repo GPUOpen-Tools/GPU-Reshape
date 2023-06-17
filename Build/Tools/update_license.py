@@ -1,6 +1,7 @@
 import glob
 import os
 import sys
+import chardet
 from datetime import datetime
 
 # ------------- #
@@ -32,9 +33,6 @@ extensions = (".h", ".cpp", ".hpp", ".inl", ".cs", ".hlsl", ".cmake")
 mappings = {
     ".cmake": "# "
 }
-
-# Fallback encodings
-encodings = ("ansi", "utf8")
 
 # ---------- #
 # Generation #
@@ -74,13 +72,16 @@ FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TOR
 ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
+# CLRF by default
+license_contents.replace("\n", "\r\n")
+
 # All mapping templates
 license_templates = {}
 
 # Expand mappings
 for ext in extensions:
     comment = mappings[ext] if ext in mappings else "// "
-    license_templates[ext] = comment + license_contents.replace("\n", "\n" + comment) + "\n\n"
+    license_templates[ext] = comment + license_contents.replace("\n", "\n" + comment) + "\r\n\r\n"
 
 # Process all files
 for directory in directories:
@@ -99,40 +100,33 @@ for directory in directories:
         # Diagnostic
         sys.stdout.write(f"Updating '{file}' ...")
 
-        # Try all encodings
-        for encoding in encodings:
-            try:
-                # Copy contents
-                with open(file, encoding=encoding) as f:
-                    contents = f.read()
+        # Copy contents
+        with open(file, 'rb') as f:
+            bin = f.read()
+            encoding = chardet.detect(bin)['encoding']
+            encoding = encoding if encoding is not None else 'ascii'
+            contents = bin.decode(encoding)
 
-                # Perfectly licensed?
-                if contents.startswith(template):
-                    sys.stdout.write(f" Up to date.")
-                    break
+        # Perfectly licensed?
+        if contents.startswith(template):
+            sys.stdout.write(f" Up to date.\n")
+            continue
 
-                # Find first non-comment
-                end = 0
-                while contents.startswith(comment, end):
-                    end = contents.index("\n", end) + 1
+        # Find first non-comment
+        end = 0
+        while contents.startswith(comment, end):
+            end = contents.index("\n", end) + 1
 
-                # If not a license, do not stomp
-                if contents.find(license_header, 0, end) == -1:
-                    end = 0
+        # If not a license, do not stomp
+        if contents.find(license_header, 0, end) == -1:
+            end = 0
 
-                # License the file
-                contents = template + contents[end:]
+        # License the file
+        contents = template + contents[end:]
 
-                # Write contents
-                with open(file, 'w', encoding=encoding) as f:
-                    f.write(contents)
-
-                # OK
-                sys.stdout.write(f" Updated as {encoding}!")
-                break
-            except:
-                sys.stdout.write(f" Tried {encoding}!")
-                pass
+        # Write contents
+        with open(file, 'wb') as f:
+            f.write(contents.encode(encoding))
 
         # OK
-        sys.stdout.write(f"\n")
+        sys.stdout.write(f" Updated as {encoding}!\n")
