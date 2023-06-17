@@ -608,6 +608,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                     instr.source = source;
                     instr.buffer = image;
                     instr.index = coordinate;
+                    instr.offset = IL::InvalidID;
                     basicBlock->Append(instr);
                 } else {
                     // Append

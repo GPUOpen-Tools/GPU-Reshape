@@ -267,6 +267,7 @@ namespace IL {
             instr.source = Source::Invalid();
             instr.buffer = buffer;
             instr.index = index;
+            instr.offset = InvalidID;
             instr.result = map->AllocID();
             return Op(instr);
         }

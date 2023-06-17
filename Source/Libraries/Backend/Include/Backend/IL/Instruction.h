@@ -168,6 +168,7 @@ namespace IL {
 
         ID buffer;
         ID index;
+        ID offset;
     };
 
     struct ResourceSizeInstruction : public Instruction {

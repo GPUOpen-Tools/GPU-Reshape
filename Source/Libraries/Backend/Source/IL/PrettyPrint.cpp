@@ -392,6 +392,10 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         case OpCode::LoadBuffer: {
             auto load = instr->As<IL::LoadBufferInstruction>();
             line << "LoadBuffer buffer:%" << load->buffer << " index:%" << load->index;
+
+            if (load->offset != InvalidID) {
+                line << " offset:%" << load->offset;
+            }
             break;
         }
         case OpCode::ResourceSize: {

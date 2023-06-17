@@ -59,4 +59,33 @@ namespace Backend::IL {
 
         return 0u;
     }
+
+    inline const Type* GetStructuredTypeAtOffsetRef(const Type* type, uint64_t& byteOffset) {
+        switch (type->kind) {
+            default: {
+                const uint64_t byteSize = GetPODNonAlignedTypeByteSize(type);
+                if (byteOffset < byteSize) {
+                    return type;
+                }
+
+                byteOffset -= byteSize;
+                return nullptr;
+            }
+            case TypeKind::Struct: {
+                auto _type = type->As<StructType>();
+                
+                for (const Type* member : _type->memberTypes) {
+                    if (const Type* result = GetStructuredTypeAtOffsetRef(member, byteOffset)) {
+                        return result;
+                    }
+                }
+
+                return nullptr;
+            }
+        }
+    }
+
+    inline const Type* GetStructuredTypeAtOffset(const Type* type, uint64_t byteOffset) {
+        return GetStructuredTypeAtOffsetRef(type, byteOffset);
+    }
 }

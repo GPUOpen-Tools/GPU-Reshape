@@ -37,7 +37,7 @@ namespace Backend::IL {
             case TextureDimension::Texture2DCube:
                 return 3;
             case TextureDimension::Texture2DCubeArray:
-                return 3;
+                return 4;
         }
     }
 }

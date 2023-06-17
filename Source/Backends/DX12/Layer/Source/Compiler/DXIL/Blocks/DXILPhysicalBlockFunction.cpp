@@ -20,6 +20,7 @@
 #include <Backend/IL/Instruction.h>
 #include <Backend/IL/Type.h>
 #include <Backend/IL/ResourceTokenType.h>
+#include <Backend/IL/TypeSize.h>
 
 // Common
 #include <Common/Sink.h>
@@ -1322,6 +1323,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             instr.source = IL::Source::Code(recordIdx);
             instr.buffer = resource;
             instr.index = coordinate;
+            instr.offset = offset;
             basicBlock->Append(instr);
             return true;
         }
@@ -3057,9 +3059,24 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     // Get type
                     const auto* bufferType = typeMap.GetType(_instr->buffer)->As<Backend::IL::BufferType>();
 
+                    // Type used for intrinsic
+                    const Backend::IL::Type* elementType = bufferType->elementType;
+
+                    // Mutate element type on structured
+                    if (auto _struct = elementType->Cast<Backend::IL::StructType>()) {
+                        ASSERT(_instr->offset != IL::InvalidID, "Offset on non-structured type");
+
+                        // Get offset
+                        auto offset = program.GetConstants().GetConstant(_instr->offset)->As<Backend::IL::IntConstant>();
+
+                        // Get the element type
+                        elementType = Backend::IL::GetStructuredTypeAtOffset(_struct, offset->value);
+                        ASSERT(elementType, "Failed to deduce element type from offset");
+                    }
+
                     // Get intrinsic
                     const DXILFunctionDeclaration *intrinsic;
-                    switch (Backend::IL::GetComponentType(bufferType->elementType)->kind) {
+                    switch (Backend::IL::GetComponentType(elementType)->kind) {
                         default:
                             ASSERT(false, "Invalid buffer element type");
                             return;
@@ -3086,10 +3103,14 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->index);
 
                     // C1
-                    ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                        program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                        Backend::IL::UndefConstant{}
-                    )->id);
+                    if (_instr->offset != IL::InvalidID) {
+                        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(_instr->offset);
+                    } else {
+                        ops[3] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                            Backend::IL::UndefConstant{}
+                        )->id);
+                    }
 
                     // Invoke into result
                     block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 4, ops));
