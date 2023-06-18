@@ -63,7 +63,7 @@ specials = {
 mappings = {
     ".cmake": "# ",
     ".py": "# ",
-    ".bat": "rem "
+    ".bat": ":: "
 }
 
 # ---------- #
