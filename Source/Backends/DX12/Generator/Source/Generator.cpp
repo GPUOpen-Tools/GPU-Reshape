@@ -37,7 +37,7 @@
 #include "GenTypes.h"
 
 int main(int argc, char *const argv[]) {
-    argparse::ArgumentParser program("GPUOpen GBV - DX12 Generator");
+    argparse::ArgumentParser program("GPUOpen GRS - DX12 Generator");
 
     // Setup parameters
     program.add_argument("-specjson").help("Path of the specification json file").default_value(std::string(""));

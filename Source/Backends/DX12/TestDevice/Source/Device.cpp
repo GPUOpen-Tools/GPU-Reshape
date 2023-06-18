@@ -108,7 +108,7 @@ void Device::CreateDevice() {
     }
 
     // Pass down the environment
-    D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO gpuOpenInfo{};
+    D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO gpuOpenInfo{};
     gpuOpenInfo.registry = registry;
 
     // Create device

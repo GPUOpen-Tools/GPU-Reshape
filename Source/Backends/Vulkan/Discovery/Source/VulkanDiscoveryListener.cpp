@@ -43,7 +43,7 @@
 bool QueryImplicitLayer(HKEY key, const wchar_t* path) {
     // Determine the json path
     std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
-    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GBV.json";
+    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GRS.json";
 
     // Create properties
     HKEY keyHandle{};
@@ -81,7 +81,7 @@ bool QueryImplicitLayer(HKEY key, const wchar_t* path) {
 bool FindConflictingImplicitLayer(HKEY key, const wchar_t* path) {
     // Determine the json path
     std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
-    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GBV.json";
+    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GRS.json";
 
     // Create properties
     HKEY keyHandle{};
@@ -145,7 +145,7 @@ bool FindConflictingImplicitLayer(HKEY key, const wchar_t* path) {
             std::string keyName(buffer, bufferSize / sizeof(char));
 
             // Bad layer?
-            if (keyName.find("VK_LAYER_GPUOPEN_GBV.json") != std::string::npos && keyName != layerJsonPath) {
+            if (keyName.find("VK_LAYER_GPUOPEN_GRS.json") != std::string::npos && keyName != layerJsonPath) {
                 return true;
             }
         }
@@ -158,7 +158,7 @@ bool FindConflictingImplicitLayer(HKEY key, const wchar_t* path) {
 bool UninstallConflictingImplicitLayer(HKEY key, const wchar_t* path) {
     // Determine the json path
     std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
-    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GBV.json";
+    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GRS.json";
 
     // Create properties
     HKEY keyHandle{};
@@ -225,7 +225,7 @@ bool UninstallConflictingImplicitLayer(HKEY key, const wchar_t* path) {
             std::string keyName(buffer, bufferSize / sizeof(char));
 
             // Bad layer?
-            if (keyName.find("VK_LAYER_GPUOPEN_GBV.json") != std::string::npos && keyName != layerJsonPath) {
+            if (keyName.find("VK_LAYER_GPUOPEN_GRS.json") != std::string::npos && keyName != layerJsonPath) {
                 bucket.push_back(keyName);
             }
         }
@@ -251,7 +251,7 @@ bool UninstallConflictingImplicitLayer(HKEY key, const wchar_t* path) {
 bool InstallImplicitLayer(HKEY key, const wchar_t* path) {
     // Determine the json path
     std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
-    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GBV.json";
+    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GRS.json";
 
     // Create properties
     HKEY keyHandle{};
@@ -302,7 +302,7 @@ bool InstallImplicitLayer(HKEY key, const wchar_t* path) {
 bool UninstallImplicitLayer(HKEY key, const wchar_t* path) {
     // Determine the json path
     std::filesystem::path modulePath    = GetCurrentExecutableDirectory();
-    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GBV.json";
+    std::filesystem::path layerJsonPath = modulePath / "VK_LAYER_GPUOPEN_GRS.json";
 
     // Open properties
     HKEY keyHandle{};
@@ -452,7 +452,7 @@ bool VulkanDiscoveryListener::Stop() {
 void VulkanDiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProcessInfo &info, DiscoveryBootstrappingEnvironment &env) {
     // Add search path and layer
     env.environmentKeys.emplace_back("VK_LAYER_PATH", GetCurrentExecutableDirectory().string());
-    env.environmentKeys.emplace_back("VK_INSTANCE_LAYERS", VK_GPUOPEN_GPUVALIDATION_LAYER_NAME);
+    env.environmentKeys.emplace_back("VK_INSTANCE_LAYERS", VK_GPUOPEN_GPURESHAPE_LAYER_NAME);
 }
 
 bool VulkanDiscoveryListener::IsGloballyInstalled() {

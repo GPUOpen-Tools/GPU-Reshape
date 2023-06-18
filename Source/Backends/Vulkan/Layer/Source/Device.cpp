@@ -110,7 +110,7 @@ VkResult VKAPI_PTR Hook_vkEnumerateDeviceLayerProperties(VkPhysicalDevice physic
 
         // Fill local layer
         VkLayerProperties& localProperty = pProperties[*pPropertyCount - 1];
-        strcpy_s(localProperty.layerName, VK_GPUOPEN_GPUVALIDATION_LAYER_NAME);
+        strcpy_s(localProperty.layerName, VK_GPUOPEN_GPURESHAPE_LAYER_NAME);
         strcpy_s(localProperty.description, "");
         localProperty.implementationVersion = 1;
         localProperty.specVersion = VK_API_VERSION_1_0;
@@ -124,7 +124,7 @@ VkResult VKAPI_PTR Hook_vkEnumerateDeviceExtensionProperties(VkPhysicalDevice ph
     auto table = InstanceDispatchTable::Get(GetInternalTable(physicalDevice));
 
     // Local layer?
-    if (pLayerName && !std::strcmp(pLayerName, VK_GPUOPEN_GPUVALIDATION_LAYER_NAME)) {
+    if (pLayerName && !std::strcmp(pLayerName, VK_GPUOPEN_GPURESHAPE_LAYER_NAME)) {
         *pPropertyCount = 0;
         return VK_SUCCESS;
     }

@@ -40,7 +40,7 @@
 #include "GenTypes.h"
 
 int main(int argc, char *const argv[]) {
-    argparse::ArgumentParser program("GPUOpen GBV - Vulkan Generator");
+    argparse::ArgumentParser program("GPUOpen GRS - Vulkan Generator");
 
     // Setup parameters
     program.add_argument("-vkxml").help("Path of the vulkan specification xml file").required();

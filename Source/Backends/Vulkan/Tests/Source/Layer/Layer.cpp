@@ -33,7 +33,7 @@
 #include <Loader.h>
 
 TEST_CASE_METHOD(Loader, "Layer.StartupAndShutdown", "[Vulkan]") {
-    REQUIRE(AddInstanceLayer("VK_LAYER_GPUOPEN_GBV"));
+    REQUIRE(AddInstanceLayer("VK_LAYER_GPUOPEN_GRS"));
 
     // Create the instance & device
     CreateInstance();

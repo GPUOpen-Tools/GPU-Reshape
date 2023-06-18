@@ -5,7 +5,7 @@
         xmlns:core="clr-namespace:Dock.Model.Core;assembly=Dock.Model"
         xmlns:documents="clr-namespace:Studio.ViewModels.Documents;assembly=UIX.Studio.Runtime">
     <Styles.Resources>
-        <!-- Custom dark style for GBV Studio -->
+        <!-- Custom dark style for GRS Studio -->
 
         <!-- System colors -->
         <Color x:Key="SystemAccentColor">#3E424D</Color>

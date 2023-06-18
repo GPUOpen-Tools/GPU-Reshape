@@ -1,7 +1,7 @@
 {
   "file_format_version" : "1.2.0",
   "layer" : {
-    "name": "VK_LAYER_GPUOPEN_GBV",
+    "name": "VK_LAYER_GPUOPEN_GRS",
     "type": "GLOBAL",
     "library_path": ".\\Backends.Vulkan.Layer.dll",
     "api_version": "1.2.0",
@@ -12,6 +12,6 @@
       "vkGetDeviceProcAddr": "Hook_vkGetDeviceProcAddr",
       "vkNegotiateLoaderLayerInterfaceVersion": "Hook_vkNegotiateLoaderLayerInterfaceVersion"
     },
-    "disable_environment": { "DISABLE_VK_LAYER_GPUOpen_GBV": "1" }
+    "disable_environment": { "DISABLE_VK_LAYER_GPUOpen_GRS": "1" }
   }
 }

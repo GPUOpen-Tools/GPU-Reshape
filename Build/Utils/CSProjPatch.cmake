@@ -26,7 +26,7 @@
 #   See https://gitlab.kitware.com/cmake/cmake/-/issues/23513
 
 # Expected path
-set(CSProjPath "${CMAKE_ARGV3}/gpu-validation.sln")
+set(CSProjPath "${CMAKE_ARGV3}/GPU-Reshape.sln")
 
 # Replace all instances of "Any CPU" with "x64"
 file(READ ${CSProjPath} SolutionContents)

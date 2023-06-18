@@ -39,7 +39,7 @@
 #include "Assembler.h"
 
 int main(int argc, char *const argv[]) {
-    argparse::ArgumentParser argParser("GPUOpen GBV - TestSuite Backend generator");
+    argparse::ArgumentParser argParser("GPUOpen GRS - TestSuite Backend generator");
 
     // Setup parameters
     argParser.add_argument("-shaderType").help("Shader type file").default_value(std::string(""));

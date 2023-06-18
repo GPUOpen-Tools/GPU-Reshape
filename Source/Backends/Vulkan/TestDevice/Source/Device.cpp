@@ -107,8 +107,8 @@ void Device::CreateInstance() {
     std::vector<const char *> enabledLayers = {};
     std::vector<const char *> enabledExtensions = {};
 
-    // Must support the gpu validation layer
-    enabledLayers.push_back(VK_GPUOPEN_GPUVALIDATION_LAYER_NAME);
+    // Must support the gpu reshape layer
+    enabledLayers.push_back(VK_GPUOPEN_GPURESHAPE_LAYER_NAME);
 
     // With validation?
     if (deviceInfo.enableValidation) {
@@ -130,12 +130,12 @@ void Device::CreateInstance() {
     VkApplicationInfo applicationInfo{};
     applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     applicationInfo.apiVersion = VK_API_VERSION_1_2;
-    applicationInfo.pApplicationName = "GPUOpen GBV";
-    applicationInfo.pEngineName = "GPUOpen GBV";
+    applicationInfo.pApplicationName = "GPUOpen GRS";
+    applicationInfo.pEngineName = "GPUOpen GRS";
 
     // Pass down the environment
-    VkGPUOpenGPUValidationCreateInfo gpuOpenInfo{};
-    gpuOpenInfo.sType = VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO;
+    VkGPUOpenGPUReshapeCreateInfo gpuOpenInfo{};
+    gpuOpenInfo.sType = VK_STRUCTURE_TYPE_GPUOPEN_GPURESHAPE_CREATE_INFO;
     gpuOpenInfo.registry = registry;
 
     // Instance info

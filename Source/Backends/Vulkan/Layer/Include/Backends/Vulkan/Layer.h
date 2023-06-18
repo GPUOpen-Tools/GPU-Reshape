@@ -29,17 +29,17 @@
 #include <vulkan/vulkan_core.h>
 
 // TODO: Exactly what is the right way of registering new extension types?
-static constexpr VkStructureType VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO = static_cast<VkStructureType>(1100000001);
+static constexpr VkStructureType VK_STRUCTURE_TYPE_GPUOPEN_GPURESHAPE_CREATE_INFO = static_cast<VkStructureType>(1100000001);
 
 // Layer name
-#define VK_GPUOPEN_GPUVALIDATION_LAYER_NAME "VK_LAYER_GPUOPEN_GBV"
+#define VK_GPUOPEN_GPURESHAPE_LAYER_NAME "VK_LAYER_GPUOPEN_GRS"
 
 // Forward declarations
 class Registry;
 
-/// Optional creation info for GPU Validation
-struct VkGPUOpenGPUValidationCreateInfo {
-    /// Structure type, must be VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO
+/// Optional creation info for GPU Reshape
+struct VkGPUOpenGPUReshapeCreateInfo {
+    /// Structure type, must be VK_STRUCTURE_TYPE_GPUOPEN_GPURESHAPE_CREATE_INFO
     VkStructureType sType;
 
     /// Next extension

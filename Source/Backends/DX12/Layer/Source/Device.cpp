@@ -149,7 +149,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
     REFIID riid, void **ppDevice,
-    const D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info
+    const D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO* info
 ) {
     // Set allocators
 #if !defined(NDEBUG)
@@ -420,7 +420,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
     REFIID riid, void **ppDevice,
-    const D3D12_DEVICE_GPUOPEN_GPU_VALIDATION_INFO* info
+    const D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO* info
 ) {
     // Object
     ID3D12Device *device{nullptr};
@@ -479,7 +479,7 @@ HRESULT WINAPI HookID3D12CreateDevice(
         minimumFeatureLevel,
         riid,
         ppDevice,
-        D3D12DeviceGPUOpenGPUValidationInfo ? &*D3D12DeviceGPUOpenGPUValidationInfo : nullptr
+        D3D12DeviceGPUOpenGPUReshapeInfo ? &*D3D12DeviceGPUOpenGPUReshapeInfo : nullptr
     );
 }
 
@@ -536,7 +536,7 @@ AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCre
         creationParams->FeatureLevel,
         creationParams->iid,
         reinterpret_cast<void**>(&device),
-        D3D12DeviceGPUOpenGPUValidationInfo ? &*D3D12DeviceGPUOpenGPUValidationInfo : nullptr
+        D3D12DeviceGPUOpenGPUReshapeInfo ? &*D3D12DeviceGPUOpenGPUReshapeInfo : nullptr
     );
     if (FAILED(hr)) {
         return AGS_FAILURE;

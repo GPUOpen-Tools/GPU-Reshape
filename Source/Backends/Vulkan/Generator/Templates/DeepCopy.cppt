@@ -21,9 +21,9 @@ void* DeepCopyExtensionDeviceLoader(const void* extension, uint8_t* blob, uint64
 }
 
 uint64_t DeepCopyExtensionByteSizeGPUOpen(const void* extension) {
-    const auto& source = *static_cast<const VkGPUOpenGPUValidationCreateInfo*>(extension);
+    const auto& source = *static_cast<const VkGPUOpenGPUReshapeCreateInfo*>(extension);
 
-    uint64_t blobSize = sizeof(VkGPUOpenGPUValidationCreateInfo);
+    uint64_t blobSize = sizeof(VkGPUOpenGPUReshapeCreateInfo);
 
     if (source.pNext) {
         blobSize += DeepCopyExtensionByteSize(source.pNext);
@@ -33,9 +33,9 @@ uint64_t DeepCopyExtensionByteSizeGPUOpen(const void* extension) {
 }
 
 void* DeepCopyExtensionGPUOpen(const void* extension, uint8_t* blob, uint64_t& blobOffset) {
-    auto* _mutable = reinterpret_cast<VkGPUOpenGPUValidationCreateInfo*>(blob[blobOffset]);
-    std::memcpy(_mutable, extension, sizeof(VkGPUOpenGPUValidationCreateInfo));
-    blobOffset += sizeof(VkGPUOpenGPUValidationCreateInfo);
+    auto* _mutable = reinterpret_cast<VkGPUOpenGPUReshapeCreateInfo*>(blob[blobOffset]);
+    std::memcpy(_mutable, extension, sizeof(VkGPUOpenGPUReshapeCreateInfo));
+    blobOffset += sizeof(VkGPUOpenGPUReshapeCreateInfo);
 
     return _mutable;
 }
@@ -47,7 +47,7 @@ static uint64_t DeepCopyExtensionByteSize(const void* extension) {
         default:
             ASSERT(false, "Unexpected extension type to structure");
             return 0;
-        case VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO:
+        case VK_STRUCTURE_TYPE_GPUOPEN_GPURESHAPE_CREATE_INFO:
             return DeepCopyExtensionByteSizeGPUOpen(extension);
         case VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO:
             return DeepCopyExtensionByteSizeDeviceLoader(extension);
@@ -60,7 +60,7 @@ static void* DeepCopyExtension(const void* extension, uint8_t* blob, uint64_t& b
         default:
             ASSERT(false, "Unexpected extension type to structure");
             return nullptr;
-        case VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO:
+        case VK_STRUCTURE_TYPE_GPUOPEN_GPURESHAPE_CREATE_INFO:
             return DeepCopyExtensionGPUOpen(extension, blob, blobOffset);
         case VK_STRUCTURE_TYPE_LOADER_DEVICE_CREATE_INFO:
             return DeepCopyExtensionDeviceLoader(extension, blob, blobOffset);

@@ -1,4 +1,4 @@
-project(gpu-validation)
+project(GPU-Reshape)
 
 # Requirements
 cmake_minimum_required(VERSION 3.17)

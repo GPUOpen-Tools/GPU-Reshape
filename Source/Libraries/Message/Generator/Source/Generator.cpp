@@ -48,7 +48,7 @@
 #include <Language.h>
 
 int main(int argc, char *const argv[]) {
-    argparse::ArgumentParser program("GPUOpen GBV - Message Generator");
+    argparse::ArgumentParser program("GPUOpen GRS - Message Generator");
 
     // Setup parameters
     program.add_argument("-libs").help("Path of a library for extensions").default_value(std::string(""));

@@ -64,7 +64,7 @@ VkResult VKAPI_PTR Hook_vkEnumerateInstanceLayerProperties(uint32_t *pPropertyCo
     }
 
     if (pProperties) {
-        strcpy_s(pProperties->layerName, "VK_LAYER_GPUOPEN_GBV");
+        strcpy_s(pProperties->layerName, "VK_LAYER_GPUOPEN_GRS");
         strcpy_s(pProperties->description, "");
         pProperties->implementationVersion = 1;
         pProperties->specVersion = VK_API_VERSION_1_0;
@@ -118,7 +118,7 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     table->Populate(*pInstance, getInstanceProcAddr);
 
     // Find optional create info
-    if (auto createInfo = FindStructureType<VkGPUOpenGPUValidationCreateInfo>(pCreateInfo, VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO)) {
+    if (auto createInfo = FindStructureType<VkGPUOpenGPUReshapeCreateInfo>(pCreateInfo, VK_STRUCTURE_TYPE_GPUOPEN_GPURESHAPE_CREATE_INFO)) {
         // Environment is pre-created at this point
         table->registry.SetParent(createInfo->registry);
     } else {

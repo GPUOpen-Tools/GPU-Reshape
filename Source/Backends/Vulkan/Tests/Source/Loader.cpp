@@ -124,12 +124,12 @@ void Loader::CreateInstance() {
     VkApplicationInfo applicationInfo{};
     applicationInfo.sType            = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     applicationInfo.apiVersion       = VK_API_VERSION_1_2;
-    applicationInfo.pApplicationName = "GPUOpen GBV";
-    applicationInfo.pEngineName      = "GPUOpen GBV";
+    applicationInfo.pApplicationName = "GPUOpen GRS";
+    applicationInfo.pEngineName      = "GPUOpen GRS";
 
     // Pass down the environment
-    VkGPUOpenGPUValidationCreateInfo gpuOpenInfo{};
-    gpuOpenInfo.sType    = VK_STRUCTURE_TYPE_GPUOPEN_GPUVALIDATION_CREATE_INFO;
+    VkGPUOpenGPUReshapeCreateInfo gpuOpenInfo{};
+    gpuOpenInfo.sType    = VK_STRUCTURE_TYPE_GPUOPEN_GPURESHAPE_CREATE_INFO;
     gpuOpenInfo.registry = environment.GetRegistry();
 
     // Instance info

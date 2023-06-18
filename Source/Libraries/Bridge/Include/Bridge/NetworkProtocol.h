@@ -27,7 +27,7 @@
 #include <Message/MessageStream.h>
 
 struct MessageStreamHeaderProtocol {
-    static constexpr uint64_t kMagic = 'GBVS';
+    static constexpr uint64_t kMagic = 'GRSS';
 
     /// Magic header for validation
     uint64_t magic = kMagic;

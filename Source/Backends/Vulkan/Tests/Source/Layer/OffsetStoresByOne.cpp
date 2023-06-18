@@ -119,7 +119,7 @@ public:
 };
 
 TEST_CASE_METHOD(Loader, "Layer.Feature.OffsetStoresByOne", "[Vulkan]") {
-    REQUIRE(AddInstanceLayer("VK_LAYER_GPUOPEN_GBV"));
+    REQUIRE(AddInstanceLayer("VK_LAYER_GPUOPEN_GRS"));
 
     Registry* registry = GetRegistry();
 
