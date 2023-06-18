@@ -39,7 +39,7 @@ base_year = 2023
 directories = [
     "../../Build/**/*.*",
     "../../Source/**/*.*",
-    "../../ThirdParty/*.*"
+    "../../ThirdParty/*.*",
     "../../*.*"
 ]
 
