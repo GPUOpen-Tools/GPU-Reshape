@@ -40,6 +40,7 @@ directories = [
     "../../Build/**/*.*",
     "../../Source/**/*.*",
     "../../ThirdParty/*.*"
+    "../../*.*"
 ]
 
 # Ignore paths
@@ -51,12 +52,18 @@ ignore = [
 ]
 
 # All accepted file names
-extensions = (".h", ".cpp", ".hpp", ".inl", ".cs", ".hlsl", ".cmake", ".py")
+extensions = (".h", ".cpp", ".hpp", ".inl", ".cs", ".hlsl", ".cmake", ".py", ".bat")
+
+# All special filenames
+specials = {
+    "CMakeLists.txt": ".cmake"
+}
 
 # Alternate commenting styles
 mappings = {
     ".cmake": "# ",
-    ".py": "# "
+    ".py": "# ",
+    ".bat": "rem "
 }
 
 # ---------- #
@@ -98,7 +105,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEAL
 """
 
 # CLRF by default
-license_contents.replace("\n", "\r\n")
+license_contents = license_contents.replace("\n", "\r\n")
 
 # All mapping templates
 license_templates = {}
@@ -108,17 +115,56 @@ for ext in extensions:
     comment = mappings[ext] if ext in mappings else "// "
     license_templates[ext] = comment + license_contents.replace("\n", "\n" + comment) + "\r\n\r\n"
 
+
+# Compare two strings, ignoring line ending differences
+def starts_with_no_le(a, b):
+    alen = len(a)
+    blen = len(b)
+
+    # Iteration offsets
+    aoffset = 0
+    boffset = 0
+
+    # While both offsets are in bounds
+    while aoffset < alen and boffset < blen:
+        # Skip CRLF
+        if a[aoffset] == '\r':
+            aoffset += 1
+            continue
+
+        # Skip CRLF
+        if b[boffset] == '\r':
+            boffset += 1
+            continue
+
+        # Check character
+        if a[aoffset] != b[boffset]:
+            return False
+        
+        # Next!
+        aoffset += 1
+        boffset += 1
+
+    # At end?
+    return boffset == blen
+
+
 # Process all files
 for directory in directories:
     for file in glob.glob(directory, recursive=True):
-        # Part of extension set?
-        ext = os.path.splitext(file)[1]
-        if not ext in extensions:
+        # Part of extension set? And not a special file?
+        ext      = os.path.splitext(file)[1]
+        basename = os.path.basename(file)
+        if ext not in extensions and basename not in specials:
             continue
 
         # Ignored?
         if any(ign in file.replace("\\", "/") for ign in ignore):
             continue
+
+        # New extension type for license
+        if basename in specials:
+            ext = specials[basename]
 
         # Determine mapping
         comment = mappings[ext] if ext in mappings else "// "
@@ -136,15 +182,18 @@ for directory in directories:
             encoding = encoding if encoding is not None else 'ascii'
             contents = bin.decode(encoding)
 
-        # Perfectly licensed?
-        if contents.startswith(template):
-            sys.stdout.write(f" Up to date.\n")
-            continue
-
         # Find first non-comment
         end = 0
         while contents.startswith(comment, end):
             end = contents.index("\n", end) + 1
+
+        # Eat last newline
+        end = contents.index("\n", end) + 1
+
+        # Perfectly licensed?
+        if starts_with_no_le(contents, template):
+            sys.stdout.write(f" Up to date.\n")
+            continue
 
         # If not a license, do not stomp
         if contents.find(license_header, 0, end) == -1:
