@@ -1,5 +1,0 @@
-<spec>
-    <discovery>
-        <plugin name="Backends.DX12.Discovery"/>
-    </discovery>
-</spec>

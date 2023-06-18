@@ -1,8 +1,0 @@
-<spec>
-    <backend>
-        <plugin name="Features.Concurrency.Backend"/>
-    </backend>
-    <uix>
-        <plugin name="Features.Concurrency.UIX"/>
-    </uix>
-</spec>
