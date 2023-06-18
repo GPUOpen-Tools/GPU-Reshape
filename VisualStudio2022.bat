@@ -12,10 +12,10 @@ echo ------------------------
 echo:
 
 cmake^
-    -G "Visual Studio 16"^
+    -G "Visual Studio 17"^
     -DCMAKE_CONFIGURATION_TYPES:STRING="Debug;Release;MinSizeRel;RelWithDebInfo"^
     -DINSTALL_THIRD_PARTY:BOOL="1"^
-    -B "cmake-build-vs2019"^
+    -B "cmake-build-vs2022"^
     %*
 	
 echo:
@@ -31,5 +31,5 @@ if %ERRORLEVEL% == 0 (
 )
 
 echo|set /p="Solution patching... "
-cmake -P Build/Utils/CSProjPatch.cmake cmake-build-vs2019
+cmake -P Build/Utils/CSProjPatch.cmake cmake-build-vs2022
 echo OK!
