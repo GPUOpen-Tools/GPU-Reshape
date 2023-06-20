@@ -31,29 +31,29 @@ using ReactiveUI;
 
 namespace Studio.Views.Controls
 {
-    public partial class WorkspacePropertyView : UserControl
+    public partial class SectionView : UserControl
     {
         /// <summary>
         /// Title style for the given view
         /// </summary>
-        public static readonly StyledProperty<string> TitleProperty = AvaloniaProperty.Register<WorkspacePropertyView, string>(nameof(Title));
+        public static readonly StyledProperty<string> TitleProperty = AvaloniaProperty.Register<SectionView, string>(nameof(Title));
         
         /// <summary>
         /// Expansion icon style for the given view
         /// </summary>
-        public static readonly StyledProperty<StreamGeometry> ExpansionIconProperty = AvaloniaProperty.Register<WorkspacePropertyView, StreamGeometry>(nameof(ExpansionIcon), ResourceLocator.GetIcon("ChevronUp")!);
+        public static readonly StyledProperty<StreamGeometry> ExpansionIconProperty = AvaloniaProperty.Register<SectionView, StreamGeometry>(nameof(ExpansionIcon), ResourceLocator.GetIcon("ChevronUp")!);
         
         /// <summary>
         /// Expansion style for the given view
         /// </summary>
-        public static readonly StyledProperty<bool> IsExpandedProperty = AvaloniaProperty.Register<WorkspacePropertyView, bool>(nameof(IsExpanded), true);
+        public static readonly StyledProperty<bool> IsExpandedProperty = AvaloniaProperty.Register<SectionView, bool>(nameof(IsExpanded), true);
         
         /// <summary>
         /// Expansion command style for the given view
         /// </summary>
-        public static readonly StyledProperty<ICommand> ExpandCommandProperty = AvaloniaProperty.Register<WorkspacePropertyView, ICommand>(nameof(ExpandCommand));
+        public static readonly StyledProperty<ICommand> ExpandCommandProperty = AvaloniaProperty.Register<SectionView, ICommand>(nameof(ExpandCommand));
 
-        public WorkspacePropertyView()
+        public SectionView()
         {
             ExpandCommand = ReactiveCommand.Create(OnExpand);
         }
@@ -119,7 +119,6 @@ namespace Studio.Views.Controls
         {
             get => GetValue(ExpandCommandProperty);
             set => SetValue(ExpandCommandProperty, value);
-            
         }
     }
 }

@@ -77,6 +77,9 @@ protected:
     void OnMessage(const struct IndexPDPathsMessage& message);
 
 private:
+    /// Load all implicit configurations
+    void LoadStartupConfiguration();
+    
     /// Index a given path and its candidates
     /// \param base pdb root
     /// \param path candidate path

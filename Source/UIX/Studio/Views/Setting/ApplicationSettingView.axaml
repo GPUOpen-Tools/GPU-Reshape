@@ -1,0 +1,28 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:setting="clr-namespace:Studio.ViewModels.Setting"
+             xmlns:studio="clr-namespace:Studio"
+             xmlns:setting1="clr-namespace:Studio.ViewModels.Setting;assembly=UIX.Studio.Runtime"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
+             xmlns:setting2="clr-namespace:Studio.Views.Setting"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Studio.Views.Setting.ApplicationSettingView"
+             x:DataType="setting:ApplicationSettingViewModel" x:CompileBindings="True">
+    <StackPanel Orientation="Vertical">
+        <ItemsControl
+            VerticalAlignment="Stretch"
+            HorizontalAlignment="Stretch"
+            Items="{Binding Items}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="setting1:ISettingViewModel">
+                    <controls:SectionView
+                        Title="{Binding Header, FallbackValue=[SettingName]}">
+                        <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
+                    </controls:SectionView>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

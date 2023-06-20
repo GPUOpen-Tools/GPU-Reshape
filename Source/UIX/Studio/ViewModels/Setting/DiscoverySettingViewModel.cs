@@ -35,26 +35,8 @@ using Studio.ViewModels.Setting;
 
 namespace Studio.ViewModels.Setting
 {
-    public class DiscoverySettingItemViewModel : ReactiveObject, ISettingItemViewModel
+    public class DiscoverySettingViewModel : BaseSettingViewModel
     {
-        /// <summary>
-        /// Given header
-        /// </summary>
-        public string Header
-        {
-            get => _header;
-            set => this.RaiseAndSetIfChanged(ref _header, value);
-        }
-
-        /// <summary>
-        /// Is enabled?
-        /// </summary>
-        public bool IsEnabled
-        {
-            get => _isEnabled;
-            set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
-        }
-
         /// <summary>
         /// Current status text
         /// </summary>
@@ -129,16 +111,11 @@ namespace Studio.ViewModels.Setting
         /// Toggle the local state
         /// </summary>
         public ICommand CleanConflictingInstances { get; }
-        
-        /// <summary>
-        /// Items within
-        /// </summary>
-        public ObservableCollection<ISettingItemViewModel> Items { get; } = new();
 
-        public DiscoverySettingItemViewModel()
+        public DiscoverySettingViewModel() : base("Discovery")
         {
             // Create service
-            _discoveryService = App.Locator.GetService<Services.IBackendDiscoveryService>()?.Service;
+            _discoveryService = App.Locator.GetService<IBackendDiscoveryService>()?.Service;
             
             // Set status on failure
             if (_discoveryService != null)
@@ -269,16 +246,6 @@ namespace Studio.ViewModels.Setting
         /// Internal button text state
         /// </summary>
         private string _buttonText = "...";
-
-        /// <summary>
-        /// Internal header
-        /// </summary>
-        private string _header = "Discovery";
-
-        /// <summary>
-        /// Internal enabled state
-        /// </summary>
-        private bool _isEnabled = true;
 
         /// <summary>
         /// Internal conflicting state

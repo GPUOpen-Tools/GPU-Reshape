@@ -60,6 +60,9 @@ target_include_directories(GRS.Libraries.Backend PUBLIC Include ${CMAKE_CURRENT_
 # Links
 target_link_libraries(GRS.Libraries.Backend PUBLIC GRS.Libraries.Message GRS.Libraries.Bridge GRS.Services.HostResolver)
 
+# Setup dependencies
+ExternalProject_Link(GRS.Libraries.Backend JSON)
+
 #----- Generators -----#
 
 add_library(

@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -22,15 +22,55 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
+using System.Collections.ObjectModel;
+using ReactiveUI;
+using Studio.Services.Suspension;
 
-namespace Studio.Services
+namespace Studio.ViewModels.Setting
 {
-    public interface ISettingsService
+    public class BaseSettingViewModel : ReactiveObject, ISettingViewModel
     {
         /// <summary>
-        /// Root view model
+        /// Given header
         /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        public string Header
+        {
+            get => _header;
+            set => this.RaiseAndSetIfChanged(ref _header, value);
+        }
+
+        /// <summary>
+        /// Setting visibility
+        /// </summary>
+        public SettingVisibility Visibility
+        {
+            get => _visibility;
+            set => this.RaiseAndSetIfChanged(ref _visibility, value);
+        }
+
+        /// <summary>
+        /// Items within
+        /// </summary>
+        [DataMember(DataMemberContract.SubContracted)]
+        public ObservableCollection<ISettingViewModel> Items { get; } = new();
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="name"></param>
+        public BaseSettingViewModel(string name = "Unknown")
+        {
+            Header = name;
+        }
+
+        /// <summary>
+        /// Internal header
+        /// </summary>
+        private string _header = "Settings";
+
+        /// <summary>
+        /// Internal visibility
+        /// </summary>
+        private SettingVisibility _visibility = SettingVisibility.Tool;
     }
 }

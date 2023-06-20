@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -22,15 +22,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
+using System.Collections.Generic;
 
-namespace Studio.Services
+namespace Runtime.Models.Setting
 {
-    public interface ISettingsService
+    public class ApplicationStartupConfig
     {
         /// <summary>
-        /// Root view model
+        /// All applications and their keys
         /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        public Dictionary<string, string> Applications { get; } = new();
     }
 }

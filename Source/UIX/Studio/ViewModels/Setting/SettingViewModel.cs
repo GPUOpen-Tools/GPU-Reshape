@@ -22,15 +22,13 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
-
-namespace Studio.Services
+namespace Studio.ViewModels.Setting
 {
-    public interface ISettingsService
+    public class SettingViewModel : BaseSettingViewModel
     {
-        /// <summary>
-        /// Root view model
-        /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        public SettingViewModel() : base("Settings")
+        {
+            
+        }
     }
 }

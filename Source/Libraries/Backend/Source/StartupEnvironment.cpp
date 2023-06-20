@@ -29,10 +29,14 @@
 #include <Common/Alloca.h>
 #include <Common/FileSystem.h>
 #include <Common/GlobalUID.h>
+#include <Common/String.h>
 
 // Std
 #include <filesystem>
 #include <fstream>
+
+// Json
+#include <nlohmann/json.hpp>
 
 using namespace Backend;
 
@@ -61,9 +65,97 @@ bool StartupEnvironment::LoadFromEnvironment(MessageStream& stream) {
 
     // Assign schema
     stream.ValidateOrSetSchema(OrderedMessageSchema::GetSchema());
+
+    // Write offset
+    const size_t offset = stream.GetByteSize();
     
     // Try to read stream
-    if (!file.read(reinterpret_cast<char*>(stream.ResizeData(size)), size)) {
+    if (!file.read(reinterpret_cast<char*>(stream.ResizeData(offset + size) + offset), size)) {
+        return false;
+    }
+
+    // OK
+    return true;
+}
+
+bool StartupEnvironment::LoadFromConfig(MessageStream &stream) {
+    // Expected path
+    std::string path = (GetIntermediatePath("Settings") / "ApplicationStartupEnvironments.json").string();
+
+    // Present?
+    if (!PathExists(path)) {
+        return false;
+    }
+    
+    /**
+     * Structured startup environment map. The actual startup data is kept in a separate file to keep the indexing
+     * json small for each application.
+     *
+     * Example
+     * {
+     *   "Applications":
+     *   {
+     *     "AppName": "ABCD.env"
+     *   }
+     * }
+     */
+
+    // Try to open file as text
+    std::ifstream in(path);
+    if (!in.good()) {
+        return false;
+    }
+
+    // Parse contents
+    nlohmann::json json{};
+    in >> json;
+
+    // Must have Application key
+    if (!json.contains("Applications")) {
+        return false;
+    }
+
+    // Get the top-level executable name
+    std::string executableName = GetCurrentExecutableName();
+
+    // Find a relevant key
+    std::string startupEnvironmentKey;
+    for (auto&& app : json["Applications"].items()) {
+        if (std::isearch(executableName, app.key()) == executableName.end()) {
+            continue;
+        }
+
+        // Set as candidate
+        startupEnvironmentKey = app.value();
+        break;
+    }
+
+    // No candidates?
+    if (startupEnvironmentKey.empty()) {
+        return false;
+    }
+
+    // Create new environment path
+    std::filesystem::path startupEnvironmentPath = GetIntermediatePath("StartupEnvironment") / startupEnvironmentKey;
+    
+    // Open file
+    std::ifstream file(startupEnvironmentPath, std::ios::binary | std::ios::ate);
+    if (!file.good()) {
+        return false;
+    }
+
+    // Determine size
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    // Assign schema
+    stream.ValidateOrSetSchema(OrderedMessageSchema::GetSchema());
+    
+    // Write offset
+    const size_t offset = stream.GetByteSize();
+    
+    // Try to read stream
+    if (!file.read(reinterpret_cast<char*>(stream.ResizeData(offset + size) + offset), size)) {
         return false;
     }
 

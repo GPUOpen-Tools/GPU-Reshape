@@ -22,15 +22,48 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using ReactiveUI;
 using Studio.ViewModels.Setting;
 
-namespace Studio.Services
+namespace Studio.Views.Setting
 {
-    public interface ISettingsService
+    public partial class PDBSettingView : UserControl, IViewFor
     {
+        public object? ViewModel { get; set; }
+
+        public PDBSettingView()
+        {
+            InitializeComponent();
+
+            // Bind events
+            AddButton.Events().Click.Subscribe(OnAddButton);
+        }
+        
         /// <summary>
-        /// Root view model
+        /// Invoked on add button
         /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        /// <param name="x"></param>
+        private async void OnAddButton(RoutedEventArgs x)
+        {
+            // Create dialog
+            var dialog = new OpenFolderDialog();
+
+            // Get requested folder
+            string? result = await dialog.ShowAsync((Window)this.GetVisualRoot());
+            if (result == null)
+            {
+                return;
+            }
+
+            // Add directory to search directories
+            if (DataContext is PDBSettingViewModel vm)
+            {
+                vm.SearchDirectories.Add(result);
+            }
+        }
     }
 }

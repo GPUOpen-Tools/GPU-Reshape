@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -22,15 +22,20 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
+using System.Collections.ObjectModel;
 
-namespace Studio.Services
+namespace Studio.ViewModels.Setting
 {
-    public interface ISettingsService
+    public interface IPDBSettingViewModel
     {
         /// <summary>
-        /// Root view model
+        /// All search directories
         /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        public ObservableCollection<string> SearchDirectories { get; }
+        
+        /// <summary>
+        /// Recursively index files?
+        /// </summary>
+        public bool SearchInSubFolders { get; set; }
     }
 }

@@ -19,7 +19,7 @@
     <Grid Focusable="True">
         <ScrollViewer>
             <StackPanel Orientation="Vertical" Margin="2.5">
-                <controls:WorkspacePropertyView Title="Workspace">
+                <controls:SectionView Title="Workspace">
                     <Grid>
                         <Grid ColumnDefinitions="100,*" HorizontalAlignment="Stretch">
                             <StackPanel Orientation="Vertical" Grid.Column="0">
@@ -46,7 +46,7 @@
                             Margin="0 0 -60 0"
                             HorizontalAlignment="Right"/>
                     </Grid>
-                </controls:WorkspacePropertyView>
+                </controls:SectionView>
                 
                 <ItemsControl
                     VerticalAlignment="Stretch"
@@ -54,11 +54,11 @@
                     Items="{Binding Properties}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="properties:IPropertyViewModel">
-                            <controls:WorkspacePropertyView
+                            <controls:SectionView
                                 Title="{Binding Name, FallbackValue=[PropertyName]}"
                                 IsExpanded="{Binding Visibility, Mode=OneTime, Converter={StaticResource PropertyVisibilityConverter}}">
                                 <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
-                            </controls:WorkspacePropertyView>
+                            </controls:SectionView>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

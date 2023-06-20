@@ -129,6 +129,16 @@ namespace Message.CLR
             throw new NotSupportedException("Allocation not supported on read only message streams");
         }
 
+        static unsafe ReadOnlyMessageStream FromBytes(MessageSchema schema, byte[] bytes)
+        {
+            ReadOnlyMessageStream stream = new ReadOnlyMessageStream();
+            stream.Pin = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+            stream.Ptr = (byte*)stream.Pin.Value.AddrOfPinnedObject();
+            stream.Schema = schema;
+            stream.Size = (ulong)bytes.Length;
+            return stream;
+        }
+
         // Optional pin
         public GCHandle? Pin;
 

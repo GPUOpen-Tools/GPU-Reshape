@@ -82,6 +82,10 @@ void PDBController::Handle(const MessageStream *streams, uint32_t count) {
                     OnMessage(*it.Get<SetPDBPathMessage>());
                     break;
                 }
+                case IndexPDPathsMessage::kID: {
+                    OnMessage(*it.Get<IndexPDPathsMessage>());
+                    break;
+                }
             }
         }
     }

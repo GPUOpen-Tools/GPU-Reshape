@@ -22,15 +22,20 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
+using System;
 
-namespace Studio.Services
+namespace Studio.Models.Suspension
 {
-    public interface ISettingsService
+    public class ColdValue
     {
         /// <summary>
-        /// Root view model
+        /// Optional, type for dynamic instantiation
         /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        public Type? Type;
+        
+        /// <summary>
+        /// Underlying value
+        /// </summary>
+        public object? Value;
     }
 }

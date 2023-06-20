@@ -1,0 +1,46 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="20"
+             x:Class="Studio.Views.Controls.EditLabel"
+             Height="20">
+    <Grid x:Name="HitArea" Background="Transparent">
+        <TextBox 
+            x:Name="TextBox"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Left"
+            Height="20"
+            MinWidth="50"
+            IsVisible="False"
+            BorderThickness="0"
+            Background="Transparent"
+            Padding="0"
+            Margin="5 0 0 0"
+            Text="{Binding $parent[UserControl].Text}"/>
+    
+        <TextBlock 
+            VerticalAlignment="Center" 
+            HorizontalAlignment="Left" 
+            MinWidth="50" 
+            Height="20" 
+            x:Name="Label" 
+            Margin="5 0 0 0" 
+            Text="{Binding $parent[UserControl].Text}"/>
+    
+        <Button
+            x:Name="CloseButton"
+            Command="{Binding $parent[UserControl].CloseCommand}"
+            CommandParameter="{Binding}"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Right"
+            Background="Transparent"
+            Padding="0"
+            BorderThickness="0"
+            IsVisible="False"
+            Width="20"
+            Height="22">
+            <PathIcon Data="{StaticResource Close}" Width="10" />
+        </Button>
+    </Grid>
+</UserControl>

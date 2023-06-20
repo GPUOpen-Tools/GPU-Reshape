@@ -22,15 +22,26 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
+using System;
 
-namespace Studio.Services
+namespace Studio.Services.Suspension
 {
-    public interface ISettingsService
+    [Flags]
+    public enum DataMemberContract
     {
         /// <summary>
-        /// Root view model
+        /// Default contract
         /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        None = 0,
+        
+        /// <summary>
+        /// Contained values are reconstructed and bound recursively
+        /// </summary>
+        SubContracted = 1,
+        
+        /// <summary>
+        /// Suspension is allowed to populate the container
+        /// </summary>
+        Populate = 2
     }
 }

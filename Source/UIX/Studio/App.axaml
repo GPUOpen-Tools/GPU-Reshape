@@ -11,7 +11,7 @@
 
     <Application.Styles>
         <StyleInclude Source="avares://GPUReshape/Icons.axaml" />
-        <StyleInclude Source="avares://GPUReshape/Themes/WorkspacePropertyView.axaml" />
+        <StyleInclude Source="avares://GPUReshape/Themes/SectionView.axaml" />
     </Application.Styles>
 
     <Application.Resources>

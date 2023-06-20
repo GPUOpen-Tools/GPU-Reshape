@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -22,15 +22,16 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
+using Message.CLR;
 
-namespace Studio.Services
+namespace Studio.ViewModels.Setting
 {
-    public interface ISettingsService
+    public interface IStartupEnvironmentSetting
     {
         /// <summary>
-        /// Root view model
+        /// Commit all application specific startup data
         /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        /// <param name="view"></param>
+        public void Commit(OrderedMessageView<ReadWriteMessageStream> view);
     }
 }

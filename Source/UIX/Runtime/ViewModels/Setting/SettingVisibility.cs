@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -22,15 +22,26 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
+using System;
 
-namespace Studio.Services
+namespace Studio.ViewModels.Setting
 {
-    public interface ISettingsService
+    [Flags]
+    public enum SettingVisibility
     {
         /// <summary>
-        /// Root view model
+        /// No visibility
         /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        None = 0,
+        
+        /// <summary>
+        /// Appear in inline views, if present
+        /// </summary>
+        Inline,
+        
+        /// <summary>
+        /// Appear in tool tree views, if present
+        /// </summary>
+        Tool
     }
 }

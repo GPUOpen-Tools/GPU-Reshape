@@ -10,9 +10,10 @@
         xmlns:r="using:Studio.Resources"
         xmlns:controls="clr-namespace:Studio.Views.Controls"
         xmlns:sm="clr-namespace:Studio.ViewModels.Setting;assembly=UIX.Studio.Runtime"
+        xmlns:setting="clr-namespace:Studio.ViewModels.Setting"
         mc:Ignorable="d"
         d:DesignWidth="500" d:DesignHeight="300"
-        Width="500" Height="300"
+        Width="600" Height="400"
         UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
         WindowState="Normal" WindowStartupLocation="CenterScreen"
         TransparencyLevelHint="None"
@@ -47,10 +48,10 @@
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
                 SelectedItem="{Binding SelectedSettingItem}"
-                Items="{Binding SettingItemViewModel.Items}">
+                Items="{Binding TreeItemViewModel.Items}">
                 <TreeView.Styles>
                     <Style Selector="TreeViewItem">
-                        <Setter Property="IsExpanded" Value="{Binding Path=(sm:ISettingItemViewModel).IsExpanded}"/>
+                        <Setter Property="IsExpanded" Value="{Binding Path=(setting:SettingTreeItemViewModel).IsExpanded}"/>
                     </Style>
                 </TreeView.Styles>
                 <TreeView.ItemTemplate>
@@ -66,7 +67,7 @@
             <controls:LocatorViewHost 
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 
-                DataContext="{Binding SelectedSettingItem}" />
+                DataContext="{Binding SelectedSettingItem.Setting}" />
         </Grid>
     </Grid>
 </Window>

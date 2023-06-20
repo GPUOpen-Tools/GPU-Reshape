@@ -1,0 +1,54 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:setting="clr-namespace:Studio.ViewModels.Setting"
+             xmlns:studio="clr-namespace:Studio"
+             xmlns:setting1="clr-namespace:Studio.ViewModels.Setting;assembly=UIX.Studio.Runtime"
+             xmlns:controls="clr-namespace:Studio.Views.Controls"
+             xmlns:setting2="clr-namespace:Studio.Views.Setting"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Studio.Views.Setting.ApplicationListSettingView"
+             x:DataType="setting:ApplicationListSettingViewModel" x:CompileBindings="True">
+    <UserControl.DataContext>
+        <setting:ApplicationListSettingViewModel />
+    </UserControl.DataContext>
+
+    <StackPanel Orientation="Vertical">
+        <TextBlock Text="Applications" />
+        <Grid>
+            <TextBlock Margin="15 0 0 0" Text="[Disclaimer: Placeholder UIX, to be polished]"/>
+
+            <Button
+                Command="{Binding Add}"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Right"
+                Background="Transparent"
+                Padding="0"
+                BorderThickness="0"
+                Width="20"
+                Height="22">
+                <PathIcon Data="{StaticResource Add}" Width="15" />
+            </Button>
+        </Grid>
+
+        <Grid Margin="15,5,0,0">
+            <ListBox
+                Items="{Binding Items}"
+                SelectedItem="{Binding SelectedItem}"
+                MinHeight="200">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <controls:EditLabel
+                            Text="{Binding (setting:ApplicationSettingViewModel).ApplicationName, Mode=TwoWay}"
+                            CloseCommand="{Binding
+                                ((setting:ApplicationListSettingViewModel)DataContext).Close,
+                                RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=UserControl}
+                            }"
+                            Height="20" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+    </StackPanel>
+</UserControl>

@@ -92,7 +92,7 @@ namespace Studio
             AvaloniaLocator locator = AvaloniaLocator.CurrentMutable;
             
             // Cold suspension service
-            locator.BindToSelf<ISuspensionService>(new SuspensionService("GPUReshape.Config.json"));
+            locator.BindToSelf<ISuspensionService>(new SuspensionService(System.IO.Path.Combine("Intermediate", "Settings", "Suspension.json")));
             
             // Locator
             locator.BindToSelf<ILocatorService>(new LocatorService());

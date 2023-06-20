@@ -22,66 +22,66 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Reactive.Linq;
-using System.Windows.Input;
-using Avalonia;
-using Avalonia.Threading;
-using Bridge.CLR;
-using Discovery.CLR;
-using DynamicData;
-using Message.CLR;
-using ReactiveUI;
-using Studio.Services;
-using Studio.ViewModels.Setting;
-using Studio.ViewModels.Tools;
 
-namespace Studio.ViewModels
+namespace Studio.ViewModels.Setting
 {
-    public class SettingsViewModel : ReactiveObject
+    public interface ISettingViewModel
     {
         /// <summary>
-        /// The root settings view model
+        /// Display header of this settings item
         /// </summary>
-        public ISettingViewModel SettingViewModel { get; }
+        public string Header { get; set; }
         
         /// <summary>
-        /// The root tree-wise item view model
+        /// Items within this settings item
         /// </summary>
-        public SettingTreeItemViewModel TreeItemViewModel { get; }
+        public ObservableCollection<ISettingViewModel> Items { get; }
 
         /// <summary>
-        /// Currently selected setting
+        /// Given visibility of this view model
         /// </summary>
-        public SettingTreeItemViewModel? SelectedSettingItem
-        {
-            get => _selectedSettingItem;
-            set => this.RaiseAndSetIfChanged(ref _selectedSettingItem, value);
-        }
+        public SettingVisibility Visibility { get; }
         
-        public SettingsViewModel()
+    }
+
+    public static class SettingItemExtensions
+    {
+        /// <summary>
+        /// Get an item from this context settings item
+        /// </summary>
+        /// <param name="self"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns>null if not found</returns>
+        public static T? GetItem<T>(this ISettingViewModel self) where T : ISettingViewModel
         {
-            // Get service
-            var settingsService = App.Locator.GetService<ISettingsService>() ?? throw new InvalidOperationException();
-
-            // Set root view model
-            SettingViewModel = settingsService.ViewModel;
-
-            // Create tree item
-            TreeItemViewModel = new SettingTreeItemViewModel()
+            foreach (ISettingViewModel settingItemViewModel in self.Items)
             {
-                Setting = SettingViewModel
-            };
+                if (settingItemViewModel is T typed)
+                {
+                    return typed;
+                }
+            }
 
-            // Assume first item
-            SelectedSettingItem = TreeItemViewModel.Items[0];
+            return default;
         }
-
+        
         /// <summary>
-        /// Internal selected setting
+        /// Get an enumerable on settings of type
         /// </summary>
-        private SettingTreeItemViewModel? _selectedSettingItem;
+        /// <param name="self"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static IEnumerable<T> Where<T>(this ISettingViewModel self) where T : class
+        {
+            foreach (ISettingViewModel settingViewModel in self.Items)
+            {
+                if (settingViewModel is T typed)
+                {
+                    yield return typed;
+                }
+            }
+        }
     }
 }

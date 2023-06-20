@@ -22,15 +22,25 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
+using ReactiveUI;
 
-namespace Studio.Services
+namespace Studio.Views.Setting
 {
-    public interface ISettingsService
+    public partial class DiscoverySettingView : UserControl, IViewFor
     {
-        /// <summary>
-        /// Root view model
-        /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        public object? ViewModel { get; set; }
+
+        public DiscoverySettingView()
+        {
+            InitializeComponent();
+        }
+
+        private void InitializeComponent()
+        {
+            AvaloniaXamlLoader.Load(this);
+        }
     }
 }

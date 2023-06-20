@@ -22,26 +22,12 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using DynamicData;
-using Studio.ViewModels.Menu;
-using Studio.ViewModels.Setting;
+using System;
 
-namespace Studio.Services
+namespace Studio.Services.Suspension
 {
-    public class SettingsService : ISettingsService
+    public class SuspensionKey : Attribute
     {
-        /// <summary>
-        /// Root settings view model
-        /// </summary>
-        public ISettingItemViewModel ViewModel { get; } = new SettingItemViewModel();
-
-        public SettingsService()
-        {
-            // Standard settings
-            ViewModel.Items.AddRange(new ISettingItemViewModel[]
-            {
-                new DiscoverySettingItemViewModel()
-            });
-        }
+        
     }
 }

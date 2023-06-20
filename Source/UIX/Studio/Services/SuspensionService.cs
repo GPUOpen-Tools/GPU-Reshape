@@ -23,7 +23,9 @@
 // 
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -34,6 +36,7 @@ using System.Reflection;
 using Avalonia;
 using Newtonsoft.Json;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 using Studio.Models.Suspension;
 using Studio.Services.Suspension;
 
@@ -65,25 +68,162 @@ namespace Studio.Services
         /// <param name="obj"></param>
         public void BindTypedSuspension(INotifyPropertyChanged obj)
         {
-            // Part of the cold storage?
-            if (_coldObjects.TryGetValue(obj.GetType(), out ColdObject? coldObject))
+            // Already has a cold cache?
+            if (!_typedSuspensions.TryGetValue(obj.GetType(), out ObjectSuspension? suspension))
             {
-                // Load cold members
-                foreach (PropertyInfo info in obj.GetType().GetProperties()
-                             .Where(p => p.IsDefined(typeof(DataMember), false))
-                             .Where(p => coldObject.Storage.ContainsKey(p.Name)))
-                {
-                    info.SetValue(obj, coldObject.Storage[info.Name]);
-                }
+                suspension = new();
+                suspension.ColdObject = new ColdObject();
+                _typedSuspensions[obj.GetType()] = suspension;
             }
-            else
+
+            // Assign current host object
+            suspension.HotObject = obj;
+            
+            // Bind the suspension tree from root
+            BindSuspensionTree(obj, suspension.ColdObject!, SuspensionFlag.Attach);
+        }
+
+        /// <summary>
+        /// Bind a suspension tree recursively
+        /// </summary>
+        /// <param name="notify">current hot object</param>
+        /// <param name="coldObject">current cold object</param>
+        /// <param name="flags">suspension flags</param>
+        private void BindSuspensionTree(INotifyPropertyChanged notify, ColdObject coldObject, SuspensionFlag flags)
+        {
+            // Load cold members
+            foreach (PropertyInfo info in notify.GetType().GetProperties().Where(p => p.IsDefined(typeof(DataMember), false)))
             {
-                // Create cold storage for type
-                _coldObjects[obj.GetType()] = new();
+                var contract = info.GetCustomAttribute<DataMember>();
+             
+                // Is sub-contracted?
+                if (contract!.Contract.HasFlag(DataMemberContract.SubContracted))
+                {
+                    object? propertyObject = info.GetValue(notify);
+                    
+                    // Sub-contracted types must be enumerable
+                    if (propertyObject is not IEnumerable enumerable)
+                    {
+                        continue;
+                    }
+                    
+                    // Get the storage object
+                    var collectionColdObject = coldObject.GetOrAdd<ColdObject>(info.Name, propertyObject.GetType());
+                    _objectAssociations[propertyObject] = collectionColdObject;
+
+                    // Visit all contained elements in hot object
+                    var set = new HashSet<string>();
+                    foreach (object item in enumerable)
+                    {
+                        string key = GetSuspensionKeyFor(item);
+                        
+                        // Get or construct storage
+                        var itemColdObject = collectionColdObject.GetOrAdd<ColdObject>(key, item.GetType());
+
+                        // If the child can notify, bind suspension on the object
+                        if (item is INotifyPropertyChanged notifyChild)
+                        {
+                            BindSuspensionTree(notifyChild, itemColdObject, flags);
+                        }
+
+                        // Mark as contained
+                        set.Add(key);
+                    }
+
+                    // Does the contract allow population?
+                    if (contract.Contract.HasFlag(DataMemberContract.Populate))
+                    {
+                        // Must be a list
+                        if (propertyObject is not IList list)
+                        {
+                            continue;
+                        }
+
+                        // For all suspended objects not already present
+                        foreach ((string? key, ColdValue value) in collectionColdObject.Storage.Where(p => !set.Contains(p.Key)).ToList())
+                        {
+                            // Instantiate the hot object
+                            var item = Activator.CreateInstance(value.Type!);
+                            if (item == null)
+                            {
+                                continue;
+                            }
+                            
+                            // Create child cold object
+                            var itemColdObject = collectionColdObject.GetOrAdd<ColdObject>(key, item.GetType());
+
+                            // If the child can notify, bind suspension on the object
+                            if (item is INotifyPropertyChanged notifyChild)
+                            {
+                                BindSuspensionTree(notifyChild, itemColdObject, flags);
+                            }
+                            
+                            // Add to list
+                            list.Add(item);
+                        }
+                    }
+
+                    // Subscribe to changes
+                    if (flags.HasFlag(SuspensionFlag.Attach) && propertyObject is INotifyCollectionChanged notifyCollection)
+                    {
+                        notifyCollection.CollectionChanged += OnCollectionChanged;
+                    }
+                }
+                else
+                {
+                    // Is cached?
+                    if (coldObject.TryGetHotValue(info.Name, info.PropertyType, out object? value))
+                    {
+                        // Are we populating a valid list?
+                        if (info.GetValue(notify) is IList list)
+                        {
+                            // Cold data must be enumerable
+                            if (value is not IEnumerable enumerable)
+                            {
+                                continue;
+                            }
+                            
+                            // Add all cold items
+                            foreach (object item in enumerable)
+                            {
+                                list.Add(item);
+                            }
+                        }
+                        else
+                        {
+                            // Assume assignable
+                            info.SetValue(notify, value);
+                        }
+                    }
+                    else
+                    {
+                        // Not in the cold cache, add an entry
+                        coldObject.Storage[info.Name] = new ColdValue()
+                        {
+                            Type = null,
+                            Value = info.GetValue(notify)
+                        };
+                    }
+                    
+                    // Subscribe to changes
+                    if (flags.HasFlag(SuspensionFlag.Attach) && info.GetValue(notify) is INotifyCollectionChanged notifyCollection)
+                    {
+                        notifyCollection.CollectionChanged += OnCollectionChanged;
+                    }
+                }
             }
             
             // Subscribe to changes
-            obj.PropertyChanged += OnTypedPropertyChanged;
+            if (flags.HasFlag(SuspensionFlag.Attach))
+            {
+                notify.PropertyChanged += OnPropertyChanged;
+            }
+            
+            // Does the object request notifications?
+            if (flags.HasFlag(SuspensionFlag.Notify) && notify is INotifySuspension notifySuspension)
+            {
+                notifySuspension.Suspending();
+            }
         }
 
         /// <summary>
@@ -91,10 +231,10 @@ namespace Studio.Services
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void OnTypedPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             // Validate sender
-            if (sender == null || !_coldObjects.TryGetValue(sender.GetType(), out ColdObject? coldObject))
+            if (sender == null)
             {
                 return;
             }
@@ -105,11 +245,58 @@ namespace Studio.Services
                 return;
             }
 
-            // Store value
-            coldObject.Storage[e.PropertyName] = info.GetValue(sender);
+            // Schedule serialization
+            _serialize.OnNext(Unit.Default);
+        }
+
+        /// <summary>
+        /// Invoked on collection changes
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            // Validate sender
+            if (sender == null)
+            {
+                return;
+            }
+
+            // Does not need to be sub-contracted, f.x. observable collections of primitive data
+            if (_objectAssociations.TryGetValue(sender, out ColdObject? collectionColdObject))
+            {
+                foreach (object? item in e.NewItems ?? Array.Empty<object?>())
+                {
+                    // Create cold object on new item
+                    var itemColdObject = collectionColdObject.GetOrAdd<ColdObject>(GetSuspensionKeyFor(item), item.GetType());
+                
+                    // If the child can notify, bind suspension on the object
+                    if (item is INotifyPropertyChanged notify)
+                    {
+                        BindSuspensionTree(notify, itemColdObject, SuspensionFlag.Attach);
+                    }
+                }
+            }
             
             // Schedule serialization
             _serialize.OnNext(Unit.Default);
+        }
+
+        /// <summary>
+        /// Get the suspension key for an object
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        private string GetSuspensionKeyFor(object obj)
+        {
+            // Has [SuspensionKey] attribute?
+            if (obj.GetType().GetProperties().FirstOrDefault(p => p.IsDefined(typeof(SuspensionKey))) is { } key)
+            {
+                return key.GetValue(obj)?.ToString() ?? throw new Exception("Suspension keys must be valid");
+            }
+            
+            // Assume type
+            return obj.GetType().ToString();
         }
 
         /// <summary>
@@ -131,7 +318,7 @@ namespace Studio.Services
             }
             catch
             {
-                return false;
+                Logging.Error("Failed to deserialize suspension data");
             }
 
             // OK
@@ -145,14 +332,73 @@ namespace Studio.Services
         /// <returns></returns>
         private void WriteTo(string path)
         {
+            // Remove old associations
+            _objectAssociations.Clear();
+            
+            // Rebind, without attachments, the suspension tree
+            // Forces the cold object tree to be recreated
+            foreach (var (key, value) in _typedSuspensions)
+            {
+                // No associated hot object?
+                if (value.HotObject == null)
+                {
+                    continue;
+                }
+                
+                // Remove known storage
+                value.ColdObject!.Storage.Clear();
+                
+                // Rebuild tree
+                BindSuspensionTree(value.HotObject, value.ColdObject, SuspensionFlag.Notify);
+            }
+            
+            // Ensure path exists
+            if (Path.GetDirectoryName(path) is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+            }
+            
             try
             {
                 File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
             }
             catch
             {
-                // ignored
+                Logging.Error("Failed to serialize suspension data");
             }
+        }
+
+        private class ObjectSuspension
+        {
+            /// <summary>
+            /// Root cold object
+            /// </summary>
+            public ColdObject? ColdObject;
+            
+            /// <summary>
+            /// Current hot object
+            /// </summary>
+            [JsonIgnore]
+            public INotifyPropertyChanged? HotObject;
+        }
+
+        [Flags]
+        private enum SuspensionFlag
+        {
+            /// <summary>
+            /// No flags
+            /// </summary>
+            None = 0,
+            
+            /// <summary>
+            /// Attach subscribers
+            /// </summary>
+            Attach = 1,
+            
+            /// <summary>
+            /// Notify listeners
+            /// </summary>
+            Notify = 2
         }
         
         /// <summary>
@@ -169,7 +415,12 @@ namespace Studio.Services
         /// All cold objects
         /// </summary>
         [JsonProperty] 
-        private Dictionary<Type, ColdObject> _coldObjects = new();
+        private Dictionary<Type, ObjectSuspension> _typedSuspensions = new();
+
+        /// <summary>
+        /// Current object associations
+        /// </summary>
+        private Dictionary<object, ColdObject> _objectAssociations = new();
         
         /// <summary>
         /// Default json settings

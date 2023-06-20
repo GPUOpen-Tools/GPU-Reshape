@@ -5,12 +5,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:Studio.Views.Controls">
     <Design.PreviewWith>
-        <local:WorkspacePropertyView Width="250" Height="100" Title="Poof">
+        <local:SectionView Width="250" Height="100" Title="Poof">
             <TextBlock Text="Poof!" />
-        </local:WorkspacePropertyView>
+        </local:SectionView>
     </Design.PreviewWith>
 
-    <Style Selector="local|WorkspacePropertyView">
+    <Style Selector="local|SectionView">
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="VerticalAlignment" Value="Stretch" />
         <Setter Property="Margin" Value="0,0,0,2.5" />

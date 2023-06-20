@@ -91,7 +91,7 @@ static bool ApplyStartupEnvironment(DeviceState* state) {
     
     // Attempt to load
     Backend::StartupEnvironment startupEnvironment;
-    if (!startupEnvironment.LoadFromEnvironment(stream)) {
+    if (!startupEnvironment.LoadFromConfig(stream) && !startupEnvironment.LoadFromEnvironment(stream)) {
         return false;
     }
 

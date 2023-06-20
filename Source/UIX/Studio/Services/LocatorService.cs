@@ -37,7 +37,10 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.Documents.ShaderDescriptor), typeof(ViewModels.Documents.ShaderViewModel));
             
             // Setting types
-            AddDerived(typeof(ViewModels.Setting.DiscoverySettingItemViewModel), typeof(Views.Setting.DiscoverySettingItemView));
+            AddDerived(typeof(ViewModels.Setting.DiscoverySettingViewModel), typeof(Views.Setting.DiscoverySettingView));
+            AddDerived(typeof(ViewModels.Setting.ApplicationListSettingViewModel), typeof(Views.Setting.ApplicationListSettingView));
+            AddDerived(typeof(ViewModels.Setting.ApplicationSettingViewModel), typeof(Views.Setting.ApplicationSettingView));
+            AddDerived(typeof(ViewModels.Setting.PDBSettingViewModel), typeof(Views.Setting.PDBSettingView));
             
             // Window types
             AddDerived(typeof(ViewModels.SettingsViewModel), typeof(Views.SettingsWindow));

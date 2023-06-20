@@ -78,6 +78,16 @@ namespace std {
         );
     }
 
+    static inline string::const_iterator isearch(const string &a, const string &b) {
+        return std::search(
+            a.begin(), a.end(),
+            b.begin(), b.end(),
+            [](char a, char b) {
+                return tolower(a) == tolower(b);
+            }
+        );
+    }
+
     // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
     inline bool ends_with(std::string_view const &value, std::string_view const &ending) {
         if (ending.size() > value.size()) return false;

@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -22,48 +22,40 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using System.Windows.Input;
+using AvaloniaEdit.Utils;
+using ReactiveUI;
+using Studio.Services.Suspension;
 
 namespace Studio.ViewModels.Setting
 {
-    public interface ISettingItemViewModel
+    public class ApplicationSettingViewModel : BaseSettingViewModel
     {
         /// <summary>
-        /// Display header of this settings item
+        /// Given application name
         /// </summary>
-        public string Header { get; set; }
-        
-        /// <summary>
-        /// Items within this settings item
-        /// </summary>
-        public ObservableCollection<ISettingItemViewModel> Items { get; }
-        
-        /// <summary>
-        /// Is this setting item enabled?
-        /// </summary>
-        public bool IsEnabled { get; set; }
-    }
-
-    public static class SettingItemExtensions
-    {
-        /// <summary>
-        /// Get an item from this context settings item
-        /// </summary>
-        /// <param name="self"></param>
-        /// <typeparam name="T"></typeparam>
-        /// <returns>null if not found</returns>
-        public static T? GetItem<T>(this ISettingItemViewModel self) where T : ISettingItemViewModel
+        [DataMember, SuspensionKey]
+        public string ApplicationName
         {
-            foreach (ISettingItemViewModel settingItemViewModel in self.Items)
+            get => _applicationName;
+            set
             {
-                if (settingItemViewModel is T typed)
-                {
-                    return typed;
-                }
+                this.RaiseAndSetIfChanged(ref _applicationName, value);
+                Header = System.IO.Path.GetFileName(value);
             }
-
-            return default;
         }
+
+        public ApplicationSettingViewModel() : base("Unknown")
+        {
+            // Build in settings
+            Items.AddRange(new ISettingViewModel[]
+            {
+                new PDBSettingViewModel()
+            });
+        }
+
+        /// <summary>
+        /// Internal application name
+        /// </summary>
+        private string _applicationName = "Unknown";
     }
 }

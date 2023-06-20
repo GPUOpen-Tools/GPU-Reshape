@@ -4,8 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:setting="clr-namespace:Studio.ViewModels.Setting"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Studio.Views.Setting.DiscoverySettingItemView"
-             x:DataType="setting:DiscoverySettingItemViewModel" x:CompileBindings="True">
+             x:Class="Studio.Views.Setting.DiscoverySettingView"
+             x:DataType="setting:DiscoverySettingViewModel" x:CompileBindings="True">
     <StackPanel Orientation="Vertical">
         <TextBlock Text="Discovery"/>
                 

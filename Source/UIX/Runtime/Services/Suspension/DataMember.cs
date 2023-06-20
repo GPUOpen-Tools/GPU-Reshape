@@ -31,6 +31,14 @@ namespace Studio.Services.Suspension
     /// </summary>
     public class DataMember : Attribute
     {
+        /// <summary>
+        /// Given suspension contact
+        /// </summary>
+        public DataMemberContract Contract;
         
+        public DataMember(DataMemberContract contract = DataMemberContract.None)
+        {
+            Contract = contract;
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿// 
+// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -22,25 +22,13 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
-using ReactiveUI;
-
-namespace Studio.Views.Setting
+namespace Runtime.ViewModels.Traits
 {
-    public partial class DiscoverySettingItemView : UserControl, IViewFor
+    public interface INotifySuspension
     {
-        public object? ViewModel { get; set; }
-
-        public DiscoverySettingItemView()
-        {
-            InitializeComponent();
-        }
-
-        private void InitializeComponent()
-        {
-            AvaloniaXamlLoader.Load(this);
-        }
+        /// <summary>
+        /// Invoked on suspensions
+        /// </summary>
+        public void Suspending();
     }
 }

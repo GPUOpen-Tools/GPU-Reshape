@@ -76,7 +76,7 @@ static bool ApplyStartupEnvironment(DeviceDispatchTable* table) {
     
     // Attempt to load
     Backend::StartupEnvironment startupEnvironment;
-    if (!startupEnvironment.LoadFromEnvironment(stream)) {
+    if (!startupEnvironment.LoadFromConfig(stream) && !startupEnvironment.LoadFromEnvironment(stream)) {
         return false;
     }
 

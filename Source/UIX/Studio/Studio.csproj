@@ -81,7 +81,7 @@
         <DependentUpon>WorkspaceView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <Compile Update="Themes\WorkspacePropertyView.axaml.cs">
+      <Compile Update="Themes\SectionView.axaml.cs">
         <DependentUpon>WorkspacePropertyView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
@@ -161,6 +161,18 @@
       </Compile>
       <Compile Update="Views\Workspace\Objects\MissingDetailView.axaml.cs">
         <DependentUpon>MissingDetailView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Setting\ApplicationListSettingView.axaml.cs">
+        <DependentUpon>ApplicationListSettingItemView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Setting\PDBSettingView.axaml.cs">
+        <DependentUpon>PDBSettingView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
+      <Compile Update="Views\Setting\ApplicationSettingView.axaml.cs">
+        <DependentUpon>ApplicationSettingView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
     </ItemGroup>

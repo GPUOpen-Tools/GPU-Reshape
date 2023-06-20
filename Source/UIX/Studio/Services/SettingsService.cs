@@ -22,45 +22,30 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using ReactiveUI;
+using System.ComponentModel;
+using DynamicData;
 using Studio.ViewModels.Setting;
 
-namespace Studio.ViewModels.Setting
+namespace Studio.Services
 {
-    public class SettingItemViewModel : ReactiveObject, ISettingItemViewModel
+    public class SettingsService : ISettingsService
     {
         /// <summary>
-        /// Given header
+        /// Root settings view model
         /// </summary>
-        public string Header
+        public ISettingViewModel ViewModel { get; } = new SettingViewModel();
+        
+        public SettingsService()
         {
-            get => _header;
-            set => this.RaiseAndSetIfChanged(ref _header, value);
+            // Standard settings
+            ViewModel.Items.AddRange(new ISettingViewModel[]
+            {
+                new DiscoverySettingViewModel(),
+                new ApplicationListSettingViewModel()
+            });
+            
+            // Bind suspension
+            ((INotifyPropertyChanged)ViewModel).BindTypedSuspension();
         }
-
-        /// <summary>
-        /// Is enabled?
-        /// </summary>
-        public bool IsEnabled
-        {
-            get => _isEnabled;
-            set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
-        }
-
-        /// <summary>
-        /// Items within
-        /// </summary>
-        public ObservableCollection<ISettingItemViewModel> Items { get; } = new();
-
-        /// <summary>
-        /// Internal header
-        /// </summary>
-        private string _header = "Settings";
-
-        /// <summary>
-        /// Internal enabled state
-        /// </summary>
-        private bool _isEnabled = true;
     }
 }

@@ -22,15 +22,18 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.ViewModels.Setting;
+using Avalonia.Controls;
+using ReactiveUI;
 
-namespace Studio.Services
+namespace Studio.Views.Setting
 {
-    public interface ISettingsService
+    public partial class ApplicationSettingView : UserControl, IViewFor
     {
-        /// <summary>
-        /// Root view model
-        /// </summary>
-        public ISettingViewModel ViewModel { get; }
+        public object? ViewModel { get; set; }
+
+        public ApplicationSettingView()
+        {
+            InitializeComponent();
+        }
     }
 }

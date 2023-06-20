@@ -36,6 +36,11 @@ namespace Backend {
         /// \param stream destination stream
         /// \return success code
         bool LoadFromEnvironment(MessageStream& stream);
+        
+        /// Populate a stream from the config
+        /// \param stream destination stream
+        /// \return success code
+        bool LoadFromConfig(MessageStream& stream);
 
         /// Write a startup environment
         /// \param stream given stream to write
