@@ -52,7 +52,7 @@ ignore = [
 ]
 
 # All accepted file names
-extensions = (".h", ".cpp", ".hpp", ".inl", ".cs", ".hlsl", ".cmake", ".py", ".bat")
+extensions = (".h", ".cpp", ".hpp", ".inl", ".cs", ".hlsl", ".cmake", ".py", ".bat", ".axaml", ".xml")
 
 # All special filenames
 specials = {
@@ -61,9 +61,12 @@ specials = {
 
 # Alternate commenting styles
 mappings = {
-    ".cmake": "# ",
-    ".py": "# ",
-    ".bat": ":: "
+    "default": ("// ", "// ", ""),
+    ".cmake": ("# ", "# ", ""),
+    ".py": ("# ", "# ", ""),
+    ".bat": (":: ", ":: ", ""),
+    ".axaml": ("<!--\n", "  ", "\n-->"),
+    ".xml": ("<!--\n", "  ", "\n-->")
 }
 
 # ---------- #
@@ -112,8 +115,8 @@ license_templates = {}
 
 # Expand mappings
 for ext in extensions:
-    comment = mappings[ext] if ext in mappings else "// "
-    license_templates[ext] = comment + license_contents.replace("\n", "\n" + comment) + "\r\n\r\n"
+    comment = mappings[ext] if ext in mappings else mappings["default"]
+    license_templates[ext] = comment[0] + license_contents.replace("\n", "\n" + comment[1]) + comment[2] + "\r\n\r\n"
 
 
 # Compare two strings, ignoring line ending differences
@@ -149,6 +152,9 @@ def starts_with_no_le(a, b):
     return boffset == blen
 
 
+# Diagnostics
+n_processed_count = 0
+
 # Process all files
 for directory in directories:
     for file in glob.glob(directory, recursive=True):
@@ -167,7 +173,7 @@ for directory in directories:
             ext = specials[basename]
 
         # Determine mapping
-        comment = mappings[ext] if ext in mappings else "// "
+        comment = mappings[ext] if ext in mappings else mappings["default"]
 
         # Given template
         template = license_templates[ext]
@@ -184,7 +190,7 @@ for directory in directories:
 
         # Find first non-comment
         end = 0
-        while contents.startswith(comment, end):
+        while any(len(x) > 0 and contents.startswith(x, end) for x in comment):
             end = contents.index("\n", end) + 1
 
         # Eat last newline
@@ -208,3 +214,13 @@ for directory in directories:
 
         # OK
         sys.stdout.write(f" Updated as {encoding}!\n")
+        n_processed_count += 1
+
+# Separate
+sys.stdout.write("\n")
+
+# Diagnostic
+if n_processed_count > 0:
+    sys.stdout.write(f"Updated {n_processed_count} files\n")
+else:
+    sys.stdout.write(f"No files updated\n")
