@@ -657,6 +657,7 @@ void Device::InitializeResources(CommandBufferID commandBuffer) {
     for (const UpdateCommand& cmd : updateCommands) {
         switch (cmd.type) {
             case UpdateCommandType::CopyBuffer: {
+                // Copy data
                 info.commandList->CopyBufferRegion(
                     cmd.copyBuffer.dest,
                     0u,
@@ -664,6 +665,15 @@ void Device::InitializeResources(CommandBufferID commandBuffer) {
                     0u,
                     cmd.copyBuffer.dataSize
                 );
+
+                // Barrier
+                D3D12_RESOURCE_BARRIER barrier{};
+                barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+                barrier.Transition.pResource = cmd.copyBuffer.dest;
+                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+                barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+                info.commandList->ResourceBarrier(1u, &barrier);
                 break;
             }
         }
