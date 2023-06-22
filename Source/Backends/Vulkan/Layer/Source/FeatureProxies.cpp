@@ -369,13 +369,13 @@ void FeatureHook_vkCmdBeginRenderPass::operator()(CommandBufferObject *object, C
                 ASSERT(false, "Invalid handle");
                 break;
             case VK_ATTACHMENT_STORE_OP_STORE:
-                attachmentInfo.loadAction = AttachmentAction::Store;
+                attachmentInfo.storeAction = AttachmentAction::Store;
                 break;
             case VK_ATTACHMENT_STORE_OP_DONT_CARE:
-                attachmentInfo.loadAction = AttachmentAction::Discard;
+                attachmentInfo.storeAction = AttachmentAction::Discard;
                 break;
             case VK_ATTACHMENT_STORE_OP_NONE:
-                attachmentInfo.loadAction = AttachmentAction::None;
+                attachmentInfo.storeAction = AttachmentAction::None;
                 break;
         }
     }
