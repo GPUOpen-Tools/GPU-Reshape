@@ -331,12 +331,12 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
         device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), initialState, isHotSwap, state->object);
     }
 
+    // Pass down the controller
+    device->instrumentationController->BeginCommandList();
+
     // Copy proxy table
     state->proxies = device->commandListProxies;
     state->proxies.context = &state->userContext;
-
-    // Pass down the controller
-    device->instrumentationController->BeginCommandList();
 
     // Cleanup user context
     state->userContext.eventStack.Flush();

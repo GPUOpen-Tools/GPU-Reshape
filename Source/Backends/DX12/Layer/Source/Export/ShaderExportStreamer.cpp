@@ -532,6 +532,15 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
 }
 
 void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDescriptorAllocation& descriptors, DescriptorHeapState* resourceHeap, DescriptorHeapState* samplerHeap, const D3D12_CONSTANT_BUFFER_VIEW_DESC& constantsChunk) {
+    // Null descriptor for missing heaps
+    D3D12_SHADER_RESOURCE_VIEW_DESC nullView{};
+    nullView.Format = DXGI_FORMAT_R32_UINT;
+    nullView.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+    nullView.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    nullView.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    nullView.Buffer.NumElements = 1u;
+
+    // Has relevant heap?
     if (resourceHeap) {
         ASSERT(resourceHeap->type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Mismatch heap type");
         
@@ -541,11 +550,11 @@ void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDesc
             &resourceHeap->prmTable->GetView(),
             descriptorLayout.GetResourcePRMT(descriptors.info.cpuHandle)
         );
-
-        // Create views to shader resources
-        device->shaderDataHost->CreateDescriptors(descriptorLayout.GetShaderData(descriptors.info.cpuHandle, 0), sharedCPUHeapAllocator->GetAdvance());
+    } else {
+        device->object->CreateShaderResourceView(nullptr, &nullView, descriptorLayout.GetResourcePRMT(descriptors.info.cpuHandle));
     }
 
+    // Has relevant heap?
     if (samplerHeap) {
         ASSERT(samplerHeap->type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, "Mismatch heap type");
         
@@ -555,10 +564,15 @@ void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDesc
             &samplerHeap->prmTable->GetView(),
             descriptorLayout.GetSamplerPRMT(descriptors.info.cpuHandle)
         );
+    } else {
+        device->object->CreateShaderResourceView(nullptr, &nullView, descriptorLayout.GetSamplerPRMT(descriptors.info.cpuHandle));
     }
 
     // Create constants CBV
     device->object->CreateConstantBufferView(&constantsChunk, descriptorLayout.GetShaderConstants(descriptors.info.cpuHandle));
+
+    // Create views to shader resources
+    device->shaderDataHost->CreateDescriptors(descriptorLayout.GetShaderData(descriptors.info.cpuHandle, 0), sharedCPUHeapAllocator->GetAdvance());
 }
 
 void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {

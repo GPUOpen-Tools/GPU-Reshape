@@ -521,7 +521,7 @@ void InstrumentationController::CommitInstrumentation() {
     uint64_t featureBitSet = 0;
     
     // Early out
-    if (immediateBatch.dirtyObjects.empty()) {
+    if (immediateBatch.dirtyObjects.empty() && !pendingResummarization) {
         return;
     }
 
@@ -568,8 +568,12 @@ void InstrumentationController::CommitInstrumentation() {
     // Task group
     // TODO: Tie lifetime of this task group to the controller
     TaskGroup group(dispatcher.GetUnsafe());
-    group.Chain(BindDelegate(this, InstrumentationController::CommitShaders), batch);
-    group.Chain(BindDelegate(this, InstrumentationController::CommitPipelines), batch);
+    if (!batch->dirtyShaderModules.empty()) {
+        group.Chain(BindDelegate(this, InstrumentationController::CommitShaders), batch);
+    }
+    if (!batch->dirtyPipelines.empty()) {
+        group.Chain(BindDelegate(this, InstrumentationController::CommitPipelines), batch);
+    }
     group.Chain(BindDelegate(this, InstrumentationController::CommitTable), batch);
 
     // Start the group
