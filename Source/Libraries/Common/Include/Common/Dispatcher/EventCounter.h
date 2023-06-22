@@ -42,7 +42,7 @@ struct EventCounter {
     void IncrementCounter(uint64_t value = 1) {
         MutexGuard guard(mutex);
         counter += value;
-        var.NotifyOne();
+        var.NotifyAll();
     }
 
     /// Reset this counter, not thread safe
