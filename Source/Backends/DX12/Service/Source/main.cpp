@@ -33,6 +33,9 @@
 #include <cstdint>
 #include <iostream>
 
+/// Use bootstrapper sessioning, useful for iteration
+#define USE_BOOTSTRAP_SESSIONS 0
+
 /// Shared Win32 hook
 HHOOK Hook;
 
@@ -93,6 +96,7 @@ int main(int32_t argc, const char *const *argv) {
 
     std::cout << "OK." << std::endl;
 
+#if USE_BOOTSTRAP_SESSIONS
     // Host all sessions under intermediate
     std::filesystem::path sessionDir = GetIntermediatePath("Bootstrapper\\Sessions");
 
@@ -110,6 +114,10 @@ int main(int32_t argc, const char *const *argv) {
 
     // Copy current bootstrapper
     std::filesystem::copy(GetCurrentModuleDirectory() / "GRS.Backends.DX12.Bootstrapper.dll", sessionPath);
+#else // USE_BOOTSTRAP_SESSIONS
+    // No sessions
+    std::filesystem::path sessionPath = GetCurrentModuleDirectory() / "GRS.Backends.DX12.Bootstrapper.dll";
+#endif // USE_BOOTSTRAP_SESSIONS
 
     // Load the boostrapper
     HMODULE bootstrapperModule = LoadLibraryW(sessionPath.wstring().c_str());
