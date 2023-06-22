@@ -42,6 +42,11 @@ public:
     /// \return success code
     virtual bool Install() = 0;
 
+    /// Post install this feature
+    /// Useful for streaming reliant operations
+    /// \return success code
+    virtual bool PostInstall() { return true; }
+
     /// Get general information about this feature
     /// \return feature info
     virtual FeatureInfo GetInfo() = 0;

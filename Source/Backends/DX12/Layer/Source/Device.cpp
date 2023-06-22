@@ -306,6 +306,12 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
 
         // Query and apply environment
         ENSURE(ApplyStartupEnvironment(state), "Failed to apply startup environment");
+
+        // Finally, post-install all features for late work
+        // This must be done after all dependent states are initialized
+        for (const ComRef<IFeature>& feature : state->features) {
+            ENSURE(feature->PostInstall(), "Failed to post-install feature");
+        }
     }
 
     // Cleanup

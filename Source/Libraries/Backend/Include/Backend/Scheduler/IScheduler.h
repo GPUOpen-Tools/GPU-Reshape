@@ -37,6 +37,9 @@ class IScheduler : public TComponent<IScheduler> {
 public:
     COMPONENT(IScheduler);
 
+    /// Wait for all pending submissions
+    virtual void WaitForPending() = 0;
+
     /// Schedule a command buffer
     /// \param queue queue to be scheduled on
     /// \param buffer buffer to be scheduled

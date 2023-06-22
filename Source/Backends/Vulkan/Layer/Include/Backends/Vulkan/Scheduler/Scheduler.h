@@ -59,10 +59,8 @@ public:
     /// Invoke a synchronization point
     void SyncPoint();
 
-    /// Wait for all pending submissions
-    void WaitForPending();
-
     /// Overrides
+    void WaitForPending() override;
     void Schedule(Queue queue, const CommandBuffer &buffer) override;
 
 private:

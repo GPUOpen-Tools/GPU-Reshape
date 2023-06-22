@@ -41,6 +41,7 @@
 #include <Backend/Command/RenderPassInfo.h>
 #include <Backend/Command/CommandBuilder.h>
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
+#include <Backend/Scheduler/IScheduler.h>
 
 // Generated schema
 #include <Schemas/Features/Initialization.h>
@@ -90,6 +91,32 @@ bool InitializationFeature::Install() {
 
     // Register masker
     srbMaskingShaderProgramID = programHost->Register(srbMaskingShaderProgram);
+
+    // OK
+    return true;
+}
+
+bool InitializationFeature::PostInstall() {
+    // Get scheduler
+    auto scheduler = registry->Get<IScheduler>();
+    if (!scheduler) {
+        return false;
+    }
+
+    // Command buffer for stages
+    CommandBuffer  buffer;
+    CommandBuilder builder(buffer);
+
+    // Default sub resource base mask
+    uint32_t fullSRB = ~0u;
+
+    // Mark null resources as initialized
+    builder.StageBuffer(initializationMaskBufferID, IL::kResourceTokenPUIDReservedNullBuffer * sizeof(uint32_t), sizeof(uint32_t), &fullSRB);
+    builder.StageBuffer(initializationMaskBufferID, IL::kResourceTokenPUIDReservedNullTexture * sizeof(uint32_t), sizeof(uint32_t), &fullSRB);
+    
+    // Schedule blocking
+    scheduler->Schedule(Queue::Graphics, buffer);
+    scheduler->WaitForPending();
 
     // OK
     return true;

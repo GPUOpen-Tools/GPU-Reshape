@@ -449,6 +449,12 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     // Query and apply environment
     ENSURE(ApplyStartupEnvironment(table), "Failed to apply startup environment");
 
+    // Finally, post-install all features for late work
+    // This must be done after all dependent states are initialized
+    for (const ComRef<IFeature>& feature : table->features) {
+        ENSURE(feature->PostInstall(), "Failed to post-install feature");
+    }
+
     // OK
     return VK_SUCCESS;
 }

@@ -54,6 +54,7 @@ public:
 
     /// IFeature
     bool Install() override;
+    bool PostInstall() override;
     FeatureInfo GetInfo() override;
     FeatureHookTable GetHookTable() override;
     void CollectMessages(IMessageStorage *storage) override;
