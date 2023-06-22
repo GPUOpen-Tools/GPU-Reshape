@@ -33,6 +33,5 @@ enum class AttachmentAction {
     Store,
     Clear,
     Discard,
-    Keep,
     Resolve
 };

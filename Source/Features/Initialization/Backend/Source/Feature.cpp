@@ -251,7 +251,8 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
 
         // Only mark as initialized if the destination is written to
         if (info.loadAction == AttachmentAction::Clear ||
-            info.storeAction == AttachmentAction::Store) {
+            info.storeAction == AttachmentAction::Store ||
+            info.storeAction == AttachmentAction::Resolve) {
             MaskResourceSRB(context, info.resource.token.puid, ~0u);
         }
     }

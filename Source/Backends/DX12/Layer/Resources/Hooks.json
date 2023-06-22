@@ -146,7 +146,8 @@
         "ClearUnorderedAccessViewUint",
         "ClearUnorderedAccessViewFloat",
         "BeginRenderPass",
-        "EndRenderPass"
+        "EndRenderPass",
+        "OMSetRenderTargets"
       ]
     },
     "ID3D12Fence": {

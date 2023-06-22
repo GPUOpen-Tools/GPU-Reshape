@@ -95,7 +95,9 @@ void CreateDeviceCommandProxies(DeviceState *state) {
 
         if (hookTable.beginRenderPass.IsValid()) {
             state->commandListProxies.featureHooks_BeginRenderPass[i] = hookTable.beginRenderPass;
+            state->commandListProxies.featureHooks_OMSetRenderTargets[i] = hookTable.beginRenderPass;
             state->commandListProxies.featureBitSetMask_BeginRenderPass |= (1ull << i);
+            state->commandListProxies.featureBitSetMask_OMSetRenderTargets |= (1ull << i);
         }
 
         if (hookTable.endRenderPass.IsValid()) {
@@ -118,6 +120,7 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet
     state->commandListProxies.featureBitSet_ResolveSubresourceRegion = state->commandListProxies.featureBitSetMask_ResolveSubresourceRegion & featureSet;
     state->commandListProxies.featureBitSet_BeginRenderPass = state->commandListProxies.featureBitSetMask_BeginRenderPass & featureSet;
     state->commandListProxies.featureBitSet_EndRenderPass = state->commandListProxies.featureBitSetMask_EndRenderPass & featureSet;
+    state->commandListProxies.featureBitSet_OMSetRenderTargets = state->commandListProxies.featureBitSetMask_OMSetRenderTargets & featureSet;
 }
 
 static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue* commandQueue, const D3D12_COMMAND_QUEUE_DESC *desc, const IID &riid, void **pCommandQueue) {

@@ -95,3 +95,7 @@ struct FeatureHook_BeginRenderPass : TFeatureHook<Hooks::BeginRenderPass> {
 struct FeatureHook_EndRenderPass : TFeatureHook<Hooks::EndRenderPass> {
     void operator()(CommandListState *object, CommandContext *context) const;
 };
+
+struct FeatureHook_OMSetRenderTargets : TFeatureHook<Hooks::BeginRenderPass> {
+    void operator()(CommandListState *object, CommandContext *context, UINT NumRenderTargetDescriptors, const D3D12_CPU_DESCRIPTOR_HANDLE *pRenderTargetDescriptors, BOOL RTsSingleHandleToDescriptorRange, const D3D12_CPU_DESCRIPTOR_HANDLE *pDepthStencilDescriptor) const;
+};

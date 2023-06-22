@@ -337,7 +337,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
                 info.storeAction = AttachmentAction::Discard;
                 break;
             case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE:
-                info.storeAction = AttachmentAction::Keep;
+                info.storeAction = AttachmentAction::Store;
                 break;
             case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE:
                 info.storeAction = AttachmentAction::Resolve;
@@ -394,7 +394,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
                 depthInfo.storeAction = AttachmentAction::Discard;
                 break;
             case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE:
-                depthInfo.storeAction = AttachmentAction::Keep;
+                depthInfo.storeAction = AttachmentAction::Store;
                 break;
             case D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE:
                 depthInfo.storeAction = AttachmentAction::Resolve;
@@ -407,6 +407,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
         // Set resource info
         depthInfo.resource.token = GetResourceToken(depthState);
         depthInfo.resource.textureDescriptor = &depthDescriptor;
+        passInfo.depthAttachment = &depthInfo;
     }
 
     // Invoke hook
@@ -418,4 +419,70 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
 void FeatureHook_EndRenderPass::operator()(CommandListState *object, CommandContext *context) const {
     hook.Invoke(context);
+}
+
+void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, CommandContext *context, UINT NumRenderTargetDescriptors, const D3D12_CPU_DESCRIPTOR_HANDLE *pRenderTargetDescriptors, BOOL RTsSingleHandleToDescriptorRange, const D3D12_CPU_DESCRIPTOR_HANDLE *pDepthStencilDescriptor) const {
+    TextureDescriptor* descriptors = ALLOCA_ARRAY(TextureDescriptor, NumRenderTargetDescriptors);
+    AttachmentInfo*    attachments = ALLOCA_ARRAY(AttachmentInfo, NumRenderTargetDescriptors);
+
+    // Get device
+    auto table = GetTable(object->parent);
+    
+    // Translate render targets
+    for (uint32_t i = 0; i < NumRenderTargetDescriptors; i++) {
+        D3D12_CPU_DESCRIPTOR_HANDLE renderTargetHandle;
+        if (RTsSingleHandleToDescriptorRange) {
+            renderTargetHandle = {pRenderTargetDescriptors->ptr + table.next->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV) * i};
+        } else {
+            renderTargetHandle = pRenderTargetDescriptors[i];
+        }
+
+        // Get state
+        ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, renderTargetHandle);
+
+        // Setup descriptor
+        descriptors[i] = TextureDescriptor{
+            .region = TextureRegion { },
+            .uid = 0u
+        };
+
+        // Setup attachment
+        AttachmentInfo& info = attachments[i];
+        info.resource.token = GetResourceToken(state);
+        info.resource.textureDescriptor = descriptors + i;
+        info.loadAction = AttachmentAction::Load;
+        info.storeAction = AttachmentAction::Store;
+    }
+
+    // Render pass info
+    RenderPassInfo passInfo;
+    passInfo.attachmentCount = NumRenderTargetDescriptors;
+    passInfo.attachments = attachments;
+
+    // Optional depth data
+    TextureDescriptor depthDescriptor;
+    AttachmentInfo    depthInfo;
+
+    if (pDepthStencilDescriptor) {
+        ResourceState* depthState = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, *pDepthStencilDescriptor);
+
+        // Setup destination descriptor
+        depthDescriptor = TextureDescriptor{
+            .region = TextureRegion { },
+            .uid = 0u
+        };
+
+        // Setup attachment
+        depthInfo.resource.token = GetResourceToken(depthState);
+        depthInfo.resource.textureDescriptor = &depthDescriptor;
+        depthInfo.loadAction = AttachmentAction::Load;
+        depthInfo.storeAction = AttachmentAction::Store;
+        passInfo.depthAttachment = &depthInfo;
+    }
+
+    // Invoke hook
+    hook.Invoke(
+        context,
+        passInfo
+    );
 }
