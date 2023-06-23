@@ -216,7 +216,11 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
     ZeroMemory(&processInfo, sizeof(processInfo));
 
     // Copy arguments
-    std::string arguments(info.arguments);
+    // Note: Win32 always has the path as the first argument
+    std::stringstream argumentStream;
+    argumentStream << info.applicationPath;
+    argumentStream << " ";
+    argumentStream << info.arguments;
 
     // Load environment set
     EnvironmentArray environmentArray;
@@ -238,7 +242,7 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
     // Attempt to create process
     if (!DetourCreateProcessWithDllsA(
         info.applicationPath,
-        arguments.data(),
+        argumentStream.str().data(),
         0x0,
         0x0,
         false,
