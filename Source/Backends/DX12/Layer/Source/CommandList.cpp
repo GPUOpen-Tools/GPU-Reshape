@@ -646,7 +646,7 @@ static void CommitGraphics(DeviceState* device, CommandListState* list) {
         unsigned long index;
         while (_BitScanReverse64(&index, bitMask)) {
             list->object->SetGraphicsRoot32BitConstant(
-                list->streamState->pipeline->signature->userRootCount + 2u,
+                list->streamState->pipeline->signature->logicalMapping.userRootCount + 2u,
                 list->userContext.eventStack.GetData()[index],
                 index
             );
@@ -672,7 +672,7 @@ static void CommitCompute(DeviceState* device, CommandListState* list) {
         unsigned long index;
         while (_BitScanReverse64(&index, bitMask)) {
             list->object->SetComputeRoot32BitConstant(
-                list->streamState->pipeline->signature->userRootCount + 2u,
+                list->streamState->pipeline->signature->logicalMapping.userRootCount + 2u,
                 list->userContext.eventStack.GetData()[index],
                 index
             );

@@ -25,34 +25,15 @@
 #pragma once
 
 // Layer
-#include <Backends/DX12/Detour.Gen.h>
-#include "RootRegisterBindingInfo.h"
-#include "RootSignatureLogicalMapping.h"
+#include <Backends/DX12/DX12.h>
 
-// Common
-#include <Common/Allocators.h>
+// Std
+#include <vector>
 
-// Forward declarations
-struct RootSignaturePhysicalMapping;
-
-struct __declspec(uuid("BDB0A8F7-96A0-4421-8AC6-6ECEA23F4BCA")) RootSignatureState {
-    ~RootSignatureState();
-
-    /// Parent state
-    ID3D12Device* parent{};
-
-    /// Device object
-    ID3D12RootSignature* object{};
-
-    /// Owning allocator
-    Allocators allocators;
-
-    /// Root binding information
-    RootRegisterBindingInfo rootBindingInfo;
-
-    /// Logical mapping
-    RootSignatureLogicalMapping logicalMapping;
-
-    /// Contained physical mappings
-    RootSignaturePhysicalMapping* physicalMapping{nullptr};
+struct RootSignatureLogicalMapping {
+    /// Number of root mappings
+    uint32_t userRootCount{0};
+    
+    /// Heap types of the root parameters
+    std::vector<D3D12_DESCRIPTOR_HEAP_TYPE> userRootHeapTypes;
 };

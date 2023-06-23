@@ -281,19 +281,53 @@ void ShaderExportStreamer::CloseCommandList(ShaderExportStreamState *state) {
     }
 }
 
+void ShaderExportStreamer::InvalidateHeapMappingsFor(ShaderExportStreamState *state, D3D12_DESCRIPTOR_HEAP_TYPE type) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+        ShaderExportStreamBindState &bindState = state->bindStates[i];
+
+        // Check all 
+        for (uint32_t rootIndex = 0; bindState.rootSignature && rootIndex < bindState.rootSignature->logicalMapping.userRootCount; rootIndex++) {
+            // Get the expected heap type
+            D3D12_DESCRIPTOR_HEAP_TYPE heapType = bindState.rootSignature->logicalMapping.userRootHeapTypes[rootIndex];
+
+            // If of same heap type, invalidate the parameter
+            if (heapType == type) {
+                bindState.persistentRootParameters[rootIndex].type = ShaderExportRootParameterValueType::None;
+            }
+        }
+    }
+}
+
 void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, ID3D12GraphicsCommandList* commandList) {
     // Set heap
+    // TODO: Just host this in an array, much, much cleaner...
     switch (heap->type) {
-        case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
+        case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV: {
+            // Same?
+            if (heap == state->resourceHeap) {
+                return;
+            }
+            
             state->resourceHeap = heap;
             break;
-        case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
+        }
+        case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER: {
+            // Same?
+            if (heap == state->resourceHeap) {
+                return;
+            }
+            
             state->samplerHeap = heap;
             break;
-        default:
+        }
+        default: {
             return;
+        }
     }
 
+    // Invalidate the relevant persistent parameters
+    InvalidateHeapMappingsFor(state, heap->type);
+    
     // Add as referenced
     state->referencedHeaps.push_back(heap);
 
@@ -342,10 +376,15 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
 
     // Create initial descriptor segments
     if (bindState.rootSignature != rootSignature) {
-        bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount, false);
+        bindState.descriptorDataAllocator->BeginSegment(rootSignature->logicalMapping.userRootCount, false);
 #ifndef NDEBUG
         bindState.bindMask = 0x0;
 #endif // NDEBUG
+
+        // Old bindings are invalidated
+        for (ShaderExportRootParameterValue& persistent : bindState.persistentRootParameters) {
+            persistent.type = ShaderExportRootParameterValueType::None;
+        }
     }
     
     // Keep state
@@ -368,10 +407,15 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
 
     // Create initial descriptor segments
     if (bindState.rootSignature != rootSignature) {
-        bindState.descriptorDataAllocator->BeginSegment(rootSignature->userRootCount, false);
+        bindState.descriptorDataAllocator->BeginSegment(rootSignature->logicalMapping.userRootCount, false);
 #ifndef NDEBUG
         bindState.bindMask = 0x0;
 #endif // NDEBUG
+
+        // Old bindings are invalidated
+        for (ShaderExportRootParameterValue& persistent : bindState.persistentRootParameters) {
+            persistent.type = ShaderExportRootParameterValueType::None;
+        }
     }
     
     // Keep state
@@ -393,11 +437,11 @@ void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, ID3D12G
 
     // If the allocator has rolled, a new segment is pending binding
     if (bindState.descriptorDataAllocator->HasRolled()) {
-        commandList->SetComputeRootConstantBufferView(bindState.rootSignature->userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
+        commandList->SetComputeRootConstantBufferView(bindState.rootSignature->logicalMapping.userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->userRootCount, true);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->logicalMapping.userRootCount, true);
 }
 
 void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
@@ -410,11 +454,11 @@ void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, ID3D12
     
     // If the allocator has rolled, a new segment is pending binding
     if (bindState.descriptorDataAllocator->HasRolled()) {
-        commandList->SetGraphicsRootConstantBufferView(bindState.rootSignature->userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
+        commandList->SetGraphicsRootConstantBufferView(bindState.rootSignature->logicalMapping.userRootCount + 1, bindState.descriptorDataAllocator->GetSegmentVirtualAddress());
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->userRootCount, true);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->logicalMapping.userRootCount, true);
 }
 
 ShaderExportStreamBindState& ShaderExportStreamer::GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline) {
@@ -525,7 +569,7 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
     ShaderExportStreamBindState& bindState = GetBindStateFromPipeline(state, pipeline);
 
     // Set on bind state
-    BindShaderExport(state, bindState.rootSignature->userRootCount, pipeline->type, commandList);
+    BindShaderExport(state, bindState.rootSignature->logicalMapping.userRootCount, pipeline->type, commandList);
 
     // Mark as bound
     state->pipelineSegmentMask |= pipeline->type;

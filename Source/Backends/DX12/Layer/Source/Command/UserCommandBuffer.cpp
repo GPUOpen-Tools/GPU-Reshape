@@ -39,44 +39,52 @@
 static void ReconstructPipelineState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState &state) {
     ShaderExportStreamBindState &bindState = streamState->bindStates[static_cast<uint32_t>(PipelineType::ComputeSlot)];
 
-    // Any?
-    if (!streamState->pipeline) {
-        return;
-    }
-
     // Reset signature if needed
     if (bindState.rootSignature) {
         commandList->SetComputeRootSignature(bindState.rootSignature->object);
     }
 
-    // Set PSO
+    // Set PSO if needed
     if (streamState->pipelineObject) {
         commandList->SetPipelineState(streamState->pipelineObject);
-    } else {
+    } else if (streamState->pipeline) {
         commandList->SetPipelineState(streamState->pipeline->object);
     }
-
-    // Rebind root data, invalidated by signature change
+    
+    // Reset root data if needed, invalidated by signature change
     if (bindState.rootSignature) {
-        for (uint32_t i = 0; i < bindState.rootSignature->userRootCount; i++) {
+        for (uint32_t i = 0; i < bindState.rootSignature->logicalMapping.userRootCount; i++) {
             const ShaderExportRootParameterValue &value = bindState.persistentRootParameters[i];
 
+            // Get the expected heap type
+            D3D12_DESCRIPTOR_HEAP_TYPE heapType = bindState.rootSignature->logicalMapping.userRootHeapTypes[i];
+            
             switch (value.type) {
-                case ShaderExportRootParameterValueType::None:
+                case ShaderExportRootParameterValueType::None: {
                     break;
-                case ShaderExportRootParameterValueType::Descriptor:
+                }
+                case ShaderExportRootParameterValueType::Descriptor: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV || heapType == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, "Unexpected heap type");
                     commandList->SetComputeRootDescriptorTable(i, value.payload.descriptor);
                     break;
-                case ShaderExportRootParameterValueType::SRV:
+                }
+                case ShaderExportRootParameterValueType::SRV: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Unexpected heap type");
                     commandList->SetComputeRootShaderResourceView(i, value.payload.virtualAddress);
                     break;
-                case ShaderExportRootParameterValueType::UAV:
+                }
+                case ShaderExportRootParameterValueType::UAV: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Unexpected heap type");
                     commandList->SetComputeRootUnorderedAccessView(i, value.payload.virtualAddress);
                     break;
-                case ShaderExportRootParameterValueType::CBV:
+                }
+                case ShaderExportRootParameterValueType::CBV: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, "Unexpected heap type");
                     commandList->SetComputeRootConstantBufferView(i, value.payload.virtualAddress);
                     break;
-                case ShaderExportRootParameterValueType::Constant:
+                }
+                case ShaderExportRootParameterValueType::Constant: {
+                    ASSERT(heapType == D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES, "Unexpected heap type");
                     commandList->SetComputeRoot32BitConstants(
                         i,
                         value.payload.constant.dataByteCount / sizeof(uint32_t),
@@ -84,15 +92,18 @@ static void ReconstructPipelineState(DeviceState *device, ID3D12GraphicsCommandL
                         0
                     );
                     break;
+                }
             }
         }
+
+        // Compute overwritten at this point
+        streamState->pipelineSegmentMask &= ~PipelineTypeSet(PipelineType::Compute);
+
+        // Rebind the export, invalidated by signature change
+        if (streamState->pipeline) {
+            device->exportStreamer->BindShaderExport(streamState, streamState->pipeline, commandList);
+        }
     }
-
-    // Compute overwritten at this point
-    streamState->pipelineSegmentMask &= ~PipelineTypeSet(PipelineType::Compute);
-
-    // Rebind the export, invalidated by signature change
-    device->exportStreamer->BindShaderExport(streamState, streamState->pipeline, commandList);
 }
 
 static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState &state) {

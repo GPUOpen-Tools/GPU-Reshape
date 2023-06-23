@@ -35,6 +35,7 @@
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/Compiler/DXParseJob.h>
 #include <Backends/DX12/RootSignature.h>
+#include <Backends/DX12/States/RootSignatureLogicalMapping.h>
 
 // Backend
 #include <Backend/ShaderProgram/IShaderProgram.h>
@@ -75,9 +76,12 @@ bool ShaderProgramHost::Install() {
 bool ShaderProgramHost::CreateRootSignature() {
     D3D12_ROOT_SIGNATURE_DESC1 desc{};
 
+    // Not used
+    RootSignatureLogicalMapping logicalMapping;
+
     // Instrument empty signature
     ID3DBlob* blob;
-    if (FAILED(SerializeRootSignature(device, D3D_ROOT_SIGNATURE_VERSION_1_1, desc, &blob, &rootBindingInfo, &rootPhysicalMapping, nullptr))) {
+    if (FAILED(SerializeRootSignature(device, D3D_ROOT_SIGNATURE_VERSION_1_1, desc, &blob, &rootBindingInfo, &logicalMapping, &rootPhysicalMapping, nullptr))) {
         return false;
     }
 

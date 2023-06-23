@@ -34,9 +34,13 @@
 #include <Common/Hash.h>
 
 template<typename T>
-RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
+RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, RootSignatureLogicalMapping* outLogical) {
     uint32_t userRegisterSpaceBound = 0;
 
+    // Preallocate
+    outLogical->userRootCount = source.NumParameters;
+    outLogical->userRootHeapTypes.resize(source.NumParameters);
+    
     // Get the user bound
     for (uint32_t i = 0; i < source.NumParameters; i++) {
         const auto& parameter = source.pParameters[i];
@@ -46,18 +50,39 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source) {
                     const auto& range = parameter.DescriptorTable.pDescriptorRanges[j];
                     userRegisterSpaceBound = std::max(userRegisterSpaceBound, range.RegisterSpace + 1);
                 }
+
+                // Assign heap type from first range
+                if (parameter.DescriptorTable.NumDescriptorRanges > 0) {
+                    switch (parameter.DescriptorTable.pDescriptorRanges[0].RangeType) {
+                        default:
+                            ASSERT(false, "INvalid descriptor range type");
+                        case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
+                        case D3D12_DESCRIPTOR_RANGE_TYPE_UAV:
+                        case D3D12_DESCRIPTOR_RANGE_TYPE_CBV:
+                            outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+                            break;
+                        case D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER: 
+                            outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+                            break;
+                    }
+                } else {
+                    outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
+                }
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
+                outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
                 userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Constants.RegisterSpace + 1);
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV:
             case D3D12_ROOT_PARAMETER_TYPE_SRV: {
+                outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
                 userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Descriptor.RegisterSpace + 1);
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_UAV: {
+                outLogical->userRootHeapTypes[i] = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
                 userRegisterSpaceBound = std::max(userRegisterSpaceBound, parameter.Descriptor.RegisterSpace + 1);
                 break;
             }
@@ -314,9 +339,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 }
 
 template<typename T>
-HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION version, const T& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, RootSignaturePhysicalMapping** outMapping, ID3DBlob** outError) {
-    *outRoot = GetBindingInfo(state, source);
-
+HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION version, const T& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, RootSignatureLogicalMapping* outLogical, RootSignaturePhysicalMapping** outMapping, ID3DBlob** outError) {
+    *outRoot = GetBindingInfo(state, source, outLogical);
+    
     // Types
     using Parameter = std::remove_const_t<std::remove_pointer_t<decltype(T::pParameters)>>;
     using DescriptorTable = decltype(Parameter::DescriptorTable);
@@ -458,12 +483,12 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     // Populated binding info
     RootRegisterBindingInfo bindingInfo;
 
-    // Number of user parameters
-    uint32_t userRootCount{0};
-
+    // Logical mapping
+    RootSignatureLogicalMapping logicalMapping;
+    
     // Mapping
     RootSignaturePhysicalMapping* mapping{nullptr};
-
+    
     // Attempt to re-serialize
     ID3DBlob* serialized{nullptr};
     switch (unconverted->Version) {
@@ -471,22 +496,18 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
             ASSERT(false, "Invalid root signature version");
             return E_INVALIDARG;
         case D3D_ROOT_SIGNATURE_VERSION_1: {
-            userRootCount = unconverted->Desc_1_0.NumParameters;
-
 #ifndef NDEBUG
-            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &mapping, &error);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &logicalMapping, &mapping, &error);
 #else // NDEBUG
-            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &mapping, nullptr);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &logicalMapping, &mapping, nullptr);
 #endif // NDEBUG
             break;
         }
         case D3D_ROOT_SIGNATURE_VERSION_1_1: {
-            userRootCount = unconverted->Desc_1_1.NumParameters;
-
 #ifndef NDEBUG
-            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &mapping, &error);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &logicalMapping, &mapping, &error);
 #else // NDEBUG
-            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &mapping, nullptr);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &logicalMapping, &mapping, nullptr);
 #endif // NDEBUG
             break;
         }
@@ -522,7 +543,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     state->allocators = table.state->allocators;
     state->parent = device;
     state->rootBindingInfo = bindingInfo;
-    state->userRootCount = userRootCount;
+    state->logicalMapping = std::move(logicalMapping);
     state->physicalMapping = mapping;
     state->object = rootSignature;
 

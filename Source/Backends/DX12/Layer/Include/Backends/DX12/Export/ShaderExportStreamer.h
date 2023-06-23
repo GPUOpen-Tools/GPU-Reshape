@@ -279,6 +279,9 @@ private:
     /// Get the expected bind state of a pipeline
     ShaderExportStreamBindState& GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline);
 
+    /// Invalidate persistent root heap mappings for a given type
+    void InvalidateHeapMappingsFor(ShaderExportStreamState* state, D3D12_DESCRIPTOR_HEAP_TYPE type);
+
 private:
     DeviceState* device;
 

@@ -30,6 +30,7 @@
 // Forward declarations
 struct DeviceState;
 struct RootRegisterBindingInfo;
+struct RootSignatureLogicalMapping;
 struct RootSignaturePhysicalMapping;
 
 /// Serialize a root signature for instrumentation
@@ -38,11 +39,12 @@ struct RootSignaturePhysicalMapping;
 /// \param source signature data
 /// \param out serialized blob
 /// \param outRoot root bindings
+/// \param outLogical logical physical mappings
 /// \param outMapping root physical mappings
 /// \param outError optional, error blob
 /// \return result
 template<typename T>
-HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION version, const T& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, RootSignaturePhysicalMapping** outMapping, ID3DBlob** outError);
+HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION version, const T& source, ID3DBlob** out, RootRegisterBindingInfo* outRoot, RootSignatureLogicalMapping* outLogical, RootSignaturePhysicalMapping** outMapping, ID3DBlob** outError);
 
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreateRootSignature(ID3D12Device*, UINT, const void*, SIZE_T, const IID&, void**);
