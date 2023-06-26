@@ -86,6 +86,10 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
     entry.info.type = ShaderDataType::Buffer;
     entry.info.buffer = info;
 
+#ifndef NDEBUG
+    entry.allocation.resource->SetName(L"ShaderDataHostBuffer");
+#endif // NDEBUG
+
     // OK
     return rid;
 }
@@ -303,6 +307,10 @@ ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
 
     // Allocate buffer data on host, let the drivers handle page swapping
     out.allocation = device->deviceAllocator->Allocate(desc, AllocationResidency::Host);
+
+#ifndef NDEBUG
+    out.allocation.resource->SetName(L"ShaderDataHostConstantDataBuffer");
+#endif // NDEBUG
 
     // Set up view
     out.view.BufferLocation = out.allocation.resource->GetGPUVirtualAddress();

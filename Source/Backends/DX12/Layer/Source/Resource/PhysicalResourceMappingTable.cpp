@@ -53,6 +53,11 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     // Create allocation
     allocation = allocator->AllocateMirror(desc);
 
+#ifndef NDEBUG
+    allocation.device.resource->SetName(L"PRMTDevice");
+    allocation.host.resource->SetName(L"PRMTHost");
+#endif // NDEBUG
+    
     // Setup view
     view.Format = DXGI_FORMAT_R32_UINT;
     view.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;

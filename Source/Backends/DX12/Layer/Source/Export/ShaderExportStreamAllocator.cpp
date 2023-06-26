@@ -142,6 +142,11 @@ ShaderExportSegmentCounterInfo ShaderExportStreamAllocator::AllocateCounterInfo(
     // Create allocation
     info.allocation = deviceAllocator->AllocateMirror(bufferDesc);
 
+#ifndef NDEBUG
+    info.allocation.device.resource->SetName(L"StreamCounterInfoDevice");
+    info.allocation.host.resource->SetName(L"StreamCounterInfoHost");
+#endif // NDEBUG
+
     // Setup view
     info.view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
     info.view.Format = DXGI_FORMAT_R32_UINT;
@@ -180,6 +185,11 @@ ShaderExportStreamInfo ShaderExportStreamAllocator::AllocateStreamInfo(const Sha
 
     // Create allocation
     info.allocation = deviceAllocator->AllocateMirror(bufferDesc, AllocationResidency::Host);
+
+#ifndef NDEBUG
+    info.allocation.device.resource->SetName(L"StreamInfoDevice");
+    info.allocation.host.resource->SetName(L"StreamInfoHost");
+#endif // NDEBUG
 
     // Size for safe guarding
     info.byteSize = exportInfo.dataSize;

@@ -313,7 +313,7 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
         }
         case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER: {
             // Same?
-            if (heap == state->resourceHeap) {
+            if (heap == state->samplerHeap) {
                 return;
             }
             

@@ -245,6 +245,10 @@ private:
         DescriptorDataSegmentEntry segmentEntry;
         segmentEntry.allocation = allocator->Allocate(desc, AllocationResidency::Host);
         SetChunk(segmentEntry);
+
+#ifndef NDEBUG
+        segmentEntry.allocation.resource->SetName(L"AppendData");
+#endif // NDEBUG
     }
 
 #ifndef NDEBUG

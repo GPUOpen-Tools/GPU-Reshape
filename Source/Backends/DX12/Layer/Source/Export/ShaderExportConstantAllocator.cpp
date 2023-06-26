@@ -50,6 +50,10 @@ ShaderExportConstantAllocation ShaderExportConstantAllocator::Allocate(const Com
         segment.allocation = deviceAllocator->Allocate(desc, AllocationResidency::Host);
         segment.size = desc.Width;
 
+#ifndef NDEBUG
+        segment.allocation.resource->SetName(L"ConstantSegment");
+#endif // NDEBUG
+
         // Map staging memory
         D3D12_RANGE range{0, 0};
         segment.allocation.resource->Map(0, &range, &segment.staging);
