@@ -52,6 +52,7 @@
 class Registry;
 
 /// Function pointer types
+using PFN_D3D11_ON_12_CREATE_DEVICE = HRESULT(WINAPI*)(IUnknown *pDevice, UINT Flags, const D3D_FEATURE_LEVEL *pFeatureLevels, UINT FeatureLevels, IUnknown* const *ppCommandQueues, UINT NumQueues, UINT NodeMask, ID3D11Device **ppDevice, ID3D11DeviceContext **ppImmediateContext, D3D_FEATURE_LEVEL *pChosenFeatureLevel);
 using PFN_CREATE_DXGI_FACTORY = HRESULT(WINAPI*)(REFIID riid, _COM_Outptr_ void **ppFactory);
 using PFN_CREATE_DXGI_FACTORY1 = HRESULT(WINAPI*)(REFIID riid, _COM_Outptr_ void **ppFactory);
 using PFN_CREATE_DXGI_FACTORY2 = HRESULT(WINAPI*)(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory);
@@ -80,6 +81,9 @@ struct D3D12GPUOpenFunctionTable {
     PFN_CREATE_DXGI_FACTORY  next_CreateDXGIFactoryOriginal{nullptr};
     PFN_CREATE_DXGI_FACTORY1 next_CreateDXGIFactory1Original{nullptr};
     PFN_CREATE_DXGI_FACTORY2 next_CreateDXGIFactory2Original{nullptr};
+
+    /// Wrappers
+    PFN_D3D11_ON_12_CREATE_DEVICE next_D3D11On12CreateDeviceOriginal{nullptr};
 
     /// Optional
     PFN_ENABLE_EXPERIMENTAL_FEATURES next_EnableExperimentalFeatures{nullptr};

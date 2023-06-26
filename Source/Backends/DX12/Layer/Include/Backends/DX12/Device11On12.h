@@ -22,18 +22,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-// System wise include
-#include <d3d12.h>
-#include <d3d11.h>
-#include <dxgi.h>
-#include <dxgi1_2.h>
-#include <dxgi1_3.h>
-#include <dxgi1_4.h>
-#include <dxgi1_5.h>
-#include <dxgi1_6.h>
-#include <d3d11on12.h>
+#pragma once
 
-// Cleanup
-#undef OPAQUE
-#undef min
-#undef max
+// Backend
+#include <Backends/DX12/DX12.h>
+#include <Backends/DX12/Layer.h>
+
+/// Hooks
+DX12_C_LINKAGE HRESULT WINAPI HookD3D11On12CreateDevice(IUnknown *pDevice, UINT Flags, const D3D_FEATURE_LEVEL *pFeatureLevels, UINT FeatureLevels, IUnknown *const *ppCommandQueues, UINT NumQueues, UINT NodeMask, ID3D11Device **ppDevice, ID3D11DeviceContext **ppImmediateContext, D3D_FEATURE_LEVEL *pChosenFeatureLevel);
+HRESULT WINAPI HookID3D11DeviceQueryInterface(ID3D11Device* device, const IID& riid, void** ppvObject);
+void WINAPI HookID3D11On12DeviceReleaseWrappedResources(ID3D11On12Device* device, ID3D11Resource* const* ppResources, UINT NumResources);
+void WINAPI HookID3D11On12DeviceAcquireWrappedResources(ID3D11On12Device* device, ID3D11Resource* const* ppResources, UINT NumResources);
+HRESULT WINAPI HookID3D11On12DeviceReturnUnderlyingResource(ID3D11On12Device* device, ID3D11Resource* pResource11, UINT NumSync, UINT64* pSignalValues, ID3D12Fence** ppFences);

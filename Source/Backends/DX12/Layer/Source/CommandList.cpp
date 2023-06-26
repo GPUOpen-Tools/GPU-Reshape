@@ -325,13 +325,13 @@ static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState
     return nullptr;
 }
 
-static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D12PipelineState* initialState, bool isHotSwap) {
+static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D12PipelineState* initialState, ID3D12PipelineState* hotSwap, bool isHotSwap) {
     // Inform the streamer
     device->exportStreamer->BeginCommandList(state->streamState, state->object);
 
     // Inform the streamer of a new pipeline
     if (initialState) {
-        device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), initialState, isHotSwap, state->object);
+        device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), hotSwap, isHotSwap, state->object);
     }
 
     // Pass down the controller
@@ -379,7 +379,7 @@ HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandL
         state->streamState = table.state->exportStreamer->AllocateStreamState();
 
         // Handle sub-systems
-        BeginCommandList(table.state, state, initialState, hotSwap != nullptr);
+        BeginCommandList(table.state, state, initialState, hotSwap, hotSwap != nullptr);
     }
 
     // Cleanup
@@ -443,7 +443,7 @@ HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12Command
     }
 
     // Handle sub-systems
-    BeginCommandList(device.state, table.state, state, hotSwap != nullptr);
+    BeginCommandList(device.state, table.state, state, hotSwap, hotSwap != nullptr);
 
     // OK
     return S_OK;

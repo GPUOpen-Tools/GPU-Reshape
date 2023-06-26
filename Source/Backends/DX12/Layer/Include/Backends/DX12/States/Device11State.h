@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -22,18 +22,24 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-// System wise include
-#include <d3d12.h>
-#include <d3d11.h>
-#include <dxgi.h>
-#include <dxgi1_2.h>
-#include <dxgi1_3.h>
-#include <dxgi1_4.h>
-#include <dxgi1_5.h>
-#include <dxgi1_6.h>
-#include <d3d11on12.h>
+#pragma once
 
-// Cleanup
-#undef OPAQUE
-#undef min
-#undef max
+// Layer
+#include <Backends/DX12/Detour.Gen.h>
+
+struct __declspec(uuid("791EE7EA-3AAE-476E-9C17-A4112F263327")) Device11State {
+    Device11State(const Allocators& allocators) : allocators(allocators) {
+        
+    }
+    
+    ~Device11State();
+    
+    /// Owned object
+    ID3D11Device* object{nullptr};
+
+    /// Shared wrapper
+    ID3D11On12Device* wrapped11On12{nullptr};
+    
+    /// Shared allocators
+    Allocators allocators;
+};

@@ -275,7 +275,11 @@ static bool WrapClassMethods(const GeneratorInfo &info, ObjectWrappersState &sta
                         state.hooks << ", ";
                     }
 
-                    state.hooks << "Unwrap(" << parameters[i]["name"].get<std::string>() << ")";
+                    if (!objDecl.contains("wrap") || objDecl["wrap"] == true) {
+                        state.hooks << "Unwrap(" << parameters[i]["name"].get<std::string>() << ")";
+                    } else {
+                        state.hooks << parameters[i]["name"].get<std::string>();
+                    }
                 }
 
                 // End call

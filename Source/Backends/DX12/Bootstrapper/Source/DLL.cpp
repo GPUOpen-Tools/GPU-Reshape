@@ -62,6 +62,7 @@
 
 /// Symbols
 SYMBOL(D3D12ModuleName, "d3d12.dll");
+SYMBOL(D3D11ModuleName, "d3d11.dll");
 SYMBOL(DXGIModuleName, "dxgi.dll");
 SYMBOL(AMDAGSModuleName, "amd_ags_x64.dll");
 SYMBOL(LayerModuleName, "GRS.Backends.DX12.Layer.dll");
@@ -102,6 +103,7 @@ bool IsOwningBootstrapper;
 /// Bootstrapped layer
 HMODULE LayerModule;
 HMODULE D3D12Module;
+HMODULE D3D11Module;
 HMODULE DXGIModule;
 HMODULE AMDAGSModule;
 
@@ -113,6 +115,7 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 /// Prototypes
 void DetourAMDAGSModule(HMODULE handle, bool insideTransaction);
+void DetourD3D11Module(HMODULE handle, bool insideTransaction); 
 void DetourD3D12Module(HMODULE handle, bool insideTransaction); 
 void DetourDXGIModule(HMODULE handle, bool insideTransaction);
 
@@ -201,6 +204,11 @@ void LazyLoadDependentLibraries(bool native) {
         DetourD3D12Module(D3D12Module, true);
     }
 
+    // D3D11
+    if (BootstrapCheckLibrary(D3D11Module, kD3D11ModuleNameW, native)) {
+        DetourD3D11Module(D3D11Module, true);
+    }
+
     // DXGI
     if (BootstrapCheckLibrary(DXGIModule, kDXGIModuleNameW, native)) {
         DetourDXGIModule(DXGIModule, true);
@@ -264,6 +272,11 @@ void BootstrapLayer(const char* invoker, bool native) {
         DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12CreateDevice"));
     }
 
+    // Get device creation if not hooked
+    if (!DetourFunctionTable.next_D3D11On12CreateDeviceOriginal) {
+        DetourFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(D3D11Module, "D3D11On12CreateDevice"));
+    }
+
     // Get factory creation 0 if not hooked
     if (!DetourFunctionTable.next_CreateDXGIFactoryOriginal) {
         DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory"));
@@ -313,6 +326,9 @@ void BootstrapLayer(const char* invoker, bool native) {
         LayerFunctionTable.next_AMDAGSPushMarker           = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(GetProcAddress(LayerModule, "HookAMDAGSPushMarker"));
         LayerFunctionTable.next_AMDAGSPopMarker            = reinterpret_cast<PFN_AMD_AGS_POP_MARKER>(GetProcAddress(LayerModule, "HookAMDAGSPopMarker"));
         LayerFunctionTable.next_AMDAGSSetMarker            = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(GetProcAddress(LayerModule, "HookAMDAGSSetMarker"));
+
+        // Wrappers
+        LayerFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(LayerModule, "HookD3D11On12CreateDevice"));
 
         // Failed?
         // Note: AMDAGSModule is optional, extension service
@@ -586,6 +602,33 @@ HRESULT WINAPI HookID3D12CreateDevice(
     return LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, riid, ppDevice);
 }
 
+HRESULT HookD3D11On12CreateDevice(
+    IUnknown *pDevice,
+    UINT Flags,
+    const D3D_FEATURE_LEVEL *pFeatureLevels,
+    UINT FeatureLevels,
+    IUnknown *const *ppCommandQueues,
+    UINT NumQueues,
+    UINT NodeMask,
+    ID3D11Device **ppDevice,
+    ID3D11DeviceContext **ppImmediateContext,
+    D3D_FEATURE_LEVEL *pChosenFeatureLevel
+    ) {
+    WaitForDeferredInitialization();
+    return LayerFunctionTable.next_D3D11On12CreateDeviceOriginal(
+        pDevice,
+        Flags,
+        pFeatureLevels,
+        FeatureLevels,
+        ppCommandQueues,
+        NumQueues,
+        NodeMask,
+        ppDevice,
+        ppImmediateContext,
+        pChosenFeatureLevel
+    );
+}
+
 HRESULT HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes) {
     WaitForDeferredInitialization();
     return LayerFunctionTable.next_EnableExperimentalFeatures(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
@@ -675,6 +718,18 @@ void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
     ConditionallyEndDetour(insideTransaction);
 }
 
+void DetourD3D11Module(HMODULE handle, bool insideTransaction) {
+    // Open transaction if needed
+    ConditionallyBeginDetour(insideTransaction);
+
+    // Attach against original address
+    DetourFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(handle, "D3D11On12CreateDevice"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D11On12CreateDeviceOriginal), reinterpret_cast<void*>(HookD3D11On12CreateDevice));
+
+    // End and update
+    ConditionallyEndDetour(insideTransaction);
+}
+
 void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
@@ -704,6 +759,11 @@ void DetourInitialCreation() {
     if (GetModuleHandleExW(0x0, kD3D12ModuleNameW, &D3D12Module)) {
         DetourD3D12Module(D3D12Module, true);
     }
+    
+    // Attempt to find d3d11 module
+    if (GetModuleHandleExW(0x0, kD3D11ModuleNameW, &D3D11Module)) {
+        DetourD3D11Module(D3D11Module, true);
+    }
 
     // Attempt to find dxgi module
     if (GetModuleHandleExW(0x0, kDXGIModuleNameW, &DXGIModule)) {
@@ -721,6 +781,12 @@ void DetachInitialCreation() {
     if (DetourFunctionTable.next_D3D12CreateDeviceOriginal) {
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
         DetourFunctionTable.next_D3D12CreateDeviceOriginal = nullptr;
+    }
+    
+    // Remove wrapper
+    if (DetourFunctionTable.next_D3D11On12CreateDeviceOriginal) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D11On12CreateDeviceOriginal), reinterpret_cast<void*>(HookD3D11On12CreateDevice));
+        DetourFunctionTable.next_D3D11On12CreateDeviceOriginal = nullptr;
     }
 
     // Remove device
@@ -903,6 +969,9 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
             // Unload if attached
             if (D3D12Module) {
                 FreeLibrary(D3D12Module);
+            }
+            if (D3D11Module) {
+                FreeLibrary(D3D11Module);
             }
             if (DXGIModule) {
                 FreeLibrary(DXGIModule);

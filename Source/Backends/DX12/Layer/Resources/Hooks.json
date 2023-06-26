@@ -1,6 +1,7 @@
 {
   "includes": [
     "Device.h",
+    "Device11On12.h",
     "Resource.h",
     "RootSignature.h",
     "DescriptorHeap.h",
@@ -10,6 +11,8 @@
     "CommandList.h",
     "SwapChain.h",
     "States/DeviceState.h",
+    "States/Device11State.h",
+    "States/Device11On12State.h",
     "States/ResourceState.h",
     "States/RootSignatureState.h",
     "States/DescriptorHeapState.h",
@@ -31,7 +34,9 @@
     "dxgi1_3.h",
     "dxgi1_4.h",
     "dxgi1_5.h",
-    "dxgi1_6.h"
+    "dxgi1_6.h",
+    "d3d11.h",
+    "d3d11on12.h"
   ],
   "objects": {
     "IDXGIFactory": {
@@ -79,6 +84,23 @@
         "MakeResident",
         "EnqueueMakeResident",
         "Evict"
+      ]
+    },
+    "ID3D11Device": {
+      "name": "Device11",
+      "state": "Device11State",
+      "wrap": false,
+      "hooks": [
+        "QueryInterface"
+      ]
+    },
+    "ID3D11On12Device": {
+      "name": "Device11On12",
+      "state": "Device11On12State",
+      "hooks": [
+        "ReleaseWrappedResources",
+        "AcquireWrappedResources",
+        "ReturnUnderlyingResource"
       ]
     },
     "ID3D12CommandQueue": {

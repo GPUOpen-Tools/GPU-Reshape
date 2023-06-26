@@ -42,6 +42,11 @@
 #undef min
 #undef max
 
+/// Unwrapping UUID
+///  ! May be replaced by faster methods, such as allocation arena checking
+/// {D3CD71B6-5E41-4A9C-BB04-7D8EF27CFB57}
+static const GUID IID_Unwrap = { 0xd3cd71b6, 0x5e41, 0x4a9c, { 0xbb, 0x4, 0x7d, 0x8e, 0xf2, 0x7c, 0xfb, 0x57 } };
+
 /// Get the vtable
 template<typename T = void>
 inline T* GetVTableRaw(void* object) {
