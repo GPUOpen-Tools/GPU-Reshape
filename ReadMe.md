@@ -63,6 +63,33 @@ will translate seamlessly to the backend language.
 
 This toolset aims to serve as a **framework** for instrumentation, acting as a modular base from which any number of tools, techniques, optimizations, etc..., can be implemented. 
 
+## Testing Suite
+
+A list of applications GPU Reshape is tested against for stability and validity.
+
+Games
+- **Call of the Wild: The Angler** (Avalanche, DX12)
+- **Second Extinction** (Avalanche, Vulkan)
+
+Engines
+- **Unreal Engine 4** (Epic Games, DX12, Vulkan)
+
+AMD
+- **FSR2** (DX12, Vulkan)
+- **GLTFSample** (DX12, Vulkan)
+- **ParallelSort** (DX12, Vulkan)
+- **SPDSample** (DX12, Vulkan)
+- **SSSRSample** (DX12, Vulkan)
+- **TressFX** (DX12, Vulkan)
+
+Microsoft
+- **MiniEngine ModelViewer** (DX12)
+
+## Known Issues
+
+- Initialization feature false positives. Resources can be initialized in a myriad of ways, this will be improved with time.
+- Loop feature not catching all timeouts. The loop feature is currently experimental, and relies on non-standard guarantees.
+
 ## Credit
 
 GPU Reshape was initially developed as a prototype tool by Miguel Petersen at Avalanche Studios Group, extending validation tools to shader side operations.
