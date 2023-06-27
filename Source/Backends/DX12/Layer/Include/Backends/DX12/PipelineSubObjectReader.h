@@ -28,12 +28,12 @@
 #include "DX12.h"
 #include "States/PipelineType.h"
 
-struct SubObjectReader {
+struct PipelineSubObjectReader {
     static constexpr uint32_t kAlign = sizeof(void*);
 
     /// Constructor
     /// \param desc given description
-    SubObjectReader(const D3D12_PIPELINE_STATE_STREAM_DESC* desc) : desc(desc) {
+    PipelineSubObjectReader(const D3D12_PIPELINE_STATE_STREAM_DESC* desc) : desc(desc) {
 
     }
 
@@ -119,7 +119,7 @@ struct SubObjectReader {
             }
 
             // Next!
-            offset += sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) + SubObjectReader::GetSize(type);
+            offset += sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) + PipelineSubObjectReader::GetSize(type);
 
             // Align to void*
             if (offset % kAlign) {

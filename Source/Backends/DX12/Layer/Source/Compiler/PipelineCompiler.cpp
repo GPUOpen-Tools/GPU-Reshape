@@ -25,7 +25,6 @@
 #include <Backends/DX12/Compiler/PipelineCompiler.h>
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/States/DeviceState.h>
-#include <Backends/DX12/SubObjectReader.h>
 
 // Common
 #include <Common/Dispatcher/Dispatcher.h>

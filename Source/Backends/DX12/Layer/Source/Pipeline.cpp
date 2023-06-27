@@ -28,7 +28,8 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
-#include <Backends/DX12/SubObjectReader.h>
+#include <Backends/DX12/PipelineSubObjectReader.h>
+#include <Backends/DX12/StateSubObjectWriter.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCUtils.h>
 
@@ -109,7 +110,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
     }
 
     // Create reader
-    SubObjectReader reader(desc);
+    PipelineSubObjectReader reader(desc);
 
     // Final pipeline
     PipelineState* opaqueState{nullptr};
@@ -137,7 +138,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                 // Handle sub-object
                 switch (type) {
                     default:
-                        reader.Skip(SubObjectReader::GetSize(type));
+                        reader.Skip(PipelineSubObjectReader::GetSize(type));
                         break;
                     case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE: {
                         auto&& rootSignature = reader.AlignedConsume<ID3D12RootSignature*>();
@@ -235,7 +236,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                 // Handle sub-object
                 switch (type) {
                     default:
-                        reader.Skip(SubObjectReader::GetSize(type));
+                        reader.Skip(PipelineSubObjectReader::GetSize(type));
                         break;
                     case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE: {
                         auto&& rootSignature = reader.AlignedConsume<ID3D12RootSignature*>();
@@ -289,6 +290,43 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
 
     // Cleanup
     pipeline->Release();
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, const IID& riid, void** ppStateObject) {
+    auto table = GetTable(device);
+
+    // Create writer
+    StateSubObjectWriter reader(table.state->allocators);
+
+    // Unwrap objects
+    for (uint32_t i = 0; i < pDesc->NumSubobjects; i++) {
+        const D3D12_STATE_SUBOBJECT& subObject = pDesc->pSubobjects[i];
+        switch (subObject.Type) {
+            default: {
+                reader.Add(subObject.Type, subObject.pDesc);
+                break;
+            }
+            case D3D12_STATE_SUBOBJECT_TYPE_STATE_OBJECT_CONFIG:
+            case D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE:
+            case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE: {
+                auto wrapped = StateSubObjectWriter::Read<ID3D12RootSignature*>(subObject);
+                reader.AddPtr(subObject.Type, Next(wrapped));
+                break;
+            }
+        }
+    }
+
+    // Create description
+    D3D12_STATE_OBJECT_DESC desc = reader.Compile(pDesc->Type);
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateStateObject(table.next, &desc, riid, ppStateObject);
+    if (FAILED(hr)) {
+        return hr;
+    }
 
     // OK
     return S_OK;
