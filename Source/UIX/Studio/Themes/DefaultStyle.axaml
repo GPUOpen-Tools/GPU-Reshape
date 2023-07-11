@@ -88,6 +88,11 @@
         <!-- Filter strings -->
         <Color x:Key="PipelineFilterKeyType">#290099</Color>
         <Color x:Key="PipelineFilterKeyName">#083000</Color>
+        
+        <!-- Language brushes -->
+        <SolidColorBrush x:Key="LanguageSPIRV">#512B2E</SolidColorBrush>
+        <SolidColorBrush x:Key="LanguageDXBC">#515137</SolidColorBrush>
+        <SolidColorBrush x:Key="LanguageDXIL">#4E3B51</SolidColorBrush>
     </Styles.Resources>
 
     <!-- Base style -->

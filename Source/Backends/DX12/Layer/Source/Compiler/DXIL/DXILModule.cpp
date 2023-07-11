@@ -43,7 +43,7 @@ DXILModule::~DXILModule() {
     }
 }
 
-DXModule* DXILModule::Copy() {
+IDXModule* DXILModule::Copy() {
     return nullptr;
 }
 
@@ -85,4 +85,8 @@ void DXILModule::CopyTo(DXILModule *out) {
 IDXDebugModule *DXILModule::GetDebug() {
     // No debug data
     return nullptr;
+}
+
+const char * DXILModule::GetLanguage() {
+    return "DXIL";
 }

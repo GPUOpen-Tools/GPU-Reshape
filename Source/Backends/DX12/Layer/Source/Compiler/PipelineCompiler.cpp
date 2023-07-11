@@ -25,6 +25,8 @@
 #include <Backends/DX12/Compiler/PipelineCompiler.h>
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
+#include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 
 // Common
 #include <Common/Dispatcher/Dispatcher.h>

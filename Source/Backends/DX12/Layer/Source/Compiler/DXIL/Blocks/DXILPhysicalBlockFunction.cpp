@@ -991,6 +991,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 // Get call declaration
                 const DXILFunctionDeclaration *callDecl = GetFunctionDeclaration(called);
 
+                // Mark the declaration as used
+                table.compliance.MarkAsUsed(callDecl);
+
                 // Create mapping if present
                 if (!callDecl->type->returnType->Is<Backend::IL::VoidType>()) {
                     result = table.idMap.AllocMappedID(DXILIDType::Instruction);
@@ -1182,7 +1185,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
 
     // Ignored
     uint64_t callingConv = reader.ConsumeOp();
-    uint64_t proto = reader.ConsumeOp();
+    function->isPrototype = reader.ConsumeOp();
 
     // Get function linkage
     function->linkage = static_cast<LLVMLinkage>(reader.ConsumeOp());
@@ -1195,7 +1198,7 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
     GRS_SINK(paramAttr);
 
     // Add to internal linked functions if not external
-    if (proto == 0) {
+    if (!function->isPrototype) {
         internalLinkedFunctions.Add(static_cast<uint32_t>(functions.Size() - 1));
     }
 }
@@ -1203,6 +1206,10 @@ void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
 const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration(uint32_t id) {
     ASSERT(table.idMap.GetType(id) == DXILIDType::Function, "Invalid function id");
     return functions[table.idMap.GetDataIndex(id)];
+}
+
+const DXILFunctionDeclaration * DXILPhysicalBlockFunction::GetFunctionDeclarationFromIndex(uint32_t index) {
+    return functions[index];
 }
 
 bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration) {
@@ -3854,6 +3861,9 @@ LLVMRecord DXILPhysicalBlockFunction::CompileIntrinsicCall(IL::ID result, const 
     for (uint32_t i = 0; i < opCount; i++) {
         record.ops[4 + i] = ops[i];
     }
+
+    // Mark the declaration as used
+    table.compliance.MarkAsUsed(decl);
 
     // OK
     return record;

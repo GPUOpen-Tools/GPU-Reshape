@@ -39,7 +39,7 @@
 
 // Forward declarations
 struct DeviceState;
-class DXModule;
+class IDXModule;
 
 struct ShaderState : public ReferenceObject {
     /// Reference counted destructor
@@ -91,7 +91,7 @@ struct ShaderState : public ReferenceObject {
     /// Parsing module
     ///   ! May not be indexed yet, indexing occurs during instrumentation.
     ///     Avoided during regular use to not tamper with performance.
-    DXModule* module{nullptr};
+    IDXModule* module{nullptr};
 
     /// Unique ID
     uint64_t uid{0};

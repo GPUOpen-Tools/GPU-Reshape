@@ -28,6 +28,9 @@
 #include "DXBCPhysicalBlockSection.h"
 #include <Backends/DX12/Compiler/DXBC/DXBCHeader.h>
 
+// Forward declarations
+struct DXCompileJob;
+
 /// Input signature block
 struct DXBCPhysicalBlockInputSignature : public DXBCPhysicalBlockSection {
     DXBCPhysicalBlockInputSignature(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table);
@@ -38,9 +41,12 @@ struct DXBCPhysicalBlockInputSignature : public DXBCPhysicalBlockSection {
     /// Compile signature
     void Compile();
 
+    /// Compile for compatability
+    void CompileDXILCompatability(DXCompileJob& job);
+
     /// Copy this block
     void CopyTo(DXBCPhysicalBlockInputSignature &out);
-
+    
 private:
     /// Signature header
     DXILInputSignature header;

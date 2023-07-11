@@ -26,6 +26,7 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
+#include <Backends/DX12/Compiler/DXCompileJob.h>
 
 // Common
 #include <Common/Sink.h>
@@ -75,6 +76,14 @@ void DXBCPhysicalBlockInputSignature::Compile() {
 
     // Not used yet
     GRS_SINK(bindingInfo);
+}
+
+void DXBCPhysicalBlockInputSignature::CompileDXILCompatability(DXCompileJob &job) {
+    for (const ElementEntry& entry : entries) {
+        if (entry.scan.semantic == DXILSignatureElementSemantic::ViewPortArrayIndex) {
+            job.compatabilityTable.useViewportAndRTArray = true;
+        }
+    }
 }
 
 void DXBCPhysicalBlockInputSignature::CopyTo(DXBCPhysicalBlockInputSignature &out) {

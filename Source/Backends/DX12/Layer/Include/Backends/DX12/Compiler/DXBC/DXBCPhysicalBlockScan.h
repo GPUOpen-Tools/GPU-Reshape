@@ -70,6 +70,19 @@ public:
         return nullptr;
     }
 
+    /// Add a new physical block
+    /// \param type block type
+    /// \return block
+    DXBCPhysicalBlock& AddPhysicalBlock(DXBCPhysicalBlockType type) {
+        ASSERT(!GetPhysicalBlock(type), "Duplicate physical block");
+
+        // Create section
+        Section& section = sections.emplace_back(allocators);
+        section.type = type;
+        section.unexposedType = static_cast<uint32_t>(type);
+        return section.block;
+    }
+
     /// Top header
     DXBCHeader header;
 

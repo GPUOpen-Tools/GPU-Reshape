@@ -27,10 +27,13 @@
 // Layer
 #include "DX12.h"
 
+// Common
+#include <Common/Containers/LinearBlockAllocator.h>
+
 struct StateSubObjectWriter {
     /// Constructor
     /// \param desc given description
-    StateSubObjectWriter(const Allocators& allocators) : entries(allocators), buffer(allocators) {
+    StateSubObjectWriter(const Allocators& allocators) : subObjects(allocators), allocator(allocators) {
         
     }
 
@@ -45,8 +48,9 @@ struct StateSubObjectWriter {
             case D3D12_STATE_SUBOBJECT_TYPE_STATE_OBJECT_CONFIG:
                 return sizeof(D3D12_STATE_OBJECT_CONFIG);
             case D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE:
+                return sizeof(D3D12_GLOBAL_ROOT_SIGNATURE);
             case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE:
-                return sizeof(ID3D12RootSignature*);
+                return sizeof(D3D12_LOCAL_ROOT_SIGNATURE);
             case D3D12_STATE_SUBOBJECT_TYPE_NODE_MASK:
                 return sizeof(D3D12_NODE_MASK);
             case D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY:
@@ -76,18 +80,43 @@ struct StateSubObjectWriter {
         return *static_cast<const T*>(data.pDesc);
     }
 
+    /// Reserve a set of sub objects
+    /// \param count number of objects
+    void Reserve(uint32_t count) {
+        subObjects.reserve(count);
+    }
+
+    /// Get the future address of a sub-object
+    /// \param index index, must be reserved
+    /// \return address
+    const D3D12_STATE_SUBOBJECT* FutureAddressOf(uint32_t index) {
+        ASSERT(subObjects.capacity() > index, "Out of bounds address");
+        return subObjects.data() + index;
+    }
+    
     /// Add a new sub object
     /// \param type given type
     /// \return data, length must be GetSize(type)
     void Add(D3D12_STATE_SUBOBJECT_TYPE type, const void* data) {
         // Add entry
-        entries.push_back(SubObject {
-            .type = type,
-            .offset = buffer.size()
+        subObjects.push_back(D3D12_STATE_SUBOBJECT {
+            .Type = type,
+            .pDesc = Embed(data, static_cast<uint32_t>(GetSize(type)))
         });
+    }
 
-        auto ptr = static_cast<const uint8_t*>(data);
-        buffer.insert(buffer.end(), ptr, ptr + GetSize(type));
+    /// Add a new sub object
+    /// \param type given type
+    /// \return data, length must be GetSize(type)
+    template<typename T>
+    void Add(D3D12_STATE_SUBOBJECT_TYPE type, const T& value) {
+        ASSERT(GetSize(type) == sizeof(value), "Unexpected size");
+        
+        // Add entry
+        subObjects.push_back(D3D12_STATE_SUBOBJECT {
+            .Type = type,
+            .pDesc = Embed(&value, static_cast<uint32_t>(GetSize(type)))
+        });
     }
 
     /// Add a new sub object
@@ -98,41 +127,39 @@ struct StateSubObjectWriter {
         Add(type, &ptr);
     }
 
-    /// Compile the description
+    /// Embed data
+    /// \param value value to be embedded
+    /// \return embedded pointer
+    template<typename T>
+    const T* Embed(const T& value) {
+        return static_cast<const T*>(Embed(&value, sizeof(T)));
+    }
+
+    /// Embed data
+    /// \param data data pointer
+    /// \param size byte length of data
+    /// \return embedded pointer
+    const void* Embed(const void* data, uint32_t size) {
+        void* dest = allocator.AllocateArray<uint8_t>(size);
+        std::memcpy(dest, data, size);
+        return dest;
+    }
+
+    /// Get the description
     /// \param type state object type
     /// \return final description
-    D3D12_STATE_OBJECT_DESC Compile(D3D12_STATE_OBJECT_TYPE type) {
-        // Set data pointers
-        for (SubObject& obj : entries) {
-            obj.data = &buffer[obj.offset];
-        }
-
-        // Create description
+    D3D12_STATE_OBJECT_DESC GetDesc(D3D12_STATE_OBJECT_TYPE type) {
         D3D12_STATE_OBJECT_DESC desc;
         desc.Type = type;
-        desc.NumSubobjects = static_cast<uint32_t>(entries.size());
-        desc.pSubobjects = reinterpret_cast<D3D12_STATE_SUBOBJECT*>(entries.data());
+        desc.NumSubobjects = static_cast<uint32_t>(subObjects.size());
+        desc.pSubobjects = subObjects.data();
         return desc;
     }
 
 private:
-    struct SubObject {
-        /// Underlying type
-        D3D12_STATE_SUBOBJECT_TYPE type;
-
-        /// Data, first an offset, then the final pointer
-        union {
-            const void* data;
-            uint64_t offset;
-        };
-    };
-
-    /// Validate against d3d12
-    static_assert(sizeof(SubObject) == sizeof(D3D12_STATE_SUBOBJECT), "Unexpected size");
-
     /// All pending entries
-    Vector<SubObject> entries;
+    Vector<D3D12_STATE_SUBOBJECT> subObjects;
 
-    /// Intermediate data buffer
-    Vector<uint8_t> buffer;
+    /// Internal allocator
+    LinearBlockAllocator<4096> allocator;
 };

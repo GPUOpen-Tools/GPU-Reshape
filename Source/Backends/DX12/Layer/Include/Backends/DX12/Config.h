@@ -62,6 +62,9 @@
 /// Log instrumentation keys that have been rejected
 #define LOG_REJECTED_KEYS (1)
 
+/// Enable the inbuilt DXBC to DXIL conversion, experimental
+#define USE_DXBC_TO_DXIL_CONVERSION (1)
+
 /// Enable instrumentation of a specific file for debugging purposes
 ///  ? Instrumentation of large applications can be difficult to debug and even harder to reproduce under the same conditions.
 ///    When such a fault occurs, it is very useful to simply be able to iterate on a binary file.

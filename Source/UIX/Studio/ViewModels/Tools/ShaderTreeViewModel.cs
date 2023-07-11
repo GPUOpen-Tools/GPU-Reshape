@@ -261,6 +261,7 @@ namespace Studio.ViewModels.Tools
                     return;
 
                 ShaderIdentifierViewModel shaderIdentifierViewModel = _lookup[flat.shaderUID];
+                shaderIdentifierViewModel.Language = flat.language;
                 
                 // Mark shaders with no symbol data
                 if (flat.native != 0)

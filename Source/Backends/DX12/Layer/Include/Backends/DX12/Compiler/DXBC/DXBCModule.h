@@ -26,15 +26,16 @@
 
 // Layer
 #include <Backends/DX12/Config.h>
-#include <Backends/DX12/Compiler/DXModule.h>
+#include <Backends/DX12/Compiler/IDXModule.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockTable.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCConversionBlob.h>
 #include <Backends/DX12/Compiler/DXStream.h>
 
 // Backend
 #include <Backend/IL/Program.h>
 
 /// DXBC bytecode module
-class DXBCModule final : public DXModule {
+class DXBCModule final : public IDXModule {
 public:
     ~DXBCModule();
 
@@ -48,12 +49,13 @@ public:
     DXBCModule(const Allocators &allocators, IL::Program* program, const GlobalUID& instrumentationGUID);
 
     /// Overrides
-    DXModule* Copy() override;
+    IDXModule* Copy() override;
     bool Parse(const DXParseJob& job) override;
     IL::Program *GetProgram() override;
     GlobalUID GetInstrumentationGUID() override;
     bool Compile(const DXCompileJob& job, DXStream& out) override;
     IDXDebugModule *GetDebug() override;
+    const char* GetLanguage() override;
 
 private:
     Allocators allocators;
@@ -72,6 +74,9 @@ private:
 
     /// Instrumented stream
     DXStream dxStream;
+
+    /// DXIL conversion data
+    DXBCConversionBlob conversionBlob;
 
     /// Debugging GUID name
 #if SHADER_COMPILER_DEBUG

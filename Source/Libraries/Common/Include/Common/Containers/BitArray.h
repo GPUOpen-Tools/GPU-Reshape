@@ -92,6 +92,12 @@ public:
         elements.resize((size + 31) / 32);
     }
 
+    /// Number of elements
+    /// \return count
+    size_t Size() const {
+        return elements.size() * 32u;
+    }
+
     /// Get an element
     /// \param i bit index
     /// \return element

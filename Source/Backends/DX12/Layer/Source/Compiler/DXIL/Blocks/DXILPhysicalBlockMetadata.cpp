@@ -275,7 +275,6 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         // Handle contained
         switch (constantPointerType->pointee->kind) {
             default: {
-                ASSERT(false, "Unexpected resource constant pointer type");
                 break;
             }
             case Backend::IL::TypeKind::Struct: {
@@ -1619,6 +1618,10 @@ void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXCompileJob &job) {
         if (mapped.handles.size() > 8) {
             AddProgramFlag(DXILProgramShaderFlag::Use64UAVs);
         }
+    }
+
+    if (job.compatabilityTable.useViewportAndRTArray) {
+        AddProgramFlag(DXILProgramShaderFlag::EnableViewportAndRTArray);
     }
 }
 

@@ -37,7 +37,7 @@
 #include <vector>
 
 // Forward declarations
-class DXModule;
+class IDXModule;
 class ShaderDataHost;
 class ShaderCompilerDebug;
 struct DeviceState;
@@ -76,7 +76,7 @@ private:
 private:
     struct ProgramEntry {
         /// Templated module
-        DXModule* module{nullptr};
+        IDXModule* module{nullptr};
 
         /// Program pipeline
         ID3D12PipelineState* pipeline{nullptr};
@@ -107,7 +107,7 @@ private:
 
 private:
     /// Base module used for templating
-    DXModule* templateModule{nullptr};
+    IDXModule* templateModule{nullptr};
 
     /// Optional debug handle
     ComRef<ShaderCompilerDebug> debug;

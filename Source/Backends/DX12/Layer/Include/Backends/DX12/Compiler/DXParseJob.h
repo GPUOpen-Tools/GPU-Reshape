@@ -29,6 +29,7 @@
 
 // Forward declarations
 class PDBController;
+class DXBCConverter;
 
 /// Job description
 struct DXParseJob {
@@ -40,4 +41,5 @@ struct DXParseJob {
 
     /// Controllers
     ComRef<PDBController> pdbController;
+    ComRef<DXBCConverter> dxbcConverter;
 };

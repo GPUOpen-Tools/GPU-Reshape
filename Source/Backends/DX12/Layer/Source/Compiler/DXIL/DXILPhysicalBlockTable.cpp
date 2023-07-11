@@ -36,6 +36,7 @@ DXILPhysicalBlockTable::DXILPhysicalBlockTable(const Allocators &allocators, IL:
     symbol(allocators, program, *this),
     metadata(allocators, program, *this),
     intrinsics(allocators, program, *this),
+    compliance(allocators, program, *this),
     program(program),
     idMap(allocators, program),
     idRemapper(allocators, idMap),
@@ -163,6 +164,9 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
 bool DXILPhysicalBlockTable::Compile(const DXCompileJob &job) {
     LLVMBlock &root = scan.GetRoot();
 
+    // Check the root block compliance
+    compliance.Compile();
+
     // Set table binding info
     bindingInfo.bindingInfo = job.instrumentationKey.bindingInfo;
 
@@ -281,6 +285,9 @@ bool DXILPhysicalBlockTable::Compile(const DXCompileJob &job) {
     // Compile dynamic global metadata
     metadata.CompileMetadata(job);
 
+    // Trim all unused functions
+    compliance.TrimFunctions();
+
     // OK
     return true;
 }
@@ -371,6 +378,10 @@ void DXILPhysicalBlockTable::Stitch(DXStream &out) {
 void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
     scan.CopyTo(out.scan);
 
+    // Data
+    out.triple = triple;
+    out.dataLayout = dataLayout;
+
     // Table maps
     idMap.CopyTo(out.idMap);
     idRemapper.CopyTo(out.idRemapper);
@@ -382,4 +393,5 @@ void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
     metadata.CopyTo(out.metadata);
     function.CopyTo(out.function);
     functionAttribute.CopyTo(out.functionAttribute);
+    compliance.CopyTo(out.compliance);
 }

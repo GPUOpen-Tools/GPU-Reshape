@@ -42,3 +42,9 @@ bool ScanDXBCShaderDigest(const void* byteCode, uint64_t byteLength, DXILDigest&
 /// \param byteLength byte length of shader code
 /// \return shader hash
 uint32_t GetOrComputeDXBCShaderHash(const void* byteCode, uint64_t byteLength);
+
+/// Check if a given byte code is DXBC native
+/// \param byteCode shader code
+/// \param byteLength byte length of shader code
+/// \return true if pure DXBC
+bool IsDXBCNative(const void* byteCode, uint64_t byteLength);

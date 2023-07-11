@@ -63,6 +63,9 @@ public:
     /// Get the declaration associated with an id
     const DXILFunctionDeclaration* GetFunctionDeclaration(uint32_t id);
 
+    /// Get the declaration associated with an index
+    const DXILFunctionDeclaration* GetFunctionDeclarationFromIndex(uint32_t index);
+
 public:
     /// Compile a function
     /// \param block block

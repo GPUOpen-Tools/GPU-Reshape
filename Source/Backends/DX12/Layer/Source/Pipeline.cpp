@@ -295,32 +295,68 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
     return S_OK;
 }
 
+static uint32_t GetSubObjectIndex(const D3D12_STATE_OBJECT_DESC* desc, const D3D12_STATE_SUBOBJECT* subObject) {
+    for (uint32_t i = 0; i < desc->NumSubobjects; i++) {
+        if (&desc->pSubobjects[i] == subObject) {
+            return i;
+        }
+    }
+
+    ASSERT(false, "Failed to find sub-object");
+    return ~0u; 
+}
+
 HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, const IID& riid, void** ppStateObject) {
     auto table = GetTable(device);
 
     // Create writer
-    StateSubObjectWriter reader(table.state->allocators);
+    StateSubObjectWriter writer(table.state->allocators);
+
+    // Reserve on the actual sub-object count
+    writer.Reserve(pDesc->NumSubobjects);
 
     // Unwrap objects
     for (uint32_t i = 0; i < pDesc->NumSubobjects; i++) {
         const D3D12_STATE_SUBOBJECT& subObject = pDesc->pSubobjects[i];
         switch (subObject.Type) {
             default: {
-                reader.Add(subObject.Type, subObject.pDesc);
+                writer.Add(subObject.Type, subObject.pDesc);
                 break;
             }
-            case D3D12_STATE_SUBOBJECT_TYPE_STATE_OBJECT_CONFIG:
-            case D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE:
+            case D3D12_STATE_SUBOBJECT_TYPE_SUBOBJECT_TO_EXPORTS_ASSOCIATION: {
+                auto contained = StateSubObjectWriter::Read<D3D12_SUBOBJECT_TO_EXPORTS_ASSOCIATION>(subObject);
+
+                // Rewrite sub-object association to future address
+                contained.pSubobjectToAssociate = writer.FutureAddressOf(GetSubObjectIndex(pDesc, contained.pSubobjectToAssociate));
+                
+                writer.Add(subObject.Type, contained);
+                break;
+            }
+            case D3D12_STATE_SUBOBJECT_TYPE_EXISTING_COLLECTION: {
+                writer.Add(subObject.Type, subObject.pDesc);
+                break;
+            }
+            case D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE: {
+                auto object = StateSubObjectWriter::Read<D3D12_GLOBAL_ROOT_SIGNATURE>(subObject);
+
+                writer.Add(subObject.Type, D3D12_GLOBAL_ROOT_SIGNATURE {
+                    .pGlobalRootSignature = GetState(object.pGlobalRootSignature)->nativeObject
+                });
+                break;
+            }
             case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE: {
-                auto wrapped = StateSubObjectWriter::Read<ID3D12RootSignature*>(subObject);
-                reader.AddPtr(subObject.Type, Next(wrapped));
+                auto object = StateSubObjectWriter::Read<D3D12_LOCAL_ROOT_SIGNATURE>(subObject);
+                
+                writer.Add(subObject.Type, D3D12_LOCAL_ROOT_SIGNATURE {
+                    .pLocalRootSignature = GetState(object.pLocalRootSignature)->nativeObject
+                });
                 break;
             }
         }
     }
 
     // Create description
-    D3D12_STATE_OBJECT_DESC desc = reader.Compile(pDesc->Type);
+    D3D12_STATE_OBJECT_DESC desc = writer.GetDesc(pDesc->Type);
 
     // Pass down callchain
     HRESULT hr = table.bottom->next_CreateStateObject(table.next, &desc, riid, ppStateObject);

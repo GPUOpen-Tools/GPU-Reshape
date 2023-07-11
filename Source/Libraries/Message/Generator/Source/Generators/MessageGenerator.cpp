@@ -602,9 +602,6 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             // Requires the dynamic schema
             anyDynamic = true;
 
-            // Not trivial
-            anyNonTrivial = true;
-
             // Append field
             out.members << "\t\tpublic MessageString " << field.name << "\n";
             out.members << "\t\t{\n";
@@ -983,6 +980,8 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             // Primitive?
             if (auto it = primitiveTypeMap.types.find(field.type); it != primitiveTypeMap.types.end()) {
                 out.types << "\t\t\tpublic " << it->second.csType << " " << field.name << ";\n\n";
+            } else if (field.type ==  "string") {
+                out.types << "\t\t\tpublic string " << field.name << ";\n\n";
             } else {
                 std::cerr << "Unexpected non trivial state" << std::endl;
                 return false;
@@ -1002,7 +1001,12 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
         // Copy all members
         for (auto fieldIt = message.fields.begin(); fieldIt != message.fields.end(); fieldIt++) {
             const Field &field = *fieldIt;
-            out.functions << "\t\t\t\tflat." << field.name << " = " << field.name << ";\n";
+
+            if (field.type == "string") {
+                out.functions << "\t\t\t\tflat." << field.name << " = " << field.name << ".String;\n";
+            } else {
+                out.functions << "\t\t\t\tflat." << field.name << " = " << field.name << ";\n";
+            }
         }
 
         // End flat getter

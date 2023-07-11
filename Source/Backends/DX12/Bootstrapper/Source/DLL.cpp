@@ -35,12 +35,14 @@
 #include <Windows.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
+#include <Psapi.h>
 
 // Std
 #include <cstring>
 #include <mutex>
 #include <fstream>
 #include <cwchar>
+#include <set>
 
 // Detour
 #include <Detour/detours.h>
@@ -54,6 +56,19 @@
 
 /// Greatly simplifies debugging
 #define ENABLE_WHITELIST 0
+
+/// All whitelisted applications
+#if ENABLE_WHITELIST
+const char* kWhitelist[] =
+{
+    /// Hosting service
+    /// Must always be included for GPAs
+    "GRS.Backends.DX12.Service.exe",
+
+    /// Applications
+    /** poof */
+};
+#endif // ENABLE_WHITELIST
 
 /// Symbol helper (nay, repent! a macro!)
 #define SYMBOL(NAME, STR) \
@@ -110,6 +125,13 @@ HMODULE AMDAGSModule;
 /// Layer function table
 D3D12GPUOpenFunctionTable LayerFunctionTable;
 
+/// Module lock
+/// Module events are already in sync, however, that's only down the call chain
+std::recursive_mutex moduleLock;
+
+/// Snapshot of a module set
+using ModuleSnapshot = std::set<HMODULE>;
+
 /// Well documented image base
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
@@ -118,6 +140,7 @@ void DetourAMDAGSModule(HMODULE handle, bool insideTransaction);
 void DetourD3D11Module(HMODULE handle, bool insideTransaction); 
 void DetourD3D12Module(HMODULE handle, bool insideTransaction); 
 void DetourDXGIModule(HMODULE handle, bool insideTransaction);
+void CommitFunctionTable();
 
 #if ENABLE_LOGGING
 std::mutex LoggingLock;
@@ -166,6 +189,21 @@ bool BootstrapCheckLibrary(HMODULE& handle, const wchar_t* name, bool native) {
     return handle != nullptr;
 }
 
+void CommitFunctionTable() {
+    // Sanity check
+    if (!LayerModule) {
+        return;
+    }
+
+    // Set function table in layer
+    auto* gpaSetFunctionTable = reinterpret_cast<PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN>(Kernel32GetProcAddressOriginal(LayerModule, "D3D12SetFunctionTableGPUOpen"));
+    if (!gpaSetFunctionTable || FAILED(gpaSetFunctionTable(&DetourFunctionTable))) {
+#if ENABLE_LOGGING
+        LogContext{} << "Failed to set layer function table\n";
+#endif // ENABLE_LOGGING
+    }
+}
+
 void ConditionallyBeginDetour(bool insideTransaction) {
     if (insideTransaction) {
         return;
@@ -185,14 +223,7 @@ void ConditionallyEndDetour(bool insideTransaction) {
     }
 
     // May be loaded after the bootstrapper has initialized, update the function table if needed
-    if (LayerModule) {
-        auto* gpaSetFunctionTable = reinterpret_cast<PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN>(Kernel32GetProcAddressOriginal(LayerModule, "D3D12SetFunctionTableGPUOpen"));
-        if (!gpaSetFunctionTable || FAILED(gpaSetFunctionTable(&DetourFunctionTable))) {
-#if ENABLE_LOGGING
-            LogContext{} << "Failed to update layer function table\n";
-#endif // ENABLE_LOGGING
-        }
-    }
+    CommitFunctionTable();
 }
 
 void LazyLoadDependentLibraries(bool native) {
@@ -256,56 +287,6 @@ void BootstrapLayer(const char* invoker, bool native) {
     // Copy current bootstrapper
     std::filesystem::copy(path, sessionPath);
 
-    // Load modules on demand
-    LazyLoadDependentLibraries(native);
-
-    // Failed?
-    // Note: AMDAGSModule is optional, extension service
-#if ENABLE_LOGGING
-    if (!D3D12Module || !DXGIModule) {
-        LogContext{} << "Failed to load " << kD3D12ModuleName << " , " << kDXGIModuleName <<  " [" << GetLastError() << "]\n";
-    }
-#endif // ENABLE_LOGGING
-
-    // Get device creation if not hooked
-    if (!DetourFunctionTable.next_D3D12CreateDeviceOriginal) {
-        DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12CreateDevice"));
-    }
-
-    // Get device creation if not hooked
-    if (!DetourFunctionTable.next_D3D11On12CreateDeviceOriginal) {
-        DetourFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(D3D11Module, "D3D11On12CreateDevice"));
-    }
-
-    // Get factory creation 0 if not hooked
-    if (!DetourFunctionTable.next_CreateDXGIFactoryOriginal) {
-        DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory"));
-    }
-
-    // Get factory creation 1 if not hooked
-    if (!DetourFunctionTable.next_CreateDXGIFactory1Original) {
-        DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory1"));
-    }
-
-    // Get factory creation 2 if not hooked
-    if (!DetourFunctionTable.next_CreateDXGIFactory2Original) {
-        DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(Kernel32GetProcAddressOriginal(DXGIModule, "CreateDXGIFactory2"));
-    }
-
-    // Get feature enabling if not hooked
-    if (!DetourFunctionTable.next_EnableExperimentalFeatures) {
-        DetourFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(Kernel32GetProcAddressOriginal(D3D12Module, "D3D12EnableExperimentalFeatures"));
-    }
-
-    // Get amd ags if not hooked
-    if (!DetourFunctionTable.next_AMDAGSCreateDevice) {
-        DetourFunctionTable.next_AMDAGSCreateDevice  = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_CreateDevice"));
-        DetourFunctionTable.next_AMDAGSDestroyDevice = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_DestroyDevice"));
-        DetourFunctionTable.next_AMDAGSPushMarker    = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_PushMarker"));
-        DetourFunctionTable.next_AMDAGSPopMarker     = reinterpret_cast<PFN_AMD_AGS_POP_MARKER>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_PopMarker"));
-        DetourFunctionTable.next_AMDAGSSetMarker     = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(Kernel32GetProcAddressOriginal(AMDAGSModule, "agsDriverExtensionsDX12_SetMarker"));
-    }
-
     // User attempting to load d3d12.dll, warranting bootstrapping of the layer
     if (native) {
         LayerModule = LoadLibraryExW(sessionPath.wstring().c_str(), nullptr, 0x0);
@@ -330,24 +311,8 @@ void BootstrapLayer(const char* invoker, bool native) {
         // Wrappers
         LayerFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(LayerModule, "HookD3D11On12CreateDevice"));
 
-        // Failed?
-        // Note: AMDAGSModule is optional, extension service
-        if (!LayerFunctionTable.next_D3D12CreateDeviceOriginal ||
-            !LayerFunctionTable.next_CreateDXGIFactoryOriginal ||
-            !LayerFunctionTable.next_CreateDXGIFactory1Original ||
-            !LayerFunctionTable.next_CreateDXGIFactory2Original) {
-#if ENABLE_LOGGING
-            LogContext{} << "Failed to get layer function table\n";
-#endif // ENABLE_LOGGING
-        }
-
-        // Set function table in layer
-        auto* gpaSetFunctionTable = reinterpret_cast<PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN>(Kernel32GetProcAddressOriginal(LayerModule, "D3D12SetFunctionTableGPUOpen"));
-        if (!gpaSetFunctionTable || FAILED(gpaSetFunctionTable(&DetourFunctionTable))) {
-#if ENABLE_LOGGING
-            LogContext{} << "Failed to set layer function table\n";
-#endif // ENABLE_LOGGING
-        }
+        // Initial commit
+        CommitFunctionTable();
     }
 
     // Failed?
@@ -440,20 +405,93 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
     return Kernel32GetProcAddressOriginal(hModule, lpProcName);
 }
 
-void TryLoadEmbeddedAMDAGS(HMODULE handle) {
+void TryLoadEmbeddedModules(HMODULE handle) {
+    // Get the base name
+    char baseName[1024];
+    if (!GetModuleBaseNameA(GetCurrentProcess(), handle, baseName, sizeof(baseName))) {
+        return;
+    }
+
+    // Is AGS?
     if (!DetourFunctionTable.next_AMDAGSCreateDevice && Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr) {
         DetourAMDAGSModule(handle, false);
+    }
+
+    // Is D3D12?
+    if (!DetourFunctionTable.next_D3D12CreateDeviceOriginal && !std::strcmp(baseName, kD3D12ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D12CreateDevice") != nullptr) {
+        DetourD3D12Module(handle, false);
+    }
+
+    // Is DXGI?
+    if (!DetourFunctionTable.next_CreateDXGIFactoryOriginal && !std::strcmp(baseName, kDXGIModuleName) && Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory") != nullptr) {
+        DetourDXGIModule(handle, false);
+    }
+
+    // Is D3D11?
+    if (!DetourFunctionTable.next_D3D11On12CreateDeviceOriginal && !std::strcmp(baseName, kD3D11ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D11On12CreateDevice") != nullptr) {
+        DetourD3D11Module(handle, false);
+    }
+}
+
+ModuleSnapshot GetModuleSnapshot() {
+    // Get the process
+    HANDLE process = GetCurrentProcess();
+
+    // Determine needed byte count
+    DWORD needed{0};
+    if (!EnumProcessModules(process, nullptr, 0, &needed)) {
+        return {};
+    }
+
+    // Get all modules
+    std::vector<HMODULE> modules(needed / sizeof(HMODULE), nullptr);
+    if (!EnumProcessModules(process, modules.data(), static_cast<DWORD>(modules.size() * sizeof(HMODULE)), &needed)) {
+        return {};
+    }
+
+    // Create snapshot from module set
+    ModuleSnapshot snapshot;
+    for (size_t i = 0; i < std::min(needed / sizeof(HMODULE), modules.size()); i++) {
+        snapshot.insert(modules[i]);
+    }
+
+    // OK
+    return snapshot;
+}
+
+void DetourForeignModules(const ModuleSnapshot& before) {
+    // Get post snapshot
+    ModuleSnapshot modules = GetModuleSnapshot();
+
+    // Check all post modules
+    for (HMODULE module : modules) {
+        if (!module) {
+            continue;
+        }
+
+        // If part of the pre snapshot, ignore
+        if (before.contains(module)) {
+            continue;
+        }
+
+        // New module, load all embedded proc's
+        TryLoadEmbeddedModules(module);
     }
 }
 
 HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
+    std::lock_guard guard(moduleLock);
+    
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryA '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
 
+    // Initial snapshot
+    ModuleSnapshot snapshot = GetModuleSnapshot();
+    
     // Intercepted library?
     // TODO: May not just be the module name!
-    if (lpLibFileName && (std::strcmp(lpLibFileName, kD3D12ModuleName) == 0 || std::strcmp(lpLibFileName, kDXGIModuleName) == 0)) {
+    if (lpLibFileName && (std::strcmp(lpLibFileName, kD3D12ModuleName) == 0 || std::strcmp(lpLibFileName, kD3D11ModuleName) == 0 || std::strcmp(lpLibFileName, kDXGIModuleName) == 0)) {
         BootstrapLayer("HookLoadLibraryA", false);
     }
 
@@ -464,20 +502,25 @@ HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
     }
 
     // Query embedded hooks
-    TryLoadEmbeddedAMDAGS(module);
+    DetourForeignModules(snapshot);
 
     // OK
     return module;
 }
 
 HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
+    std::lock_guard guard(moduleLock);
+
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryW '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
 
+    // Initial snapshot
+    ModuleSnapshot snapshot = GetModuleSnapshot();
+
     // Intercepted library?
     // TODO: May not just be the module name!
-    if (lpLibFileName && (std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kDXGIModuleNameW) == 0)) {
+    if (lpLibFileName && (std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kD3D11ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kDXGIModuleNameW) == 0)) {
         BootstrapLayer("HookLoadLibraryW", false);
     }
 
@@ -488,20 +531,25 @@ HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
     }
 
     // Query embedded hooks
-    TryLoadEmbeddedAMDAGS(module);
+    DetourForeignModules(snapshot);
 
     // OK
     return module;
 }
 
 HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD flags) {
+    std::lock_guard guard(moduleLock);
+
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryExA '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
 
+    // Initial snapshot
+    ModuleSnapshot snapshot = GetModuleSnapshot();
+
     // Intercepted library?
     // TODO: May not just be the module name!
-    if (lpLibFileName && (std::strcmp(lpLibFileName, kD3D12ModuleName) == 0 || std::strcmp(lpLibFileName, kDXGIModuleName) == 0)) {
+    if (lpLibFileName && (std::strcmp(lpLibFileName, kD3D12ModuleName) == 0 || std::strcmp(lpLibFileName, kD3D11ModuleName) == 0 || std::strcmp(lpLibFileName, kDXGIModuleName) == 0)) {
         BootstrapLayer("HookLoadLibraryExA", false);
     }
 
@@ -512,20 +560,25 @@ HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
     }
 
     // Query embedded hooks
-    TryLoadEmbeddedAMDAGS(module);
+    DetourForeignModules(snapshot);
 
     // OK
     return module;
 }
 
 HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD flags) {
+    std::lock_guard guard(moduleLock);
+
+    // Initial snapshot
+    ModuleSnapshot snapshot = GetModuleSnapshot();
+
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryExW '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
 
     // Intercepted library?
     // TODO: May not just be the module name!
-    if (lpLibFileName && (std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kDXGIModuleNameW) == 0)) {
+    if (lpLibFileName && (std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kD3D11ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kDXGIModuleNameW) == 0)) {
         BootstrapLayer("HookLoadLibraryExW", false);
     }
 
@@ -536,7 +589,7 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
     }
 
     // Query embedded hooks
-    TryLoadEmbeddedAMDAGS(module);
+    DetourForeignModules(snapshot);
 
     // OK
     return module;
@@ -568,7 +621,7 @@ DWORD DeferredInitialization(void*) {
 
     // Attempt to find module, directly load the layer if available
     //  i.e. Already loaded or scheduled to be
-    if (DXGIModule || D3D12Module) {
+    if (DXGIModule || D3D12Module || D3D11Module || AMDAGSModule) {
         // ! Call native LoadLibraryW, not detoured
         BootstrapLayer("Entry detected mounted d3d12 module", false);
         return 0;
@@ -674,7 +727,14 @@ HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void
     return LayerFunctionTable.next_CreateDXGIFactory2Original(flags, riid, ppFactory);
 }
 
+void OnDetourModule(HMODULE& module, HMODULE handle) {
+    ASSERT(module == nullptr, "Re-entrant detouring");
+    module = handle;
+}
+
 void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
+    OnDetourModule(AMDAGSModule, handle);
+    
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
 
@@ -703,6 +763,8 @@ void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
 }
 
 void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
+    OnDetourModule(D3D12Module, handle);
+    
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
 
@@ -719,6 +781,8 @@ void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
 }
 
 void DetourD3D11Module(HMODULE handle, bool insideTransaction) {
+    OnDetourModule(D3D11Module, handle);
+    
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
 
@@ -731,6 +795,8 @@ void DetourD3D11Module(HMODULE handle, bool insideTransaction) {
 }
 
 void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
+    OnDetourModule(DXGIModule, handle);
+    
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
 
@@ -752,28 +818,6 @@ void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
 
     // End and update
     ConditionallyEndDetour(insideTransaction);
-}
-
-void DetourInitialCreation() {
-    // Attempt to find d3d12 module
-    if (GetModuleHandleExW(0x0, kD3D12ModuleNameW, &D3D12Module)) {
-        DetourD3D12Module(D3D12Module, true);
-    }
-    
-    // Attempt to find d3d11 module
-    if (GetModuleHandleExW(0x0, kD3D11ModuleNameW, &D3D11Module)) {
-        DetourD3D11Module(D3D11Module, true);
-    }
-
-    // Attempt to find dxgi module
-    if (GetModuleHandleExW(0x0, kDXGIModuleNameW, &DXGIModule)) {
-        DetourDXGIModule(DXGIModule, true);
-    }
-
-    // Attempt to find amd ags module
-    if (GetModuleHandleExW(0x0, kAMDAGSModuleNameW, &AMDAGSModule)) {
-        DetourAMDAGSModule(AMDAGSModule, true);
-    }
 }
 
 void DetachInitialCreation() {
@@ -858,9 +902,17 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     }
 
 #if ENABLE_WHITELIST
-    // Whitelist executable
-    if (!std::ends_with(filename, "GRS.Backends.DX12.Service.exe") && !std::ends_with(filename, "ModelViewer.exe")) {
-        // Note: This is a terrible idea, hook will attempt to load over and over
+    bool isWhitelisted = false;
+
+    // Check if any of the target applications
+    for (const char* name : kWhitelist) {
+        if (std::ends_with(GetCurrentExecutableName(), name)) {
+            isWhitelisted = true;
+        }
+    }
+
+    // Not whitelisted?
+    if (!isWhitelisted) {
         return FALSE;
     }
 #endif // ENABLE_WHITELIST
@@ -924,7 +976,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         DetourAttach(&reinterpret_cast<void *&>(Kernel32GetProcAddressOriginal), reinterpret_cast<void *>(HookGetProcAddress));
 
         // Attempt to create initial detours
-        DetourInitialCreation();
+        DetourForeignModules(ModuleSnapshot {});
 
         // Commit all transactions
         if (FAILED(DetourTransactionCommit())) {

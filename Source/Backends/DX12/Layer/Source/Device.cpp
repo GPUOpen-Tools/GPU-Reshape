@@ -36,6 +36,7 @@
 #include <Backends/DX12/Compiler/ShaderCompilerDebug.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCConverter.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Controllers/FeatureController.h>
 #include <Backends/DX12/Controllers/MetadataController.h>
@@ -265,6 +266,10 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         auto dxbcSigner = state->registry.AddNew<DXBCSigner>();
         ENSURE(dxbcSigner->Install(), "Failed to install DXBC signer");
 
+        // Install the dxbc converter
+        auto dxbcConverter = state->registry.AddNew<DXBCConverter>();
+        ENSURE(dxbcConverter->Install(), "Failed to install DXBC converter");
+
         // Install the shader compiler
         auto shaderCompiler = state->registry.AddNew<ShaderCompiler>(state);
         ENSURE(shaderCompiler->Install(), "Failed to install shader compiler");
@@ -391,9 +396,41 @@ static bool IsDevelopmentModeEnabled() {
     return value != 0;
 }
 
-static void ConditionallyEnableExperimentalMode() {
-    // Not of use when debugging
+static HRESULT EnableExperimentalFeaturesWithFastTrack(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes) {
+    // Keep track
+    D3D12GPUOpenProcessInfo.isExperimentalModeEnabled = true;
+
 #if defined(NDEBUG)
+    // Copy previous uuids
+    UUID* shaderModels = ALLOCA_ARRAY(UUID, NumFeatures + 1u);
+    std::memcpy(shaderModels, riid, sizeof(UUID) * NumFeatures);
+
+    // Request experimental shader models
+    shaderModels[NumFeatures] = GlobalUID::FromString("{76f5573e-f13a-40f5-b297-81ce9e18933f}").AsPlatformGUID();
+
+    // Pass down callchain
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures(NumFeatures + 1u, shaderModels, pConfigurationStructs, pConfigurationStructSizes);
+    if (FAILED(hr)) {
+        // Logging?
+        return hr;
+    }
+    
+    // Mark as enabled
+    D3D12GPUOpenProcessInfo.isExperimentalShaderModelsEnabled = true;
+#else
+    // Pass down callchain
+    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
+    if (FAILED(hr)) {
+        // Logging?
+        return hr;
+    }
+#endif
+    
+    // OK!
+    return S_OK;
+}
+
+static void ConditionallyEnableExperimentalMode() {
     // Only attempt this on development modes
     if (static bool DeveloperModeEnabled = IsDevelopmentModeEnabled(); !DeveloperModeEnabled) {
         return;
@@ -404,22 +441,7 @@ static void ConditionallyEnableExperimentalMode() {
         return;
     }
 
-    // Keep track
-    D3D12GPUOpenProcessInfo.isExperimentalModeEnabled = true;
-
-    // Request experimental shader models
-    UUID ExperimentalShaderModels = GlobalUID::FromString("{76f5573e-f13a-40f5-b297-81ce9e18933f}").AsPlatformGUID();
-
-    // Pass down callchain
-    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures(1u, &ExperimentalShaderModels, nullptr, nullptr);
-    if (FAILED(hr)) {
-        // Logging?
-        return;
-    }
-
-    // OK!
-    D3D12GPUOpenProcessInfo.isExperimentalShaderModelsEnabled = true;
-#endif // defined(NDEBUG)
+    EnableExperimentalFeaturesWithFastTrack(0u, nullptr, nullptr, nullptr);
 }
 
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
@@ -490,17 +512,7 @@ HRESULT WINAPI HookID3D12CreateDevice(
 }
 
 HRESULT WINAPI HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes) {
-    // Keep track
-    D3D12GPUOpenProcessInfo.isExperimentalModeEnabled = true;
-
-    // Pass down callchain
-    HRESULT hr = D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
-    if (FAILED(hr)) {
-        return hr;
-    }
-
-    // OK
-    return S_OK;
+    return EnableExperimentalFeaturesWithFastTrack(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
 }
 
 AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams) {

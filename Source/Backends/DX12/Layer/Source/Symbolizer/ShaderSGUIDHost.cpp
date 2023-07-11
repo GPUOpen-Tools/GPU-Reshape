@@ -26,7 +26,7 @@
 #include <Backends/DX12/Compiler/IDXDebugModule.h>
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/States/ShaderState.h>
-#include <Backends/DX12/Compiler/DXModule.h>
+#include <Backends/DX12/Compiler/IDXModule.h>
 #include <Backends/DX12/Compiler/IDXDebugModule.h>
 
 // Backend

@@ -26,7 +26,7 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/States/PipelineState.h>
-#include <Backends/DX12/Compiler/DXModule.h>
+#include <Backends/DX12/Compiler/IDXModule.h>
 #include <Backends/DX12/Compiler/IDXDebugModule.h>
 #include <Backends/DX12/Compiler/ShaderCompiler.h>
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
@@ -157,16 +157,20 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
         return;
     }
 
+    // Get the language
+    const char* language = shader->module->GetLanguage();
+
     // Get debug module
     IDXDebugModule* debugModule = shader->module->GetDebug();
 
     // No sources available?
     if (!debugModule || !debugModule->GetFileCount()) {
         // Add response
-        auto&& response = view.Add<ShaderCodeMessage>();
+        auto&& response = view.Add<ShaderCodeMessage>(ShaderCodeMessage::AllocationInfo { .languageLength = std::strlen(language) });
         response->shaderUID = message.shaderUID;
         response->found = true;
         response->native = true;
+        response->language.Set(language);
         response->fileCount = 0;
         return;
     }
@@ -175,10 +179,11 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     const uint32_t fileCount = debugModule->GetFileCount();
 
     // Add response
-    auto&& response = view.Add<ShaderCodeMessage>();
+    auto&& response = view.Add<ShaderCodeMessage>(ShaderCodeMessage::AllocationInfo { .languageLength = std::strlen(language) });
     response->shaderUID = message.shaderUID;
     response->found = true;
     response->native = false;
+    response->language.Set(language);
     response->fileCount = fileCount;
 
     // Add file responses

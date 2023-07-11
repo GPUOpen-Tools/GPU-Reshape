@@ -25,6 +25,7 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockTable.h>
 #include <Backends/DX12/Compiler/DXParseJob.h>
 #include <Backends/DX12/Compiler/Tags.h>
+#include <Backends/DX12/Compiler/DXCompileJob.h>
 
 // DXIL Extension
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
@@ -40,6 +41,7 @@ DXBCPhysicalBlockTable::DXBCPhysicalBlockTable(const Allocators &allocators, IL:
     rootSignature(allocators, program, *this),
     featureInfo(allocators, program, *this),
     inputSignature(allocators, program, *this),
+    outputSignature(allocators, program, *this),
     debug(allocators, program, *this),
     allocators(allocators),
     program(program) {
@@ -67,6 +69,7 @@ bool DXBCPhysicalBlockTable::Parse(const DXParseJob& job) {
     rootSignature.Parse();
     featureInfo.Parse();
     inputSignature.Parse();
+    outputSignature.Parse();
 
     // Parse canonical program
     if (DXBCPhysicalBlock *dxilBlock = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
@@ -92,15 +95,23 @@ bool DXBCPhysicalBlockTable::Parse(const DXParseJob& job) {
     return true;
 }
 
-bool DXBCPhysicalBlockTable::Compile(const DXCompileJob &job) {
+bool DXBCPhysicalBlockTable::Compile(const DXCompileJob &job) {    
     // DXIL?
     if (dxilModule) {
         DXBCPhysicalBlock *block = scan.GetPhysicalBlock(DXBCPhysicalBlockType::DXIL);
 
+        // Create new job
+        DXCompileJob dxilJob = job;
+        inputSignature.CompileDXILCompatability(dxilJob);
+        outputSignature.CompileDXILCompatability(dxilJob);
+
         // Attempt to compile contained module
-        if (!dxilModule->Compile(job, block->stream)) {
+        if (!dxilModule->Compile(dxilJob, block->stream)) {
             return false;
         }
+    } else {
+        // non-DXIL DXBC recompilation is not supported yet
+        return false;
     }
 
     // Compile validation
@@ -108,6 +119,7 @@ bool DXBCPhysicalBlockTable::Compile(const DXCompileJob &job) {
     rootSignature.Compile();
     featureInfo.Compile();
     inputSignature.Compile();
+    outputSignature.Compile();
 
     // OK
     return true;
@@ -125,6 +137,7 @@ void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {
     rootSignature.CopyTo(out.rootSignature);
     featureInfo.CopyTo(out.featureInfo);
     inputSignature.CopyTo(out.inputSignature);
+    outputSignature.CopyTo(out.outputSignature);
 
     // Keep the debug interface
     out.debugModule = debugModule;

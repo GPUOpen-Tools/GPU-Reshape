@@ -37,6 +37,7 @@ void DXILUtilIntrinsics::Compile() {
     i8Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 8, .signedness = true});
     i32Type = typeMap.FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true});
     f32Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 32});
+    f16Type = typeMap.FindTypeOrAdd(Backend::IL::FPType{.bitWidth = 16});
 
     // Structured handle type
     handleType = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType{
@@ -213,6 +214,8 @@ const Backend::IL::Type *DXILUtilIntrinsics::GetType(const DXILIntrinsicTypeSpec
             return i32Type;
         case DXILIntrinsicTypeSpec::F32:
             return f32Type;
+        case DXILIntrinsicTypeSpec::F16:
+            return f16Type;
         case DXILIntrinsicTypeSpec::I8:
             return i8Type;
         case DXILIntrinsicTypeSpec::I1:

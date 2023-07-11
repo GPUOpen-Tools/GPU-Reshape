@@ -130,7 +130,15 @@ void DXILPhysicalBlockSymbol::CompileSymTab(struct LLVMBlock *block) {
 }
 
 void DXILPhysicalBlockSymbol::StitchSymTab(struct LLVMBlock *block) {
-    for (LLVMRecord &record: block->records) {
+    for (size_t i = 0; i < block->elements.size(); i++) {
+        const LLVMBlockElement& element = block->elements[i];
+        
+        if (!element.Is(LLVMBlockElementType::Record)) {
+            continue;
+        }
+        
+        LLVMRecord &record = block->records[block->elements[i].id];
+        
         switch (static_cast<LLVMSymTabRecord>(record.id)) {
             default: {
                 // Ignored

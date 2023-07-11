@@ -158,13 +158,17 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     // Get source map
     const SpvSourceMap* sourceMap = shader->spirvModule->GetSourceMap();
 
+    // Language is always SPIRV
+    const char* language = "SPIRV";
+
     // No sources available?
     if (!sourceMap || !sourceMap->GetFileCount()) {
         // Add response
-        auto&& response = view.Add<ShaderCodeMessage>();
+        auto&& response = view.Add<ShaderCodeMessage>(ShaderCodeMessage::AllocationInfo { .languageLength = std::strlen(language) });
         response->shaderUID = message.shaderUID;
         response->found = true;
         response->native = true;
+        response->language.Set(language);
         response->fileCount = 0;
         return;
     }
@@ -173,10 +177,11 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     const uint32_t fileCount = sourceMap->GetFileCount();
 
     // Add response
-    auto&& response = view.Add<ShaderCodeMessage>();
+    auto&& response = view.Add<ShaderCodeMessage>(ShaderCodeMessage::AllocationInfo { .languageLength = std::strlen(language) });
     response->shaderUID = message.shaderUID;
     response->found = true;
     response->native = false;
+    response->language.Set(language);
     response->fileCount = fileCount;
 
     // Add file responses

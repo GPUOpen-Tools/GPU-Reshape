@@ -23,7 +23,7 @@
 // 
 
 #include <Backends/DX12/Compiler/ShaderCompiler.h>
-#include <Backends/DX12/Compiler/DXModule.h>
+#include <Backends/DX12/Compiler/IDXModule.h>
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 #include <Backends/DX12/Compiler/ShaderCompilerDebug.h>
@@ -32,6 +32,7 @@
 #include <Backends/DX12/Compiler/DXStream.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCConverter.h>
 #include <Backends/DX12/Compiler/Tags.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 
@@ -88,6 +89,9 @@ bool ShaderCompiler::Install() {
     dxilSigner = registry->Get<DXILSigner>();
     dxbcSigner = registry->Get<DXBCSigner>();
 
+    // Get the converter
+    dxbcConverter = registry->Get<DXBCConverter>();
+
     // OK
     return true;
 }
@@ -129,6 +133,7 @@ bool ShaderCompiler::InitializeModule(ShaderState *state) {
         job.byteCode = state->byteCode.pShaderBytecode;
         job.byteLength = state->byteCode.BytecodeLength;
         job.pdbController = device->pdbController;
+        job.dxbcConverter = dxbcConverter;
 
         // Try to parse the bytecode
         if (!state->module->Parse(job)) {
@@ -153,7 +158,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     }
 
     // Create a copy of the module, don't modify the source
-    DXModule *module = job.state->module->Copy();
+    IDXModule *module = job.state->module->Copy();
 
     // Debugging
     std::filesystem::path debugPath;

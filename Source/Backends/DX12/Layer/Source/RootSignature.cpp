@@ -461,26 +461,23 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     );
 }
 
-static bool ShouldInstrumentRootSignature(const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* desc) {
-    switch (desc->Version) {
-        default:
-            ASSERT(false, "Invalid root signature version");
-            return false;
-        case D3D_ROOT_SIGNATURE_VERSION_1:
-            return !(desc->Desc_1_0.Flags & D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE);
-        case D3D_ROOT_SIGNATURE_VERSION_1_1:
-            return !(desc->Desc_1_1.Flags & D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE);
-    }
-}
-
 HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask, const void *blob, SIZE_T length, const IID& riid, void ** pRootSignature) {
     auto table = GetTable(device);
+
+    // Signature to the users specification
+    ID3D12RootSignature* nativeRootSignature{nullptr};
+    
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateRootSignature(table.next, nodeMask, blob, length, __uuidof(ID3D12RootSignature), reinterpret_cast<void**>(&nativeRootSignature));
+    if (FAILED(hr)) {
+        return hr;
+    }
 
     // Temporary deserializer for re-serialization
     ID3D12VersionedRootSignatureDeserializer* deserializer{nullptr};
 
     // Immediate deserialization
-    HRESULT hr = D3D12CreateVersionedRootSignatureDeserializer(blob, length, IID_PPV_ARGS(&deserializer));
+    hr = D3D12CreateVersionedRootSignatureDeserializer(blob, length, IID_PPV_ARGS(&deserializer));
     if (FAILED(hr)) {
         return hr;
     }
@@ -504,57 +501,48 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     // Object
     ID3D12RootSignature* rootSignature{nullptr};
 
-    // Certain root signatures are exempt
-    if (ShouldInstrumentRootSignature(unconverted)) {
-        // Attempt to re-serialize
-        ID3DBlob* serialized{nullptr};
-        switch (unconverted->Version) {
-            default:
-                ASSERT(false, "Invalid root signature version");
-            return E_INVALIDARG;
-            case D3D_ROOT_SIGNATURE_VERSION_1: {
+    // Attempt to re-serialize
+    ID3DBlob* serialized{nullptr};
+    switch (unconverted->Version) {
+        default:
+            ASSERT(false, "Invalid root signature version");
+        return E_INVALIDARG;
+        case D3D_ROOT_SIGNATURE_VERSION_1: {
 #ifndef NDEBUG
-                hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &logicalMapping, &mapping, &error);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &logicalMapping, &mapping, &error);
 #else // NDEBUG
-                hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &logicalMapping, &mapping, nullptr);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1, unconverted->Desc_1_0, &serialized, &bindingInfo, &logicalMapping, &mapping, nullptr);
 #endif // NDEBUG
-            break;
-            }
-            case D3D_ROOT_SIGNATURE_VERSION_1_1: {
+        break;
+        }
+        case D3D_ROOT_SIGNATURE_VERSION_1_1: {
 #ifndef NDEBUG
-                hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &logicalMapping, &mapping, &error);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &logicalMapping, &mapping, &error);
 #else // NDEBUG
-                hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &logicalMapping, &mapping, nullptr);
+            hr = SerializeRootSignature(table.state, D3D_ROOT_SIGNATURE_VERSION_1_1, unconverted->Desc_1_1, &serialized, &bindingInfo, &logicalMapping, &mapping, nullptr);
 #endif // NDEBUG
-            break;
-            }
-        }
-
-        // OK?
-        if (FAILED(hr)) {
-#ifndef NDEBUG
-            auto* errorMessage = static_cast<const char*>(error->GetBufferPointer());
-            ASSERT(false, errorMessage);
-#endif // NDEBUG
-            return hr;
-        }
-
-        // Pass down callchain
-        hr = table.bottom->next_CreateRootSignature(table.next, nodeMask, serialized->GetBufferPointer(), serialized->GetBufferSize(), __uuidof(ID3D12RootSignature), reinterpret_cast<void**>(&rootSignature));
-        if (FAILED(hr)) {
-            serialized->Release();
-            return hr;
-        }
-
-        // Cleanup
-        serialized->Release();
-    } else {
-        // Pass down callchain
-        hr = table.bottom->next_CreateRootSignature(table.next, nodeMask, blob, length, __uuidof(ID3D12RootSignature), reinterpret_cast<void**>(&rootSignature));
-        if (FAILED(hr)) {
-            return hr;
+        break;
         }
     }
+
+    // OK?
+    if (FAILED(hr)) {
+#ifndef NDEBUG
+        auto* errorMessage = static_cast<const char*>(error->GetBufferPointer());
+        ASSERT(false, errorMessage);
+#endif // NDEBUG
+        return hr;
+    }
+
+    // Pass down callchain
+    hr = table.bottom->next_CreateRootSignature(table.next, nodeMask, serialized->GetBufferPointer(), serialized->GetBufferSize(), __uuidof(ID3D12RootSignature), reinterpret_cast<void**>(&rootSignature));
+    if (FAILED(hr)) {
+        serialized->Release();
+        return hr;
+    }
+
+    // Cleanup
+    serialized->Release();
 
     // Cleanup
     deserializer->Release();
@@ -567,6 +555,7 @@ HRESULT HookID3D12DeviceCreateRootSignature(ID3D12Device *device, UINT nodeMask,
     state->logicalMapping = std::move(logicalMapping);
     state->physicalMapping = mapping;
     state->object = rootSignature;
+    state->nativeObject = nativeRootSignature;
 
     // Create detours
     rootSignature = CreateDetour(state->allocators, rootSignature, state);
@@ -594,5 +583,5 @@ HRESULT HookID3D12RootSignatureGetDevice(ID3D12RootSignature *_this, const IID &
 }
 
 RootSignatureState::~RootSignatureState() {
-
+    nativeObject->Release();
 }

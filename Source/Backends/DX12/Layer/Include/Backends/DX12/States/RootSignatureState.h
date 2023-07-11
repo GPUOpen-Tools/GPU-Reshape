@@ -44,6 +44,9 @@ struct __declspec(uuid("BDB0A8F7-96A0-4421-8AC6-6ECEA23F4BCA")) RootSignatureSta
     /// Device object
     ID3D12RootSignature* object{};
 
+    /// Native device object
+    ID3D12RootSignature* nativeObject{};
+
     /// Owning allocator
     Allocators allocators;
 

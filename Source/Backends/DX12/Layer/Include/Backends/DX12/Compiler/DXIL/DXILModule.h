@@ -25,14 +25,14 @@
 #pragma once
 
 // Layer
-#include <Backends/DX12/Compiler/DXModule.h>
+#include <Backends/DX12/Compiler/IDXModule.h>
 #include <Backends/DX12/Compiler/DXIL/DXILPhysicalBlockTable.h>
 
 // Backend
 #include <Backend/IL/Program.h>
 
 /// DXIL bytecode module
-class DXILModule final : public DXModule {
+class DXILModule final : public IDXModule {
 public:
     ~DXILModule();
 
@@ -50,12 +50,13 @@ public:
     void CopyTo(DXILModule* module);
 
     /// Overrides
-    DXModule* Copy() override;
+    IDXModule* Copy() override;
     bool Parse(const DXParseJob& job) override;
     IL::Program *GetProgram() override;
     GlobalUID GetInstrumentationGUID() override;
     bool Compile(const DXCompileJob& job, DXStream& out) override;
     IDXDebugModule *GetDebug() override;
+    const char* GetLanguage() override;
 
     /// Get the binding info
     /// \return

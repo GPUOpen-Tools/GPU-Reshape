@@ -71,9 +71,6 @@ namespace Studio.ViewModels.Workspace.Listeners
                                 continue;
                             }
 
-                            // Convert to flat
-                            ShaderCodeMessage.FlatInfo flat = shaderCode.Flat;
-
                             // Failed to find?
                             if (shaderCode.found == 0)
                             {

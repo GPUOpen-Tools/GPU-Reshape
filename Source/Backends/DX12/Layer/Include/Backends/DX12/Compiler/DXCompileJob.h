@@ -45,4 +45,9 @@ struct DXCompileJob {
     /// Signers
     ComRef<DXILSigner> dxilSigner;
     ComRef<DXBCSigner> dxbcSigner;
+
+    /// Compatability states
+    struct {
+        bool useViewportAndRTArray{false};
+    } compatabilityTable;
 };

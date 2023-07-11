@@ -46,7 +46,7 @@ namespace Runtime.ViewModels.Objects
         /// Owning workspace
         /// </summary>
         public IWorkspaceViewModel? Workspace;
-        
+
         /// <summary>
         /// Non reactive, identifiers are pooled in a pseudo-virtualized manner
         /// </summary>
@@ -66,6 +66,15 @@ namespace Runtime.ViewModels.Objects
                     this.RaisePropertyChanged(nameof(Descriptor));
                 }
             }
+        }
+
+        /// <summary>
+        /// Given shader language
+        /// </summary>
+        public string Language
+        {
+            get => _language;
+            set => this.RaiseAndSetIfChanged(ref _language, value);
         }
 
         /// <summary>
@@ -135,5 +144,10 @@ namespace Runtime.ViewModels.Objects
             // OK
             return shaderViewModel;
         }
+
+        /// <summary>
+        /// Internal language
+        /// </summary>
+        private string _language;
     }
 }

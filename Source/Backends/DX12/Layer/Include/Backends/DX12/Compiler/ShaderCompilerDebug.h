@@ -32,7 +32,7 @@
 #include <mutex>
 
 // Forward declarations
-class DXModule;
+class IDXModule;
 struct DeviceState;
 
 class ShaderCompilerDebug : public TComponent<ShaderCompilerDebug> {
@@ -44,7 +44,7 @@ public:
     /// Allocate a path
     /// \param module module to be allocated for
     /// \return
-    std::filesystem::path AllocatePath(DXModule *module);
+    std::filesystem::path AllocatePath(IDXModule *module);
 
     /// Allocate a path
     /// \param name decorative name
@@ -55,7 +55,7 @@ public:
     /// \param basePath allocated base path
     /// \param category category of the shader module
     /// \param module module to be serialized
-    void Add(const std::filesystem::path& basePath, const std::string_view& category, DXModule *module);
+    void Add(const std::filesystem::path& basePath, const std::string_view& category, IDXModule *module);
 
 private:
     /// Shared lock for printing

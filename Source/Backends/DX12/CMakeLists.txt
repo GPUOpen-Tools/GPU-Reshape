@@ -319,7 +319,7 @@ add_library(
     Layer/Source/Compiler/ShaderCompiler.cpp
     Layer/Source/Compiler/ShaderCompilerDebug.cpp
     Layer/Source/Compiler/PipelineCompiler.cpp
-    Layer/Source/Compiler/DXModule.cpp
+    Layer/Source/Compiler/IDXModule.cpp
     Layer/Source/Compiler/DXBC/DXBCModule.cpp
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockScan.cpp
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockTable.cpp
@@ -328,9 +328,11 @@ add_library(
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockPipelineStateValidation.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockRootSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockInputSignature.cpp
+    Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockOutputSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockFeatureInfo.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockDebug.cpp
     Layer/Source/Compiler/DXBC/DXBCSigner.cpp
+    Layer/Source/Compiler/DXBC/DXBCConverter.cpp
     Layer/Source/Compiler/DXIL/DXILModule.cpp
     Layer/Source/Compiler/DXIL/DXILPhysicalBlockScan.cpp
     Layer/Source/Compiler/DXIL/DXILPhysicalBlockTable.cpp
@@ -342,6 +344,7 @@ add_library(
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockType.cpp
     Layer/Source/Compiler/DXIL/Blocks/DXILPhysicalBlockGlobal.cpp
     Layer/Source/Compiler/DXIL/Utils/DXILUtilIntrinsics.cpp
+    Layer/Source/Compiler/DXIL/Utils/DXILUtilCompliance.cpp
     Layer/Source/Compiler/DXIL/LLVM/LLVMPrettyPrint.cpp
     Layer/Source/Compiler/DXIL/DXILSigner.cpp
     Layer/Source/Compiler/DXIL/DXILDebugModule.cpp

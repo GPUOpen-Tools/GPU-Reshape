@@ -34,6 +34,7 @@
 #include "Blocks/DXILPhysicalBlockSymbol.h"
 #include "Blocks/DXILPhysicalBlockFunctionAttribute.h"
 #include "Utils/DXILUtilIntrinsics.h"
+#include "Utils/DXILUtilCompliance.h"
 #include "DXILIDMap.h"
 #include "DXILIDRemapper.h"
 #include "DXILBindingInfo.h"
@@ -84,6 +85,7 @@ struct DXILPhysicalBlockTable {
 
     /// Utilities
     DXILUtilIntrinsics intrinsics;
+    DXILUtilCompliance compliance;
 
     /// Shared binding info
     DXILBindingInfo bindingInfo;

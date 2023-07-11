@@ -65,6 +65,7 @@ private:
     const Backend::IL::Type *i8Type{nullptr};
     const Backend::IL::Type *i32Type{nullptr};
     const Backend::IL::Type *f32Type{nullptr};
+    const Backend::IL::Type *f16Type{nullptr};
     const Backend::IL::Type *handleType{nullptr};
     const Backend::IL::Type *dimensionsType{nullptr};
     const Backend::IL::Type *resRetI32{nullptr};

@@ -24,7 +24,7 @@
 
 #include <Backends/DX12/Compiler/ShaderCompilerDebug.h>
 #include <Backends/DX12/States/DeviceState.h>
-#include <Backends/DX12/Compiler/DXModule.h>
+#include <Backends/DX12/Compiler/IDXModule.h>
 
 // Backend
 #include <Backend/IL/Program.h>
@@ -60,7 +60,7 @@ ShaderCompilerDebug::ShaderCompilerDebug() {
     CreateDirectoryTree(path);
 }
 
-std::filesystem::path ShaderCompilerDebug::AllocatePath(DXModule *module) {
+std::filesystem::path ShaderCompilerDebug::AllocatePath(IDXModule *module) {
     std::filesystem::path shaderPath = path;
 
     // New guid for shader
@@ -84,7 +84,7 @@ std::filesystem::path ShaderCompilerDebug::AllocatePath(const std::string_view& 
     return shaderPath;
 }
 
-void ShaderCompilerDebug::Add(const std::filesystem::path& basePath, const std::string_view &category, DXModule *module) {
+void ShaderCompilerDebug::Add(const std::filesystem::path& basePath, const std::string_view &category, IDXModule *module) {
     std::string categoryPath = basePath.string();
     categoryPath.append(".");
     categoryPath.append(category);

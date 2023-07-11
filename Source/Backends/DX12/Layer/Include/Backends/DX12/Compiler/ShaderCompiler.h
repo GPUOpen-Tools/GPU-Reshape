@@ -47,6 +47,7 @@ class IShaderFeature;
 class ShaderCompilerDebug;
 class DXILSigner;
 class DXBCSigner;
+class DXBCConverter;
 
 struct ShaderJob {
     /// State to compile
@@ -99,6 +100,9 @@ private:
     /// Signers
     ComRef<DXILSigner> dxilSigner;
     ComRef<DXBCSigner> dxbcSigner;
+
+    /// Converters
+    ComRef<DXBCConverter> dxbcConverter;
 
     /// All features
     Vector<ComRef<IShaderFeature>> shaderFeatures;

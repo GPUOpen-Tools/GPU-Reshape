@@ -60,6 +60,9 @@ struct DXILFunctionDeclaration {
     /// Associated linkage
     LLVMLinkage linkage;
 
+    /// Is this function a prototype?
+    bool isPrototype{true};
+
     /// All parameter values
     TrivialStackVector<uint32_t, 8> parameters;
 

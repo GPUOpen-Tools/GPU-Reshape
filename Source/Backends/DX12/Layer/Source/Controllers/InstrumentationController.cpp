@@ -807,7 +807,7 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Log on failure
     if (failedShaders || failedPipelines) {
-        device->logBuffer.Add("Vulkan", Format(
+        device->logBuffer.Add("DX12", Format(
             "Instrumentation failed for {} shaders and {} pipelines",
             failedShaders,
             failedPipelines

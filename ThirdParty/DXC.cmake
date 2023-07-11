@@ -147,5 +147,6 @@ endforeach ()
 # Copy binaries
 if (WIN32)
     ConfigureOutput(DXC/bin/win64/dxil.dll dxil.dll)
+    ConfigureOutput(DXC/bin/win64/dxilconv.dll dxilconv.dll)
     ConfigureOutput(DXC/bin/win64/dxcompiler.dll dxcompiler.dll)
 endif()

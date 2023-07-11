@@ -117,6 +117,7 @@ static OpaqueDeviceInfo QueryDeviceFromOpaque(IUnknown* pDevice) {
     }
 
     // Unknown
+    out.next = pDevice;
     return out;
 }
 
@@ -135,8 +136,10 @@ HRESULT WINAPI HookIDXGIFactoryCreateSwapChain(IDXGIFactory* factory, IUnknown *
         return hr;
     }
 
-    // Create state
-    swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
+    // Create state for D3D12 enabled devices
+    if (device.device) {
+        swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
+    }
 
     // Query to external object if requested
     if (ppSwapChain) {
@@ -164,8 +167,10 @@ HRESULT WINAPI HookIDXGIFactoryCreateSwapChainForHwnd(IDXGIFactory* factory, IUn
         return hr;
     }
 
-    // Create state
-    swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
+    // Create state for D3D12 enabled devices
+    if (device.device) {
+        swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
+    }
 
     // Query to external object if requested
     if (ppSwapChain) {
@@ -193,8 +198,10 @@ HRESULT WINAPI HookIDXGIFactoryCreateSwapChainForCoreWindow(IDXGIFactory* factor
         return hr;
     }
 
-    // Create state
-    swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
+    // Create state for D3D12 enabled devices
+    if (device.device) {
+        swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
+    }
 
     // Query to external object if requested
     if (ppSwapChain) {
@@ -222,8 +229,10 @@ HRESULT WINAPI HookIDXGIFactoryCreateSwapChainForComposition(IDXGIFactory* facto
         return hr;
     }
 
-    // Create state
-    swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
+    // Create state for D3D12 enabled devices
+    if (device.device) {
+        swapChain = CreateSwapChainState(table, device.device, swapChain, pDesc);
+    }
 
     // Query to external object if requested
     if (ppSwapChain) {
@@ -244,13 +253,15 @@ HRESULT WINAPI HookIDXGISwapChainResizeBuffers(IDXGISwapChain1* swapchain, UINT 
         buffer->Release();
     }
 
-    // Cleanup
-    table.state->buffers.clear();
-
     // Pass down callchain
     HRESULT hr = table.bottom->next_ResizeBuffers(table.next, BufferCount, Width, Height, NewFormat, SwapChainFlags);
     if (FAILED(hr)) {
         return hr;
+    }
+
+    // If zero, the number of buffers is preserved
+    if (!BufferCount) {
+        BufferCount = static_cast<uint32_t>(table.state->buffers.size());
     }
 
     // Recreate wrappers
@@ -268,13 +279,15 @@ HRESULT WINAPI HookIDXGISwapChainResizeBuffers1(IDXGISwapChain1* swapchain, UINT
         buffer->Release();
     }
 
-    // Cleanup
-    table.state->buffers.clear();
-
     // Pass down callchain
     HRESULT hr = table.bottom->next_ResizeBuffers1(table.next, BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
     if (FAILED(hr)) {
         return hr;
+    }
+
+    // If zero, the number of buffers is preserved
+    if (!BufferCount) {
+        BufferCount = static_cast<uint32_t>(table.state->buffers.size());
     }
 
     // Recreate wrappers

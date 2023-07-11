@@ -26,6 +26,9 @@
 #include <Backends/DX12/Compiler/Tags.h>
 #include <Backends/DX12/Compiler/DXParseJob.h>
 #include <Backends/DX12/Config.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCUtils.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCConverter.h>
+#include <Backends/DX12/Layer.h>
 
 // Common
 #include <Common/FileSystem.h>
@@ -57,7 +60,7 @@ DXBCModule::~DXBCModule() {
     }
 }
 
-DXModule *DXBCModule::Copy() {
+IDXModule *DXBCModule::Copy() {
     // Copy program
     IL::Program *programCopy = program->Copy();
 
@@ -95,8 +98,25 @@ bool DXBCModule::Parse(const DXParseJob& job) {
         return false;
     }
 #else // SHADER_COMPILER_DEBUG_FILE
+    DXParseJob proxyJob = job;
+
+#if USE_DXBC_TO_DXIL_CONVERSION
+    // Only perform DXBC -> DXIL conversion if signing can be bypassed
+    if (D3D12GPUOpenProcessInfo.isExperimentalShaderModelsEnabled && IsDXBCNative(job.byteCode, job.byteLength)) {
+        // Convert to DXIL during parse-time
+        if (!job.dxbcConverter->Convert(job.byteCode, job.byteLength, &conversionBlob)) {
+            ASSERT(false, "Failed to convert DXBC blob");
+            return false;
+        }
+
+        // Create pseudo-block
+        proxyJob.byteCode = conversionBlob.blob;
+        proxyJob.byteLength = conversionBlob.length;
+    }
+#endif // USE_DXBC_TO_DXIL_CONVERSION
+    
     // Try to parse
-    if (!table.Parse(job)) {
+    if (!table.Parse(proxyJob)) {
         return false;
     }
 #endif // SHADER_COMPILER_DEBUG_FILE
@@ -128,4 +148,14 @@ bool DXBCModule::Compile(const DXCompileJob& job, DXStream& out) {
 
 IDXDebugModule *DXBCModule::GetDebug() {
     return table.debugModule;
+}
+
+const char * DXBCModule::GetLanguage() {
+    // Special case, converted at runtime
+    if (conversionBlob.blob) {
+        return "DXBC";
+    }
+
+    // Source is DXIL if the module is present
+    return table.dxilModule ? "DXIL" : "DXBC";
 }

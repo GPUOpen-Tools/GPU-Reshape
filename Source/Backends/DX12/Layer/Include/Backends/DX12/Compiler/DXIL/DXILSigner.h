@@ -47,7 +47,7 @@ public:
     /// \return false if failed
     bool Install();
 
-    /// Sign a DXIL blob
+    /// Convert a DXIL blob
     /// \param code blob code
     /// \param length blob length
     /// \return false if failed

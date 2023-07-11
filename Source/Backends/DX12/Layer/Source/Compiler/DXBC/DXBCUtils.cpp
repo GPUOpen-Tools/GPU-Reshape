@@ -90,3 +90,28 @@ uint32_t GetOrComputeDXBCShaderHash(const void* byteCode, uint64_t byteLength) {
     // OK
     return crc;
 }
+
+bool IsDXBCNative(const void *byteCode, uint64_t byteLength) {
+    DXBCParseContext ctx(byteCode, byteLength);
+    
+    // Consume header
+    auto header = ctx.Consume<DXBCHeader>();
+    
+    // Must be DXBC
+    if (header.identifier != 'CBXD') {
+        return false;
+    }
+
+    // Handle all chunks
+    for (uint32_t chunkIndex = 0; chunkIndex < header.chunkCount; chunkIndex++) {
+        auto chunk = ctx.Consume<DXBCChunkEntryHeader>();
+
+        // Is DXIL?
+        if (ctx.ReadAt<DXBCChunkHeader>(chunk.offset)->type == static_cast<uint32_t>(DXBCPhysicalBlockType::DXIL)) {
+            return false;
+        }
+    }
+
+    // No DXIL data found, native
+    return true;
+}

@@ -31,6 +31,7 @@
 #include "Blocks/DXBCPhysicalBlockRootSignature.h"
 #include "Blocks/DXBCPhysicalBlockFeatureInfo.h"
 #include "Blocks/DXBCPhysicalBlockInputSignature.h"
+#include "Blocks/DXBCPhysicalBlockOutputSignature.h"
 #include "Blocks/DXBCPhysicalBlockDebug.h"
 
 // Forward declarations
@@ -73,6 +74,7 @@ struct DXBCPhysicalBlockTable {
     DXBCPhysicalBlockRootSignature rootSignature;
     DXBCPhysicalBlockFeatureInfo featureInfo;
     DXBCPhysicalBlockInputSignature inputSignature;
+    DXBCPhysicalBlockOutputSignature outputSignature;
     DXBCPhysicalBlockDebug debug;
 
     /// DXBC containers can host DXIL data

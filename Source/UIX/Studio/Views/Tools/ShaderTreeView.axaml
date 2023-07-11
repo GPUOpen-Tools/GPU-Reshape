@@ -36,9 +36,16 @@
              xmlns:views="using:Studio.Views"
              xmlns:r="using:Studio.Resources"
              xmlns:reactui="http://reactiveui.net"
+             xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
              mc:Ignorable="d"
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:ShaderTreeViewModel" x:CompileBindings="True">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <valueConverters:ShaderLanguageConverter x:Key="ShaderLanguageConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
     <Grid Focusable="True" RowDefinitions="Auto,*">
         <StackPanel Orientation="Vertical" Background="{DynamicResource DockApplicationAccentBrushLow}">
             <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
@@ -67,7 +74,16 @@
             Items="{Binding ShaderIdentifiers}" >
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <TextBlock Height="20" Text="{Binding Descriptor}" LayoutUpdated="OnShaderIdentifierLayoutUpdated"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Border IsVisible="{Binding Language, Converter={StaticResource ShaderLanguageConverter}}"
+                                Background="{Binding Language, Converter={StaticResource ShaderLanguageConverter}}"
+                                CornerRadius="5"
+                                Padding="2"
+                                Margin="0 0 5 0">
+                            <TextBlock Text="{Binding Language}"/>
+                        </Border>
+                        <TextBlock Height="20" Text="{Binding Descriptor}" LayoutUpdated="OnShaderIdentifierLayoutUpdated"/>
+                    </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
