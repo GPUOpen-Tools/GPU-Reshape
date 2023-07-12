@@ -226,6 +226,11 @@ void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
                 }
                 break;
             }
+
+            case LLVMConstantRecord::Cast: {
+                table.idRemapper.Remap(record.Op(2));
+                break;
+            }
         }
     }
 }
