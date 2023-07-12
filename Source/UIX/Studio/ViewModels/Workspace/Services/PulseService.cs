@@ -86,6 +86,11 @@ namespace Studio.ViewModels.Workspace.Listeners
 
         private void OnTick(object? sender, EventArgs e)
         {
+            Refresh();
+        }
+
+        public void Refresh()
+        {
             // Valid connection?
             if (_connectionViewModel?.Bridge == null)
             {

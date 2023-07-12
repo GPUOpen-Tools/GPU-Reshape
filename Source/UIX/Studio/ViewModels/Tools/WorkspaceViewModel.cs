@@ -37,6 +37,8 @@ using Runtime.ViewModels.Tools;
 using Studio.Services;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
+using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Properties;
 using Studio.Views;
 
 namespace Studio.ViewModels.Tools
@@ -150,7 +152,11 @@ namespace Studio.ViewModels.Tools
         /// </summary>
         private void OnRefresh()
         {
-            throw new NotImplementedException();
+            // Refresh all pulse services
+            foreach (IWorkspaceViewModel workspaceViewModel in _workspaceService.Workspaces.Items)
+            {
+                workspaceViewModel.PropertyCollection.GetService<IPulseService>()?.Refresh();
+            }
         }
 
         /// <summary>

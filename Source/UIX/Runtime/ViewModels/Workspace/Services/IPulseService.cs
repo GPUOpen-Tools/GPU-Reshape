@@ -29,6 +29,11 @@ namespace Studio.ViewModels.Workspace.Listeners
     public interface IPulseService : IPropertyService
     {
         /// <summary>
+        /// Manual refresh
+        /// </summary>
+        public void Refresh();
+        
+        /// <summary>
         /// Last known pulse time
         /// </summary>
         public DateTime LastPulseTime { get; set; }
