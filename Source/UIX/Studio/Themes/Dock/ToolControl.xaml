@@ -3,7 +3,8 @@
         xmlns:core="clr-namespace:Dock.Model.Core;assembly=Dock.Model"
         xmlns:controls="clr-namespace:Dock.Model.Controls;assembly=Dock.Model"
         xmlns:themes="clr-namespace:Studio.ValueConverters.Themes"
-        xmlns:tools="clr-namespace:Runtime.ViewModels.Tools;assembly=UIX.Studio.Runtime">
+        xmlns:tools="clr-namespace:Runtime.ViewModels.Tools;assembly=UIX.Studio.Runtime"
+        xmlns:ct="clr-namespace:Studio.ViewModels.Controls.Themes">
     <!-- Modified ToolControl implementation from https://github.com/wieslawsoltes/Dock/ -->
     <Style Selector="ToolControl">
         <Setter Property="HeaderTemplate">
@@ -20,10 +21,10 @@
                            x:DataType="controls:IToolDock"
                            x:CompileBindings="True">
 
-                    <DockTabStrip x:Name="PART_TabStrip"
-                                  Items="{Binding VisibleDockables}"
-                                  SelectedItem="{Binding ActiveDockable, Mode=TwoWay}"
-                                  DockProperties.IsDropArea="True">
+                    <ct:CollapsableDockTabStrip x:Name="PART_TabStrip"
+                                                Items="{Binding VisibleDockables}"
+                                                SelectedItem="{Binding ActiveDockable, Mode=TwoWay}"
+                                                DockProperties.IsDropArea="True">
                         <DockTabStrip.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel Orientation="Vertical"
@@ -48,7 +49,7 @@
                                 </DockableControl>
                             </DataTemplate>
                         </DockTabStrip.DataTemplates>
-                    </DockTabStrip>
+                    </ct:CollapsableDockTabStrip>
 
                     <Separator x:Name="PART_Separator" />
 
