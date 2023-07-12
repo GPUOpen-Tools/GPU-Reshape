@@ -24,9 +24,8 @@
 
 using System;
 using System.Reactive.Linq;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
+using Avalonia.Controls.Primitives;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
@@ -51,6 +50,9 @@ namespace Studio.Views.Workspace.Properties
                 .CastNullable<MessageCollectionViewModel>()
                 .Subscribe(viewModel =>
                 {
+                    // Note: Attached properties not propagating correctly, workaround
+                    MessageDataGrid.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                    
                     // Update arrangement
                     viewModel.ValidationObjects.ToObservableChangeSet()
                         .OnItemAdded(x => this.InvalidateArrange())

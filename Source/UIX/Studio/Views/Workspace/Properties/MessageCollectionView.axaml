@@ -38,7 +38,7 @@
             Items="{Binding ValidationObjects}" 
             IsReadOnly="True"
             CanUserResizeColumns="True"
-            VerticalAlignment="Stretch"
+            VerticalAlignment="Top"
             HorizontalAlignment="Stretch">
             <DataGrid.Styles>
                 <Style Selector="TextBlock">
