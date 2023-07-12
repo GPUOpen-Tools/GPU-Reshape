@@ -400,7 +400,7 @@ static HRESULT EnableExperimentalFeaturesWithFastTrack(UINT NumFeatures, const I
     // Keep track
     D3D12GPUOpenProcessInfo.isExperimentalModeEnabled = true;
 
-#if defined(NDEBUG)
+#if USE_EXPERIMENTAL_SHADING_MODELS
     // Copy previous uuids
     UUID* shaderModels = ALLOCA_ARRAY(UUID, NumFeatures + 1u);
     std::memcpy(shaderModels, riid, sizeof(UUID) * NumFeatures);
@@ -417,14 +417,14 @@ static HRESULT EnableExperimentalFeaturesWithFastTrack(UINT NumFeatures, const I
     
     // Mark as enabled
     D3D12GPUOpenProcessInfo.isExperimentalShaderModelsEnabled = true;
-#else
+#else // USE_EXPERIMENTAL_SHADING_MODELS
     // Pass down callchain
     HRESULT hr = D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
     if (FAILED(hr)) {
         // Logging?
         return hr;
     }
-#endif
+#endif // USE_EXPERIMENTAL_SHADING_MODELS
     
     // OK!
     return S_OK;

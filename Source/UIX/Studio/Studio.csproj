@@ -175,6 +175,10 @@
         <DependentUpon>ApplicationSettingView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Setting\GlobalSettingView.axaml.cs">
+        <DependentUpon>GlobalSettingView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

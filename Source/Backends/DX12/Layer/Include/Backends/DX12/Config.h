@@ -62,6 +62,9 @@
 /// Log instrumentation keys that have been rejected
 #define LOG_REJECTED_KEYS (1)
 
+/// Enable the experimental shading models for signing bypass
+#define USE_EXPERIMENTAL_SHADING_MODELS (1)
+
 /// Enable the inbuilt DXBC to DXIL conversion, experimental
 #define USE_DXBC_TO_DXIL_CONVERSION (1)
 

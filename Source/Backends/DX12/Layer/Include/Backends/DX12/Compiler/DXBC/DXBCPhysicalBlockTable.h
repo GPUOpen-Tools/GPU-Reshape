@@ -59,7 +59,7 @@ struct DXBCPhysicalBlockTable {
 
     /// Stitch the compiled table
     /// \param out destination stream
-    void Stitch(const DXCompileJob& job, DXStream &out);
+    void Stitch(const DXCompileJob& job, DXStream &out, bool sign);
 
     /// Copy to a new table
     /// \param out the destination table

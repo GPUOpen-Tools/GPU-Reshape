@@ -152,7 +152,7 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
 #endif
 
     // Diagnostic
-    table->logBuffer.Add("Vulkan", "Instance created");
+    table->logBuffer.Add("Vulkan", LogSeverity::Info, "Instance created");
 
     // OK
     return VK_SUCCESS;

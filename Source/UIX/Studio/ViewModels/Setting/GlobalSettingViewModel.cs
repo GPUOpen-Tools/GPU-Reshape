@@ -22,41 +22,46 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using AvaloniaEdit.Utils;
+using System.Collections.ObjectModel;
+using System.Windows.Input;
+using Message.CLR;
 using ReactiveUI;
 using Studio.Services.Suspension;
 
 namespace Studio.ViewModels.Setting
 {
-    public class ApplicationSettingViewModel : BaseSettingViewModel
+    public class GlobalSettingViewModel : BaseSettingViewModel, IGlobalSettingViewModel, IStartupEnvironmentSetting
     {
         /// <summary>
-        /// Given application name
+        /// Search in sub directories?
         /// </summary>
-        [DataMember, SuspensionKey]
-        public string ApplicationName
+        [DataMember]
+        public bool EnableILConversion
         {
-            get => _applicationName;
-            set
-            {
-                this.RaiseAndSetIfChanged(ref _applicationName, value);
-                Header = System.IO.Path.GetFileName(value);
-            }
+            get => _enableILConversion;
+            set => this.RaiseAndSetIfChanged(ref _enableILConversion, value);
         }
-
-        public ApplicationSettingViewModel() : base("Unknown")
+        
+        public GlobalSettingViewModel() : base("Global")
         {
-            // Build in settings
-            Items.AddRange(new ISettingViewModel[]
-            {
-                new GlobalSettingViewModel(),
-                new PDBSettingViewModel()
-            });
+            // Only appear in inline views
+            Visibility = SettingVisibility.Inline;
         }
 
         /// <summary>
-        /// Internal application name
+        /// Commit all startup data
         /// </summary>
-        private string _applicationName = "Unknown";
+        /// <param name="view"></param>
+        public void Commit(OrderedMessageView<ReadWriteMessageStream> view)
+        {
+            // Configuration
+            var config = view.Add<SetApplicationILConversionMessage>();
+            config.enabled = _enableILConversion ? 1 : 0;
+        }
+       
+        /// <summary>
+        /// Internal sub-directories
+        /// </summary>
+        private bool _enableILConversion = false;
     }
 }

@@ -80,12 +80,12 @@ namespace Studio.ViewModels.Workspace.Properties
                 return;
             }
 
-            List<string> messages = new();
+            List<Tuple<LogSeverity, string>> messages = new();
 
             // Enumerate all messages
             foreach (LogMessage message in new DynamicMessageView<LogMessage>(streams))
             {
-                messages.Add($"{ConnectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}");
+                messages.Add(Tuple.Create((LogSeverity)message.severity, $"{ConnectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}"));
             }
 
             // Append messages on UI thread
@@ -95,8 +95,8 @@ namespace Studio.ViewModels.Workspace.Properties
                 {
                     _loggingViewModel?.Events.Add(new LogEvent()
                     {
-                        Severity = LogSeverity.Info,
-                        Message = message
+                        Severity = message.Item1,
+                        Message = message.Item2
                     });
                 }
             });

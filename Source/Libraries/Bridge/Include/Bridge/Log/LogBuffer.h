@@ -24,6 +24,9 @@
 
 #pragma once
 
+// Bridge
+#include "LogSeverity.h"
+
 // Message
 #include <Message/MessageStream.h>
 
@@ -39,8 +42,9 @@ public:
     /// Add a new message
     ///   ? For formatting see LogFormat.h, separated for compile times
     /// \param system responsible system
+    /// \param severity message severity
     /// \param message message contents
-    void Add(const std::string_view& system, const std::string_view& message);
+    void Add(const std::string_view& system, LogSeverity severity, const std::string_view& message);
 
     /// Commit all messages
     /// \param bridge

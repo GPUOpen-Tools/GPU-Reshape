@@ -30,4 +30,8 @@
             Set the compilation to be synchronous with command recording
         </field>
     </message>
+
+    <message name="SetApplicationILConversion">
+        <field name="enabled" type="bool"/>
+    </message>
 </schema>

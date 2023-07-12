@@ -137,7 +137,7 @@ bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
     return true;
 }
 
-void DXBCPhysicalBlockScan::Stitch(const DXCompileJob& job, DXStream &out) {
+void DXBCPhysicalBlockScan::Stitch(const DXCompileJob& job, DXStream &out, bool sign) {
     // Write header out
     uint64_t headerOffset = out.Append(header);
 
@@ -204,6 +204,11 @@ void DXBCPhysicalBlockScan::Stitch(const DXCompileJob& job, DXStream &out) {
     outStream.write(reinterpret_cast<const char *>(out.GetMutableData()), out.GetByteSize());
     outStream.close();
 #endif // DXBC_DUMP_STREAM
+
+    // No signing?
+    if (!sign) {
+        return;
+    }
 
     // Finally, sign the resulting byte-code using the official signers
     if (GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {

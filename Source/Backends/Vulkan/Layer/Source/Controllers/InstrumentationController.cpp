@@ -255,7 +255,7 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
 
             // Validate
             if (!virtualFeatureRedirects[message->index]) {
-                table->parent->logBuffer.Add("Vulkan", Format("Virtual redirect failed for feature \"{}\"", message->name.View()));
+                table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, Format("Virtual redirect failed for feature \"{}\"", message->name.View()));
             }
             break;
         }
@@ -502,7 +502,7 @@ void InstrumentationController::SetInstrumentationInfo(InstrumentationInfo &info
             if (physical) {
                 info.featureBitSet |= physical;
             } else {
-                table->parent->logBuffer.Add("Vulkan", Format("Unknown virtual redirect at {}", index));
+                table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, Format("Unknown virtual redirect at {}", index));
             }
 
             // Next!
@@ -530,7 +530,7 @@ void InstrumentationController::CommitInstrumentation() {
 
     // Diagnostic
 #if LOG_INSTRUMENTATION
-    table->parent->logBuffer.Add("Vulkan", Format(
+    table->parent->logBuffer.Add("Vulkan", LogSeverity::Info, Format(
         "Committing {} shaders and {} pipelines for instrumentation",
         immediateBatch.dirtyShaderModules.size(),
         immediateBatch.dirtyPipelines.size()
@@ -800,7 +800,7 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
         }
 
         // Submit
-        table->parent->logBuffer.Add("Vulkan", keyMessage.str());
+        table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, keyMessage.str());
 #endif // LOG_REJECTED_KEYS
     }
 
@@ -835,14 +835,14 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Log on failure
     if (failedShaders || failedPipelines) {
-        table->parent->logBuffer.Add("Vulkan", Format(
+        table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, Format(
             "Instrumentation failed for {} shaders and {} pipelines",
             failedShaders,
             failedPipelines
         ));
     }
     
-    table->parent->logBuffer.Add("Vulkan", Format(
+    table->parent->logBuffer.Add("Vulkan", LogSeverity::Info, Format(
         "Instrumented {} shaders ({} ms) and {} pipelines ({} ms), total {} ms",
         batch->dirtyShaderModules.size(),
         msShaders,

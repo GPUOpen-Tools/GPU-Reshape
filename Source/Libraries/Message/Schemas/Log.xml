@@ -29,6 +29,9 @@
         <field name="system" type="string">
             The system that this message came from, optional
         </field>
+        <field name="severity" type="uint32">
+            Given message severity
+        </field>
         <field name="message" type="string">
             Message contents
         </field>

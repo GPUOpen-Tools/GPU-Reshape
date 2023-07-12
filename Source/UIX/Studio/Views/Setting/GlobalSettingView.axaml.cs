@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -22,32 +22,22 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#include <Bridge/Log/LogBuffer.h>
-#include <Bridge/IBridge.h>
+using System;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
+using ReactiveUI;
+using Studio.ViewModels.Setting;
 
-// Message
-#include <Message/IMessageStorage.h>
+namespace Studio.Views.Setting
+{
+    public partial class GlobalSettingView : UserControl, IViewFor
+    {
+        public object? ViewModel { get; set; }
 
-// Schemas
-#include <Schemas/Log.h>
-
-void LogBuffer::Add(const std::string_view& system, LogSeverity severity, const std::string_view& message) {
-    std::lock_guard guard(mutex);
-
-    MessageStreamView<LogMessage> view(stream);
-
-    LogMessage* log = view.Add(LogMessage::AllocationInfo {
-        .systemLength = system.length(),
-        .messageLength = message.length()
-    });
-
-    log->system.Set(system);
-    log->message.Set(message);
-    log->severity = static_cast<uint32_t>(severity);
-}
-
-void LogBuffer::Commit(IBridge *bridge) {
-    std::lock_guard guard(mutex);
-
-    bridge->GetOutput()->AddStreamAndSwap(stream);
+        public GlobalSettingView()
+        {
+            InitializeComponent();
+        }
+    }
 }

@@ -100,6 +100,7 @@ struct D3D12GPUOpenFunctionTable {
 struct D3D12GPUOpenProcessState {
     bool isExperimentalModeEnabled{false};
     bool isExperimentalShaderModelsEnabled{false};
+    bool isDXBCConversionEnabled{false};
 };
 
 /// Bootstrapper info

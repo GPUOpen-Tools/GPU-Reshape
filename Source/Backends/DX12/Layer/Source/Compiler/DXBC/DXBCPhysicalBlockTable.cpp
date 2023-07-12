@@ -125,8 +125,8 @@ bool DXBCPhysicalBlockTable::Compile(const DXCompileJob &job) {
     return true;
 }
 
-void DXBCPhysicalBlockTable::Stitch(const DXCompileJob& job, DXStream &out) {
-    scan.Stitch(job, out);
+void DXBCPhysicalBlockTable::Stitch(const DXCompileJob& job, DXStream &out, bool sign) {
+    scan.Stitch(job, out, sign);
 }
 
 void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {

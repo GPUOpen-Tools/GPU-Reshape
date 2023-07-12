@@ -67,6 +67,7 @@ IDXModule *DXBCModule::Copy() {
     // Create module copy
     auto module = new(allocators, kAllocModuleDXIL) DXBCModule(allocators, programCopy, instrumentationGUID);
     module->nested = nested;
+    module->conversionBlob.length = conversionBlob.length;
 
     // Copy table
     table.CopyTo(module->table);
@@ -102,7 +103,9 @@ bool DXBCModule::Parse(const DXParseJob& job) {
 
 #if USE_DXBC_TO_DXIL_CONVERSION
     // Only perform DXBC -> DXIL conversion if signing can be bypassed
-    if (D3D12GPUOpenProcessInfo.isExperimentalShaderModelsEnabled && IsDXBCNative(job.byteCode, job.byteLength)) {
+    if (D3D12GPUOpenProcessInfo.isDXBCConversionEnabled &&
+        D3D12GPUOpenProcessInfo.isExperimentalShaderModelsEnabled &&
+        IsDXBCNative(job.byteCode, job.byteLength)) {
         // Convert to DXIL during parse-time
         if (!job.dxbcConverter->Convert(job.byteCode, job.byteLength, &conversionBlob)) {
             ASSERT(false, "Failed to convert DXBC blob");
@@ -139,8 +142,16 @@ bool DXBCModule::Compile(const DXCompileJob& job, DXStream& out) {
         return false;
     }
 
+    // Always sign by default
+    bool sign = true;
+
+    // Do not sign converted blobs
+    if (conversionBlob.length) {
+        sign = false;
+    }
+
     // Stitch to the program
-    table.Stitch(job, out);
+    table.Stitch(job, out, sign);
 
     // OK!
     return true;
@@ -152,7 +163,7 @@ IDXDebugModule *DXBCModule::GetDebug() {
 
 const char * DXBCModule::GetLanguage() {
     // Special case, converted at runtime
-    if (conversionBlob.blob) {
+    if (conversionBlob.length) {
         return "DXBC";
     }
 

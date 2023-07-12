@@ -22,32 +22,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#include <Bridge/Log/LogBuffer.h>
-#include <Bridge/IBridge.h>
+using System.Collections.ObjectModel;
 
-// Message
-#include <Message/IMessageStorage.h>
-
-// Schemas
-#include <Schemas/Log.h>
-
-void LogBuffer::Add(const std::string_view& system, LogSeverity severity, const std::string_view& message) {
-    std::lock_guard guard(mutex);
-
-    MessageStreamView<LogMessage> view(stream);
-
-    LogMessage* log = view.Add(LogMessage::AllocationInfo {
-        .systemLength = system.length(),
-        .messageLength = message.length()
-    });
-
-    log->system.Set(system);
-    log->message.Set(message);
-    log->severity = static_cast<uint32_t>(severity);
-}
-
-void LogBuffer::Commit(IBridge *bridge) {
-    std::lock_guard guard(mutex);
-
-    bridge->GetOutput()->AddStreamAndSwap(stream);
+namespace Studio.ViewModels.Setting
+{
+    public interface IGlobalSettingViewModel
+    {
+        /// <summary>
+        /// Enable conversion of old ILs
+        /// </summary>
+        public bool EnableILConversion { get; set; }
+    }
 }

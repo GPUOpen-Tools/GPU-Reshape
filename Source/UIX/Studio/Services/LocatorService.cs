@@ -41,6 +41,7 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.Setting.ApplicationListSettingViewModel), typeof(Views.Setting.ApplicationListSettingView));
             AddDerived(typeof(ViewModels.Setting.ApplicationSettingViewModel), typeof(Views.Setting.ApplicationSettingView));
             AddDerived(typeof(ViewModels.Setting.PDBSettingViewModel), typeof(Views.Setting.PDBSettingView));
+            AddDerived(typeof(ViewModels.Setting.GlobalSettingViewModel), typeof(Views.Setting.GlobalSettingView));
             
             // Window types
             AddDerived(typeof(ViewModels.SettingsViewModel), typeof(Views.SettingsWindow));
