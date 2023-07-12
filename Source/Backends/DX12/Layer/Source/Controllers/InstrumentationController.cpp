@@ -532,18 +532,6 @@ void InstrumentationController::CommitInstrumentation() {
         return;
     }
 
-    // Mark next batch
-    compilationEvent.IncrementHead();
-
-    // Diagnostic
-#if LOG_INSTRUMENTATION
-    device->logBuffer.Add("DX12", LogSeverity::Info, Format(
-        "Committing {} shaders and {} pipelines for instrumentation",
-        immediateBatch.dirtyShaders.size(),
-        immediateBatch.dirtyPipelines.size()
-    ));
-#endif // LOG_INSTRUMENTATION
-
     // Re-propagate all shaders
     for (ShaderState *state: immediateBatch.dirtyShaders) {
         PropagateInstrumentationInfo(state);
@@ -564,6 +552,23 @@ void InstrumentationController::CommitInstrumentation() {
         // Mark as summarized
         pendingResummarization = false;
     }
+    
+    // If no dirty objects, nothing to instrument
+    if (immediateBatch.dirtyObjects.empty()) {
+        return;
+    }
+
+    // Mark next batch
+    compilationEvent.IncrementHead();
+
+    // Diagnostic
+#if LOG_INSTRUMENTATION
+    device->logBuffer.Add("DX12", LogSeverity::Info, Format(
+        "Committing {} shaders and {} pipelines for instrumentation",
+        immediateBatch.dirtyShaders.size(),
+        immediateBatch.dirtyPipelines.size()
+    ));
+#endif // LOG_INSTRUMENTATION
 
     // Copy batch
     auto *batch = new(registry->GetAllocators(), kAllocInstrumentation) Batch(immediateBatch);

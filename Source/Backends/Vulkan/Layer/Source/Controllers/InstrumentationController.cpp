@@ -524,18 +524,6 @@ void InstrumentationController::CommitInstrumentation() {
     if (immediateBatch.dirtyObjects.empty() && !pendingResummarization) {
         return;
     }
-
-    // Mark next batch
-    compilationEvent.IncrementHead();
-
-    // Diagnostic
-#if LOG_INSTRUMENTATION
-    table->parent->logBuffer.Add("Vulkan", LogSeverity::Info, Format(
-        "Committing {} shaders and {} pipelines for instrumentation",
-        immediateBatch.dirtyShaderModules.size(),
-        immediateBatch.dirtyPipelines.size()
-    ));
-#endif // LOG_INSTRUMENTATION
     
     // Re-propagate all shaders
     for (ShaderModuleState* state : immediateBatch.dirtyShaderModules) {
@@ -557,6 +545,23 @@ void InstrumentationController::CommitInstrumentation() {
         // Mark as summarized
         pendingResummarization = false;
     }
+    
+    // If no dirty objects, nothing to instrument
+    if (immediateBatch.dirtyObjects.empty()) {
+        return;
+    }
+
+    // Mark next batch
+    compilationEvent.IncrementHead();
+
+    // Diagnostic
+#if LOG_INSTRUMENTATION
+    table->parent->logBuffer.Add("Vulkan", LogSeverity::Info, Format(
+        "Committing {} shaders and {} pipelines for instrumentation",
+        immediateBatch.dirtyShaderModules.size(),
+        immediateBatch.dirtyPipelines.size()
+    ));
+#endif // LOG_INSTRUMENTATION
 
     // Copy batch
     auto* batch = new (registry->GetAllocators()) Batch(immediateBatch);
