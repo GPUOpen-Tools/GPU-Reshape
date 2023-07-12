@@ -37,8 +37,14 @@
             x:Name="MessageDataGrid"
             Items="{Binding ValidationObjects}" 
             IsReadOnly="True"
+            CanUserResizeColumns="True"
             VerticalAlignment="Stretch"
             HorizontalAlignment="Stretch">
+            <DataGrid.Styles>
+                <Style Selector="TextBlock">
+                    <Setter Property="TextWrapping" Value="WrapWithOverflow" />
+                </Style>
+            </DataGrid.Styles>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Message" Binding="{Binding Content}" Width="40*"/>
                 <DataGridTextColumn Header="Shader Extract" Binding="{Binding Extract}" Width="40*"/>
