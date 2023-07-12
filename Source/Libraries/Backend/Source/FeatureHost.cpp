@@ -38,7 +38,7 @@ void FeatureHost::Register(const ComRef<IComponentTemplate> &feature) {
 
 void FeatureHost::Deregister(const ComRef<IComponentTemplate> &feature) {
     auto &&it = std::find(features.begin(), features.end(), feature);
-    if (it == features.end()) {
+    if (it != features.end()) {
         features.erase(it);
     }
 }
