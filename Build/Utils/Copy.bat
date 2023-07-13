@@ -22,7 +22,7 @@
 :: ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 :: 
 
-if %~1==%1 (
+if "%~1"=="%1" (
     xcopy "%1" "%2" /s /d /Y /i
 ) else (
     xcopy %1 %2 /s /d /Y /i
