@@ -26,6 +26,11 @@ static const T& Unwrap(const T& top) {
     return top;
 }
 
+/// Exception, workaround for odd-behaviour in driver land regarding up-chain device calls through DXGI swapchain creation
+static ID3D12LifetimeOwner* Unwrap(ID3D12LifetimeOwner* top) {
+    return top;
+}
+
 /// Unwrap a component
 IUnknown* UnwrapObject(IUnknown* object) {
     return Unwrap(object);
