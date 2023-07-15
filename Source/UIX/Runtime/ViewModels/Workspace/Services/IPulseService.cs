@@ -24,7 +24,7 @@
 
 using System;
 
-namespace Studio.ViewModels.Workspace.Listeners
+namespace Studio.ViewModels.Workspace.Services
 {
     public interface IPulseService : IPropertyService
     {

@@ -32,7 +32,7 @@ using ReactiveUI;
 using Studio.Models.Logging;
 using Studio.Services;
 
-namespace Studio.ViewModels.Workspace.Listeners
+namespace Studio.ViewModels.Workspace.Services
 {
     public class PulseService : ReactiveObject, IPulseService, Bridge.CLR.IBridgeListener
     {

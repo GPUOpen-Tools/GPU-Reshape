@@ -36,7 +36,7 @@ using Runtime.ViewModels.Shader;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
 using Studio.ViewModels.Documents;
-using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader

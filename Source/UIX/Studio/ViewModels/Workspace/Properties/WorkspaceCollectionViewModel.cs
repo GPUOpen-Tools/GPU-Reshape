@@ -32,7 +32,7 @@ using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
-using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties.Config;
 using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
@@ -156,6 +156,13 @@ namespace Studio.ViewModels.Workspace.Properties
             // Register versioning service
             Services.Add(new VersioningService()
             {
+                ConnectionViewModel = ConnectionViewModel
+            });
+            
+            // Register property replication service
+            Services.Add(new PropertyReplicationService()
+            {
+                Property = this,
                 ConnectionViewModel = ConnectionViewModel
             });
         }

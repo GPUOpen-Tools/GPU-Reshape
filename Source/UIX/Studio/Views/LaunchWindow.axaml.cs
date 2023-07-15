@@ -39,7 +39,7 @@ using Studio.Views.Tools.Property;
 
 namespace Studio.Views
 {
-    public partial class LaunchWindow : ReactiveWindow<ViewModels.ConnectViewModel>
+    public partial class LaunchWindow : ReactiveWindow<ViewModels.LaunchViewModel>
     {
         public LaunchWindow()
         {

@@ -33,7 +33,7 @@ using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.ViewModels.Traits;
-using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 

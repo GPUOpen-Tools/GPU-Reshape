@@ -165,7 +165,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// Code listener
         /// </summary>
-        private Listeners.ShaderCodeService _shaderCodeService = new();
+        private Services.ShaderCodeService _shaderCodeService = new();
         
         /// <summary>
         /// Internal connection

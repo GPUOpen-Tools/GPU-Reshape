@@ -34,7 +34,7 @@ using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Listeners;
 using Studio.Models.Workspace.Objects;
-using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Objects;
 
 namespace Studio.ViewModels.Workspace.Properties

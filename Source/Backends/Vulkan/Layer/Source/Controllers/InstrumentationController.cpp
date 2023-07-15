@@ -486,6 +486,68 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
             }
             break;
         }
+
+        /** States */
+        case GetStateMessage::kID: {
+            OnStateRequest(*it.Get<GetStateMessage>());
+            break;
+        }
+    }
+}
+
+void InstrumentationController::OnStateRequest(const struct GetStateMessage &message) {
+    switch (message.uuid) {
+        default:
+            break;
+        case SetGlobalInstrumentationMessage::kID: {
+            if (globalInstrumentationInfo.featureBitSet) {
+                auto response = MessageStreamView(commitStream).Add<SetGlobalInstrumentationMessage>();
+                response->featureBitSet = globalInstrumentationInfo.featureBitSet;
+            }
+            break;
+        }
+        case SetShaderInstrumentationMessage::kID: {
+            for (auto && shaderUIDInfo : shaderUIDInstrumentationInfo) {
+                auto response = MessageStreamView(commitStream).Add<SetShaderInstrumentationMessage>();
+                response->shaderUID = shaderUIDInfo.first;
+                response->featureBitSet = shaderUIDInfo.second.featureBitSet;
+            }
+            break;
+        }
+        case SetPipelineInstrumentationMessage::kID: {
+            for (auto && pipelineUIDInfo : pipelineUIDInstrumentationInfo) {
+                auto response = MessageStreamView(commitStream).Add<SetPipelineInstrumentationMessage>();
+                response->pipelineUID = pipelineUIDInfo.first;
+                response->featureBitSet = pipelineUIDInfo.second.featureBitSet;
+            }
+            break;
+        }
+        case SetOrAddFilteredPipelineInstrumentationMessage::kID: {
+            for (auto && filter : filteredInstrumentationInfo) {
+                auto response = MessageStreamView(commitStream).Add<SetOrAddFilteredPipelineInstrumentationMessage>(SetOrAddFilteredPipelineInstrumentationMessage::AllocationInfo{
+                    .guidLength = filter.guid.length(),
+                    .nameLength = filter.name.length()
+                });
+                response->guid.Set(filter.guid);
+                response->name.Set(filter.name);
+                response->type = static_cast<uint32_t>(filter.type);
+                response->featureBitSet = filter.instrumentationInfo.featureBitSet;
+
+                // Translate type
+                switch (filter.type) {
+                    default:
+                        response->type = 0;
+                        break;
+                    case PipelineType::Graphics:
+                        response->type = 1;
+                        break;
+                    case PipelineType::Compute:
+                        response->type = 2;
+                        break;
+                }
+            }
+            break;
+        }
     }
 }
 
@@ -601,10 +663,14 @@ void InstrumentationController::Commit() {
         // Add diagnostic message
         auto message = MessageStreamView(commitStream).Add<JobDiagnosticMessage>();
         message->remaining = count;
-        table->bridge->GetOutput()->AddStreamAndSwap(commitStream);
 
         // OK
         lastPooledCount = count;
+    }
+
+    // Anything to commit?
+    if (!commitStream.IsEmpty()) {
+        table->bridge->GetOutput()->AddStreamAndSwap(commitStream);
     }
 
     // Commit all pending instrumentation

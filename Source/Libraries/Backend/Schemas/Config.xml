@@ -34,4 +34,8 @@
     <message name="SetApplicationILConversion">
         <field name="enabled" type="bool"/>
     </message>
+
+    <message name="GetState">
+        <field name="uuid" type="uint64"/>
+    </message>
 </schema>

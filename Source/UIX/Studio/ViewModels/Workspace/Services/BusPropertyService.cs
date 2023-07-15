@@ -30,7 +30,7 @@ using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Traits;
 
-namespace Studio.ViewModels.Workspace
+namespace Studio.ViewModels.Workspace.Services
 {
     public class BusPropertyService : ReactiveObject, IBusPropertyService
     {

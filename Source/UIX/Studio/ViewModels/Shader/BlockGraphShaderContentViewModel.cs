@@ -27,7 +27,7 @@ using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
 using Studio.ViewModels.Documents;
-using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader

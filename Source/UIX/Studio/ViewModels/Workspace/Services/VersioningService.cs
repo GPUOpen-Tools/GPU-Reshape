@@ -33,7 +33,7 @@ using Runtime.ViewModels.Shader;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Workspace.Objects;
 
-namespace Studio.ViewModels.Workspace.Listeners
+namespace Studio.ViewModels.Workspace.Services
 {
     public class VersioningService : IPropertyService, IVersioningService, Bridge.CLR.IBridgeListener
     {

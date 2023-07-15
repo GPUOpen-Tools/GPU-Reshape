@@ -428,9 +428,6 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     // Any dynamic parameters?
     bool anyDynamic = false;
 
-    // Any non-pod parameters?
-    bool anyNonTrivial = false;
-
     // Total size
     uint64_t cxxSizeType = 0;
     uint64_t cxxBitFieldSizeOffset = 0;
@@ -576,9 +573,6 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             // Requires the dynamic schema
             anyDynamic = true;
 
-            // Not trivial
-            anyNonTrivial = true;
-
             // Append field
             out.members << "\t\tpublic MessageArray<" << it->second.csType << "> " << field.name << "\n";
             out.members << "\t\t{\n";
@@ -629,9 +623,6 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             // Requires the dynamic schema
             anyDynamic = true;
 
-            // Not trivial
-            anyNonTrivial = true;
-
             // Append field
             out.members << "\t\tpublic MessageSubStream " << field.name << "\n";
             out.members << "\t\t{\n";
@@ -650,9 +641,6 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             out.functions << "\t\t{\n";
             out.functions << "\t\t\tMemoryMarshal.Write<" << it->first << ">(_memory.Slice(" << cxxSizeType << ", " << (cxxSizeType + it->second.size) << ").AsRefSpan(), ref value);\n";
             out.functions << "\t\t}\n\n";
-
-            // Not trivial
-            anyNonTrivial = true;
 
             // Add field
             out.members << "\t\tpublic " << it->first << " " << field.name << "\n";
@@ -968,7 +956,8 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     out.functions << "\t\t\treturn new AllocationInfo();\n";
     out.functions << "\t\t}\n\n";
 
-    if (!anyNonTrivial) {
+    // Flat typing
+    {
         // Begin flat type
         out.types << "\n";
         out.types << "\t\tpublic struct FlatInfo {\n";
@@ -983,8 +972,7 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
             } else if (field.type ==  "string") {
                 out.types << "\t\t\tpublic string " << field.name << ";\n\n";
             } else {
-                std::cerr << "Unexpected non trivial state" << std::endl;
-                return false;
+                continue;
             }
         }
 
@@ -1002,10 +990,12 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
         for (auto fieldIt = message.fields.begin(); fieldIt != message.fields.end(); fieldIt++) {
             const Field &field = *fieldIt;
 
-            if (field.type == "string") {
+            if (auto it = primitiveTypeMap.types.find(field.type); it != primitiveTypeMap.types.end()) {
+                out.functions << "\t\t\t\tflat." << field.name << " = " << field.name << ";\n";
+            } else if (field.type ==  "string") {
                 out.functions << "\t\t\t\tflat." << field.name << " = " << field.name << ".String;\n";
             } else {
-                out.functions << "\t\t\t\tflat." << field.name << " = " << field.name << ";\n";
+                continue;
             }
         }
 

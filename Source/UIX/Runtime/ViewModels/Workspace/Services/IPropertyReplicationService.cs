@@ -22,30 +22,13 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using System.Collections.Generic;
-using Message.CLR;
-
 namespace Studio.ViewModels.Workspace.Services
 {
-    public interface IShaderCodeService : IPropertyService
+    public interface IPropertyReplicationService : IPropertyService
     {
         /// <summary>
-        /// Enqueue a shader for source code pooling
+        /// Synchronize all properties
         /// </summary>
-        /// <param name="shaderViewModel"></param>
-        public void EnqueueShaderContents(Objects.ShaderViewModel shaderViewModel);
-        
-        /// <summary>
-        /// Enqueue a shader for source code pooling
-        /// </summary>
-        /// <param name="shaderViewModel"></param>
-        public void EnqueueShaderIL(Objects.ShaderViewModel shaderViewModel);
-        
-        /// <summary>
-        /// Enqueue a shader for source code pooling
-        /// </summary>
-        /// <param name="shaderViewModel"></param>
-        public void EnqueueShaderBlockGraph(Objects.ShaderViewModel shaderViewModel);
+        public void Sync();
     }
 }

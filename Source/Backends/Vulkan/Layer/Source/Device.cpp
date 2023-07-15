@@ -71,21 +71,22 @@
 // Std
 #include <cstring>
 
-static bool ApplyStartupEnvironment(DeviceDispatchTable* table) {
+static void ApplyStartupEnvironment(DeviceDispatchTable* table) {
     MessageStream stream;
     
     // Attempt to load
     Backend::StartupEnvironment startupEnvironment;
-    if (!startupEnvironment.LoadFromConfig(stream) && !startupEnvironment.LoadFromEnvironment(stream)) {
-        return false;
+    startupEnvironment.LoadFromConfig(stream);
+    startupEnvironment.LoadFromEnvironment(stream);
+
+    // Empty?
+    if (stream.IsEmpty()) {
+        return;
     }
 
     // Commit initial stream
     table->bridge->GetInput()->AddStream(stream);
     table->bridge->Commit();
-
-    // OK
-    return true;
 }
 
 VkResult VKAPI_PTR Hook_vkEnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount, VkLayerProperties *pProperties) {
@@ -447,7 +448,7 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     }
 
     // Query and apply environment
-    ENSURE(ApplyStartupEnvironment(table), "Failed to apply startup environment");
+    ApplyStartupEnvironment(table);
 
     // Finally, post-install all features for late work
     // This must be done after all dependent states are initialized

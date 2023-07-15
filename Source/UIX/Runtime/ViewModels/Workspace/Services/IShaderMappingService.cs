@@ -31,7 +31,7 @@ using Studio.Models.Workspace.Listeners;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Workspace.Objects;
 
-namespace Studio.ViewModels.Workspace.Listeners
+namespace Studio.ViewModels.Workspace.Services
 {
     public interface IShaderMappingService : IPropertyService
     {

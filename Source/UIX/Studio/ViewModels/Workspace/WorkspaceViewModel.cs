@@ -30,7 +30,7 @@ using ReactiveUI;
 using Studio.Services;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace;
-using Studio.ViewModels.Workspace.Listeners;
+using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace

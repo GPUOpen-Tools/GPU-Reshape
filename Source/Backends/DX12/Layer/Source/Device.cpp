@@ -87,21 +87,22 @@
 TrackedAllocator trackedAllocator;
 #endif // NDEBUG
 
-static bool ApplyStartupEnvironment(DeviceState* state) {
+static void ApplyStartupEnvironment(DeviceState* state) {
     MessageStream stream;
     
     // Attempt to load
     Backend::StartupEnvironment startupEnvironment;
-    if (!startupEnvironment.LoadFromConfig(stream) && !startupEnvironment.LoadFromEnvironment(stream)) {
-        return false;
+    startupEnvironment.LoadFromConfig(stream);
+    startupEnvironment.LoadFromEnvironment(stream);
+
+    // Empty?
+    if (stream.IsEmpty()) {
+        return;
     }
 
     // Commit initial stream
     state->bridge->GetInput()->AddStream(stream);
     state->bridge->Commit();
-
-    // OK
-    return true;
 }
 
 static bool PoolAndInstallFeatures(DeviceState* state) {
@@ -310,7 +311,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         ENSURE(state->exportStreamer->Install(), "Failed to install shader export streamer");
 
         // Query and apply environment
-        ENSURE(ApplyStartupEnvironment(state), "Failed to apply startup environment");
+        ApplyStartupEnvironment(state);
 
         // Finally, post-install all features for late work
         // This must be done after all dependent states are initialized

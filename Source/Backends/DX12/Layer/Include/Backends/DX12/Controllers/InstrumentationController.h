@@ -103,6 +103,7 @@ protected:
 
     /// Message handler
     void OnMessage(const ConstMessageStreamView<>::ConstIterator &it);
+    void OnStateRequest(const struct GetStateMessage &message);
 
     /// Summarize the feature bit set used
     /// \return bit set

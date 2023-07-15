@@ -27,7 +27,7 @@ using System.Collections.Generic;
 using Message.CLR;
 using Studio.Models.Workspace.Objects;
 
-namespace Studio.ViewModels.Workspace.Listeners
+namespace Studio.ViewModels.Workspace.Services
 {
     public interface IVersioningService : IPropertyService
     {
