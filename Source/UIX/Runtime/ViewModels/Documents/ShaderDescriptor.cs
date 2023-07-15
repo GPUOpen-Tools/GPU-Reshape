@@ -33,7 +33,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Sortable identifier
         /// </summary>
-        public object? Identifier => Tuple.Create(typeof(ShaderDescriptor), GUID);
+        public object? Identifier => Tuple.Create(typeof(ShaderDescriptor), PropertyCollection, GUID);
 
         /// <summary>
         /// Workspace collection
