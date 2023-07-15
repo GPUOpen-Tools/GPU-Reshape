@@ -381,7 +381,7 @@ void InstrumentationController::OnMessage(const ConstMessageStreamView<>::ConstI
         }
 
         case RemoveFilteredPipelineInstrumentationMessage::kID: {
-            auto *message = it.Get<SetOrAddFilteredPipelineInstrumentationMessage>();
+            auto *message = it.Get<RemoveFilteredPipelineInstrumentationMessage>();
 
             // Mark as pending
             pendingResummarization = true;

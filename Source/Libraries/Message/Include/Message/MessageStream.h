@@ -490,6 +490,7 @@ struct MessageStreamSchema<OrderedMessageSchema, STREAM> {
         /// Get the message
         template<typename T>
         const T* Get() const {
+            ASSERT(Is(T::kID), "Invalid cast");
             return reinterpret_cast<const T*>(ptr + sizeof(OrderedMessageSchema::Header));
         }
 

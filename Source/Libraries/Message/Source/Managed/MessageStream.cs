@@ -509,7 +509,7 @@ namespace Message.CLR
         // Assigned ID of message
         public uint ID;
 
-        // Get a mesage of type
+        // Get a message of type
         public T Get<T>() where T : struct, IMessage
         {
             return new T() { Memory = _memory };
