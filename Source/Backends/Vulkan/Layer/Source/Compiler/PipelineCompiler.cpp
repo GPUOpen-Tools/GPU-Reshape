@@ -177,6 +177,9 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             ++batch.diagnostic->failedJobs;
             return;
         }
+
+        // Mark as passed
+        ++batch.diagnostic->passedJobs;
     }
 #else
     // TODO: Pipeline cache?
@@ -185,6 +188,9 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
         batch.diagnostic->failedJobs += batch.count;
         return;
     }
+
+    // Mark as passed
+    batch.diagnostic->passedJobs += batch.count;
 #endif
 
     // Set final objects
@@ -237,6 +243,9 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         batch.diagnostic->failedJobs += batch.count;
         return;
     }
+
+    // Mark as passed
+    batch.diagnostic->passedJobs += batch.count;
 
     // Set final objects
     for (uint32_t i = 0; i < batch.count; i++) {

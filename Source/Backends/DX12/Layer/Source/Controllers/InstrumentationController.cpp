@@ -626,7 +626,7 @@ void InstrumentationController::CommitInstrumentation() {
     // Diagnostic
 #if LOG_INSTRUMENTATION
     device->logBuffer.Add("DX12", LogSeverity::Info, Format(
-        "Committing {} shaders and {} pipelines for instrumentation",
+        "Committing {} unique shaders and {} pipelines for instrumentation",
         immediateBatch.dirtyShaders.size(),
         immediateBatch.dirtyPipelines.size()
     ));
@@ -896,9 +896,9 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     device->logBuffer.Add("DX12", LogSeverity::Info, Format(
         "Instrumented {} shaders ({} ms) and {} pipelines ({} ms), total {} ms",
-        batch->dirtyShaders.size(),
+        batch->shaderCompilerDiagnostic.passedJobs.load(),
         msShaders,
-        batch->dirtyPipelines.size(),
+        batch->pipelineCompilerDiagnostic.passedJobs.load(),
         msPipelines,
         msTotal
     ));

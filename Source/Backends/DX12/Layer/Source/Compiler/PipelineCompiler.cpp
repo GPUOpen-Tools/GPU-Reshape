@@ -307,6 +307,9 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 
         // Add pipeline
         state->AddInstrument(job.combinedHash, pipeline);
+
+        // Mark as passed
+        ++batch.diagnostic->passedJobs;
     }
 
     // Free bit sets
@@ -393,6 +396,9 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
 
         // Add pipeline
         state->AddInstrument(job.combinedHash, pipeline);
+
+        // Mark as passed
+        ++batch.diagnostic->passedJobs;
     }
 
     // Free bit sets

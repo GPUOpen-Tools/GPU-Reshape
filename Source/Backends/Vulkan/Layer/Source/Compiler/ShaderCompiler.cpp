@@ -234,6 +234,9 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     // Assign the instrument
     job.info.state->AddInstrument(job.info.instrumentationKey, instrument);
 
+    // Mark as passed
+    ++job.info.diagnostic->passedJobs;
+
     // Destroy the module
     destroy(module, allocators);
 }

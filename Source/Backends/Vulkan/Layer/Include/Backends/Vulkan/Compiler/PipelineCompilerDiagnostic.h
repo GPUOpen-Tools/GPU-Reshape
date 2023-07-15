@@ -32,10 +32,16 @@ struct PipelineCompilerDiagnostic {
     PipelineCompilerDiagnostic() = default;
 
     /// Copy constructor
-    PipelineCompilerDiagnostic(const PipelineCompilerDiagnostic& other) : failedJobs(other.failedJobs.load()) {
-        
+    PipelineCompilerDiagnostic(const PipelineCompilerDiagnostic& other) :
+        failedJobs(other.failedJobs.load()),
+        passedJobs(other.passedJobs.load())
+    {
+        /** poof */
     }
 
     /// Total number of failed jobs
     std::atomic<uint64_t> failedJobs{0};
+
+    /// Total number of passed jobs
+    std::atomic<uint64_t> passedJobs{0};
 };

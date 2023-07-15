@@ -32,10 +32,16 @@ struct ShaderCompilerDiagnostic {
     ShaderCompilerDiagnostic() = default;
 
     /// Copy constructor
-    ShaderCompilerDiagnostic(const ShaderCompilerDiagnostic& other) : failedJobs(other.failedJobs.load()) {
-        
+    ShaderCompilerDiagnostic(const ShaderCompilerDiagnostic& other) :
+        failedJobs(other.failedJobs.load()),
+        passedJobs(other.passedJobs.load())
+    {
+        /** poof */
     }
 
     /// Total number of failed jobs
     std::atomic<uint64_t> failedJobs{0};
+
+    /// Total number of passed jobs
+    std::atomic<uint64_t> passedJobs{0};
 };

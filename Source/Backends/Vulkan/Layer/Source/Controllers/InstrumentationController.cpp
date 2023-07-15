@@ -619,7 +619,7 @@ void InstrumentationController::CommitInstrumentation() {
     // Diagnostic
 #if LOG_INSTRUMENTATION
     table->parent->logBuffer.Add("Vulkan", LogSeverity::Info, Format(
-        "Committing {} shaders and {} pipelines for instrumentation",
+        "Committing {} unique shaders and {} pipelines for instrumentation",
         immediateBatch.dirtyShaderModules.size(),
         immediateBatch.dirtyPipelines.size()
     ));
@@ -915,9 +915,9 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     
     table->parent->logBuffer.Add("Vulkan", LogSeverity::Info, Format(
         "Instrumented {} shaders ({} ms) and {} pipelines ({} ms), total {} ms",
-        batch->dirtyShaderModules.size(),
+        batch->shaderCompilerDiagnostic.passedJobs.load(),
         msShaders,
-        batch->dirtyPipelines.size(),
+        batch->pipelineCompilerDiagnostic.passedJobs.load(),
         msPipelines,
         msTotal
     ));
