@@ -70,6 +70,15 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         }
 
         /// <summary>
+        /// Current GUID
+        /// </summary>
+        public Guid GUID
+        {
+            get => _guid;
+            set => this.RaiseAndSetIfChanged(ref _guid, value);
+        }
+
+        /// <summary>
         /// Instrumentation handler
         /// </summary>
         public InstrumentationState InstrumentationState

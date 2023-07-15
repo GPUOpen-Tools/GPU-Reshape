@@ -22,6 +22,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using System.Collections.Generic;
 using Avalonia.Threading;
 using DynamicData;
@@ -259,6 +260,7 @@ namespace Studio.ViewModels.Workspace.Services
                 Parent = _pipelineCollection,
                 ConnectionViewModel = _pipelineCollection.ConnectionViewModel,
                 Name = name,
+                GUID = Guid.Parse(msg.guid),
                 Filter = new PipelineFilterQueryViewModel()
                 {
                     Type = type,
