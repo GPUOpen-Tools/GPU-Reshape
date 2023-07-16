@@ -105,6 +105,20 @@ namespace Studio.ViewModels.Tools
                 .OnItemAdded(x => OnWorkspaceAdded(x))
                 .OnItemRemoved(x => OnWorkspaceRemoved(x))
                 .Subscribe();
+            
+            // Bind selected workspace
+            _workspaceService
+                .WhenAnyValue(x => x.SelectedWorkspace)
+                .Subscribe(x =>
+                {
+                    Owner?.Factory?.SetActiveDockable(this);
+                });
+            
+            // Bind focus event
+            _workspaceService.WorkspaceFocusNotify.Subscribe(_ =>
+            {
+                Owner?.Factory?.SetActiveDockable(this);
+            });
         }
 
         /// <summary>
