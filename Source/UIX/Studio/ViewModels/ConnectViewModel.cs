@@ -260,6 +260,17 @@ namespace Studio.ViewModels
                 return;
             }
 
+            // Quick check that we're not already connected
+            if (App.Locator.GetService<Services.IWorkspaceService>() is { } service)
+            {
+                if (service.Workspaces.Items.Any(x => x.Connection?.Application?.Guid == SelectedApplication?.Guid))
+                {
+                    // Mark as failure
+                    ConnectionStatus = Models.Workspace.ConnectionStatus.ApplicationAlreadyConnected;
+                    return;
+                }
+            }
+
             // Set status
             ConnectionStatus = Models.Workspace.ConnectionStatus.Connecting;
 

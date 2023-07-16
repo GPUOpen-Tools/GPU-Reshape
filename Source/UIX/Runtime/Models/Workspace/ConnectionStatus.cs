@@ -67,6 +67,11 @@ namespace Studio.Models.Workspace
         ApplicationAccepted,
         
         /// <summary>
+        /// The application is already connected
+        /// </summary>
+        ApplicationAlreadyConnected,
+        
+        /// <summary>
         /// Failed to parse query, syntactical error
         /// </summary>
         QueryInvalid,

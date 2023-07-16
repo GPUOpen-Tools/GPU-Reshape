@@ -81,6 +81,7 @@ namespace Studio.ValueConverters
             {
                 default:
                     return ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushLow") ?? _default;
+                case ConnectionStatus.ApplicationAlreadyConnected:
                 case ConnectionStatus.ResolveRejected:
                 case ConnectionStatus.ApplicationRejected:
                 case ConnectionStatus.QueryInvalid:
@@ -131,6 +132,8 @@ namespace Studio.ValueConverters
                     return "Endpoint application rejected request";
                 case ConnectionStatus.ApplicationAccepted:
                     return "Endpoint application accepted request";
+                case ConnectionStatus.ApplicationAlreadyConnected:
+                    return "Endpoint application already connected through another workspace";
                 case ConnectionStatus.QueryInvalid:
                     return "Failed to parse endpoint query";
                 case ConnectionStatus.QueryDuplicateKey:
