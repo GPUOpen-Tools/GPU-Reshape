@@ -33,10 +33,15 @@
              x:Class="Studio.Views.Workspace.Properties.MessageCollectionView"
              x:DataType="properties:MessageCollectionViewModel">
     <Grid>
+        <!--
+            Fixed height due to:
+            https://github.com/AvaloniaUI/Avalonia/issues/2462
+        -->
         <DataGrid 
             x:Name="MessageDataGrid"
             Items="{Binding ValidationObjects}" 
             IsReadOnly="True"
+            Height="300"
             CanUserResizeColumns="True"
             VerticalAlignment="Top"
             HorizontalAlignment="Stretch">
