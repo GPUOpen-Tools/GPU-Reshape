@@ -145,7 +145,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderUID);
 
     // Create module if not present
-    if (shaderCompiler && !shader->module) {
+    if (shaderCompiler && shader && !shader->module) {
         shaderCompiler->InitializeModule(shader);
     }
 
@@ -212,7 +212,7 @@ void MetadataController::OnMessage(const GetShaderILMessage& message) {
     ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderUID);
 
     // Create module if not present
-    if (shaderCompiler && !shader->module) {
+    if (shaderCompiler && shader && !shader->module) {
         shaderCompiler->InitializeModule(shader);
     }
 
@@ -242,7 +242,7 @@ void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {
     ShaderState* shader = device->states_Shaders.GetFromUID(message.shaderUID);
 
     // Create module if not present
-    if (shaderCompiler && !shader->module) {
+    if (shaderCompiler && shader && !shader->module) {
         shaderCompiler->InitializeModule(shader);
     }
 

@@ -143,7 +143,7 @@ void MetadataController::OnMessage(const GetShaderCodeMessage& message) {
     ShaderModuleState* shader = table->states_shaderModule.GetFromUID(message.shaderUID);
 
     // Create module if not present
-    if (shaderCompiler && !shader->spirvModule) {
+    if (shaderCompiler && shader && !shader->spirvModule) {
         shaderCompiler->InitializeModule(shader);
     }
 
@@ -210,7 +210,7 @@ void MetadataController::OnMessage(const GetShaderILMessage& message) {
     ShaderModuleState* shader = table->states_shaderModule.GetFromUID(message.shaderUID);
 
     // Create module if not present
-    if (shaderCompiler && !shader->spirvModule) {
+    if (shaderCompiler && shader && !shader->spirvModule) {
         shaderCompiler->InitializeModule(shader);
     }
 
@@ -240,7 +240,7 @@ void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {
     ShaderModuleState* shader = table->states_shaderModule.GetFromUID(message.shaderUID);
 
     // Create module if not present
-    if (shaderCompiler && !shader->spirvModule) {
+    if (shaderCompiler && shader && !shader->spirvModule) {
         shaderCompiler->InitializeModule(shader);
     }
 
