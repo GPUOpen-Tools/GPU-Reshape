@@ -35,6 +35,11 @@ namespace Studio.ViewModels.Documents
         public object? Identifier => Tuple.Create(typeof(WorkspaceOverviewDescriptor), Workspace);
 
         /// <summary>
+        /// Owner object
+        /// </summary>
+        public object? Owner => Workspace?.PropertyCollection;
+
+        /// <summary>
         /// Workspace view mode
         /// </summary>
         public IWorkspaceViewModel? Workspace { get; set; }

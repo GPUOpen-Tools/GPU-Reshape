@@ -22,37 +22,27 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using Studio.Models.Workspace.Objects;
-using Studio.ViewModels.Workspace.Properties;
+using System.Reactive;
+using System.Reactive.Subjects;
+using ReactiveUI;
+using System.Windows.Input;
+using Dock.Model.Controls;
+using Studio.ViewModels.Documents;
 
-namespace Studio.ViewModels.Documents
+namespace Runtime.ViewModels
 {
-    public class ShaderDescriptor : IDescriptor
+    public interface IDocumentLayoutViewModel : IDocumentDock
     {
         /// <summary>
-        /// Sortable identifier
+        /// Open a new document
         /// </summary>
-        public object? Identifier => Tuple.Create(typeof(ShaderDescriptor), PropertyCollection, GUID);
+        /// <param name="descriptor">descriptor for view model creation</param>
+        void OpenDocument(IDescriptor descriptor);
 
         /// <summary>
-        /// Owner object
+        /// Close all documents with a given owner
         /// </summary>
-        public object? Owner => PropertyCollection;
-        
-        /// <summary>
-        /// Workspace collection
-        /// </summary>
-        public IPropertyViewModel? PropertyCollection { get; set; }
-        
-        /// <summary>
-        /// Optional, detailed startup location
-        /// </summary>
-        public ShaderLocation? StartupLocation { get; set; }
-
-        /// <summary>
-        /// Shader GUID
-        /// </summary>
-        public UInt64 GUID { get; set; }
+        /// <param name="owner">owner to be matched</param>
+        void CloseOwnedDocuments(object? owner);
     }
 }

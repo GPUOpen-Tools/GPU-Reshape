@@ -30,5 +30,10 @@ namespace Studio.ViewModels.Documents
         /// Sortable identifier for unique comparisons
         /// </summary>
         object? Identifier { get; }
+        
+        /// <summary>
+        /// Owning object, opaque in nature
+        /// </summary>
+        object? Owner { get; }
     }
 }

@@ -33,9 +33,9 @@ namespace Runtime.ViewModels
     public interface ILayoutViewModel
     {
         /// <summary>
-        /// Open a document
+        /// Current document layout, may be recreated
         /// </summary>
-        public ICommand? OpenDocument { get; }
+        public IDocumentLayoutViewModel? DocumentLayout { get; }
         
         /// <summary>
         /// Reset the layout

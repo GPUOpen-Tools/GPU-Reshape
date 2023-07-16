@@ -40,10 +40,8 @@ namespace Studio.ViewModels.Documents
         /// </summary>
         public IDescriptor? Descriptor
         {
-            set
-            {
-                
-            }
+            get => _descriptor;
+            set => this.RaiseAndSetIfChanged(ref _descriptor, value);
         }
         
         /// <summary>
@@ -124,5 +122,10 @@ namespace Studio.ViewModels.Documents
         /// Internal icon color
         /// </summary>
         private Color? _iconForeground = ResourceLocator.GetResource<Color>("SystemBaseHighColor");
+
+        /// <summary>
+        /// Internal descriptor
+        /// </summary>
+        private IDescriptor? _descriptor;
     }
 }

@@ -119,7 +119,7 @@ namespace Studio.ViewModels.Controls
             
             if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                layoutViewModel.OpenDocument?.Execute(descriptorObject.Descriptor);
+                layoutViewModel.DocumentLayout?.OpenDocument(descriptorObject.Descriptor);
             }
         }
 

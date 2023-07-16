@@ -116,7 +116,7 @@ namespace Studio.ViewModels.Tools
             
             if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                layoutViewModel.OpenDocument?.Execute( new ShaderDescriptor()
+                layoutViewModel.DocumentLayout?.OpenDocument( new ShaderDescriptor()
                 {
                     PropertyCollection = _workspaceViewModel?.PropertyCollection,
                     GUID = shaderIdentifierViewModel.GUID

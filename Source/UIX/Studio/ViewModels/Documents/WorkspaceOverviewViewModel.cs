@@ -24,10 +24,14 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Reactive;
+using Avalonia;
 using Avalonia.Media;
 using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using ReactiveUI;
+using Runtime.ViewModels.Shader;
+using Studio.Services;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -40,6 +44,7 @@ namespace Studio.ViewModels.Documents
         /// </summary>
         public IDescriptor? Descriptor
         {
+            get => _descriptor;
             set
             {
                 // Valid descriptor?
@@ -105,6 +110,24 @@ namespace Studio.ViewModels.Documents
         /// </summary>
         public ObservableCollection<IPropertyViewModel> Properties { get; } = new();
 
+        /// <summary>
+        /// Invoked on selection
+        /// </summary>
+        public override void OnSelected()
+        {
+            base.OnSelected();
+            
+            // Set selected workspace
+            if (App.Locator.GetService<IWorkspaceService>() is { } service)
+            {
+                // Update workspace
+                service.SelectedWorkspace = Workspace;
+                
+                // Force focus
+                service.WorkspaceFocusNotify.OnNext(Unit.Default);
+            }
+        }
+        
         /// <summary>
         /// Invoked when the workspace has changed
         /// </summary>

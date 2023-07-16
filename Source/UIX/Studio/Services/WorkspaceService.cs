@@ -22,10 +22,13 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System.Reactive;
+using System.Reactive.Subjects;
 using Avalonia;
 using DynamicData;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
+using Studio.Extensions;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
@@ -72,11 +75,16 @@ namespace Studio.Services
             set => this.RaiseAndSetIfChanged(ref _selectedShader, value);
         }
 
+        /// <summary>
+        /// Focus notification event
+        /// </summary>
+        public Subject<Unit> WorkspaceFocusNotify { get; } = new();
+
         public WorkspaceService()
         {
             
         }
-        
+
         /// <summary>
         /// Add a new workspace
         /// </summary>
@@ -88,7 +96,7 @@ namespace Studio.Services
             // Submit document
             if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
             {
-                layoutViewModel.OpenDocument?.Execute(new WorkspaceOverviewDescriptor()
+                layoutViewModel.DocumentLayout?.OpenDocument(new WorkspaceOverviewDescriptor()
                 {
                     Workspace = workspaceViewModel 
                 });
@@ -129,6 +137,9 @@ namespace Studio.Services
                 SelectedWorkspace = null;
             }
             
+            // Close all documents
+            CloseDocumentsFor(workspaceViewModel);
+           
             // Try to remove
             return _workspaces.Remove(workspaceViewModel);
         }
@@ -145,9 +156,23 @@ namespace Studio.Services
 
                 // Remove selected
                 SelectedWorkspace = null;
+                
+                // Close all documents
+                _workspaces.Items.ForEach(x => CloseDocumentsFor(x));
             
                 // Remove all
                 _workspaces.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Close all documents for a specific workspace
+        /// </summary>
+        private void CloseDocumentsFor(IWorkspaceViewModel owner)
+        {
+            if (App.Locator.GetService<IWindowService>()?.LayoutViewModel is { } layoutViewModel)
+            {
+                layoutViewModel.DocumentLayout?.CloseOwnedDocuments(owner.PropertyCollection);
             }
         }
 

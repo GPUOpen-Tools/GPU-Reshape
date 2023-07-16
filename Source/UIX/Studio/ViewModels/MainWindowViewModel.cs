@@ -50,12 +50,12 @@ namespace Studio.ViewModels
             get => _layout;
             set => this.RaiseAndSetIfChanged(ref _layout, value);
         }
-        
+
         /// <summary>
-        /// Open a document
+        /// Current document layout
         /// </summary>
-        public ICommand? OpenDocument { get; set; }
-        
+        public IDocumentLayoutViewModel? DocumentLayout => _factory?.Documents;
+
         /// <summary>
         /// Reset the layout
         /// </summary>
@@ -120,9 +120,6 @@ namespace Studio.ViewModels
                 }
             }
             
-            // Attach document interactions, future them for layout invalidation
-            OpenDocument = Reactive.Future(() => _factory.Documents?.CreateDocument);
-
             // Create commands
             ResetLayout = ReactiveCommand.Create(OnResetLayout);
             CloseLayout = ReactiveCommand.Create(OnCloseLayout);

@@ -30,5 +30,10 @@ namespace Studio.ViewModels.Documents
         /// Sortable identifier
         /// </summary>
         public object? Identifier { get; set; } = typeof(WelcomeDescriptor);
+
+        /// <summary>
+        /// Owner object
+        /// </summary>
+        public object? Owner => null;
     }
 }

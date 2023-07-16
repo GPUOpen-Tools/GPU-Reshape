@@ -23,6 +23,7 @@
 // 
 
 using System;
+using System.Reactive;
 using System.Reactive.Subjects;
 using DynamicData;
 using ReactiveUI;
@@ -59,6 +60,11 @@ namespace Studio.Services
         /// </summary>
         public ShaderNavigationViewModel? SelectedShader { get; set; }
         
+        /// <summary>
+        /// Focus notification event
+        /// </summary>
+        public Subject<Unit> WorkspaceFocusNotify { get; }
+
         /// <summary>
         /// Add a new workspace
         /// </summary>

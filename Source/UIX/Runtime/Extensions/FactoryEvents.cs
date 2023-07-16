@@ -47,6 +47,14 @@ namespace Studio.Extensions
         {
             return (s, e) => handler(e.Dockable);
         }, handler => _factory.DockableClosed += handler, handler => _factory.DockableClosed -= handler);
+        
+        /// <summary>
+        /// Observable removed event
+        /// </summary>
+        public IObservable<IDockable?> DockableRemoved => Observable.FromEvent<EventHandler<DockableRemovedEventArgs>, IDockable?>(handler =>
+        {
+            return (s, e) => handler(e.Dockable);
+        }, handler => _factory.DockableRemoved += handler, handler => _factory.DockableRemoved -= handler);
 
         /// <summary>
         /// Internal factory

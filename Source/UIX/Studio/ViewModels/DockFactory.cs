@@ -38,12 +38,16 @@ using Dock.Model.Core;
 using Dock.Model.ReactiveUI;
 using Dock.Model.ReactiveUI.Controls;
 using ReactiveUI;
+using Runtime.ViewModels;
 
 namespace Studio.ViewModels
 {
     public class DockFactory : Factory
     {
-        public IDocumentDock? Documents => _documentDock;
+        /// <summary>
+        /// Document layout
+        /// </summary>
+        public IDocumentLayoutViewModel? Documents => _documentDock;
         
         /// <summary>
         /// Invoked on tooling expansion toggling
@@ -253,6 +257,6 @@ namespace Studio.ViewModels
         /// <summary>
         /// Central document dock
         /// </summary>
-        private IDocumentDock? _documentDock;
+        private IDocumentLayoutViewModel? _documentDock;
     }
 }

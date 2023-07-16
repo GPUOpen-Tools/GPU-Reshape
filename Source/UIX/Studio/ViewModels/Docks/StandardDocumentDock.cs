@@ -31,39 +31,51 @@ using Dock.Model.Core.Events;
 using Studio.ViewModels.Documents;
 using Dock.Model.ReactiveUI.Controls;
 using ReactiveUI;
+using Runtime.ViewModels;
 using Studio.Extensions;
 using Studio.Services;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Docks
 {
-    public class StandardDocumentDock : DocumentDock
+    public class StandardDocumentDock : DocumentDock, IDocumentLayoutViewModel
     {
         public StandardDocumentDock()
         {
-            CreateDocument = ReactiveCommand.Create<IDescriptor>(OnCreateDocument);
+            // Bind bottom
+            CreateDocument = ReactiveCommand.Create<IDescriptor>(OpenDocument);
 
             // Bind factory
             this.WhenAnyValue(x => x.Factory)
                 .WhereNotNull()
                 .Subscribe(x =>
                 {
-                    // Bind closed events
-                    x.Events().DockableClosed.WhereNotNull().Subscribe(dock =>
-                    {
-                        if (!_dockables.TryGetValue(dock, out object? identifier))
-                        {
-                            return;
-                        }
-                        
-                        // Remove relation
-                        _dockables.Remove(dock);
-                        _identifiers.Remove(identifier);
-                    });
+                    // Bind erased events
+                    x.Events().DockableClosed.WhereNotNull().Subscribe(dock => OnDockableErased(dock));
+                    x.Events().DockableRemoved.WhereNotNull().Subscribe(dock => OnDockableErased(dock));
                 });
         }
 
-        private void OnCreateDocument(IDescriptor descriptor)
+        /// <summary>
+        /// Invoked on document erasure
+        /// </summary>
+        private void OnDockableErased(IDockable dock)
+        {
+            // May not be tracked
+            if (!_dockables.TryGetValue(dock, out object? identifier))
+            {
+                return;
+            }
+                        
+            // Remove relations
+            _dockables.Remove(dock);
+            _identifiers.Remove(identifier);
+        }
+
+        /// <summary>
+        /// Open a new document
+        /// </summary>
+        public void OpenDocument(IDescriptor descriptor)
         {
             // Valid state?
             if (descriptor.Identifier == null)
@@ -106,6 +118,38 @@ namespace Studio.ViewModels.Docks
             // Add to map
             _identifiers.Add(descriptor.Identifier, dockable);
             _dockables.Add(dockable, descriptor.Identifier);
+        }
+
+        /// <summary>
+        /// Close all documents with a specific ownership
+        /// </summary>
+        /// <param name="owner"></param>
+        public void CloseOwnedDocuments(object? owner)
+        {
+            // Local bucket
+            List<Tuple<IDockable, object>> bucket = new();
+            
+            // Determine dockables to be closed
+            foreach ((IDockable dockable, object identifier) in _dockables)
+            {
+                // Not required to be known
+                if (dockable is not IDocumentViewModel { } documentViewModel)
+                {
+                    continue;
+                }
+
+                // Matching dockable?
+                if (documentViewModel.Descriptor?.Owner == owner)
+                {
+                    bucket.Add(Tuple.Create(dockable, identifier));
+                }
+            }
+            
+            // Finally, clean up with safe iteration
+            foreach (var tuple in bucket)
+            {
+                Factory?.RemoveDockable(tuple.Item1, false);
+            }
         }
 
         /// <summary>

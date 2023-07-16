@@ -29,9 +29,9 @@ namespace Studio.ViewModels.Documents
     public interface IDocumentViewModel
     {
         /// <summary>
-        /// Descriptor setter, constructs the top document from given descriptor
+        /// Descriptor, constructs the top document from given descriptor
         /// </summary>
-        public IDescriptor? Descriptor { set; }
+        public IDescriptor? Descriptor { get; set; }
         
         /// <summary>
         /// Document icon

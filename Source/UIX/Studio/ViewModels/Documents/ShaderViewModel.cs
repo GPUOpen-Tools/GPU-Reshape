@@ -44,6 +44,7 @@ namespace Studio.ViewModels.Documents
         /// </summary>
         public IDescriptor? Descriptor
         {
+            get => _descriptor;
             set
             {
                 // Valid descriptor?
