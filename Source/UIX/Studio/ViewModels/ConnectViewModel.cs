@@ -467,17 +467,29 @@ namespace Studio.ViewModels
                 return;
             }
 
-            // Remove existing
-            _resolvedApplications.Clear();
-
             // Filter by current query
-            _discoveryApplications.Where(x =>
+            List<ApplicationInfo> applications = _discoveryApplications.Where(x =>
                 {
                     return (ConnectionQuery.ApplicationPid?.Equals((int)x.Pid) ?? true) &&
                            x.API.Contains(ConnectionQuery.ApplicationAPI ?? string.Empty, StringComparison.InvariantCultureIgnoreCase) &&
                            x.Process.Contains(ConnectionQuery.ApplicationFilter ?? string.Empty, StringComparison.InvariantCultureIgnoreCase);
-                })
-                .ForEach(x => _resolvedApplications.Add(x));
+                }).ToList();
+
+            // Create hash lookups
+            HashSet<Guid> resolved = new(_resolvedApplications.Select(x => x.Guid));
+            HashSet<Guid> incomingGuids = new(applications.Select(x => x.Guid));
+            
+            // Add new applications
+            foreach (ApplicationInfo applicationInfo in applications)
+            {
+                if (!resolved.Contains(applicationInfo.Guid))
+                {
+                    _resolvedApplications.Add(applicationInfo);
+                }
+            }
+            
+            // Remove unregistered applications
+            _resolvedApplications.RemoveMany(_resolvedApplications.Where(x => !incomingGuids.Contains(x.Guid)));
         }
 
         /// <summary>
