@@ -36,6 +36,7 @@ using AvaloniaEdit.Utils;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
+using Runtime.Utils.Workspace;
 using Runtime.ViewModels.Shader;
 using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
@@ -250,6 +251,12 @@ namespace Studio.Views.Shader
             if (validationObject == _validationTextMarkerService.SelectedObject)
             {
                 return;
+            }
+
+            // Begin collection
+            if (DataContext is CodeShaderContentViewModel { Object: {} _object, PropertyCollection: {} property})
+            {
+                ShaderDetailUtils.BeginDetailedCollection(_object, property);
             }
             
             // Bind detail context
