@@ -172,6 +172,15 @@ namespace Studio.ViewModels.Workspace.Services
         {
             _connectionViewModel?.Bridge?.Register(PingPongMessage.ID, this);
         }
+
+        /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            // Remove listeners
+            _connectionViewModel?.Bridge?.Deregister(PingPongMessage.ID, this);
+        }
         
         /// <summary>
         /// Invoked on message streams

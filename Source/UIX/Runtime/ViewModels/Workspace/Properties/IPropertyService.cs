@@ -22,9 +22,11 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using Runtime.ViewModels.Traits;
+
 namespace Studio.ViewModels.Workspace
 {
-    public interface IPropertyService
+    public interface IPropertyService : IDestructableObject
     {
         
     }

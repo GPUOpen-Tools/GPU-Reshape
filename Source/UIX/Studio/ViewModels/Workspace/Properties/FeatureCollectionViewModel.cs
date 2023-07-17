@@ -171,6 +171,15 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            // Deregister listeners
+            _connectionViewModel?.Bridge?.Deregister(this);
+        }
+
+        /// <summary>
         /// Internal view model
         /// </summary>
         private IConnectionViewModel? _connectionViewModel;

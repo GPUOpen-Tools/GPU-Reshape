@@ -34,12 +34,13 @@ using LiveChartsCore.SkiaSharpView.Painting;
 using Message.CLR;
 using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using ReactiveUI;
+using Runtime;
 using SkiaSharp;
 using Studio.ViewModels.Workspace;
 
 namespace Studio.ViewModels.Controls
 {
-    public class DiagnosticPlotViewModel : ReactiveObject, IBridgeListener
+    public class DiagnosticPlotViewModel : DestructibleReactiveObject, IBridgeListener
     {
         /// <summary>
         /// Workspace within this overview
@@ -150,6 +151,14 @@ namespace Studio.ViewModels.Controls
         public void OnWorkspaceChanged()
         {
             Workspace?.Connection?.Bridge?.Register(this);
+        }
+
+        /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public override void Destruct()
+        {
+            Workspace?.Connection?.Bridge?.Deregister(this);
         }
 
         /// <summary>

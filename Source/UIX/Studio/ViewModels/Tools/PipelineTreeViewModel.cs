@@ -72,6 +72,8 @@ namespace Studio.ViewModels.Tools
             get => _workspaceViewModel;
             set
             {
+                DestructConnection();
+                
                 this.RaiseAndSetIfChanged(ref _workspaceViewModel, value);
 
                 OnConnectionChanged();
@@ -163,7 +165,19 @@ namespace Studio.ViewModels.Tools
             _poolTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, OnPoolEvent);
             _poolTimer.Start();
         }
-
+        
+        /// <summary>
+        /// Destruct an existing connection
+        /// </summary>
+        private void DestructConnection()
+        {
+            if (_workspaceViewModel is not { Connection: { } })
+                return;
+            
+            // Unsubscribe
+            _workspaceViewModel.Connection.Bridge?.Deregister(this);
+        }
+        
         /// <summary>
         /// Invoked on timed pooling
         /// </summary>

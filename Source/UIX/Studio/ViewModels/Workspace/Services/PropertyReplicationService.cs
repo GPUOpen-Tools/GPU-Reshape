@@ -79,6 +79,15 @@ namespace Studio.ViewModels.Workspace.Services
         }
 
         /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            // Deregister listeners
+            _connectionViewModel?.Bridge?.Deregister(this);
+        }
+
+        /// <summary>
         /// Replicate all properties
         /// </summary>
         public void Sync()
@@ -320,7 +329,7 @@ namespace Studio.ViewModels.Workspace.Services
             for (int i = 0; i < 64; i++)
             {
                 // Current mask
-                ulong mask = 1u << i;
+                ulong mask = 1ul << i;
                 
                 // Current bit set?
                 if ((featureBitSet & mask) == 0x0)

@@ -141,6 +141,15 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            // Remove listeners
+            _connectionViewModel?.Bridge?.Deregister(ShaderSourceMappingMessage.ID, _shaderMappingService);
+        }
+
+        /// <summary>
         /// Create all properties
         /// </summary>
         private void CreateProperties()

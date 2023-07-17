@@ -22,20 +22,13 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
-using Avalonia.ReactiveUI;
-using ReactiveUI;
-using Studio.ViewModels.Controls;
-
-namespace Studio.Views.Controls
+namespace Runtime.ViewModels.Traits
 {
-    public partial class DiagnosticPlot : ReactiveUserControl<DiagnosticPlotViewModel>
+    public interface IDestructableObject
     {
-        public DiagnosticPlot()
+        public void Destruct()
         {
-            InitializeComponent();
+            // Poof
         }
     }
 }

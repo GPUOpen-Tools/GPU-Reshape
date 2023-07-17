@@ -105,6 +105,16 @@ namespace Studio.ViewModels.Workspace.Services
         }
 
         /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            // Remove listeners
+            ConnectionViewModel!.Bridge?.Deregister(this);
+            ConnectionViewModel?.Bridge?.Deregister(ResourceVersionMessage.ID, this);
+        }
+
+        /// <summary>
         /// Bridge handler
         /// </summary>
         /// <param name="streams"></param>

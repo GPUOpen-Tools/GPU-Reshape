@@ -55,6 +55,15 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public override void Destruct()
+        {
+            // Remove listeners
+            ConnectionViewModel?.Bridge?.Deregister(LogMessage.ID, this);
+        }
+
+        /// <summary>
         /// Create all properties
         /// </summary>
         private void CreateProperties()

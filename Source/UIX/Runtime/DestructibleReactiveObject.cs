@@ -22,57 +22,54 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using System.Diagnostics;
-using System.Reactive;
-using System.Reactive.Subjects;
-using Avalonia;
-using Avalonia.Controls.Notifications;
-using Avalonia.Platform;
-using Avalonia.Threading;
-using Message.CLR;
+using System.Reactive.Disposables;
 using ReactiveUI;
 using Runtime.ViewModels.Traits;
-using Studio.Models.Workspace;
 
-namespace Studio.ViewModels.Workspace
+namespace Runtime
 {
-    public interface IConnectionViewModel : IDestructableObject
+    public class DestructibleReactiveObject : ReactiveObject, IActivatableViewModel, IDestructableObject
     {
         /// <summary>
-        /// Associated application information
+        /// Underlying activator
         /// </summary>
-        public ApplicationInfo? Application { get; }
-        
-        /// <summary>
-        /// Invoked during connection
-        /// </summary>
-        public ISubject<Unit> Connected { get; }
-        
-        /// <summary>
-        /// Invoked during connection rejection
-        /// </summary>
-        public ISubject<Unit> Refused { get; }
-        
-        /// <summary>
-        /// Bridge within this connection
-        /// </summary>
-        public Bridge.CLR.IBridge? Bridge { get; }
+        public ViewModelActivator Activator { get; }
 
         /// <summary>
-        /// Time on the remote endpoint
+        /// Constructor
         /// </summary>
-        public DateTime LocalTime { get; set; }
-        
-        /// <summary>
-        /// Get the shared bus
-        /// </summary>
-        /// <returns></returns>
-        public OrderedMessageView<ReadWriteMessageStream> GetSharedBus();
+        public DestructibleReactiveObject()
+        {
+            // Create activator
+            Activator = new ViewModelActivator();
+
+            // Bind activation
+            this.WhenActivated(disposables =>
+            {
+                // Construct top
+                Construct();
+
+                // Destruct top
+                Disposable
+                    .Create(() => Destruct())
+                    .DisposeWith(disposables);
+            });
+        }
 
         /// <summary>
-        /// Commit all pending messages
+        /// Invoked on construction
         /// </summary>
-        public void Commit();
+        public virtual void Construct()
+        {
+            // Poof
+        }
+
+        /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public virtual void Destruct()
+        {
+            // Poof
+        }
     }
 }

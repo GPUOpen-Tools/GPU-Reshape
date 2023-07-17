@@ -26,10 +26,11 @@ using System;
 using System.Collections.Generic;
 using DynamicData;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public interface IPropertyViewModel
+    public interface IPropertyViewModel : IDestructableObject
     {
         /// <summary>
         /// Name of this property
@@ -200,6 +201,9 @@ namespace Studio.ViewModels.Workspace.Properties
         public static void DetachFromParent(this IPropertyViewModel self)
         {
             self.Parent?.Properties.Remove(self);
+            
+            // Detach internal states
+            self.Destruct();
         }
     }
 }

@@ -24,6 +24,7 @@
 
 using DynamicData;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -94,5 +95,13 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Internal visibility
         /// </summary>
         private PropertyVisibility _visibility;
+
+        /// <summary>
+        /// Invoked on destruction (kept in for overrides)
+        /// </summary>
+        public virtual void Destruct()
+        {
+            // Poof
+        }
     }
 }

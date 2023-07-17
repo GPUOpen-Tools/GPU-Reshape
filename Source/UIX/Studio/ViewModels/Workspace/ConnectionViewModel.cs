@@ -230,6 +230,19 @@ namespace Studio.ViewModels.Workspace
         }
 
         /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            lock (this)
+            {
+                _remote?.Cancel();
+                _remote?.Stop();
+                _remote = null;
+            }
+        }
+
+        /// <summary>
         /// Internal dispatcher
         /// </summary>
         private Dispatcher _dispatcher;

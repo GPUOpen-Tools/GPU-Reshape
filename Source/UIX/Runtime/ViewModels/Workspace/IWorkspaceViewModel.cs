@@ -24,11 +24,12 @@
 
 using System;
 using DynamicData;
+using Runtime.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace
 {
-    public interface IWorkspaceViewModel
+    public interface IWorkspaceViewModel : IDestructableObject
     {
         /// <summary>
         /// Base property collection

@@ -66,6 +66,15 @@ namespace GRS.Features.Loop.UIX.Workspace
         }
 
         /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            // Remove listeners
+            ViewModel.Connection?.Bridge?.Deregister(LoopTerminationMessage.ID, this);
+        }
+
+        /// <summary>
         /// Bridge handler
         /// </summary>
         /// <param name="streams"></param>

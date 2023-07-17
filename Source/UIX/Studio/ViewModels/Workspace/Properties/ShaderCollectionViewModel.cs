@@ -158,6 +158,15 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            // Deregister listeners
+            _connectionViewModel?.Bridge?.Deregister(_shaderCodeService);
+        }
+
+        /// <summary>
         /// GUID to shader mappings
         /// </summary>
         private Dictionary<UInt64, Objects.ShaderViewModel> _shaderModelGUID = new();
