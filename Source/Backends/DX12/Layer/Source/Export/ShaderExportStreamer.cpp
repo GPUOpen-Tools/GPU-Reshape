@@ -354,12 +354,12 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
     // Changing descriptor set invalidates all bound information
     state->pipelineSegmentMask = {};
 
-    // Handle bind states
-    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        ShaderExportStreamBindState &bindState = state->bindStates[i];
+    // Bound instrumented pipeline?
+    if (state->pipeline && state->isInstrumented) {
+        ShaderExportStreamBindState &bindState = GetBindStateFromPipeline(state, state->pipeline);
 
-        // Set if valid
-        if (bindState.rootSignature && state->isInstrumented && state->pipeline->type == static_cast<PipelineType>(i)) {
+        // If there's a valid root signature, bind the export states
+        if (bindState.rootSignature) {
             BindShaderExport(state, state->pipeline, commandList);
         }
     }
