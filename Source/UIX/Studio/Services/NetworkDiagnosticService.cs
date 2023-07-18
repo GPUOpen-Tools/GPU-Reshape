@@ -81,8 +81,8 @@ namespace Studio.Services
             });
 
             // Average
-            BytesReadPerSecond = (info.bytesRead - _lastInfo.bytesRead) / _timer.Interval.TotalSeconds;
-            BytesWrittenPerSecond = (info.bytesWritten - _lastInfo.bytesWritten) / _timer.Interval.TotalSeconds;
+            BytesReadPerSecond = Math.Max(0, (long)info.bytesRead - (long)_lastInfo.bytesRead) / _timer.Interval.TotalSeconds;
+            BytesWrittenPerSecond = Math.Max(0, (long)info.bytesWritten - (long)_lastInfo.bytesWritten) / _timer.Interval.TotalSeconds;
 
             // Set last
             _lastInfo = info;
