@@ -33,6 +33,7 @@
              xmlns:setting1="clr-namespace:Studio.ViewModels.Setting;assembly=UIX.Studio.Runtime"
              xmlns:controls="clr-namespace:Studio.Views.Controls"
              xmlns:setting2="clr-namespace:Studio.Views.Setting"
+             xmlns:r="clr-namespace:Studio.Resources"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Setting.PDBSettingView"
              x:DataType="setting:PDBSettingViewModel" x:CompileBindings="True">
@@ -42,6 +43,7 @@
             
             <Button
                 x:Name="AddButton"
+                ToolTip.Tip="{x:Static r:Resources.PDBSetting_Add_Tooltip}"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Right"
                 Background="Transparent"

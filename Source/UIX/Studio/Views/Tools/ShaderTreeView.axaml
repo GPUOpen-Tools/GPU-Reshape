@@ -52,7 +52,7 @@
 
             <Grid Margin="5,0,5,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Workspace_Refresh_Tooltip}" Command="{Binding Refresh}">
+                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.ShaderTree_Refresh_Tooltip}" Command="{Binding Refresh}">
                         <PathIcon Data="{StaticResource Refresh}" Width="13" />
                     </Button>
                 </StackPanel>

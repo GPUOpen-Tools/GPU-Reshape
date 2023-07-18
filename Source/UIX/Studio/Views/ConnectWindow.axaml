@@ -77,7 +77,7 @@
                     Width="25"
                     Height="25"
                     Margin="0 0 0 0">
-                    <PathIcon Data="{StaticResource Question}" Width="13" />
+                    <PathIcon ToolTip.Tip="{x:Static r:Resources.Help_Tooltip}" Data="{StaticResource Question}" Width="13" />
                     
                     <Button.Flyout>
                         <Flyout Placement="BottomEdgeAlignedRight">

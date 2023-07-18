@@ -28,6 +28,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:r="clr-namespace:Studio.Resources"
              mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="20"
              x:Class="Studio.Views.Controls.EditLabel"
              Height="20">
@@ -56,6 +57,7 @@
     
         <Button
             x:Name="CloseButton"
+            ToolTip.Tip="{x:Static r:Resources.EditLabel_Close_Tooltip}"
             Command="{Binding $parent[UserControl].CloseCommand}"
             CommandParameter="{Binding}"
             VerticalAlignment="Center"

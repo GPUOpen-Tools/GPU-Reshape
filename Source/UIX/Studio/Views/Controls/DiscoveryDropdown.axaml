@@ -29,13 +29,20 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
+             xmlns:r="clr-namespace:Studio.Resources"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Controls.DiscoveryDropdown">
     <UserControl.DataContext>
         <controls:DiscoveryDropdownViewModel/>
     </UserControl.DataContext>
     
-    <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22">
+    <Button 
+        Background="Transparent"
+        ToolTip.Tip="{x:Static r:Resources.Discovery_DropDown_Tooltip}"
+        Padding="0" 
+        BorderThickness="0"
+        Width="20"
+        Height="22">
         <PathIcon Data="{StaticResource Radar}" Foreground="{Binding StatusColor}" Width="15" />
 
         <Button.Flyout>

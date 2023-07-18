@@ -36,4 +36,55 @@
     <data name="Shader_NoDebugSymbols" xml:space="preserve">
         <value>Shader not compiled with debugging symbols, please ensure the shader is compiled with embedded debugging data.</value>
     </data>
+    <data name="BusMode_Toggle_Tooltip" xml:space="preserve">
+        <value>Toggle the bus mode</value>
+    </data>
+    <data name="Discovery_DropDown_Tooltip" xml:space="preserve">
+        <value>Configure discoverability</value>
+    </data>
+    <data name="EditLabel_Close_Tooltip" xml:space="preserve">
+        <value>Remove this entry</value>
+    </data>
+    <data name="ApplicationList_Add_Tooltip" xml:space="preserve">
+        <value>Add a new application</value>
+    </data>
+    <data name="PDBSetting_Add_Tooltip" xml:space="preserve">
+        <value>Add a new PDB search path</value>
+    </data>
+    <data name="NetworkStatus_Download_Tooltip" xml:space="preserve">
+        <value>Network data read by this session</value>
+    </data>
+    <data name="NetworkStatus_Upload_Tooltip" xml:space="preserve">
+        <value>Network data written by this session</value>
+    </data>
+    <data name="Log_Filter_Tooltip" xml:space="preserve">
+        <value>Logging filter</value>
+    </data>
+    <data name="Log_Close_Tooltip" xml:space="preserve">
+        <value>Clear all logging entries</value>
+    </data>
+    <data name="Log_ScrollToBottom_Tooltip" xml:space="preserve">
+        <value>Scroll to the bottom with new logging entries</value>
+    </data>
+    <data name="PipelineTree_Refresh_Tooltip" xml:space="preserve">
+        <value>Refresh all pipeline entries</value>
+    </data>
+    <data name="ShaderTree_Refresh_Tooltip" xml:space="preserve">
+        <value>Refresh all shader entries</value>
+    </data>
+    <data name="Tree_DestroyAll_Tooltip" xml:space="preserve">
+        <value>Close all live workspaces</value>
+    </data>
+    <data name="MessageCollection_Filter_Tooltip" xml:space="preserve">
+        <value>Filter validation messages</value>
+    </data>
+    <data name="MessageCollection_Clear_Tooltip" xml:space="preserve">
+        <value>Clear all validation messages</value>
+    </data>
+    <data name="Help_Tooltip" xml:space="preserve">
+        <value>Display help</value>
+    </data>
+    <data name="Launch_SelectFolder_Tooltip" xml:space="preserve">
+        <value>Open a folder</value>
+    </data>
 </root>

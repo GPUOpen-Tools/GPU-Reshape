@@ -35,6 +35,7 @@
              xmlns:logging="clr-namespace:Studio.Models.Logging;assembly=UIX.Studio.Runtime"
              xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
              xmlns:search="https://github.com/avaloniaui/avaloniaedit"
+             xmlns:r="clr-namespace:Studio.Resources"
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:LogViewModel" x:CompileBindings="True">
     <UserControl.Resources>
@@ -45,7 +46,7 @@
 
     <Grid Focusable="True">
         <StackPanel Orientation="Vertical" HorizontalAlignment="Left">
-            <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22">
+            <Button ToolTip.Tip="{x:Static r:Resources.Log_Filter_Tooltip}" Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22">
                 <PathIcon Data="{StaticResource FilterMultiple}" Width="15" />
 
                 <Button.Flyout>
@@ -83,13 +84,13 @@
                 Background="{StaticResource DockThemeBorderLowBrush}"
                 HorizontalAlignment="Stretch" Height="1" />
 
-            <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" Command="{Binding Clear}">
+            <Button ToolTip.Tip="{x:Static r:Resources.Log_Close_Tooltip}" Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" Command="{Binding Clear}">
                 <PathIcon Data="{StaticResource Close}" Width="12" />
             </Button>
         </StackPanel>
         
         <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" HorizontalAlignment="Left">
-            <ToggleButton Background="Transparent" Padding="0" IsChecked="{Binding IsScrollLock}" BorderThickness="0" Width="20" Height="22">
+            <ToggleButton ToolTip.Tip="{x:Static r:Resources.Log_ScrollToBottom_Tooltip}" Background="Transparent" Padding="0" IsChecked="{Binding IsScrollLock}" BorderThickness="0" Width="20" Height="22">
                 <PathIcon Data="{StaticResource ArrowDown}" Width="12" />
             </ToggleButton>
         </StackPanel>

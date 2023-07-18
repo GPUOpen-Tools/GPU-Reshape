@@ -60,7 +60,7 @@
                     
                     <Separator Width="1" Margin="3 3 3 3" Background="{StaticResource DockThemeBorderLowBrush}"/>
                     
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}" Command="{Binding ClearAll}">
+                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_DestroyAll_Tooltip}" Command="{Binding ClearAll}">
                         <PathIcon Data="{StaticResource TrashAll}" Width="13" />
                     </Button>
                 </StackPanel>
