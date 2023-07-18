@@ -123,6 +123,16 @@ struct ComRef {
         return GetUnsafe();
     }
 
+    /// Equality check
+    bool operator==(const ComRef<T>& rhs) const {
+        return object == rhs.object;
+    }
+
+    /// Inequality check
+    bool operator!=(const ComRef<T>& rhs) const {
+        return object != rhs.object;
+    }
+
     /// Check if this reference is valid
     operator bool() const {
         return IsValid();
