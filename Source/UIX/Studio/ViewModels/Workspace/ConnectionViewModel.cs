@@ -215,14 +215,13 @@ namespace Studio.ViewModels.Workspace
         /// </summary>
         public void Commit()
         {
-            // Early out
-            if (_sharedBus == null)
+            // Submit current bus
+            if (_sharedBus != null)
             {
-                return;
+                Bridge?.GetOutput().AddStream(_sharedBus.Storage);
             }
 
-            // Submit current bus
-            Bridge?.GetOutput().AddStream(_sharedBus.Storage);
+            // Commit pending changes
             Bridge?.Commit();
 
             // Release
