@@ -33,13 +33,42 @@
              x:Class="Studio.Views.Workspace.Properties.MessageCollectionView"
              x:DataType="properties:MessageCollectionViewModel">
     <Grid>
+        <StackPanel Orientation="Vertical" HorizontalAlignment="Left">
+            <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22">
+                <PathIcon Data="{StaticResource FilterMultiple}" Width="15" />
+
+                <Button.Flyout>
+                    <MenuFlyout Placement="RightEdgeAlignedTop">
+                        <MenuItem Command="{Binding ToggleHideMissingSymbols}">
+                            <MenuItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <PathIcon Data="{StaticResource Check}" Width="15" IsVisible="{Binding HideMissingSymbols}" />
+                                    <TextBlock Text="Hide missing symbols" Margin="5,0,0,0" />
+                                </StackPanel>
+                            </MenuItem.Header>
+                        </MenuItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+
+            <Separator
+                Margin="2,2,2,2"
+                Background="{StaticResource DockThemeBorderLowBrush}"
+                HorizontalAlignment="Stretch" Height="1" />
+
+            <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" Command="{Binding Clear}">
+                <PathIcon Data="{StaticResource Close}" Width="12" />
+            </Button>
+        </StackPanel>
+        
         <!--
             Fixed height due to:
             https://github.com/AvaloniaUI/Avalonia/issues/2462
         -->
         <DataGrid 
             x:Name="MessageDataGrid"
-            Items="{Binding ValidationObjects}" 
+            Margin="20 0 0 0"
+            Items="{Binding FilteredValidationObjects}" 
             IsReadOnly="True"
             Height="300"
             CanUserResizeColumns="True"

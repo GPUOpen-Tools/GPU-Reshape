@@ -29,6 +29,7 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Threading;
 using DynamicData;
+using DynamicData.Binding;
 using Message.CLR;
 using ReactiveUI;
 using Studio.Models.Workspace.Listeners;
@@ -73,9 +74,33 @@ namespace Studio.ViewModels.Workspace.Properties
         public ObservableCollection<Objects.ValidationObject> ValidationObjects { get; } = new();
 
         /// <summary>
+        /// Filtered condensed messages
+        /// </summary>
+        public ObservableCollection<Objects.ValidationObject> FilteredValidationObjects { get; } = new();
+
+        /// <summary>
+        /// Hide all validation objects with missing symbols?
+        /// </summary>
+        public bool HideMissingSymbols
+        {
+            get => _hideMissingSymbols;
+            set => this.RaiseAndSetIfChanged(ref _hideMissingSymbols, value);
+        }
+
+        /// <summary>
         /// Opens a given shader document from view model
         /// </summary>
-        public ICommand OpenShaderDocument;
+        public ICommand OpenShaderDocument { get; }
+
+        /// <summary>
+        /// Toggle missing symbols filter
+        /// </summary>
+        public ICommand ToggleHideMissingSymbols { get; }
+
+        /// <summary>
+        /// Clear all messages
+        /// </summary>
+        public ICommand Clear { get; }
 
         /// <summary>
         /// View model associated with this property
@@ -93,7 +118,92 @@ namespace Studio.ViewModels.Workspace.Properties
 
         public MessageCollectionViewModel()
         {
+            // Create commands
             OpenShaderDocument = ReactiveCommand.Create<object>(OnOpenShaderDocument);
+            ToggleHideMissingSymbols = ReactiveCommand.Create(OnToggleHideMissingSymbols);
+            Clear = ReactiveCommand.Create(OnClear);
+
+            // Bind objects for filtering
+            ValidationObjects
+                .ToObservableChangeSet()
+                .OnItemAdded(OnValidationItemAdded)
+                .OnItemRemoved(OnValidationItemRemoved)
+                .Subscribe();
+        }
+
+        /// <summary>
+        /// Invoked on missing symbol toggle
+        /// </summary>
+        private void OnToggleHideMissingSymbols()
+        {
+            HideMissingSymbols = !HideMissingSymbols;
+            ResummarizeFilter();
+        }
+
+        /// <summary>
+        /// Invoked when an object was added
+        /// </summary>
+        private void OnValidationItemAdded(ValidationObject obj)
+        {
+            FilterMessageChained(obj);
+        }
+
+        /// <summary>
+        /// Invoked when an object was removed
+        /// </summary>
+        private void OnValidationItemRemoved(ValidationObject obj)
+        {
+            FilteredValidationObjects.Remove(obj);
+        }
+
+        /// <summary>
+        /// Invoked on validation object clearing
+        /// </summary>
+        private void OnClear()
+        {
+            // Flush both
+            ValidationObjects.Clear();
+            FilteredValidationObjects.Clear();
+        }
+
+        /// <summary>
+        /// Resummarize all validation objects
+        /// </summary>
+        private void ResummarizeFilter()
+        {
+            // Force flush
+            FilteredValidationObjects.Clear();
+
+            // Filter all messages
+            foreach (ValidationObject validationObject in ValidationObjects)
+            {
+                FilterMessageChained(validationObject);
+            }
+        }
+        
+        /// <summary>
+        /// Filter a validation object
+        /// </summary>
+        private void FilterMessageChained(ValidationObject validationObject)
+        {
+            // Filter by symbols?
+            if (HideMissingSymbols && string.IsNullOrEmpty(validationObject.Extract))
+            {
+                // Bind on segment, re-queue filter when successful
+                validationObject.WhenAnyValue(x => x.Segment).Subscribe(x =>
+                {
+                    if (!string.IsNullOrEmpty(validationObject.Extract))
+                    {
+                        FilterMessageChained(validationObject);
+                    }
+                });
+                
+                // Chain down
+                return;
+            }
+            
+            // Passed
+            FilteredValidationObjects.Add(validationObject);
         }
 
         /// <summary>
@@ -171,5 +281,10 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Internal view model
         /// </summary>
         private IConnectionViewModel? _connectionViewModel;
+
+        /// <summary>
+        /// Internal missing symbol state
+        /// </summary>
+        private bool _hideMissingSymbols = false;
     }
 }
