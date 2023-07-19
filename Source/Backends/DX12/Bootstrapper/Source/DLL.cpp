@@ -401,32 +401,41 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
     return Kernel32GetProcAddressOriginal(hModule, lpProcName);
 }
 
-void TryLoadEmbeddedModules(HMODULE handle) {
+bool TryLoadEmbeddedModules(HMODULE handle) {
+    bool any = false;
+    
     // Get the base name
     char baseName[1024];
     if (!GetModuleBaseNameA(GetCurrentProcess(), handle, baseName, sizeof(baseName))) {
-        return;
+        return false;
     }
 
     // Is AGS?
     if (!DetourFunctionTable.next_AMDAGSCreateDevice && Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr) {
         DetourAMDAGSModule(handle, false);
+        any = true;
     }
 
     // Is D3D12?
     if (!DetourFunctionTable.next_D3D12CreateDeviceOriginal && !std::strcmp(baseName, kD3D12ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D12CreateDevice") != nullptr) {
         DetourD3D12Module(handle, false);
+        any = true;
     }
 
     // Is DXGI?
     if (!DetourFunctionTable.next_CreateDXGIFactoryOriginal && !std::strcmp(baseName, kDXGIModuleName) && Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory") != nullptr) {
         DetourDXGIModule(handle, false);
+        any = true;
     }
 
     // Is D3D11?
     if (!DetourFunctionTable.next_D3D11On12CreateDeviceOriginal && !std::strcmp(baseName, kD3D11ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D11On12CreateDevice") != nullptr) {
         DetourD3D11Module(handle, false);
+        any = true;
     }
+
+    // OK
+    return any;
 }
 
 ModuleSnapshot GetModuleSnapshot() {
@@ -455,10 +464,12 @@ ModuleSnapshot GetModuleSnapshot() {
     return snapshot;
 }
 
-void DetourForeignModules(const ModuleSnapshot& before) {
+bool DetourForeignModules(const ModuleSnapshot& before) {
+    bool any = false;
+    
     // Get post snapshot
     ModuleSnapshot modules = GetModuleSnapshot();
-
+    
     // Check all post modules
     for (HMODULE module : modules) {
         if (!module) {
@@ -471,8 +482,11 @@ void DetourForeignModules(const ModuleSnapshot& before) {
         }
 
         // New module, load all embedded proc's
-        TryLoadEmbeddedModules(module);
+        any |= TryLoadEmbeddedModules(module);
     }
+
+    // OK
+    return any;
 }
 
 HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
@@ -485,12 +499,6 @@ HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
     // Initial snapshot
     ModuleSnapshot snapshot = GetModuleSnapshot();
     
-    // Intercepted library?
-    // TODO: May not just be the module name!
-    if (lpLibFileName && (std::strcmp(lpLibFileName, kD3D12ModuleName) == 0 || std::strcmp(lpLibFileName, kD3D11ModuleName) == 0 || std::strcmp(lpLibFileName, kDXGIModuleName) == 0)) {
-        BootstrapLayer("HookLoadLibraryA");
-    }
-
     // Pass down call chain, preserve error stack
     HMODULE module = Kernel32LoadLibraryAOriginal(lpLibFileName);
     if (!module) {
@@ -498,7 +506,9 @@ HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
     }
 
     // Query embedded hooks
-    DetourForeignModules(snapshot);
+    if (DetourForeignModules(snapshot)) {
+        BootstrapLayer("HookLoadLibraryA");
+    }
 
     // OK
     return module;
@@ -514,12 +524,6 @@ HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
     // Initial snapshot
     ModuleSnapshot snapshot = GetModuleSnapshot();
 
-    // Intercepted library?
-    // TODO: May not just be the module name!
-    if (lpLibFileName && (std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kD3D11ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kDXGIModuleNameW) == 0)) {
-        BootstrapLayer("HookLoadLibraryW");
-    }
-
     // Pass down call chain, preserve error stack
     HMODULE module = Kernel32LoadLibraryWOriginal(lpLibFileName);
     if (!module) {
@@ -527,7 +531,9 @@ HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
     }
 
     // Query embedded hooks
-    DetourForeignModules(snapshot);
+    if (DetourForeignModules(snapshot)) {
+        BootstrapLayer("HookLoadLibraryW");
+    }
 
     // OK
     return module;
@@ -543,12 +549,6 @@ HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
     // Initial snapshot
     ModuleSnapshot snapshot = GetModuleSnapshot();
 
-    // Intercepted library?
-    // TODO: May not just be the module name!
-    if (lpLibFileName && (std::strcmp(lpLibFileName, kD3D12ModuleName) == 0 || std::strcmp(lpLibFileName, kD3D11ModuleName) == 0 || std::strcmp(lpLibFileName, kDXGIModuleName) == 0)) {
-        BootstrapLayer("HookLoadLibraryExA");
-    }
-
     // Pass down call chain, preserve error stack
     HMODULE module = Kernel32LoadLibraryExAOriginal(lpLibFileName, handle, flags);
     if (!module) {
@@ -556,7 +556,9 @@ HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
     }
 
     // Query embedded hooks
-    DetourForeignModules(snapshot);
+    if (DetourForeignModules(snapshot)) {
+        BootstrapLayer("HookLoadLibraryExA");
+    }
 
     // OK
     return module;
@@ -572,12 +574,6 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
     LogContext{} << "HookLoadLibraryExW '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
 
-    // Intercepted library?
-    // TODO: May not just be the module name!
-    if (lpLibFileName && (std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kD3D11ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kDXGIModuleNameW) == 0)) {
-        BootstrapLayer("HookLoadLibraryExW");
-    }
-
     // Pass down call chain, preserve error stack
     HMODULE module = Kernel32LoadLibraryExWOriginal(lpLibFileName, handle, flags);
     if (!module) {
@@ -585,7 +581,9 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
     }
 
     // Query embedded hooks
-    DetourForeignModules(snapshot);
+    if (DetourForeignModules(snapshot)) {
+        BootstrapLayer("HookLoadLibraryExW");
+    }
 
     // OK
     return module;
