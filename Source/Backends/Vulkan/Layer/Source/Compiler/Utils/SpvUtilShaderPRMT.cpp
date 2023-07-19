@@ -247,6 +247,26 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
             ASSERT(false, "Backtracking not implemented for op-code");
             return {};
         }
+        case IL::OpCode::Unexposed: {
+            auto* unexposed = ref->As<IL::UnexposedInstruction>();
+
+            // Handle unexposed type
+            const SpvInstruction* instr = table.function.block->stream.GetInstruction(unexposed->source);
+            switch (instr->GetOp()) {
+                default: {
+                    ASSERT(false, "Backtracking not implemented for unexposed p-code");
+                    return {};
+                }
+                case SpvOpCopyObject: {
+                    // Get from source operand
+                    return GetSourceResourceDecoration(job, stream, instr->Word(3));
+                }
+                case SpvOpSampledImage: {
+                    // Get from base image
+                    return GetSourceResourceDecoration(job, stream, instr->Word(3));
+                }
+            }
+        }
         case IL::OpCode::AddressChain: {
             auto* addressChain = ref->As<IL::AddressChainInstruction>();
             ASSERT(addressChain->chains.count == 1, "Unexpected address chain on descriptor data");
