@@ -254,7 +254,7 @@ void LazyLoadDependentLibraries(bool native) {
     ConditionallyEndDetour(false);
 }
 
-void BootstrapLayer(const char* invoker, bool native) {
+void BootstrapLayer(const char* invoker) {
     // No re-entry if an attempt has already been made
     if (HasInitializedOrFailed) {
         return;
@@ -287,12 +287,8 @@ void BootstrapLayer(const char* invoker, bool native) {
     // Copy current bootstrapper
     std::filesystem::copy(path, sessionPath);
 
-    // User attempting to load d3d12.dll, warranting bootstrapping of the layer
-    if (native) {
-        LayerModule = LoadLibraryExW(sessionPath.wstring().c_str(), nullptr, 0x0);
-    } else {
-        LayerModule = Kernel32LoadLibraryExWOriginal(sessionPath.wstring().c_str(), nullptr, 0x0);
-    }
+    // User attempting to load instrumentable object, warranting bootstrapping of the layer
+    LayerModule = Kernel32LoadLibraryExWOriginal(sessionPath.wstring().c_str(), nullptr, 0x0);
 
     // Fetch function table
     if (LayerModule) {
@@ -492,7 +488,7 @@ HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
     // Intercepted library?
     // TODO: May not just be the module name!
     if (lpLibFileName && (std::strcmp(lpLibFileName, kD3D12ModuleName) == 0 || std::strcmp(lpLibFileName, kD3D11ModuleName) == 0 || std::strcmp(lpLibFileName, kDXGIModuleName) == 0)) {
-        BootstrapLayer("HookLoadLibraryA", false);
+        BootstrapLayer("HookLoadLibraryA");
     }
 
     // Pass down call chain, preserve error stack
@@ -521,7 +517,7 @@ HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
     // Intercepted library?
     // TODO: May not just be the module name!
     if (lpLibFileName && (std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kD3D11ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kDXGIModuleNameW) == 0)) {
-        BootstrapLayer("HookLoadLibraryW", false);
+        BootstrapLayer("HookLoadLibraryW");
     }
 
     // Pass down call chain, preserve error stack
@@ -550,7 +546,7 @@ HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
     // Intercepted library?
     // TODO: May not just be the module name!
     if (lpLibFileName && (std::strcmp(lpLibFileName, kD3D12ModuleName) == 0 || std::strcmp(lpLibFileName, kD3D11ModuleName) == 0 || std::strcmp(lpLibFileName, kDXGIModuleName) == 0)) {
-        BootstrapLayer("HookLoadLibraryExA", false);
+        BootstrapLayer("HookLoadLibraryExA");
     }
 
     // Pass down call chain, preserve error stack
@@ -579,7 +575,7 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
     // Intercepted library?
     // TODO: May not just be the module name!
     if (lpLibFileName && (std::wcscmp(lpLibFileName, kD3D12ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kD3D11ModuleNameW) == 0 || std::wcscmp(lpLibFileName, kDXGIModuleNameW) == 0)) {
-        BootstrapLayer("HookLoadLibraryExW", false);
+        BootstrapLayer("HookLoadLibraryExW");
     }
 
     // Pass down call chain, preserve error stack
@@ -596,6 +592,8 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
 }
 
 DWORD DeferredInitialization(void*) {
+    std::lock_guard guard(moduleLock);
+    
     // Logging initialization
 #if ENABLE_LOGGING
     // Get executable filename
@@ -622,8 +620,14 @@ DWORD DeferredInitialization(void*) {
     // Attempt to find module, directly load the layer if available
     //  i.e. Already loaded or scheduled to be
     if (DXGIModule || D3D12Module || D3D11Module || AMDAGSModule) {
+        // Initial snapshot
+        ModuleSnapshot snapshot = GetModuleSnapshot();
+        
         // ! Call native LoadLibraryW, not detoured
-        BootstrapLayer("Entry detected mounted d3d12 module", false);
+        BootstrapLayer("Entry detected mounted d3d12 module");
+
+        // Query embedded hooks
+        DetourForeignModules(snapshot);
         return 0;
     }
 
