@@ -38,6 +38,9 @@ struct BindingPhysicalMapping {
     /// Number of bindings
     uint32_t bindingCount{0};
 
+    /// Optional, binding flags
+    VkDescriptorBindingFlagsEXT flags{0};
+
     /// Are the samplers immutable?
     uint32_t immutableSamplers : 1;
     

@@ -51,6 +51,9 @@ struct DescriptorSetState {
     /// Precomputed PRMT offsets
     std::vector<uint32_t> prmtOffsets;
 
+    /// Number of descriptors
+    uint32_t descriptorCount{0};
+
     /// Linear swap index
     uint32_t poolSwapIndex{0};
 

@@ -79,11 +79,11 @@ inline void PatchInternalTable(T dst, U src) {
 }
 
 /// Find a structure type
-template<typename T, VkStructureType STRUCTURE_TYPE>
-inline const T* FindStructureTypeSafe(const void* _struct) {
+template<typename T>
+inline const T* FindStructureTypeSafe(const void* _struct, VkStructureType structureType) {
     while (_struct) {
         auto* header = static_cast<const StructureType*>(_struct);
-        if (header->type == STRUCTURE_TYPE) {
+        if (header->type == structureType) {
             return static_cast<const T*>(_struct);
         }
 

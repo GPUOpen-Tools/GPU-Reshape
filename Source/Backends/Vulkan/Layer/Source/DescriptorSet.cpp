@@ -54,11 +54,13 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, 
         return result;
     }
 
+    // Find optional extensions
+    const auto* bindingFlagsEXT = FindStructureTypeSafe<VkDescriptorSetLayoutBindingFlagsCreateInfoEXT>(pCreateInfo, VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT);
+    
     // Create the new state
     auto state = new(table->allocators) DescriptorSetLayoutState;
     state->object = *pSetLayout;
     state->compatabilityHash = 0x0;
-    state->descriptorCount = 0;
     
     // Hash
     CombineHash(state->compatabilityHash, pCreateInfo->bindingCount);
@@ -99,6 +101,11 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, 
         mapping.type = binding.descriptorType;
         mapping.immutableSamplers = binding.pImmutableSamplers != nullptr;
         mapping.bindingCount = binding.descriptorCount;
+        
+        // Keep optional flags
+        if (bindingFlagsEXT) {
+            mapping.flags = bindingFlagsEXT->pBindingFlags[i];
+        }
     }
 
     // Accumulate offsets
@@ -108,14 +115,6 @@ VKAPI_ATTR VkResult VKAPI_PTR Hook_vkCreateDescriptorSetLayout(VkDevice device, 
         // Update offset
         BindingPhysicalMapping& current = state->physicalMapping.bindings[i];
         current.prmtOffset = last.prmtOffset + last.bindingCount;
-    }
-
-    // Total number of descriptors
-    if (!state->physicalMapping.bindings.empty()) {
-        const BindingPhysicalMapping& last = state->physicalMapping.bindings.back();
-        
-        // Append from last PRMT offset
-        state->descriptorCount = last.prmtOffset + last.bindingCount;
     }
 
     // Store lookup
@@ -149,6 +148,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         return result;
     }
 
+    // Find optional extensions
+    const auto* variableCountEXT = FindStructureTypeSafe<VkDescriptorSetVariableDescriptorCountAllocateInfoEXT>(pAllocateInfo, VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT);
+
     // Get pool
     DescriptorPoolState* poolState = table->states_descriptorPool.Get(pAllocateInfo->descriptorPool);
 
@@ -159,6 +161,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         state->object = pDescriptorSets[i];
         state->table = table;
         state->poolSwapIndex = static_cast<uint32_t>(poolState->states.size());
+        state->descriptorCount = 0;
 
         // Add state object
         poolState->states.push_back(state);
@@ -166,8 +169,30 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         // Get layout
         const DescriptorSetLayoutState* layout = table->states_descriptorSetLayout.Get(pAllocateInfo->pSetLayouts[i]);
 
+        // Accumulate offsets
+        for (uint32_t bindingIdx = 0; bindingIdx < layout->physicalMapping.bindings.size(); bindingIdx++) {
+            const BindingPhysicalMapping& mapping = layout->physicalMapping.bindings[bindingIdx];
+
+            // Default count from layout
+            uint32_t bindingCount = mapping.bindingCount;
+
+            // Is variable counts?
+            if (mapping.flags & VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT) {
+                if (variableCountEXT) {
+                    // Get from reported counts
+                    bindingCount = variableCountEXT->pDescriptorCounts[bindingIdx];
+                } else {
+                    // "If descriptorSetCount is zero or this structure is not included in the pNext chain, then the variable lengths are considered to be zero."
+                    bindingCount = 0;
+                }
+            }
+
+            // Update count
+            state->descriptorCount += bindingCount;
+        }
+        
         // Allocate segment for given layout
-        state->segmentID = table->prmTable->Allocate(layout->descriptorCount);
+        state->segmentID = table->prmTable->Allocate(state->descriptorCount);
 
         // Preallocate
         state->prmtOffsets.reserve(layout->physicalMapping.bindings.size());
