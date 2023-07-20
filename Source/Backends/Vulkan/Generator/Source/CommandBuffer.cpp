@@ -29,6 +29,9 @@
 #include <array>
 
 bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templateEngine) {
+    // Local lookup
+    std::map<std::string, tinyxml2::XMLElement*> commandMap;
+    
     // Get the commands
     tinyxml2::XMLElement *commands = info.registry->FirstChildElement("commands");
     if (!commands) {
@@ -48,9 +51,19 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         // Is this a hook candidate?
         bool isHookCandidate = false;
 
-        // Skip aliases
-        if (command->Attribute("alias", nullptr)) {
-            continue;
+        // Is this an alias?
+        const char* aliasName = command->Attribute("alias", nullptr);
+
+        // Name of the command
+        const char* name = nullptr;
+        
+        // Get underlying command
+        if (aliasName) {
+            // Assume alias command name
+            name = command->Attribute("name", nullptr);
+
+            // Resume prototype as if the base command
+            command = commandMap.at(aliasName);
         }
 
         // Fiond the prototype definition
@@ -70,11 +83,18 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         // Check return type
         isHookCandidate |= !std::strcmp(prototypeResult->GetText(), "VkCommandBuffer");
 
-        // Get the name
-        tinyxml2::XMLElement *prototypeName = prototype->FirstChildElement("name");
-        if (!prototypeName) {
-            std::cerr << "Malformed command in line: " << command->GetLineNum() << ", prototype name not found" << std::endl;
-            return false;
+        // Get name from prototype if needed
+        if (!name) {
+            // Get the name
+            tinyxml2::XMLElement *prototypeName = prototype->FirstChildElement("name");
+            if (!prototypeName) {
+                std::cerr << "Malformed command in line: " << command->GetLineNum() << ", prototype name not found" << std::endl;
+                continue;
+            }
+
+            // Cache command
+            name = prototypeName->GetText();
+            commandMap[name] = command;
         }
 
         // First parameter
@@ -108,16 +128,16 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Add population, always pull all functions regardless of whitelist
-        populate << "\tnext_" << prototypeName->GetText() << " = reinterpret_cast<PFN_" << prototypeName->GetText() << ">(";
-        populate << "getProcAddr(device, \"" << prototypeName->GetText() << "\")";
+        populate << "\tnext_" << name << " = reinterpret_cast<PFN_" << name << ">(";
+        populate << "getProcAddr(device, \"" << name << "\")";
         populate << ");\n";
 
         // Prefix for the next call
         std::string namePrefix;
 
         // Check name
-        const bool isHooked = info.hooks.count(prototypeName->GetText());
-        const bool isWhitelisted = info.whitelist.count(prototypeName->GetText());
+        const bool isHooked = info.hooks.count(name);
+        const bool isWhitelisted = info.whitelist.count(name);
 
         // Determine name prefix
         if (isHooked) {
@@ -127,8 +147,8 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Add get hook address, must be done after white listing
-        gethookaddress << "\tif (!std::strcmp(\"" << prototypeName->GetText() << "\", name))\n";
-        gethookaddress << "\t\treturn reinterpret_cast<PFN_vkVoidFunction>(" << namePrefix << prototypeName->GetText() << ");\n";
+        gethookaddress << "\tif (!std::strcmp(\"" << name << "\", name))\n";
+        gethookaddress << "\t\treturn reinterpret_cast<PFN_vkVoidFunction>(" << namePrefix << name << ");\n";
 
         // If whitelisted and not hooked, don't generate anything
         if (!isHooked && isWhitelisted) {
@@ -136,7 +156,7 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         }
 
         // Generate prototype
-        hooks << prototypeResult->GetText() << " " << namePrefix << prototypeName->GetText() << "(";
+        hooks << prototypeResult->GetText() << " " << namePrefix << name << "(";
 
         // A wrapped object to inspect
         const char* wrappedObject{nullptr};
@@ -201,12 +221,12 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
         hooks << ") {\n";
 
         // Hooked?
-        if (info.hooks.count(prototypeName->GetText())) {
-            hooks << "\tif (ApplyFeatureHook<FeatureHook_" << prototypeName->GetText() << ">(\n";
+        if (info.hooks.count(name)) {
+            hooks << "\tif (ApplyFeatureHook<FeatureHook_" << name << ">(\n";
             hooks << "\t\t" << wrappedObject << ",\n";
             hooks << "\t\t&" << wrappedObject << "->userContext,\n";
-            hooks << "\t\t" << wrappedObject  << "->dispatchTable.featureBitSet_" << prototypeName->GetText() << ",\n";
-            hooks << "\t\t" << wrappedObject  << "->dispatchTable.featureHooks_" << prototypeName->GetText() << "\n";
+            hooks << "\t\t" << wrappedObject  << "->dispatchTable.featureBitSet_" << name << ",\n";
+            hooks << "\t\t" << wrappedObject  << "->dispatchTable.featureHooks_" << name << "\n";
             hooks << "\t\t";
 
             // Skip first parameter
@@ -247,9 +267,9 @@ bool Generators::CommandBuffer(const GeneratorInfo& info, TemplateEngine& templa
 
         // Pass down the call chain
         if (isWhitelisted) {
-            hooks << "Hook_" << prototypeName->GetText() << "(";
+            hooks << "Hook_" << name << "(";
         } else {
-            hooks << wrappedObject << "->dispatchTable.next_" << prototypeName->GetText() << "(";
+            hooks << wrappedObject << "->dispatchTable.next_" << name << "(";
         }
 
         // Generate arguments

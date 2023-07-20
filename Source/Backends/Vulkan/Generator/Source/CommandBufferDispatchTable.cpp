@@ -28,6 +28,9 @@
 #include <array>
 
 bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateEngine& templateEngine) {
+    // Local lookup
+    std::map<std::string, tinyxml2::XMLElement*> commandMap;
+    
     // Get the commands
     tinyxml2::XMLElement *commands = info.registry->FirstChildElement("commands");
     if (!commands) {
@@ -43,12 +46,22 @@ bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateE
         // Is this a hook candidate?
         bool isHookCandidate = false;
 
-        // Skip aliases
-        if (command->Attribute("alias", nullptr)) {
-            continue;
+        // Is this an alias?
+        const char* aliasName = command->Attribute("alias", nullptr);
+
+        // Name of the command
+        const char* name = nullptr;
+        
+        // Get underlying command
+        if (aliasName) {
+            // Assume alias command name
+            name = command->Attribute("name", nullptr);
+
+            // Resume prototype as if the base command
+            command = commandMap.at(aliasName);
         }
 
-        // Fiond the prototype definition
+        // Find the prototype definition
         tinyxml2::XMLElement *prototype = command->FirstChildElement("proto");
         if (!prototype) {
             std::cerr << "Malformed command in line: " << command->GetLineNum() << ", prototype not found" << std::endl;
@@ -65,11 +78,18 @@ bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateE
         // Check return type
         isHookCandidate |= !std::strcmp(prototypeResult->GetText(), "VkCommandBuffer");
 
-        // Get the name
-        tinyxml2::XMLElement *prototypeName = prototype->FirstChildElement("name");
-        if (!prototypeName) {
-            std::cerr << "Malformed command in line: " << command->GetLineNum() << ", prototype name not found" << std::endl;
-            continue;
+        // Assume name from prototype if needed
+        if (!name) {
+            // Get the name
+            tinyxml2::XMLElement *prototypeName = prototype->FirstChildElement("name");
+            if (!prototypeName) {
+                std::cerr << "Malformed command in line: " << command->GetLineNum() << ", prototype name not found" << std::endl;
+                continue;
+            }
+
+            // Cache command
+            name = prototypeName->GetText();
+            commandMap[name] = command;
         }
 
         // First parameter
@@ -95,19 +115,19 @@ bool Generators::CommandBufferDispatchTable(const GeneratorInfo& info, TemplateE
         }
 
         // Generate callback
-        callbacks << "\n\t// Callback " << prototypeName->GetText() << "\n";
-        callbacks << "\t" << "PFN_" << prototypeName->GetText() << " next_" << prototypeName->GetText() << ";\n";
+        callbacks << "\n\t// Callback " << name << "\n";
+        callbacks << "\t" << "PFN_" << name << " next_" << name << ";\n";
 
         // Hooked?
-        if (info.hooks.count(prototypeName->GetText())) {
+        if (info.hooks.count(name)) {
             // Generate feature bit set
-            callbacks << "\tuint64_t featureBitSet_" << prototypeName->GetText() << "{0};\n";
+            callbacks << "\tuint64_t featureBitSet_" << name << "{0};\n";
 
             // Generate feature bit set mask
-            callbacks << "\tuint64_t featureBitSetMask_" << prototypeName->GetText() << "{0};\n";
+            callbacks << "\tuint64_t featureBitSetMask_" << name << "{0};\n";
 
             // Generate feature callbacks
-            callbacks << "\tFeatureHook_" << prototypeName->GetText() << "::Hook featureHooks_" << prototypeName->GetText() << "[64];\n";
+            callbacks << "\tFeatureHook_" << name << "::Hook featureHooks_" << name << "[64];\n";
         }
     }
 
