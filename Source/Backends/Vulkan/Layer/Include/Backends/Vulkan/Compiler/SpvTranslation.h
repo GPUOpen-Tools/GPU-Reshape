@@ -258,5 +258,7 @@ inline Backend::IL::TextureDimension Translate(SpvDim dim) {
             return Backend::IL::TextureDimension::Texture3D;
         case SpvDimCube:
             return Backend::IL::TextureDimension::Texture2DCube;
+        case SpvDimSubpassData:
+            return Backend::IL::TextureDimension::SubPass;
     }
 }

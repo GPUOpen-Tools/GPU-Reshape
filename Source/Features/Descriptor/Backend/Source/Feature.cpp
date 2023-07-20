@@ -235,7 +235,17 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
                 return InjectForResource(program, context.function, it, it->As<IL::StoreTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config);
             }
             case IL::OpCode::LoadTexture: {
-                return InjectForResource(program, context.function, it, it->As<IL::LoadTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config);
+                IL::ID resource = it->As<IL::LoadTextureInstruction>()->texture;
+
+                // Get type
+                auto type = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+
+                // Sub-pass inputs are not validated
+                if (type->dimension == Backend::IL::TextureDimension::SubPass) {
+                    return it;
+                }
+                
+                return InjectForResource(program, context.function, it, resource, Backend::IL::ResourceTokenType::Texture, config);
             }
             case IL::OpCode::SampleTexture: {
                 auto* instr = it->As<IL::SampleTextureInstruction>();

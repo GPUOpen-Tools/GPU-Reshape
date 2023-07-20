@@ -104,23 +104,36 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         switch (it->opCode) {
             default:
                 return it;
-            case IL::OpCode::LoadBuffer:
+            case IL::OpCode::LoadBuffer: {
                 resource = it->As<IL::LoadBufferInstruction>()->buffer;
                 break;
-            case IL::OpCode::StoreBuffer:
+            }
+            case IL::OpCode::StoreBuffer: {
                 resource = it->As<IL::StoreBufferInstruction>()->buffer;
                 isWrite = true;
                 break;
-            case IL::OpCode::StoreTexture:
+            }
+            case IL::OpCode::StoreTexture: {
                 resource = it->As<IL::StoreTextureInstruction>()->texture;
                 isWrite = true;
                 break;
-            case IL::OpCode::LoadTexture:
+            }
+            case IL::OpCode::LoadTexture: {
                 resource = it->As<IL::LoadTextureInstruction>()->texture;
+
+                // Get type
+                auto type = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+
+                // Sub-pass inputs are not validated
+                if (type->dimension == Backend::IL::TextureDimension::SubPass) {
+                    return it;
+                }
                 break;
-            case IL::OpCode::SampleTexture:
+            }
+            case IL::OpCode::SampleTexture: {
                 resource = it->As<IL::SampleTextureInstruction>()->texture;
                 break;
+            }
         }
 
         // Bind the SGUID

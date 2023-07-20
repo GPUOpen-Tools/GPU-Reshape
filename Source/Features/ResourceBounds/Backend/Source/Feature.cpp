@@ -90,22 +90,35 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 return it;
 
             /* Handled cases */
-            case IL::OpCode::StoreBuffer:
+            case IL::OpCode::StoreBuffer: {
                 isWrite = true;
                 isTexture = false;
                 break;
-            case IL::OpCode::LoadBuffer:
+            }
+            case IL::OpCode::LoadBuffer: {
                 isWrite = false;
                 isTexture = false;
                 break;
-            case IL::OpCode::StoreTexture:
+            }
+            case IL::OpCode::StoreTexture: {
                 isWrite = true;
                 isTexture = true;
                 break;
-            case IL::OpCode::LoadTexture:
+            }
+            case IL::OpCode::LoadTexture: {
                 isWrite = false;
                 isTexture = true;
+
+                // Get texture type
+                auto instr = it->As<IL::LoadTextureInstruction>();
+                auto type = program.GetTypeMap().GetType(instr->texture)->As<Backend::IL::TextureType>();
+
+                // Sub-pass inputs are not validated
+                if (type->dimension == Backend::IL::TextureDimension::SubPass) {
+                    return it;
+                }
                 break;
+            }
         }
 
         // Instrumentation Segmentation

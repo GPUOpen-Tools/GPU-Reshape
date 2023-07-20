@@ -39,6 +39,7 @@ namespace Backend::IL {
         Texture2DArray,
         Texture2DCube,
         Texture2DCubeArray,
+        SubPass,
         Unexposed,
     };
 
@@ -47,6 +48,9 @@ namespace Backend::IL {
         switch (dim) {
             default:
                 ASSERT(false, "Invalid dimension");
+                return 0;
+            case TextureDimension::SubPass:
+                ASSERT(false, "Sub-pass has no inherit dimensionality");
                 return 0;
             case TextureDimension::Texture1D:
                 return 1;
