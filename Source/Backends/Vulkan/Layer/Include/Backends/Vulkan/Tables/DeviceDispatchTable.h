@@ -226,6 +226,7 @@ struct DeviceDispatchTable {
     PFN_vkResetFences                     next_vkResetFences;
     PFN_vkCreateRenderPass                next_vkCreateRenderPass;
     PFN_vkCreateRenderPass2               next_vkCreateRenderPass2;
+    PFN_vkCreateRenderPass2KHR            next_vkCreateRenderPass2KHR;
     PFN_vkDestroyRenderPass               next_vkDestroyRenderPass;
     PFN_vkCreateFramebuffer               next_vkCreateFrameBuffer;
     PFN_vkDestroyFramebuffer              next_vkDestroyFrameBuffer;
