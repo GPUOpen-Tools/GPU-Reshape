@@ -42,6 +42,7 @@ struct ExtensionMetadata {
 
 /// Generator metadata
 struct ObjectTreeMetadata {
+    std::set<std::string> typeNames;
     std::map<std::string, tinyxml2::XMLElement *> lookup;
     std::map<std::string, ExtensionMetadata> extensions;
 };
@@ -144,6 +145,15 @@ std::string AssignPtrAndGetMutable(DeepCopyState &state, const std::string &acce
 /// \return success state
 [[nodiscard]]
 static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tinyxml2::XMLElement *type, const std::string &sourceAccessorPrefix = "source.", const std::string &destAccessorPrefix = "createInfo.", uint32_t indent = 1, bool alwaysEmitSize = false) {
+    const char *name = type->Attribute("name", nullptr);
+    if (!name) {
+        std::cerr << "Malformed type in line: " << type->GetLineNum() << ", name not found" << std::endl;
+        return false;
+    }
+
+    // Add to type set
+    md.typeNames.insert(name);
+    
     // Go through all members
     for (tinyxml2::XMLElement *memberNode = type->FirstChildElement("member"); memberNode; memberNode = memberNode->NextSiblingElement("member")) {
         // Get the type
@@ -579,18 +589,6 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
     // Metadata
     ObjectTreeMetadata md;
 
-    // Collect all extensions
-    for (const std::string& object : info.objects) {
-        if (!CollectDeepCopyExtensionStructures(md, types, object)) {
-            return false;
-        }
-    }
-
-    // Create extensions
-    if (!CreateExtensions(md, types, templateEngine)) {
-        return false;
-    }
-
     // Populate lookup
     for (tinyxml2::XMLElement *typeNode = types->FirstChildElement("type"); typeNode; typeNode = typeNode->NextSiblingElement("type")) {
         // Try to get the category, if not, not interested
@@ -682,6 +680,18 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
 
         // End destructor
         deepCopy << "}\n\n";
+    }
+
+    // Collect all extensions
+    for (const std::string& object : md.typeNames) {
+        if (!CollectDeepCopyExtensionStructures(md, types, object)) {
+            return false;
+        }
+    }
+
+    // Create extensions
+    if (!CreateExtensions(md, types, templateEngine)) {
+        return false;
     }
 
     // Instantiate template
