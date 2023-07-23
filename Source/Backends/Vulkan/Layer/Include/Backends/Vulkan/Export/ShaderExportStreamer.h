@@ -133,6 +133,16 @@ public:
     /// \param commandBuffer command buffer being invoked
     void BindDescriptorSets(ShaderExportStreamState* state, VkPipelineBindPoint bindPoint, VkPipelineLayout layout, uint32_t start, uint32_t count, const VkDescriptorSet* sets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets, VkCommandBuffer commandBuffer);
 
+    /// Invoked during push descriptor binding
+    /// \param state state to be committed to
+    /// \param pipelineBindPoint the bind point
+    /// \param layout the expected pipeline layout
+    /// \param set the set index
+    /// \param descriptorWriteCount number of writes
+    /// \param pDescriptorWrites all writes
+    /// \param commandBufferObject object committing from
+    void PushDescriptorSetKHR(ShaderExportStreamState* state, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t set, uint32_t descriptorWriteCount, const VkWriteDescriptorSet* pDescriptorWrites, VkCommandBuffer commandBufferObject);
+    
     /// Map a stream state pre submission
     /// \param state the stream state
     /// \param segment the segment to be mapped to
@@ -188,10 +198,13 @@ private:
 private:
     DeviceDispatchTable* table;
 
+    /// Shared lock
     std::mutex mutex;
 
+    /// Offset allocator
     BucketPoolAllocator<uint32_t> dynamicOffsetAllocator;
 
+    /// Pooled objects
     ObjectPool<ShaderExportStreamState> streamStatePool;
     ObjectPool<ShaderExportStreamSegment> segmentPool;
     ObjectPool<ShaderExportQueueState> queuePool;
@@ -199,8 +212,12 @@ private:
     /// All free descriptor segments
     std::vector<DescriptorDataSegmentEntry> freeDescriptorDataSegmentEntries;
 
+    /// All components
     ComRef<DeviceAllocator> deviceAllocator{nullptr};
     ComRef<ShaderExportDescriptorAllocator> descriptorAllocator{nullptr};
     ComRef<ShaderExportStreamAllocator> streamAllocator{nullptr};
     ComRef<IBridge> bridge{nullptr};
+
+    /// Does the device require push state tracking?
+    bool requiresPushStateTracking{false};
 };

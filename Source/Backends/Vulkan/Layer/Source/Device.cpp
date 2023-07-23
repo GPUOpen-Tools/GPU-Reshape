@@ -294,11 +294,11 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->createInfo.DeepCopy(table->allocators, *pCreateInfo);
 
     // Copy layers and extensions
-    std::vector<const char*> layers(table->createInfo->ppEnabledLayerNames, table->createInfo->ppEnabledLayerNames + table->createInfo->enabledLayerCount);
-    std::vector<const char*> extensions(table->createInfo->ppEnabledExtensionNames, table->createInfo->ppEnabledExtensionNames + table->createInfo->enabledExtensionCount);
+    table->enabledLayers.insert(table->enabledLayers.end(), table->createInfo->ppEnabledLayerNames, table->createInfo->ppEnabledLayerNames + table->createInfo->enabledLayerCount);
+    table->enabledExtensions.insert(table->enabledExtensions.end(), table->createInfo->ppEnabledExtensionNames, table->createInfo->ppEnabledExtensionNames + table->createInfo->enabledExtensionCount);
 
     // Add descriptor indexing extension
-    extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+    table->enabledExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
     // Find existing indexing features or allocate a new one
     auto* indexingFeatures = FindStructureTypeMutableUnsafe<VkPhysicalDeviceDescriptorIndexingFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES>(table->createInfo->pNext);
@@ -313,10 +313,10 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     indexingFeatures->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
 
     // Set new layers and extensions
-    table->createInfo->ppEnabledLayerNames = layers.data();
-    table->createInfo->enabledLayerCount = static_cast<uint32_t>(layers.size());
-    table->createInfo->ppEnabledExtensionNames = extensions.data();
-    table->createInfo->enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    table->createInfo->ppEnabledLayerNames = table->enabledLayers.data();
+    table->createInfo->enabledLayerCount = static_cast<uint32_t>(table->enabledLayers.size());
+    table->createInfo->ppEnabledExtensionNames = table->enabledExtensions.data();
+    table->createInfo->enabledExtensionCount = static_cast<uint32_t>(table->enabledExtensions.size());
 
     // Get the number of families
     uint32_t queueFamilyPropertyCount;

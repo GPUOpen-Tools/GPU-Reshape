@@ -83,6 +83,12 @@ public:
     /// \return written mapping
     VirtualResourceMapping GetMapping(PhysicalResourceSegmentID id, uint32_t offset);
 
+    /// Get the mapping offset within a segment
+    /// \param id segment identifier
+    /// \param offset offset within the segment
+    /// \return mapping offset
+    size_t GetMappingOffset(PhysicalResourceSegmentID id, uint32_t offset);
+
     /// Get the underlying buffer
     VkBuffer GetDeviceBuffer() const {
         return deviceBuffer;

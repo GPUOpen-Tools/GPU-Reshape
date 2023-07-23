@@ -285,6 +285,10 @@ struct DeviceDispatchTable {
     std::vector<ComRef<IFeature>> features;
     std::vector<FeatureHookTable> featureHookTables;
 
+    /// Creation extensions
+    std::vector<const char*> enabledLayers;
+    std::vector<const char*> enabledExtensions;
+
 private:
     /// Lookup
     static std::mutex                              Mutex;

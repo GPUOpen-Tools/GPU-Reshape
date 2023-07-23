@@ -62,3 +62,5 @@ VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdDrawIndexedIndirectCount(CommandBufferO
 VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdPushConstants(CommandBufferObject* commandBuffer, VkPipelineLayout layout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues);
 VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdBeginRenderPass(CommandBufferObject* commandBuffer, const VkRenderPassBeginInfo* info, VkSubpassContents contents);
 VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdEndRenderPass(CommandBufferObject* commandBuffer);
+VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdPushDescriptorSetKHR(CommandBufferObject* commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t set, uint32_t descriptorWriteCount, const VkWriteDescriptorSet* pDescriptorWrites);
+VKAPI_ATTR void     VKAPI_CALL Hook_vkCmdPushDescriptorSetWithTemplateKHR(CommandBufferObject* commandBuffer, VkDescriptorUpdateTemplate descriptorUpdateTemplate, VkPipelineLayout layout, uint32_t set, const void* pData);

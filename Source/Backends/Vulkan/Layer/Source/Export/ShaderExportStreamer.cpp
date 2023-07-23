@@ -40,6 +40,7 @@
 #include <Backends/Vulkan/Resource/DescriptorData.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
+#include <Backends/Vulkan/Resource/PushDescriptorAppendAllocator.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -62,6 +63,15 @@ bool ShaderExportStreamer::Install() {
     descriptorAllocator = registry->Get<ShaderExportDescriptorAllocator>();
     streamAllocator = registry->Get<ShaderExportStreamAllocator>();
 
+    // Check if push descriptor tracking is required
+    for (const char* extension : table->enabledExtensions) {
+        if (!std::strcmp(extension, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)) {
+            requiresPushStateTracking = true;
+            break;
+        }
+    }
+
+    // OK
     return true;
 }
 
@@ -117,6 +127,14 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
             &state->renderPass,
             descriptorAllocator->GetBindingInfo().descriptorDataDescriptorLength
         );
+
+        // Create push descriptor allocator if needed by the device
+        if (requiresPushStateTracking) {
+            state->pipelineBindPoints[i].pushDescriptorAppendAllocator = new (allocators) PushDescriptorAppendAllocator(
+                table,
+                state->pipelineBindPoints[i].descriptorDataAllocator
+            );
+        }
     }
 
     // OK
@@ -209,6 +227,11 @@ void ShaderExportStreamer::BeginCommandBuffer(ShaderExportStreamState* state, Vk
             bindState.descriptorDataAllocator->ValidateReleased();
         }
 
+        // Reset push allocator
+        if (bindState.pushDescriptorAppendAllocator) {
+            bindState.pushDescriptorAppendAllocator->Reset();
+        }
+
         // Allocate a new descriptor set
         ShaderExportSegmentDescriptorAllocation allocation;
         allocation.info = descriptorAllocator->Allocate();
@@ -239,6 +262,11 @@ void ShaderExportStreamer::ResetCommandBuffer(ShaderExportStreamState *state) {
 
         // Move descriptor data ownership to segment
         ReleaseDescriptorDataSegment(bindState.descriptorDataAllocator->ReleaseSegment());
+
+        // Release all entries immediately
+        if (bindState.pushDescriptorAppendAllocator) {
+            bindState.pushDescriptorAppendAllocator->ReleaseSegment().ReleaseEntries();
+        }
 
         // Reset descriptor state
         bindState.persistentDescriptorState.resize(table->physicalDeviceProperties.limits.maxBoundDescriptorSets);
@@ -309,6 +337,11 @@ void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBind
     // Get bind state
     ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipelineType)];
 
+    // Commit all push data
+    if (bindState.pushDescriptorAppendAllocator) {
+        bindState.pushDescriptorAppendAllocator->Commit(commandBuffer, bindPoint);
+    }
+
     // If the allocator has rolled, a new segment is pending binding
     if (bindState.descriptorDataAllocator->HasRolled()) {
         // The underlying chunk may have changed, recreate the export data if needed
@@ -375,6 +408,11 @@ void ShaderExportStreamer::MigrateDescriptorEnvironment(ShaderExportStreamState 
     // Translate the bind point
     VkPipelineBindPoint vkBindPoint = Translate(pipeline->type);
 
+    // Invalidate existing push entries
+    if (bindState.pushDescriptorAppendAllocator) {
+        bindState.pushDescriptorAppendAllocator->InvalidateOnCompatability(pipeline->layout);
+    }
+    
     // Scan all overwritten descriptor sets
     unsigned long overwriteIndex;
     while (_BitScanForward(&overwriteIndex, bindState.deviceDescriptorOverwriteMask)) {
@@ -518,6 +556,11 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
 
         // Move descriptor data ownership to segment
         segment->descriptorDataSegments.push_back(bindState.descriptorDataAllocator->ReleaseSegment());
+
+        // Release all push segment data
+        if (bindState.pushDescriptorAppendAllocator) {
+            segment->pushDescriptorSegments.push_back(bindState.pushDescriptorAppendAllocator->ReleaseSegment());
+        }
     }
 
     // Add context handle
@@ -634,8 +677,14 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
         ReleaseDescriptorDataSegment(dataSegment);
     }
 
+    // Release all push entries
+    for (const PushDescriptorSegment& pushSegment : segment->pushDescriptorSegments) {
+        pushSegment.ReleaseEntries();
+    }
+
     // Cleanup
     segment->segmentDescriptors.clear();
+    segment->pushDescriptorSegments.clear();
     segment->descriptorDataSegments.clear();
     segment->commandContextHandles.clear();
 
@@ -814,4 +863,15 @@ void ShaderExportStreamer::BindDescriptorSets(ShaderExportStreamState* state, Vk
         // Apply offset
         dynamicOffset += slotDynamicCount;
     }
+}
+
+void ShaderExportStreamer::PushDescriptorSetKHR(ShaderExportStreamState* state, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t set, uint32_t descriptorWriteCount, const VkWriteDescriptorSet* pDescriptorWrites, VkCommandBuffer commandBufferObject) {
+    // Translate the bind point
+    PipelineType pipelineType = Translate(pipelineBindPoint);
+
+    // Get bind state
+    ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipelineType)];
+
+    // Pass down to push allocator
+    bindState.pushDescriptorAppendAllocator->PushDescriptorSetKHR(commandBufferObject, layout, set, descriptorWriteCount, pDescriptorWrites);
 }

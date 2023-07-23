@@ -466,6 +466,19 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdEndRenderPass(CommandBufferObject* commandB
     commandBuffer->dispatchTable.next_vkCmdEndRenderPass(commandBuffer->object);
 }
 
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPushDescriptorSetKHR(CommandBufferObject* commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t set, uint32_t descriptorWriteCount, const VkWriteDescriptorSet* pDescriptorWrites) {
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdPushDescriptorSetKHR(commandBuffer->object, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+
+    // Inform streamer
+    commandBuffer->table->exportStreamer->PushDescriptorSetKHR(commandBuffer->streamState, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites, commandBuffer->object);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPushDescriptorSetWithTemplateKHR(CommandBufferObject* commandBuffer, VkDescriptorUpdateTemplate descriptorUpdateTemplate, VkPipelineLayout layout, uint32_t set, const void* pData) {
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdPushDescriptorSetWithTemplateKHR(commandBuffer->object, descriptorUpdateTemplate, layout, set, pData);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {
     // Reset the context
     commandBuffer->context = {};

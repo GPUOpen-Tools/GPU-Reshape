@@ -43,8 +43,10 @@
 
 // Forward declarations
 struct ShaderExportSegmentInfo;
+struct PushDescriptorSegment;
 struct FenceState;
 class DescriptorDataAppendAllocator;
+class PushDescriptorAppendAllocator;
 
 /// Tracked descriptor allocation
 struct ShaderExportSegmentDescriptorAllocation {
@@ -74,6 +76,9 @@ struct ShaderExportPipelineBindState {
 
     /// Descriptor data allocator tied to the segment
     DescriptorDataAppendAllocator* descriptorDataAllocator{nullptr};
+
+    /// Push state append allocator
+    PushDescriptorAppendAllocator* pushDescriptorAppendAllocator{nullptr};
 
     /// Currently bound pipeline
     const PipelineState* pipeline{nullptr};
@@ -147,6 +152,9 @@ struct ShaderExportStreamSegment {
 
     /// Combined descriptor data segments, lifetime bound to this segment
     std::vector<DescriptorDataSegment> descriptorDataSegments;
+
+    /// All pending push segments
+    std::vector<PushDescriptorSegment> pushDescriptorSegments;
 
     /// Combined context handles
     std::vector<CommandContextHandle> commandContextHandles;

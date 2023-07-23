@@ -107,6 +107,8 @@ set(
     vkCmdPushConstants
     vkCmdBeginRenderPass
     vkCmdEndRenderPass
+    vkCmdPushDescriptorSetKHR
+    vkCmdPushDescriptorSetWithTemplateKHR
 )
 
 # Join lists

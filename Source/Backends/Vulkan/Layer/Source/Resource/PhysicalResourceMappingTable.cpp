@@ -305,6 +305,17 @@ void PhysicalResourceMappingTable::Defragment() {
     fragmentedEntries = 0;
 }
 
+size_t PhysicalResourceMappingTable::GetMappingOffset(PhysicalResourceSegmentID id, uint32_t offset) {
+    std::lock_guard guard(mutex);
+    
+    // Get the underlying segment
+    const PhysicalResourceMappingTableSegment& segment = segments.at(indices.at(id));
+
+    // Get mapping offset
+    ASSERT(offset < segment.length, "Physical segment offset out of bounds");
+    return segment.offset + offset;
+}
+
 PhysicalResourceMappingTableSegment PhysicalResourceMappingTable::GetSegmentShader(PhysicalResourceSegmentID id) {
     std::lock_guard guard(mutex);
     return segments.at(indices.at(id));
@@ -316,7 +327,7 @@ VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(PhysicalResource
     // Get the underlying segment
     const PhysicalResourceMappingTableSegment& segment = segments.at(indices.at(id));
 
-    // Write mapping
+    // Get mapping
     ASSERT(offset < segment.length, "Physical segment offset out of bounds");
     return virtualMappings[segment.offset + offset];
 }

@@ -24,11 +24,24 @@
 
 #pragma once
 
+// Layer
+#include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
+
 // Std
-#include <cstdint>
+#include <vector>
 
-/// Segment identifier
-using PhysicalResourceSegmentID = uint32_t;
+struct PushDescriptorSegment {
+    /// Release all entries
+    void ReleaseEntries() const {
+        for (PhysicalResourceSegmentID entry : entries) {
+            table->prmTable->Free(entry);
+        }
+    }
 
-/// Invalid segment identifier
-static constexpr PhysicalResourceSegmentID kInvalidPRSID = UINT32_MAX;
+    /// Parent table
+    DeviceDispatchTable* table{nullptr};
+    
+    /// All entries within this segment
+    std::vector<PhysicalResourceSegmentID> entries;
+};
