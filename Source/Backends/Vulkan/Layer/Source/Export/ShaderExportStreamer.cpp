@@ -875,3 +875,16 @@ void ShaderExportStreamer::PushDescriptorSetKHR(ShaderExportStreamState* state, 
     // Pass down to push allocator
     bindState.pushDescriptorAppendAllocator->PushDescriptorSetKHR(commandBufferObject, layout, set, descriptorWriteCount, pDescriptorWrites);
 }
+
+void ShaderExportStreamer::PushDescriptorSetWithTemplateKHR(ShaderExportStreamState *state, VkDescriptorUpdateTemplate descriptorUpdateTemplate, VkPipelineLayout layout, uint32_t set, const void* pData, VkCommandBuffer commandBufferObject) {
+    DescriptorUpdateTemplateState* updateTemplate = table->states_descriptorUpdateTemplateState.Get(descriptorUpdateTemplate);
+    
+    // Translate the bind point
+    PipelineType pipelineType = Translate(updateTemplate->createInfo->pipelineBindPoint);
+
+    // Get bind state
+    ShaderExportPipelineBindState& bindState = state->pipelineBindPoints[static_cast<uint32_t>(pipelineType)];
+
+    // Pass down to push allocator
+    bindState.pushDescriptorAppendAllocator->PushDescriptorSetWithTemplateKHR(commandBufferObject, updateTemplate, layout, set, pData);
+}

@@ -142,6 +142,15 @@ public:
     /// \param pDescriptorWrites all writes
     /// \param commandBufferObject object committing from
     void PushDescriptorSetKHR(ShaderExportStreamState* state, VkPipelineBindPoint pipelineBindPoint, VkPipelineLayout layout, uint32_t set, uint32_t descriptorWriteCount, const VkWriteDescriptorSet* pDescriptorWrites, VkCommandBuffer commandBufferObject);
+
+    /// Invoked during push descriptor binding
+    /// \param state state to be committed to
+    /// \param descriptorUpdateTemplate the update template
+    /// \param layout the expected pipeline layout
+    /// \param set the set index
+    /// \param pData update data
+    /// \param commandBufferObject object committing from
+    void PushDescriptorSetWithTemplateKHR(ShaderExportStreamState* state, VkDescriptorUpdateTemplate descriptorUpdateTemplate, VkPipelineLayout layout, uint32_t set, const void* pData, VkCommandBuffer commandBufferObject);
     
     /// Map a stream state pre submission
     /// \param state the stream state

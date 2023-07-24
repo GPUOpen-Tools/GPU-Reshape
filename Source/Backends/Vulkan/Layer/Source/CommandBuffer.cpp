@@ -477,6 +477,9 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPushDescriptorSetKHR(CommandBufferObject* c
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPushDescriptorSetWithTemplateKHR(CommandBufferObject* commandBuffer, VkDescriptorUpdateTemplate descriptorUpdateTemplate, VkPipelineLayout layout, uint32_t set, const void* pData) {
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdPushDescriptorSetWithTemplateKHR(commandBuffer->object, descriptorUpdateTemplate, layout, set, pData);
+
+    // Inform streamer
+    commandBuffer->table->exportStreamer->PushDescriptorSetWithTemplateKHR(commandBuffer->streamState, descriptorUpdateTemplate, layout, set, pData, commandBuffer->object);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkEndCommandBuffer(CommandBufferObject *commandBuffer) {

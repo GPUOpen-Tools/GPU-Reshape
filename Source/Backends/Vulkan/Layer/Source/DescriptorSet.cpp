@@ -38,6 +38,7 @@
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 #include <Backends/Vulkan/States/DescriptorPoolState.h>
+#include <Backends/Vulkan/Resource/DescriptorResourceMapping.h>
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
@@ -357,71 +358,8 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkUpdateDescriptorSets(VkDevice device, uint32_t
         // Create mappings for all descriptors written
         for (uint32_t descriptorIndex = 0; descriptorIndex < write.descriptorCount; descriptorIndex++) {
             // Default invalid mapping
-            VirtualResourceMapping mapping;
-            mapping.puid = IL::kResourceTokenPUIDMask;
-
-            switch (write.descriptorType) {
-                default: {
-                    // Perhaps handled in the future
-                    continue;
-                }
-                case VK_DESCRIPTOR_TYPE_SAMPLER: {
-                    if (write.pImageInfo[descriptorIndex].sampler) {
-                        mapping = table->states_sampler.Get(write.pImageInfo[descriptorIndex].sampler)->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullSampler;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-                case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-                    if (write.pImageInfo[descriptorIndex].imageView) {
-                        mapping = table->states_imageView.Get(write.pImageInfo[descriptorIndex].imageView)->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-                case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-                    if (write.pImageInfo[descriptorIndex].imageView) {
-                        mapping = table->states_imageView.Get(write.pImageInfo[descriptorIndex].imageView)->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-                case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-                case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-                    if (write.pTexelBufferView[descriptorIndex]) {
-                        mapping = table->states_bufferView.Get(write.pTexelBufferView[descriptorIndex])->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullBuffer;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-                case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-                case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-                    if (write.pBufferInfo[descriptorIndex].buffer) {
-                        mapping = table->states_buffer.Get(write.pBufferInfo[descriptorIndex].buffer)->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullCBuffer;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::CBuffer);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-            }
-
+            VirtualResourceMapping mapping = GetVirtualResourceMapping(table, write, descriptorIndex);
+            
             // Map current binding to an offset
             const uint32_t prmtOffset = state->prmtOffsets.at(write.dstBinding);
 
@@ -518,77 +456,8 @@ VKAPI_ATTR void VKAPI_PTR Hook_vkUpdateDescriptorSetWithTemplate(VkDevice device
         for (uint32_t descriptorIndex = 0; descriptorIndex < entry.descriptorCount; descriptorIndex++) {
             const void *descriptorData = static_cast<const uint8_t*>(pData) + entry.offset + descriptorIndex * entry.stride;
 
-            // Default invalid mapping
-            VirtualResourceMapping mapping;
-            mapping.puid = IL::kResourceTokenPUIDMask;
-
-            // Handle type
-            switch (entry.descriptorType) {
-                default: {
-                    // Perhaps handled in the future
-                    continue;
-                }
-                case VK_DESCRIPTOR_TYPE_SAMPLER: {
-                    auto&& typeData = *static_cast<const VkDescriptorImageInfo*>(descriptorData);
-                    if (typeData.sampler) {
-                        mapping = table->states_sampler.Get(typeData.sampler)->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullSampler;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-                case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-                    auto&& typeData = *static_cast<const VkDescriptorImageInfo*>(descriptorData);
-                    if (typeData.imageView) {
-                        mapping = table->states_imageView.Get(typeData.imageView)->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-                case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-                    auto&& typeData = *static_cast<const VkDescriptorImageInfo*>(descriptorData);
-                    if (typeData.imageView) {
-                        mapping = table->states_imageView.Get(typeData.imageView)->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-                case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-                case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-                    auto&& typeData = *static_cast<const VkBufferView*>(descriptorData);
-                    if (typeData) {
-                        mapping = table->states_bufferView.Get(typeData)->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullBuffer;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-                case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-                case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-                case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-                    auto&& typeData = *static_cast<const VkDescriptorBufferInfo*>(descriptorData);
-                    if (typeData.buffer) {
-                        mapping = table->states_buffer.Get(typeData.buffer)->virtualMapping;
-                    } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                        mapping.puid = IL::kResourceTokenPUIDReservedNullCBuffer;
-                        mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::CBuffer);
-                        mapping.srb  = 0x1;
-                    }
-                    break;
-                }
-            }
+            // Get mapping
+            VirtualResourceMapping mapping = GetVirtualResourceMapping(table, entry.descriptorType, descriptorData);
 
             // Map current binding to an offset
             const uint32_t prmtOffset = setState->prmtOffsets.at(entry.dstBinding);

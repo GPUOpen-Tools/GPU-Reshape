@@ -27,14 +27,11 @@
 // Layer
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/States/BufferState.h>
-#include <Backends/Vulkan/States/ImageState.h>
-#include <Backends/Vulkan/States/SamplerState.h>
+#include <Backends/Vulkan/States/DescriptorUpdateTemplateState.h>
 #include <Backends/Vulkan/Resource/PushDescriptorSegment.h>
 #include <Backends/Vulkan/Resource/DescriptorDataAppendAllocator.h>
 #include <Backends/Vulkan/Resource/DescriptorData.h>
-
-// Backend
-#include <Backend/IL/ResourceTokenType.h>
+#include <Backends/Vulkan/Resource/DescriptorResourceMapping.h>
 
 // Common
 #include <Common/ComRef.h>
@@ -66,54 +63,8 @@ public:
         // Get the descriptor set layout
         const DescriptorLayoutPhysicalMapping& physicalMapping = layoutState->physicalMapping.descriptorSets.at(set);
 
-        // Ensure sufficient space
-        if (set >= setEntries.size()) {
-            setEntries.resize(set + 1u);
-        }
-
         // Get the set entry
-        SetEntry& setEntry = setEntries.at(set);
-
-        // Is the set out of date?
-        if (IsSegmentOutOfDate(layoutState, set)) {
-            // Set was out of date, allocate a new segment
-            PhysicalResourceSegmentID nextSegmentID = table->prmTable->Allocate(static_cast<uint32_t>(physicalMapping.bindings.size()));
-
-            // If this segment is pending a roll, reconstruct the previous descriptor data
-            if (setEntries[set].pendingRoll) {
-                // Determine byte offsets
-                size_t srcByteOffset = table->prmTable->GetMappingOffset(setEntry.segmentId, 0u) * sizeof(VirtualResourceMapping);
-                size_t dstByteOffset = table->prmTable->GetMappingOffset(nextSegmentID, 0u) * sizeof(VirtualResourceMapping);
-
-                // Setup the region
-                VkBufferCopy region{};
-                region.size = physicalMapping.bindings.size() * sizeof(VirtualResourceMapping);
-                region.srcOffset = srcByteOffset;
-                region.dstOffset = dstByteOffset;
-
-                // Copy all contents
-                table->commandBufferDispatchTable.next_vkCmdCopyBuffer(
-                    commandBuffer,
-                    table->prmTable->GetDeviceBuffer(),
-                    table->prmTable->GetDeviceBuffer(),
-                    1u, &region
-                );
-
-                // Successfully rolled
-                setEntries[set].pendingRoll = false;
-            }
-
-            // Don't lose track of the previous segment, kick it to the released segment
-            if (setEntry.segmentId != kInvalidPRSID) {
-                segment.entries.push_back(setEntry.segmentId);
-            }
-
-            // Set new segment id
-            setEntry.segmentId = nextSegmentID;
-        }
-
-        // Track layout
-        currentLayoutState = layoutState;
+        SetEntry& setEntry = GetEntryFor(layoutState, set, commandBuffer);
 
         // Local stack for mappings
         TrivialStackVector<VirtualResourceMapping, 128> mappingStack;
@@ -130,76 +81,64 @@ public:
             
             // Create mappings for all descriptors written
             for (uint32_t descriptorIndex = 0; descriptorIndex < write.descriptorCount; descriptorIndex++) {
-                // Default invalid mapping
-                VirtualResourceMapping& mapping = mappingStack[descriptorIndex];
-                mapping.puid = IL::kResourceTokenPUIDMask;
-
-                // Handle type
-                switch (write.descriptorType) {
-                    default: {
-                        // Perhaps handled in the future
-                        continue;
-                    }
-                    case VK_DESCRIPTOR_TYPE_SAMPLER: {
-                        if (write.pImageInfo[descriptorIndex].sampler) {
-                            mapping = table->states_sampler.Get(write.pImageInfo[descriptorIndex].sampler)->virtualMapping;
-                        } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                            mapping.puid = IL::kResourceTokenPUIDReservedNullSampler;
-                            mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
-                            mapping.srb  = 0x1;
-                        }
-                        break;
-                    }
-                    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-                        if (write.pImageInfo[descriptorIndex].imageView) {
-                            mapping = table->states_imageView.Get(write.pImageInfo[descriptorIndex].imageView)->virtualMapping;
-                        } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                            mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
-                            mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-                            mapping.srb  = 0x1;
-                        }
-                        break;
-                    }
-                    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-                        if (write.pImageInfo[descriptorIndex].imageView) {
-                            mapping = table->states_imageView.Get(write.pImageInfo[descriptorIndex].imageView)->virtualMapping;
-                        } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                            mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
-                            mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-                            mapping.srb  = 0x1;
-                        }
-                        break;
-                    }
-                    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-                        if (write.pTexelBufferView[descriptorIndex]) {
-                            mapping = table->states_bufferView.Get(write.pTexelBufferView[descriptorIndex])->virtualMapping;
-                        } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                            mapping.puid = IL::kResourceTokenPUIDReservedNullBuffer;
-                            mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
-                            mapping.srb  = 0x1;
-                        }
-                        break;
-                    }
-                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-                    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-                    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-                        if (write.pBufferInfo[descriptorIndex].buffer) {
-                            mapping = table->states_buffer.Get(write.pBufferInfo[descriptorIndex].buffer)->virtualMapping;
-                        } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
-                            mapping.puid = IL::kResourceTokenPUIDReservedNullCBuffer;
-                            mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::CBuffer);
-                            mapping.srb  = 0x1;
-                        }
-                        break;
-                    }
-                }
+                mappingStack[descriptorIndex] = GetVirtualResourceMapping(table, write, descriptorIndex);
             }
 
             // Determine byte offset
             size_t byteOffset = table->prmTable->GetMappingOffset(setEntry.segmentId, prmtOffset + write.dstArrayElement) * sizeof(VirtualResourceMapping);
+
+            // Enqueue copy of stack PRMs
+            table->commandBufferDispatchTable.next_vkCmdUpdateBuffer(
+                commandBuffer,
+                table->prmTable->GetDeviceBuffer(),
+                byteOffset,
+                mappingStack.Size() * sizeof(VirtualResourceMapping),
+                mappingStack.Data()
+            );
+        }
+
+        // Mark as pending writes
+        setEntry.pendingWrite = true;
+    }
+
+    /// Invoked during push descriptor binding
+    /// \param commandBuffer  object committing from
+    /// \param descriptorUpdateTemplate the update template
+    /// \param layout the expected pipeline layout
+    /// \param set the set index
+    /// \param pData update data
+    void PushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer, DescriptorUpdateTemplateState* descriptorUpdateTemplate, VkPipelineLayout layout, uint32_t set, const void* pData) {
+        PipelineLayoutState* layoutState = table->states_pipelineLayout.Get(layout);
+
+        // Get the descriptor set layout
+        const DescriptorLayoutPhysicalMapping& physicalMapping = layoutState->physicalMapping.descriptorSets.at(set);
+
+        // Get the set entry
+        SetEntry& setEntry = GetEntryFor(layoutState, set, commandBuffer);
+        
+        // Local stack for mappings
+        TrivialStackVector<VirtualResourceMapping, 128> mappingStack;
+        
+        // Handle each entry
+        for (uint32_t i = 0; i < descriptorUpdateTemplate->createInfo->descriptorUpdateEntryCount; i++) {
+            const VkDescriptorUpdateTemplateEntry& entry = descriptorUpdateTemplate->createInfo->pDescriptorUpdateEntries[i];
+
+            // Map current binding to an offset
+            const uint32_t prmtOffset = physicalMapping.bindings.at(entry.dstBinding).prmtOffset;
+
+            // Preallocate (hopefully stack) descriptors
+            mappingStack.Resize(entry.descriptorCount);
+
+            // Handle each binding write
+            for (uint32_t descriptorIndex = 0; descriptorIndex < entry.descriptorCount; descriptorIndex++) {
+                const void *descriptorData = static_cast<const uint8_t*>(pData) + entry.offset + descriptorIndex * entry.stride;
+                
+                // Write mapping
+                mappingStack[descriptorIndex] = GetVirtualResourceMapping(table, entry.descriptorType, descriptorData);
+            }
+
+            // Determine byte offset
+            size_t byteOffset = table->prmTable->GetMappingOffset(setEntry.segmentId, prmtOffset + entry.dstArrayElement) * sizeof(VirtualResourceMapping);
 
             // Enqueue copy of stack PRMs
             table->commandBufferDispatchTable.next_vkCmdUpdateBuffer(
@@ -364,6 +303,64 @@ private:
         /// Current segment id
         PhysicalResourceSegmentID segmentId{kInvalidPRSID};
     };
+
+    /// Get the entry for a specific set
+    SetEntry& GetEntryFor(PipelineLayoutState* layoutState, uint32_t set, VkCommandBuffer commandBuffer) {
+        // Ensure sufficient space
+        if (set >= setEntries.size()) {
+            setEntries.resize(set + 1u);
+        }
+
+        // Get the descriptor set layout
+        const DescriptorLayoutPhysicalMapping& physicalMapping = layoutState->physicalMapping.descriptorSets.at(set);
+        
+        // Get the set entry
+        SetEntry& setEntry = setEntries.at(set);
+
+        // Is the set out of date?
+        if (IsSegmentOutOfDate(layoutState, set)) {
+            // Set was out of date, allocate a new segment
+            PhysicalResourceSegmentID nextSegmentID = table->prmTable->Allocate(static_cast<uint32_t>(physicalMapping.bindings.size()));
+
+            // If this segment is pending a roll, reconstruct the previous descriptor data
+            if (setEntries[set].pendingRoll) {
+                // Determine byte offsets
+                size_t srcByteOffset = table->prmTable->GetMappingOffset(setEntry.segmentId, 0u) * sizeof(VirtualResourceMapping);
+                size_t dstByteOffset = table->prmTable->GetMappingOffset(nextSegmentID, 0u) * sizeof(VirtualResourceMapping);
+
+                // Setup the region
+                VkBufferCopy region{};
+                region.size = physicalMapping.bindings.size() * sizeof(VirtualResourceMapping);
+                region.srcOffset = srcByteOffset;
+                region.dstOffset = dstByteOffset;
+
+                // Copy all contents
+                table->commandBufferDispatchTable.next_vkCmdCopyBuffer(
+                    commandBuffer,
+                    table->prmTable->GetDeviceBuffer(),
+                    table->prmTable->GetDeviceBuffer(),
+                    1u, &region
+                );
+
+                // Successfully rolled
+                setEntries[set].pendingRoll = false;
+            }
+
+            // Don't lose track of the previous segment, kick it to the released segment
+            if (setEntry.segmentId != kInvalidPRSID) {
+                segment.entries.push_back(setEntry.segmentId);
+            }
+
+            // Set new segment id
+            setEntry.segmentId = nextSegmentID;
+        }
+
+        // Track layout
+        currentLayoutState = layoutState;
+
+        // OK
+        return setEntry;
+    }
     
 private:
     DeviceDispatchTable* table;
