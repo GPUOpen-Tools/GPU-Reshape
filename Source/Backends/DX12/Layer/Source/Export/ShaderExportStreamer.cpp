@@ -44,6 +44,7 @@
 #include <Backends/DX12/Controllers/VersioningController.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/States/RootSignaturePhysicalMapping.h>
+#include <Backends/DX12/Resource/DescriptorResourceMapping.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -752,7 +753,7 @@ void ShaderExportStreamer::SetComputeRootShaderResourceView(ShaderExportStreamSt
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -770,7 +771,7 @@ void ShaderExportStreamer::SetGraphicsRootShaderResourceView(ShaderExportStreamS
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -788,7 +789,7 @@ void ShaderExportStreamer::SetComputeRootUnorderedAccessView(ShaderExportStreamS
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -806,7 +807,7 @@ void ShaderExportStreamer::SetGraphicsRootUnorderedAccessView(ShaderExportStream
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -824,7 +825,7 @@ void ShaderExportStreamer::SetComputeRootConstantBufferView(ShaderExportStreamSt
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -842,7 +843,7 @@ void ShaderExportStreamer::SetGraphicsRootConstantBufferView(ShaderExportStreamS
 
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState->virtualMapping.opaque);
+    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
