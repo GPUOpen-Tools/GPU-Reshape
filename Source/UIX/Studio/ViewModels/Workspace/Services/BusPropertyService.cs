@@ -63,6 +63,12 @@ namespace Studio.ViewModels.Workspace.Services
         /// <param name="busObject"></param>
         public void Enqueue(IBusObject busObject)
         {
+            // In discard mode?
+            if (Mode == BusMode.Discard)
+            {
+                return;
+            }
+            
             // No duplicates
             if (_lookup.Contains(busObject))
             {

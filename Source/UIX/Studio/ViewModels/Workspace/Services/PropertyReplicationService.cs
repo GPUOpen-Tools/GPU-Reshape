@@ -187,6 +187,9 @@ namespace Studio.ViewModels.Workspace.Services
         /// </summary>
         private void Handle(SetGlobalInstrumentationMessage.FlatInfo msg)
         {
+            // Do not instrument replication
+            using var scope = new BusScope(_root.GetService<IBusPropertyService>(), BusMode.Discard);
+            
             // Get global instrumentation
             var globalViewModel = _root.GetProperty<GlobalViewModel>();
             if (globalViewModel == null)
@@ -207,6 +210,9 @@ namespace Studio.ViewModels.Workspace.Services
         /// </summary>
         private void Handle(SetShaderInstrumentationMessage.FlatInfo msg)
         {
+            // Do not instrument replication
+            using var scope = new BusScope(_root.GetService<IBusPropertyService>(), BusMode.Discard);
+            
             // Find or create property
             var shaderViewModel = _shaderCollection.GetPropertyWhere<ShaderViewModel>(x => x.Shader.GUID == msg.shaderUID);
             if (shaderViewModel == null)
@@ -232,6 +238,9 @@ namespace Studio.ViewModels.Workspace.Services
         /// </summary>
         private void Handle(SetPipelineInstrumentationMessage.FlatInfo msg)
         {
+            // Do not instrument replication
+            using var scope = new BusScope(_root.GetService<IBusPropertyService>(), BusMode.Discard);
+            
             // Find or create property
             var pipelineViewModel = _pipelineCollection.GetPropertyWhere<PipelineViewModel>(x => x.Pipeline.GUID == msg.pipelineUID);
             if (pipelineViewModel == null)
@@ -257,6 +266,9 @@ namespace Studio.ViewModels.Workspace.Services
         /// </summary>
         private void Handle(SetOrAddFilteredPipelineInstrumentationMessage.FlatInfo msg)
         {
+            // Do not instrument replication
+            using var scope = new BusScope(_root.GetService<IBusPropertyService>(), BusMode.Discard);
+            
             // Convert type
             var type = (PipelineType)msg.type;
             

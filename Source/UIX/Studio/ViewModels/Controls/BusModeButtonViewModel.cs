@@ -100,6 +100,10 @@ namespace Studio.ViewModels.Controls
                                 StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("WarningColor"));
                                 StatusGeometry = ResourceLocator.GetIcon("Pause");
                                 break;
+                            case BusMode.Discard:
+                                StatusColor = new SolidColorBrush(ResourceLocator.GetResource<Color>("ErrorColor"));
+                                StatusGeometry = ResourceLocator.GetIcon("Pause");
+                                break;
                             default:
                                 throw new ArgumentOutOfRangeException(nameof(y), y, null);
                         }
@@ -125,6 +129,9 @@ namespace Studio.ViewModels.Controls
                     break;
                 case BusMode.RecordAndCommit:
                     _currentService.Commit();
+                    _currentService.Mode = BusMode.Immediate;
+                    break;
+                case BusMode.Discard:
                     _currentService.Mode = BusMode.Immediate;
                     break;
                 default:

@@ -34,6 +34,11 @@ namespace Runtime.ViewModels.Workspace.Properties
         /// <summary>
         /// All bus requests are deferred to manual commits
         /// </summary>
-        RecordAndCommit
+        RecordAndCommit,
+        
+        /// <summary>
+        /// Discards any incoming requests
+        /// </summary>
+        Discard
     }
 }
