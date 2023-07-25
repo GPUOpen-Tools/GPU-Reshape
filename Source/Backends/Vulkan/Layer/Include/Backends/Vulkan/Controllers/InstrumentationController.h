@@ -72,7 +72,15 @@ public:
     void Handle(const MessageStream *streams, uint32_t count) final;
 
     /// Invoked once a command buffer has begun recording
-    void BeginCommandList();
+    bool ConditionalWaitForCompletion() {
+        // If synchronous, wait for the head compilation counter
+        if (synchronousRecording) {
+            WaitForCompletion();
+        }
+
+        // OK
+        return synchronousRecording;
+    }
 
     /// Commit all instrumentation changes
     void CommitInstrumentation();

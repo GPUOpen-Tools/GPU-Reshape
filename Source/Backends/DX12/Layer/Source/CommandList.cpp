@@ -334,9 +334,6 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
         device->exportStreamer->BindPipeline(state->streamState, GetState(initialState), hotSwap, isHotSwap, state->object);
     }
 
-    // Pass down the controller
-    device->instrumentationController->BeginCommandList();
-
     // Copy proxy table
     state->proxies = device->commandListProxies;
     state->proxies.context = &state->userContext;
@@ -395,6 +392,9 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
     // Object
     ID3D12CommandList *commandList{nullptr};
 
+    // Pass down the controller
+    table.state->instrumentationController->ConditionalWaitForCompletion();
+
     // Get hot swap
     ID3D12PipelineState *hotSwap = GetHotSwapPipeline(initialState);
 
@@ -414,6 +414,9 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *device, UINT nod
     // Object
     ID3D12CommandList *commandList{nullptr};
 
+    // Pass down the controller
+    table.state->instrumentationController->ConditionalWaitForCompletion();
+
     // Pass down callchain
     HRESULT hr = table.bottom->next_CreateCommandList1(table.next, nodeMask, GetEmulatedCommandListType(type), flags, __uuidof(ID3D12CommandList), reinterpret_cast<void **>(&commandList));
     if (FAILED(hr)) {
@@ -431,7 +434,7 @@ HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12Command
     auto device = GetTable(table.state->parent);
 
     // Pass down the controller
-    device.state->instrumentationController->BeginCommandList();
+    device.state->instrumentationController->ConditionalWaitForCompletion();
 
     // Get hot swap
     ID3D12PipelineState *hotSwap = GetHotSwapPipeline(state);
@@ -859,14 +862,25 @@ void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D1
     // Get device
     auto device = GetTable(table.state->parent);
 
+    // Get pipeline
+    PipelineState* pipelineState = GetState(pipeline);
+    
     // Get hot swap
-    ID3D12PipelineState *hotSwap = GetHotSwapPipeline(pipeline);
+    ID3D12PipelineState *hotSwap = pipelineState->hotSwapObject.load();
+
+    // Conditionally wait for instrumentation if the pipeline has an outstanding request
+    if (!hotSwap && pipelineState->HasInstrumentationRequest()) {
+        device.state->instrumentationController->ConditionalWaitForCompletion();
+
+        // Load new hot-object
+        hotSwap = pipelineState->hotSwapObject.load();
+    }
 
     // Pass down callchain
     table.bottom->next_SetPipelineState(table.next, hotSwap ? hotSwap : Next(pipeline));
 
     // Inform the streamer of a new pipeline
-    device.state->exportStreamer->BindPipeline(table.state->streamState, GetState(pipeline), hotSwap, hotSwap != nullptr, table.state->object);
+    device.state->exportStreamer->BindPipeline(table.state->streamState, pipelineState, hotSwap, hotSwap != nullptr, table.state->object);
 }
 
 AGSReturnCode HookAMDAGSDestroyDevice(AGSContext* context, ID3D12Device* device, unsigned int* deviceReferences) {

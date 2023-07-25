@@ -969,10 +969,3 @@ void InstrumentationController::WaitForCompletion() {
     // Wait til head
     compilationEvent.Wait(compilationEvent.GetHead());
 }
-
-void InstrumentationController::BeginCommandList() {
-    // If synchronous, wait for the head compilation counter
-    if (synchronousRecording) {
-        WaitForCompletion();
-    }
-}

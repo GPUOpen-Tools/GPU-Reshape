@@ -183,7 +183,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateCommandBuffers(VkDevice device, co
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *commandBuffer, const VkCommandBufferBeginInfo *pBeginInfo) {
     // Pass down the controller
-    commandBuffer->table->instrumentationController->BeginCommandList();
+    commandBuffer->table->instrumentationController->ConditionalWaitForCompletion();
 
     // Acquire the device command table
     {
@@ -285,8 +285,17 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdBindPipeline(CommandBufferObject *commandBu
 
     // Attempt to load the hot swapped object
     VkPipeline hotSwapObject = state->hotSwapObject.load();
+
+    // Conditionally wait for instrumentation if the pipeline has an outstanding request
+    if (!hotSwapObject && state->HasInstrumentationRequest()) {
+        state->table->instrumentationController->ConditionalWaitForCompletion();
+
+        // Load new hot-object
+        hotSwapObject = state->hotSwapObject.load();
+    }
+    
+    // Replace the bound pipeline by the hot one
     if (hotSwapObject) {
-        // Replace the bound pipeline by the hot one
         pipeline = hotSwapObject;
     }
 

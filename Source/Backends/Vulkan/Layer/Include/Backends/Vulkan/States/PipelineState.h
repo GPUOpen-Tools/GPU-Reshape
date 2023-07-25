@@ -71,6 +71,12 @@ struct PipelineState : public ReferenceObject {
         return it->second;
     }
 
+    /// Check if there's an instrumentation request
+    /// \return true if there's a request
+    bool HasInstrumentationRequest() const {
+        return instrumentationInfo.featureBitSet != 0;
+    }
+
     /// Backwards reference
     DeviceDispatchTable* table;
 

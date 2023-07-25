@@ -76,9 +76,6 @@ public:
     /// Overrides
     void Handle(const MessageStream *streams, uint32_t count) final;
 
-    /// Invoked once a command list has begun recording
-    void BeginCommandList();
-
     /// Commit all instrumentation changes
     void CommitInstrumentation();
 
@@ -87,6 +84,17 @@ public:
 
     /// Wait for all outstanding jobs
     void WaitForCompletion();
+
+    /// Wait for all outstanding jobs if the instrumentation configuration dictates it
+    bool ConditionalWaitForCompletion() {
+        // If synchronous, wait for the head compilation counter
+        if (synchronousRecording) {
+            WaitForCompletion();
+        }
+
+        // OK
+        return synchronousRecording;
+    }
 
     /// Get the number of jobs
     uint32_t GetJobCount();
