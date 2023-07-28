@@ -87,6 +87,9 @@
 TrackedAllocator trackedAllocator;
 #endif // NDEBUG
 
+/// Known GUIDs
+static const GUID D3D12ExperimentalShadingModelGUID = GlobalUID::FromString("{76f5573e-f13a-40f5-b297-81ce9e18933f}").AsPlatformGUID();
+
 static void ApplyStartupEnvironment(DeviceState* state) {
     MessageStream stream;
     
@@ -407,7 +410,7 @@ static HRESULT EnableExperimentalFeaturesWithFastTrack(UINT NumFeatures, const I
     std::memcpy(shaderModels, riid, sizeof(UUID) * NumFeatures);
 
     // Request experimental shader models
-    shaderModels[NumFeatures] = GlobalUID::FromString("{76f5573e-f13a-40f5-b297-81ce9e18933f}").AsPlatformGUID();
+    shaderModels[NumFeatures] = D3D12ExperimentalShadingModelGUID;
 
     // Pass down callchain
     HRESULT hr = D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures(NumFeatures + 1u, shaderModels, pConfigurationStructs, pConfigurationStructSizes);
@@ -513,6 +516,14 @@ HRESULT WINAPI HookID3D12CreateDevice(
 }
 
 HRESULT WINAPI HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes) {
+    // Keep track of select guids
+    for (uint32_t i = 0; i < NumFeatures; i++) {
+        if (riid[i] == D3D12ExperimentalShadingModelGUID) {
+            D3D12GPUOpenProcessInfo.applicationRequestedExperimentalShadingModels = true;
+        }
+    }
+
+    // Enable with fast track
     return EnableExperimentalFeaturesWithFastTrack(NumFeatures, riid, pConfigurationStructs, pConfigurationStructSizes);
 }
 
@@ -564,6 +575,32 @@ AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCre
     // OK
     returnedParams->pDevice = device;
     return AGS_SUCCESS;
+}
+
+HRESULT WINAPI HookID3D12DeviceCheckFeatureSupport(ID3D12Device* device, D3D12_FEATURE Feature, void *pFeatureSupportData, UINT FeatureSupportDataSize) {
+    auto table = GetTable(device);
+
+    // Special cases
+    switch (Feature) {
+        default: {
+            break;
+        }
+        case D3D12_FEATURE_SHADER_MODEL: {
+            auto* typedData = static_cast<D3D12_FEATURE_DATA_SHADER_MODEL*>(pFeatureSupportData);
+
+            // If the user has *not* requested experimental shading models, do not report anything above 6.7
+            // Internal fast tracking implicitly enables 6.7, which can cause undesired behaviour in some applications
+            if (!D3D12GPUOpenProcessInfo.applicationRequestedExperimentalShadingModels && typedData->HighestShaderModel > D3D_SHADER_MODEL_6_7) {
+                return E_INVALIDARG;
+            }
+
+            // All ok
+            break;
+        }
+    }
+
+    // Pass down call chain
+    return table.next->CheckFeatureSupport(Feature, pFeatureSupportData, FeatureSupportDataSize);
 }
 
 DeviceState::~DeviceState() {

@@ -84,7 +84,8 @@
         "SetResidencyPriority",
         "MakeResident",
         "EnqueueMakeResident",
-        "Evict"
+        "Evict",
+        "CheckFeatureSupport"
       ]
     },
     "ID3D11Device": {
