@@ -111,6 +111,18 @@ namespace IL {
         double value{0};
     };
 
+    struct StructConstant : public Constant {
+        using Type = Backend::IL::StructType;
+
+        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Struct;
+
+        auto SortKey(const Type* _type) const {
+            return std::make_tuple(_type->SortKey(), members);
+        }
+
+        std::vector<const Constant*> members;
+    };
+
     struct UndefConstant : public Constant {
         using Type = Backend::IL::Type;
 

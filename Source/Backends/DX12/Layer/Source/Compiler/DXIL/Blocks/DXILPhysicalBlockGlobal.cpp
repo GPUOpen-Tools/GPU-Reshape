@@ -77,21 +77,31 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
                         constant = constantMap.AddConstant(id, types.FindTypeOrAdd(Backend::IL::UnexposedType{}), Backend::IL::UnexposedConstant {});
                         break;
                     }
-                    case Backend::IL::TypeKind::Bool:
+                    case Backend::IL::TypeKind::Bool: {
                         constant = constantMap.AddConstant(id, type->As<Backend::IL::BoolType>(), Backend::IL::BoolConstant {
                             .value = false
                         });
                         break;
-                    case Backend::IL::TypeKind::Int:
+                    }
+                    case Backend::IL::TypeKind::Int: {
                         constant = constantMap.AddConstant(id, type->As<Backend::IL::IntType>(), Backend::IL::IntConstant {
                             .value = 0
                         });
                         break;
-                    case Backend::IL::TypeKind::FP:
+                    }
+                    case Backend::IL::TypeKind::FP: {
                         constant = constantMap.AddConstant(id, type->As<Backend::IL::FPType>(), Backend::IL::FPConstant {
                             .value = 0.0
                         });
                         break;
+                    }
+                    case Backend::IL::TypeKind::Struct: {
+                        // TODO: This is in complete disarray to the above, there's a systematic issue here
+                        constant = constantMap.AddConstant(id, type->As<Backend::IL::StructType>(), Backend::IL::NullConstant {
+                            
+                        });
+                        break;
+                    }
                 }
                 break;
             }
@@ -116,13 +126,29 @@ void DXILPhysicalBlockGlobal::ParseConstants(struct LLVMBlock *block) {
                 break;
             }
 
+            case LLVMConstantRecord::Aggregate: {
+                if (auto _struct = type->Cast<Backend::IL::StructType>()) {
+                    Backend::IL::StructConstant decl;
+
+                    // Fill members
+                    for (uint32_t i = 0; i < record.opCount; i++) {
+                        decl.members.push_back(program.GetConstants().GetConstant(table.idMap.GetMapped(record.Op32(i))));
+                    }
+            
+                    constant = constantMap.AddConstant(id, _struct, decl);
+                } else {
+                    // TODO: Array constants
+                    constant = constantMap.AddUnsortedConstant(id, type, Backend::IL::UnexposedConstant {});
+                }
+                break;
+            }
+
             case LLVMConstantRecord::Undef: {
                 constant = constantMap.AddConstant(id, type, Backend::IL::UndefConstant{ });
                 break;
             }
 
             /* Just create the mapping for now */
-            case LLVMConstantRecord::Aggregate:
             case LLVMConstantRecord::String:
             case LLVMConstantRecord::CString:
             case LLVMConstantRecord::Cast:

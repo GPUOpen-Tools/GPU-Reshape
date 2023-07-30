@@ -100,6 +100,24 @@ void DXILUtilIntrinsics::Compile() {
             f32Type
         }
     }), "dx.types.CBufRet.f32");
+
+    // Resource return F32
+    resBind = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {
+        .memberTypes {
+            i32Type,
+            i32Type,
+            i32Type,
+            i8Type
+        }
+    }), "dx.types.ResBind");
+
+    // Resource return F32
+    resourceProperties = table.type.typeMap.CompileNamedType(typeMap.FindTypeOrAdd(Backend::IL::StructType {
+        .memberTypes {
+            i32Type,
+            i32Type
+        }
+    }), "dx.types.ResourceProperties");
 }
 
 const DXILFunctionDeclaration *DXILUtilIntrinsics::GetIntrinsic(const DXILIntrinsicSpec &spec) {
@@ -232,5 +250,9 @@ const Backend::IL::Type *DXILUtilIntrinsics::GetType(const DXILIntrinsicTypeSpec
             return cbufRetI32;
         case DXILIntrinsicTypeSpec::CBufRetF32:
             return cbufRetF32;
+        case DXILIntrinsicTypeSpec::ResBind:
+            return resBind;
+        case DXILIntrinsicTypeSpec::ResourceProperties:
+            return resourceProperties;
     }
 }

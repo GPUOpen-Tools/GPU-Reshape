@@ -34,6 +34,7 @@ namespace Backend::IL {
         Bool,
         Int,
         FP,
+        Struct,
         Null,
         Unexposed
     };

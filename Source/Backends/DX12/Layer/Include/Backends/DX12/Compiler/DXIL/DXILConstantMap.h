@@ -145,6 +145,8 @@ private:
                 return CompileConstant(static_cast<const Backend::IL::UndefConstant*>(constant));
             case Backend::IL::ConstantKind::Null:
                 return CompileConstant(static_cast<const Backend::IL::NullConstant*>(constant));
+            case Backend::IL::ConstantKind::Struct:
+                return CompileConstant(static_cast<const Backend::IL::StructConstant*>(constant));
         }
     }
 
@@ -188,6 +190,19 @@ private:
         LLVMRecord record(LLVMConstantRecord::Null);
         record.opCount = 0;
         record.ops = recordAllocator.AllocateArray<uint64_t>(1);
+        return Emit(constant, record);
+    }
+
+    /// Compile a given constant
+    uint64_t CompileConstant(const Backend::IL::StructConstant* constant) {
+        LLVMRecord record(LLVMConstantRecord::Aggregate);
+        record.opCount = static_cast<uint32_t>(constant->members.size());
+        record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
+
+        for (uint32_t i = 0; i < record.opCount; i++) {
+            record.ops[i] = CompileConstant(constant->members[i]);
+        }
+        
         return Emit(constant, record);
     }
 

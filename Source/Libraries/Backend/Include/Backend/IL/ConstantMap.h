@@ -183,6 +183,7 @@ namespace Backend::IL {
         template<> SortMap<BoolConstant>& GetSortMap<BoolConstant>() { return maps.boolMap; }
         template<> SortMap<IntConstant>& GetSortMap<IntConstant>() { return maps.intMap; }
         template<> SortMap<FPConstant>& GetSortMap<FPConstant>() { return maps.fpMap; }
+        template<> SortMap<StructConstant>& GetSortMap<StructConstant>() { return maps.structMap; }
         template<> SortMap<UndefConstant>& GetSortMap<UndefConstant>() { return maps.undefMap; }
         template<> SortMap<NullConstant>& GetSortMap<NullConstant>() { return maps.nullMap; }
 
@@ -201,6 +202,7 @@ namespace Backend::IL {
             SortMap<BoolConstant> boolMap;
             SortMap<IntConstant> intMap;
             SortMap<FPConstant> fpMap;
+            SortMap<StructConstant> structMap;
             SortMap<UndefConstant> undefMap;
             SortMap<NullConstant> nullMap;
         };

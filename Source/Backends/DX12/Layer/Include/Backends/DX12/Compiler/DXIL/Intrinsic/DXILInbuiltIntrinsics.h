@@ -59,5 +59,28 @@ namespace Intrinsics {
         }
     };
 
-    static uint32_t kInbuiltCount = 3;
+    static DXILIntrinsicSpec DxOpCreateHandleFromBinding {
+        .uid = 3,
+        .name = "dx.op.createHandleFromBinding",
+        .returnType = DXILIntrinsicTypeSpec::CBufRetI32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::ResBind, // binding
+            DXILIntrinsicTypeSpec::I32, // range index
+            DXILIntrinsicTypeSpec::I1 // non-uniform
+        }
+    };
+
+    static DXILIntrinsicSpec DxOpAnnotateHandle {
+        .uid = 4,
+        .name = "dx.op.annotateHandle",
+        .returnType = DXILIntrinsicTypeSpec::CBufRetI32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::Handle, // resource handle
+            DXILIntrinsicTypeSpec::ResourceProperties, // properties
+        }
+    };
+
+    static uint32_t kInbuiltCount = 5;
 }

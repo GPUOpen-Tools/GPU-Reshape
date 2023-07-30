@@ -93,6 +93,8 @@ static std::string TranslateType(const std::string_view& type, std::string_view 
         return std::string(prefix) + "CBufRetF32";
     } else if (type == "%dx.types.CBufRet.i32") {
         return std::string(prefix) + "CBufRetI32";
+    } else if (type == "%dx.types.ResBind") {
+        return std::string(prefix) + "ResBind";
     }
 
     // Unknown

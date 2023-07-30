@@ -44,6 +44,22 @@ public:
     /// \return intrinsic function handle
     const DXILFunctionDeclaration* GetIntrinsic(const DXILIntrinsicSpec& spec);
 
+    /// Data types
+    const Backend::IL::VoidType *voidType{nullptr};
+    const Backend::IL::BoolType *i1Type{nullptr};
+    const Backend::IL::IntType *i8Type{nullptr};
+    const Backend::IL::IntType *i32Type{nullptr};
+    const Backend::IL::FPType *f32Type{nullptr};
+    const Backend::IL::FPType *f16Type{nullptr};
+    const Backend::IL::StructType *handleType{nullptr};
+    const Backend::IL::StructType *dimensionsType{nullptr};
+    const Backend::IL::StructType *resRetI32{nullptr};
+    const Backend::IL::StructType *resRetF32{nullptr};
+    const Backend::IL::StructType *cbufRetI32{nullptr};
+    const Backend::IL::StructType *cbufRetF32{nullptr};
+    const Backend::IL::StructType *resBind{nullptr};
+    const Backend::IL::StructType *resourceProperties{nullptr};
+
 private:
     /// Get an IL type from spec type
     /// \param type spec type
@@ -58,18 +74,4 @@ private:
 
     /// Existing intrinsics
     std::vector<IntrinsicEntry> intrinsics;
-
-    /// Data types
-    const Backend::IL::Type *voidType{nullptr};
-    const Backend::IL::Type *i1Type{nullptr};
-    const Backend::IL::Type *i8Type{nullptr};
-    const Backend::IL::Type *i32Type{nullptr};
-    const Backend::IL::Type *f32Type{nullptr};
-    const Backend::IL::Type *f16Type{nullptr};
-    const Backend::IL::Type *handleType{nullptr};
-    const Backend::IL::Type *dimensionsType{nullptr};
-    const Backend::IL::Type *resRetI32{nullptr};
-    const Backend::IL::Type *resRetF32{nullptr};
-    const Backend::IL::Type *cbufRetI32{nullptr};
-    const Backend::IL::Type *cbufRetF32{nullptr};
 };

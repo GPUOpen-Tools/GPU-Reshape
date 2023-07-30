@@ -43,4 +43,6 @@ enum class DXILIntrinsicTypeSpec {
     ResRetI32,
     CBufRetF32,
     CBufRetI32,
+    ResBind,
+    ResourceProperties
 };

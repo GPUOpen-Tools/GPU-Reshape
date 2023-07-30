@@ -245,6 +245,9 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
             } else if (shadingModelStr == "ms") {
                 shadingModel._class = DXILShadingModelClass::MS;
             }
+            
+            shadingModel.major = GetOperandU32Constant(metadataBlock, list.Op32(1));
+            shadingModel.minor = GetOperandU32Constant(metadataBlock, list.Op32(2));
             break;
         }
     }
@@ -311,6 +314,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
         // Prepare entry
         HandleEntry entry;
+        entry._class = type;
         entry.record = &resource;
         entry.bindSpace = bindSpace;
         entry.registerBase = rsBase;
@@ -606,6 +610,33 @@ const DXILPhysicalBlockMetadata::HandleEntry* DXILPhysicalBlockMetadata::GetHand
 
     // Get entry
     return &handle;
+}
+
+const DXILPhysicalBlockMetadata::HandleEntry * DXILPhysicalBlockMetadata::GetHandleFromMetadata(DXILShaderResourceClass _class, uint32_t handleID) {
+    MappedRegisterClass& registerClass = FindOrAddRegisterClass(_class);
+
+    // Get handle entry
+    HandleEntry& handle = handles[registerClass.handles[handleID]];
+
+    // OK
+    return &handle;
+}
+
+const DXILPhysicalBlockMetadata::HandleEntry * DXILPhysicalBlockMetadata::GetHandle(DXILShaderResourceClass _class, int64_t space, int64_t rangeLowerBound, int64_t rangeUpperBound) {
+    MappedRegisterClass& registerClass = FindOrAddRegisterClass(_class);
+
+    // Check all handles in class
+    for (uint32_t value : registerClass.handles) {
+        const HandleEntry& handle = handles[value];
+
+        // Matching range?
+        if (handle.bindSpace == space && rangeLowerBound >= handle.registerBase && rangeUpperBound < handle.registerBase + handle.registerRange) {
+            return &handle;
+        }
+    }
+
+    // Not found
+    return nullptr;
 }
 
 const Backend::IL::Type *DXILPhysicalBlockMetadata::GetComponentType(ComponentType type) {

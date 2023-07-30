@@ -180,6 +180,40 @@ enum class DXILAtomicBinOp {
     Invalid = 9
 };
 
+union DXILResourceBasicProperties {
+    struct {
+        uint8_t shape : 8; // DXILShaderResourceShape
+        uint8_t align : 4;
+        uint8_t isUAV : 1;
+        uint8_t isROV : 1;
+        uint8_t isGloballyCoherent : 1;
+        uint8_t samplerCmpOrhasCounter : 1;
+        uint8_t reserved2 : 8;
+        uint8_t reserved3 : 8;
+    };
+    
+    uint32_t opaque;
+};
+
+union DXILResourceTypedProperties {
+    struct {
+        uint8_t componentType : 8; // ComponentType
+        uint8_t componentCount : 8;
+        uint8_t sampleCount : 8;
+        uint8_t reserved : 8;
+    } resource;
+
+    uint32_t structByteStride;
+    uint32_t samplerFeedbackType;
+    uint32_t cbufferByteSize;
+    uint32_t opaque;
+};
+
+struct DXILResourceProperties {
+    DXILResourceBasicProperties basic;
+    DXILResourceTypedProperties typed;
+};
+
 inline bool IsBuffer(DXILShaderResourceShape shape) {
     switch (shape) {
         default:
@@ -202,5 +236,31 @@ inline bool IsBuffer(DXILShaderResourceShape shape) {
         case DXILShaderResourceShape::RawBuffer:
         case DXILShaderResourceShape::StructuredBuffer:
             return true;
+    }
+}
+
+inline uint32_t GetShapeComponentCount(DXILShaderResourceShape shape) {
+    switch (shape) {
+        default:
+            ASSERT(false, "Unexpected resource shape");
+        return false;
+        case DXILShaderResourceShape::CBuffer:
+        case DXILShaderResourceShape::TypedBuffer:
+        case DXILShaderResourceShape::RawBuffer:
+        case DXILShaderResourceShape::StructuredBuffer:
+            return 1u;
+        case DXILShaderResourceShape::Texture1D:
+        case DXILShaderResourceShape::Texture2D:
+        case DXILShaderResourceShape::Texture2DMS:
+        case DXILShaderResourceShape::Texture1DArray:
+        case DXILShaderResourceShape::FeedbackTexture2D:
+        case DXILShaderResourceShape::FeedbackTexture2DArray:
+            return 2u;
+        case DXILShaderResourceShape::Texture3D:
+        case DXILShaderResourceShape::TextureCube:
+        case DXILShaderResourceShape::Texture2DArray:
+        case DXILShaderResourceShape::Texture2DMSArray:
+        case DXILShaderResourceShape::TextureCubeArray:
+            return 3u;
     }
 }

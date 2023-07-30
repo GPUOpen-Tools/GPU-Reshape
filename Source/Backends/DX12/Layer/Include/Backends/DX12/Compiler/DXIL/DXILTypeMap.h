@@ -140,13 +140,18 @@ public:
     /// Compile a named type
     /// \param type given type, must be namable
     /// \param name given name
-    const Backend::IL::Type* CompileNamedType(const Backend::IL::Type* type, const char* name) {
+    template<typename T>
+    const T* CompileNamedType(const T* type, const char* name) {
         auto&& it = namedLookup.find(name);
 
         // Named types use name as key
         // TODO: Validate fetched type against requested
         if (it != namedLookup.end()) {
-            return it->second;
+            if constexpr(std::is_same_v<T, Backend::IL::Type>) {
+                return it->second;
+            } else {
+                return it->second->As<T>();
+            }
         }
 
         // Only certain named types

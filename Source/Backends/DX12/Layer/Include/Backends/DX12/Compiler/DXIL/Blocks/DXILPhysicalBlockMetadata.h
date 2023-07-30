@@ -250,6 +250,7 @@ public:
         const Backend::IL::Type* type{nullptr};
 
         /// Bind space
+        DXILShaderResourceClass _class{};
         uint32_t registerBase{~0u};
         uint32_t registerRange{~0u};
         uint32_t bindSpace{~0u};
@@ -304,9 +305,24 @@ public:
     };
 
     /// Get the medata handle type
+    /// \param _class resource class
     /// \param handleID the unique handle id
     /// \return nullptr if not found
     const HandleEntry* GetHandle(DXILShaderResourceClass _class, uint32_t handleID);
+    
+    /// Get the medata handle type
+    /// \param _class resource class
+    /// \param handleID the unique handle id
+    /// \return nullptr if not found
+    const HandleEntry* GetHandleFromMetadata(DXILShaderResourceClass _class, uint32_t handleID);
+
+    /// Get the medata handle type
+    /// \param _class resource class
+    /// \param space binding space
+    /// \param rangeLowerBound binding lower bound
+    /// \param rangeUpperBound binding upper bound
+    /// \return nullptr if not found
+    const HandleEntry* GetHandle(DXILShaderResourceClass _class, int64_t space, int64_t rangeLowerBound, int64_t rangeUpperBound);
 
 private:
     /// All handles
@@ -372,8 +388,15 @@ public:
     /// Compile all flags
     void CompileProgramFlags(const DXCompileJob& job);
 
+    /// Check if a shading model has been satisfied
+    bool SatisfiesShadingModel(uint32_t major, uint32_t minor) {
+        return shadingModel.major > major || (shadingModel.major == major && shadingModel.minor >= minor); 
+    }
+
     struct ShadingModel {
         DXILShadingModelClass _class;
+        uint32_t major{1};
+        uint32_t minor{0};
     } shadingModel;
 
     struct ValidationVersion {

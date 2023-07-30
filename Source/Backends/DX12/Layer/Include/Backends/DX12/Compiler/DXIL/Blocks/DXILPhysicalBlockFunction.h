@@ -28,7 +28,8 @@
 #include <Backends/DX12/Compiler/DXIL/DXILFunctionDeclaration.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordReader.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordStringView.h>
-#include "DXILPhysicalBlockSection.h"
+#include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockSection.h>
+#include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -168,6 +169,14 @@ private:
 
     /// All stream handles
     TrivialStackVector<uint32_t, 64> exportStreamHandles;
+
+    /// Create a universal handle
+    /// \param block appended block
+    /// \param result allocated result
+    /// \param _class designated class
+    /// \param handleId metadata handle
+    /// \param registerBase base to fetch from
+    void CreateUniversalHandle(struct LLVMBlock *block, uint32_t result, DXILShaderResourceClass _class, uint32_t handleId, uint32_t registerBase);
 
     /// Create an export handle
     /// \param block appended block

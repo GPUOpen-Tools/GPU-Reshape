@@ -40,6 +40,7 @@ public:
 /// Hooks
 DX12_C_LINKAGE HRESULT WINAPI HookID3D12CreateDevice(_In_opt_ IUnknown *pAdapter, D3D_FEATURE_LEVEL minimumFeatureLevel, _In_ REFIID riid, _COM_Outptr_opt_ void **ppDevice);
 DX12_C_LINKAGE HRESULT WINAPI HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *riid, void *pConfigurationStructs, UINT *pConfigurationStructSizes);
+HRESULT WINAPI HookID3D12DeviceCheckFeatureSupport(ID3D12Device* device, D3D12_FEATURE Feature, void *pFeatureSupportData, UINT FeatureSupportDataSize);
 
 /// Extension hooks
 DX12_C_LINKAGE AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams);
