@@ -165,7 +165,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
             }
             case LLVMFunctionRecord::InstBinOp: {
                 uint32_t lhs = reader.GetMappedRelativeValue(anchor);
-                uint32_t rhs = reader.GetMappedRelativeValue(anchor);
+                uint32_t rhs = reader.GetMappedRelative(anchor);
 
                 // Create type mapping
                 ilTypeMap.SetType(result, ilTypeMap.GetType(lhs));
