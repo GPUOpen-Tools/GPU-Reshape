@@ -32,9 +32,6 @@
 #include <cstdint>
 
 struct DXILBindingInfo {
-    /// Target register space
-    uint32_t space{};
-
     /// Handle for shader export data
     uint32_t shaderExportHandleId{};
 

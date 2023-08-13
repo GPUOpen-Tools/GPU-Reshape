@@ -28,7 +28,8 @@
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMBlock.h>
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordView.h>
-#include "DXILPhysicalBlockSection.h"
+#include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockSection.h>
+#include <Backends/DX12/Compiler/DXIL/Blocks/DXILMetadataHandleEntry.h>
 
 // Std
 #include <string_view>
@@ -241,37 +242,6 @@ public:
         uint32_t lists[static_cast<uint32_t>(DXILShaderResourceClass::Count)];
     } resources;
 
-    /// Represents a handle within a space
-    struct HandleEntry {
-        /// Source record
-        const LLVMRecord* record{nullptr};
-
-        /// Resource type
-        const Backend::IL::Type* type{nullptr};
-
-        /// Bind space
-        DXILShaderResourceClass _class{};
-        uint32_t registerBase{~0u};
-        uint32_t registerRange{~0u};
-        uint32_t bindSpace{~0u};
-
-        /// Metadata name
-        const char* name{""};
-
-        /// Class specific data
-        union {
-            struct {
-                ComponentType componentType;
-                DXILShaderResourceShape shape;
-            } uav;
-
-            struct {
-                ComponentType componentType;
-                DXILShaderResourceShape shape;
-            } srv;
-        };
-    };
-
     /// A mapped register class
     struct MappedRegisterClass {
         MappedRegisterClass(const Allocators& allocators) : handles(allocators), resourceLookup(allocators) {
@@ -308,13 +278,13 @@ public:
     /// \param _class resource class
     /// \param handleID the unique handle id
     /// \return nullptr if not found
-    const HandleEntry* GetHandle(DXILShaderResourceClass _class, uint32_t handleID);
+    const DXILMetadataHandleEntry* GetHandle(DXILShaderResourceClass _class, uint32_t handleID);
     
     /// Get the medata handle type
     /// \param _class resource class
     /// \param handleID the unique handle id
     /// \return nullptr if not found
-    const HandleEntry* GetHandleFromMetadata(DXILShaderResourceClass _class, uint32_t handleID);
+    const DXILMetadataHandleEntry* GetHandleFromMetadata(DXILShaderResourceClass _class, uint32_t handleID);
 
     /// Get the medata handle type
     /// \param _class resource class
@@ -322,7 +292,7 @@ public:
     /// \param rangeLowerBound binding lower bound
     /// \param rangeUpperBound binding upper bound
     /// \return nullptr if not found
-    const HandleEntry* GetHandle(DXILShaderResourceClass _class, int64_t space, int64_t rangeLowerBound, int64_t rangeUpperBound);
+    const DXILMetadataHandleEntry* GetHandle(DXILShaderResourceClass _class, int64_t space, int64_t rangeLowerBound, int64_t rangeUpperBound);
 
 private:
     /// All handles
@@ -332,7 +302,7 @@ private:
     Vector<UserRegisterSpace> registerSpaces;
 
     /// All handles within this space
-    Vector<HandleEntry> handles;
+    Vector<DXILMetadataHandleEntry> handles;
 
     /// Current register space bound
     uint32_t registerSpaceBound{0};

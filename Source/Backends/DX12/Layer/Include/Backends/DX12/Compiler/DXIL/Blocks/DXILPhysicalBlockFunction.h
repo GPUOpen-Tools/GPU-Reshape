@@ -215,6 +215,23 @@ private:
         IL::ID dynamicOffset{IL::InvalidID};
     };
 
+    struct HandleMetadata {
+        /// Underlying class
+        DXILShaderResourceClass _class;
+
+        /// Representative handle
+        const struct DXILMetadataHandleEntry* entry{nullptr};
+
+        /// Range constant, or dynamic range offset
+        IL::ID rangeConstantOrValue{IL::InvalidID};
+    };
+
+    /// Get the mapping of a resource
+    /// \param source source records
+    /// \param resource resource to be fetched
+    /// \return empty if not found
+    HandleMetadata GetResourceHandleRecord(const Vector<LLVMRecord>& source, IL::ID resource);
+
     /// Get the mapping of a resource
     /// \param job parent job
     /// \param source source records

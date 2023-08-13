@@ -4037,7 +4037,7 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
                     .members = {
                         program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = registerBase}),
                         program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = registerBase}),
-                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = table.bindingInfo.space}),
+                        program.GetConstants().FindConstantOrAdd(table.intrinsics.i32Type, Backend::IL::IntConstant{.value = table.bindingInfo.bindingInfo.space}),
                         program.GetConstants().FindConstantOrAdd(table.intrinsics.i8Type, Backend::IL::IntConstant{.value = static_cast<uint32_t>(_class)})
                     }
                 }
@@ -4065,7 +4065,7 @@ void DXILPhysicalBlockFunction::CreateUniversalHandle(struct LLVMBlock *block, u
             const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpAnnotateHandle);
 
             // Get the handle
-            const DXILPhysicalBlockMetadata::HandleEntry* entry = table.metadata.GetHandleFromMetadata(_class, handleId);
+            const DXILMetadataHandleEntry* entry = table.metadata.GetHandleFromMetadata(_class, handleId);
 
             // Populate resource properties
             DXILResourceProperties properties{};
@@ -4431,18 +4431,131 @@ void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXCompileJob &job, 
     }
 }
 
-DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunction::GetResourceUserMapping(const DXCompileJob& job, const Vector<LLVMRecord>& source, IL::ID resource) {
-    DynamicRootSignatureUserMapping out;
-
-    // TODO: This will not hold true for everything
-
+DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResourceHandleRecord(const Vector<LLVMRecord> &source, IL::ID resource) {
     // Get resource instruction
     IL::InstructionRef<> resourceInstr = program.GetIdentifierMap().Get(resource);
     ASSERT(resourceInstr->IsUserInstruction(), "Resource tokens not supported on custom fetching");
 
     // Get and validate record
-    const LLVMRecord& resourceRecord = source[resourceInstr->source.codeOffset];
-    ASSERT(resourceRecord.Is(LLVMFunctionRecord::InstCall2), "Unexpected resource record");
+    const LLVMRecord* resourceRecord = &source[resourceInstr->source.codeOffset];
+    ASSERT(resourceRecord->Is(LLVMFunctionRecord::InstCall2), "Unexpected resource record");
+
+    // Validate op code
+    uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(4)))->value;
+
+    // Optional annotation
+    DXILResourceProperties annotation{};
+
+    // Is the top level an annotation handle?
+    if (opCode == static_cast<uint32_t>(DXILOpcodes::AnnotateHandle)) {
+        // Get the annotation constant
+        auto constant = program.GetConstants().GetConstant(table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(6u)));
+
+        // To property map
+        switch (constant->kind) {
+            case Backend::IL::ConstantKind::Struct: {
+                auto _struct = constant->As<IL::StructConstant>();
+                annotation.basic.opaque = static_cast<uint32_t>(_struct->members.at(0)->As<IL::IntConstant>()->value);
+                annotation.typed.opaque = static_cast<uint32_t>(_struct->members.at(1)->As<IL::IntConstant>()->value);
+                break;
+            }
+            case Backend::IL::ConstantKind::Null: {
+                // Null constants are allowed
+                break;
+            }
+        }
+
+        // Get the declaration handle
+        resourceInstr = program.GetIdentifierMap().Get(table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(5)));
+
+        // Get and validate record
+        resourceRecord = &source[resourceInstr->source.codeOffset];
+        ASSERT(resourceRecord->Is(LLVMFunctionRecord::InstCall2), "Unexpected resource record");
+
+        // Next op-code
+        opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(4)))->value;
+    }
+
+    // Resulting metadata
+    HandleMetadata metadata{};
+
+    // Handle on declaration type
+    switch (static_cast<DXILOpcodes>(opCode)) {
+        default: {
+            ASSERT(false, "Unexpected handle type");
+            break;
+        }
+        case DXILOpcodes::CreateHandle: {
+            // Get the class
+            metadata._class = static_cast<DXILShaderResourceClass>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(5)))->value);
+            
+            // Range indices may be dynamic
+            metadata.rangeConstantOrValue = table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(7));
+
+            // Handle ids are always stored as constants
+            uint32_t handleId = static_cast<uint32_t>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(6)))->value);
+
+            // Get entry
+            metadata.entry = table.metadata.GetHandle(metadata._class, handleId);
+            break;
+        }
+        case DXILOpcodes::CreateHandleFromBinding: {
+            // Get the binding constants
+            auto bindings = program.GetConstants().GetConstant(table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(5u)));
+
+            // Get binding operands
+            int64_t rangeLowerBound{0};
+            int64_t rangeUpperBound{0};
+            int64_t spaceID{0};
+
+            // May be null constant
+            switch (bindings->kind) {
+                default: {
+                    ASSERT(false, "Invalid binding kind");
+                    break;
+                }
+                case Backend::IL::ConstantKind::Struct: {
+                    auto _struct = bindings->As<IL::StructConstant>();
+
+                    // Get constants
+                    ASSERT(_struct->members.size() == 4u, "Unexpected binding size");
+                    rangeLowerBound = _struct->members[0]->As<Backend::IL::IntConstant>()->value;
+                    rangeUpperBound = _struct->members[1]->As<Backend::IL::IntConstant>()->value;
+                    spaceID = _struct->members[2]->As<Backend::IL::IntConstant>()->value;
+                    metadata._class = static_cast<DXILShaderResourceClass>(_struct->members[3]->As<Backend::IL::IntConstant>()->value);
+                    break;
+                }
+                case Backend::IL::ConstantKind::Null: {
+                    // Null constants are allowed
+                    break;
+                }
+            }
+
+            // Get the actual handle type
+            metadata.entry = table.metadata.GetHandle(
+                metadata._class,
+                spaceID,
+                rangeLowerBound,
+                rangeUpperBound
+            );
+
+            // Range indices may be dynamic
+            metadata.rangeConstantOrValue = table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(6));
+            break;
+        }
+    }
+
+    // OK
+    return metadata;
+}
+
+DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunction::GetResourceUserMapping(const DXCompileJob& job, const Vector<LLVMRecord>& source, IL::ID resource) {
+    DynamicRootSignatureUserMapping out;
+
+    // TODO: This will not hold true for everything
+
+    // Get and validate record
+    HandleMetadata metadata = GetResourceHandleRecord(source, resource);
 
     /*
      * DXIL Specification
@@ -4454,26 +4567,13 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
      *       i1)                   ; non-uniform resource index: false or true
      */
 
-    // Validate op code
-    uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(4)))->value;
-    ASSERT(opCode == static_cast<uint32_t>(DXILOpcodes::CreateHandle), "Expected CreateHandle");
-
-    // Get operands
-    uint64_t _class = program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(5)))->value;
-
-    // Handle ids are always stored as constants
-    uint32_t handleId = static_cast<uint32_t>(program.GetConstants().GetConstant<IL::IntConstant>(table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(6)))->value);
-
-    // Range indices may be dynamic
-    IL::ID rangeConstantOrValue = table.idMap.GetMappedRelative(resourceRecord.sourceAnchor, resourceRecord.Op32(7));
-
     // Compile time?
     uint32_t rangeIndex{~0u};
-    if (auto constant = program.GetConstants().GetConstant<IL::IntConstant>(rangeConstantOrValue)) {
+    if (auto constant = program.GetConstants().GetConstant<IL::IntConstant>(metadata.rangeConstantOrValue)) {
         rangeIndex = static_cast<uint32_t>(constant->value);
     } else {
         // Get runtime instruction
-        IL::InstructionRef<> offsetInstr = program.GetIdentifierMap().Get(rangeConstantOrValue);
+        IL::InstructionRef<> offsetInstr = program.GetIdentifierMap().Get(metadata.rangeConstantOrValue);
         if (!offsetInstr.Is<IL::AddInstruction>()) {
             return {};
         }
@@ -4494,15 +4594,9 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
         rangeIndex = static_cast<uint32_t>(constantOffset->value);
     }
 
-    // Get metadata handle
-    const DXILPhysicalBlockMetadata::HandleEntry* handle = table.metadata.GetHandle(static_cast<DXILShaderResourceClass>(_class), static_cast<uint32_t>(handleId));
-    if (!handle) {
-        return {};
-    }
-
     // Translate class
     RootSignatureUserClassType classType;
-    switch (static_cast<DXILShaderResourceClass>(_class)) {
+    switch (static_cast<DXILShaderResourceClass>(metadata._class)) {
         default:
             ASSERT(false, "Invalid class");
             return {};
@@ -4550,7 +4644,7 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
     // Get user space
     const RootSignatureVisibilityClass& visibilityClass = job.instrumentationKey.physicalMapping->visibility[static_cast<uint32_t>(rootVisibility)];
     const RootSignatureUserClass&       userClass       = visibilityClass.spaces[static_cast<uint32_t>(classType)];
-    const RootSignatureUserSpace&       userSpace       = userClass.spaces[handle->bindSpace];
+    const RootSignatureUserSpace&       userSpace       = userClass.spaces[metadata.entry->bindSpace];
 
     // If the range index is beyond the accessible mappings, it implies arrays or similar
     if (rangeIndex >= userSpace.mappings.size()) {

@@ -381,6 +381,7 @@ void DXILPhysicalBlockTable::CopyTo(DXILPhysicalBlockTable &out) {
     // Data
     out.triple = triple;
     out.dataLayout = dataLayout;
+    out.bindingInfo = bindingInfo;
 
     // Table maps
     idMap.CopyTo(out.idMap);

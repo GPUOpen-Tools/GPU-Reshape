@@ -62,7 +62,7 @@ namespace Intrinsics {
     static DXILIntrinsicSpec DxOpCreateHandleFromBinding {
         .uid = 3,
         .name = "dx.op.createHandleFromBinding",
-        .returnType = DXILIntrinsicTypeSpec::CBufRetI32,
+        .returnType = DXILIntrinsicTypeSpec::Handle,
         .parameterTypes = {
             DXILIntrinsicTypeSpec::I32, // opcode
             DXILIntrinsicTypeSpec::ResBind, // binding
@@ -74,7 +74,7 @@ namespace Intrinsics {
     static DXILIntrinsicSpec DxOpAnnotateHandle {
         .uid = 4,
         .name = "dx.op.annotateHandle",
-        .returnType = DXILIntrinsicTypeSpec::CBufRetI32,
+        .returnType = DXILIntrinsicTypeSpec::Handle,
         .parameterTypes = {
             DXILIntrinsicTypeSpec::I32, // opcode
             DXILIntrinsicTypeSpec::Handle, // resource handle

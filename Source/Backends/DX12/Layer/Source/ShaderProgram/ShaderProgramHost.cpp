@@ -138,7 +138,7 @@ bool ShaderProgramHost::InstallPrograms() {
             shaderDataMap.Add(info);
         }
 
-        // Finally, inject the host program8
+        // Finally, inject the host program
         entry.program->Inject(*entry.module->GetProgram());
 
         // Describe job

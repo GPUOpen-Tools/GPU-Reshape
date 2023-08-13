@@ -313,7 +313,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
         UserRegisterSpace& registerSpace = FindOrAddRegisterSpace(bindSpace);
 
         // Prepare entry
-        HandleEntry entry;
+        DXILMetadataHandleEntry entry;
         entry._class = type;
         entry.record = &resource;
         entry.bindSpace = bindSpace;
@@ -588,7 +588,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 }
 
 const Backend::IL::Type *DXILPhysicalBlockMetadata::GetHandleType(DXILShaderResourceClass _class, uint32_t handleID) {
-    const HandleEntry* handle = GetHandle(_class, handleID);
+    const DXILMetadataHandleEntry* handle = GetHandle(_class, handleID);
     if (!handle) {
         return nullptr;
     }
@@ -596,14 +596,14 @@ const Backend::IL::Type *DXILPhysicalBlockMetadata::GetHandleType(DXILShaderReso
     return handle->type;
 }
 
-const DXILPhysicalBlockMetadata::HandleEntry* DXILPhysicalBlockMetadata::GetHandle(DXILShaderResourceClass _class, uint32_t handleID) {
+const DXILMetadataHandleEntry* DXILPhysicalBlockMetadata::GetHandle(DXILShaderResourceClass _class, uint32_t handleID) {
     MappedRegisterClass& registerClass = FindOrAddRegisterClass(_class);
 
     if (registerClass.resourceLookup.size() <= handleID) {
         return nullptr;
     }
 
-    HandleEntry& handle = handles[registerClass.resourceLookup[handleID]];
+    DXILMetadataHandleEntry& handle = handles[registerClass.resourceLookup[handleID]];
     if (!handle.record) {
         return nullptr;
     }
@@ -612,22 +612,22 @@ const DXILPhysicalBlockMetadata::HandleEntry* DXILPhysicalBlockMetadata::GetHand
     return &handle;
 }
 
-const DXILPhysicalBlockMetadata::HandleEntry * DXILPhysicalBlockMetadata::GetHandleFromMetadata(DXILShaderResourceClass _class, uint32_t handleID) {
+const DXILMetadataHandleEntry * DXILPhysicalBlockMetadata::GetHandleFromMetadata(DXILShaderResourceClass _class, uint32_t handleID) {
     MappedRegisterClass& registerClass = FindOrAddRegisterClass(_class);
 
     // Get handle entry
-    HandleEntry& handle = handles[registerClass.handles[handleID]];
+    DXILMetadataHandleEntry& handle = handles[registerClass.handles[handleID]];
 
     // OK
     return &handle;
 }
 
-const DXILPhysicalBlockMetadata::HandleEntry * DXILPhysicalBlockMetadata::GetHandle(DXILShaderResourceClass _class, int64_t space, int64_t rangeLowerBound, int64_t rangeUpperBound) {
+const DXILMetadataHandleEntry * DXILPhysicalBlockMetadata::GetHandle(DXILShaderResourceClass _class, int64_t space, int64_t rangeLowerBound, int64_t rangeUpperBound) {
     MappedRegisterClass& registerClass = FindOrAddRegisterClass(_class);
 
     // Check all handles in class
     for (uint32_t value : registerClass.handles) {
-        const HandleEntry& handle = handles[value];
+        const DXILMetadataHandleEntry& handle = handles[value];
 
         // Matching range?
         if (handle.bindSpace == space && rangeLowerBound >= handle.registerBase && rangeUpperBound < handle.registerBase + handle.registerRange) {
@@ -1185,7 +1185,7 @@ void DXILPhysicalBlockMetadata::CreateShaderExportHandle(const DXCompileJob& job
     });
 
     // Create handle
-    HandleEntry& handle = handles.emplace_back();
+    DXILMetadataHandleEntry& handle = handles.emplace_back();
     handle.name = "ShaderExport";
     handle.type = retTyPtr;
     handle.bindSpace = job.instrumentationKey.bindingInfo.space;
@@ -1223,7 +1223,7 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXCompileJob &job) {
     // Resource PRMT
     {
         // Create handle
-        HandleEntry& handle = handles.emplace_back();
+        DXILMetadataHandleEntry& handle = handles.emplace_back();
         handle.name = "ResourcePRMT";
         handle.type = retTyPtr;
         handle.bindSpace = job.instrumentationKey.bindingInfo.space;
@@ -1243,7 +1243,7 @@ void DXILPhysicalBlockMetadata::CreatePRMTHandle(const DXCompileJob &job) {
     // Sampler PRMT
     {
         // Create handle
-        HandleEntry& handle = handles.emplace_back();
+        DXILMetadataHandleEntry& handle = handles.emplace_back();
         handle.name = "SamplerPRMT";
         handle.type = retTyPtr;
         handle.bindSpace = job.instrumentationKey.bindingInfo.space;
@@ -1287,7 +1287,7 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) 
     });
 
     // Create handle
-    HandleEntry& handle = handles.emplace_back();
+    DXILMetadataHandleEntry& handle = handles.emplace_back();
     handle.name = "CBufferDescriptorData";
     handle.type = cbufferTypePtr;
     handle.bindSpace = job.instrumentationKey.bindingInfo.space;
@@ -1359,7 +1359,7 @@ void DXILPhysicalBlockMetadata::CreateEventHandle(const DXCompileJob &job) {
     });
 
     // Create handle
-    HandleEntry& handle = handles.emplace_back();
+    DXILMetadataHandleEntry& handle = handles.emplace_back();
     handle.name = "CBufferEventData";
     handle.type = cbufferTypePtr;
     handle.bindSpace = job.instrumentationKey.bindingInfo.space;
@@ -1431,7 +1431,7 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
     });
 
     // Create handle
-    HandleEntry& handle = handles.emplace_back();
+    DXILMetadataHandleEntry& handle = handles.emplace_back();
     handle.name = "CBufferConstantData";
     handle.type = cbufferTypePtr;
     handle.bindSpace = job.instrumentationKey.bindingInfo.space;
@@ -1489,7 +1489,7 @@ void DXILPhysicalBlockMetadata::CreateShaderDataHandles(const DXCompileJob& job)
         });
 
         // Create handle
-        HandleEntry& handle = handles.emplace_back();
+        DXILMetadataHandleEntry& handle = handles.emplace_back();
         handle.name = "ShaderResource";
         handle.type = retTyPtr;
         handle.bindSpace = job.instrumentationKey.bindingInfo.space;
@@ -1576,7 +1576,7 @@ void DXILPhysicalBlockMetadata::CompileSRVResourceClass(const DXCompileJob &job)
 
     // Populate handles
     for (uint32_t i = 0; i < static_cast<uint32_t>(mapped.handles.size()); i++) {
-        const HandleEntry& handle = handles[mapped.handles[i]];
+        const DXILMetadataHandleEntry& handle = handles[mapped.handles[i]];
 
         // Parsed handle?
         if (handle.record) {
@@ -1634,7 +1634,7 @@ void DXILPhysicalBlockMetadata::CompileProgramFlags(const DXCompileJob &job) {
 
     // Accumulate all handles
     for (size_t i = 0; i < mapped.handles.size(); i++) {
-        const HandleEntry &handle = handles[mapped.handles[i]];
+        const DXILMetadataHandleEntry &handle = handles[mapped.handles[i]];
         count += handle.registerRange;
     }
 
@@ -1676,7 +1676,7 @@ void DXILPhysicalBlockMetadata::CompileUAVResourceClass(const DXCompileJob &job)
 
     // Populate handles
     for (uint32_t i = 0; i < static_cast<uint32_t>(mapped.handles.size()); i++) {
-        const HandleEntry& handle = handles[mapped.handles[i]];
+        const DXILMetadataHandleEntry& handle = handles[mapped.handles[i]];
 
         // Parsed handle?
         if (handle.record) {
@@ -1746,7 +1746,7 @@ void DXILPhysicalBlockMetadata::CompileCBVResourceClass(const DXCompileJob &job)
 
     // Populate handles
     for (uint32_t i = 0; i < static_cast<uint32_t>(mapped.handles.size()); i++) {
-        const HandleEntry& handle = handles[mapped.handles[i]];
+        const DXILMetadataHandleEntry& handle = handles[mapped.handles[i]];
 
         // Parsed handle?
         if (handle.record) {
