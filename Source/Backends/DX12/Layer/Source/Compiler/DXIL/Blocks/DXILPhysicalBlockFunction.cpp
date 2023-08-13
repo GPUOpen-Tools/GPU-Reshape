@@ -1002,6 +1002,22 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                     ilTypeMap.SetType(result, callDecl->type->returnType);
                 }
 
+                // Function parameters may be forward declared without immediate types, so map it out immediately
+                for (uint32_t i = 0; i < callDecl->type->parameterTypes.size(); i++) {
+                    uint32_t id = reader.record.Op32(reader.Offset() + i);
+
+                    // If resolved, skip it
+                    if (table.idMap.IsResolved(anchor, id)) {
+                        continue;
+                    }
+
+                    // Get the forward value
+                    IL::ID linear = table.idMap.GetMappedForward(anchor, DXILIDRemapper::DecodeForward(id));
+
+                    // Assign forward type from declaration
+                    program.GetTypeMap().SetType(linear, callDecl->type->parameterTypes[i]);
+                }
+
                 // Try intrinsic
                 if (!TryParseIntrinsic(basicBlock, recordIdx, reader, anchor, called, result, callDecl)) {
                     // Unknown, emit as unexposed

@@ -68,9 +68,10 @@ struct LLVMRecordReader {
         return offset;
     }
 
-private:
+    /// Underlying record
     const LLVMRecord& record;
 
+private:
     /// Current offset
     uint32_t offset{0};
 };
