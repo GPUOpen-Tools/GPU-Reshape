@@ -168,6 +168,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_SRV_DIMENSION dimensi
             ASSERT(false, "Unsupported value");
             return {};
         }
+        case D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE:
         case D3D12_SRV_DIMENSION_BUFFER:{
             return VirtualResourceMapping {
                 .puid = IL::kResourceTokenPUIDReservedNullBuffer,

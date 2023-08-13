@@ -231,6 +231,7 @@ inline bool IsBuffer(DXILShaderResourceShape shape) {
         case DXILShaderResourceShape::TextureCubeArray:
         case DXILShaderResourceShape::FeedbackTexture2D:
         case DXILShaderResourceShape::FeedbackTexture2DArray:
+        case DXILShaderResourceShape::RTAccelerationStructure:
             return false;
         case DXILShaderResourceShape::TypedBuffer:
         case DXILShaderResourceShape::RawBuffer:
