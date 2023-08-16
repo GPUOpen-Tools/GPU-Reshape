@@ -490,8 +490,6 @@ bool DetourForeignModules(const ModuleSnapshot& before) {
 }
 
 HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
-    std::lock_guard guard(moduleLock);
-    
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryA '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
@@ -505,6 +503,10 @@ HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
         return module;
     }
 
+    // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
+    //       This may result in duplicate checks in the snapshot deltas, but that's fine
+    std::lock_guard guard(moduleLock);
+
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
         BootstrapLayer("HookLoadLibraryA");
@@ -515,8 +517,6 @@ HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
 }
 
 HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
-    std::lock_guard guard(moduleLock);
-
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryW '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
@@ -530,6 +530,10 @@ HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
         return module;
     }
 
+    // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
+    //       This may result in duplicate checks in the snapshot deltas, but that's fine
+    std::lock_guard guard(moduleLock);
+    
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
         BootstrapLayer("HookLoadLibraryW");
@@ -540,8 +544,6 @@ HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
 }
 
 HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD flags) {
-    std::lock_guard guard(moduleLock);
-
 #if ENABLE_LOGGING
     LogContext{} << "HookLoadLibraryExA '" << lpLibFileName << "'\n";
 #endif // ENABLE_LOGGING
@@ -555,6 +557,10 @@ HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
         return module;
     }
 
+    // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
+    //       This may result in duplicate checks in the snapshot deltas, but that's fine
+    std::lock_guard guard(moduleLock);
+
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
         BootstrapLayer("HookLoadLibraryExA");
@@ -565,8 +571,6 @@ HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
 }
 
 HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD flags) {
-    std::lock_guard guard(moduleLock);
-
     // Initial snapshot
     ModuleSnapshot snapshot = GetModuleSnapshot();
 
@@ -579,6 +583,10 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
     if (!module) {
         return module;
     }
+
+    // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
+    //       This may result in duplicate checks in the snapshot deltas, but that's fine
+    std::lock_guard guard(moduleLock);
 
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
