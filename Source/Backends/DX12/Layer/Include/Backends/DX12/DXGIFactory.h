@@ -38,3 +38,10 @@ public:
 DX12_C_LINKAGE HRESULT WINAPI HookCreateDXGIFactory(REFIID riid, _COM_Outptr_ void **ppFactory);
 DX12_C_LINKAGE HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory);
 DX12_C_LINKAGE HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory);
+HRESULT WINAPI HookIDXGIFactoryEnumAdapters(IDXGIFactory* self, UINT Output, IDXGIAdapter **ppAdapter);
+HRESULT WINAPI HookIDXGIFactoryEnumAdapters1(IDXGIFactory* self, UINT Output, IDXGIAdapter1 **ppAdapter);
+HRESULT WINAPI HookIDXGIFactoryGetParent(IDXGIFactory* self, REFIID riid, void **ppParent);
+HRESULT WINAPI HookIDXGIAdapterEnumOutputs(IDXGIAdapter* self, UINT Output, IDXGIOutput **ppOutput);
+HRESULT WINAPI HookIDXGIAdapterGetParent(IDXGIAdapter* self, REFIID riid, void **ppParent);
+HRESULT WINAPI HookIDXGIOutputDuplicateOutput(IDXGIOutput* self, IUnknown *pDevice, IDXGIOutputDuplication **ppOutputDuplication);
+HRESULT WINAPI HookIDXGIOutputGetParent(IDXGIOutput* self, REFIID riid, void **ppParent);

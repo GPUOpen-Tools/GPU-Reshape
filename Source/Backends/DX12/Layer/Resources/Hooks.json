@@ -1,5 +1,6 @@
 {
   "includes": [
+    "DXGIFactory.h",
     "Device.h",
     "Device11On12.h",
     "Resource.h",
@@ -10,6 +11,8 @@
     "Fence.h",
     "CommandList.h",
     "SwapChain.h",
+    "MemoryHeap.h",
+    "QueryHeap.h",
     "States/DeviceState.h",
     "States/Device11State.h",
     "States/Device11On12State.h",
@@ -22,10 +25,16 @@
     "States/SwapChainState.h",
     "States/SwapChainState.h",
     "States/DXGIFactoryState.h",
+    "States/DXGIAdapterState.h",
+    "States/DXGIOutputState.h",
+    "States/DXGIOutputDuplicationState.h",
     "States/CommandAllocatorState.h",
     "States/CommandQueueState.h",
     "States/CommandSignatureState.h",
-    "States/PipelineLibraryState.h"
+    "States/PipelineLibraryState.h",
+    "States/MemoryHeapState.h",
+    "States/StateObjectState.h",
+    "States/QueryHeapState.h"
   ],
   "files": [
     "d3d12.h",
@@ -46,7 +55,45 @@
         "CreateSwapChain",
         "CreateSwapChainForHwnd",
         "CreateSwapChainForCoreWindow",
-        "CreateSwapChainForComposition"
+        "CreateSwapChainForComposition",
+        "EnumAdapters",
+        "EnumAdapters1",
+        "GetParent"
+      ]
+    },
+    "IDXGIAdapter": {
+      "name": "DXGIAdapter",
+      "state": "DXGIAdapterState",
+      "hooks": [
+        "EnumOutputs",
+        "GetParent"
+      ]
+    },
+    "IDXGIOutput": {
+      "name": "DXGIOutput",
+      "state": "DXGIOutputState",
+      "hooks": [
+        "DuplicateOutput",
+        "GetParent"
+      ]
+    },
+    "IDXGIOutputDuplication": {
+      "name": "DXGIOutputDuplication",
+      "state": "DXGIOutputDuplicationState",
+      "hooks": [
+      ]
+    },
+    "IDXGISwapChain": {
+      "name": "SwapChain",
+      "state": "SwapChainState",
+      "hooks": [
+        "GetBuffer",
+        "ResizeBuffers",
+        "ResizeBuffers1",
+        "Present",
+        "Present1",
+        "GetDevice",
+        "GetParent"
       ]
     },
     "ID3D12Device": {
@@ -59,6 +106,7 @@
         "CreatePlacedResource",
         "CreatePlacedResource1",
         "CreateReservedResource",
+        "CreateReservedResource1",
         "CreateCommandQueue",
         "CreateCommandAllocator",
         "CreateCommandList",
@@ -71,6 +119,9 @@
         "CreatePipelineState",
         "CreateGraphicsPipelineState",
         "CreateComputePipelineState",
+        "CreateHeap",
+        "CreateHeap1",
+        "CreateQueryHeap",
         "CreateShaderResourceView",
         "CreateUnorderedAccessView",
         "CreateDepthStencilView",
@@ -85,7 +136,10 @@
         "MakeResident",
         "EnqueueMakeResident",
         "Evict",
-        "CheckFeatureSupport"
+        "CheckFeatureSupport",
+        "OpenSharedHandle",
+        "OpenExistingHeapFromAddress",
+        "OpenExistingHeapFromFileMapping"
       ]
     },
     "ID3D11Device": {
@@ -174,6 +228,13 @@
         "OMSetRenderTargets"
       ]
     },
+    "ID3D12StateObject": {
+      "name": "StateObject",
+      "state": "StateObjectState",
+      "hooks": [
+        "GetDevice"
+      ]
+    },
     "ID3D12Fence": {
       "name": "Fence",
       "state": "FenceState",
@@ -205,6 +266,13 @@
         "GetDevice"
       ]
     },
+    "ID3D12Heap": {
+      "name": "MemoryHeap",
+      "state": "MemoryHeapState",
+      "hooks": [
+        "GetDevice"
+      ]
+    },
     "ID3D12DescriptorHeap": {
       "name": "DescriptorHeap",
       "state": "DescriptorHeapState",
@@ -214,21 +282,17 @@
         "GetDevice"
       ]
     },
+    "ID3D12QueryHeap": {
+      "name": "QueryHeap",
+      "state": "QueryHeapState",
+      "hooks": [
+        "GetDevice"
+      ]
+    },
     "ID3D12CommandSignature": {
       "name": "CommandSignature",
       "state": "CommandSignatureState",
       "hooks": [
-      ]
-    },
-    "IDXGISwapChain": {
-      "name": "SwapChain",
-      "state": "SwapChainState",
-      "hooks": [
-        "GetBuffer",
-        "ResizeBuffers",
-        "ResizeBuffers1",
-        "Present",
-        "Present1",
         "GetDevice"
       ]
     },

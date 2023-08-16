@@ -26,6 +26,9 @@
 #include <Backends/DX12/Detour.Gen.h>
 #include <Backends/DX12/Table.Gen.h>
 #include <Backends/DX12/States/DXGIFactoryState.h>
+#include <Backends/DX12/States/DXGIOutputState.h>
+#include <Backends/DX12/States/DXGIAdapterState.h>
+#include <Backends/DX12/States/DXGIOutputDuplicationState.h>
 
 // Detour
 #include <Detour/detours.h>
@@ -135,8 +138,175 @@ HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void
     return S_OK;
 }
 
+HRESULT WINAPI HookIDXGIFactoryEnumAdapters(IDXGIFactory* self, UINT Output, IDXGIAdapter **ppAdapter) {
+    auto table = GetTable(self);
+
+    // Object
+    IDXGIAdapter *adapter{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.next->EnumAdapters(Output, &adapter);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Default allocators
+    Allocators allocators = {};
+
+    // Create state
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIAdapterState();
+    state->allocators = allocators;
+    state->parent = self;
+
+    // Keep reference to parent
+    self->AddRef();
+
+    // Create detours
+    adapter = CreateDetour(state->allocators, adapter, state);
+
+    // Query to external object if requested
+    if (ppAdapter) {
+        *ppAdapter = adapter;
+    } else {
+        adapter->Release();
+    }
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookIDXGIFactoryEnumAdapters1(IDXGIFactory* self, UINT Output, IDXGIAdapter1 **ppAdapter) {
+    auto table = GetTable(self);
+
+    // Object
+    IDXGIAdapter1 *adapter{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.next->EnumAdapters1(Output, &adapter);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Default allocators
+    Allocators allocators = {};
+
+    // Create state
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIAdapterState();
+    state->allocators = allocators;
+    state->parent = self;
+
+    // Keep reference to parent
+    self->AddRef();
+
+    // Create detours
+    adapter = static_cast<IDXGIAdapter1*>(CreateDetour(state->allocators, adapter, state));
+
+    // Query to external object if requested
+    if (ppAdapter) {
+        *ppAdapter = adapter;
+    } else {
+        adapter->Release();
+    }
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookIDXGIAdapterEnumOutputs(IDXGIAdapter* self, UINT Output, IDXGIOutput **ppOutput) {
+    auto table = GetTable(self);
+
+    // Object
+    IDXGIOutput *adapter{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.next->EnumOutputs(Output, &adapter);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Default allocators
+    Allocators allocators = {};
+
+    // Create state
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIOutputState();
+    state->allocators = allocators;
+    state->parent = self;
+
+    // Create detours
+    adapter = CreateDetour(state->allocators, adapter, state);
+
+    // Query to external object if requested
+    if (ppOutput) {
+        *ppOutput = adapter;
+    } else {
+        adapter->Release();
+    }
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookIDXGIOutputDuplicateOutput(IDXGIOutput* self, IUnknown *pDevice, IDXGIOutputDuplication **ppOutputDuplication) {
+    auto table = GetTable(self);
+
+    // Object
+    IDXGIOutputDuplication *duplicateOutput{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.next->DuplicateOutput(pDevice, &duplicateOutput);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Default allocators
+    Allocators allocators = {};
+
+    // Create state
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIOutputDuplicationState();
+    state->allocators = allocators;
+
+    // Create detours
+    duplicateOutput = CreateDetour(state->allocators, duplicateOutput, state);
+
+    // Query to external object if requested
+    if (ppOutputDuplication) {
+        *ppOutputDuplication = duplicateOutput;
+    } else {
+        duplicateOutput->Release();
+    }
+
+    // OK
+    return S_OK;
+}
+
+HRESULT HookIDXGIFactoryGetParent(IDXGIFactory *_this, const IID &riid, void **ppParent) {
+    auto table = GetTable(_this);
+
+    // Pass to next query
+    // TODO: Exactly what does a parent of a factory imply?
+    return table.next->QueryInterface(riid, ppParent);
+}
+
+HRESULT HookIDXGIAdapterGetParent(IDXGIAdapter *_this, const IID &riid, void **ppParent) {
+    auto table = GetTable(_this);
+
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppParent);
+}
+
+HRESULT WINAPI HookIDXGIOutputGetParent(IDXGIOutput* _this, REFIID riid, void **ppParent) {
+    auto table = GetTable(_this);
+    
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppParent);
+}
+
 DXGIFactoryState::~DXGIFactoryState() {
 
+}
+
+DXGIAdapterState::~DXGIAdapterState() {
+    parent->Release();
 }
 
 bool GlobalDXGIFactoryDetour::Install() {

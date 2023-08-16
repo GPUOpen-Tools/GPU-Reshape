@@ -262,6 +262,13 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
     return S_OK;
 }
 
+HRESULT WINAPI HookID3D12CommandSignatureGetDevice(ID3D12CommandSignature* _this, const IID &riid, void **ppDevice) {
+    auto table = GetTable(_this);
+
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppDevice);
+}
+
 HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
     auto table = GetTable(queue);
 

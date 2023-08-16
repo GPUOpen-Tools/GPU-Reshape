@@ -44,6 +44,7 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet
 HRESULT WINAPI HookID3D12DeviceCreateCommandQueue(ID3D12Device *, const D3D12_COMMAND_QUEUE_DESC *, const IID &, void **);
 HRESULT WINAPI HookID3D12DeviceCreateCommandQueue1(ID3D12Device *, const D3D12_COMMAND_QUEUE_DESC* desc, const IID& creatorId, const IID& riid, void** ppCommandQueue);
 HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *, const D3D12_COMMAND_SIGNATURE_DESC* pDesc, ID3D12RootSignature* pRootSignature, const IID& riid, void** ppvCommandSignature);
+HRESULT WINAPI HookID3D12CommandSignatureGetDevice(ID3D12CommandSignature*, const IID &, void **);
 HRESULT WINAPI HookID3D12CommandQueueGetDevice(ID3D12CommandQueue *_this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12DeviceCreateCommandAllocator(ID3D12Device *, D3D12_COMMAND_LIST_TYPE, const IID &, void **);
 HRESULT WINAPI HookID3D12CommandAllocatorGetDevice(ID3D12CommandAllocator *_this, REFIID riid, void **ppDevice);

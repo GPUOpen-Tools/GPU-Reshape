@@ -494,7 +494,11 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
     // Invalidated root signature?
     if (bindState.rootSignature != pipeline->signature) {
         state->pipelineSegmentMask &= ~PipelineTypeSet(pipeline->type);
-        bindState.rootSignature = nullptr;
+
+        // Invalidate the signature itself if the hash changed
+        if (bindState.rootSignature && bindState.rootSignature->physicalMapping->signatureHash != pipeline->signature->physicalMapping->signatureHash) {
+            bindState.rootSignature = nullptr;
+        }
     }
 
     // Ensure the shader export states are bound

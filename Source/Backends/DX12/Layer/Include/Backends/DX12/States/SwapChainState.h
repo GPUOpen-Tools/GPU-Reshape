@@ -41,8 +41,11 @@ struct __declspec(uuid("664ECE39-6CD9-49E1-9790-21464F3F450A")) SwapChainState {
     
     ~SwapChainState();
 
-    /// Parent state
-    ID3D12Device* parent{};
+    /// Target device
+    ID3D12Device* device{};
+
+    /// Parent factory
+    IDXGIFactory* parent{};
 
     /// Owning allocator
     Allocators allocators;

@@ -314,6 +314,8 @@ add_library(
     Layer/Source/Pipeline.cpp
     Layer/Source/PipelineLibrary.cpp
     Layer/Source/SwapChain.cpp
+    Layer/Source/MemoryHeap.cpp
+    Layer/Source/QueryHeap.cpp
     Layer/Source/DLL.cpp
     Layer/Source/Layer.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp

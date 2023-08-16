@@ -189,7 +189,7 @@ HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * 
     ID3D12Resource* resource{nullptr};
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePlacedResource(table.next, heap, heapFlags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+    HRESULT hr = table.bottom->next_CreatePlacedResource(table.next, Next(heap), heapFlags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
     if (FAILED(hr)) {
         return hr;
     }
@@ -219,7 +219,7 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource1(ID3D12Device* device, ID3D1
     ID3D12Resource* resource{nullptr};
 
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePlacedResource1(table.next, pHeap, HeapOffset, pDesc, InitialState, pOptimizedClearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+    HRESULT hr = table.bottom->next_CreatePlacedResource1(table.next, Next(pHeap), HeapOffset, pDesc, InitialState, pOptimizedClearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
     if (FAILED(hr)) {
         return hr;
     }
@@ -267,6 +267,120 @@ HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12
 
     // Cleanup
     resource->Release();
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookID3D12DeviceCreateReservedResource1(ID3D12Device* device, const D3D12_RESOURCE_DESC* pDesc, D3D12_RESOURCE_STATES InitialState, const D3D12_CLEAR_VALUE* pOptimizedClearValue, ID3D12ProtectedResourceSession* pProtectedSession, const IID& riid, void** ppvResource) {
+    auto table = GetTable(device);
+
+    // Object
+    ID3D12Resource* resource{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateReservedResource1(table.next, pDesc, InitialState, pOptimizedClearValue, pProtectedSession, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create state
+    resource = CreateResourceState(device, table, resource, pDesc);
+
+    // Query to external object if requested
+    if (ppvResource) {
+        hr = resource->QueryInterface(riid, ppvResource);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    resource->Release();
+
+    // OK
+    return S_OK;
+}
+
+static void* CreateWrapperForSharedHandle(ID3D12Device* device, ID3D12Resource* resource) {
+    auto table = GetTable(device);
+
+    // Get the description
+    D3D12_RESOURCE_DESC desc = resource->GetDesc();
+
+    // Create a standard state
+    return CreateResourceState(device, table, resource, &desc);
+}
+
+static void* CreateWrapperForSharedHandle(ID3D12Device* device, ID3D12Heap* heap) {
+    auto table = GetTable(device);
+    
+    // Create state
+    auto* state = new (table.state->allocators, kAllocStateFence) MemoryHeapState();
+    state->allocators = table.state->allocators;
+    state->parent = device;
+
+    // Create detours
+    return CreateDetour(state->allocators, heap, state);
+}
+
+static void* CreateWrapperForSharedHandle(ID3D12Device* device, ID3D12Fence* fence) {
+    auto table = GetTable(device);
+    
+    // Create state
+    auto* state = new (table.state->allocators, kAllocStateFence) FenceState();
+    state->allocators = table.state->allocators;
+    state->parent = device;
+
+    // Create detours
+    return CreateDetour(state->allocators, fence, state);
+}
+
+static void* CreateWrapperForSharedHandle(ID3D12Device* device, const IID& riid, void* object) {
+    // Note: Can just check the uuids and cast to the same base, but this is _just_ a bit safer.
+    
+    // Resource handle?
+    if (riid == __uuidof(ID3D12Resource2)) {
+        return CreateWrapperForSharedHandle(device, static_cast<ID3D12Resource2*>(object));
+    } else if (riid == __uuidof(ID3D12Resource1)) {
+        return CreateWrapperForSharedHandle(device, static_cast<ID3D12Resource1*>(object));
+    } else if (riid == __uuidof(ID3D12Resource)) {
+        return CreateWrapperForSharedHandle(device, static_cast<ID3D12Resource*>(object));
+    }
+
+    // Heap handle?
+    else if (riid == __uuidof(ID3D12Heap1)) {
+        return CreateWrapperForSharedHandle(device, static_cast<ID3D12Heap1*>(object));
+    } else if (riid == __uuidof(ID3D12Heap)) {
+        return CreateWrapperForSharedHandle(device, static_cast<ID3D12Heap*>(object));
+    }
+
+    // Fence handle?
+    else if (riid == __uuidof(ID3D12Fence1)) {
+        return CreateWrapperForSharedHandle(device, static_cast<ID3D12Fence1*>(object));
+    } else if (riid == __uuidof(ID3D12Fence)) {
+        return CreateWrapperForSharedHandle(device, static_cast<ID3D12Fence*>(object));
+    }
+
+    // Shouldn't get here
+    ASSERT(false, "Invalid shared handle UUID");
+    return nullptr;
+}
+
+HRESULT WINAPI HookID3D12DeviceOpenSharedHandle(ID3D12Device* device, HANDLE NTHandle, const IID& riid, void** ppvObj) {
+    auto table = GetTable(device);
+
+    // Bottom object
+    void* object;
+
+    // Pass down call chain
+    HRESULT hr = table.next->OpenSharedHandle(NTHandle, riid, &object);
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create the wrapper
+    *ppvObj = CreateWrapperForSharedHandle(device, riid, object);
 
     // OK
     return S_OK;

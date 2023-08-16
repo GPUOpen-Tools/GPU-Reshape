@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2023 Miguel Petersen
@@ -24,23 +24,16 @@
 
 #pragma once
 
-// Backend
-#include <Backends/DX12/DX12.h>
+// Layer
+#include <Backends/DX12/Detour.Gen.h>
 
-/// Forward declarations
-struct ShaderState;
-struct DeviceState;
+// Common
+#include <Common/Allocators.h>
 
-/// Get an existing shader state or create a new one
-/// \param device the parent device
-/// \param byteCode user shader byte code 
-ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTECODE &byteCode);
+struct __declspec(uuid("BC966B9B-874D-4707-8BD9-42784FB341CE")) StateObjectState {
+    /// Parent state
+    ID3D12Device* parent{nullptr};
 
-/// Hooks
-HRESULT WINAPI HookID3D12DeviceCreatePipelineState(ID3D12Device2*, const D3D12_PIPELINE_STATE_STREAM_DESC*, const IID&, void**);
-HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2*, const D3D12_STATE_OBJECT_DESC* pDesc, const IID& riid, void** ppStateObject);
-HRESULT WINAPI HookID3D12StateObjectGetDevice(ID3D12StateObject*, REFIID riid, void **ppDevice);
-HRESULT WINAPI HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device*, const D3D12_GRAPHICS_PIPELINE_STATE_DESC*, const IID&, void**);
-HRESULT WINAPI HookID3D12DeviceCreateComputePipelineState(ID3D12Device*, const D3D12_COMPUTE_PIPELINE_STATE_DESC*, const IID&, void**);
-HRESULT WINAPI HookID3D12PipelineStateGetDevice(ID3D12PipelineState* _this, REFIID riid, void **ppDevice);
-HRESULT WINAPI HookID3D12PipelineStateSetName(ID3D12PipelineState* _this, LPCWSTR name);
+    /// Owning allocator
+    Allocators allocators;
+};

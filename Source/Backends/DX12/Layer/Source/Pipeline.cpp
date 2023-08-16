@@ -358,14 +358,43 @@ HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2* device, const D3
     // Create description
     D3D12_STATE_OBJECT_DESC desc = writer.GetDesc(pDesc->Type);
 
+    // Object
+    ID3D12StateObject* stateObject{nullptr};
+
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateStateObject(table.next, &desc, riid, ppStateObject);
+    HRESULT hr = table.bottom->next_CreateStateObject(table.next, &desc, __uuidof(ID3D12StateObject), reinterpret_cast<void**>(&stateObject));
     if (FAILED(hr)) {
         return hr;
     }
 
+    // Create state
+    auto* state = new (table.state->allocators, kAllocStateFence) StateObjectState();
+    state->allocators = table.state->allocators;
+    state->parent = device;
+
+    // Create detours
+    stateObject = CreateDetour(state->allocators, stateObject, state);
+
+    // Query to external object if requested
+    if (ppStateObject) {
+        hr = stateObject->QueryInterface(riid, ppStateObject);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    stateObject->Release();
+
     // OK
     return S_OK;
+}
+
+HRESULT WINAPI HookID3D12StateObjectGetDevice(ID3D12StateObject* _this, REFIID riid, void **ppDevice) {
+    auto table = GetTable(_this);
+
+    // Pass to device query
+    return table.state->parent->QueryInterface(riid, ppDevice);
 }
 
 HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc, const IID &riid, void **pPipeline) {
