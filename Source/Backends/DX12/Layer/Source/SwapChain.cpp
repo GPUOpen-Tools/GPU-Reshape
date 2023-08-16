@@ -45,6 +45,11 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
 
     // Wrap all resources
     for (uint32_t i = 0; i < count; i++) {
+        // Release previous buffer
+        if (state->buffers[i]) {
+            state->buffers[i]->Release();
+        }
+        
         // Get buffer (increments lifetime by one)
         ID3D12Resource* bottomBuffer{nullptr};
         if (FAILED(state->object->GetBuffer(i, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&bottomBuffer)))) {
@@ -57,6 +62,9 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
         bufferState->object = bottomBuffer;
         bufferState->desc = bottomBuffer->GetDesc();
         bufferState->parent = state->device;
+
+        // Add user
+        state->device->AddRef();
 
         // Add state
         deviceTable.state->states_Resources.Add(bufferState);
@@ -398,5 +406,7 @@ HRESULT WINAPI HookIDXGISwapChainGetParent(IDXGISwapChain* _this, REFIID riid, v
 }
 
 SwapChainState::~SwapChainState() {
-
+    for (ID3D12Resource *buffer : buffers) {
+        buffer->Release();
+    }
 }

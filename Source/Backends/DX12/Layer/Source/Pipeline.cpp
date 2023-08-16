@@ -128,7 +128,8 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
             state->type = PipelineType::Graphics;
             state->object = pipeline;
     
-            // External user
+            // External users
+            device->AddRef();
             state->AddUser();
 
             // Consume all sub-objects
@@ -226,7 +227,8 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
             state->type = PipelineType::Compute;
             state->object = pipeline;
     
-            // External user
+            // External users
+            device->AddRef();
             state->AddUser();
 
             // Consume all sub-objects
@@ -409,7 +411,8 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     state->parent = device;
     state->type = PipelineType::Graphics;
     
-    // External user
+    // External users
+    device->AddRef();
     state->AddUser();
 
     // Perform deep copy
@@ -512,7 +515,8 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     state->parent = device;
     state->type = PipelineType::Compute;
     
-    // External user
+    // External users
+    device->AddRef();
     state->AddUser();
 
     // Perform deep copy
@@ -594,6 +598,9 @@ PipelineState::~PipelineState() {
 
     // Creation may have failed
     if (!object) {
+        parent->Release();
+
+        // Validate
         ASSERT(shaders.empty(), "Unexpected pipeline state on destruction");
         return;
     }
@@ -619,6 +626,9 @@ PipelineState::~PipelineState() {
         // Release ref
         destroyRef(shader, allocators);
     }
+
+    // Release parent
+    parent->Release();
 }
 
 ShaderState::~ShaderState() {

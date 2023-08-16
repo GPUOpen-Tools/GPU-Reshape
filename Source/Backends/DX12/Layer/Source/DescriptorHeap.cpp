@@ -44,6 +44,9 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     state->physicalDescriptorCount = desc->NumDescriptors;
     state->exhausted = false;
 
+    // Keep reference
+    device->AddRef();
+
     // Object
     ID3D12DescriptorHeap* heap{nullptr};
 
@@ -466,6 +469,9 @@ DescriptorHeapState::~DescriptorHeapState() {
     if (flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
         table.state->cpuHeapTable.Remove(type, gpuDescriptorBase.ptr);
     }
+
+    // Release parent
+    parent->Release();
 }
 
 uint32_t DescriptorHeapState::GetOffsetFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {

@@ -133,6 +133,9 @@ static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue*
     state->desc = *desc;
     state->object = commandQueue;
 
+    // Keep reference
+    device->AddRef();
+
     // Create detours
     commandQueue = CreateDetour(state->allocators, commandQueue, state);
 
@@ -1010,6 +1013,9 @@ CommandQueueState::~CommandQueueState() {
 
     // Remove state
     device.state->states_Queues.Remove(this);
+
+    // Release parent
+    parent->Release();
 }
 
 CommandAllocatorState::~CommandAllocatorState() {

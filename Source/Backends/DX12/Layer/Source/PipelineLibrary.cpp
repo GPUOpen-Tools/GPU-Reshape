@@ -93,6 +93,9 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     state->parent = table.state->parent;
     state->type = PipelineType::Graphics;
 
+    // Keep reference
+    table.state->parent->AddRef();
+
     // Perform deep copy
     state->deepCopy.DeepCopy(state->allocators, *pDesc);
 
@@ -204,6 +207,9 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     state->allocators = deviceTable.state->allocators;
     state->parent = table.state->parent;
     state->type = PipelineType::Compute;
+
+    // Keep reference
+    table.state->parent->AddRef();
 
     // Perform deep copy
     state->deepCopy.DeepCopy(state->allocators, *pDesc);

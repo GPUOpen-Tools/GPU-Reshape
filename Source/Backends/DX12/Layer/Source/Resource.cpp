@@ -52,6 +52,9 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     state->desc = *desc;
     state->parent = parent;
 
+    // Keep reference
+    parent->AddRef();
+
     // Add state
     table.state->states_Resources.Add(state);
 
@@ -471,6 +474,7 @@ ResourceState::~ResourceState() {
 
     // May be invalid
     if (!object) {
+        parent->Release();
         return;
     }
 
@@ -488,4 +492,7 @@ ResourceState::~ResourceState() {
 
     // Remove state
     table.state->states_Resources.Remove(this);
+
+    // Release parent
+    parent->Release();
 }
