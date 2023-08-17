@@ -228,6 +228,9 @@ void DXILPhysicalBlockGlobal::StitchConstants(struct LLVMBlock *block) {
             continue;
         }
 
+        // Disable abbreviations, stitching can potentially invalidate this
+        record.abbreviation.type = LLVMRecordAbbreviationType::None;
+
         // Allocate result
         table.idRemapper.AllocRecordMapping(record);
 
