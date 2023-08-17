@@ -4469,6 +4469,9 @@ DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResource
 
         // To property map
         switch (constant->kind) {
+            default: {
+                break;
+            }
             case Backend::IL::ConstantKind::Struct: {
                 auto _struct = constant->As<IL::StructConstant>();
                 annotation.basic.opaque = static_cast<uint32_t>(_struct->members.at(0)->As<IL::IntConstant>()->value);

@@ -786,6 +786,9 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
                 case Backend::IL::TextureDimension::Unexposed:
                     line << "Unexposed";
                     break;
+                case Backend::IL::TextureDimension::SubPass:
+                    line << "SubPass";
+                    break;
             }
 
             if (tex->sampledType) {
