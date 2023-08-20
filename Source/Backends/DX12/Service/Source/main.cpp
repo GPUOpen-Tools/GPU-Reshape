@@ -252,12 +252,14 @@ void ReleaseBootstrappedProcess(PTHREAD_START_ROUTINE freeLibraryGPA, const char
     // Try to open process
     HANDLE process = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, false, processId);
     if (!process) {
+        std::cout << "\t[Insufficient permissions (VM_WRITE) for '" << processName << "']\n";
         return;
     }
     
     // Determine if process is wow64
     BOOL isWow64;
     if (!IsWow64Process(process, &isWow64)) {
+        std::cout << "\t[IsWow64Process failed for '" << processName << "']\n";
         return;
     }
     
@@ -265,6 +267,7 @@ void ReleaseBootstrappedProcess(PTHREAD_START_ROUTINE freeLibraryGPA, const char
     if (isWow64) {
         // Check the table is valid
         if (!X86Table.kernel32FreeLibrary) {
+            std::cout << "\t[Skipped '" << processName << "', x86 function table not available]\n";
             return;
         }
 
@@ -274,13 +277,15 @@ void ReleaseBootstrappedProcess(PTHREAD_START_ROUTINE freeLibraryGPA, const char
 
     // Determine needed byte count
     DWORD needed{0};
-    if (!EnumProcessModules(process, nullptr, 0, &needed)) {
+    if (!EnumProcessModulesEx(process, nullptr, 0, &needed, LIST_MODULES_ALL)) {
+        std::cout << "\t[Failed to enumerate modules for '" << processName << "']\n";
         return;
     }
 
     // Get all modules
     std::vector<HMODULE> modules(needed / sizeof(HMODULE), nullptr);
-    if (!EnumProcessModules(process, modules.data(), static_cast<DWORD>(modules.size() * sizeof(HMODULE)), &needed)) {
+    if (!EnumProcessModulesEx(process, modules.data(), static_cast<DWORD>(modules.size() * sizeof(HMODULE)), &needed, LIST_MODULES_ALL)) {
+        std::cout << "\t[Failed to enumerate modules for '" << processName << "']\n";
         return;
     }
 
@@ -299,7 +304,7 @@ void ReleaseBootstrappedProcess(PTHREAD_START_ROUTINE freeLibraryGPA, const char
         }
 
         // Diagnostic
-        std::cout << "\t Releasing bootstrapped process '" << processName << "'... ";
+        std::cout << "\tReleasing bootstrapped process '" << processName << "'... ";
 
         // Try to unload
         if (CreateRemoteThread(process, nullptr, 0, freeLibraryGPA, module, 0u, nullptr)) {
@@ -358,6 +363,16 @@ int main(int32_t argc, const char *const *argv) {
         return 1u;
     }
 
+    // Diagnostic
+    std::cout << "Getting X86 function table... " << std::flush;
+
+    // Try to cache the x86 table
+    if (CacheRelFunTBL()) {
+        std::cout << "OK" << std::endl;
+    } else {
+        std::cout << "Failed, SysWow64 processes will be skipped!" << std::endl;
+    }
+
     // Optional modes
     if (argc > 1) {
         if (!std::strcmp(argv[1], "help")) {
@@ -368,16 +383,6 @@ int main(int32_t argc, const char *const *argv) {
             std::cout << "Unknown command, see help." << std::endl;
             return 1u;
         }
-    }
-
-    // Diagnostic
-    std::cout << "Getting X86 function table... " << std::flush;
-
-    // Try to cache the x86 table
-    if (CacheRelFunTBL()) {
-        std::cout << "OK" << std::endl;
-    } else {
-        std::cout << "Failed, SysWow64 processes will be skipped!" << std::endl;
     }
 
     // No special requests, run service
