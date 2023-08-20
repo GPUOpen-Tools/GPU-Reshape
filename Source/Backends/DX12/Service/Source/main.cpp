@@ -31,6 +31,7 @@
 #include <Common/FileSystem.h>
 #include <Common/GlobalUID.h>
 #include <Common/String.h>
+#include <Common/Win32Object.h>
 
 // Std
 #include <Psapi.h>
@@ -88,11 +89,51 @@ void MessagePump() {
     }
 }
 
-bool RemoteLoadBootstrapper(PTHREAD_START_ROUTINE loadLibraryAGPA, const std::string& sessionPathStrX64, const std::string& sessionPathStrX86, DWORD processId) {
+bool GetProcessModules(HANDLE process, std::vector<HMODULE>& out) {
+    // Determine needed byte count
+    DWORD needed{0};
+    if (!EnumProcessModulesEx(process, nullptr, 0, &needed, LIST_MODULES_ALL)) {
+        return false;
+    }
+
+    // Get all modules
+    out.resize(needed / sizeof(HMODULE), nullptr);
+    if (!EnumProcessModulesEx(process, out.data(), static_cast<DWORD>(out.size() * sizeof(HMODULE)), &needed, LIST_MODULES_ALL)) {
+        return false;
+    }
+
+    // OK
+    return true;
+}
+
+bool IsBootstrapper(HANDLE process, HMODULE module) {
+    // Try to get name
+    char name[1024];
+    if (!GetModuleFileNameEx(process, module, name, sizeof(name))) {
+        return false;
+    }
+
+    // Bootstrapper?
+    return std::ends_with(name, "GRS.Backends.DX12.BootstrapperX64.dll") || std::ends_with(name, "GRS.Backends.DX12.BootstrapperX32.dll");
+}
+
+bool RemoteLoadBootstrapper(PTHREAD_START_ROUTINE loadLibraryAGPA, const std::string& sessionPathStrX64, const std::string& sessionPathStrX86, const char* processName, DWORD processId) {
     // Try to open process
-    HANDLE process = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, false, processId);
+    Win32Handle process = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, false, processId);
     if (!process) {
         return false;
+    }
+    
+    // Get all modules
+    std::vector<HMODULE> modules;
+    if (GetProcessModules(process, modules)) {
+        // Check if it's already bootstrapped
+        for (HMODULE module : modules) {
+            if (IsBootstrapper(process, module)) {
+                std::cout << "[Already Bootstrapped] ";
+                return true;
+            }
+        }
     }
 
     // Determine if process is wow64
@@ -139,7 +180,7 @@ bool RemoteLoadBootstrapper(PTHREAD_START_ROUTINE loadLibraryAGPA, const std::st
 
 bool RemoteLoadBootstrapperGlobal(const std::string& sessionPathStrX64, const std::string& sessionPathStrX86) {
     // Create snapshot
-    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    Win32Handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot == INVALID_HANDLE_VALUE) {
         return false;
     }
@@ -164,7 +205,7 @@ bool RemoteLoadBootstrapperGlobal(const std::string& sessionPathStrX64, const st
         std::cout << "\t Hooking process '" << entry.szExeFile << "'... ";
 
         // Try to bootstrap
-        if (RemoteLoadBootstrapper(loadLibraryWGPA, sessionPathStrX64, sessionPathStrX86, entry.th32ProcessID)) {
+        if (RemoteLoadBootstrapper(loadLibraryWGPA, sessionPathStrX64, sessionPathStrX86, entry.szExeFile, entry.th32ProcessID)) {
             std::cout << "OK\n";
         } else {
             std::cout << "Failed!\n";
@@ -250,7 +291,7 @@ bool CacheRelFunTBL() {
 
 void ReleaseBootstrappedProcess(PTHREAD_START_ROUTINE freeLibraryGPA, const char* processName, DWORD processId) {    
     // Try to open process
-    HANDLE process = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, false, processId);
+    Win32Handle process = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, false, processId);
     if (!process) {
         std::cout << "\t[Insufficient permissions (VM_WRITE) for '" << processName << "']\n";
         return;
@@ -275,39 +316,25 @@ void ReleaseBootstrappedProcess(PTHREAD_START_ROUTINE freeLibraryGPA, const char
         freeLibraryGPA = reinterpret_cast<PTHREAD_START_ROUTINE>(static_cast<uint64_t>(X86Table.kernel32FreeLibrary));
     }
 
-    // Determine needed byte count
-    DWORD needed{0};
-    if (!EnumProcessModulesEx(process, nullptr, 0, &needed, LIST_MODULES_ALL)) {
-        std::cout << "\t[Failed to enumerate modules for '" << processName << "']\n";
-        return;
-    }
-
     // Get all modules
-    std::vector<HMODULE> modules(needed / sizeof(HMODULE), nullptr);
-    if (!EnumProcessModulesEx(process, modules.data(), static_cast<DWORD>(modules.size() * sizeof(HMODULE)), &needed, LIST_MODULES_ALL)) {
+    std::vector<HMODULE> modules;
+    if (!GetProcessModules(process, modules)) {
         std::cout << "\t[Failed to enumerate modules for '" << processName << "']\n";
         return;
     }
 
     // Check all modules
     for (HMODULE module : modules) {
-        // Try to get name
-        char name[1024];
-        if (!GetModuleFileNameEx(process, module, name, sizeof(name))) {
-            DWORD error = GetLastError();
-            continue;
-        }
-
-        // Not the bootstrapper?
-        if (!std::ends_with(name, "GRS.Backends.DX12.BootstrapperX64.dll") && !std::ends_with(name, "GRS.Backends.DX12.BootstrapperX32.dll")) {
+        if (!IsBootstrapper(process, module)) {
             continue;
         }
 
         // Diagnostic
         std::cout << "\tReleasing bootstrapped process '" << processName << "'... ";
-
+        
         // Try to unload
-        if (CreateRemoteThread(process, nullptr, 0, freeLibraryGPA, module, 0u, nullptr)) {
+        Win32Handle thread = CreateRemoteThread(process, nullptr, 0, freeLibraryGPA, module, 0u, nullptr);
+        if (thread) {
             std::cout << "OK\n";
         } else {
             std::cout << "Failed!\n";
@@ -319,7 +346,7 @@ bool ReleaseBootstrappers() {
     std::cout << "Releasing bootstrapped processes.\n";
     
     // Create snapshot
-    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    Win32Handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot == INVALID_HANDLE_VALUE) {
         std::cout << "Failed to create snapshot!\n";
         return false;
@@ -328,14 +355,14 @@ bool ReleaseBootstrappers() {
     // Entry information
     PROCESSENTRY32 entry{sizeof(PROCESSENTRY32)};
 
-    // Get kernel32 module for LoadLibraryA
-    HMODULE kernel32Handle = GetModuleHandleA("kernel32.dll");
+    // Get kernel32 module for FreeLibrary
+    Win32Module kernel32Handle = GetModuleHandleA("kernel32.dll");
     if (!kernel32Handle) {
         std::cout << "Failed to open kernel32!\n";
         return false;
     }
 
-    // Get the LoadLibraryA GPA
+    // Get the FreeLibrary GPA
     auto freeLibrary = reinterpret_cast<PTHREAD_START_ROUTINE>(GetProcAddress(kernel32Handle, "FreeLibrary"));
     if (!freeLibrary) {
         std::cout << "Failed to GPA FreeLibrary!\n";
