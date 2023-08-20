@@ -131,10 +131,10 @@ std::string ReadAllText(const std::filesystem::path &path) {
 
     // Determine size
     stream.seekg(0, std::ios::end);
-    size_t size = stream.tellg();
+    std::ifstream::pos_type size = stream.tellg();
 
     // Read contents
-    std::string str(size, ' ');
+    std::string str(static_cast<std::string::size_type>(size), ' ');
     stream.seekg(0);
     stream.read(&str[0], size);
     return str;

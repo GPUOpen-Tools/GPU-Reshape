@@ -26,14 +26,16 @@ include(FetchContent)
 
 # Detour, used for API hooking
 #   ! Must match detour version
-FetchContent_Declare(
-    DetourFetch
-    URL https://github.com/microsoft/Detours/zipball/v4.0.1
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Detour
-)
-
-# Pull at compile time
-FetchContent_MakeAvailable(DetourFetch)
+if (NOT THIN_X86_BUILD)
+    FetchContent_Declare(
+        DetourFetch
+        URL https://github.com/microsoft/Detours/zipball/4b8c659
+        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Detour
+    )
+    
+    # Pull at compile time
+    FetchContent_MakeAvailable(DetourFetch)
+endif()
 
 # Create layer
 add_library(

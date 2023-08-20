@@ -44,6 +44,11 @@ function(VisualStudioSourceStructure SourceDir BinaryDir)
 endfunction(VisualStudioSourceStructure)
 
 function(VisualStudioProjectPostfix NAME)
+    # Skip X86 proxy targets
+    if (${NAME} MATCHES "ThinX86.*")
+        return()
+    endif()
+
     # Get properties
     get_target_property(SourceDir ${NAME} SOURCE_DIR)
     get_target_property(BinaryDir ${NAME} BINARY_DIR)

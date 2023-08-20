@@ -30,6 +30,7 @@
 // Layer (only header)
 #include <Backends/DX12/Layer.h>
 #include <Backends/DX12/Ordinal.h>
+#include <Backends/DX12/Shared.h>
 
 // System
 #include <Windows.h>
@@ -84,19 +85,31 @@ SYMBOL(LayerModuleName, "GRS.Backends.DX12.Layer.dll");
 SYMBOL(Kernel32ModuleName, "kernel32.dll");
 
 /// Function types
-using PFN_GET_PROC_ADDRESS  = FARPROC (WINAPI*)(HMODULE hModule, LPCSTR lpProcName);
-using PFN_LOAD_LIBRARY_A    = HMODULE (WINAPI*)(LPCSTR lpLibFileName);
-using PFN_LOAD_LIBRARY_W    = HMODULE (WINAPI*)(LPCWSTR lpLibFileName);
-using PFN_LOAD_LIBRARY_EX_A = HMODULE (WINAPI*)(LPCSTR lpLibFileName, HANDLE, DWORD);
-using PFN_LOAD_LIBRARY_EX_W = HMODULE (WINAPI*)(LPCWSTR lpLibFileName, HANDLE, DWORD);
+using PFN_GET_PROC_ADDRESS         = FARPROC (WINAPI*)(HMODULE hModule, LPCSTR lpProcName);
+using PFN_LOAD_LIBRARY_A           = HMODULE (WINAPI*)(LPCSTR lpLibFileName);
+using PFN_LOAD_LIBRARY_W           = HMODULE (WINAPI*)(LPCWSTR lpLibFileName);
+using PFN_LOAD_LIBRARY_EX_A        = HMODULE (WINAPI*)(LPCSTR lpLibFileName, HANDLE, DWORD);
+using PFN_LOAD_LIBRARY_EX_W        = HMODULE (WINAPI*)(LPCWSTR lpLibFileName, HANDLE, DWORD);
+using PFN_CREATE_PROCESS_A         = BOOL (WINAPI*)(LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+using PFN_CREATE_PROCESS_W         = BOOL (WINAPI*)(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+using PFN_CREATE_PROCESS_AS_USER_A = BOOL (WINAPI*)(HANDLE hToken, LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+using PFN_CREATE_PROCESS_AS_USER_W = BOOL (WINAPI*)(HANDLE hToken, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
 
 /// Next
-PFN_GET_PROC_ADDRESS      Kernel32GetProcAddressOriginal;
-PFN_LOAD_LIBRARY_A        Kernel32LoadLibraryAOriginal;
-PFN_LOAD_LIBRARY_W        Kernel32LoadLibraryWOriginal;
-PFN_LOAD_LIBRARY_EX_A     Kernel32LoadLibraryExAOriginal;
-PFN_LOAD_LIBRARY_EX_W     Kernel32LoadLibraryExWOriginal;
-D3D12GPUOpenFunctionTable DetourFunctionTable;
+PFN_GET_PROC_ADDRESS         Kernel32GetProcAddressOriginal;
+PFN_LOAD_LIBRARY_A           Kernel32LoadLibraryAOriginal;
+PFN_LOAD_LIBRARY_W           Kernel32LoadLibraryWOriginal;
+PFN_LOAD_LIBRARY_EX_A        Kernel32LoadLibraryExAOriginal;
+PFN_LOAD_LIBRARY_EX_W        Kernel32LoadLibraryExWOriginal;
+PFN_CREATE_PROCESS_A         Kernel32CreateProcessAOriginal;
+PFN_CREATE_PROCESS_W         Kernel32CreateProcessWOriginal;
+PFN_CREATE_PROCESS_AS_USER_A Kernel32CreateProcessAsUserAOriginal;
+PFN_CREATE_PROCESS_AS_USER_W Kernel32CreateProcessAsUserWOriginal;
+D3D12GPUOpenFunctionTable    DetourFunctionTable;
+
+/// Bootstrapper path, relative to the current module
+static std::string BootstrapperPathX64 = (GetCurrentModuleDirectory() / "GRS.Backends.DX12.BootstrapperX64.dll").string();
+static std::string BootstrapperPathX32 = (GetCurrentModuleDirectory() / "GRS.Backends.DX12.BootstrapperX32.dll").string();
 
 /// Event fired after deferred initialization has completed
 HANDLE InitializationEvent;
@@ -125,9 +138,9 @@ HMODULE AMDAGSModule;
 /// Layer function table
 D3D12GPUOpenFunctionTable LayerFunctionTable;
 
-/// Module lock
-/// Module events are already in sync, however, that's only down the call chain
-std::recursive_mutex moduleLock;
+/// Critical sections
+CRITICAL_SECTION libraryCriticalSection{};
+CRITICAL_SECTION bootstrapCriticalSection{};
 
 /// Snapshot of a module set
 using ModuleSnapshot = std::set<HMODULE>;
@@ -146,6 +159,19 @@ void CommitFunctionTable();
 std::mutex LoggingLock;
 std::wofstream LoggingFile;
 #endif // ENABLE_LOGGING
+
+/// Critical section guard helper
+struct CriticalSectionGuard {
+    CriticalSectionGuard(CRITICAL_SECTION& section) : section(section) {
+        EnterCriticalSection(&section);
+    }
+
+    ~CriticalSectionGuard() {
+        LeaveCriticalSection(&section);
+    }
+
+    CRITICAL_SECTION& section;
+};
 
 #if ENABLE_LOGGING
 struct LogContext {
@@ -166,6 +192,7 @@ struct LogContext {
     LogContext& operator<<(T&& value) {
         if (LoggingFile.is_open()) {
             LoggingFile << value;
+            LoggingFile.flush();
         }
         return *this;
     }
@@ -255,6 +282,9 @@ void LazyLoadDependentLibraries(bool native) {
 }
 
 void BootstrapLayer(const char* invoker) {
+    // Ensure bootstrapping is serial
+    CriticalSectionGuard guard(bootstrapCriticalSection);
+    
     // No re-entry if an attempt has already been made
     if (HasInitializedOrFailed) {
         return;
@@ -262,6 +292,28 @@ void BootstrapLayer(const char* invoker) {
 
     // An attempt was made
     HasInitializedOrFailed = true;
+
+    // Never bootstrap wow64 processes
+    BOOL isWow64;
+    if (IsWow64Process(GetCurrentProcess(), &isWow64) && isWow64) {
+        // Just pretend that the function table is the bottom one
+        LayerFunctionTable = DetourFunctionTable;
+        
+#if ENABLE_LOGGING
+        LogContext{} << "Skipping bootstrapping, not supported for SysWow64\n";
+#endif // ENABLE_LOGGING
+        
+        // Fire event
+        if (!SetEvent(InitializationEvent))
+        {
+#if ENABLE_LOGGING
+            LogContext{} << "Failed to release deferred initialization lock\n";
+#endif // ENABLE_LOGGING
+        }
+
+        // Out!
+        return;
+    }
 
     // Get module path, the bootstrapper sessions are hosted under Intermediate
     std::filesystem::path modulePath = GetBaseModuleDirectory();
@@ -401,8 +453,368 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
     return Kernel32GetProcAddressOriginal(hModule, lpProcName);
 }
 
+bool IsServiceActive() {
+    // Try to open the service handle
+    HANDLE handle = OpenMutex(MUTEX_ALL_ACCESS, false, kSharedD3D12ServiceMutexName);
+
+    // If the handle exists the service is active
+    if (handle) {
+        CloseHandle(handle);
+        return true;
+    }
+
+    // Not active
+    return false;
+}
+
+void ServiceTrap() {
+    // Running?
+    if (IsServiceActive()) {
+        return;
+    }
+    
+#if ENABLE_LOGGING
+    LogContext{} << "\tService trap triggered!\n";
+#endif // ENABLE_LOGGING
+
+    // Unload the bootstrapper
+    FreeLibraryAndExitThread(reinterpret_cast<HINSTANCE>(&__ImageBase), 0);
+}
+
+bool GetBootstrapperForArch(HANDLE process, const char** out) {
+    // Determine if process is wow64
+    BOOL isWow64;
+    if (!IsWow64Process(process, &isWow64)) {
+        return false;
+    }
+    
+    // Set bootstrapper
+    if (isWow64) {
+        *out = BootstrapperPathX32.data();
+    } else {
+        *out = BootstrapperPathX64.data();
+    }
+
+    // OK
+    return true;
+}
+
+BOOL BootstrapSuspendedProcessA(PROCESS_INFORMATION* lpProcessInformation, DWORD dwCreationFlags, bool owner) {
+    const char* dlls[] = { nullptr };
+    
+#if ENABLE_LOGGING
+    LogContext{} << "\tBootstrapSuspendedProcessA\n";
+#endif // ENABLE_LOGGING
+
+    // Determine bootstrapper
+    if (!GetBootstrapperForArch(lpProcessInformation->hProcess, &dlls[0])) {
+#if ENABLE_LOGGING
+        LogContext{} << "\tArch Indeterminate\n";
+#endif // ENABLE_LOGGING
+        return false;
+    }
+    
+#if ENABLE_LOGGING
+    LogContext{} << "\t" << dlls[0] << "\n";
+#endif // ENABLE_LOGGING
+
+    // Try to bootstrap
+    if (!DetourUpdateProcessWithDll(lpProcessInformation->hProcess, dlls, 1u) &&
+        !DetourProcessViaHelperDllsA(lpProcessInformation->dwProcessId, 1u, dlls, Kernel32CreateProcessAOriginal)) {
+        // Critical failure! Kill the process
+        TerminateProcess(lpProcessInformation->hProcess, ~0u);
+    
+        // Release handles
+        CloseHandle(lpProcessInformation->hProcess);
+        CloseHandle(lpProcessInformation->hThread);
+
+        // Failed
+        return false;
+    }
+
+    // Resume if not requested suspended
+    if (!(dwCreationFlags & CREATE_SUSPENDED)) {
+        ResumeThread(lpProcessInformation->hThread);
+    }
+
+    // If the owner, release the handle
+    if (owner) {
+        CloseHandle(lpProcessInformation->hProcess);
+        CloseHandle(lpProcessInformation->hThread);
+    }
+
+    // OK
+    return true;
+}
+
+BOOL BootstrapSuspendedProcessW(PROCESS_INFORMATION* lpProcessInformation, DWORD dwCreationFlags, bool owner) {
+    const char* dlls[] = { nullptr };
+    
+#if ENABLE_LOGGING
+    LogContext{} << "\tBootstrapSuspendedProcessW\n";
+#endif // ENABLE_LOGGING
+
+    // Determine bootstrapper
+    if (!GetBootstrapperForArch(lpProcessInformation->hProcess, &dlls[0])) {
+#if ENABLE_LOGGING
+        LogContext{} << "\tArch Indeterminate\n";
+#endif // ENABLE_LOGGING
+        return false;
+    }
+    
+#if ENABLE_LOGGING
+    LogContext{} << "\t" << dlls[0] << "\n";
+#endif // ENABLE_LOGGING
+
+    // Try to bootstrap
+    if (!DetourUpdateProcessWithDll(lpProcessInformation->hProcess, dlls, 1u) &&
+        !DetourProcessViaHelperDllsW(lpProcessInformation->dwProcessId, 1u, dlls, Kernel32CreateProcessWOriginal)) {
+#if ENABLE_LOGGING
+        LogContext{} << "\tInjection failed, terminating!\n";
+#endif // ENABLE_LOGGING
+        
+        // Critical failure! Kill the process
+        TerminateProcess(lpProcessInformation->hProcess, ~0u);
+
+        // Release handles
+        CloseHandle(lpProcessInformation->hProcess);
+        CloseHandle(lpProcessInformation->hThread);
+
+        // Failed
+        return false;
+    }
+
+    // Resume if not requested suspended
+    if (!(dwCreationFlags & CREATE_SUSPENDED)) {
+#if ENABLE_LOGGING
+        LogContext{} << "\tResuming\n";
+#endif // ENABLE_LOGGING
+        
+        ResumeThread(lpProcessInformation->hThread);
+    }
+
+    // If the owner, release the handle
+    if (owner) {
+#if ENABLE_LOGGING
+        LogContext{} << "\tReleasing\n";
+#endif // ENABLE_LOGGING
+        
+        CloseHandle(lpProcessInformation->hProcess);
+        CloseHandle(lpProcessInformation->hThread);
+    }
+
+    // OK
+    return true;
+}
+
+BOOL WINAPI HookCreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation) {
+    PROCESS_INFORMATION processInfo{};
+    
+#if ENABLE_LOGGING
+    LogContext{} << "HookCreateProcessA-Detour\n\t'" << (lpApplicationName ? lpApplicationName : "<no-app>") << "'\n\t'" << (lpCommandLine ? lpCommandLine : "<no-app>") << "'\n";
+#endif // ENABLE_LOGGING
+
+    // Should we bootstrap the process?
+    bool bootstrapProcess = IsServiceActive();
+
+    // Creation flags
+    DWORD creationFlags = dwCreationFlags;
+    if (bootstrapProcess) {
+        creationFlags |= CREATE_SUSPENDED;
+    }
+
+    // Use local process info if none requested
+    if (lpProcessInformation == nullptr) {
+        lpProcessInformation = &processInfo;
+    }
+    
+    // Start process suspended
+    if (!Kernel32CreateProcessAOriginal(
+        lpApplicationName,
+        lpCommandLine,
+        lpProcessAttributes,
+        lpThreadAttributes,
+        bInheritHandles,
+        creationFlags,
+        lpEnvironment,
+        lpCurrentDirectory,
+        lpStartupInfo,
+        lpProcessInformation
+    )) {
+#if ENABLE_LOGGING
+        LogContext{} << "\tBottom Failed\n";
+#endif // ENABLE_LOGGING
+        return false;
+    }
+
+    // Boostrap it
+    if (bootstrapProcess) {
+        return BootstrapSuspendedProcessA(lpProcessInformation, dwCreationFlags, lpProcessInformation == &processInfo);
+    }
+
+    // OK
+    return true;
+}
+
+BOOL WINAPI HookCreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation) {
+    PROCESS_INFORMATION processInfo{};
+    
+#if ENABLE_LOGGING
+    LogContext{} << "HookCreateProcessW-Detour\n\t'"
+                 << "Application Name : "<< (lpApplicationName ? lpApplicationName : L"<no-app>") << "'\n\t'"
+                 << "Command Line     : "<< (lpCommandLine ? lpCommandLine : L"<no-app>") << "'\n\t"
+                 << "Creation         : " << dwCreationFlags << "\n\t"
+                 << "Inherit Handles  : " << bInheritHandles << "\n";
+#endif // ENABLE_LOGGING
+
+    // Should we bootstrap the process?
+    bool bootstrapProcess = IsServiceActive();
+
+    // Creation flags
+    DWORD creationFlags = dwCreationFlags;
+    if (bootstrapProcess) {
+        creationFlags |= CREATE_SUSPENDED;
+    }
+
+    // Use local process info if none requested
+    if (lpProcessInformation == nullptr) {
+        lpProcessInformation = &processInfo;
+    }
+    
+    // Start process suspended
+    if (!Kernel32CreateProcessWOriginal(
+        lpApplicationName,
+        lpCommandLine,
+        lpProcessAttributes,
+        lpThreadAttributes,
+        bInheritHandles,
+        creationFlags,
+        lpEnvironment,
+        lpCurrentDirectory,
+        lpStartupInfo,
+        lpProcessInformation
+    )) {
+#if ENABLE_LOGGING
+        LogContext{} << "\tBottom Failed\n";
+#endif // ENABLE_LOGGING
+        return false;
+    }
+
+    // Boostrap it
+    if (bootstrapProcess) {
+        return BootstrapSuspendedProcessW(lpProcessInformation, dwCreationFlags, lpProcessInformation == &processInfo);
+    }
+
+    // OK
+    return true;
+}
+
+BOOL WINAPI HookCreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation) {
+    PROCESS_INFORMATION processInfo{};
+    
+#if ENABLE_LOGGING
+    LogContext{} << "HookCreateProcessAsUserA-Detour\n\t'" << (lpApplicationName ? lpApplicationName : "<no-app>") << "'\n\t'" << (lpCommandLine ? lpCommandLine : "<no-app>") << "'\n";
+#endif // ENABLE_LOGGING
+
+    // Should we bootstrap the process?
+    bool bootstrapProcess = IsServiceActive();
+
+    // Creation flags
+    DWORD creationFlags = dwCreationFlags;
+    if (bootstrapProcess) {
+        creationFlags |= CREATE_SUSPENDED;
+    }
+
+    // Use local process info if none requested
+    if (lpProcessInformation == nullptr) {
+        lpProcessInformation = &processInfo;
+    }
+    
+    // Start process suspended
+    if (!Kernel32CreateProcessAsUserAOriginal(
+        hToken,
+        lpApplicationName,
+        lpCommandLine,
+        lpProcessAttributes,
+        lpThreadAttributes,
+        bInheritHandles,
+        creationFlags,
+        lpEnvironment,
+        lpCurrentDirectory,
+        lpStartupInfo,
+        lpProcessInformation
+    )) {
+#if ENABLE_LOGGING
+        LogContext{} << "\tBottom Failed\n";
+#endif // ENABLE_LOGGING
+        return false;
+    }
+
+    // Boostrap it
+    if (bootstrapProcess) {
+        return BootstrapSuspendedProcessA(lpProcessInformation, dwCreationFlags, lpProcessInformation == &processInfo);
+    }
+
+    // OK
+    return true;
+}
+
+BOOL WINAPI HookCreateProcessAsUserW(HANDLE hToken, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation) {
+    PROCESS_INFORMATION processInfo{};
+    
+#if ENABLE_LOGGING
+    LogContext{} << "HookCreateProcessAsUserW-Detour\n\t'" << (lpApplicationName ? lpApplicationName : L"<no-app>") << "'\n\t'" << (lpCommandLine ? lpCommandLine : L"<no-app>") << "'\n";
+#endif // ENABLE_LOGGING
+
+    // Should we bootstrap the process?
+    bool bootstrapProcess = IsServiceActive();
+
+    // Creation flags
+    DWORD creationFlags = dwCreationFlags;
+    if (bootstrapProcess) {
+        creationFlags |= CREATE_SUSPENDED;
+    }
+    
+    // Use local process info if none requested
+    if (lpProcessInformation == nullptr) {
+        lpProcessInformation = &processInfo;
+    }
+    
+    // Start process suspended
+    if (!Kernel32CreateProcessAsUserWOriginal(
+        hToken,
+        lpApplicationName,
+        lpCommandLine,
+        lpProcessAttributes,
+        lpThreadAttributes,
+        bInheritHandles,
+        creationFlags,
+        lpEnvironment,
+        lpCurrentDirectory,
+        lpStartupInfo,
+        lpProcessInformation
+    )) {
+#if ENABLE_LOGGING
+        LogContext{} << "\tBottom Failed\n";
+#endif // ENABLE_LOGGING
+        return false;
+    }
+
+    // Boostrap it
+    if (bootstrapProcess) {
+        return BootstrapSuspendedProcessW(lpProcessInformation, dwCreationFlags, lpProcessInformation == &processInfo);
+    }
+
+    // OK
+    return true;
+}
+
 bool TryLoadEmbeddedModules(HMODULE handle) {
     bool any = false;
+    
+#if ENABLE_LOGGING
+    LogContext{} << "\tTryLoadEmbeddedModules!\n";
+#endif // ENABLE_LOGGING
     
     // Get the base name
     char baseName[1024];
@@ -456,7 +868,7 @@ ModuleSnapshot GetModuleSnapshot() {
 
     // Create snapshot from module set
     ModuleSnapshot snapshot;
-    for (size_t i = 0; i < std::min(needed / sizeof(HMODULE), modules.size()); i++) {
+    for (size_t i = 0; i < std::min<size_t>(needed / sizeof(HMODULE), modules.size()); i++) {
         snapshot.insert(modules[i]);
     }
 
@@ -466,6 +878,10 @@ ModuleSnapshot GetModuleSnapshot() {
 
 bool DetourForeignModules(const ModuleSnapshot& before) {
     bool any = false;
+
+#ifdef THIN_X86
+    return false;
+#endif
     
     // Get post snapshot
     ModuleSnapshot modules = GetModuleSnapshot();
@@ -505,7 +921,7 @@ HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
 
     // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
     //       This may result in duplicate checks in the snapshot deltas, but that's fine
-    std::lock_guard guard(moduleLock);
+    CriticalSectionGuard guard(libraryCriticalSection);
 
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
@@ -532,7 +948,7 @@ HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
 
     // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
     //       This may result in duplicate checks in the snapshot deltas, but that's fine
-    std::lock_guard guard(moduleLock);
+    CriticalSectionGuard guard(libraryCriticalSection);
     
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
@@ -559,7 +975,7 @@ HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
 
     // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
     //       This may result in duplicate checks in the snapshot deltas, but that's fine
-    std::lock_guard guard(moduleLock);
+    CriticalSectionGuard guard(libraryCriticalSection);
 
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
@@ -586,7 +1002,7 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
 
     // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
     //       This may result in duplicate checks in the snapshot deltas, but that's fine
-    std::lock_guard guard(moduleLock);
+    CriticalSectionGuard guard(libraryCriticalSection);
 
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
@@ -597,9 +1013,10 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
     return module;
 }
 
-DWORD DeferredInitialization(void*) {
-    std::lock_guard guard(moduleLock);
-    
+DWORD WINAPI DeferredInitialization(void*) {
+    // Check service
+    ServiceTrap();
+
     // Logging initialization
 #if ENABLE_LOGGING
     // Get executable filename
@@ -615,6 +1032,10 @@ DWORD DeferredInitialization(void*) {
     // Open at path
     LoggingFile.open(logPath);
 
+    // Header
+    LogContext{} << "PID " << GetProcessId(GetCurrentProcess()) << "\n";
+
+    // Function table
     LogContext{} << "Function table:\n" << std::hex
                  << "LoadLibraryA: 0x" << reinterpret_cast<void *>(HookLoadLibraryA) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryAOriginal) << "\n"
                  << "LoadLibraryW: 0x" << reinterpret_cast<void *>(HookLoadLibraryW) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryWOriginal) << "\n"
@@ -631,6 +1052,9 @@ DWORD DeferredInitialization(void*) {
         
         // ! Call native LoadLibraryW, not detoured
         BootstrapLayer("Entry detected mounted d3d12 module");
+
+        // Ensure detouring is serial
+        CriticalSectionGuard guard(libraryCriticalSection);
 
         // Query embedded hooks
         DetourForeignModules(snapshot);
@@ -745,6 +1169,10 @@ void OnDetourModule(HMODULE& module, HMODULE handle) {
 void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
     OnDetourModule(AMDAGSModule, handle);
     
+#if ENABLE_LOGGING
+    LogContext{} << "\tDetourAMDAGSModule!\n";
+#endif // ENABLE_LOGGING
+    
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
 
@@ -775,6 +1203,10 @@ void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
 void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
     OnDetourModule(D3D12Module, handle);
     
+#if ENABLE_LOGGING
+    LogContext{} << "\tDetourD3D12Module!\n";
+#endif // ENABLE_LOGGING
+    
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
 
@@ -793,6 +1225,10 @@ void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
 void DetourD3D11Module(HMODULE handle, bool insideTransaction) {
     OnDetourModule(D3D11Module, handle);
     
+#if ENABLE_LOGGING
+    LogContext{} << "\tDetourD3D11Module!\n";
+#endif // ENABLE_LOGGING
+    
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
 
@@ -806,6 +1242,10 @@ void DetourD3D11Module(HMODULE handle, bool insideTransaction) {
 
 void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
     OnDetourModule(DXGIModule, handle);
+    
+#if ENABLE_LOGGING
+    LogContext{} << "\tDetourDXGIModule!\n";
+#endif // ENABLE_LOGGING
     
     // Open transaction if needed
     ConditionallyBeginDetour(insideTransaction);
@@ -908,6 +1348,11 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
 
     // If this is not the owning bootstrapper, and it is currently bootstrapped elsewhere, report OK
     if (!IsOwningBootstrapper && IsBootstrappedAcrossProcess) {
+        if (dwReason == DLL_PROCESS_ATTACH) {
+            DetourRestoreAfterWith();
+        }
+
+        // OK
         return TRUE;
     }
 
@@ -935,8 +1380,14 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         // This dll is now the effective owner
         IsOwningBootstrapper = true;
 
+#if 0
         // Ensure the bootstrapper stays pinned in the process, re-entrant bootstrapping is a mess
         PinBootstrapper();
+#endif // 0
+
+        // Create critical section
+        InitializeCriticalSection(&libraryCriticalSection);
+        InitializeCriticalSection(&bootstrapCriticalSection);
 
         // Create deferred initialization event
         InitializationEvent = CreateEvent(nullptr, true, false, nullptr);
@@ -965,25 +1416,37 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
             return false;
         }
 
-        // Attach against original address
+        // Get addresses
         Kernel32LoadLibraryAOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_A>(GetProcAddress(kernel32Module, "LoadLibraryA"));
-        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryAOriginal), reinterpret_cast<void*>(HookLoadLibraryA));
-
-        // Attach against original address
         Kernel32LoadLibraryWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_W>(GetProcAddress(kernel32Module, "LoadLibraryW"));
-        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
-
-        // Attach against original address
         Kernel32LoadLibraryExAOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_A>(GetProcAddress(kernel32Module, "LoadLibraryExA"));
-        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
-
-        // Attach against original address
         Kernel32LoadLibraryExWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_W>(GetProcAddress(kernel32Module, "LoadLibraryExW"));
+        Kernel32GetProcAddressOriginal = reinterpret_cast<PFN_GET_PROC_ADDRESS>(GetProcAddress(kernel32Module, "GetProcAddress"));
+        
+#ifndef THIN_X86
+        // Attach against original address
+        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryAOriginal), reinterpret_cast<void*>(HookLoadLibraryA));
+        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
+        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
         DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
+        DetourAttach(&reinterpret_cast<void *&>(Kernel32GetProcAddressOriginal), reinterpret_cast<void *>(HookGetProcAddress));
+#endif // THIN_X86
 
         // Attach against original address
-        Kernel32GetProcAddressOriginal = reinterpret_cast<PFN_GET_PROC_ADDRESS>(GetProcAddress(kernel32Module, "GetProcAddress"));
-        DetourAttach(&reinterpret_cast<void *&>(Kernel32GetProcAddressOriginal), reinterpret_cast<void *>(HookGetProcAddress));
+        Kernel32CreateProcessAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_A>(GetProcAddress(kernel32Module, "CreateProcessA"));
+        DetourAttach(&reinterpret_cast<void *&>(Kernel32CreateProcessAOriginal), reinterpret_cast<void *>(HookCreateProcessA));
+
+        // Attach against original address
+        Kernel32CreateProcessWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_W>(GetProcAddress(kernel32Module, "CreateProcessW"));
+        DetourAttach(&reinterpret_cast<void *&>(Kernel32CreateProcessWOriginal), reinterpret_cast<void *>(HookCreateProcessW));
+
+        // Attach against original address
+        Kernel32CreateProcessAsUserAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_A>(GetProcAddress(kernel32Module, "CreateProcessAsUserA"));
+        DetourAttach(&reinterpret_cast<void *&>(Kernel32CreateProcessAsUserAOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserA));
+
+        // Attach against original address
+        Kernel32CreateProcessAsUserWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_W>(GetProcAddress(kernel32Module, "CreateProcessAsUserW"));
+        DetourAttach(&reinterpret_cast<void *&>(Kernel32CreateProcessAsUserWOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserW));
 
         // Attempt to create initial detours
         DetourForeignModules(ModuleSnapshot {});
@@ -1011,14 +1474,22 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
             DetourUpdateThread(GetCurrentThread());
 
             // Detach from detours
+#ifndef THIN_X86
             DetourDetach(&reinterpret_cast<void*&>(Kernel32GetProcAddressOriginal), reinterpret_cast<void*>(HookGetProcAddress));
             DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryAOriginal), reinterpret_cast<void*>(HookLoadLibraryA));
             DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
             DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
             DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
+#endif // THIN_X86
+            DetourDetach(&reinterpret_cast<void*&>(Kernel32CreateProcessAOriginal), reinterpret_cast<void*>(HookCreateProcessA));
+            DetourDetach(&reinterpret_cast<void*&>(Kernel32CreateProcessWOriginal), reinterpret_cast<void*>(HookCreateProcessW));
+            DetourDetach(&reinterpret_cast<void*&>(Kernel32CreateProcessAsUserAOriginal), reinterpret_cast<void*>(HookCreateProcessAsUserA));
+            DetourDetach(&reinterpret_cast<void*&>(Kernel32CreateProcessAsUserWOriginal), reinterpret_cast<void*>(HookCreateProcessAsUserW));
 
             // Detach initial creation
+#ifndef THIN_X86
             DetachInitialCreation();
+#endif // THIN_X86
 
             // Release event
             CloseHandle(InitializationEvent);
@@ -1045,12 +1516,18 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
             // Flag that the bootstrapper is inactive
             IsBootstrappedAcrossProcess = false;
         }
+
+        // Release critical section
+        DeleteCriticalSection(&libraryCriticalSection);
+        DeleteCriticalSection(&bootstrapCriticalSection);
     }
 
     // OK
     return TRUE;
 }
 
+#ifndef THIN_X86
 extern "C" __declspec(dllexport) LRESULT WinHookAttach(int code, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(nullptr, code, wParam, lParam);
 }
+#endif

@@ -392,7 +392,7 @@ bool DX12DiscoveryListener::Stop() {
 
 void DX12DiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProcessInfo &info, DiscoveryBootstrappingEnvironment &env) {
     // Add bootstrapper dll
-    env.dlls.push_back((GetCurrentExecutableDirectory() / "GRS.Backends.DX12.Bootstrapper.dll").string());
+    env.dlls.push_back((GetCurrentExecutableDirectory() / "GRS.Backends.DX12.BootstrapperX64.dll").string());
 }
 
 bool DX12DiscoveryListener::StartProcess() {

@@ -25,6 +25,7 @@
 #pragma once
 
 // Common
+#include "Common.h"
 #include "Assert.h"
 
 // Std
@@ -34,9 +35,9 @@
 #include <memory>
 
 // System
-#ifdef _WIN64
+#ifdef GRS_WINDOWS
 #include <guiddef.h>
-#endif
+#endif // GRS_WINDOWS
 
 struct GlobalUID {
     static constexpr uint32_t kSize = 16;
@@ -59,11 +60,11 @@ struct GlobalUID {
     /// \return
     std::string ToString() const;
 
-#ifdef _WIN64
+#ifdef GRS_WINDOWS
     /// Convert to the platform GUID
     /// \return
     GUID AsPlatformGUID() const;
-#endif
+#endif // GRS_WINDOWS
 
     /// Check if this guid is valid
     /// \return

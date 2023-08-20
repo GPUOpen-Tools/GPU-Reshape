@@ -39,6 +39,9 @@ GlobalDeviceDetour deviceDetour;
 /// Well documented image base
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
+/// Was the bootstrapper attached on DLL_PROCESS_ATTACH?
+bool IsBootstrappedOnAttach = false;
+
 /// Check if the process is already bootstrapped, the boostrapper performs its own detouring of calls
 /// \return true if bootstrapped
 static bool IsBootstrapped() {
@@ -65,6 +68,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     if (dwReason == DLL_PROCESS_ATTACH) {
         // If the process is already bootstrapped, skip
         if (IsBootstrapped()) {
+            IsBootstrappedOnAttach = true;
             return TRUE;
         }
 
@@ -93,7 +97,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     // Detach?
     else if (dwReason == DLL_PROCESS_DETACH) {
         // If the process is already bootstrapped, skip
-        if (IsBootstrapped()) {
+        if (IsBootstrappedOnAttach) {
             return TRUE;
         }
 

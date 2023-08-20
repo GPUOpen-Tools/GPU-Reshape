@@ -47,11 +47,53 @@ option(ENABLE_DXIL_DUMP      "Enables DXIL dumping on shader builds" ON)
 option(ENABLE_ASAN           "Enables ASAN" OFF)
 option(ENABLE_RELEASE_DEBUG  "Enables debug information in release" ON)
 
+# Primary build tree?
+if (NOT THIN_X86_BUILD)
+    # CMake binary / cache folder
+    set(ThinBinaryDir "${CMAKE_BINARY_DIR}/ThinX86")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${ThinBinaryDir}")
+    
+    # Configuration target
+    add_custom_target(
+        ThinX86Configure
+        COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+            -DTHIN_X86_BUILD=ON
+            -DTHIN_X86_POSTFIX=X32
+            -DENABLE_UIX=OFF
+            -DCMAKE_GENERATOR_PLATFORM=Win32
+            -A Win32
+            ${CMAKE_SOURCE_DIR}
+        WORKING_DIRECTORY "${ThinBinaryDir}"
+    )
+    
+    # Build target
+    # Note: I had great difficulty in getting the secondary-cmake targets to \DEPENDS on the sources, even
+    #       when explicitly marked. So, a terrible workaround is to increment the V[X] below, and reconfigure.
+    #       I'll find a proper solution at some point.
+    add_custom_target(
+        ThinX86Build
+        COMMAND ${CMAKE_COMMAND} -E echo Building X86-V31
+        COMMAND ${CMAKE_COMMAND} --build .
+        DEPENDS ThinX86Configure ${path}
+        WORKING_DIRECTORY "${ThinBinaryDir}"
+    )
+endif()
+
 # Ensure 64 bit
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    # Supported
+    set(ARCH_POSTFIX "X64")
 else()
-    message(FATAL_ERROR "Only x64 target not supported")
+    set(ARCH_POSTFIX "X32")
+    
+    # Statically link runtimes
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MT")
+
+    # Ensure the top build tree is x64
+    if(NOT THIN_X86_BUILD)
+        message(FATAL_ERROR "Only x64 is supported, x86 support limited to very specific modules")
+    endif()
 endif()
 
 # Support up to 20
@@ -114,14 +156,23 @@ endif()
 
 # Set all outputs to Bin/Config
 if (${ENABLE_MIXED_COMPILER})
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${CMAKE_CXX_COMPILER_ID}/${CMAKE_BUILD_TYPE})
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${CMAKE_CXX_COMPILER_ID}/${CMAKE_BUILD_TYPE})
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${CMAKE_CXX_COMPILER_ID}/${CMAKE_BUILD_TYPE})
-else()
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${CMAKE_BUILD_TYPE})
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${CMAKE_BUILD_TYPE})
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${CMAKE_BUILD_TYPE})
+    set(MixedCompilerPrefix "${CMAKE_CXX_COMPILER_ID}/")
 endif()
+
+# Single configurator paths
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${MixedCompilerPrefix}${CMAKE_BUILD_TYPE}${THIN_X86_POSTFIX})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${MixedCompilerPrefix}${CMAKE_BUILD_TYPE}${THIN_X86_POSTFIX})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${MixedCompilerPrefix}${CMAKE_BUILD_TYPE}${THIN_X86_POSTFIX})
+    
+# Multi-configurator paths
+foreach(Config ${CMAKE_CONFIGURATION_TYPES})
+    string(TOUPPER ${Config} ConfigUpper)
+    
+    # Libraries and archives are separated, share the binary outputs
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${ConfigUpper} ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${MixedCompilerPrefix}${Config})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${ConfigUpper} ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${MixedCompilerPrefix}${Config}${THIN_X86_POSTFIX})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${ConfigUpper} ${CMAKE_CURRENT_SOURCE_DIR}/Lib/${MixedCompilerPrefix}${Config}${THIN_X86_POSTFIX})
+endforeach()
 
 # Configure file for multi-configurators
 function(ConfigureOutput FILE OUT)
@@ -143,7 +194,9 @@ function(PostBuildCopy NAME DIR)
 endfunction()
 
 # Add build support
-add_subdirectory(Build)
+if (NOT THIN_X86_BUILD)
+    add_subdirectory(Build)
+endif()
 
 # Add external projects
 add_subdirectory(ThirdParty)
@@ -166,5 +219,11 @@ else()
     message(FATAL_ERROR "Unsupported compiler ${CMAKE_CXX_COMPILER_ID}")
 endif()
 
-# Add internal projects
-add_subdirectory(Source)
+# Thin x86 build?
+if (THIN_X86_BUILD)
+    # Very few things need x86 support, it's less work to branch the exact libraries needed than introduce arch checking
+    include(ThinX86.cmake)
+else()
+    # Full build
+    add_subdirectory(Source)
+endif()

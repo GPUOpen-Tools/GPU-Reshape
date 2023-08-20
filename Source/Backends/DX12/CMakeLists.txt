@@ -22,6 +22,16 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
+#----- Bootstrapper -----#
+
+# Build the bootstrapper, shared between x64 and x86
+include(Bootstrapper.cmake)
+
+# Rest is x64 only
+if (THIN_X86_BUILD)
+    return()
+endif()
+
 #----- Config -----#
 
 set(DX12TableType OBJECTWRAPPER)
@@ -435,29 +445,6 @@ target_include_directories(
     Layer/Include ${CMAKE_CURRENT_BINARY_DIR}/Layer/Include
 )
 
-#----- Bootstrapper -----#
-
-# Create service
-add_library(
-    GRS.Backends.DX12.Bootstrapper SHARED
-    Bootstrapper/Source/DLL.cpp
-)
-
-# IDE source discovery
-SetSourceDiscovery(GRS.Backends.DX12.Bootstrapper CXX Bootstrapper)
-
-# Include directories
-target_include_directories(GRS.Backends.DX12.Bootstrapper PUBLIC Layer/Include Bootstrapper/Include)
-
-# Dependencies
-target_link_libraries(GRS.Backends.DX12.Bootstrapper PUBLIC GRS.Libraries.Common)
-
-# External dependencies
-ExternalProject_Link(GRS.Backends.DX12.Bootstrapper Detour Detour)
-
-# Binary dependencies
-add_dependencies(GRS.Backends.DX12.Bootstrapper GRS.Backends.DX12.Layer)
-
 #----- Service -----#
 
 # Create service
@@ -470,13 +457,13 @@ add_executable(
 SetSourceDiscovery(GRS.Backends.DX12.Service CXX Service)
 
 # Include directories
-target_include_directories(GRS.Backends.DX12.Service PUBLIC Service/Include)
+target_include_directories(GRS.Backends.DX12.Service PUBLIC Service/Include Bootstrapper/Include)
 
 # Dependencies
-target_link_libraries(GRS.Backends.DX12.Service PUBLIC GRS.Libraries.Common)
+target_link_libraries(GRS.Backends.DX12.Service PUBLIC GRS.Libraries.Common Dbghelp.lib)
 
-# Binary dependencies
-add_dependencies(GRS.Backends.DX12.Service GRS.Backends.DX12.Bootstrapper)
+# Binary dependencies, pull in x64 and x86 bootstrapper
+add_dependencies(GRS.Backends.DX12.Service GRS.Backends.DX12.Layer GRS.Backends.DX12.Bootstrapper${ARCH_POSTFIX} ThinX86Build)
 
 #----- Discovery -----#
 
@@ -492,7 +479,7 @@ add_library(
 SetSourceDiscovery(GRS.Backends.DX12.Discovery CXX Discovery)
 
 # Includes
-target_include_directories(GRS.Backends.DX12.Discovery PUBLIC Discovery/Include Service/Include)
+target_include_directories(GRS.Backends.DX12.Discovery PUBLIC Discovery/Include Service/Include Bootstrapper/Include)
 
 # Links
 target_link_libraries(GRS.Backends.DX12.Discovery PUBLIC GRS.Libraries.Discovery GRS.Backends.DX12.Layer)

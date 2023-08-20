@@ -22,6 +22,14 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
+# x64 specific sources
+if (NOT THIN_X86_BUILD)
+    set(
+        CommonX64Sources
+        Source/CRC.cpp
+        Source/Plugin/PluginResolver.cpp
+    )
+endif()
 
 # Create generator
 add_library(
@@ -30,8 +38,6 @@ add_library(
     Source/FileSystem.cpp
     Source/CrashHandler.cpp
     Source/GlobalUID.cpp
-    Source/CRC.cpp
-    Source/Plugin/PluginResolver.cpp
     Source/Dispatcher/ConditionVariable.cpp
     Source/Dispatcher/Mutex.cpp
     Source/Dispatcher/EventCounter.cpp
@@ -47,13 +53,21 @@ add_library(
     Include/Common/Dispatcher/DispatcherJobPool.h
     Include/Common/Dispatcher/DispatcherJob.h
     Include/Common/String.h
+    
+    # x64
+    ${CommonX64Sources}
 )
-
-# IDE source discovery
-SetSourceDiscovery(GRS.Libraries.Common CXX Include Source)
 
 # Include directories
 target_include_directories(GRS.Libraries.Common PUBLIC Include)
+
+# Rest is x64 only
+if (THIN_X86_BUILD)
+    return()
+endif()
+
+# IDE source discovery
+SetSourceDiscovery(GRS.Libraries.Common CXX Include Source)
 
 # Links
 ExternalProject_Link(GRS.Libraries.Common TinyXML2 tinyxml2)

@@ -24,15 +24,13 @@
 
 #include <Common/GlobalUID.h>
 
-#ifdef _WIN64
-
+#ifdef GRS_WINDOWS
 #include <objbase.h>
-
-#else
+#else // GRS_WINDOWS
 #include <uuid/uuid.h>
-#endif
+#endif // GRS_WINDOWS
 
-#ifdef _WIN64
+#ifdef GRS_WINDOWS
 using LPFN_GUIDFromString = BOOL (WINAPI *)(LPCTSTR, LPGUID);
 
 LPFN_GUIDFromString GetGUIDFromStringFPTR() {
@@ -61,7 +59,7 @@ LPFN_GUIDFromString GetGUIDFromStringFPTR() {
 #endif
 
 GlobalUID GlobalUID::New() {
-#ifdef _WIN64
+#ifdef GRS_WINDOWS
     static_assert(sizeof(GUID) == sizeof(UUID), "Unexpected size");
 
     union {
@@ -80,7 +78,7 @@ GlobalUID GlobalUID::New() {
 }
 
 GlobalUID GlobalUID::FromString(const std::string_view &view) {
-#ifdef _WIN64
+#ifdef GRS_WINDOWS
     union {
         GlobalUID uuid;
         GUID guid;
@@ -106,7 +104,7 @@ GlobalUID GlobalUID::FromString(const std::string_view &view) {
 }
 
 std::string GlobalUID::ToString() const {
-#ifdef _WIN64
+#ifdef GRS_WINDOWS
     GUID guid;
     std::memcpy(&guid, uuid, sizeof(guid));
 
