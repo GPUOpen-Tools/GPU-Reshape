@@ -58,6 +58,13 @@
 /// Greatly simplifies debugging
 #define ENABLE_WHITELIST 0
 
+/// Use layer sessioning, useful for iteration
+#ifndef NDEBUG
+#   define USE_BOOTSTRAP_SESSIONS 1
+#else // NDEBUG
+#   define USE_BOOTSTRAP_SESSIONS 0
+#endif // NDEBUG
+
 /// All whitelisted applications
 #if ENABLE_WHITELIST
 const char* kWhitelist[] =
@@ -327,8 +334,9 @@ void BootstrapLayer(const char* invoker) {
     LogContext{} << invoker << " - Loading layer " << path << " ... ";
 #endif // ENABLE_LOGGING
 
+#if USE_BOOTSTRAP_SESSIONS
     // Get current session dir
-    std::filesystem::path sessionDir = GetCurrentModuleDirectory();
+    std::filesystem::path sessionDir = GetIntermediatePath("Bootstrapper\\Sessions");
 
     // Create unique name
     std::string sessionName = "GRS.Backends.DX12.Layer " + GlobalUID::New().ToString() + ".dll";
@@ -338,6 +346,10 @@ void BootstrapLayer(const char* invoker) {
 
     // Copy current bootstrapper
     std::filesystem::copy(path, sessionPath);
+#else // USE_BOOTSTRAP_SESSIONS
+    // No copy
+    std::filesystem::path sessionPath = path;
+#endif // USE_BOOTSTRAP_SESSIONS
 
     // User attempting to load instrumentable object, warranting bootstrapping of the layer
     LayerModule = Kernel32LoadLibraryExWOriginal(sessionPath.wstring().c_str(), nullptr, 0x0);
