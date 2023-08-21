@@ -29,7 +29,10 @@ namespace Studio.Models.Workspace.Objects
     [Flags]
     public enum AsyncShaderStatus
     {
-        None = 0,
+        /// <summary>
+        /// Pending pooling
+        /// </summary>
+        Pending = 0,
         
         /// <summary>
         /// Given shader could not be found on the target device
@@ -40,5 +43,10 @@ namespace Studio.Models.Workspace.Objects
         /// Shader has no debugging symbols, IL is available
         /// </summary>
         NoDebugSymbols = 1 << 1,
+        
+        /// <summary>
+        /// Shader has debugging symbols
+        /// </summary>
+        DebugSymbols = 1 << 2
     }
 }

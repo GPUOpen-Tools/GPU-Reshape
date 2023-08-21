@@ -32,8 +32,10 @@ using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Studio.Extensions;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Workspace.Services;
 
 namespace Studio.ViewModels.Documents
 {
@@ -83,6 +85,15 @@ namespace Studio.ViewModels.Documents
         {
             get => _selectedShaderContentViewModel;
             set => this.RaiseAndSetIfChanged(ref _selectedShaderContentViewModel, value);
+        }
+
+        /// <summary>
+        /// Is the object ready?
+        /// </summary>
+        public bool Ready
+        {
+            get => _ready;
+            set => this.RaiseAndSetIfChanged(ref _ready, value);
         }
         
         /// <summary>
@@ -209,6 +220,19 @@ namespace Studio.ViewModels.Documents
                     Title = $"{System.IO.Path.GetFileName(_object!.Filename)} ({_object.GUID})";
                 }
             });
+
+            // Bind async status
+            _object!.WhenAnyValue(x => x.AsyncStatus).Subscribe(x =>
+            {
+                // Ready?
+                Ready = x != AsyncShaderStatus.Pending;
+
+                // Switch to IL content view if there's no debug symbols
+                if (x == AsyncShaderStatus.NoDebugSymbols)
+                {
+                    SelectedShaderContentViewModel = ShaderContentViewModels.First(scvm => scvm is ILShaderContentViewModel);
+                }
+            });
         }
 
         private void OnSetContentViewModel(IShaderContentViewModel shaderContentViewModel, bool state)
@@ -276,5 +300,10 @@ namespace Studio.ViewModels.Documents
         /// Internal icon color
         /// </summary>
         private Color? _iconForeground = ResourceLocator.GetResource<Color>("ThemeForegroundColor");
+
+        /// <summary>
+        /// Internal ready state
+        /// </summary>
+        private bool _ready;
     }
 }

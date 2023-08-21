@@ -142,6 +142,6 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <summary>
         /// Internal asynchronous status
         /// </summary>
-        private AsyncShaderStatus _asyncStatus = AsyncShaderStatus.None;
+        private AsyncShaderStatus _asyncStatus = AsyncShaderStatus.Pending;
     }
 }

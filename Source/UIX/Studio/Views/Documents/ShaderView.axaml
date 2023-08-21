@@ -33,12 +33,35 @@
              xmlns:documents="clr-namespace:Studio.ViewModels.Documents"
              xmlns:shader="clr-namespace:Studio.ViewModels.Shader"
              xmlns:controls="clr-namespace:Studio.Views.Controls"
+             xmlns:controls1="https://github.com/avalonia_extendedtoolkit"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Documents.ShaderView"
              x:DataType="documents:ShaderViewModel"
              x:CompileBindings="True">
     <Grid>
+        <Grid IsVisible="{Binding !Ready}">
+            <StackPanel 
+                Orientation="Horizontal"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Foreground="{StaticResource InfoMediumForeground}"
+                    Text="Loading"/>
+            
+                <ProgressBar 
+                    IsIndeterminate="True"
+                    VerticalAlignment="Center"
+                    Margin="5 3 0 0"
+                    MinHeight="5" Height="5"
+                    MinWidth="100" Width="100"
+                    Foreground="{StaticResource DockApplicationAccentBrushHigh}"
+                    Background="{StaticResource DockThemeBorderLowBrush}"/>
+            </StackPanel>
+        </Grid>
+        
         <controls:UniformViewHost 
+            IsVisible="{Binding $parent.((documents:ShaderViewModel)DataContext).Ready}"
             Margin="0,0,0,0" 
             HorizontalAlignment="Stretch" 
             VerticalAlignment="Stretch" 
@@ -48,7 +71,8 @@
             VerticalAlignment="Top"
             HorizontalAlignment="Right"
             Margin="0 10 25 0"
-            Items="{Binding ShaderContentViewModels}">
+            Items="{Binding ShaderContentViewModels}"
+            IsVisible="{Binding Ready}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel Orientation="Vertical"/>

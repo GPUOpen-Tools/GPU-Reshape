@@ -44,7 +44,8 @@ namespace Studio.ViewModels.Shader
         {
             set
             {
-                
+                NavigationLocation = null;
+                NavigationLocation = value?.StartupLocation;
             }
         }
         

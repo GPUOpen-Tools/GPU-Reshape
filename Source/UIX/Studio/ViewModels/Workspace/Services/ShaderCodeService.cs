@@ -71,17 +71,29 @@ namespace Studio.ViewModels.Workspace.Services
                                 continue;
                             }
 
+                            // Final status
+                            AsyncShaderStatus status;
+                            
                             // Failed to find?
                             if (shaderCode.found == 0)
                             {
-                                Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.AsyncStatus |= AsyncShaderStatus.NotFound; });
+                                status = AsyncShaderStatus.NotFound;
                             }
 
                             // Only native?
-                            if (shaderCode.native == 1)
+                            else if (shaderCode.native == 1)
                             {
-                                Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.AsyncStatus |= AsyncShaderStatus.NoDebugSymbols; });
+                                status = AsyncShaderStatus.NoDebugSymbols;
                             }
+                            
+                            // With debug symbols
+                            else
+                            {
+                                status = AsyncShaderStatus.DebugSymbols;
+                            }
+                            
+                            // Update status
+                            Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.AsyncStatus |= status; });
                             break;
                         }
                         case ShaderCodeFileMessage.ID:
