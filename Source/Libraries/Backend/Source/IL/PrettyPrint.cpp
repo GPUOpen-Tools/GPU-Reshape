@@ -1229,3 +1229,816 @@ void IL::PrettyPrintBlockJsonGraph(const Function &function, PrettyPrintContext 
     // Close document
     out.stream << "}\n";
 }
+
+void PrettyPrintJson(const Backend::IL::Type *type, IL::PrettyPrintContext out) {
+    switch (type->kind) {
+        default: {
+            ASSERT(false, "Unexpected type");
+            break;
+        }
+        case Backend::IL::TypeKind::Bool: {
+            break;
+        }
+        case Backend::IL::TypeKind::Void: {
+            break;
+        }
+        case Backend::IL::TypeKind::Int: {
+            auto _int = type->As<Backend::IL::IntType>();
+
+            out.Line() << "\"Signed\": " << _int->signedness << ",";
+            out.Line() << "\"Width\": " << static_cast<uint32_t>(_int->bitWidth) << ",";
+            break;
+        }
+        case Backend::IL::TypeKind::FP: {
+            auto fp = type->As<Backend::IL::FPType>();
+            out.Line() << "\"Width\": " << static_cast<uint32_t>(fp->bitWidth) << ",";
+            break;
+        }
+        case Backend::IL::TypeKind::Vector: {
+            auto vec = type->As<Backend::IL::VectorType>();
+            out.Line() << "\"Contained\": " << vec->containedType->id << ",";
+            out.Line() << "\"Dim\": " << static_cast<uint32_t>(vec->dimension) << ",";
+            break;
+        }
+        case Backend::IL::TypeKind::Matrix: {
+            auto mat = type->As<Backend::IL::MatrixType>();
+            out.Line() << "\"Contained\": " << mat->containedType->id << ",";
+            out.Line() << "\"Rows\": " << static_cast<uint32_t>(mat->rows) << ",";
+            out.Line() << "\"Columns\": " << static_cast<uint32_t>(mat->columns) << ",";
+            break;
+        }
+        case Backend::IL::TypeKind::Pointer: {
+            auto ptr = type->As<Backend::IL::PointerType>();
+            out.Line() << "\"AddressSpace\": " << static_cast<uint32_t>(ptr->addressSpace) << ",";
+            out.Line() << "\"Pointee\": " << ptr->pointee->id << ",";
+            break;
+        }
+        case Backend::IL::TypeKind::Array: {
+            auto arr = type->As<Backend::IL::ArrayType>();
+            out.Line() << "\"Contained\": " << arr->elementType->id << ",";
+            out.Line() << "\"Count\": " << arr->count << ",";
+            break;
+        }
+        case Backend::IL::TypeKind::Texture: {
+            auto tex = type->As<Backend::IL::TextureType>();
+            out.Line() << "\"Dimension\": " << static_cast<uint32_t>(tex->dimension) << ",";
+
+            if (tex->sampledType) {
+                out.Line() << "\"SampledType\": " << tex->sampledType->id << ",";
+            }
+
+            out.Line() << "\"Format\": " << static_cast<uint32_t>(tex->format) << ",";
+            out.Line() << "\"SamplerMode\": " << static_cast<uint32_t>(tex->samplerMode) << ",";
+            out.Line() << "\"MultiSampled\": " << tex->multisampled << ",";
+            break;
+        }
+        case Backend::IL::TypeKind::Buffer: {
+            auto buf = type->As<Backend::IL::BufferType>();
+            out.Line() << "\"TexelType\": " << static_cast<uint32_t>(buf->texelType) << ",";
+            out.Line() << "\"SamplerMode\": " << static_cast<uint32_t>(buf->samplerMode) << ",";
+
+            if (buf->elementType) {
+                out.Line() << "\"ElementType\": " << buf->elementType->id << ",";
+            }
+            break;
+        }
+        case Backend::IL::TypeKind::Sampler: {
+            break;
+        }
+        case Backend::IL::TypeKind::CBuffer: {
+            break;
+        }
+        case Backend::IL::TypeKind::Function: {
+            auto fn = type->As<Backend::IL::FunctionType>();
+            out.Line() << "\"ReturnType\": " << fn->returnType->id << ",";
+
+            out.Line() << "\"ParameterTypes\": ";
+            out.Line() << "[";
+            
+            for (size_t i = 0; i < fn->parameterTypes.size(); i++) {                
+                if (i != fn->parameterTypes.size() - 1) {
+                    out.Line() << "\t" << fn->parameterTypes[i]->id << ",";
+                } else {
+                    out.Line() << "\t" << fn->parameterTypes[i]->id;
+                }
+            }
+            out.Line() << "],";
+            break;
+        }
+        case Backend::IL::TypeKind::Struct: {
+            auto str = type->As<Backend::IL::StructType>();
+
+            out.Line() << "\"Members\": ";
+            out.Line() << "[";
+            
+            for (size_t i = 0; i < str->memberTypes.size(); i++) {         
+                if (i != str->memberTypes.size() - 1) {
+                    out.Line() << "\t" << str->memberTypes[i]->id << ",";
+                } else {
+                    out.Line() << "\t" << str->memberTypes[i]->id;
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
+        case Backend::IL::TypeKind::Unexposed: {
+            break;
+        }
+    }
+    
+    out.Line() << "\"ID\": " << type->id << ",";
+    out.Line() << "\"Kind\": " << static_cast<uint32_t>(type->kind);
+}
+
+void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintContext out) {
+    switch (constant->kind) {
+        default:
+            break;
+        case Backend::IL::ConstantKind::Bool: {
+            auto _bool = constant->As<Backend::IL::BoolConstant>();
+            out.Line() << "\"Value\": " << _bool->value << ",";
+            break;
+        }
+        case Backend::IL::ConstantKind::Int: {
+            auto _int = constant->As<Backend::IL::IntConstant>();
+            out.Line() << "\"Value\": " << _int->value << ",";
+            break;
+        }
+        case Backend::IL::ConstantKind::FP: {
+            auto fp = constant->As<Backend::IL::FPConstant>();
+            out.Line() << "\"Value\": " << fp->value << ",";
+            break;
+        }
+        case Backend::IL::ConstantKind::Struct: {
+            auto str = constant->As<Backend::IL::StructConstant>();
+            
+            out.Line() << "\"Members\": ";
+            out.Line() << "[";
+            
+            for (size_t i = 0; i < str->members.size(); i++) {         
+                if (i != str->members.size() - 1) {
+                    out.Line() << "\t" << str->members[i]->id << ",";
+                } else {
+                    out.Line() << "\t" << str->members[i]->id;
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
+    }
+    
+    out.Line() << "\"ID\": " << constant->id << ",";
+    out.Line() << "\"Kind\": " << static_cast<uint32_t>(constant->kind) << ",";
+    out.Line() << "\"Type\": " << constant->type->id;
+}
+
+void PrettyPrintJson(const Backend::IL::Variable *variable, IL::PrettyPrintContext out) {
+    out.Line() << "\"ID\": " << variable->id << ",";
+    out.Line() << "\"AddressSpace\": " << static_cast<uint32_t>(variable->addressSpace) << ",";
+    out.Line() << "\"Type\": " << variable->type->id;
+}
+
+void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction* instr, IL::PrettyPrintContext out) {    
+    switch(instr->opCode) {
+        default:
+            ASSERT(false, "Unknown instruction");
+        break;
+        case IL::OpCode::None: {
+            break;
+        }
+        case IL::OpCode::Unexposed: {
+            auto unexposed = instr->As<IL::UnexposedInstruction>();
+            if (unexposed->symbol) {
+                out.Line() << "\"Symbol\": \"" << unexposed->symbol << "\",";
+            } else {
+                out.Line() << "\"UnexposedOp\": \"" << unexposed->backendOpCode << "\",";
+            }
+            break;
+        }
+        case IL::OpCode::Literal: {
+            auto literal = instr->As<IL::LiteralInstruction>();
+            out.Line() << "\"Type\": " << static_cast<uint32_t>(literal->type) << ",";
+            out.Line() << "\"BitWidth\": " << static_cast<uint32_t>(literal->bitWidth) << ",";
+            out.Line() << "\"Signed\": " << static_cast<uint32_t>(literal->signedness) << ",";
+
+            switch (literal->type) {
+                case IL::LiteralType::None:
+                    break;
+                case IL::LiteralType::Int:
+                    out.Line() << "\"Value\": " << literal->value.integral << ",";
+                break;
+                case IL::LiteralType::FP:
+                    out.Line() << "\"Value\": " << literal->value.fp << ",";
+                break;
+            }
+            break;
+        }
+        case IL::OpCode::Add: {
+            auto add = instr->As<IL::AddInstruction>();
+            out.Line() << "\"LHS\": " << add->lhs << ",";
+            out.Line() << "\"RHS\": " << add->rhs << ",";
+            break;
+        }
+        case IL::OpCode::Load: {
+            auto load = instr->As<IL::LoadInstruction>();
+            out.Line() << "\"Address\": " << load->address << ",";
+            break;
+        }
+        case IL::OpCode::Store: {
+            auto store = instr->As<IL::StoreInstruction>();
+            out.Line() << "\"Address\": " << store->address << ",";
+            out.Line() << "\"Value\": " << store->value << ",";
+            break;
+        }
+        case IL::OpCode::SampleTexture: {
+            auto load = instr->As<IL::SampleTextureInstruction>();
+            out.Line() << "\"SampleMode\": " << static_cast<uint32_t>(load->sampleMode) << ",";
+            out.Line() << "\"Texture\": " << load->texture << ",";
+
+            if (load->sampler != IL::InvalidID) {
+                out.Line() << "\"Sampler\": " << load->sampler << ",";
+            }
+
+            out.Line() << "\"Coordinate\": " << load->coordinate << ",";
+
+            if (load->reference != IL::InvalidID) {
+                out.Line() << "\"Reference\": " << load->reference << ",";
+            }
+
+            if (load->lod != IL::InvalidID) {
+                out.Line() << "\"LOD\": " << load->lod << ",";
+            }
+
+            if (load->bias != IL::InvalidID) {
+                out.Line() << "\"Bias\": " << load->bias << ",";
+            }
+
+            if (load->ddx != IL::InvalidID) {
+                out.Line() << "\"DDX\": " << load->ddx << ",";
+                out.Line() << "\"DDY\": " << load->ddy << ",";
+            }
+            break;
+        }
+        case IL::OpCode::LoadTexture: {
+            auto load = instr->As<IL::LoadTextureInstruction>();
+            out.Line() << "\"Texture\": " << load->texture << ",";
+            out.Line() << "\"Index\": " << load->index << ",";
+
+            if (load->offset != IL::InvalidID) {
+                out.Line() << "\"Offset\": " << load->offset << ",";
+            }
+            if (load->mip != IL::InvalidID) {
+                out.Line() << "\"Mip\": " << load->mip << ",";
+            }
+            break;
+        }
+        case IL::OpCode::StoreBuffer: {
+            auto store = instr->As<IL::StoreBufferInstruction>();
+            out.Line() << "\"Buffer\": " << store->buffer << ",";
+            out.Line() << "\"Index\": " << store->index << ",";
+            out.Line() << "\"Value\": " << store->value << ",";
+            out.Line() << "\"ComponentMask\": " << store->mask.value << ",";
+            break;
+        }
+        case IL::OpCode::StoreOutput: {
+            auto store = instr->As<IL::StoreOutputInstruction>();
+            out.Line() << "\"Index\": " << store->index << ",";
+            out.Line() << "\"Row\": " << store->row << ",";
+            out.Line() << "\"Column\": " << store->column << ",";
+            out.Line() << "\"Value\": " << store->value << ",";
+            break;
+        }
+        case IL::OpCode::IsInf: {
+            auto isInf = instr->As<IL::IsInfInstruction>();
+            out.Line() << "\"Value\": " << isInf->value << ",";
+            break;
+        }
+        case IL::OpCode::IsNaN: {
+            auto isNaN = instr->As<IL::IsNaNInstruction>();
+            out.Line() << "\"Value\": " << isNaN->value << ",";
+            break;
+        }
+        case IL::OpCode::Sub: {
+            auto sub = instr->As<IL::SubInstruction>();
+            out.Line() << "\"LHS\": " << sub->lhs << ",";
+            out.Line() << "\"RHS\": " << sub->rhs << ",";
+            break;
+        }
+        case IL::OpCode::Div: {
+            auto sub = instr->As<IL::DivInstruction>();
+            out.Line() << "\"LHS\": " << sub->lhs << ",";
+            out.Line() << "\"RHS\": " << sub->rhs << ",";
+            break;
+        }
+        case IL::OpCode::Mul: {
+            auto mul = instr->As<IL::MulInstruction>();
+            out.Line() << "\"LHS\": " << mul->lhs << ",";
+            out.Line() << "\"RHS\": " << mul->rhs << ",";
+            break;
+        }
+        case IL::OpCode::Or: {
+            auto _or = instr->As<IL::OrInstruction>();
+            out.Line() << "\"LHS\": " << _or->lhs << ",";
+            out.Line() << "\"RHS\": " << _or->rhs << ",";
+            break;
+        }
+        case IL::OpCode::And: {
+            auto _and = instr->As<IL::AndInstruction>();
+            out.Line() << "\"LHS\": " << _and->lhs << ",";
+            out.Line() << "\"RHS\": " << _and->rhs << ",";
+            break;
+        }
+        case IL::OpCode::Equal: {
+            auto equal = instr->As<IL::EqualInstruction>();
+            out.Line() << "\"LHS\": " << equal->lhs << ",";
+            out.Line() << "\"RHS\": " << equal->rhs << ",";
+            break;
+        }
+        case IL::OpCode::NotEqual: {
+            auto notEqual = instr->As<IL::NotEqualInstruction>();
+            out.Line() << "\"LHS\": " << notEqual->lhs << ",";
+            out.Line() << "\"RHS\": " << notEqual->rhs << ",";
+            break;
+        }
+        case IL::OpCode::LessThan: {
+            auto lessThan = instr->As<IL::LessThanInstruction>();
+            out.Line() << "\"LHS\": " << lessThan->lhs << ",";
+            out.Line() << "\"RHS\": " << lessThan->rhs << ",";
+            break;
+        }
+        case IL::OpCode::LessThanEqual: {
+            auto lessThanEqual = instr->As<IL::LessThanEqualInstruction>();
+            out.Line() << "\"LHS\": " << lessThanEqual->lhs << ",";
+            out.Line() << "\"RHS\": " << lessThanEqual->rhs << ",";
+            break;
+        }
+        case IL::OpCode::GreaterThan: {
+            auto greaterThan = instr->As<IL::GreaterThanInstruction>();
+            out.Line() << "\"LHS\": " << greaterThan->lhs << ",";
+            out.Line() << "\"RHS\": " << greaterThan->rhs << ",";
+            break;
+        }
+        case IL::OpCode::GreaterThanEqual: {
+            auto greaterThanEqual = instr->As<IL::GreaterThanEqualInstruction>();
+            out.Line() << "\"LHS\": " << greaterThanEqual->lhs << ",";
+            out.Line() << "\"RHS\": " << greaterThanEqual->rhs << ",";
+            break;
+        }
+        case IL::OpCode::AddressChain: {
+            auto addressChain = instr->As<IL::AddressChainInstruction>();
+            out.Line() << "\"Composite\": " << addressChain->composite << ",";
+
+            out.Line() << "\"Chains\": ";
+            out.Line() << "[";
+            
+            for (uint32_t i = 0; i < static_cast<uint32_t>(addressChain->chains.count); i++) {         
+                if (i != addressChain->chains.count - 1) {
+                    out.Line() << "\t" << addressChain->chains[i].index << ",";
+                } else {
+                    out.Line() << "\t" << addressChain->chains[i].index;
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
+        case IL::OpCode::Extract: {
+            auto extract = instr->As<IL::ExtractInstruction>();
+            out.Line() << "\"Composite\": " << extract->composite << ",";
+            out.Line() << "\"Index\": " << extract->index << ",";
+            break;
+        }
+        case IL::OpCode::Insert: {
+            auto insert = instr->As<IL::InsertInstruction>();
+            out.Line() << "\"Composite\": " << insert->composite << ",";
+            out.Line() << "\"Value\": " << insert->value << ",";
+            break;
+        }
+        case IL::OpCode::Select: {
+            auto select = instr->As<IL::SelectInstruction>();
+            out.Line() << "\"Condition\": " << select->condition << ",";
+            out.Line() << "\"Pass\": " << select->pass << ",";
+            out.Line() << "\"Fail\": " << select->fail << ",";
+            break;
+        }
+        case IL::OpCode::Branch: {
+            auto branch = instr->As<IL::BranchInstruction>();
+            out.Line() << "\"Branch\": " << branch->branch << ",";
+            
+            // Optional control flow
+            if (branch->controlFlow.merge != IL::InvalidID) {
+                out.Line() << "\"Merge\": " << branch->controlFlow.merge << ",";
+
+                if (branch->controlFlow._continue != IL::InvalidID) {
+                    out.Line() << "\"Continue\": " << branch->controlFlow._continue << ",";
+                }
+            }
+            break;
+        }
+        case IL::OpCode::BranchConditional: {
+            auto branch = instr->As<IL::BranchConditionalInstruction>();
+            out.Line() << "\"Condition\": " << branch->cond << ",";
+            out.Line() << "\"Pass\": " << branch->pass << ",";
+            out.Line() << "\"Fail\": " << branch->fail << ",";
+
+            // Optional control flow
+            if (branch->controlFlow.merge != IL::InvalidID) {
+                out.Line() << "\"Merge\": " << branch->controlFlow.merge << ",";
+
+                if (branch->controlFlow._continue != IL::InvalidID) {
+                    out.Line() << "\"Continue\": " << branch->controlFlow._continue << ",";
+                }
+            }
+
+            break;
+        }
+        case IL::OpCode::Switch: {
+            auto _switch = instr->As<IL::SwitchInstruction>();
+            out.Line() << "\"Value\": " << _switch->value << ",";
+            out.Line() << "\"Default\": " << _switch->_default << ",";
+            
+            // Optional control flow
+            if (_switch->controlFlow.merge != IL::InvalidID) {
+                out.Line() << "\"Merge\": " << _switch->controlFlow.merge << ",";
+
+                if (_switch->controlFlow._continue != IL::InvalidID) {
+                    out.Line() << "\"Continue\": " << _switch->controlFlow._continue << ",";
+                }
+            }
+
+            out.Line() << "\"Cases\": ";
+            out.Line() << "[";
+            
+            for (uint32_t i = 0; i < _switch->cases.count; i++) {    
+                const IL::SwitchCase &_case = _switch->cases[i];
+                
+                out.Line() << "{";
+                out.Line() << "\"Branch\": " << _case.branch << ",";
+                out.Line() << "\"Literal\": " << _case.literal;
+                out.Line() << "}";
+
+                if (i != _switch->cases.count - 1) {
+                    out.stream << ",";
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
+        case IL::OpCode::Phi: {
+            auto phi = instr->As<IL::PhiInstruction>();
+            
+            out.Line() << "\"Values\": ";
+            out.Line() << "[";
+            
+            for (uint32_t i = 0; i < phi->values.count; i++) {    
+                const IL::PhiValue &value = phi->values[i];
+                
+                out.Line() << "{";
+                out.Line() << "\t\"Branch\": " << value.branch << ",";
+                out.Line() << "\t\"Value\": " << value.value;
+                out.Line() << "}";
+
+                if (i != phi->values.count - 1) {
+                    out.stream << ",";
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
+        case IL::OpCode::BitOr: {
+            auto bitOr = instr->As<IL::BitOrInstruction>();
+            out.Line() << "\"LHS\": " << bitOr->lhs << ",";
+            out.Line() << "\"RHS\": " << bitOr->rhs << ",";
+            break;
+        }
+        case IL::OpCode::BitAnd: {
+            auto bitAnd = instr->As<IL::BitAndInstruction>();
+            out.Line() << "\"LHS\": " << bitAnd->lhs << ",";
+            out.Line() << "\"RHS\": " << bitAnd->rhs << ",";
+            break;
+        }
+        case IL::OpCode::BitShiftLeft: {
+            auto bitShiftLeft = instr->As<IL::BitShiftLeftInstruction>();
+            out.Line() << "\"Value\": " << bitShiftLeft->value << ",";
+            out.Line() << "\"Shift\": " << bitShiftLeft->shift << ",";
+            break;
+        }
+        case IL::OpCode::BitShiftRight: {
+            auto bitShiftRight = instr->As<IL::BitShiftRightInstruction>();
+            out.Line() << "\"Value\": " << bitShiftRight->value << ",";
+            out.Line() << "\"Shift\": " << bitShiftRight->shift << ",";
+            break;
+        }
+        case IL::OpCode::Export: {
+            auto _export = instr->As<IL::ExportInstruction>();
+            out.Line() << "\"ExportID\": " << _export->exportID << ",";
+
+            out.Line() << "\"Values\": ";
+            out.Line() << "[";
+            
+            for (uint32_t i = 0; i < _export->values.count; i++) {    
+                out.Line() << "\t" << _export->values[i];
+
+                if (i != _export->values.count - 1) {
+                    out.stream << ",";
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
+        case IL::OpCode::Alloca: {
+            auto _alloca = instr->As<IL::AllocaInstruction>();
+            out.Line() << "\"Type\": " << _alloca->type << ",";
+            break;
+        }
+        case IL::OpCode::StoreTexture: {
+            auto store = instr->As<IL::StoreTextureInstruction>();
+            out.Line() << "\"Texture\": " << store->texture << ",";
+            out.Line() << "\"Index\": " << store->index << ",";
+            out.Line() << "\"Texel\": " << store->texel << ",";
+            out.Line() << "\"ComponentMask\": " << store->mask.value << ",";
+            break;
+        }
+        case IL::OpCode::Any: {
+            auto _or = instr->As<IL::AnyInstruction>();
+            out.Line() << "\"Value\": " << _or->value << ",";
+            break;
+        }
+        case IL::OpCode::All: {
+            auto load = instr->As<IL::AllInstruction>();
+            out.Line() << "\"Value\": " << load->value << ",";
+            break;
+        }
+        case IL::OpCode::LoadBuffer: {
+            auto load = instr->As<IL::LoadBufferInstruction>();
+            out.Line() << "\"Buffer\": " << load->buffer << ",";
+            out.Line() << "\"Index\": " << load->index << ",";
+
+            if (load->offset != IL::InvalidID) {
+                out.Line() << "\"Offset\": " << load->offset << ",";
+            }
+            break;
+        }
+        case IL::OpCode::ResourceSize: {
+            auto load = instr->As<IL::ResourceSizeInstruction>();
+            out.Line() << "\"Resource\": " << load->resource << ",";
+            break;
+        }
+        case IL::OpCode::ResourceToken: {
+            auto load = instr->As<IL::ResourceTokenInstruction>();
+            out.Line() << "\"Resource\": " << load->resource << ",";
+            break;
+        }
+        case IL::OpCode::Rem: {
+            auto rem = instr->As<IL::RemInstruction>();
+            out.Line() << "\"LHS\": " << rem->lhs << ",";
+            out.Line() << "\"RHS\": " << rem->rhs << ",";
+            break;
+        }
+        case IL::OpCode::Trunc: {
+            auto trunc = instr->As<IL::TruncInstruction>();
+            out.Line() << "\"Value\": " << trunc->value << ",";
+            break;
+        }
+        case IL::OpCode::Return: {
+            auto ret = instr->As<IL::ReturnInstruction>();
+
+            if (ret->value != IL::InvalidID) {
+                out.Line() << "\"Value\": " << ret->value << ",";
+            }
+            break;
+        }
+        case IL::OpCode::BitXOr: {
+            auto _xor = instr->As<IL::BitXOrInstruction>();
+            out.Line() << "\"LHS\": " << _xor->lhs << ",";
+            out.Line() << "\"RHS\": " << _xor->rhs << ",";
+            break;
+        }
+        case IL::OpCode::FloatToInt: {
+            auto ftoi = instr->As<IL::FloatToIntInstruction>();
+            out.Line() << "\"Value\": " << ftoi->value << ",";
+            break;
+        }
+        case IL::OpCode::IntToFloat: {
+            auto itof = instr->As<IL::IntToFloatInstruction>();
+            out.Line() << "\"Value\": " << itof->value << ",";
+            break;
+        }
+        case IL::OpCode::BitCast: {
+            auto cast = instr->As<IL::BitCastInstruction>();
+            out.Line() << "\"Value\": " << cast->value << ",";
+            break;
+        }
+        case IL::OpCode::AtomicOr: {
+            auto atomic = instr->As<IL::AtomicOrInstruction>();
+            out.Line() << "\"Address\": " << atomic->address << ",";
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::AtomicXOr: {
+            auto atomic = instr->As<IL::AtomicXOrInstruction>();
+            out.Line() << "\"Address\": " << atomic->address << ",";
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::AtomicAnd: {
+            auto atomic = instr->As<IL::AtomicAndInstruction>();
+            out.Line() << "\"Address\": " << atomic->address << ",";
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::AtomicAdd: {
+            auto atomic = instr->As<IL::AtomicAddInstruction>();
+            out.Line() << "\"Address\": " << atomic->address << ",";
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::AtomicMin: {
+            auto atomic = instr->As<IL::AtomicMinInstruction>();
+            out.Line() << "\"Address\": " << atomic->address << ",";
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::AtomicMax: {
+            auto atomic = instr->As<IL::AtomicMinInstruction>();
+            out.Line() << "\"Address\": " << atomic->address << ",";
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::AtomicExchange: {
+            auto atomic = instr->As<IL::AtomicExchangeInstruction>();
+            out.Line() << "\"Address\": " << atomic->address << ",";
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::AtomicCompareExchange: {
+            auto atomic = instr->As<IL::AtomicCompareExchangeInstruction>();
+            out.Line() << "\"Address\": " << atomic->address << ",";
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            out.Line() << "\"Comparator\": " << atomic->comparator << ",";
+            break;
+        }
+    }
+    
+    out.Line() << "\"OpCode\": " << static_cast<uint32_t>(instr->opCode) << ",";
+    
+    if (const Backend::IL::Type* type = program.GetTypeMap().GetType(instr->result)) {
+        out.Line() << "\"Type\": " << type->id << ",";
+    }
+    
+    out.Line() << "\"ID\": " << instr->result;
+}
+
+void PrettyPrintJson(const Backend::IL::Program& program, const Backend::IL::BasicBlock* basicBlock, IL::PrettyPrintContext out) {
+    out.Line() << "\"ID\": " << basicBlock->GetID() << ",";
+    
+    out.Line() << "\"Instructions\": ";
+    out.Line() << "[";
+
+    for (IL::BasicBlock::ConstIterator it = basicBlock->begin(); it != basicBlock->end(); ++it) {
+        out.Line() << "{";
+        PrettyPrintJson(program, *it, out.Tab());
+        out.Line() << "}";
+
+        if (std::next(it) != basicBlock->end()) {
+            out.stream << ",";
+        }
+    }
+    
+    out.Line() << "]";
+}
+
+void PrettyPrintJson(const Backend::IL::Program& program, const Backend::IL::Function* function, IL::PrettyPrintContext out) {
+    out.Line() << "\"ID\": " << function->GetID() << ",";
+    out.Line() << "\"Type\": " << function->GetFunctionType()->id << ",";
+
+    out.Line() << "\"Parameters\": ";
+    out.Line() << "[";
+
+    const IL::VariableList& variables = function->GetParameters();
+    
+    for (const Backend::IL::Variable& variable : variables) {
+        out.Line() << "\t" << variable.id;
+        
+        if (&variable != &*--variables.end()) {
+            out.stream << ",";
+        }
+    }
+    
+    out.Line() << "],";
+    
+    const IL::BasicBlockList& blocks = function->GetBasicBlocks();
+
+    out.Line() << "\"BasicBlocks\": ";
+    out.Line() << "[";
+
+    for (IL::BasicBlock* block : blocks) {
+        out.Line() << "{";
+        PrettyPrintJson(program, block, out.Tab());
+        out.Line() << "}";
+        
+        if (block != *--blocks.end()) {
+            out.stream << ",";
+        }
+    }
+    
+    out.Line() << "]";
+}
+
+void IL::PrettyPrintProgramJson(const Program& program, PrettyPrintContext out) {
+    // Begin document
+    out.Line() << "{";
+
+    // Metadata
+    out.Line() << "\"AllocatedIdentifiers\": " << program.GetIdentifierMap().GetMaxID() << ",";
+    out.Line() << "\"EntryPoint\": " << program.GetEntryPoint()->GetID() << ",";
+    out.Line() << "\"GUID\": " << program.GetShaderGUID() << ",";
+
+    // Emit types
+    {        
+        out.Line() << "\"Types\":";
+        out.Line() << "[";
+
+        PrettyPrintContext ctx = out.Tab();
+        
+        for (const Backend::IL::Type* type : program.GetTypeMap()) {
+            ctx.Line() << "{";
+            PrettyPrintJson(type, ctx.Tab());
+            ctx.Line() << "}";
+
+            if (type != *--program.GetTypeMap().end()) {
+                ctx.stream << ",";
+            }
+        }
+    
+        ctx.Line() << "],";
+    }
+
+    // Emit constants
+    {
+        out.Line() << "\"Constants\":";
+        out.Line() << "[";
+
+        PrettyPrintContext ctx = out.Tab();
+
+        for (const Backend::IL::Constant* constant : program.GetConstants()) {
+            ctx.Line() << "{";
+            PrettyPrintJson(constant, ctx.Tab());
+            ctx.Line() << "}";
+
+            if (constant != *--program.GetConstants().end()) {
+                ctx.stream << ",";
+            }
+        }
+    
+        out.Line() << "],";
+    }
+
+    // Emit variables
+    {
+        out.Line() << "\"Variables\":";
+        out.Line() << "[";
+
+        PrettyPrintContext ctx = out.Tab();
+
+        for (const Backend::IL::Variable& variable : program.GetVariableList()) {
+            ctx.Line() << "{";
+            PrettyPrintJson(&variable, ctx.Tab());
+            ctx.Line() << "}";
+
+            if (&variable != &*--program.GetVariableList().end()) {
+                ctx.stream << ",";
+            }
+        }
+    
+        out.Line() << "],";
+    }
+
+    // Emit functions
+    {
+        out.Line() << "\"Functions\":";
+        out.Line() << "[";
+
+        PrettyPrintContext ctx = out.Tab();
+
+        for (const Backend::IL::Function* function : program.GetFunctionList()) {
+            ctx.Line() << "{";
+            PrettyPrintJson(program, function, ctx.Tab());
+            ctx.Line() << "}";
+
+            if (function != *--program.GetFunctionList().end()) {
+                ctx.stream << ",";
+            }
+        }
+    
+        out.Line() << "]";
+    }
+
+    // Close document
+    out.Line() << "}";
+}

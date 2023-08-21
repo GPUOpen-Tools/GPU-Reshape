@@ -26,6 +26,7 @@
 
 // Layer
 #include <Backends/Vulkan/Compiler/Blocks/SpvPhysicalBlockSection.h>
+#include <Backends/Vulkan/Compiler/SpvCodeOffsetTraceback.h>
 
 // Backend
 #include <Backend/IL/Source.h>
@@ -86,6 +87,11 @@ struct SpvPhysicalBlockFunction : public SpvPhysicalBlockSection {
     /// \param remote the remote table
     /// \param out destination function
     void CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockFunction& out);
+
+    /// Get the code offset traceback
+    /// \param codeOffset code offset, must originate from same function
+    /// \return traceback
+    SpvCodeOffsetTraceback GetCodeOffsetTraceback(uint32_t codeOffset);
 
 private:
     /// Patch all loop continues
@@ -171,6 +177,10 @@ private:
 
     /// All metadata
     std::vector<IdentifierMetadata> identifierMetadata;
+
+private:
+    /// All traceback information
+    std::unordered_map<uint32_t, SpvCodeOffsetTraceback> sourceTraceback;
 
 private:
     struct LoopContinueBlock {

@@ -62,12 +62,12 @@
     <message name="ShaderIL">
         <field name="shaderUID" type="uint64"/>
         <field name="found"     type="bool"/>
-        <field name="code"      type="string"/>
+        <field name="program"   type="string"/>
     </message>
 
     <message name="ShaderBlockGraph">
         <field name="shaderUID" type="uint64"/>
         <field name="found"     type="bool"/>
-        <field name="nodes" type="string"/>
+        <field name="nodes"     type="string"/>
     </message>
 </schema>

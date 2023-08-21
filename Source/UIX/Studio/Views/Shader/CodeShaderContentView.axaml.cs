@@ -74,13 +74,15 @@ namespace Studio.Views.Shader
             // Create background renderer
             _validationBackgroundRenderer = new ValidationBackgroundRenderer
             {
-                Document = Editor.Document
+                Document = Editor.Document,
+                Target = ValidationTarget.Source
             };
 
             // Create marker service
             _validationTextMarkerService = new ValidationTextMarkerService
             {
-                Document = Editor.Document
+                Document = Editor.Document,
+                Target = ValidationTarget.Source
             };
 
             // Add renderers

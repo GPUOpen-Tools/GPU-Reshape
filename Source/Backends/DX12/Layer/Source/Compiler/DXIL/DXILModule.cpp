@@ -87,6 +87,10 @@ IDXDebugModule *DXILModule::GetDebug() {
     return nullptr;
 }
 
+DXCodeOffsetTraceback DXILModule::GetCodeOffsetTraceback(uint32_t codeOffset) {
+    return table.function.GetCodeOffsetTraceback(codeOffset);
+}
+
 const char * DXILModule::GetLanguage() {
     return "DXIL";
 }

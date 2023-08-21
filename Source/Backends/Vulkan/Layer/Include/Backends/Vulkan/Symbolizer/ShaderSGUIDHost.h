@@ -48,14 +48,14 @@ public:
     void Commit(IBridge* bridge);
 
     /// Overrides
-    ShaderSGUID Bind(const IL::Program &program, const IL::ConstOpaqueInstructionRef& instruction) override;
+    ShaderSGUID Bind(const IL::Program &program, const IL::BasicBlock::ConstIterator& instruction) override;
     ShaderSourceMapping GetMapping(ShaderSGUID sguid) override;
     std::string_view GetSource(ShaderSGUID sguid) override;
     std::string_view GetSource(const ShaderSourceMapping &mapping) override;
 
 private:
     struct ShaderEntry {
-        std::unordered_map<ShaderSourceMapping::TSortKey, ShaderSourceMapping> mappings;
+        std::unordered_map<ShaderSourceMapping, ShaderSourceMapping> mappings;
     };
 
     /// Get the source map from a guid

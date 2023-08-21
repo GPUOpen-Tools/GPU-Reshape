@@ -27,6 +27,7 @@
 #include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/Compiler/SpvModule.h>
 #include <Backends/Vulkan/Compiler/SpvSourceMap.h>
+#include <Backends/Vulkan/Compiler/SpvCodeOffsetTraceback.h>
 
 // Backend
 #include <Backend/IL/Program.h>
@@ -77,6 +78,8 @@ void ShaderSGUIDHost::Commit(IBridge *bridge) {
         message->fileUID = mapping.fileUID;
         message->line = mapping.line;
         message->column = mapping.column;
+        message->basicBlockId = mapping.basicBlockId;
+        message->instructionIndex = mapping.instructionIndex;
 
         // Fill contents
         message->contents.Set(sourceContents);
@@ -89,41 +92,51 @@ void ShaderSGUIDHost::Commit(IBridge *bridge) {
     pendingSubmissions.clear();
 }
 
-ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpaqueInstructionRef& instruction) {
+ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::BasicBlock::ConstIterator& instruction) {
     // Get instruction pointer
     const IL::Instruction* ptr = IL::ConstInstructionRef<>(instruction).Get();
 
-    // Find the source map
-    const SpvSourceMap* sourceMap = GetSourceMap(program.GetShaderGUID());
-    if (!sourceMap) {
+    // Get the shader
+    ShaderModuleState* shader = table->states_shaderModule.GetFromUID(program.GetShaderGUID());
+
+    // Validate shader
+    if (!shader || !shader->spirvModule) {
         return InvalidShaderSGUID;
     }
 
-    // Must have source
-    if (!ptr->source.IsValid()) {
-        return InvalidShaderSGUID;
-    }
+    // Get traceback
+    SpvCodeOffsetTraceback traceback = shader->spirvModule->GetCodeOffsetTraceback(ptr->source.codeOffset);
 
-    // Try to get the association
-    SpvSourceAssociation sourceAssociation = sourceMap->GetSourceAssociation(ptr->source.codeOffset);
-    if (!sourceAssociation) {
-        return InvalidShaderSGUID;
-    }
-
-    // Create mapping
+    // Default mapping
     ShaderSourceMapping mapping{};
-    mapping.fileUID = sourceAssociation.fileUID;
-    mapping.line = sourceAssociation.line;
-    mapping.column = sourceAssociation.column;
     mapping.shaderGUID = program.GetShaderGUID();
 
+    // Mapping il association
+    mapping.basicBlockId = traceback.basicBlockID;
+    mapping.instructionIndex = traceback.instructionIndex;
+    
+    // Find the source map
+    if (const SpvSourceMap* sourceMap = GetSourceMap(program.GetShaderGUID()); sourceMap && ptr->source.IsValid()) {
+        // Try to get the association
+        SpvSourceAssociation sourceAssociation = sourceMap->GetSourceAssociation(ptr->source.codeOffset);
+        if (!sourceAssociation) {
+            return InvalidShaderSGUID;
+        }
+        
+        // Mapping source association
+        mapping.fileUID = sourceAssociation.fileUID;
+        mapping.line = sourceAssociation.line;
+        mapping.column = sourceAssociation.column;
+    }
+
+    // Serial
     std::lock_guard guard(mutex);
 
     // Get entry
     ShaderEntry& shaderEntry = shaderEntries[mapping.shaderGUID];
 
     // Find mapping
-    auto ssmIt = shaderEntry.mappings.find(mapping.GetInlineSortKey());
+    auto ssmIt = shaderEntry.mappings.find(mapping);
     if (ssmIt == shaderEntry.mappings.end()) {
         // Free indices?
         if (!freeIndices.empty()) {
@@ -145,7 +158,7 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpa
         pendingSubmissions.push_back(mapping.sguid);
 
         // Insert mappings
-        shaderEntry.mappings[mapping.GetInlineSortKey()] = mapping;
+        shaderEntry.mappings[mapping] = mapping;
         sguidLookup.at(mapping.sguid) = mapping;
         return mapping.sguid;
     }

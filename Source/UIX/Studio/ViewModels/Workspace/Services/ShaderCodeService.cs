@@ -135,15 +135,15 @@ namespace Studio.ViewModels.Workspace.Services
                                 UInt64 uid = shaderCode.shaderUID;
 
                                 // Set contents
-                                Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.IL = $"Shader {{{uid}}} not found"; });
+                                Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.Program = null; });
                                 continue;
                             }
 
-                            // Flatten dynamics
-                            string code = shaderCode.code.String;
+                            // Parse program
+                            Models.IL.Program? program = new Models.IL.Parser().Parse(shaderCode.program.String);
 
                             // Copy contents
-                            Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.IL = code; });
+                            Dispatcher.UIThread.InvokeAsync(() => { entry.ShaderViewModel.Program = program; });
                             break;
                         }
                         case ShaderBlockGraphMessage.ID:

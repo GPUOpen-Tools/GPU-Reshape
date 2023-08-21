@@ -47,5 +47,15 @@ namespace Studio.Models.Workspace.Objects
         /// Column offset
         /// </summary>
         public int Column { get; set; }
+        
+        /// <summary>
+        /// Instruction basic block id
+        /// </summary>
+        public uint BasicBlockId { get; set; }
+        
+        /// <summary>
+        /// Instruction linear index into the basic block
+        /// </summary>
+        public uint InstructionIndex { get; set; }
     }
 }

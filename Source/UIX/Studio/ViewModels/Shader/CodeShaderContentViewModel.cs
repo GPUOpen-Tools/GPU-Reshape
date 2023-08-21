@@ -36,6 +36,7 @@ using Runtime.ViewModels.Shader;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
 using Studio.ViewModels.Documents;
+using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -111,6 +112,22 @@ namespace Studio.ViewModels.Shader
                     OnObjectChanged();
                 }
             }
+        }
+
+        /// <summary>
+        /// Is the overlay visible?
+        /// </summary>
+        public bool IsOverlayVisible()
+        {
+            return SelectedShaderFileViewModel?.UID != null;
+        }
+
+        /// <summary>
+        /// Is a validation object visible?
+        /// </summary>
+        public bool IsObjectVisible(ValidationObject validationObject)
+        {
+            return validationObject.Segment?.Location.FileUID == SelectedShaderFileViewModel?.UID;
         }
 
         /// <summary>

@@ -226,13 +226,13 @@ void MetadataController::OnMessage(const GetShaderILMessage& message) {
 
     // Pretty print to stream
     std::stringstream ilStream;
-    IL::PrettyPrint(*shader->module->GetProgram(), ilStream);
+    IL::PrettyPrintProgramJson(*shader->module->GetProgram(), ilStream);
 
     // Add native file
-    auto&& file = view.Add<ShaderILMessage>(ShaderILMessage::AllocationInfo { .codeLength = static_cast<size_t>(ilStream.tellp()) });
+    auto&& file = view.Add<ShaderILMessage>(ShaderILMessage::AllocationInfo { .programLength = static_cast<size_t>(ilStream.tellp()) });
     file->shaderUID = message.shaderUID;
     file->found = true;
-    file->code.Set(ilStream.str());
+    file->program.Set(ilStream.str());
 }
 
 void MetadataController::OnMessage(const GetShaderBlockGraphMessage& message) {
@@ -364,6 +364,8 @@ void MetadataController::OnMessage(const struct GetShaderSourceMappingMessage& m
     response->fileUID = mapping.fileUID;
     response->line = mapping.line;
     response->column = mapping.column;
+    response->basicBlockId = mapping.basicBlockId;
+    response->instructionIndex = mapping.instructionIndex;
 
     // Fill contents
     response->contents.Set(sourceContents);

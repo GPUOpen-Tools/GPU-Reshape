@@ -30,6 +30,7 @@
 #include <Backends/DX12/Compiler/DXIL/LLVM/LLVMRecordStringView.h>
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockSection.h>
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
+#include <Backends/DX12/Compiler/DXCodeOffsetTraceback.h>
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -43,7 +44,7 @@ struct DXILValueReader;
 
 /// Function block
 struct DXILPhysicalBlockFunction : public DXILPhysicalBlockSection {
-    using DXILPhysicalBlockSection::DXILPhysicalBlockSection;
+    DXILPhysicalBlockFunction(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table);
 
     /// Copy this block
     /// \param out destination block
@@ -66,6 +67,11 @@ public:
 
     /// Get the declaration associated with an index
     const DXILFunctionDeclaration* GetFunctionDeclarationFromIndex(uint32_t index);
+
+    /// Get a source traceback
+    /// \param codeOffset given offset, must originate from the same function
+    /// \return traceback
+    DXCodeOffsetTraceback GetCodeOffsetTraceback(uint32_t codeOffset);
 
 public:
     /// Compile a function
@@ -295,6 +301,10 @@ private:
 
     /// All function blocks
     TrivialStackVector<FunctionBlock, 4> functionBlocks;
+
+private:
+    /// Source traceback lookup
+    Vector<DXCodeOffsetTraceback> sourceTraceback;
 
 private:
     /// Function visitation counters

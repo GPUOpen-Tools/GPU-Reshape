@@ -26,6 +26,7 @@
 
 // Layer
 #include <Backends/DX12/DX12.h>
+#include <Backends/DX12/Compiler/DXCodeOffsetTraceback.h>
 
 // Common
 #include <Common/GlobalUID.h>
@@ -69,6 +70,11 @@ public:
     /// \return debug interface
     virtual IDXDebugModule* GetDebug() = 0;
 
+    /// Get a source traceback
+    /// \param codeOffset given offset, must originate from the same module
+    /// \return traceback
+    virtual DXCodeOffsetTraceback GetCodeOffsetTraceback(uint32_t codeOffset) = 0;
+    
     /// Get the guid
     /// \return
     virtual GlobalUID GetInstrumentationGUID() = 0;

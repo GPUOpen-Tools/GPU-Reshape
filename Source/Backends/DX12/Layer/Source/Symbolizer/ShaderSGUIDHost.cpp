@@ -28,6 +28,7 @@
 #include <Backends/DX12/States/ShaderState.h>
 #include <Backends/DX12/Compiler/IDXModule.h>
 #include <Backends/DX12/Compiler/IDXDebugModule.h>
+#include <Backends/DX12/Compiler/DXCodeOffsetTraceback.h>
 
 // Backend
 #include <Backend/IL/Program.h>
@@ -82,6 +83,8 @@ void ShaderSGUIDHost::Commit(IBridge *bridge) {
         message->fileUID = mapping.fileUID;
         message->line = mapping.line;
         message->column = mapping.column;
+        message->basicBlockId = mapping.basicBlockId;
+        message->instructionIndex = mapping.instructionIndex;
 
         // Fill contents
         message->contents.Set(sourceContents);
@@ -94,7 +97,7 @@ void ShaderSGUIDHost::Commit(IBridge *bridge) {
     pendingSubmissions.clear();
 }
 
-ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpaqueInstructionRef& instruction) {
+ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::BasicBlock::ConstIterator& instruction) {
     // Get instruction pointer
     const IL::Instruction* ptr = IL::ConstInstructionRef<>(instruction).Get();
 
@@ -109,24 +112,30 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpa
         return InvalidShaderSGUID;
     }
 
-    // Debug modules are optional
-    IDXDebugModule* debugModule = shaderState->module->GetDebug();
-    if (!debugModule) {
-        return InvalidShaderSGUID;
-    }
+    // Get traceback
+    DXCodeOffsetTraceback traceback = shaderState->module->GetCodeOffsetTraceback(ptr->source.codeOffset);
 
-    // Try to get the association
-    DXSourceAssociation sourceAssociation = debugModule->GetSourceAssociation(ptr->source.codeOffset);
-    if (!sourceAssociation) {
-        return InvalidShaderSGUID;
-    }
-
-    // Create mapping
+    // Default mapping
     ShaderSourceMapping mapping{};
-    mapping.fileUID = sourceAssociation.fileUID;
-    mapping.line = sourceAssociation.line;
-    mapping.column = sourceAssociation.column;
     mapping.shaderGUID = program.GetShaderGUID();
+
+    // Mapping il association
+    mapping.basicBlockId = traceback.basicBlockID;
+    mapping.instructionIndex = traceback.instructionIndex;
+    
+    // Debug modules are optional
+    if (IDXDebugModule* debugModule = shaderState->module->GetDebug()) {
+        // Try to get the association
+        DXSourceAssociation sourceAssociation = debugModule->GetSourceAssociation(ptr->source.codeOffset);
+        if (!sourceAssociation) {
+            return InvalidShaderSGUID;
+        }
+
+        // Mapping source association
+        mapping.fileUID = sourceAssociation.fileUID;
+        mapping.line = sourceAssociation.line;
+        mapping.column = sourceAssociation.column;
+    }
 
     // Serial
     std::lock_guard guard(mutex);
@@ -135,7 +144,7 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpa
     ShaderEntry& shaderEntry = shaderEntries[mapping.shaderGUID];
 
     // Find mapping
-    auto ssmIt = shaderEntry.mappings.find(mapping.GetInlineSortKey());
+    auto ssmIt = shaderEntry.mappings.find(mapping);
     if (ssmIt == shaderEntry.mappings.end()) {
         // Free indices?
         if (!freeIndices.empty()) {
@@ -157,7 +166,7 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::ConstOpa
         pendingSubmissions.push_back(mapping.sguid);
 
         // Insert mappings
-        shaderEntry.mappings[mapping.GetInlineSortKey()] = mapping;
+        shaderEntry.mappings[mapping] = mapping;
         sguidLookup.at(mapping.sguid) = mapping;
         return mapping.sguid;
     }

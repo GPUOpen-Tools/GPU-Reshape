@@ -27,6 +27,7 @@ using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
 using Studio.ViewModels.Documents;
+using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -92,6 +93,22 @@ namespace Studio.ViewModels.Shader
                     OnObjectChanged();
                 }
             }
+        }
+
+        /// <summary>
+        /// Is the overlay visible?
+        /// </summary>
+        public bool IsOverlayVisible()
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// Is a validation object visible?
+        /// </summary>
+        public bool IsObjectVisible(ValidationObject validationObject)
+        {
+            return true;
         }
 
         /// <summary>

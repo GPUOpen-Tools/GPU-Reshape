@@ -24,8 +24,10 @@
 
 #pragma once
 
-#include "ShaderExport.h"
-#include "ShaderSourceMapping.h"
+// Backend
+#include <Backend/ShaderExport.h>
+#include <Backend/ShaderSourceMapping.h>
+#include <Backend/IL/BasicBlock.h>
 
 // Common
 #include <Common/IComponent.h>
@@ -36,7 +38,6 @@
 // Forward declarations
 namespace IL {
     struct Program;
-    struct ConstOpaqueInstructionRef;
 }
 
 class IShaderSGUIDHost : public TComponent<IShaderSGUIDHost> {
@@ -47,7 +48,7 @@ public:
     /// \param program the program of [instruction]
     /// \param instruction the instruction to be bound
     /// \return the shader guid value
-    virtual ShaderSGUID Bind(const IL::Program& program, const IL::ConstOpaqueInstructionRef& instruction) = 0;
+    virtual ShaderSGUID Bind(const IL::Program& program, const IL::BasicBlock::ConstIterator& instruction) = 0;
 
     /// Get the mapping for a given sguid
     /// \param sguid

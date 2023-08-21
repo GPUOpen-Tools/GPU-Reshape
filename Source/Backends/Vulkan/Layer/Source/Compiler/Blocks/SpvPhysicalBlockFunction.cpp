@@ -137,6 +137,14 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
     while (ctx && ctx->GetOp() != SpvOpFunctionEnd) {
         IL::Source source = ctx.Source();
 
+        // Provide traceback
+        if (basicBlock != nullptr) {
+            sourceTraceback[source.codeOffset] = SpvCodeOffsetTraceback {
+                .basicBlockID = basicBlock->GetID(),
+                .instructionIndex = basicBlock->GetCount()
+            };
+        }
+
         // Create type association
         table.typeConstantVariable.AssignTypeAssociation(ctx);
 
@@ -2395,4 +2403,8 @@ void SpvPhysicalBlockFunction::CreateDataLookups(const SpvJob& job, SpvStream& s
 void SpvPhysicalBlockFunction::CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockFunction &out) {
     out.block = remote.scan.GetPhysicalBlock(SpvPhysicalBlockType::Function);
     out.identifierMetadata = identifierMetadata;
+}
+
+SpvCodeOffsetTraceback SpvPhysicalBlockFunction::GetCodeOffsetTraceback(uint32_t codeOffset) {
+    return sourceTraceback.at(codeOffset);
 }

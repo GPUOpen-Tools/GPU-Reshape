@@ -63,6 +63,12 @@
  *   https://github.com/microsoft/DirectXShaderCompiler/blob/main/lib/Bitcode/Writer/BitcodeWriter.cpp
  */
 
+DXILPhysicalBlockFunction::DXILPhysicalBlockFunction(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table):
+    DXILPhysicalBlockSection(allocators, program, table),
+    sourceTraceback(allocators) {
+    /* */
+}
+
 void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     // Definition order is linear to the internally linked functions
     uint32_t linkedIndex = internalLinkedFunctions[program.GetFunctionList().GetCount()];
@@ -117,12 +123,24 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     // Reserve forward allocations
     table.idMap.ReserveForward(block->records.size());
 
+    // Reserve source traceback
+    sourceTraceback.resize(block->records.size());
+
     // Visit function records
     for (uint32_t recordIdx = 0; recordIdx < static_cast<uint32_t>(block->records.size()); recordIdx++) {
         LLVMRecord &record = block->records[recordIdx];
 
+        // Setup reader
         DXILValueReader reader(table, record);
 
+        // Provide traceback
+        if (basicBlock != nullptr) {
+            sourceTraceback[recordIdx] = DXCodeOffsetTraceback {
+                .basicBlockID = basicBlock->GetID(),
+                .instructionIndex = basicBlock->GetCount()
+            };
+        }
+        
         // Get the current id anchor
         //   LLVM id references are encoded relative to the current record
         uint32_t anchor = table.idMap.GetAnchor();
@@ -1226,6 +1244,10 @@ const DXILFunctionDeclaration *DXILPhysicalBlockFunction::GetFunctionDeclaration
 
 const DXILFunctionDeclaration * DXILPhysicalBlockFunction::GetFunctionDeclarationFromIndex(uint32_t index) {
     return functions[index];
+}
+
+DXCodeOffsetTraceback DXILPhysicalBlockFunction::GetCodeOffsetTraceback(uint32_t codeOffset) {
+    return sourceTraceback.at(codeOffset);
 }
 
 bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration) {

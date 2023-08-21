@@ -29,7 +29,9 @@ using Avalonia;
 using Avalonia.Media;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
+using Runtime.ViewModels.IL;
 using Studio.Extensions;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -42,7 +44,7 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Current content view model
         /// </summary>
-        public CodeShaderContentViewModel? ShaderContentViewModel { get; set; }
+        public IShaderContentViewModel? ShaderContentViewModel { get; set; }
 
         /// <summary>
         /// Currently highlighted object
@@ -53,6 +55,16 @@ namespace Studio.Views.Editor
         /// Currently selected object
         /// </summary>
         public ValidationObject? SelectedObject { get; set; }
+
+        /// <summary>
+        /// Validation target
+        /// </summary>
+        public ValidationTarget Target { get; set; }
+
+        /// <summary>
+        /// Optional assembler
+        /// </summary>
+        public Assembler? Assembler { get; set; }
 
         /// <summary>
         /// Invoked on line draws / colorization 
@@ -163,32 +175,57 @@ namespace Studio.Views.Editor
         /// <param name="validationObject"></param>
         public void Add(ValidationObject validationObject)
         {
-            if (Document == null || validationObject.Segment == null || validationObject.Segment.Location.Line + 1 >= (Document?.Lines.Count ?? 0))
+            // Get the actual line
+            int line = GetValidationLine(validationObject.Segment!.Location);
+            
+            // Valid?
+            if (Document == null || validationObject.Segment == null || line + 1 >= (Document?.Lines.Count ?? 0))
             {
                 return;
             }
 
             // Mismatched file?
-            if (validationObject.Segment.Location.FileUID != (ShaderContentViewModel?.SelectedShaderFileViewModel?.UID ?? uint.MaxValue))
+            if (!(ShaderContentViewModel?.IsObjectVisible(validationObject) ?? false))
             {
                 return;
             }
 
             // Get line
-            DocumentLine line = Document!.Lines[validationObject.Segment.Location.Line];
+            DocumentLine documentLine = Document!.Lines[line];
             
             // Create segment for bounds
             var segment = new ValidationTextSegment()
             {
-                StartOffset = line.Offset,
-                EndOffset = line.EndOffset,
-                Length = line.Length,
+                StartOffset = documentLine.Offset,
+                EndOffset = documentLine.EndOffset,
+                Length = documentLine.Length,
                 Object = validationObject
             };
 
             // Add lookup
             _markers.Add(segment);
             _segments.Add(validationObject, segment);
+        }
+
+
+        /// <summary>
+        /// Get the textual line of a location
+        /// </summary>
+        private int GetValidationLine(ShaderLocation location)
+        {
+            switch (Target)
+            {
+                case ValidationTarget.Source:
+                {
+                    return location.Line;
+                }
+                case ValidationTarget.IL:
+                {
+                    return (int)(Assembler?.GetMapping(location.BasicBlockId, location.InstructionIndex).Line ?? 0);
+                }
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
         /// <summary>

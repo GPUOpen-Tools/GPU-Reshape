@@ -33,6 +33,7 @@
       <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.18" />
       <PackageReference Include="Dock.Avalonia" Version="0.10.18" />
       <PackageReference Include="Dock.Model.ReactiveUI" Version="0.10.18" />
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
     </ItemGroup>
 
     <ItemGroup>
@@ -78,5 +79,7 @@
       <UpToDateCheckInput Remove="Views\Views\HomeView.axaml" />
       <UpToDateCheckInput Remove="Views\Workspace\Properties\MessageCollectionView.axaml" />
     </ItemGroup>
+
+
 
 </Project>

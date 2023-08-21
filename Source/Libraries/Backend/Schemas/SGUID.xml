@@ -35,6 +35,8 @@
         <field name="fileUID" type="uint32"/>
         <field name="line" type="uint32"/>
         <field name="column" type="uint32"/>
+        <field name="basicBlockId" type="uint32"/>
+        <field name="instructionIndex" type="uint32"/>
         <field name="sguid" type="uint32"/>
         <field name="contents" type="string"/>
     </struct>

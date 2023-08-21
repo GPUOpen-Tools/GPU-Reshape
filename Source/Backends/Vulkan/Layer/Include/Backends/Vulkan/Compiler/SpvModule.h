@@ -40,6 +40,7 @@
 #include <Backends/Vulkan/Compiler/SpvJob.h>
 #include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
 #include <Backends/Vulkan/Config.h>
+#include <Backends/Vulkan/Compiler/SpvCodeOffsetTraceback.h>
 
 // Forward declarations
 struct SpvDebugMap;
@@ -73,6 +74,11 @@ public:
     /// \param wordCount number of words within the module stream
     /// \return success state
     bool Recompile(const uint32_t* code, uint32_t wordCount, const SpvJob& job);
+
+    /// Get code offset traceback
+    /// \param codeOffset code offset, must originate from this module
+    /// \return traceback
+    SpvCodeOffsetTraceback GetCodeOffsetTraceback(uint32_t codeOffset);
 
     /// Get the produced program
     /// \return

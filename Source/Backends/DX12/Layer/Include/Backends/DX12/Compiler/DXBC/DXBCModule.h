@@ -55,6 +55,7 @@ public:
     GlobalUID GetInstrumentationGUID() override;
     bool Compile(const DXCompileJob& job, DXStream& out) override;
     IDXDebugModule *GetDebug() override;
+    DXCodeOffsetTraceback GetCodeOffsetTraceback(uint32_t codeOffset) override;
     const char* GetLanguage() override;
 
 private:

@@ -73,7 +73,9 @@ namespace Studio.ViewModels.Workspace.Services
                     SGUID = message.shaderGUID,
                     Line = (int)message.line,
                     FileUID = (int)message.fileUID,
-                    Column = (int)message.column
+                    Column = (int)message.column,
+                    BasicBlockId = message.basicBlockId,
+                    InstructionIndex = message.instructionIndex
                 }
             };
 

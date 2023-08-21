@@ -31,7 +31,9 @@ using Avalonia.Media;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 using DynamicData;
+using Runtime.ViewModels.IL;
 using Runtime.ViewModels.Shader;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -47,7 +49,17 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Current content view model
         /// </summary>
-        public CodeShaderContentViewModel? ShaderContentViewModel { get; set; } 
+        public IShaderContentViewModel? ShaderContentViewModel { get; set; }
+
+        /// <summary>
+        /// Validation target
+        /// </summary>
+        public ValidationTarget Target { get; set; }
+        
+        /// <summary>
+        /// Optional assembler
+        /// </summary>
+        public Assembler? Assembler { get; set; }
 
         /// <summary>
         /// All validation objects
@@ -61,11 +73,8 @@ namespace Studio.Views.Editor
         /// <param name="drawingContext"></param>
         public void Draw(TextView textView, DrawingContext drawingContext)
         {
-            // Must have UID
-            uint? activeFile = ShaderContentViewModel?.SelectedShaderFileViewModel?.UID;
-            
             // Valid?
-            if (Document == null || !activeFile.HasValue)
+            if (ShaderContentViewModel == null || Document == null || !ShaderContentViewModel.IsOverlayVisible())
             {
                 return;
             }
@@ -77,22 +86,45 @@ namespace Studio.Views.Editor
             foreach (ValidationObject validationObject in ValidationObjects ?? Enumerable.Empty<ValidationObject>())
             {
                 // Valid file?
-                if (validationObject.Segment?.Location.FileUID != activeFile)
+                if (!ShaderContentViewModel.IsObjectVisible(validationObject))
                 {
                     continue;
                 }
 
+                // Get the line
+                int line = GetValidationLine(validationObject.Segment!.Location);
+                
                 // Normalize Y
-                uint Y = (uint)Math.Floor((validationObject.Segment.Location.Line / (float)Document.LineCount) * textView.Bounds.Height);
+                uint y = (uint)Math.Floor((line / (float)Document.LineCount) * textView.Bounds.Height);
 
                 // Default width
-                uint Width = 15;
+                uint width = 15;
                 
                 // Line wise segment
                 drawingContext.DrawRectangle(_validationBrush, null, new Rect(
-                    textView.Bounds.Width - Width - 2.5, Y,
-                    Width, 2.5
+                    textView.Bounds.Width - width - 2.5, y,
+                    width, 2.5
                 ));
+            }
+        }
+
+        /// <summary>
+        /// Get the textual line of a location
+        /// </summary>
+        private int GetValidationLine(ShaderLocation location)
+        {
+            switch (Target)
+            {
+                case ValidationTarget.Source:
+                {
+                    return location.Line;
+                }
+                case ValidationTarget.IL:
+                {
+                    return (int)(Assembler?.GetMapping(location.BasicBlockId, location.InstructionIndex).Line ?? 0);
+                }
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 

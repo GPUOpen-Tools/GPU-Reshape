@@ -36,6 +36,9 @@
 // Std
 #include <vector>
 
+// Cleanup
+#undef OPAQUE
+
 namespace IL {
     /// Instruction reference
     /// \tparam T instruction type
@@ -224,6 +227,16 @@ namespace IL {
                 return ptr != nullptr;
             }
 
+            /// Get the index
+            BasicBlock *GetBlock() const {
+                return block;
+            }
+
+            /// Get the index
+            uint32_t GetIndex() const {
+                return relocationIndex;
+            }
+
             /// Current offset
             uint8_t *ptr{nullptr};
 
@@ -285,6 +298,16 @@ namespace IL {
             using value_type        = const Instruction*;
             using pointer           = value_type*;
             using reference         = value_type&;
+
+            /// Default constructor
+            ConstIterator() = default;
+
+            /// Construct from mutable
+            ConstIterator(const Iterator& it) : ptr(it.ptr), relocationIndex(it.relocationIndex), block(it.block) {
+#ifndef NDEBUG
+                debugRevision = it.debugRevision;
+#endif // NDEBUG
+            }
 
             /// Comparison
             bool operator!=(const ConstIterator &other) const {
@@ -387,6 +410,16 @@ namespace IL {
             /// Is this iterator valid?
             bool IsValid() const {
                 return ptr != nullptr;
+            }
+
+            /// Get the index
+            const BasicBlock *GetBlock() const {
+                return block;
+            }
+
+            /// Get the index
+            uint32_t GetIndex() const {
+                return relocationIndex;
             }
 
             /// Current offset

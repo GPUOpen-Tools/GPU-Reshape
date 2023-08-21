@@ -98,6 +98,10 @@ bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount, const SpvJob
     return true;
 }
 
+SpvCodeOffsetTraceback SpvModule::GetCodeOffsetTraceback(uint32_t codeOffset) {
+    return physicalBlockTable->function.GetCodeOffsetTraceback(codeOffset);
+}
+
 const SpvSourceMap *SpvModule::GetSourceMap() const {
     if (!physicalBlockTable) {
         return nullptr;

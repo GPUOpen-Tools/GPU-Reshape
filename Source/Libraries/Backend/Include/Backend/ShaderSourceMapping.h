@@ -27,34 +27,78 @@
 // Backend
 #include <Backend/ShaderExport.h>
 
+// Common
+#include <Common/CRC.h>
+
 // Std
 #include <cstdint>
 
 struct ShaderSourceMapping {
-    using TSortKey = uint64_t;
+    /// Constructor
+    ShaderSourceMapping()
+        : shaderGUID(0),
+          fileUID(0),
+          line(0),
+          column(0),
+          basicBlockId(0),
+          instructionIndex(0) { }
 
-    /// Get the inline (shader) sort key
-    /// \return the sort key
-    TSortKey GetInlineSortKey() const {
-        TSortKey key{0};
-        key |= fileUID;
-        key |= static_cast<TSortKey>(line) << 16ull;
-        key |= static_cast<TSortKey>(column) << 48;
-        return key;
+    /// Default copy
+    ShaderSourceMapping(const ShaderSourceMapping&) = default;
+
+    /// Equality comparator
+    bool operator==(const ShaderSourceMapping &rhs) const {
+        return shaderGUID == rhs.shaderGUID &&
+               fileUID == rhs.fileUID &&
+               line == rhs.line &&
+               column == rhs.column &&
+               basicBlockId == rhs.basicBlockId &&
+               instructionIndex == rhs.instructionIndex;
+    }
+
+    /// Inequality comparator
+    bool operator!=(const ShaderSourceMapping &rhs) const {
+        return shaderGUID != rhs.shaderGUID ||
+               fileUID != rhs.fileUID ||
+               line != rhs.line ||
+               column != rhs.column ||
+               basicBlockId != rhs.basicBlockId ||
+               instructionIndex != rhs.instructionIndex;
     }
 
     /// The global shader UID
     uint64_t shaderGUID{0};
 
     /// The internal file UID
-    uint16_t fileUID{0};
+    uint64_t fileUID : 16;
 
     /// Line of the mapping
-    uint32_t line{0};
+    uint64_t line : 32;
 
     /// Column of the mapping
-    uint16_t column{0};
+    uint64_t column : 16;
+
+    /// Index of the basic hosting block
+    uint64_t basicBlockId : 32;
+
+    /// Index of the hosting instruction
+    uint64_t instructionIndex : 32;
 
     /// SGUID value
     ShaderSGUID sguid{InvalidShaderSGUID};
+
+    /// Padding for hashing
+    uint32_t padding{0};
+};
+
+/// Sanity check
+static_assert(sizeof(ShaderSourceMapping) == 32, "Unexpected size");
+
+/// Hash for source mappings
+template <>
+struct std::hash<ShaderSourceMapping> {
+    std::size_t operator()(const ShaderSourceMapping& value) const {
+        // Skip SGUID
+        return BufferCRC32Short(&value, sizeof(value) - sizeof(uint64_t));
+    }
 };

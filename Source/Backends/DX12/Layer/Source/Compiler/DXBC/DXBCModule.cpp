@@ -29,6 +29,7 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCUtils.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCConverter.h>
 #include <Backends/DX12/Layer.h>
+#include <Backends/DX12/Compiler/DXIL/DXILModule.h>
 
 // Common
 #include <Common/FileSystem.h>
@@ -159,6 +160,16 @@ bool DXBCModule::Compile(const DXCompileJob& job, DXStream& out) {
 
 IDXDebugModule *DXBCModule::GetDebug() {
     return table.debugModule;
+}
+
+DXCodeOffsetTraceback DXBCModule::GetCodeOffsetTraceback(uint32_t codeOffset) {
+    // Check if DXIL
+    if (table.dxilModule) {
+        return table.dxilModule->GetCodeOffsetTraceback(codeOffset);
+    }
+
+    // No native DXBC traceback
+    return {};
 }
 
 const char * DXBCModule::GetLanguage() {

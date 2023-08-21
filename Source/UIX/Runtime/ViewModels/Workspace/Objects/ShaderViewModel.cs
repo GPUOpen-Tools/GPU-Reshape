@@ -57,12 +57,12 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
-        /// Contents of this shader
+        /// Program of this shader
         /// </summary>
-        public string IL
+        public Models.IL.Program? Program
         {
-            get => _il;
-            set => this.RaiseAndSetIfChanged(ref _il, value);
+            get => _program;
+            set => this.RaiseAndSetIfChanged(ref _program, value);
         }
 
         /// <summary>
@@ -120,9 +120,9 @@ namespace Studio.ViewModels.Workspace.Objects
         private string _contents = string.Empty;
 
         /// <summary>
-        /// Internal contents
+        /// Internal program
         /// </summary>
-        private string _il = string.Empty;
+        private Models.IL.Program? _program;
 
         /// <summary>
         /// Internal filename

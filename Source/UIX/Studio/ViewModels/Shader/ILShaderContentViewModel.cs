@@ -26,7 +26,10 @@ using System;
 using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
+using Runtime.ViewModels.IL;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Documents;
+using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -52,6 +55,33 @@ namespace Studio.ViewModels.Shader
         {
             get => _icon;
             set => this.RaiseAndSetIfChanged(ref _icon, value);
+        }
+
+        /// <summary>
+        /// The final assembled program
+        /// </summary>
+        public string AssembledProgram
+        {
+            get => _assembledProgram;
+            set => this.RaiseAndSetIfChanged(ref _assembledProgram, value);
+        }
+
+        /// <summary>
+        /// The current assembler
+        /// </summary>
+        public Assembler? Assembler
+        {
+            get => _assembler;
+            set => this.RaiseAndSetIfChanged(ref _assembler, value);
+        }
+
+        /// <summary>
+        /// Current location
+        /// </summary>
+        public ShaderLocation? NavigationLocation
+        {
+            get => _navigationLocation;
+            set => this.RaiseAndSetIfChanged(ref _navigationLocation, value);
         }
 
         /// <summary>
@@ -95,15 +125,42 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
+        /// Is the overlay visible?
+        /// </summary>
+        /// <returns></returns>
+        public bool IsOverlayVisible()
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// Is a validation object visible?
+        /// </summary>
+        public bool IsObjectVisible(ValidationObject validationObject)
+        {
+            return true;
+        }
+
+        /// <summary>
         /// Invoked on object change
         /// </summary>
         private void OnObjectChanged()
         {
             // Submit request if not already
-            if (Object!.Contents == string.Empty)
+            if (Object!.Program == null)
             {
                 PropertyCollection?.GetService<IShaderCodeService>()?.EnqueueShaderIL(Object);
             }
+
+            // Bind program, assemble when changed
+            Object.WhenAnyValue(x => x.Program).WhereNotNull().Subscribe(program =>
+            {
+                // Create assembler
+                _assembler = new Assembler(program);
+                
+                // Assembler used assemble!
+                AssembledProgram = _assembler.Assemble();
+            });
         }
 
         /// <summary>
@@ -125,5 +182,20 @@ namespace Studio.ViewModels.Shader
         /// Internal active state
         /// </summary>
         private bool _isActive = false;
+
+        /// <summary>
+        /// Internal location
+        /// </summary>
+        private ShaderLocation? _navigationLocation;
+
+        /// <summary>
+        /// Internal assembler
+        /// </summary>
+        private Assembler? _assembler;
+
+        /// <summary>
+        /// Internal assembled program
+        /// </summary>
+        private string _assembledProgram;
     }
 }

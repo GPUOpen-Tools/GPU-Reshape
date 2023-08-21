@@ -373,12 +373,12 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
 
             case SpvOpVariable: {
                 auto storageClass = static_cast<SpvStorageClass>(ctx++);
-                
+
                 // Add variable
                 program.GetVariableList().Add(Backend::IL::Variable {
                     .id = ctx.GetResult(),
                     .addressSpace = Translate(storageClass),
-                    .type = program.GetTypeMap().GetType(ctx.GetResultType())
+                    .type = typeMap.GetTypeFromId(ctx.GetResultType())
                 });
                 
                 // Store single PC block
