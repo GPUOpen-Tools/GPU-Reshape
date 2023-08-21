@@ -1165,6 +1165,29 @@ void DXILPhysicalBlockFunction::MigrateConstantBlocks() {
                                     .mapped = state.mapped
                                 });
 
+                                // Handle operands
+                                switch (static_cast<LLVMConstantRecord>(record.id)) {
+                                    default: {
+                                        break;
+                                    }
+                                    case LLVMConstantRecord::Aggregate: {
+                                        for (uint32_t i = 0; i < record.opCount; i++) {
+                                            MigrateConstantBlockOperand(declaration, record.Op(i));
+                                        }
+                                        break;
+                                    }
+                                    case LLVMConstantRecord::InBoundsGEP: {
+                                        for (uint32_t i = 1; i < record.opCount; i += 2) {
+                                            MigrateConstantBlockOperand(declaration, record.Op(i + 1));
+                                        }
+                                        break;
+                                    }
+                                    case LLVMConstantRecord::Cast: {
+                                        MigrateConstantBlockOperand(declaration, record.Op(2));
+                                        break;
+                                    }
+                                }
+
                                 // Mark record as "user", value stitched to the user IL id
                                 record.SetUser(true, ~0u, state.mapped);
                             }
@@ -1182,6 +1205,27 @@ void DXILPhysicalBlockFunction::MigrateConstantBlocks() {
             }
         }
     }
+}
+
+void DXILPhysicalBlockFunction::MigrateConstantBlockOperand(DXILFunctionDeclaration* declaration, uint64_t& operand) {
+    // Head offset before segmentation
+    uint64_t mapOffset = declaration->segments.idSegment.head.mapOffset;
+    
+    // Get the original state
+    uint32_t mappedId;
+    if (operand >= mapOffset) {
+        // Get native state and validate
+        const DXILIDMap::NativeState& opState = declaration->segments.idSegment.map[operand - mapOffset];
+        ASSERT(opState.type == DXILIDType::Constant, "Unexpected native state");
+
+        // Assume mapped
+        mappedId = opState.mapped;
+    } else {
+        mappedId = table.idMap.GetMappedCheckType(operand, DXILIDType::Constant);
+    }
+
+    // Remap
+    operand = DXILIDRemapper::EncodeUserOperand(mappedId);
 }
 
 bool DXILPhysicalBlockFunction::HasResult(const struct LLVMRecord &record) {

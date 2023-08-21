@@ -1954,9 +1954,12 @@ void IL::PrettyPrintProgramJson(const Program& program, PrettyPrintContext out) 
     // Begin document
     out.Line() << "{";
 
+    // Get entrypoint
+    const Function *entryPoint = program.GetEntryPoint();
+
     // Metadata
     out.Line() << "\"AllocatedIdentifiers\": " << program.GetIdentifierMap().GetMaxID() << ",";
-    out.Line() << "\"EntryPoint\": " << program.GetEntryPoint()->GetID() << ",";
+    out.Line() << "\"EntryPoint\": " << (entryPoint ? entryPoint->GetID() : InvalidID)  << ",";
     out.Line() << "\"GUID\": " << program.GetShaderGUID() << ",";
 
     // Emit types

@@ -258,6 +258,11 @@ private:
     /// \param _instr instruction to be compiled
     void CompileResourceTokenInstruction(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source , const IL::ResourceTokenInstruction* _instr);
 
+    /// Migrate an operand in a constant block
+    /// \param declaration function declaration
+    /// \param operand operand to migrate 
+    void MigrateConstantBlockOperand(DXILFunctionDeclaration* declaration, uint64_t& operand);
+
 private:
     /// Does the record have a result?
     bool HasResult(const struct LLVMRecord& record);
