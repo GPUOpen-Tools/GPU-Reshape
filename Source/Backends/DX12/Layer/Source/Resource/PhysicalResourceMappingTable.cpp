@@ -32,6 +32,12 @@ PhysicalResourceMappingTable::PhysicalResourceMappingTable(const Allocators& all
 
 }
 
+PhysicalResourceMappingTable::~PhysicalResourceMappingTable() {
+    if (allocation.device.allocation) {
+        allocator->Free(allocation);
+    }
+}
+
 void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType, uint32_t count) {
     std::lock_guard guard(mutex);
     virtualMappingCount = count;

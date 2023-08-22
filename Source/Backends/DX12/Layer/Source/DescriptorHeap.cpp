@@ -470,6 +470,9 @@ DescriptorHeapState::~DescriptorHeapState() {
         table.state->cpuHeapTable.Remove(type, gpuDescriptorBase.ptr);
     }
 
+    // Release table
+    destroy(prmTable, allocators);
+
     // Release parent
     parent->Release();
 }

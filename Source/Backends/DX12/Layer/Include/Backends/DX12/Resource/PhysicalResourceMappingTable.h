@@ -45,6 +45,9 @@ class PhysicalResourceMappingTable {
 public:
     PhysicalResourceMappingTable(const Allocators& allocators, const ComRef<DeviceAllocator>& allocator);
 
+    /// Destructor
+    ~PhysicalResourceMappingTable();
+
     /// Install the table
     /// \param type type of the descriptors
     /// \param count number of descriptors

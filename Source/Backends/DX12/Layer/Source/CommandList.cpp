@@ -362,7 +362,7 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
     }
 }
 
-HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandList, D3D12_COMMAND_LIST_TYPE type, ID3D12PipelineState *initialState, ID3D12PipelineState* hotSwap, const IID &riid, void **pCommandList) {
+HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandList, D3D12_COMMAND_LIST_TYPE type, ID3D12PipelineState *initialState, ID3D12PipelineState* hotSwap, bool opened, const IID &riid, void **pCommandList) {
     auto table = GetTable(device);
 
     // Create state
@@ -386,7 +386,9 @@ HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandL
         state->streamState = table.state->exportStreamer->AllocateStreamState();
 
         // Handle sub-systems
-        BeginCommandList(table.state, state, initialState, hotSwap, hotSwap != nullptr);
+        if (opened) {
+            BeginCommandList(table.state, state, initialState, hotSwap, hotSwap != nullptr);
+        }
     }
 
     // Cleanup
@@ -415,7 +417,7 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
     }
 
     // Create state
-    return CreateCommandListState(device, commandList, type, initialState, hotSwap, riid, pCommandList);
+    return CreateCommandListState(device, commandList, type, initialState, hotSwap, true, riid, pCommandList);
 }
 
 HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_LIST_FLAGS flags, const IID &riid, void **pCommandList) {
@@ -434,7 +436,7 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *device, UINT nod
     }
 
     // Create state
-    return CreateCommandListState(device, commandList, type, nullptr, nullptr, riid, pCommandList);
+    return CreateCommandListState(device, commandList, type, nullptr, nullptr, false, riid, pCommandList);
 }
 
 HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12CommandAllocator *allocator, ID3D12PipelineState *state) {
