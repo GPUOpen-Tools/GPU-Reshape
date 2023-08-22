@@ -30,10 +30,9 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:objects="clr-namespace:Studio.ViewModels.Workspace.Objects;assembly=UIX.Studio.Runtime"
              mc:Ignorable="d" d:DesignWidth="800"
-             Height="25"
              x:Class="Studio.Views.Workspace.Objects.MissingDetailView"
              x:DataType="objects:MissingDetailViewModel">
-    <StackPanel Orientation="Vertical" VerticalAlignment="Center" HorizontalAlignment="Stretch" Background="{StaticResource InfoMediumBackground}">
+    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{StaticResource InfoMediumBackground}">
         <StackPanel 
             Orientation="Horizontal" 
             HorizontalAlignment="Center"
@@ -47,5 +46,5 @@
                 Foreground="{StaticResource DockApplicationAccentBrushHigh}"
                 Background="{StaticResource DockThemeBorderLowBrush}"/>
         </StackPanel>
-    </StackPanel>
+    </Grid>
 </UserControl>

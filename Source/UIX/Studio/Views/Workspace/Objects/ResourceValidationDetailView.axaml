@@ -29,12 +29,26 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:objects="clr-namespace:Studio.ViewModels.Workspace.Objects;assembly=UIX.Studio.Runtime"
-             mc:Ignorable="d" d:DesignWidth="800"
-             Height="175"
+             mc:Ignorable="d" d:DesignHeight="200" d:DesignWidth="800"
              x:Class="Studio.Views.Workspace.Objects.ResourceValidationDetailView"
              x:DataType="objects:ResourceValidationDetailViewModel">
-    <StackPanel Orientation="Vertical" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{StaticResource InfoMediumBackground}">
-        <Grid ColumnDefinitions="150,*" Height="150">
+    <DockPanel 
+        VerticalAlignment="Stretch"
+        HorizontalAlignment="Stretch" 
+        Background="{StaticResource InfoMediumBackground}"
+        LastChildFill="True">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 5 0 0" DockPanel.Dock="Bottom">
+            <TextBlock Height="20" Text="Name: " Margin="5 0 0 0" />
+            <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Name, FallbackValue=None}" />
+            <TextBlock Height="20" Text="- Width: " Margin="5 0 0 0" />
+            <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Width, FallbackValue=0}" />
+            <TextBlock Height="20" Text="- Height: " Margin="5 0 0 0" />
+            <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Height, FallbackValue=0}" />
+            <TextBlock Height="20" Text="- Depth: " Margin="5 0 0 0" />
+            <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Depth, FallbackValue=0}" />
+        </StackPanel>
+        
+        <Grid ColumnDefinitions="150,*" DockPanel.Dock="Top">
             <ListBox Grid.Column="0" Items="{Binding Resources}" SelectedItem="{Binding SelectedResource}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
@@ -51,16 +65,5 @@
                 </ListBox.ItemTemplate>
             </ListBox>
         </Grid>
-        
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 5 0 0">
-            <TextBlock Height="20" Text="Name: " Margin="5 0 0 0" />
-            <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Name, FallbackValue=None}" />
-            <TextBlock Height="20" Text="- Width: " Margin="5 0 0 0" />
-            <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Width, FallbackValue=0}" />
-            <TextBlock Height="20" Text="- Height: " Margin="5 0 0 0" />
-            <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Height, FallbackValue=0}" />
-            <TextBlock Height="20" Text="- Depth: " Margin="5 0 0 0" />
-            <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Depth, FallbackValue=0}" />
-        </StackPanel>
-    </StackPanel>
+    </DockPanel>
 </UserControl>

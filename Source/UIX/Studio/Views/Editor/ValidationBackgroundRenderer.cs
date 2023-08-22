@@ -23,17 +23,12 @@
 // 
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
-using DynamicData;
-using Runtime.ViewModels.IL;
-using Runtime.ViewModels.Shader;
-using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -49,18 +44,8 @@ namespace Studio.Views.Editor
         /// <summary>
         /// Current content view model
         /// </summary>
-        public IShaderContentViewModel? ShaderContentViewModel { get; set; }
-
-        /// <summary>
-        /// Validation target
-        /// </summary>
-        public ValidationTarget Target { get; set; }
+        public ITextualShaderContentViewModel? ShaderContentViewModel { get; set; }
         
-        /// <summary>
-        /// Optional assembler
-        /// </summary>
-        public Assembler? Assembler { get; set; }
-
         /// <summary>
         /// All validation objects
         /// </summary>
@@ -92,7 +77,7 @@ namespace Studio.Views.Editor
                 }
 
                 // Get the line
-                int line = GetValidationLine(validationObject.Segment!.Location);
+                int line = ShaderContentViewModel.TransformLine(validationObject.Segment!.Location);
                 
                 // Normalize Y
                 uint y = (uint)Math.Floor((line / (float)Document.LineCount) * textView.Bounds.Height);
@@ -105,26 +90,6 @@ namespace Studio.Views.Editor
                     textView.Bounds.Width - width - 2.5, y,
                     width, 2.5
                 ));
-            }
-        }
-
-        /// <summary>
-        /// Get the textual line of a location
-        /// </summary>
-        private int GetValidationLine(ShaderLocation location)
-        {
-            switch (Target)
-            {
-                case ValidationTarget.Source:
-                {
-                    return location.Line;
-                }
-                case ValidationTarget.IL:
-                {
-                    return (int)(Assembler?.GetMapping(location.BasicBlockId, location.InstructionIndex).Line ?? 0);
-                }
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
         }
 

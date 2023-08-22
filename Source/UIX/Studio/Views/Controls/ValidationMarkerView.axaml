@@ -1,0 +1,72 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
+             xmlns:objects="clr-namespace:Studio.ViewModels.Workspace.Objects;assembly=UIX.Studio.Runtime"
+             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="35"
+             x:Class="Studio.Views.Controls.ValidationMarkerView"
+             x:DataType="controls:ValidationMarkerViewModel"
+             HorizontalAlignment="Right"
+             VerticalAlignment="Top">
+    <UserControl.DataContext>
+        <controls:ValidationMarkerViewModel/>
+    </UserControl.DataContext>
+    
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Stretch">
+        <Button 
+            x:Name="ValidationButton"
+            Background="{StaticResource ErrorBrush}"
+            Content="{Binding SelectedObject.Content, FallbackValue=Validation Content}" 
+            VerticalAlignment="Stretch" 
+            BorderBrush="Transparent"
+            Padding="5 0 5 0"
+            Margin="0 0 0 0"/>
+        
+        <Button 
+            x:Name="DropdownButton"
+            IsVisible="{Binding IsFlyoutVisible, FallbackValue=True}"
+            Background="{StaticResource InfoMediumBackground}"
+            VerticalAlignment="Stretch" 
+            Padding="0" 
+            BorderThickness="0"
+            Margin="0 0 0 0"
+            Width="30">
+            <StackPanel Orientation="Horizontal" Margin="5 0 5 0">
+                <TextBlock 
+                    Text="{Binding Objects.Count, FallbackValue=0}"
+                    Margin="0 -2 0 0"
+                    VerticalAlignment="Center"/>
+                
+                <PathIcon
+                    Data="{StaticResource ChevronDown}" 
+                    Margin="5 1 0 0"
+                    Foreground="{Binding StatusColor}"
+                    Width="11" />
+            </StackPanel>
+
+            <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                    <ScrollViewer MaxHeight="150">
+                        <ListBox 
+                            Padding="0"
+                            Margin="0"
+                            BorderThickness="0"
+                            SelectedItem="{Binding SelectedObject}"
+                            Items="{Binding Objects}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="objects:ValidationObject">
+                                    <TextBlock 
+                                        Height="20"
+                                        TextAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding Content}"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </ScrollViewer>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+    </StackPanel>
+</UserControl>

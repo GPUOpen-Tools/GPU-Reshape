@@ -25,7 +25,6 @@
 using System.Windows.Input;
 using Avalonia.Media;
 using Studio.ViewModels.Documents;
-using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader
@@ -61,15 +60,5 @@ namespace Studio.ViewModels.Shader
         /// Underlying object
         /// </summary>
         public Workspace.Objects.ShaderViewModel? Object { get; set; }
-
-        /// <summary>
-        /// Is the overlay visible?
-        /// </summary>
-        public bool IsOverlayVisible();
-        
-        /// <summary>
-        /// Is a validation object visible?
-        /// </summary>
-        public bool IsObjectVisible(ValidationObject validationObject);
     }
 }

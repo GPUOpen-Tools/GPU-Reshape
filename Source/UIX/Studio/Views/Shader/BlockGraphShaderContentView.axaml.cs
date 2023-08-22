@@ -26,26 +26,17 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using Avalonia.Media;
-using AvaloniaEdit.TextMate;
-using AvaloniaEdit.Utils;
 using AvaloniaGraphControl;
 using DynamicData;
-using DynamicData.Binding;
 using Newtonsoft.Json;
 using ReactiveUI;
 using Studio.Extensions;
 using Studio.Models.Logging;
 using Studio.Services;
 using Studio.ViewModels.Shader;
-using Studio.ViewModels.Workspace.Objects;
-using Studio.Views.Editor;
-using TextMateSharp.Grammars;
-using ShaderViewModel = Studio.ViewModels.Documents.ShaderViewModel;
 
 namespace Studio.Views.Shader
 {

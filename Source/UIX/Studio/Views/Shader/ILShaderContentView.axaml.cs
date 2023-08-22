@@ -73,29 +73,24 @@ namespace Studio.Views.Shader
             // Create background renderer
             _validationBackgroundRenderer = new ValidationBackgroundRenderer
             {
-                Document = Editor.Document,
-                Target = ValidationTarget.IL
+                Document = Editor.Document
             };
 
             // Create marker service
             _validationTextMarkerService = new ValidationTextMarkerService
             {
-                Document = Editor.Document,
-                Target = ValidationTarget.IL
+                Document = Editor.Document
             };
+
+            // Configure marker canvas
+            MarkerCanvas.TextView = Editor.TextArea.TextView;
+            MarkerCanvas.DetailCommand = ReactiveCommand.Create<ValidationObject>(OnDetailCommand);
 
             // Add renderers
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationBackgroundRenderer);
             Editor.TextArea.TextView.BackgroundRenderers.Add(_validationTextMarkerService);
             Editor.TextArea.TextView.LineTransformers.Add(_validationTextMarkerService);
 
-            // Bind pointer
-            Editor.TextArea.TextView.Events().PointerMoved.Subscribe(x => OnTextPointerMoved(x));
-            Editor.TextArea.TextView.Events().PointerPressed.Subscribe(x => OnTextPointerPressed(x));
-
-            // Bind redraw
-            Editor.TextArea.TextView.VisualLinesChanged += OnTextVisualLinesChanged;
-            
             // Add services
             IServiceContainer services = Editor.Document.GetService<IServiceContainer>();
             services?.AddService(typeof(ValidationTextMarkerService), _validationTextMarkerService);
@@ -111,14 +106,11 @@ namespace Studio.Views.Shader
                 // Update services
                 _validationTextMarkerService.ShaderContentViewModel = ilViewModel;
                 _validationBackgroundRenderer.ShaderContentViewModel = ilViewModel;
+                MarkerCanvas.ShaderContentViewModel = ilViewModel;
                 
                 // Bind assembled data
                 ilViewModel.WhenAnyValue(x => x.AssembledProgram).WhereNotNull().Subscribe(assembled =>
                 {
-                    // Update assembler
-                    _validationTextMarkerService.Assembler = ilViewModel.Assembler!;
-                    _validationBackgroundRenderer.Assembler = ilViewModel.Assembler!;
-
                     // Set text
                     Editor.Text = assembled;
                 });
@@ -134,7 +126,7 @@ namespace Studio.Views.Shader
                         .AsObservableList()
                         .Connect()
                         .OnItemAdded(OnValidationObjectAdded)
-                        .OnItemRemoved(OnValidationObjectAdded)
+                        .OnItemRemoved(OnValidationObjectRemoved)
                         .Subscribe();
                     
                     // Bind status
@@ -151,119 +143,46 @@ namespace Studio.Views.Shader
                 ilViewModel.WhenAnyValue(y => y.NavigationLocation)
                     .WhereNotNull()
                     .Subscribe(location => UpdateNavigationLocation(ilViewModel, location!.Value));
+                
+                // Reset front state
+                ilViewModel.SelectedValidationObject = null;
+                ilViewModel.IsDetailVisible = false;
             });
-
-            // Bind object change
-            _validationObjectChanged
-                .Window(() => Observable.Timer(TimeSpan.FromMilliseconds(250)))
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(_ => OnValidationObjectChanged());
         }
 
         /// <summary>
-        /// On redraw
+        /// Invoked on detailed requests
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void OnTextVisualLinesChanged(object? sender, EventArgs e)
+        private void OnDetailCommand(ValidationObject validationObject)
         {
-            // Valid context?
-            if (DetailViewHost.DataContext == null || _validationTextMarkerService.SelectedObject == null)
-            {
-                return;
-            }
-
-            // Get location
-            ShaderLocation? location = _validationTextMarkerService.SelectedObject.Segment?.Location;
-            if (location == null)
-            {
-                return;
-            }
-            
-            // Get assembled mapping
-            AssembledMapping? mapping = (DataContext as ILShaderContentViewModel)?.Assembler?.GetMapping(location.Value.BasicBlockId, location.Value.InstructionIndex);
-            if (mapping == null)
+            // Validation
+            if (DataContext is not ILShaderContentViewModel
+                {
+                    Object: {} shaderViewModel, 
+                    PropertyCollection: {} property
+                } vm)
             {
                 return;
             }
             
-            // Get the visual line of the selected object
-            if (Editor.TextArea.TextView.GetVisualLine((int)mapping.Value.Line + 1) is not {} line)
-            {
-                return;
-            }
+            // Ensure detailed collection has started
+            ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
+                
+            // Mark as visible
+            vm.IsDetailVisible = true;
 
-            // Determine effective offset
-            double top    = Editor.TextArea.TextView.VerticalOffset;
-            double offset = line.VisualTop - top + Editor.TextArea.TextView.DefaultLineHeight;
-            
-            // Scroll detail view to offset
-            DetailViewHost.Margin = new Thickness(0, offset, 0, -offset);
-        }
-
-        /// <summary>
-        /// On pointer moved
-        /// </summary>
-        /// <param name="e"></param>
-        private void OnTextPointerMoved(PointerEventArgs e)
-        {
-            ValidationObject? validationObject = _validationTextMarkerService.FindObjectUnder(Editor.TextArea.TextView, e.GetPosition(Editor.TextArea.TextView));
-            
-            // Ignore if same
-            if (validationObject == _validationTextMarkerService.HighlightObject)
-            {
-                return;
-            }
-
-            // Set highlight and redraw
-            _validationTextMarkerService.HighlightObject = validationObject;
-            Editor.TextArea.TextView.Redraw();
-        }
-
-        /// <summary>
-        /// On pointer pressed
-        /// </summary>
-        /// <param name="e"></param>
-        private void OnTextPointerPressed(PointerPressedEventArgs e)
-        {
-            ValidationObject? validationObject = _validationTextMarkerService.FindObjectUnder(Editor.TextArea.TextView, e.GetPosition(Editor.TextArea.TextView));
-            if (validationObject == null)
-            {
-                _validationTextMarkerService.SelectedObject = null;
-                DetailViewHost.ViewHost.ViewModel = null;
-                return;
-            }
-
-            // Always handled at this point
-            e.Handled = true;
-
-            // Changed?
-            if (validationObject == _validationTextMarkerService.SelectedObject)
-            {
-                return;
-            }
-
-            // Begin collection
-            if (DataContext is ILShaderContentViewModel { Object: {} _object, PropertyCollection: {} property})
-            {
-                ShaderDetailUtils.BeginDetailedCollection(_object, property);
-            }
+            // Set selection
+            vm.SelectedValidationObject = validationObject;
             
             // Bind detail context
-            validationObject?.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
+            validationObject.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
             {
-                var vm = DataContext as ILShaderContentViewModel;
-                
                 DetailViewHost.ViewHost.ViewModel = x ?? new MissingDetailViewModel()
                 {
-                    Object = vm?.Object,
-                    PropertyCollection = vm?.PropertyCollection
+                    Object = vm.Object,
+                    PropertyCollection = vm.PropertyCollection
                 };
             }).DisposeWithClear(_detailDisposable);
-
-            // Update selected and redraw
-            _validationTextMarkerService.SelectedObject = validationObject;
-            Editor.TextArea.TextView.Redraw();
         }
 
         private void UpdateNavigationLocation(ILShaderContentViewModel ilViewModel, ShaderLocation location)
@@ -282,25 +201,13 @@ namespace Studio.Views.Shader
         }
         
         /// <summary>
-        /// Invoked on object changes
-        /// </summary>
-        private void OnValidationObjectChanged()
-        {
-            Editor.TextArea.TextView.InvalidateVisual();
-        }
-
-        /// <summary>
         /// Invoked on object added
         /// </summary>
         /// <param name="validationObject"></param>
         private void OnValidationObjectAdded(ValidationObject validationObject)
         {
-            // Bind count and contents
-            validationObject
-                .WhenAnyValue(x => x.Count, x => x.Content)
-                .Subscribe(x => _validationObjectChanged.OnNext(new Unit()));
-
             _validationTextMarkerService.Add(validationObject);
+            MarkerCanvas.Add(validationObject);
         }
 
         /// <summary>
@@ -310,6 +217,7 @@ namespace Studio.Views.Shader
         private void OnValidationObjectRemoved(ValidationObject validationObject)
         {
             _validationTextMarkerService.Remove(validationObject);
+            MarkerCanvas.Remove(validationObject);
         }
 
         /// <summary>
@@ -321,11 +229,6 @@ namespace Studio.Views.Shader
         /// Text marker service, hosts transformed objects
         /// </summary>
         private ValidationTextMarkerService _validationTextMarkerService;
-
-        /// <summary>
-        /// Internal proxy observable
-        /// </summary>
-        private ISubject<Unit> _validationObjectChanged = new Subject<Unit>();
 
         /// <summary>
         /// Disposable for detailed data

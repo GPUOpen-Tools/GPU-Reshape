@@ -34,12 +34,24 @@
              xmlns:shader="clr-namespace:Studio.ViewModels.Shader"
              xmlns:svm="clr-namespace:Runtime.ViewModels.Shader;assembly=UIX.Studio.Runtime"
              xmlns:controls="clr-namespace:Studio.Views.Controls"
+             xmlns:valueConverters="clr-namespace:Studio.ValueConverters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Studio.Views.Shader.CodeShaderContentView"
              x:DataType="shader:CodeShaderContentViewModel"
              x:CompileBindings="True">
-    <Grid>
+    <UserControl.Resources>
+        <valueConverters:GridVisibilityConverter x:Key="VisibilityConverter"/>
+    </UserControl.Resources>
+    
+    <Grid x:Name="ContentGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="{Binding IsDetailVisible, ConverterParameter=5, Converter={StaticResource VisibilityConverter}}"/>
+            <RowDefinition Height="{Binding IsDetailVisible, ConverterParameter=150, Converter={StaticResource VisibilityConverter}}"/>
+        </Grid.RowDefinitions>
+        
         <avaloniaEdit:TextEditor
+            Grid.Row="0"
             x:Name="Editor"
             FontFamily="Consolas,Menlo,Monospace"
             Foreground="#D4D4D4"
@@ -52,11 +64,24 @@
             VerticalAlignment="Stretch"
             ShowLineNumbers="True"
             IsReadOnly="True"
-            Text="...">
-        </avaloniaEdit:TextEditor>
+            Text="..."/>
         
-        <Grid x:Name="DetailGrid" Margin="18 0 18 18">
-            <controls:LocatorViewHost x:Name="DetailViewHost" HorizontalAlignment="Stretch" VerticalAlignment="Top"/>
+        <controls:ValidationMarkerCanvas 
+            Grid.Row="0"
+            x:Name="MarkerCanvas"
+            Margin="0 0 20 20"
+            HorizontalAlignment="Stretch" 
+            VerticalAlignment="Stretch"/>
+        
+        <GridSplitter
+            Grid.Row="1"
+            ResizeDirection="Rows"/>
+        
+        <Grid Grid.Row="2" x:Name="DetailGrid">
+            <controls:LocatorViewHost 
+                x:Name="DetailViewHost" 
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Stretch"/>
         </Grid>
     </Grid>
 </UserControl>

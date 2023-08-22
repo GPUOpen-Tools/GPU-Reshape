@@ -35,7 +35,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader
 {
-    public class ILShaderContentViewModel : ReactiveObject, IShaderContentViewModel
+    public class ILShaderContentViewModel : ReactiveObject, ITextualShaderContentViewModel
     {
         /// <summary>
         /// Given descriptor
@@ -74,6 +74,24 @@ namespace Studio.ViewModels.Shader
         {
             get => _assembler;
             set => this.RaiseAndSetIfChanged(ref _assembler, value);
+        }
+
+        /// <summary>
+        /// Is the detail view visible?
+        /// </summary>
+        public bool IsDetailVisible
+        {
+            get => _isDetailVisible;
+            set => this.RaiseAndSetIfChanged(ref _isDetailVisible, value);
+        }
+
+        /// <summary>
+        /// Currently selected validation object
+        /// </summary>
+        public ValidationObject? SelectedValidationObject
+        {
+            get => _selectedValidationObject;
+            set => this.RaiseAndSetIfChanged(ref _selectedValidationObject, value);
         }
 
         /// <summary>
@@ -143,6 +161,15 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
+        /// Transform a shader location line
+        /// </summary>
+        public int TransformLine(ShaderLocation shaderLocation)
+        {
+            // Transform instruction indices to line from assembler
+            return (int)(Assembler?.GetMapping(shaderLocation.BasicBlockId, shaderLocation.InstructionIndex).Line ?? 0);
+        }
+
+        /// <summary>
         /// Invoked on object change
         /// </summary>
         private void OnObjectChanged()
@@ -198,5 +225,15 @@ namespace Studio.ViewModels.Shader
         /// Internal assembled program
         /// </summary>
         private string _assembledProgram;
+
+        /// <summary>
+        /// Internal visibility state
+        /// </summary>
+        private bool _isDetailVisible = false;
+        
+        /// <summary>
+        /// Internal selection state
+        /// </summary>
+        private ValidationObject? _selectedValidationObject;
     }
 }

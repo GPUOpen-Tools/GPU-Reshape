@@ -42,7 +42,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Shader
 {
-    public class CodeShaderContentViewModel : ReactiveObject, IShaderContentViewModel
+    public class CodeShaderContentViewModel : ReactiveObject, ITextualShaderContentViewModel
     {
         /// <summary>
         /// Given descriptor
@@ -72,6 +72,24 @@ namespace Studio.ViewModels.Shader
         {
             get => _propertyCollection;
             set => this.RaiseAndSetIfChanged(ref _propertyCollection, value);
+        }
+
+        /// <summary>
+        /// Is the detail view visible?
+        /// </summary>
+        public bool IsDetailVisible
+        {
+            get => _isDetailVisible;
+            set => this.RaiseAndSetIfChanged(ref _isDetailVisible, value);
+        }
+
+        /// <summary>
+        /// Currently selected validation object
+        /// </summary>
+        public ValidationObject? SelectedValidationObject
+        {
+            get => _selectedValidationObject;
+            set => this.RaiseAndSetIfChanged(ref _selectedValidationObject, value);
         }
 
         /// <summary>
@@ -128,6 +146,14 @@ namespace Studio.ViewModels.Shader
         public bool IsObjectVisible(ValidationObject validationObject)
         {
             return validationObject.Segment?.Location.FileUID == SelectedShaderFileViewModel?.UID;
+        }
+
+        /// <summary>
+        /// Transform a shader location line
+        /// </summary>
+        public int TransformLine(ShaderLocation shaderLocation)
+        {
+            return shaderLocation.Line;
         }
 
         /// <summary>
@@ -214,5 +240,15 @@ namespace Studio.ViewModels.Shader
         /// Internal active state
         /// </summary>
         private bool _isActive = false;
+
+        /// <summary>
+        /// Internal visibility state
+        /// </summary>
+        private bool _isDetailVisible = false;
+        
+        /// <summary>
+        /// Internal selections tate
+        /// </summary>
+        private ValidationObject? _selectedValidationObject;
     }
 }
