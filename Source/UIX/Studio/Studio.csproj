@@ -30,7 +30,7 @@
         <None Remove=".gitignore" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="0.10.18" />
+        <PackageReference Include="Avalonia" Version="0.10.22" />
         <PackageReference Include="Avalonia.AvaloniaEdit" Version="0.10.12.2" />
         <PackageReference Include="Avalonia.Controls.PanAndZoom" Version="10.14.0" />
         <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="0.10.10" />
