@@ -113,6 +113,9 @@ namespace Studio.Views.Shader
                 {
                     // Set text
                     Editor.Text = assembled;
+                    
+                    // Invalidate marker layout
+                    MarkerCanvas.UpdateLayout();
                 });
                 
                 // Bind object model
@@ -195,6 +198,9 @@ namespace Studio.Views.Shader
             Editor.TextArea.Caret.Line = (int)mapping.Value.Line;
             Editor.TextArea.Caret.Column = 0;
             Editor.TextArea.Caret.BringCaretToView();
+                    
+            // Invalidate marker layout
+            MarkerCanvas.UpdateLayout();
         }
         
         /// <summary>
@@ -203,8 +209,14 @@ namespace Studio.Views.Shader
         /// <param name="validationObject"></param>
         private void OnValidationObjectAdded(ValidationObject validationObject)
         {
+            // Update services
             _validationTextMarkerService.Add(validationObject);
+            
+            // Update canvas
             MarkerCanvas.Add(validationObject);
+            
+            // Redraw for background update
+            Editor.TextArea.TextView.Redraw();
         }
 
         /// <summary>
@@ -213,8 +225,14 @@ namespace Studio.Views.Shader
         /// <param name="validationObject"></param>
         private void OnValidationObjectRemoved(ValidationObject validationObject)
         {
+            // Update services
             _validationTextMarkerService.Remove(validationObject);
+            
+            // Update canvas
             MarkerCanvas.Remove(validationObject);
+            
+            // Redraw for background update
+            Editor.TextArea.TextView.Redraw();
         }
 
         /// <summary>

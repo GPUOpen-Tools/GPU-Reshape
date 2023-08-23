@@ -73,11 +73,10 @@ namespace Studio.Views.Controls
         /// </summary>
         private void OnTextViewChanged()
         {
-            // Bind scrolling, requires layout changes
-            TextView.ScrollOffsetChanged += (_, _) =>
-            {
-                UpdateLayout(_markers);
-            };
+            // Bind events requiring layout changes
+            TextView.ScrollOffsetChanged += (_, _) => UpdateLayout();
+            TextView.DocumentChanged += (_, _) => UpdateLayout();
+            TextView.EffectiveViewportChanged += (_, _) => UpdateLayout();
         }
 
         /// <summary>
@@ -181,6 +180,14 @@ namespace Studio.Views.Controls
             {
                 view.ViewModel.SelectedObject = view.ViewModel.Objects[0];
             }
+        }
+
+        /// <summary>
+        /// Update the whole layout
+        /// </summary>
+        public void UpdateLayout()
+        {
+            UpdateLayout(_markers);
         }
 
         /// <summary>

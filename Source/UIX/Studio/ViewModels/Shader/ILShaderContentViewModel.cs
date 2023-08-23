@@ -204,8 +204,13 @@ namespace Studio.ViewModels.Shader
         /// </summary>
         public int TransformLine(ShaderLocation shaderLocation)
         {
+            if (Assembler == null)
+            {
+                throw new Exception("Transformation without an assembler");
+            }
+            
             // Transform instruction indices to line from assembler
-            return (int)(Assembler?.GetMapping(shaderLocation.BasicBlockId, shaderLocation.InstructionIndex).Line ?? 0);
+            return (int)Assembler.GetMapping(shaderLocation.BasicBlockId, shaderLocation.InstructionIndex).Line;
         }
 
         /// <summary>
