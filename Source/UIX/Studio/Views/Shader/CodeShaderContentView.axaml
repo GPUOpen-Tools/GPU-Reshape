@@ -40,14 +40,15 @@
              x:DataType="shader:CodeShaderContentViewModel"
              x:CompileBindings="True">
     <UserControl.Resources>
-        <valueConverters:GridVisibilityConverter x:Key="VisibilityConverter"/>
+        <valueConverters:DetailVisibilityConverter x:Key="DetailVisibilityConverter"/>
+        <valueConverters:GridVisibilityConverter x:Key="GridVisibilityConverter"/>
     </UserControl.Resources>
     
     <Grid x:Name="ContentGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=5, Converter={StaticResource VisibilityConverter}}"/>
-            <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=150, Converter={StaticResource VisibilityConverter}}"/>
+            <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=5, Converter={StaticResource GridVisibilityConverter}}"/>
+            <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=150, Converter={StaticResource GridVisibilityConverter}}"/>
         </Grid.RowDefinitions>
         
         <avaloniaEdit:TextEditor
@@ -89,7 +90,8 @@
             <StackPanel 
                 Orientation="Vertical"
                 VerticalAlignment="Bottom"
-                HorizontalAlignment="Left">
+                HorizontalAlignment="Left"
+                IsVisible="{Binding DetailViewModel, Converter={StaticResource DetailVisibilityConverter}}">
                 <Button 
                     Background="Transparent"
                     Padding="0"
