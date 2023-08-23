@@ -114,6 +114,24 @@ PFN_CREATE_PROCESS_AS_USER_A Kernel32CreateProcessAsUserAOriginal;
 PFN_CREATE_PROCESS_AS_USER_W Kernel32CreateProcessAsUserWOriginal;
 D3D12GPUOpenFunctionTable    DetourFunctionTable;
 
+/// Detoured section
+struct DetourSection {
+    /// Jump target address for the trampoline
+    uint8_t* jmpBlockAddr{nullptr};
+
+    /// Number of operands
+    BYTE operandCount{0};
+    
+    /// Expected operands
+    BYTE jmpOperands[5];
+};
+
+/// Detour sections
+DetourSection Kernel32CreateProcessASection;
+DetourSection Kernel32CreateProcessWSection;
+DetourSection Kernel32CreateProcessAsUserASection;
+DetourSection Kernel32CreateProcessAsUserWSection;
+
 /// Bootstrapper path, relative to the current module
 static std::string BootstrapperPathX64 = (GetCurrentModuleDirectory() / "GRS.Backends.DX12.BootstrapperX64.dll").string();
 static std::string BootstrapperPathX32 = (GetCurrentModuleDirectory() / "GRS.Backends.DX12.BootstrapperX32.dll").string();
@@ -141,6 +159,9 @@ HMODULE D3D12Module;
 HMODULE D3D11Module;
 HMODULE DXGIModule;
 HMODULE AMDAGSModule;
+
+/// Kernel32 module
+HMODULE Kernel32Module{nullptr};
 
 /// Layer function table
 D3D12GPUOpenFunctionTable LayerFunctionTable;
@@ -205,6 +226,73 @@ struct LogContext {
     }
 };
 #endif // ENABLE_LOGGING
+
+struct DetourJmpSectionTrapGuard {
+    DetourJmpSectionTrapGuard(const DetourSection& section) : section(section) {
+        /* Poof */
+    }
+
+    ~DetourJmpSectionTrapGuard() {
+        // Modified jump block?
+        if (!std::memcmp(section.jmpBlockAddr, &section.jmpOperands, section.operandCount)) {
+            return;
+        }
+
+#if ENABLE_LOGGING
+        LogContext{} << "DetourJmpSectionTrapGuard, jump block has changed\n";
+#endif // ENABLE_LOGGING
+        
+        // Old page access
+        DWORD pageAccessRestore{0};
+
+        // Move page range to EXECUTE_READWRITE
+        if (!VirtualProtect(section.jmpBlockAddr, section.operandCount, PAGE_EXECUTE_READWRITE, &pageAccessRestore)) {
+            return;
+        }
+
+        // Restore the jump block
+        std::memcpy(section.jmpBlockAddr, &section.jmpOperands, section.operandCount);
+
+        // Restore the page protection flags
+        DWORD ignore{0};
+        VirtualProtect(section.jmpBlockAddr, section.operandCount, pageAccessRestore, &ignore);
+
+        // Range flush the instruction cache
+        FlushInstructionCache(GetCurrentProcess(), section.jmpBlockAddr, section.operandCount);
+    }
+
+    /// Current section
+    const DetourSection& section;
+};
+
+DetourSection DetourAttachProtect(void** ppPointer, void* pDetour) {
+    // Detouring location
+    void* realTarget;
+
+    // Perform detouring
+    if (LONG result = DetourAttachEx(ppPointer, pDetour, nullptr, &realTarget, nullptr); result != NO_ERROR) {
+        return {};
+    }
+
+    // Create section
+    DetourSection section;
+    section.jmpBlockAddr = static_cast<PBYTE>(realTarget);
+    return section;
+}
+
+void CommitDetourSection(DetourSection& section) {
+    // Set the operand count
+#if defined(_WIN64) || defined(_WIN32)
+    section.operandCount = 5;
+#elif defined(_IA64_) || defined(_ARM_) // defined(_WIN64) || defined(_WIN32)
+    section.operandCount = 8;
+#elif defined(_ARM64_) // defined(_IA64_) || defined(_ARM_)
+    section.operandCount = 12; 
+#endif // defined(_ARM64_)
+    
+    // Copy section operands
+    std::memcpy(&section.jmpOperands, section.jmpBlockAddr, sizeof(section.jmpOperands));
+}
 
 bool BootstrapCheckLibrary(HMODULE& handle, const wchar_t* name, bool native) {
     // Early out if already loaded
@@ -621,6 +709,9 @@ BOOL BootstrapSuspendedProcessW(PROCESS_INFORMATION* lpProcessInformation, DWORD
 
 BOOL WINAPI HookCreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation) {
     PROCESS_INFORMATION processInfo{};
+
+    // Detour jump trap guard
+    DetourJmpSectionTrapGuard guard(Kernel32CreateProcessASection);
     
 #if ENABLE_LOGGING
     LogContext{} << "HookCreateProcessA-Detour\n\t'" << (lpApplicationName ? lpApplicationName : "<no-app>") << "'\n\t'" << (lpCommandLine ? lpCommandLine : "<no-app>") << "'\n";
@@ -670,6 +761,9 @@ BOOL WINAPI HookCreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine, LP
 
 BOOL WINAPI HookCreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation) {
     PROCESS_INFORMATION processInfo{};
+
+    // Detour jump trap guard
+    DetourJmpSectionTrapGuard guard(Kernel32CreateProcessWSection);
     
 #if ENABLE_LOGGING
     LogContext{} << "HookCreateProcessW-Detour\n\t'"
@@ -692,7 +786,7 @@ BOOL WINAPI HookCreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, 
     if (lpProcessInformation == nullptr) {
         lpProcessInformation = &processInfo;
     }
-    
+
     // Start process suspended
     if (!Kernel32CreateProcessWOriginal(
         lpApplicationName,
@@ -723,6 +817,9 @@ BOOL WINAPI HookCreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, 
 
 BOOL WINAPI HookCreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation) {
     PROCESS_INFORMATION processInfo{};
+
+    // Detour jump trap guard
+    DetourJmpSectionTrapGuard guard(Kernel32CreateProcessAsUserASection);
     
 #if ENABLE_LOGGING
     LogContext{} << "HookCreateProcessAsUserA-Detour\n\t'" << (lpApplicationName ? lpApplicationName : "<no-app>") << "'\n\t'" << (lpCommandLine ? lpCommandLine : "<no-app>") << "'\n";
@@ -773,6 +870,9 @@ BOOL WINAPI HookCreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LP
 
 BOOL WINAPI HookCreateProcessAsUserW(HANDLE hToken, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation) {
     PROCESS_INFORMATION processInfo{};
+
+    // Detour jump trap guard
+    DetourJmpSectionTrapGuard guard(Kernel32CreateProcessAsUserWSection);
     
 #if ENABLE_LOGGING
     LogContext{} << "HookCreateProcessAsUserW-Detour\n\t'" << (lpApplicationName ? lpApplicationName : L"<no-app>") << "'\n\t'" << (lpCommandLine ? lpCommandLine : L"<no-app>") << "'\n";
@@ -1059,9 +1159,6 @@ DWORD WINAPI DeferredInitialization(void*) {
     // Attempt to find module, directly load the layer if available
     //  i.e. Already loaded or scheduled to be
     if (DXGIModule || D3D12Module || D3D11Module || AMDAGSModule) {
-        // Initial snapshot
-        ModuleSnapshot snapshot = GetModuleSnapshot();
-        
         // ! Call native LoadLibraryW, not detoured
         BootstrapLayer("Entry detected mounted d3d12 module");
 
@@ -1069,7 +1166,7 @@ DWORD WINAPI DeferredInitialization(void*) {
         CriticalSectionGuard guard(libraryCriticalSection);
 
         // Query embedded hooks
-        DetourForeignModules(snapshot);
+        DetourForeignModules({});
         return 0;
     }
 
@@ -1422,18 +1519,17 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         DetourUpdateThread(GetCurrentThread());
 
         // Attempt to find kernel module
-        HMODULE kernel32Module{nullptr};
-        if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, kKernel32ModuleNameW, &kernel32Module)) {
+        if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, kKernel32ModuleNameW, &Kernel32Module)) {
             // Nothing we are interested in
             return false;
         }
 
         // Get addresses
-        Kernel32LoadLibraryAOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_A>(GetProcAddress(kernel32Module, "LoadLibraryA"));
-        Kernel32LoadLibraryWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_W>(GetProcAddress(kernel32Module, "LoadLibraryW"));
-        Kernel32LoadLibraryExAOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_A>(GetProcAddress(kernel32Module, "LoadLibraryExA"));
-        Kernel32LoadLibraryExWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_W>(GetProcAddress(kernel32Module, "LoadLibraryExW"));
-        Kernel32GetProcAddressOriginal = reinterpret_cast<PFN_GET_PROC_ADDRESS>(GetProcAddress(kernel32Module, "GetProcAddress"));
+        Kernel32LoadLibraryAOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_A>(GetProcAddress(Kernel32Module, "LoadLibraryA"));
+        Kernel32LoadLibraryWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_W>(GetProcAddress(Kernel32Module, "LoadLibraryW"));
+        Kernel32LoadLibraryExAOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_A>(GetProcAddress(Kernel32Module, "LoadLibraryExA"));
+        Kernel32LoadLibraryExWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_W>(GetProcAddress(Kernel32Module, "LoadLibraryExW"));
+        Kernel32GetProcAddressOriginal = reinterpret_cast<PFN_GET_PROC_ADDRESS>(GetProcAddress(Kernel32Module, "GetProcAddress"));
         
 #ifndef THIN_X86
         // Attach against original address
@@ -1445,20 +1541,20 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
 #endif // THIN_X86
 
         // Attach against original address
-        Kernel32CreateProcessAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_A>(GetProcAddress(kernel32Module, "CreateProcessA"));
-        DetourAttach(&reinterpret_cast<void *&>(Kernel32CreateProcessAOriginal), reinterpret_cast<void *>(HookCreateProcessA));
+        Kernel32CreateProcessAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_A>(GetProcAddress(Kernel32Module, "CreateProcessA"));
+        Kernel32CreateProcessASection = DetourAttachProtect(&reinterpret_cast<void *&>(Kernel32CreateProcessAOriginal), reinterpret_cast<void *>(HookCreateProcessA));
 
         // Attach against original address
-        Kernel32CreateProcessWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_W>(GetProcAddress(kernel32Module, "CreateProcessW"));
-        DetourAttach(&reinterpret_cast<void *&>(Kernel32CreateProcessWOriginal), reinterpret_cast<void *>(HookCreateProcessW));
+        Kernel32CreateProcessWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_W>(GetProcAddress(Kernel32Module, "CreateProcessW"));
+        Kernel32CreateProcessWSection = DetourAttachProtect(&reinterpret_cast<void *&>(Kernel32CreateProcessWOriginal), reinterpret_cast<void *>(HookCreateProcessW));
 
         // Attach against original address
-        Kernel32CreateProcessAsUserAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_A>(GetProcAddress(kernel32Module, "CreateProcessAsUserA"));
-        DetourAttach(&reinterpret_cast<void *&>(Kernel32CreateProcessAsUserAOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserA));
+        Kernel32CreateProcessAsUserAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_A>(GetProcAddress(Kernel32Module, "CreateProcessAsUserA"));
+        Kernel32CreateProcessAsUserASection = DetourAttachProtect(&reinterpret_cast<void *&>(Kernel32CreateProcessAsUserAOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserA));
 
         // Attach against original address
-        Kernel32CreateProcessAsUserWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_W>(GetProcAddress(kernel32Module, "CreateProcessAsUserW"));
-        DetourAttach(&reinterpret_cast<void *&>(Kernel32CreateProcessAsUserWOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserW));
+        Kernel32CreateProcessAsUserWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_W>(GetProcAddress(Kernel32Module, "CreateProcessAsUserW"));
+        Kernel32CreateProcessAsUserWSection = DetourAttachProtect(&reinterpret_cast<void *&>(Kernel32CreateProcessAsUserWOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserW));
 
         // Attempt to create initial detours
         DetourForeignModules(ModuleSnapshot {});
@@ -1467,6 +1563,12 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         if (FAILED(DetourTransactionCommit())) {
             return FALSE;
         }
+
+        // Commit all sections
+        CommitDetourSection(Kernel32CreateProcessASection);
+        CommitDetourSection(Kernel32CreateProcessWSection);
+        CommitDetourSection(Kernel32CreateProcessAsUserASection);
+        CommitDetourSection(Kernel32CreateProcessAsUserWSection);
     }
 
     // Detach?
