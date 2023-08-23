@@ -212,9 +212,6 @@ bool RemoteLoadBootstrapperGlobal(const std::string& sessionPathStrX64, const st
         }
     }
 
-    // Cleanup
-    CloseHandle(snapshot);
-
     // OK
     return true;
 }
@@ -356,7 +353,7 @@ bool ReleaseBootstrappers() {
     PROCESSENTRY32 entry{sizeof(PROCESSENTRY32)};
 
     // Get kernel32 module for FreeLibrary
-    Win32Module kernel32Handle = GetModuleHandleA("kernel32.dll");
+    HMODULE kernel32Handle = GetModuleHandleA("kernel32.dll");
     if (!kernel32Handle) {
         std::cout << "Failed to open kernel32!\n";
         return false;
@@ -373,9 +370,6 @@ bool ReleaseBootstrappers() {
     for (bool result = Process32First(snapshot, &entry); result; result = Process32Next(snapshot, &entry)) {
         ReleaseBootstrappedProcess(freeLibrary, entry.szExeFile, entry.th32ProcessID);
     }
-
-    // Cleanup
-    CloseHandle(snapshot);
 
     // OK
     return true;

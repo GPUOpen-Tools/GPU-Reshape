@@ -37,7 +37,7 @@ struct Win32Object {
     
     /// Destructor
     ~Win32Object() {
-        if (handle) {
+        if (handle && handle != INVALID_HANDLE_VALUE) {
             CloseHandle(handle);
         }
     }
