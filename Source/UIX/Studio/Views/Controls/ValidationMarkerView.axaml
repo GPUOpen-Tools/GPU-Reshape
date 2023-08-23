@@ -30,7 +30,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
              xmlns:objects="clr-namespace:Studio.ViewModels.Workspace.Objects;assembly=UIX.Studio.Runtime"
-             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="35"
+             mc:Ignorable="d" d:DesignWidth="250" d:DesignHeight="35"
              x:Class="Studio.Views.Controls.ValidationMarkerView"
              x:DataType="controls:ValidationMarkerViewModel"
              HorizontalAlignment="Right"
@@ -43,11 +43,18 @@
         <Button 
             x:Name="ValidationButton"
             Background="{StaticResource ErrorBrush}"
-            Content="{Binding SelectedObject.Content, FallbackValue=Validation Content}" 
             VerticalAlignment="Stretch" 
             BorderBrush="Transparent"
             Padding="5 0 5 0"
-            Margin="0 0 0 0"/>
+            Margin="0 0 0 0">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock
+                    Text="{Binding SelectedObject.Content, FallbackValue=Validation Content}"/>
+                <TextBlock
+                    Margin="5 0 0 0"
+                    Text="{Binding SelectedObject.Count, FallbackValue=640000}"/>
+            </StackPanel>
+        </Button>
         
         <Button 
             x:Name="DropdownButton"
@@ -82,11 +89,19 @@
                             Items="{Binding Objects}">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="objects:ValidationObject">
-                                    <TextBlock 
-                                        Height="20"
-                                        TextAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        Text="{Binding Content}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock
+                                            Height="20"
+                                            TextAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Text="{Binding Content, FallbackValue=Validation Content}"/>
+                                        <TextBlock
+                                            Height="20"
+                                            TextAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Margin="5 0 0 0"
+                                            Text="{Binding Count, FallbackValue=640000}"/>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
