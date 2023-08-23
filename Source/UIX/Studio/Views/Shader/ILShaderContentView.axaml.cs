@@ -195,7 +195,9 @@ namespace Studio.Views.Shader
             }
                             
             // Scroll to target
-            Editor.TextArea.Caret.Line = (int)mapping.Value.Line;
+            // TODO: 10 is a total guess, we need to derive it from the height, but that doesn't exist yet.
+            //       Probably a delayed action?
+            Editor.TextArea.Caret.Line = (int)mapping.Value.Line - 10;
             Editor.TextArea.Caret.Column = 0;
             Editor.TextArea.Caret.BringCaretToView();
                     
