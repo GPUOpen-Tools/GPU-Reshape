@@ -26,6 +26,7 @@
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/States/BufferState.h>
 #include <Backends/Vulkan/States/ImageState.h>
+#include <Backends/Vulkan/Translation.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -194,8 +195,12 @@ void VersioningController::CollapseOnFork(VersionSegmentationPoint versionSegPoi
 }
 
 void VersioningController::CommitImageVersion(MessageStreamView<ResourceVersionMessage> &view, ImageState *state) {
+    const char* formatStr = GetFormatString(state->createInfo.format);
+
+    // Allocate version
     auto&& version = view.Add(ResourceVersionMessage::AllocationInfo {
-        .nameLength = state->debugName ? std::strlen(state->debugName) : 0u
+        .nameLength = state->debugName ? std::strlen(state->debugName) : 0u,
+        .formatLength =  std::strlen(formatStr)
     });
 
     // Fill info
@@ -205,6 +210,7 @@ void VersioningController::CommitImageVersion(MessageStreamView<ResourceVersionM
     version->width = state->createInfo.extent.width;
     version->height = state->createInfo.extent.height;
     version->depth = state->createInfo.extent.depth;
+    version->format.Set(formatStr);
 }
 
 void VersioningController::CommitBufferVersion(MessageStreamView<ResourceVersionMessage> &view, BufferState *state) {

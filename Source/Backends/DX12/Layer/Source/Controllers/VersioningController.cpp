@@ -25,6 +25,7 @@
 #include <Backends/DX12/Controllers/VersioningController.h>
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/States/DeviceState.h>
+#include <Backends/DX12/Translation.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -168,8 +169,12 @@ void VersioningController::CollapseOnFork(VersionSegmentationPoint versionSegPoi
 }
 
 void VersioningController::CommitResourceVersion(MessageStreamView<ResourceVersionMessage> &view, ResourceState *state) {
+    const char* formatStr = GetFormatString(state->desc.Format);
+
+    // Allocate version
     auto&& version = view.Add(ResourceVersionMessage::AllocationInfo {
-        .nameLength = state->debugName ? std::strlen(state->debugName) : 0u
+        .nameLength = state->debugName ? std::strlen(state->debugName) : 0u,
+        .formatLength =  std::strlen(formatStr)
     });
 
     // Fill info
@@ -179,6 +184,7 @@ void VersioningController::CommitResourceVersion(MessageStreamView<ResourceVersi
     version->width = static_cast<uint32_t>(state->desc.Width);
     version->height = static_cast<uint32_t>(state->desc.Height);
     version->depth = static_cast<uint32_t>(state->desc.DepthOrArraySize);
+    version->format.Set(formatStr);
 }
 
 void VersioningController::Commit() {

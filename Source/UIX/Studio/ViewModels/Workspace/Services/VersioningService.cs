@@ -261,7 +261,8 @@ namespace Studio.ViewModels.Workspace.Services
                         Name = message.name.String,
                         Width = message.width,
                         Height = message.height,
-                        Depth = message.depth
+                        Depth = message.depth,
+                        Format = message.format.String
                     };
                 }
             }

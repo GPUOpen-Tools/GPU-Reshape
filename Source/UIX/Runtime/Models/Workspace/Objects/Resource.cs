@@ -60,7 +60,12 @@ namespace Studio.Models.Workspace.Objects
         /// Depth of this resource
         /// </summary>
         public uint Depth { get; set; }
-
+        
+        /// <summary>
+        /// Native format of this resource
+        /// </summary>
+        public string Format { get; set; }
+        
         /// <summary>
         /// Is this resource a stand-in for a future streamed resource?
         /// </summary>

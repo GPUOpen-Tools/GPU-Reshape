@@ -62,6 +62,8 @@
                 <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Height, FallbackValue=0}" />
                 <TextBlock Height="20" Text="- Depth: " Margin="5 0 0 0" />
                 <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Depth, FallbackValue=0}" />
+                <TextBlock Height="20" Text="- Format: " Margin="5 0 0 0" />
+                <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Format, FallbackValue=Unknown}" />
             </StackPanel>
         
             <Grid ColumnDefinitions="150,2,*" DockPanel.Dock="Top">

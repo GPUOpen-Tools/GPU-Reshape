@@ -32,6 +32,7 @@
         <field name="width" type="uint32"/>
         <field name="height" type="uint32"/>
         <field name="depth" type="uint32"/>
+        <field name="format" type="string"/>
     </message>
     
     <message name="GetVersionSummarization">
