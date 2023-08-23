@@ -176,7 +176,7 @@ namespace Studio.Views.Shader
 
                     // Reset front state
                     codeViewModel.SelectedValidationObject = null;
-                    codeViewModel.IsDetailVisible = false;
+                    codeViewModel.DetailViewModel = null;
                 });
         }
 
@@ -198,16 +198,13 @@ namespace Studio.Views.Shader
             // Ensure detailed collection has started
             ShaderDetailUtils.BeginDetailedCollection(shaderViewModel, property);
                 
-            // Mark as visible
-            vm.IsDetailVisible = true;
-
             // Set selection
             vm.SelectedValidationObject = validationObject;
             
             // Bind detail context
             validationObject.WhenAnyValue(x => x.DetailViewModel).Subscribe(x =>
             {
-                DetailViewHost.ViewHost.ViewModel = x ?? new MissingDetailViewModel()
+                vm.DetailViewModel = x ?? new MissingDetailViewModel()
                 {
                     Object = vm.Object,
                     PropertyCollection = vm.PropertyCollection

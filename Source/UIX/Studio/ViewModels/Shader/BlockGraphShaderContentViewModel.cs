@@ -26,6 +26,8 @@ using System;
 using System.Windows.Input;
 using Avalonia.Media;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Services;
@@ -35,6 +37,11 @@ namespace Studio.ViewModels.Shader
 {
     public class BlockGraphShaderContentViewModel : ReactiveObject, IShaderContentViewModel
     {
+        /// <summary>
+        /// The owning navigation context
+        /// </summary>
+        public INavigationContext? NavigationContext { get; set; }
+        
         /// <summary>
         /// Given descriptor
         /// </summary>
@@ -76,6 +83,15 @@ namespace Studio.ViewModels.Shader
         {
             get => _isActive;
             set => this.RaiseAndSetIfChanged(ref _isActive, value);
+        }
+
+        /// <summary>
+        /// Current location
+        /// </summary>
+        public ShaderLocation? NavigationLocation
+        {
+            get => _navigationLocation;
+            set => this.RaiseAndSetIfChanged(ref _navigationLocation, value);
         }
 
         /// <summary>
@@ -137,6 +153,11 @@ namespace Studio.ViewModels.Shader
         /// Internal icon state
         /// </summary>
         private StreamGeometry? _icon = ResourceLocator.GetIcon("DotGraph");
+
+        /// <summary>
+        /// Internal location
+        /// </summary>
+        private ShaderLocation? _navigationLocation;
 
         /// <summary>
         /// Internal active state

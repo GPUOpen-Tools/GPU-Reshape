@@ -45,8 +45,8 @@
     <Grid x:Name="ContentGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="{Binding IsDetailVisible, ConverterParameter=5, Converter={StaticResource VisibilityConverter}}"/>
-            <RowDefinition Height="{Binding IsDetailVisible, ConverterParameter=150, Converter={StaticResource VisibilityConverter}}"/>
+            <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=5, Converter={StaticResource VisibilityConverter}}"/>
+            <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=150, Converter={StaticResource VisibilityConverter}}"/>
         </Grid.RowDefinitions>
 
         <avaloniaEdit:TextEditor
@@ -73,13 +73,40 @@
         
         <GridSplitter
             Grid.Row="1"
+            Background="{StaticResource InfoMediumBackground}"
             ResizeDirection="Rows"/>
         
         <Grid Grid.Row="2" x:Name="DetailGrid">
             <controls:LocatorViewHost 
                 x:Name="DetailViewHost" 
                 HorizontalAlignment="Stretch" 
-                VerticalAlignment="Stretch"/>
+                DataContext="{Binding DetailViewModel}"/>
+            
+            <StackPanel 
+                Orientation="Vertical"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Left">
+                <Button 
+                    Background="Transparent"
+                    Padding="0"
+                    BorderThickness="0"
+                    Width="20"
+                    Height="22"
+                    ToolTip.Tip="{x:Static r:Resources.Shader_Code_ShowInSource}"
+                    Command="{Binding ShowInSource}">
+                    <PathIcon Data="{StaticResource Code}" Margin="1 0 0 0" Width="14" />
+                </Button>
+                
+                <Button 
+                    Background="Transparent"
+                    Padding="0"
+                    BorderThickness="0"
+                    Width="20"
+                    Height="22"
+                    Command="{Binding CloseDetail}">
+                    <PathIcon Data="{StaticResource Close}" Width="12" />
+                </Button>
+            </StackPanel>
         </Grid>
     </Grid>
 </UserControl>

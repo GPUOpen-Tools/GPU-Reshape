@@ -22,51 +22,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using System.Globalization;
-using Avalonia.Controls;
-using Avalonia.Data.Converters;
-
-namespace Studio.ValueConverters
+namespace Runtime.ViewModels.Traits
 {
-    public class GridVisibilityConverter : IValueConverter
+    public interface INavigationContext
     {
         /// <summary>
-        /// Convert the value
+        /// Navigate to a context
         /// </summary>
-        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        {
-            bool validity;
-
-            // Determine validity
-            if (value is bool boolValue)
-            {
-                validity = boolValue;
-            }
-            else
-            {
-                validity = value != null;
-            }
-            
-            // Show the definition?
-            if (validity)
-            {
-                // Assume length from parameter
-                return new GridLength(double.Parse((string)parameter!));
-            }
-            else
-            {
-                // Hidden
-                return new GridLength(0.0);
-            }
-        }
-
-        /// <summary>
-        /// Convert the value back
-        /// </summary>
-        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
+        /// <param name="target">target type or context</param>
+        /// <param name="parameter">optional navigation parameter</param>
+        void Navigate(object target, object? parameter);
     }
 }

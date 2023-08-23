@@ -102,6 +102,15 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Pause validation reporting.
+        /// </summary>
+        public static string Detail_Resource_Pause {
+            get {
+                return ResourceManager.GetString("Detail_Resource_Pause", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Configure discoverability.
         /// </summary>
         public static string Discovery_DropDown_Tooltip {
@@ -215,6 +224,24 @@ namespace Studio.Resources {
         public static string PipelineTree_Refresh_Tooltip {
             get {
                 return ResourceManager.GetString("PipelineTree_Refresh_Tooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show this validation error in IL.
+        /// </summary>
+        public static string Shader_Code_ShowInIL {
+            get {
+                return ResourceManager.GetString("Shader_Code_ShowInIL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show this validation error in source.
+        /// </summary>
+        public static string Shader_Code_ShowInSource {
+            get {
+                return ResourceManager.GetString("Shader_Code_ShowInSource", resourceCulture);
             }
         }
         

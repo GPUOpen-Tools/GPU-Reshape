@@ -24,6 +24,8 @@
 
 using System.Windows.Input;
 using Avalonia.Media;
+using Runtime.ViewModels.Traits;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -31,6 +33,11 @@ namespace Studio.ViewModels.Shader
 {
     public interface IShaderContentViewModel
     {
+        /// <summary>
+        /// The owning navigation context
+        /// </summary>
+        public INavigationContext? NavigationContext { get; set; }
+        
         /// <summary>
         /// Given creation descriptor
         /// </summary>
@@ -55,6 +62,11 @@ namespace Studio.ViewModels.Shader
         /// Is this model active?
         /// </summary>
         public bool IsActive { get; set; }
+        
+        /// <summary>
+        /// Startup navigation requests
+        /// </summary>
+        public ShaderLocation? NavigationLocation { get; set; }
 
         /// <summary>
         /// Underlying object

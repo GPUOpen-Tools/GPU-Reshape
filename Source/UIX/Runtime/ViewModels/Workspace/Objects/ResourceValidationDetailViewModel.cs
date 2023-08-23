@@ -41,6 +41,19 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
+        /// Is the collection paused?
+        /// </summary>
+        public bool Paused
+        {
+            get => _paused;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _paused, value);
+                PauseChanged();
+            }
+        }
+
+        /// <summary>
         /// All resources
         /// </summary>
         public ObservableCollection<ResourceValidationObject> Resources { get; } = new();
@@ -59,6 +72,18 @@ namespace Studio.ViewModels.Workspace.Objects
 
             // Not found
             return null;
+        }
+
+        /// <summary>
+        /// Invoked on pause state changes
+        /// </summary>
+        private void PauseChanged()
+        {
+            // Update all objects
+            foreach (ResourceValidationObject validationObject in Resources)
+            {
+                validationObject.Paused = _paused;
+            }
         }
 
         /// <summary>
@@ -85,7 +110,8 @@ namespace Studio.ViewModels.Workspace.Objects
             // Not found, create it
             validationObject = new ResourceValidationObject()
             {
-                Resource = resource
+                Resource = resource,
+                Paused = _paused
             };
 
             // Auto-assign if none
@@ -123,5 +149,10 @@ namespace Studio.ViewModels.Workspace.Objects
         /// Internal selection
         /// </summary>
         private ResourceValidationObject? _selectedResource;
+
+        /// <summary>
+        /// Internal pause state
+        /// </summary>
+        private bool _paused;
     }
 }

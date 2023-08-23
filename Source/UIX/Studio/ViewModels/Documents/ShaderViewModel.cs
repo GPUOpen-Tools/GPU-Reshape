@@ -31,6 +31,7 @@ using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Shader;
@@ -39,7 +40,7 @@ using Studio.ViewModels.Workspace.Services;
 
 namespace Studio.ViewModels.Documents
 {
-    public class ShaderViewModel : Document, IDocumentViewModel
+    public class ShaderViewModel : Document, IDocumentViewModel, INavigationContext
     {
         /// <summary>
         /// Descriptor setter, constructs the top document from given descriptor
@@ -172,9 +173,18 @@ namespace Studio.ViewModels.Documents
             // Default view models
             ShaderContentViewModels.AddRange(new IShaderContentViewModel[]
             {
-                new CodeShaderContentViewModel(),
-                new ILShaderContentViewModel(),
+                new CodeShaderContentViewModel()
+                {
+                    NavigationContext = this
+                },
+                new ILShaderContentViewModel()
+                {
+                    NavigationContext = this
+                },
                 new BlockGraphShaderContentViewModel()
+                {
+                    NavigationContext = this
+                }
             });
             
             // Selected
@@ -264,6 +274,39 @@ namespace Studio.ViewModels.Documents
 
             // Fetch object
             Object = collection?.GetOrAddShader(_guid);
+        }
+
+        /// <summary>
+        /// Invoked on navigation requests
+        /// </summary>
+        public void Navigate(object target, object? parameter)
+        {
+            IShaderContentViewModel? targetViewModel;
+
+            // Typed navigation?
+            if (target is Type type)
+            {
+                targetViewModel = ShaderContentViewModels.FirstOrDefault(x => type.IsInstanceOfType(x));
+            }
+            else
+            {
+                targetViewModel = target as IShaderContentViewModel;
+            }
+
+            // None found?
+            if (targetViewModel == null)
+            {
+                return;
+            }
+
+            // Assign navigation location if needed
+            if (parameter != null)
+            {
+                targetViewModel.NavigationLocation = (ShaderLocation)parameter;
+            }
+
+            // Set new target
+            SelectedShaderContentViewModel = targetViewModel;
         }
 
         /// <summary>

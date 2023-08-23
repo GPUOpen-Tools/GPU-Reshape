@@ -33,6 +33,7 @@ using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
+using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
 using Studio.ViewModels.Documents;
@@ -44,6 +45,11 @@ namespace Studio.ViewModels.Shader
 {
     public class CodeShaderContentViewModel : ReactiveObject, ITextualShaderContentViewModel
     {
+        /// <summary>
+        /// The owning navigation context
+        /// </summary>
+        public INavigationContext? NavigationContext { get; set; }
+        
         /// <summary>
         /// Given descriptor
         /// </summary>
@@ -75,15 +81,6 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
-        /// Is the detail view visible?
-        /// </summary>
-        public bool IsDetailVisible
-        {
-            get => _isDetailVisible;
-            set => this.RaiseAndSetIfChanged(ref _isDetailVisible, value);
-        }
-
-        /// <summary>
         /// Currently selected validation object
         /// </summary>
         public ValidationObject? SelectedValidationObject
@@ -93,9 +90,28 @@ namespace Studio.ViewModels.Shader
         }
 
         /// <summary>
+        /// Current detail view model
+        /// </summary>
+        public IValidationDetailViewModel? DetailViewModel
+        {
+            get => _detailViewModel;
+            set => this.RaiseAndSetIfChanged(ref _detailViewModel, value);
+        }
+
+        /// <summary>
         /// Selection command
         /// </summary>
         public ICommand? OnSelected { get; }
+
+        /// <summary>
+        /// Close detail command
+        /// </summary>
+        public ICommand? CloseDetail { get; }
+
+        /// <summary>
+        /// Show in IL command
+        /// </summary>
+        public ICommand? ShowInIL { get; }
 
         /// <summary>
         /// Is this model active?
@@ -168,6 +184,8 @@ namespace Studio.ViewModels.Shader
         public CodeShaderContentViewModel()
         {
             OnSelected = ReactiveCommand.Create(OnParentSelected);
+            CloseDetail = ReactiveCommand.Create(OnCloseDetail);
+            ShowInIL = ReactiveCommand.Create(OnShowInIL);
         }
 
         /// <summary>
@@ -188,6 +206,23 @@ namespace Studio.ViewModels.Shader
                 service.SelectedShader.WhenAnyValue(x => x.SelectedFile)
                     .Subscribe(x => SelectedShaderFileViewModel = x);
             }
+        }
+
+        /// <summary>
+        /// Invoked on detail closes
+        /// </summary>
+        private void OnCloseDetail()
+        {
+            DetailViewModel = null;
+        }
+
+        /// <summary>
+        /// Invoked on navigation requests
+        /// </summary>
+        private void OnShowInIL()
+        {
+            // Navigate to the currently selected validation object
+            NavigationContext?.Navigate(typeof(ILShaderContentViewModel), SelectedValidationObject?.Segment?.Location);
         }
 
         /// <summary>
@@ -240,15 +275,15 @@ namespace Studio.ViewModels.Shader
         /// Internal active state
         /// </summary>
         private bool _isActive = false;
-
-        /// <summary>
-        /// Internal visibility state
-        /// </summary>
-        private bool _isDetailVisible = false;
         
         /// <summary>
         /// Internal selections tate
         /// </summary>
         private ValidationObject? _selectedValidationObject;
+
+        /// <summary>
+        /// Internal detail state
+        /// </summary>
+        private IValidationDetailViewModel? _detailViewModel;
     }
 }

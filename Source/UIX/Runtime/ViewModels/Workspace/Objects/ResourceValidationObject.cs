@@ -40,6 +40,11 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
+        /// Is the collection paused?
+        /// </summary>
+        public bool Paused = false;
+
+        /// <summary>
         /// Name of this object
         /// </summary>
         public Resource Resource
@@ -69,6 +74,12 @@ namespace Studio.ViewModels.Workspace.Objects
         /// <param name="message"></param>
         public void AddUniqueInstance(string message)
         {
+            // Reject if paused
+            if (Paused)
+            {
+                return;
+            }
+            
             // Existing?
             if (_unique.TryGetValue(message, out ResourceValidationInstance? instance))
             {

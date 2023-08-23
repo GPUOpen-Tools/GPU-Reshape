@@ -87,4 +87,13 @@
     <data name="Launch_SelectFolder_Tooltip" xml:space="preserve">
         <value>Open a folder</value>
     </data>
+    <data name="Shader_Code_ShowInIL" xml:space="preserve">
+        <value>Show this validation error in IL</value>
+    </data>
+    <data name="Shader_Code_ShowInSource" xml:space="preserve">
+        <value>Show this validation error in source</value>
+    </data>
+    <data name="Detail_Resource_Pause" xml:space="preserve">
+        <value>Pause validation reporting</value>
+    </data>
 </root>
