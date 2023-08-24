@@ -177,6 +177,8 @@ using ModuleSnapshot = std::set<HMODULE>;
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 /// Prototypes
+ModuleSnapshot GetModuleSnapshot();
+bool DetourForeignModules(const ModuleSnapshot& before);
 void DetourAMDAGSModule(HMODULE handle, bool insideTransaction);
 void DetourD3D11Module(HMODULE handle, bool insideTransaction); 
 void DetourD3D12Module(HMODULE handle, bool insideTransaction); 
@@ -439,9 +441,15 @@ void BootstrapLayer(const char* invoker) {
     std::filesystem::path sessionPath = path;
 #endif // USE_BOOTSTRAP_SESSIONS
 
+    // Initial snapshot
+    ModuleSnapshot snapshot = GetModuleSnapshot();
+    
     // User attempting to load instrumentable object, warranting bootstrapping of the layer
     LayerModule = Kernel32LoadLibraryExWOriginal(sessionPath.wstring().c_str(), nullptr, 0x0);
 
+    // Query embedded hooks
+    DetourForeignModules(snapshot);
+    
     // Fetch function table
     if (LayerModule) {
         // Get hook points
@@ -934,6 +942,10 @@ bool TryLoadEmbeddedModules(HMODULE handle) {
         return false;
     }
 
+#if ENABLE_LOGGING
+    LogContext{} << "TryLoadEmbeddedModules, " << baseName << "\n";
+#endif // ENABLE_LOGGING
+    
     // Is AGS?
     if (!DetourFunctionTable.next_AMDAGSCreateDevice && Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr) {
         DetourAMDAGSModule(handle, false);

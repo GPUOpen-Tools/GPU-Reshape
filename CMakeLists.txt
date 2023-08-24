@@ -74,7 +74,7 @@ if (NOT THIN_X86_BUILD)
     #       I'll find a proper solution at some point.
     add_custom_target(
         ThinX86Build
-        COMMAND ${CMAKE_COMMAND} -E echo Building X86-V72
+        COMMAND ${CMAKE_COMMAND} -E echo Building X86-V76
         COMMAND ${CMAKE_COMMAND} --build .
         DEPENDS ThinX86Configure ${path}
         WORKING_DIRECTORY "${ThinBinaryDir}"

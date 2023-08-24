@@ -46,6 +46,21 @@
 /// Hook all running processes
 #define HOOK_ALL_RUNNING 1
 
+/// Clean all layer sessioning?
+#define CLEAN_LAYER_SESSIONS 1
+
+/// Greatly simplifies debugging
+#define ENABLE_WHITELIST 0
+
+/// All whitelisted applications
+#if ENABLE_WHITELIST
+const char* kWhitelist[] =
+{
+    /// Applications
+    /** poof */
+};
+#endif // ENABLE_WHITELIST
+
 /// Shared Win32 hook
 HHOOK Hook;
 
@@ -203,6 +218,23 @@ bool RemoteLoadBootstrapperGlobal(const std::string& sessionPathStrX64, const st
     // Now walk the snapshot of processes
     for (bool result = Process32First(snapshot, &entry); result; result = Process32Next(snapshot, &entry)) {
         std::cout << "\t Hooking process '" << entry.szExeFile << "'... ";
+        
+#if ENABLE_WHITELIST
+        bool isWhitelisted = false;
+
+        // Check if any of the target applications
+        for (const char* name : kWhitelist) {
+            if (std::ends_with(entry.szExeFile, name)) {
+                isWhitelisted = true;
+            }
+        }
+
+        // Not whitelisted?
+        if (!isWhitelisted) {
+            std::cout << "Skipped\n";
+            continue;
+        }
+#endif // ENABLE_WHITELIST
 
         // Try to bootstrap
         if (RemoteLoadBootstrapper(loadLibraryWGPA, sessionPathStrX64, sessionPathStrX86, entry.szExeFile, entry.th32ProcessID)) {
@@ -424,11 +456,26 @@ int main(int32_t argc, const char *const *argv) {
     }
 
     std::cout << "OK" << std::endl;
-
-#if USE_BOOTSTRAP_SESSIONS
-    // Host all sessions under intermediate
+    
+    // Get current session dir
     std::filesystem::path sessionDir = GetIntermediatePath("Bootstrapper\\Sessions");
 
+#if CLEAN_LAYER_SESSIONS
+    std::cout << "Cleaning old sessions... " << std::flush;
+
+    // Clean all old sessions
+    for (const auto& entry : std::filesystem::directory_iterator(sessionDir)) {
+        try {
+            std::filesystem::remove(entry.path());
+        } catch(...) {
+            // Ignore it
+        }
+    } 
+
+    std::cout << "OK" << std::endl;
+#endif
+
+#if USE_BOOTSTRAP_SESSIONS
     // Clean up all old sessions
     for (std::filesystem::path file: std::filesystem::directory_iterator(sessionDir)) {
         std::error_code ignored;
