@@ -33,4 +33,34 @@ namespace Studio.Services
         /// </summary>
         public ISettingViewModel ViewModel { get; }
     }
+
+    public static class SettingsServiceExtensions
+    {
+        /// <summary>
+        /// Get a setting
+        /// </summary>
+        public static T? Get<T>(this ISettingsService self) where T : ISettingViewModel
+        {
+            return self.ViewModel.GetItem<T>();
+        }
+        
+        /// <summary>
+        /// Add a setting
+        /// </summary>
+        public static void Add(this ISettingsService self, ISettingViewModel viewModel)
+        {
+            self.ViewModel.Items.Add(viewModel);
+        }
+        
+        /// <summary>
+        /// Ensure a setting exists, if not, creates the default value
+        /// </summary>
+        public static void EnsureDefault<T>(this ISettingsService self) where T : ISettingViewModel, new()
+        {
+            if (self.Get<T>() == null)
+            {
+                self.Add(new T());
+            }
+        }
+    }
 }

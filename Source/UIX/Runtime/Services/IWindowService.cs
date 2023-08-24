@@ -22,7 +22,8 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Runtime.ViewModels;
+using System.Threading.Tasks;
+using Studio.ViewModels;
 
 namespace Studio.Services
 {
@@ -37,11 +38,22 @@ namespace Studio.Services
         /// Open a window for a given view model
         /// </summary>
         /// <param name="viewModel">view model</param>
-        void OpenFor(object viewModel);
+        Task<object?> OpenFor(object viewModel);
 
         /// <summary>
         /// Request exit
         /// </summary>
         void Exit();
+    }
+    
+    public static class WindowServiceExtensions
+    {
+        /// <summary>
+        /// Typed OpenFor
+        /// </summary>
+        public static Task<T?> OpenFor<T>(this IWindowService self, object viewModel) where T : class
+        {
+            return self.OpenFor(viewModel).ContinueWith<T?>(x => (T?)x.Result);
+        }
     }
 }

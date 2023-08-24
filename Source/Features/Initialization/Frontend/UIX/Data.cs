@@ -24,62 +24,70 @@
 
 using System.Threading.Tasks;
 using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Runtime.ViewModels;
+using ReactiveUI;
+using Studio.Services;
+using Studio.Services.Suspension;
 using Studio.ViewModels;
-using Studio.Views;
+using Studio.ViewModels.Setting;
+using UIX.Resources;
 
-namespace Studio.Services
+namespace GRS.Features.Initialization.UIX
 {
-    public class WindowService : IWindowService
+    public class Data : BaseSettingViewModel
     {
         /// <summary>
-        /// Shared layout
+        /// Should the user be warned on the initialization feature?
         /// </summary>
-        public ILayoutViewModel? LayoutViewModel { get; set; } = null;
-
-        /// <summary>
-        /// Open a window for a given view model
-        /// </summary>
-        /// <param name="viewModel">view model</param>
-        public Task<object?> OpenFor(object viewModel)
+        [DataMember]
+        public bool WarnOnInitialization
         {
-            // Must have desktop lifetime
-            if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
-            {
-                return Task.FromResult<object?>(null);
-            }
-
-            // Attempt to resolve
-            Window? window = _locator?.InstantiateDerived<Window>(viewModel);
-            if (window == null)
-            {
-                return Task.FromResult<object?>(null);
-            }
-
-            // Properties
-            window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-            window.DataContext = viewModel;
-
-            // Show dialog as task
-            return window.ShowDialog(desktop.MainWindow).ContinueWith<object?>(_ => viewModel);
+            get => _warnOnInitialization;
+            set => this.RaiseAndSetIfChanged(ref _warnOnInitialization, value);
+        }
+        
+        public Data() : base("Initialization")
+        {
+            
         }
 
         /// <summary>
-        /// Request exit
+        /// Start a conditional warning dialog, does not run if previously marked as hidden
         /// </summary>
-        public void Exit()
+        public async Task<bool> ConditionalWarning()
         {
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            // Don't warn?
+            if (!WarnOnInitialization)
             {
-                desktop.MainWindow.Close();
+                return false;
             }
+            
+            // Show window
+            var vm = await AvaloniaLocator.Current.GetService<IWindowService>()!.OpenFor<DialogViewModel>(new DialogViewModel()
+            {
+                Title = Resources.Initialization_Warning_Title,
+                Content = Resources.Initialization_Warning_Content,
+                ShowHideNextTime = true
+            });
+
+            // Failed to open?
+            if (vm == null)
+            {
+                return false;
+            }
+
+            // User requested not to warn next time?
+            if (vm.HideNextTime)
+            {
+                WarnOnInitialization = false;
+            }
+            
+            // OK
+            return !vm.Result;
         }
 
         /// <summary>
-        /// Locator service
+        /// Internal initialization state
         /// </summary>
-        private ILocatorService? _locator = App.Locator.GetService<ILocatorService>();
+        private bool _warnOnInitialization = true;
     }
 }

@@ -64,7 +64,7 @@ namespace Studio
             Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en");
 
             // Install global services
-            InstallServices();
+            InstallServicesAndLoadPlugins();
 
             // Load app
             AvaloniaXamlLoader.Load(this);
@@ -87,9 +87,12 @@ namespace Studio
                     ));
         }
 
-        private void InstallServices()
+        private void InstallServicesAndLoadPlugins()
         {
             AvaloniaLocator locator = AvaloniaLocator.CurrentMutable;
+            
+            // Attempt to find all plugins of relevance
+            _pluginList = _pluginResolver.FindPlugins("uix", PluginResolveFlag.ContinueOnFailure);
             
             // Cold suspension service
             locator.BindToSelf<ISuspensionService>(new SuspensionService(System.IO.Path.Combine("Intermediate", "Settings", "Suspension.json")));
@@ -130,15 +133,11 @@ namespace Studio
 
         private void InstallPlugins()
         {
-            PluginResolver resolver = new();
-
-            // Attempt to find all plugins of relevance
-            PluginList? list = resolver.FindPlugins("uix", PluginResolveFlag.ContinueOnFailure);
-            if (list == null)
-                return;
-
             // Install all plugins
-            resolver.InstallPlugins(list, PluginResolveFlag.ContinueOnFailure);
+            if (_pluginList != null)
+            {
+                _pluginResolver.InstallPlugins(_pluginList, PluginResolveFlag.ContinueOnFailure);
+            }
         }
         
         public override void OnFrameworkInitializationCompleted()
@@ -190,5 +189,15 @@ namespace Studio
 
             base.OnFrameworkInitializationCompleted();
         }
+
+        /// <summary>
+        /// Shared plugin resolver
+        /// </summary>
+        private PluginResolver _pluginResolver = new();
+
+        /// <summary>
+        /// Resolved plugin list
+        /// </summary>
+        private PluginList? _pluginList;
     }
 }

@@ -22,13 +22,16 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reactive;
 using System.Windows.Input;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Runtime.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
@@ -82,18 +85,21 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Command implementation
         /// </summary>
-        private void OnInvoked()
+        private async void OnInvoked()
         {
             if (_targetViewModel is not IInstrumentableObject instrumentable ||
                 instrumentable.GetOrCreateInstrumentationProperty() is not { } propertyViewModel)
             {
                 return;
             }
+            
+            // Some features may have user input, wait until everything is done
+            using var scope = new BusScope(instrumentable.GetWorkspace()?.GetService<IBusPropertyService>(), BusMode.RecordAndCommit);
 
             // Create all instrumentation properties
-            foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspace().GetServices<IInstrumentationPropertyService>())
+            foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspace()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
             {
-                if (service.CreateInstrumentationObjectProperty(propertyViewModel) is { } instrumentationObjectProperty)
+                if (await service.CreateInstrumentationObjectProperty(propertyViewModel, false) is { } instrumentationObjectProperty)
                 {
                     propertyViewModel.Properties.Add(instrumentationObjectProperty);
                 }

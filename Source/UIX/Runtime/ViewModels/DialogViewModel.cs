@@ -22,82 +22,80 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System;
-using System.Reactive;
-using System.Reactive.Subjects;
-using Bridge.CLR;
-using Message.CLR;
 using ReactiveUI;
-using Studio.Models.Workspace;
-using Studio.ViewModels.Workspace.Adapter;
 
-namespace Studio.ViewModels.Workspace
+namespace Studio.ViewModels
 {
-    public class VirtualConnectionViewModel : ReactiveObject, IVirtualConnectionViewModel
+    public class DialogViewModel : ReactiveObject
     {
         /// <summary>
-        /// Invoked during connection
+        /// Result of the dialog
         /// </summary>
-        public ISubject<Unit> Connected { get; }
-
-        /// <summary>
-        /// Invoked during connection rejection
-        /// </summary>
-        public ISubject<Unit> Refused { get; }
-
-        /// <summary>
-        /// Local time on the remote endpoint
-        /// </summary>
-        public DateTime LocalTime
+        public bool Result
         {
-            get => _localTime;
-            set => this.RaiseAndSetIfChanged(ref _localTime, value);
+            get => _result;
+            set => this.RaiseAndSetIfChanged(ref _result, value);
         }
-
+    
         /// <summary>
-        /// Endpoint application info
+        /// Did the user request this message to be hidden?
         /// </summary>
-        public ApplicationInfo? Application { get; set; }
-
-        /// <summary>
-        /// Underlying bridge of this connection
-        /// </summary>
-        public IBridge? Bridge => null;
-
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        public VirtualConnectionViewModel()
+        public bool HideNextTime
         {
-            Connected = new Subject<Unit>();
-            Refused = new Subject<Unit>();
+            get => _hideNextTime;
+            set => this.RaiseAndSetIfChanged(ref _hideNextTime, value);
         }
-
+        
         /// <summary>
-        /// Get the shared bus
+        /// Should the "hide next time" query be shown?
         /// </summary>
-        /// <returns></returns>
-        public OrderedMessageView<ReadWriteMessageStream> GetSharedBus()
+        public bool ShowHideNextTime
         {
-            return _sharedStream;
+            get => _showHideNextTime;
+            set => this.RaiseAndSetIfChanged(ref _showHideNextTime, value);
         }
-
+        
         /// <summary>
-        /// Commit the bus
+        /// Title of the dialog
         /// </summary>
-        public void Commit()
+        public string Title
         {
-            _sharedStream = new(new ReadWriteMessageStream());
+            get => _title;
+            set => this.RaiseAndSetIfChanged(ref _title, value);
         }
-                
+        
         /// <summary>
-        /// Dummy stream
+        /// Contents of the dialog
         /// </summary>
-        private OrderedMessageView<ReadWriteMessageStream> _sharedStream = new(new ReadWriteMessageStream());
-
+        public string Content
+        {
+            get => _content;
+            set => this.RaiseAndSetIfChanged(ref _content, value);
+        }
+        
         /// <summary>
-        /// Internal local time
+        /// Internal result state
         /// </summary>
-        private DateTime _localTime;
+        private bool _result;
+        
+        /// <summary>
+        /// Internal hide state
+        /// </summary>
+        private bool _hideNextTime;
+        
+        /// <summary>
+        /// Internal show hide state
+        /// </summary>
+        private bool _showHideNextTime;
+        
+        /// <summary>
+        /// Internal title state
+        /// </summary>
+        private string _title;
+        
+        /// <summary>
+        /// Internal content state
+        /// </summary>
+        private string _content;
     }
 }

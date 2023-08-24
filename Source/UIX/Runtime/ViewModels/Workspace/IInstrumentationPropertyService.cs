@@ -22,6 +22,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System.Threading.Tasks;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace
@@ -32,12 +33,13 @@ namespace Studio.ViewModels.Workspace
         /// Name of this feature
         /// </summary>
         public string Name { get; }
-        
+
         /// <summary>
         /// Create an instrumentation property for a given target
         /// </summary>
         /// <param name="target"></param>
+        /// <param name="replication"></param>
         /// <returns></returns>
-        public IPropertyViewModel? CreateInstrumentationObjectProperty(IPropertyViewModel target);
+        public Task<IPropertyViewModel?> CreateInstrumentationObjectProperty(IPropertyViewModel target, bool replication);
     }
 }

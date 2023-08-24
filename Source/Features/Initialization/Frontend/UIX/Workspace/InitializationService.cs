@@ -24,6 +24,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Threading;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
@@ -33,7 +35,9 @@ using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
+using Studio.Services;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Adapter;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Objects;
 using Studio.ViewModels.Workspace.Properties;
@@ -212,8 +216,9 @@ namespace GRS.Features.Initialization.UIX.Workspace
         /// Create an instrumentation property
         /// </summary>
         /// <param name="target"></param>
+        /// <param name="replication"></param>
         /// <returns></returns>
-        public IPropertyViewModel? CreateInstrumentationObjectProperty(IPropertyViewModel target)
+        public async Task<IPropertyViewModel?> CreateInstrumentationObjectProperty(IPropertyViewModel target, bool replication)
         {
             // Get feature info on target
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
@@ -226,7 +231,16 @@ namespace GRS.Features.Initialization.UIX.Workspace
             {
                 return null;
             }
-                
+            
+            // Initialization instrumentation is a fickle game, if this is not a virtual adapter, i.e. launch from, warn the user about it.
+            // Ignore for replication, already done at that point.
+            if (!replication &&
+                ((IInstrumentableObject)target).GetWorkspace()?.ConnectionViewModel is not IVirtualConnectionViewModel &&  
+                (_data != null && await _data.ConditionalWarning()))
+            {
+                return null;
+            }
+            
             // Create the property
             return new InitializationPropertyViewModel()
             {
@@ -260,5 +274,10 @@ namespace GRS.Features.Initialization.UIX.Workspace
         /// Versioning service
         /// </summary>
         private IVersioningService? _versioningService;
+
+        /// <summary>
+        /// Plugin data
+        /// </summary>
+        private Data? _data = AvaloniaLocator.Current.GetService<ISettingsService>()?.Get<Data>();
     }
 }

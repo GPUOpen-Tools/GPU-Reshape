@@ -22,34 +22,10 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Reactive;
-using System.Reactive.Subjects;
-using ReactiveUI;
-using System.Windows.Input;
-using Dock.Model.Controls;
-
-namespace Studio.ViewModels
+namespace Studio.ViewModels.Workspace.Adapter
 {
-    public interface ILayoutViewModel
+    public interface IVirtualConnectionViewModel : IConnectionViewModel
     {
-        /// <summary>
-        /// Current document layout, may be recreated
-        /// </summary>
-        public IDocumentLayoutViewModel? DocumentLayout { get; }
         
-        /// <summary>
-        /// Reset the layout
-        /// </summary>
-        public ICommand ResetLayout { get; }
-        
-        /// <summary>
-        /// Close the layout
-        /// </summary>
-        public ICommand CloseLayout { get; }
-
-        /// <summary>
-        /// Current layout hosted
-        /// </summary>
-        public IRootDock? Layout { get; set; }
     }
 }

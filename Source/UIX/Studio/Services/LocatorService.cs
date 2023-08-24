@@ -49,6 +49,7 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.ConnectViewModel), typeof(Views.ConnectWindow));
             AddDerived(typeof(ViewModels.LaunchViewModel), typeof(Views.LaunchWindow));
             AddDerived(typeof(ViewModels.PipelineFilterViewModel), typeof(Views.PipelineFilter));
+            AddDerived(typeof(ViewModels.DialogViewModel), typeof(Views.DialogWindow));
             
             // Object types
             AddDerived(typeof(ViewModels.Workspace.Objects.MissingDetailViewModel), typeof(Views.Workspace.Objects.MissingDetailView));

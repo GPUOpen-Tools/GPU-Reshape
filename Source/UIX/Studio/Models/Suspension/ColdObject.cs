@@ -24,6 +24,7 @@
 
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Studio.Models.Suspension
@@ -49,7 +50,14 @@ namespace Studio.Models.Suspension
                 // Needs unwrapping?
                 if (coldValue.Value is JContainer container)
                 {
-                    coldValue.Value = container.ToObject<T>() ?? throw new Exception("Failed cold object instantiation");
+                    try
+                    {
+                        coldValue.Value = container.ToObject<T>() ?? throw new Exception("Failed cold object instantiation");
+                    }
+                    catch (JsonSerializationException)
+                    {
+                        coldValue.Value = new T();
+                    }
                 }
 
                 // Is of type?

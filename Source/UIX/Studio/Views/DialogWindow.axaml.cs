@@ -22,34 +22,39 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Reactive;
-using System.Reactive.Subjects;
+using System;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
 using ReactiveUI;
-using System.Windows.Input;
-using Dock.Model.Controls;
+using Studio.Extensions;
+using Studio.ViewModels;
 
-namespace Studio.ViewModels
+namespace Studio.Views
 {
-    public interface ILayoutViewModel
+    public partial class DialogWindow : Window
     {
-        /// <summary>
-        /// Current document layout, may be recreated
-        /// </summary>
-        public IDocumentLayoutViewModel? DocumentLayout { get; }
-        
-        /// <summary>
-        /// Reset the layout
-        /// </summary>
-        public ICommand ResetLayout { get; }
-        
-        /// <summary>
-        /// Close the layout
-        /// </summary>
-        public ICommand CloseLayout { get; }
+        public DialogWindow()
+        {
+            InitializeComponent();
 
-        /// <summary>
-        /// Current layout hosted
-        /// </summary>
-        public IRootDock? Layout { get; set; }
+            // Bind events
+            this.WhenAnyValue(x => x.DataContext)
+                .CastNullable<DialogViewModel>()
+                .Subscribe(x =>
+                {
+                    CancelButton.Events().Click.Subscribe(_ =>
+                    {
+                        x.Result = false;
+                        Close();
+                    });
+                    
+                    AcceptButton.Events().Click.Subscribe(_ =>
+                    {
+                        x.Result = true;
+                        Close();
+                    });
+                });
+        }
     }
 }

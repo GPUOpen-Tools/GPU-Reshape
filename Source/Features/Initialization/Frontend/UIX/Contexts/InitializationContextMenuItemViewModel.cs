@@ -23,17 +23,24 @@
 // 
 
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia;
 using DynamicData;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Runtime.ViewModels;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
+using Studio.Services;
+using Studio.ViewModels;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Adapter;
 using Studio.ViewModels.Workspace.Properties;
+using UIX.Resources;
 
 namespace GRS.Features.Initialization.UIX.Contexts
 {
@@ -91,7 +98,7 @@ namespace GRS.Features.Initialization.UIX.Contexts
         /// <summary>
         /// Command implementation
         /// </summary>
-        private void OnInvoked()
+        private async void OnInvoked()
         {
             if (_targetViewModel is not IInstrumentableObject instrumentable ||
                instrumentable.GetOrCreateInstrumentationProperty() is not { } propertyViewModel ||
@@ -99,9 +106,15 @@ namespace GRS.Features.Initialization.UIX.Contexts
             {
                 return;
             }
-
+            
             // Already instrumented?
             if (propertyViewModel.HasProperty<InitializationPropertyViewModel>())
+            {
+                return;
+            }
+
+            // Initialization instrumentation is a fickle game, if this is not a virtual adapter, i.e. launch from, warn the user about it.
+            if (instrumentable.GetWorkspace()?.ConnectionViewModel is not IVirtualConnectionViewModel &&  (_data != null && await _data.ConditionalWarning()))
             {
                 return;
             }
@@ -129,5 +142,10 @@ namespace GRS.Features.Initialization.UIX.Contexts
         /// Internal target view model
         /// </summary>
         private object? _targetViewModel;
+
+        /// <summary>
+        /// Plugin data
+        /// </summary>
+        private Data? _data = AvaloniaLocator.Current.GetService<ISettingsService>()?.Get<Data>();
     }
 }

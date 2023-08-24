@@ -39,7 +39,6 @@ using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using Studio.Extensions;
-using TextFormatter = Runtime.TextFormatter;
 
 namespace Studio.Views
 {

@@ -24,10 +24,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Avalonia.Threading;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
-using Bridge.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
@@ -150,13 +150,14 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                 }
             }
         }
-        
+
         /// <summary>
         /// Create an instrumentation property
         /// </summary>
         /// <param name="target"></param>
+        /// <param name="replication"></param>
         /// <returns></returns>
-        public IPropertyViewModel? CreateInstrumentationObjectProperty(IPropertyViewModel target)
+        public async Task<IPropertyViewModel?> CreateInstrumentationObjectProperty(IPropertyViewModel target, bool replication)
         {
             // Find feature data
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?

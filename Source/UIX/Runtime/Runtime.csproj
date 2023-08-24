@@ -78,7 +78,10 @@
       <UpToDateCheckInput Remove="Views\Views\DashboardView.axaml" />
       <UpToDateCheckInput Remove="Views\Views\HomeView.axaml" />
       <UpToDateCheckInput Remove="Views\Workspace\Properties\MessageCollectionView.axaml" />
+
+
     </ItemGroup>
+
 
 
 

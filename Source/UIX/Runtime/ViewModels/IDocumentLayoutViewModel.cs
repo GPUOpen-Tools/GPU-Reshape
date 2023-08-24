@@ -29,7 +29,7 @@ using System.Windows.Input;
 using Dock.Model.Controls;
 using Studio.ViewModels.Documents;
 
-namespace Runtime.ViewModels
+namespace Studio.ViewModels
 {
     public interface IDocumentLayoutViewModel : IDocumentDock
     {

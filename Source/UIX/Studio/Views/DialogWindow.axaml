@@ -1,0 +1,94 @@
+﻿<!--
+
+  The MIT License (MIT)
+  
+  Copyright (c) 2023 Miguel Petersen
+  Copyright (c) 2023 Advanced Micro Devices, Inc
+  Copyright (c) 2023 Avalanche Studios Group
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy 
+  of this software and associated documentation files (the "Software"), to deal 
+  in the Software without restriction, including without limitation the rights 
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+  of the Software, and to permit persons to whom the Software is furnished to do so, 
+  subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all 
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+-->
+
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:viewModels="clr-namespace:Studio.ViewModels;assembly=UIX.Studio.Runtime"
+        mc:Ignorable="d" Width="400" d:DesignWidth="400"
+        x:Class="Studio.Views.DialogWindow"
+        x:DataType="viewModels:DialogViewModel"
+        UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
+        WindowState="Normal" WindowStartupLocation="CenterScreen" SizeToContent="Height"
+        TransparencyLevelHint="None"
+        Foreground="{DynamicResource DockThemeForegroundBrush}"
+        BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
+        FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome"
+        Title="DialogView"
+        CanResize="False"
+        >
+    <StackPanel Margin="5 5 5 5" Orientation="Vertical">
+        <!-- Tool Header -->
+        <StackPanel VerticalAlignment="Top" Orientation="Horizontal" IsHitTestVisible="False">
+            <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="17" />
+
+            <TextBlock 
+                Margin="7,0,0,0" 
+                Text="{Binding Title, FallbackValue=Dialog Title}" />
+        </StackPanel>
+
+        <!-- Tool Result -->
+        <TextBlock
+            Margin="25 10 0 10"
+            TextWrapping="Wrap"
+            Text="{Binding Content, FallbackValue=Dialog Content}" />
+
+        <!-- Tool Result -->
+        <Grid Margin="0,0,5,5">
+            <StackPanel 
+                Margin="25 0 0 0"
+                IsVisible="{Binding ShowHideNextTime}"
+                HorizontalAlignment="Left"
+                Orientation="Horizontal">
+                <CheckBox
+                    IsChecked="{Binding HideNextTime}"
+                    HorizontalAlignment="Right"
+                    Content="Do not show again">
+                </CheckBox>
+            </StackPanel>
+            
+            <StackPanel
+                HorizontalAlignment="Right"
+                Orientation="Horizontal">
+                <Button
+                    x:Name="CancelButton"
+                    HorizontalAlignment="Right">
+                    Cancel
+                </Button>
+
+                <Button
+                    x:Name="AcceptButton"
+                    HorizontalAlignment="Right"
+                    Margin="5 0 0 0">
+                    OK
+                </Button>
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</Window>

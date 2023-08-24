@@ -30,6 +30,7 @@ using GRS.Features.Initialization.UIX.Workspace;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
+using Studio.ViewModels.Setting;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 
@@ -53,6 +54,9 @@ namespace GRS.Features.Initialization.UIX
         /// <returns></returns>
         public bool Install()
         {
+            // Add data
+            AvaloniaLocator.Current.GetService<ISettingsService>()?.EnsureDefault<Data>();
+            
             // Add to context menus
             AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel
                 .GetItem<IInstrumentContextViewModel>()?

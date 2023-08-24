@@ -26,7 +26,7 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 
-namespace Runtime
+namespace Studio
 {
     public static class TextFormatter
     {

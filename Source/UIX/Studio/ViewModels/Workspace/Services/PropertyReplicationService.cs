@@ -24,6 +24,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Avalonia.Threading;
 using DynamicData;
 using Message.CLR;
@@ -329,7 +330,7 @@ namespace Studio.ViewModels.Workspace.Services
         /// </summary>
         /// <param name="propertyViewModel">destination property</param>
         /// <param name="featureBitSet">source bit-set</param>
-        private void TransferInstrumentationState(IPropertyViewModel propertyViewModel, ulong featureBitSet)
+        private async Task TransferInstrumentationState(IPropertyViewModel propertyViewModel, ulong featureBitSet)
         {
             // Lazy load feature map
             if (_propertyServices.Count == 0)
@@ -350,7 +351,7 @@ namespace Studio.ViewModels.Workspace.Services
                 }
                 
                 // Get the service for specified mask
-                IPropertyViewModel? featureProperty = _propertyServices.GetValueOrDefault(mask, null)?.CreateInstrumentationObjectProperty(propertyViewModel);
+                IPropertyViewModel? featureProperty = await _propertyServices.GetValueOrDefault(mask, null)?.CreateInstrumentationObjectProperty(propertyViewModel, true);
                 if (featureProperty == null)
                 {
                     Studio.Logging.Error($"Failed state replication on feature bit {i} for {propertyViewModel.Name}");

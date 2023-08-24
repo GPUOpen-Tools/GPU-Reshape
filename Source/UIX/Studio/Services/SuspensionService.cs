@@ -34,6 +34,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reflection;
 using Avalonia;
+using Avalonia.Controls;
 using Newtonsoft.Json;
 using ReactiveUI;
 using Runtime.ViewModels.Traits;
@@ -54,6 +55,12 @@ namespace Studio.Services
             
             // Load current data
             LoadFrom(path);
+
+            // Do not bind on design mode
+            if (Design.IsDesignMode)
+            {
+                return;
+            }
             
             // Serialize at intervals
             _serialize
@@ -79,8 +86,14 @@ namespace Studio.Services
             // Assign current host object
             suspension.HotObject = obj;
             
+            // Do not serialize
+            _inLoader = true;
+            
             // Bind the suspension tree from root
             BindSuspensionTree(obj, suspension.ColdObject!, SuspensionFlag.Attach);
+            
+            // Restore
+            _inLoader = false;
         }
 
         /// <summary>
@@ -246,7 +259,10 @@ namespace Studio.Services
             }
 
             // Schedule serialization
-            _serialize.OnNext(Unit.Default);
+            if (!_inLoader)
+            {
+                _serialize.OnNext(Unit.Default);
+            }
         }
 
         /// <summary>
@@ -279,7 +295,10 @@ namespace Studio.Services
             }
             
             // Schedule serialization
-            _serialize.OnNext(Unit.Default);
+            if (!_inLoader)
+            {
+                _serialize.OnNext(Unit.Default);
+            }
         }
 
         /// <summary>
@@ -405,6 +424,11 @@ namespace Studio.Services
         /// Current serialization path
         /// </summary>
         private string _path;
+
+        /// <summary>
+        /// Are we currently inside a loader event?
+        /// </summary>
+        private bool _inLoader;
 
         /// <summary>
         /// Serializer event

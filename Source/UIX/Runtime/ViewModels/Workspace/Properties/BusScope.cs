@@ -53,11 +53,19 @@ namespace Runtime.ViewModels.Workspace.Properties
         /// </summary>
         public void Dispose()
         {
-            // Reconstruct scope
-            if (_service != null)
+            if (_service == null)
             {
-                _service.Mode = _reconstruct;
+                return;
             }
+            
+            // Commit pending if requested
+            if (_service.Mode == BusMode.RecordAndCommit)
+            {
+                _service.Commit();
+            }
+
+            // Reconstruct scope
+            _service.Mode = _reconstruct;
         }
 
         /// <summary>

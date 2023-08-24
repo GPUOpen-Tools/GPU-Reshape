@@ -26,7 +26,7 @@ using System.Reactive.Disposables;
 using ReactiveUI;
 using Runtime.ViewModels.Traits;
 
-namespace Runtime
+namespace Studio
 {
     public class DestructibleReactiveObject : ReactiveObject, IActivatableViewModel, IDestructableObject
     {
