@@ -308,7 +308,7 @@ static uint32_t GetSubObjectIndex(const D3D12_STATE_OBJECT_DESC* desc, const D3D
     return ~0u; 
 }
 
-HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, const IID& riid, void** ppStateObject) {
+static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, ID3D12StateObject* existingStateObject, const IID& riid, void** ppStateObject) {
     auto table = GetTable(device);
 
     // Create writer
@@ -363,10 +363,17 @@ HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2* device, const D3
     // Object
     ID3D12StateObject* stateObject{nullptr};
 
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreateStateObject(table.next, &desc, __uuidof(ID3D12StateObject), reinterpret_cast<void**>(&stateObject));
-    if (FAILED(hr)) {
-        return hr;
+    // Pass down callchain(s)
+    if (existingStateObject) {
+        HRESULT hr = table.next->AddToStateObject(&desc, Next(existingStateObject), __uuidof(ID3D12StateObject), reinterpret_cast<void**>(&stateObject));
+        if (FAILED(hr)) {
+            return hr;
+        }
+    } else {
+        HRESULT hr = table.next->CreateStateObject(&desc, __uuidof(ID3D12StateObject), reinterpret_cast<void**>(&stateObject));
+        if (FAILED(hr)) {
+            return hr;
+        }
     }
 
     // Create state
@@ -379,7 +386,7 @@ HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2* device, const D3
 
     // Query to external object if requested
     if (ppStateObject) {
-        hr = stateObject->QueryInterface(riid, ppStateObject);
+        HRESULT hr = stateObject->QueryInterface(riid, ppStateObject);
         if (FAILED(hr)) {
             return hr;
         }
@@ -390,6 +397,14 @@ HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2* device, const D3
 
     // OK
     return S_OK;
+}
+
+HRESULT WINAPI HookID3D12DeviceCreateStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pDesc, const IID& riid, void** ppStateObject) {
+    return CreateOrAddToStateObject(device, pDesc, nullptr, riid, ppStateObject);
+}
+
+HRESULT WINAPI HookID3D12DeviceAddToStateObject(ID3D12Device2* device, const D3D12_STATE_OBJECT_DESC* pAddition, ID3D12StateObject* pStateObjectToGrowFrom, const IID& riid, void** ppNewStateObject) {
+    return CreateOrAddToStateObject(device, pAddition, pStateObjectToGrowFrom, riid, ppNewStateObject);
 }
 
 HRESULT WINAPI HookID3D12StateObjectGetDevice(ID3D12StateObject* _this, REFIID riid, void **ppDevice) {

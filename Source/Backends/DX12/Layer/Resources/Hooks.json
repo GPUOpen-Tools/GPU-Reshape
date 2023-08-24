@@ -116,6 +116,7 @@
         "CreateDescriptorHeap",
         "CreateRootSignature",
         "CreateStateObject",
+        "AddToStateObject",
         "CreatePipelineState",
         "CreateGraphicsPipelineState",
         "CreateComputePipelineState",
