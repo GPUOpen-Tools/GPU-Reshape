@@ -93,6 +93,9 @@ protected:
 private:
     DeviceState *device;
 
+    /// Shared lock
+    std::mutex mutex;
+
     /// Job buckets
     Vector<PipelineJob> graphicsJobs;
     Vector<PipelineJob> computeJobs;

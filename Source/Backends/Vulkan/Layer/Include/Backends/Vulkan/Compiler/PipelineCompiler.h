@@ -93,6 +93,9 @@ protected:
 private:
     DeviceDispatchTable* table{nullptr};
 
+    /// Shared lock
+    std::mutex mutex;
+
     /// Job buckets
     std::vector<PipelineJob> graphicsJobs;
     std::vector<PipelineJob> computeJobs;

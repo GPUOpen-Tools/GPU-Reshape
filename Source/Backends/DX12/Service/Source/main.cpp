@@ -464,24 +464,15 @@ int main(int32_t argc, const char *const *argv) {
     std::cout << "Cleaning old sessions... " << std::flush;
 
     // Clean all old sessions
-    for (const auto& entry : std::filesystem::directory_iterator(sessionDir)) {
-        try {
-            std::filesystem::remove(entry.path());
-        } catch(...) {
-            // Ignore it
-        }
-    } 
-
-    std::cout << "OK" << std::endl;
-#endif
-
-#if USE_BOOTSTRAP_SESSIONS
-    // Clean up all old sessions
     for (std::filesystem::path file: std::filesystem::directory_iterator(sessionDir)) {
         std::error_code ignored;
         std::filesystem::remove(file, ignored);
     }
 
+    std::cout << "OK" << std::endl;
+#endif
+
+#if USE_BOOTSTRAP_SESSIONS
     // Create unique name
     std::string sessionNameX64 = "GRS.Backends.DX12.BootstrapperX64 " + GlobalUID::New().ToString() + ".dll";
     std::string sessionNameX86 = "GRS.Backends.DX12.BootstrapperX86 " + GlobalUID::New().ToString() + ".dll";
