@@ -93,6 +93,10 @@
         <SolidColorBrush x:Key="LanguageSPIRV">#512B2E</SolidColorBrush>
         <SolidColorBrush x:Key="LanguageDXBC">#515137</SolidColorBrush>
         <SolidColorBrush x:Key="LanguageDXIL">#4E3B51</SolidColorBrush>
+        
+        <!-- Stage brushes -->
+        <SolidColorBrush x:Key="StageGraphics">#435140</SolidColorBrush>
+        <SolidColorBrush x:Key="StageCompute">#385151</SolidColorBrush>
     </Styles.Resources>
 
     <!-- Base style -->

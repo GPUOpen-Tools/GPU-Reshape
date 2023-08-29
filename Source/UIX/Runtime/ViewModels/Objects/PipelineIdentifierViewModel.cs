@@ -53,6 +53,15 @@ namespace Runtime.ViewModels.Objects
         public bool HasBeenPooled { get; set; }
 
         /// <summary>
+        /// Given pipeline stage
+        /// </summary>
+        public PipelineType Stage
+        {
+            get => _stage;
+            set => this.RaiseAndSetIfChanged(ref _stage, value);
+        }
+
+        /// <summary>
         /// Readable descriptor
         /// </summary>
         public string Descriptor
@@ -135,5 +144,10 @@ namespace Runtime.ViewModels.Objects
         {
             return Workspace?.PropertyCollection;
         }
+
+        /// <summary>
+        /// Internal stage
+        /// </summary>
+        private PipelineType _stage;
     }
 }

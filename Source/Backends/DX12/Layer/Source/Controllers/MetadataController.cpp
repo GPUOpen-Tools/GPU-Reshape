@@ -136,6 +136,19 @@ void MetadataController::OnMessage(const GetPipelineNameMessage& message) {
     auto&& file = view.Add<PipelineNameMessage>(PipelineNameMessage::AllocationInfo { .nameLength = static_cast<size_t>(std::strlen(name)) });
     file->pipelineUID = message.pipelineUID;
     file->name.Set(name);
+
+    // Translate type
+    switch (pipeline->type) {
+        default:
+            file->type = 0;
+            break;
+        case PipelineType::Graphics:
+            file->type = 1;
+            break;
+        case PipelineType::Compute:
+            file->type = 2;
+            break;
+    }
 }
 
 void MetadataController::OnMessage(const GetShaderCodeMessage& message) {

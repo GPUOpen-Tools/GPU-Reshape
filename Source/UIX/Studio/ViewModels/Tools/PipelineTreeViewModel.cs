@@ -39,6 +39,7 @@ using Runtime.Models.Objects;
 using Runtime.ViewModels.Objects;
 using Runtime.ViewModels.Tools;
 using Studio.Models.Logging;
+using Studio.Models.Workspace.Objects;
 using Studio.Services;
 using Studio.ViewModels.Workspace;
 
@@ -227,16 +228,16 @@ namespace Studio.ViewModels.Tools
         private void Handle(PipelineNameMessage message)
         {
             // Flatten dynamics
-            UInt64 uid = message.pipelineUID;
-            string name = message.name.String;
+            PipelineNameMessage.FlatInfo flat = message.Flat;
 
             Dispatcher.UIThread.InvokeAsync(() =>
             {
-                if (!_lookup.ContainsKey(uid))
+                if (!_lookup.ContainsKey(flat.pipelineUID))
                     return;
 
-                PipelineIdentifierViewModel pipelineIdentifierViewModel = _lookup[uid];
-                pipelineIdentifierViewModel.Descriptor = $"Pipeline {uid} - {name}";
+                PipelineIdentifierViewModel pipelineIdentifierViewModel = _lookup[flat.pipelineUID];
+                pipelineIdentifierViewModel.Descriptor = $"{flat.name} {flat.pipelineUID}";
+                pipelineIdentifierViewModel.Stage = (PipelineType)flat.type;
             });
         }
 
