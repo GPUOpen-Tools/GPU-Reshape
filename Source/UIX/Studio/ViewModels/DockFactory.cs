@@ -95,7 +95,6 @@ namespace Studio.ViewModels
             var welcome = new WelcomeViewModel {Id = "WelcomeDocument", Title = "Welcome" };
             var workspace = new WorkspaceViewModel {Id = "WorkspaceTool", Title = "Workspace", CanClose = false};
             var files = new FilesViewModel() {Id = "FilesTool", Title = "Files", CanClose = false};
-            var connections = new ConnectionViewModel {Id = "ConnectionTool", Title = "Connections", CanClose = false};
             var log = new LogViewModel {Id = "LogTool", Title = "Log", CanClose = false};
             var properties = new PropertyViewModel {Id = "PropertiesTool", Title = "Properties", CanClose = false};
             var shaders = new ShaderTreeViewModel() {Id = "ShadersTool", Title = "Shaders", CanClose = false};
@@ -113,7 +112,7 @@ namespace Studio.ViewModels
                     {
                         ActiveDockable = workspace,
                         IsExpanded = true,
-                        VisibleDockables = CreateList<IDockable>(workspace, files, connections),
+                        VisibleDockables = CreateList<IDockable>(workspace, files),
                         Alignment = Alignment.Left
                     }
                 )
