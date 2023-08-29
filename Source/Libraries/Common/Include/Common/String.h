@@ -78,7 +78,7 @@ namespace std {
         );
     }
 
-    static inline string::const_iterator isearch(const string &a, const string &b) {
+    static inline string::const_iterator isearch(const string &a, const string_view &b) {
         return std::search(
             a.begin(), a.end(),
             b.begin(), b.end(),
@@ -86,6 +86,20 @@ namespace std {
                 return tolower(a) == tolower(b);
             }
         );
+    }
+
+    static inline string_view::const_iterator isearch(const string_view &a, const string_view &b) {
+        return std::search(
+            a.begin(), a.end(),
+            b.begin(), b.end(),
+            [](char a, char b) {
+                return tolower(a) == tolower(b);
+            }
+        );
+    }
+
+    static inline bool icontains(const string_view &a, const string_view &b) {
+        return isearch(a, b) != a.end();
     }
 
     // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c

@@ -224,7 +224,7 @@ bool RemoteLoadBootstrapperGlobal(const std::string& sessionPathStrX64, const st
 
         // Check if any of the target applications
         for (const char* name : kWhitelist) {
-            if (std::ends_with(entry.szExeFile, name)) {
+            if (std::icontains(entry.szExeFile, name)) {
                 isWhitelisted = true;
             }
         }

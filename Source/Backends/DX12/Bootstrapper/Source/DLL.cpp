@@ -114,6 +114,12 @@ PFN_CREATE_PROCESS_AS_USER_A Kernel32CreateProcessAsUserAOriginal;
 PFN_CREATE_PROCESS_AS_USER_W Kernel32CreateProcessAsUserWOriginal;
 D3D12GPUOpenFunctionTable    DetourFunctionTable;
 
+/// Module lock-free acquisition states
+uint32_t AMDAGSGuard{0u};
+uint32_t D3D12Guard{0u};
+uint32_t DXGIGuard{0u};
+uint32_t D3D11Guard{0u};
+
 /// Detoured section
 struct DetourSection {
     /// Jump target address for the trampoline
@@ -947,25 +953,25 @@ bool TryLoadEmbeddedModules(HMODULE handle) {
 #endif // ENABLE_LOGGING
     
     // Is AGS?
-    if (!DetourFunctionTable.next_AMDAGSCreateDevice && Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr) {
+    if (Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr && InterlockedCompareExchange(&AMDAGSGuard, 1u, 0u) == 0u) {
         DetourAMDAGSModule(handle, false);
         any = true;
     }
 
     // Is D3D12?
-    if (!DetourFunctionTable.next_D3D12CreateDeviceOriginal && !std::strcmp(baseName, kD3D12ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D12CreateDevice") != nullptr) {
+    if (!std::strcmp(baseName, kD3D12ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D12CreateDevice") != nullptr && InterlockedCompareExchange(&D3D12Guard, 1u, 0u) == 0u) {
         DetourD3D12Module(handle, false);
         any = true;
     }
 
     // Is DXGI?
-    if (!DetourFunctionTable.next_CreateDXGIFactoryOriginal && !std::strcmp(baseName, kDXGIModuleName) && Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory") != nullptr) {
+    if (!std::strcmp(baseName, kDXGIModuleName) && Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory") != nullptr && InterlockedCompareExchange(&DXGIGuard, 1u, 0u) == 0u) {
         DetourDXGIModule(handle, false);
         any = true;
     }
 
     // Is D3D11?
-    if (!DetourFunctionTable.next_D3D11On12CreateDeviceOriginal && !std::strcmp(baseName, kD3D11ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D11On12CreateDevice") != nullptr) {
+    if (!std::strcmp(baseName, kD3D11ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D11On12CreateDevice") != nullptr && InterlockedCompareExchange(&D3D11Guard, 1u, 0u) == 0u) {
         DetourD3D11Module(handle, false);
         any = true;
     }
@@ -1043,10 +1049,6 @@ HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
         return module;
     }
 
-    // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
-    //       This may result in duplicate checks in the snapshot deltas, but that's fine
-    CriticalSectionGuard guard(libraryCriticalSection);
-
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
         BootstrapLayer("HookLoadLibraryA");
@@ -1070,10 +1072,6 @@ HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
         return module;
     }
 
-    // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
-    //       This may result in duplicate checks in the snapshot deltas, but that's fine
-    CriticalSectionGuard guard(libraryCriticalSection);
-    
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
         BootstrapLayer("HookLoadLibraryW");
@@ -1097,10 +1095,6 @@ HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
         return module;
     }
 
-    // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
-    //       This may result in duplicate checks in the snapshot deltas, but that's fine
-    CriticalSectionGuard guard(libraryCriticalSection);
-
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
         BootstrapLayer("HookLoadLibraryExA");
@@ -1123,10 +1117,6 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
     if (!module) {
         return module;
     }
-
-    // Note: The lock guard has to be *after* the underlying load to satisfy loader constraints
-    //       This may result in duplicate checks in the snapshot deltas, but that's fine
-    CriticalSectionGuard guard(libraryCriticalSection);
 
     // Query embedded hooks
     if (DetourForeignModules(snapshot)) {
@@ -1173,9 +1163,6 @@ DWORD WINAPI DeferredInitialization(void*) {
     if (DXGIModule || D3D12Module || D3D11Module || AMDAGSModule) {
         // ! Call native LoadLibraryW, not detoured
         BootstrapLayer("Entry detected mounted d3d12 module");
-
-        // Ensure detouring is serial
-        CriticalSectionGuard guard(libraryCriticalSection);
 
         // Query embedded hooks
         DetourForeignModules({});
@@ -1482,7 +1469,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
 
     // Check if any of the target applications
     for (const char* name : kWhitelist) {
-        if (std::ends_with(GetCurrentExecutableName(), name)) {
+        if (std::icontains(GetCurrentExecutableName(), name)) {
             isWhitelisted = true;
         }
     }
