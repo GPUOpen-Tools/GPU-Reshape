@@ -421,7 +421,7 @@ namespace Studio.ViewModels
             // Commit all pending objects
             if (WorkspaceViewModel.PropertyCollection.GetService<IBusPropertyService>() is { } busPropertyService)
             {
-                busPropertyService.CommitRedirect(view);
+                busPropertyService.CommitRedirect(view, false);
             }
             
             // Start process

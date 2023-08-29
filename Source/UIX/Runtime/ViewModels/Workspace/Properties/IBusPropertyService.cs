@@ -55,6 +55,6 @@ namespace Runtime.ViewModels.Workspace.Properties
         /// <summary>
         /// Commit all enqueued bus objects
         /// </summary>
-        public void CommitRedirect(OrderedMessageView<ReadWriteMessageStream> stream);
+        public void CommitRedirect(OrderedMessageView<ReadWriteMessageStream> stream, bool flush);
     }
 }

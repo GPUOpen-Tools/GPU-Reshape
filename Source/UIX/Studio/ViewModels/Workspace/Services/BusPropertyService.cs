@@ -98,24 +98,27 @@ namespace Studio.ViewModels.Workspace.Services
             }
             
             // Redirect to shared bus
-            CommitRedirect(ConnectionViewModel.GetSharedBus());
+            CommitRedirect(ConnectionViewModel.GetSharedBus(), true);
         }
 
         /// <summary>
         /// Commit all outstanding objects to a given stream
         /// </summary>
         /// <param name="stream"></param>
-        public void CommitRedirect(OrderedMessageView<ReadWriteMessageStream> stream)
+        public void CommitRedirect(OrderedMessageView<ReadWriteMessageStream> stream, bool flush)
         {
             // Commit all objects
             foreach (IBusObject objectsItem in Objects.Items)
             {
                 objectsItem.Commit(stream);
             }
-            
+
             // Flush
-            Objects.Clear();
-            _lookup.Clear();
+            if (flush)
+            {
+                Objects.Clear();
+                _lookup.Clear();
+            }
         }
 
         /// <summary>
