@@ -36,6 +36,7 @@ using Studio.Models.Workspace.Listeners;
 using Studio.Models.Workspace.Objects;
 using Studio.Services;
 using Studio.ViewModels.Documents;
+using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Objects;
 
@@ -226,7 +227,7 @@ namespace Studio.ViewModels.Workspace.Properties
                 layoutViewModel.DocumentLayout?.OpenDocument(new ShaderDescriptor()
                 {
                     PropertyCollection = Parent,
-                    StartupLocation = validationObject.Segment.Location,
+                    StartupLocation = NavigationLocation.FromObject(validationObject),
                     GUID = validationObject.Segment.Location.SGUID
                 });
             }

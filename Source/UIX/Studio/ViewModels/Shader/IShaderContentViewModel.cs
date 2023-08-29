@@ -66,7 +66,7 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Startup navigation requests
         /// </summary>
-        public ShaderLocation? NavigationLocation { get; set; }
+        public NavigationLocation? NavigationLocation { get; set; }
 
         /// <summary>
         /// Underlying object

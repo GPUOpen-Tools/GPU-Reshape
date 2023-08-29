@@ -39,7 +39,14 @@
         <controls:ValidationMarkerViewModel/>
     </UserControl.DataContext>
     
-    <StackPanel Orientation="Horizontal" VerticalAlignment="Stretch">
+    <StackPanel 
+        Orientation="Horizontal"
+        VerticalAlignment="Stretch">
+        <Border 
+            Width="5"
+            VerticalAlignment="Stretch"
+            IsVisible="{Binding IsSelected}"
+            Background="{StaticResource WarningColor}"/>
         <Button 
             x:Name="ValidationButton"
             Background="{StaticResource ErrorBrush}"

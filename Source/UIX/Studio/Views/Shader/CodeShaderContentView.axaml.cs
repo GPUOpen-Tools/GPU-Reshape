@@ -133,7 +133,7 @@ namespace Studio.Views.Shader
                             {
                                 if (codeViewModel.NavigationLocation != null)
                                 {
-                                    UpdateNavigationLocation(codeViewModel, codeViewModel.NavigationLocation.Value);
+                                    UpdateNavigationLocation(codeViewModel, codeViewModel.NavigationLocation);
                                 }
                             })
                             .Subscribe();
@@ -173,14 +173,14 @@ namespace Studio.Views.Shader
                             MarkerCanvas.UpdateLayout();
                         });
 
-                    // Bind navigation location
-                    codeViewModel.WhenAnyValue(y => y.NavigationLocation)
-                        .WhereNotNull()
-                        .Subscribe(location => UpdateNavigationLocation(codeViewModel, location!.Value));
-
                     // Reset front state
                     codeViewModel.SelectedValidationObject = null;
                     codeViewModel.DetailViewModel = null;
+
+                    // Bind navigation location
+                    codeViewModel.WhenAnyValue(y => y.NavigationLocation)
+                        .WhereNotNull()
+                        .Subscribe(location => UpdateNavigationLocation(codeViewModel, location!));
                 });
         }
 
@@ -216,10 +216,10 @@ namespace Studio.Views.Shader
             }).DisposeWithClear(_detailDisposable);
         }
 
-        private void UpdateNavigationLocation(CodeShaderContentViewModel codeViewModel, ShaderLocation location)
+        private void UpdateNavigationLocation(CodeShaderContentViewModel codeViewModel, NavigationLocation location)
         {
             // Attempt to find file vm
-            ShaderFileViewModel? fileViewModel = codeViewModel.Object?.FileViewModels.FirstOrDefault(x => x.UID == location.FileUID);
+            ShaderFileViewModel? fileViewModel = codeViewModel.Object?.FileViewModels.FirstOrDefault(x => x.UID == location.Location.FileUID);
             if (fileViewModel == null)
             {
                 return;
@@ -227,11 +227,12 @@ namespace Studio.Views.Shader
 
             // Update selected file
             codeViewModel.SelectedShaderFileViewModel = fileViewModel;
+            codeViewModel.SelectedValidationObject = location.Object;
 
             // Scroll to target
             // TODO: 10 is a total guess, we need to derive it from the height, but that doesn't exist yet.
             //       Probably a delayed action?
-            Editor.TextArea.Caret.Line = location.Line - 10;
+            Editor.TextArea.Caret.Line = location.Location.Line - 10;
             Editor.TextArea.Caret.Column = 0;
             Editor.TextArea.Caret.BringCaretToView();
                     

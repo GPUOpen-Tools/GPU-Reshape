@@ -30,6 +30,11 @@ namespace Studio.ViewModels.Shader
     public interface ITextualShaderContentViewModel : IShaderContentViewModel
     {
         /// <summary>
+        /// The current selected object
+        /// </summary>
+        public ValidationObject? SelectedValidationObject { get; set; }
+        
+        /// <summary>
         /// Is the overlay visible?
         /// </summary>
         public bool IsOverlayVisible();

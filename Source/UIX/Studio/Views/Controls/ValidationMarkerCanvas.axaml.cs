@@ -268,7 +268,8 @@ namespace Studio.Views.Controls
                 ValidationMarkerViewModel viewModel = new()
                 {
                     SourceLine = line,
-                    DetailCommand = DetailCommand
+                    DetailCommand = DetailCommand,
+                    ShaderContentViewModel = ShaderContentViewModel
                 };
 
                 // Create marker view

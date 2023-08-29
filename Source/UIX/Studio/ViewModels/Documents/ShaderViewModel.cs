@@ -302,7 +302,10 @@ namespace Studio.ViewModels.Documents
             // Assign navigation location if needed
             if (parameter != null)
             {
-                targetViewModel.NavigationLocation = (ShaderLocation)parameter;
+                targetViewModel.NavigationLocation = new NavigationLocation()
+                {
+                    Location = (ShaderLocation)parameter
+                };
             }
 
             // Set new target

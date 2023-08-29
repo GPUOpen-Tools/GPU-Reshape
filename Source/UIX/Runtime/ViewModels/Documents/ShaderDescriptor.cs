@@ -23,7 +23,7 @@
 // 
 
 using System;
-using Studio.Models.Workspace.Objects;
+using Studio.ViewModels.Shader;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Documents
@@ -48,7 +48,7 @@ namespace Studio.ViewModels.Documents
         /// <summary>
         /// Optional, detailed startup location
         /// </summary>
-        public ShaderLocation? StartupLocation { get; set; }
+        public NavigationLocation? StartupLocation { get; set; }
 
         /// <summary>
         /// Shader GUID

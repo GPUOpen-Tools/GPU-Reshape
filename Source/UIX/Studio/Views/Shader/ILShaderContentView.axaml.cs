@@ -141,15 +141,15 @@ namespace Studio.Views.Shader
                         }
                     });
                 });
-
-                // Bind navigation location
-                ilViewModel.WhenAnyValue(y => y.NavigationLocation)
-                    .WhereNotNull()
-                    .Subscribe(location => UpdateNavigationLocation(ilViewModel, location!.Value));
                 
                 // Reset front state
                 ilViewModel.SelectedValidationObject = null;
                 ilViewModel.DetailViewModel = null;
+
+                // Bind navigation location
+                ilViewModel.WhenAnyValue(y => y.NavigationLocation)
+                    .WhereNotNull()
+                    .Subscribe(location => UpdateNavigationLocation(ilViewModel, location!));
             });
         }
 
@@ -185,14 +185,17 @@ namespace Studio.Views.Shader
             }).DisposeWithClear(_detailDisposable);
         }
 
-        private void UpdateNavigationLocation(ILShaderContentViewModel ilViewModel, ShaderLocation location)
+        private void UpdateNavigationLocation(ILShaderContentViewModel ilViewModel, NavigationLocation location)
         {
             // Get assembled mapping
-            AssembledMapping? mapping = ilViewModel.Assembler?.GetMapping(location.BasicBlockId, location.InstructionIndex);
+            AssembledMapping? mapping = ilViewModel.Assembler?.GetMapping(location.Location.BasicBlockId, location.Location.InstructionIndex);
             if (mapping == null)
             {
                 return;
             }
+
+            // Update selected file
+            ilViewModel.SelectedValidationObject = location.Object;
                             
             // Scroll to target
             // TODO: 10 is a total guess, we need to derive it from the height, but that doesn't exist yet.

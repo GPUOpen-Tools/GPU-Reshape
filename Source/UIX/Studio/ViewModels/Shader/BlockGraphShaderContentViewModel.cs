@@ -88,7 +88,7 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Current location
         /// </summary>
-        public ShaderLocation? NavigationLocation
+        public NavigationLocation? NavigationLocation
         {
             get => _navigationLocation;
             set => this.RaiseAndSetIfChanged(ref _navigationLocation, value);
@@ -157,7 +157,7 @@ namespace Studio.ViewModels.Shader
         /// <summary>
         /// Internal location
         /// </summary>
-        private ShaderLocation? _navigationLocation;
+        private NavigationLocation? _navigationLocation;
 
         /// <summary>
         /// Internal active state
