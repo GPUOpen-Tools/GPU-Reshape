@@ -27,11 +27,14 @@ using Avalonia;
 using DynamicData;
 using GRS.Features.Descriptor.UIX.Contexts;
 using GRS.Features.Descriptor.UIX.Workspace;
+using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
+using Studio.ViewModels.Workspace.Configurations;
+using UIX.Resources;
 
 namespace GRS.Features.Descriptor.UIX
 {
@@ -58,8 +61,20 @@ namespace GRS.Features.Descriptor.UIX
                 .GetItem<IInstrumentContextViewModel>()?
                 .Items.Add(new DescriptorContextMenuItemViewModel());
             
+            // Get workspace service
+            var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
+            
             // Add workspace extension
-            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Extensions.Add(this);
+            workspaceService?.Extensions.Add(this);
+            
+            // Add workspace configuration
+            workspaceService?.Configurations.Add(new BaseConfigurationViewModel<DescriptorPropertyViewModel>()
+            {
+                Name = Resources.Workspace_Configuration_Descriptor_Name,
+                Description = Resources.Workspace_Configuration_Descriptor_Description,
+                FeatureName = "Descriptor",
+                CanSafeGuard = true
+            });
 
             // OK
             return true;

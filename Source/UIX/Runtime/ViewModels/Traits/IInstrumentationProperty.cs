@@ -23,11 +23,17 @@
 // 
 
 using Runtime.Models.Objects;
+using Studio.Models.Workspace;
 
 namespace Studio.ViewModels.Traits
 {
     public interface IInstrumentationProperty
     {
+        /// <summary>
+        /// Instrumentation feature info
+        /// </summary>
+        public FeatureInfo FeatureInfo { get; set; }
+        
         /// <summary>
         /// Commit all state
         /// </summary>

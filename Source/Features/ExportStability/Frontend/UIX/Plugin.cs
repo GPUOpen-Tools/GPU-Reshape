@@ -27,11 +27,14 @@ using Avalonia;
 using DynamicData;
 using GRS.Features.ResourceBounds.UIX.Contexts;
 using GRS.Features.ResourceBounds.UIX.Workspace;
+using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
+using Studio.ViewModels.Workspace.Configurations;
+using UIX.Resources;
 
 namespace GRS.Features.ResourceBounds.UIX
 {
@@ -58,8 +61,19 @@ namespace GRS.Features.ResourceBounds.UIX
                 .GetItem<IInstrumentContextViewModel>()?
                 .Items.Add(new ExportStabilityContextMenuItemViewModel());
             
+            // Get workspace service
+            var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
+            
             // Add workspace extension
-            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Extensions.Add(this);
+            workspaceService?.Extensions.Add(this);
+            
+            // Add workspace configuration
+            workspaceService?.GetConfiguration<IBasicConfigurationViewModel>()?.Configurations.Add(new BaseConfigurationViewModel<ExportStabilityPropertyViewModel>()
+            {
+                Name = Resources.Workspace_Configuration_ExportStability_Name,
+                Description = Resources.Workspace_Configuration_ExportStability_Description,
+                FeatureName = "Export Stability"
+            });
 
             // OK
             return true;

@@ -22,39 +22,33 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.Models.Workspace.Objects;
-using Studio.ViewModels.Workspace.Objects;
-
-namespace Studio.ViewModels.Shader
+namespace Studio.ViewModels.Workspace
 {
-    public class NavigationLocation
+    public interface IWorkspaceConfigurationViewModel
     {
         /// <summary>
-        /// Construct from a validation object
+        /// Name of this configuration
         /// </summary>
-        public static NavigationLocation? FromObject(ValidationObject validationObject)
-        {
-            // If no segment has been bound, its invalid
-            if (validationObject.Segment == null)
-            {
-                return null;
-            }
-
-            return new NavigationLocation()
-            {
-                Location = validationObject.Segment.Location,
-                Object = validationObject
-            };
-        }
+        public string Name { get; }
         
         /// <summary>
-        /// Source location
+        /// Can this configuration safe guard?
         /// </summary>
-        public ShaderLocation Location;
+        public bool CanSafeGuard { get; }
+        
+        /// <summary>
+        /// Does this configuration require safe guarding?
+        /// </summary>
+        public bool RequiresSynchronousRecording { get; }
+        
+        /// <summary>
+        /// Get the description for a message
+        /// </summary>
+        public string GetDescription(IWorkspaceViewModel workspaceViewModel);
 
         /// <summary>
-        /// Optional, the actual validation object
+        /// Install this configuration
         /// </summary>
-        public ValidationObject? Object;
+        public void Install(IWorkspaceViewModel workspaceViewModel);
     }
 }

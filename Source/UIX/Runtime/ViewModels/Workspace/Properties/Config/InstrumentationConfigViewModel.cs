@@ -25,12 +25,18 @@
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Studio.Models.Workspace;
 using Studio.ViewModels.Traits;
 
 namespace Studio.ViewModels.Workspace.Properties.Config
 {
     public class InstrumentationConfigViewModel : BasePropertyViewModel, IInstrumentationProperty
     {
+        /// <summary>
+        /// Feature info
+        /// </summary>
+        public FeatureInfo FeatureInfo { get; set; }
+        
         /// <summary>
         /// Enables safe-guarding on potentially offending instructions
         /// </summary>

@@ -96,4 +96,31 @@
     <data name="Detail_Resource_Pause" xml:space="preserve">
         <value>Pause validation reporting</value>
     </data>
+    <data name="Workspace_Configuration_Custom_Name" xml:space="preserve">
+        <value>Custom</value>
+    </data>
+    <data name="Workspace_Configuration_Custom_Description" xml:space="preserve">
+        <value>Setup a custom workspace</value>
+    </data>
+    <data name="Workspace_Configuration_Basic_Header" xml:space="preserve">
+        <value>Basic configuration, includes</value>
+    </data>
+    <data name="Workspace_Configuration_All_Name" xml:space="preserve">
+        <value>All</value>
+    </data>
+    <data name="Workspace_Configuration_All_Header" xml:space="preserve">
+        <value>All configurations, includes</value>
+    </data>
+    <data name="Workspace_Configuration_Basic_Name" xml:space="preserve">
+        <value>Basic</value>
+    </data>
+    <data name="Workspace_Configuration_All_Description" xml:space="preserve">
+        <value>All configurations</value>
+    </data>
+    <data name="Launch_SafeGuard" xml:space="preserve">
+        <value>Safe guarding prevents undefined behaviour from taking place due to erroneous operations</value>
+    </data>
+    <data name="Launch_SynchronousRecording" xml:space="preserve">
+        <value>Enables use of synchronous recording, pipeline usage waits on compilation to finish. Required for certain features.</value>
+    </data>
 </root>

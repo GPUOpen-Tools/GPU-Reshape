@@ -84,38 +84,20 @@ namespace UIX.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Instrumenting for initialization after the workspace has been created will result in false positives, to avoid this, launch with initialization instead.
+        ///   Looks up a localized string similar to Validation of concurrent resource usage.
         /// </summary>
-        internal static string Initialization_Warning_Content {
+        internal static string Workspace_Configuration_Concurrency_Description {
             get {
-                return ResourceManager.GetString("Initialization_Warning_Content", resourceCulture);
+                return ResourceManager.GetString("Workspace_Configuration_Concurrency_Description", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Initialization after workspace creation.
+        ///   Looks up a localized string similar to Concurrency.
         /// </summary>
-        internal static string Initialization_Warning_Title {
+        internal static string Workspace_Configuration_Concurrency_Name {
             get {
-                return ResourceManager.GetString("Initialization_Warning_Title", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Validation of resource initialization prior to reads.
-        /// </summary>
-        internal static string Workspace_Configuration_Initialization_Description {
-            get {
-                return ResourceManager.GetString("Workspace_Configuration_Initialization_Description", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Initialization.
-        /// </summary>
-        internal static string Workspace_Configuration_Initialization_Name {
-            get {
-                return ResourceManager.GetString("Workspace_Configuration_Initialization_Name", resourceCulture);
+                return ResourceManager.GetString("Workspace_Configuration_Concurrency_Name", resourceCulture);
             }
         }
     }

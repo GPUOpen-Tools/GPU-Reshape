@@ -138,11 +138,29 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Safe guarding prevents undefined behaviour from taking place due to erroneous operations.
+        /// </summary>
+        public static string Launch_SafeGuard {
+            get {
+                return ResourceManager.GetString("Launch_SafeGuard", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Open a folder.
         /// </summary>
         public static string Launch_SelectFolder_Tooltip {
             get {
                 return ResourceManager.GetString("Launch_SelectFolder_Tooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enables use of synchronous recording, pipeline usage waits on compilation to finish. Required for certain features..
+        /// </summary>
+        public static string Launch_SynchronousRecording {
+            get {
+                return ResourceManager.GetString("Launch_SynchronousRecording", resourceCulture);
             }
         }
         
@@ -296,6 +314,69 @@ namespace Studio.Resources {
         public static string Tree_Expand_Tooltip {
             get {
                 return ResourceManager.GetString("Tree_Expand_Tooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All configurations.
+        /// </summary>
+        public static string Workspace_Configuration_All_Description {
+            get {
+                return ResourceManager.GetString("Workspace_Configuration_All_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All configurations, includes.
+        /// </summary>
+        public static string Workspace_Configuration_All_Header {
+            get {
+                return ResourceManager.GetString("Workspace_Configuration_All_Header", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All.
+        /// </summary>
+        public static string Workspace_Configuration_All_Name {
+            get {
+                return ResourceManager.GetString("Workspace_Configuration_All_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Basic configuration, includes.
+        /// </summary>
+        public static string Workspace_Configuration_Basic_Header {
+            get {
+                return ResourceManager.GetString("Workspace_Configuration_Basic_Header", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Basic.
+        /// </summary>
+        public static string Workspace_Configuration_Basic_Name {
+            get {
+                return ResourceManager.GetString("Workspace_Configuration_Basic_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Setup a custom workspace.
+        /// </summary>
+        public static string Workspace_Configuration_Custom_Description {
+            get {
+                return ResourceManager.GetString("Workspace_Configuration_Custom_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Custom.
+        /// </summary>
+        public static string Workspace_Configuration_Custom_Name {
+            get {
+                return ResourceManager.GetString("Workspace_Configuration_Custom_Name", resourceCulture);
             }
         }
         

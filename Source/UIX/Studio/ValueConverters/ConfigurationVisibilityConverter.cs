@@ -22,39 +22,44 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.Models.Workspace.Objects;
-using Studio.ViewModels.Workspace.Objects;
+using System;
+using System.Globalization;
+using Avalonia.Data.Converters;
+using Studio.ViewModels.Workspace.Configurations;
 
-namespace Studio.ViewModels.Shader
+namespace Studio.ValueConverters
 {
-    public class NavigationLocation
+    public class ConfigurationVisibilityConverter : IValueConverter
     {
         /// <summary>
-        /// Construct from a validation object
+        /// Convert source data
         /// </summary>
-        public static NavigationLocation? FromObject(ValidationObject validationObject)
+        /// <param name="value">inbound value</param>
+        /// <param name="targetType">expected type</param>
+        /// <param name="parameter">originating parameter</param>
+        /// <param name="language">culture</param>
+        /// <returns>converted value</returns>
+        /// <exception cref="NotSupportedException"></exception>
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            // If no segment has been bound, its invalid
-            if (validationObject.Segment == null)
+            bool state = value is CustomConfigurationViewModel;
+
+            if (parameter != null)
             {
-                return null;
+                state = !state;
             }
-
-            return new NavigationLocation()
-            {
-                Location = validationObject.Segment.Location,
-                Object = validationObject
-            };
+            
+            return state;
         }
-        
-        /// <summary>
-        /// Source location
-        /// </summary>
-        public ShaderLocation Location;
 
         /// <summary>
-        /// Optional, the actual validation object
+        /// Convert status to color brush
         /// </summary>
-        public ValidationObject? Object;
+        /// <param name="status">connection status</param>
+        /// <returns>color brush</returns>
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return null;
+        }
     }
 }

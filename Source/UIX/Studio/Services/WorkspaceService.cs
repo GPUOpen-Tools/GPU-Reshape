@@ -22,6 +22,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Subjects;
 using Avalonia;
@@ -32,6 +33,7 @@ using Studio.Extensions;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
+using Studio.ViewModels.Workspace.Configurations;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Services
@@ -47,6 +49,11 @@ namespace Studio.Services
         /// All extensions
         /// </summary>
         public ISourceList<IWorkspaceExtension> Extensions { get; } = new SourceList<IWorkspaceExtension>();
+
+        /// <summary>
+        /// All configurations
+        /// </summary>
+        public ISourceList<IWorkspaceConfigurationViewModel> Configurations { get; } = new SourceList<IWorkspaceConfigurationViewModel>();
 
         /// <summary>
         /// Current workspace
@@ -82,7 +89,13 @@ namespace Studio.Services
 
         public WorkspaceService()
         {
-            
+            // Standard configurations
+            Configurations.AddRange(new IWorkspaceConfigurationViewModel[]
+            {
+                new AllConfigurationViewModel(),
+                new CustomConfigurationViewModel(),
+                new BasicConfigurationViewModel(),
+            });
         }
 
         /// <summary>

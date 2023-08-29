@@ -34,6 +34,7 @@ using Avalonia;
 using Avalonia.Threading;
 using Bridge.CLR;
 using Discovery.CLR;
+using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
@@ -41,8 +42,10 @@ using Studio.Models.Workspace;
 using Studio.Services;
 using Studio.Services.Suspension;
 using Studio.ViewModels.Controls;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Workspace.Properties.Config;
 
 namespace Studio.ViewModels
 {
@@ -90,6 +93,71 @@ namespace Studio.ViewModels
             get => _arguments;
             set => this.RaiseAndSetIfChanged(ref _arguments, value);
         }
+
+        /// <summary>
+        /// The currently selected configuration
+        /// </summary>
+        public IWorkspaceConfigurationViewModel? SelectedConfiguration
+        {
+            get => _selectedConfiguration;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _selectedConfiguration, value);
+                OnSelectionChanged();
+            }
+        }
+
+        /// <summary>
+        /// The description of the selected configuration
+        /// </summary>
+        public string SelectedConfigurationDescription
+        {
+            get => _selectedConfigurationDescription;
+            set => this.RaiseAndSetIfChanged(ref _selectedConfigurationDescription, value);
+        }
+
+        /// <summary>
+        /// Should the configuration safe guard?
+        /// </summary>
+        [DataMember]
+        public bool SafeGuard
+        {
+            get => _safeGuard;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _safeGuard, value);
+                OnSafeGuardChanged();
+            }
+        }
+
+        /// <summary>
+        /// Should the configuration synchronously record?
+        /// </summary>
+        [DataMember]
+        public bool SynchronousRecording
+        {
+            get => _synchronousRecording;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _synchronousRecording, value);
+                OnSynchronousRecordingChanged();
+            }
+        }
+
+        /// <summary>
+        /// Name of the configuration, kept for suspension purposes
+        /// </summary>
+        [DataMember]
+        public string SelectedConfigurationName
+        {
+            get => _selectedConfigurationName;
+            set => this.RaiseAndSetIfChanged(ref _selectedConfigurationName, value);
+        }
+
+        /// <summary>
+        /// All configurations
+        /// </summary>
+        public ObservableCollection<IWorkspaceConfigurationViewModel> Configurations { get; } = new();
 
         /// <summary>
         /// Connection status
@@ -152,7 +220,7 @@ namespace Studio.ViewModels
 
             // Create interactions
             AcceptLaunch = new();
-
+            
             // Bind to selected property
             this.WhenAnyValue(x => x.SelectedProperty)
                 .WhereNotNull()
@@ -162,12 +230,45 @@ namespace Studio.ViewModels
                     SelectedPropertyConfigurations = x.Properties.Items.Where(p => p.Visibility == PropertyVisibility.Configuration);
                 });
 
+            // Create the initial workspace
+            CreateVirtualWorkspace();
+
+            // Subscribe
+            _connectionViewModel.Connected.Subscribe(_ => OnRemoteConnected());
+            
+            // Bind configurations
+            App.Locator.GetService<IWorkspaceService>()?.Configurations.Connect()
+                .OnItemAdded(x => Configurations.Add(x))
+                .OnItemRemoved(x => Configurations.Remove(x))
+                .Subscribe();
+
+            // Suspension
+            this.BindTypedSuspension();
+
+            // Try getting configuration from suspension
+            if (!string.IsNullOrEmpty(SelectedConfigurationName))
+            {
+                SelectedConfiguration = Configurations.First(x => x.Name == SelectedConfigurationName);
+            }
+            
+            // Default selection
+            if (SelectedConfiguration == null)
+            {
+                SelectedConfiguration = Configurations[0];
+            }
+        }
+
+        /// <summary>
+        /// Create a new virtual workspace
+        /// </summary>
+        private void CreateVirtualWorkspace()
+        {
             // Must have service
             if (App.Locator.GetService<IWorkspaceService>() is not { } service)
             {
                 return;
             }
-
+            
             // Create workspace with virtual adapter
             WorkspaceViewModel = new WorkspaceViewModel
             {
@@ -189,6 +290,9 @@ namespace Studio.ViewModels
             // Install standard extensions
             service.Install(WorkspaceViewModel);
             
+            // Remove old mappings
+            _virtualFeatureMappings.Clear();
+            
             // Create virtualized feature space
             if (WorkspaceViewModel.PropertyCollection.GetProperty<FeatureCollectionViewModel>() is {} featureCollectionViewModel)
             {
@@ -209,18 +313,70 @@ namespace Studio.ViewModels
                 }
             }
             
+            // Remove old workspaces
+            Workspaces.Clear();
+            
             // Add workspace item
             Workspaces.Add(new WorkspaceTreeItemViewModel
             {
                 OwningContext = WorkspaceViewModel,
                 ViewModel = WorkspaceViewModel.PropertyCollection
             });
+        }
 
-            // Subscribe
-            _connectionViewModel.Connected.Subscribe(_ => OnRemoteConnected());
+        /// <summary>
+        /// Invoked on selection changes
+        /// </summary>
+        private void OnSelectionChanged()
+        {
+            if (SelectedConfiguration == null)
+            {
+                return;
+            }
             
-            // Suspension
-            this.BindTypedSuspension();
+            // Create new workspace
+            CreateVirtualWorkspace();
+            
+            // Install on new workspace
+            SelectedConfiguration.Install(WorkspaceViewModel);
+
+            // Force recording state?
+            if (SelectedConfiguration.RequiresSynchronousRecording)
+            {
+                SynchronousRecording = true;
+            }
+            
+            // Re-apply properties
+            OnSafeGuardChanged();
+            OnSynchronousRecordingChanged();
+
+            // Get new description
+            SelectedConfigurationDescription = SelectedConfiguration.GetDescription(WorkspaceViewModel);
+            
+            // Set name for suspension
+            SelectedConfigurationName = SelectedConfiguration.Name;
+        }
+
+        /// <summary>
+        /// Invoked on safe guarding changes
+        /// </summary>
+        private void OnSafeGuardChanged()
+        {
+            if ((WorkspaceViewModel.PropertyCollection as IInstrumentableObject)?.GetOrCreateInstrumentationProperty()?.GetProperty<InstrumentationConfigViewModel>() is {} config)
+            {
+                config.SafeGuard = SafeGuard;
+            }
+        }
+
+        /// <summary>
+        /// Invoked on synchronous recording changes
+        /// </summary>
+        private void OnSynchronousRecordingChanged()
+        {
+            if (WorkspaceViewModel.PropertyCollection.GetProperty<ApplicationInstrumentationConfigViewModel>() is {} config)
+            {
+                config.SynchronousRecording = SynchronousRecording;
+            }
         }
 
         /// <summary>
@@ -524,5 +680,30 @@ namespace Studio.ViewModels
         /// Internal virtual mappings
         /// </summary>
         Dictionary<string, int> _virtualFeatureMappings = new();
+
+        /// <summary>
+        /// Internal selected configuration state
+        /// </summary>
+        private IWorkspaceConfigurationViewModel? _selectedConfiguration;
+        
+        /// <summary>
+        /// Internal configuration description state
+        /// </summary>
+        private string _selectedConfigurationDescription;
+        
+        /// <summary>
+        /// Internal safe guard state
+        /// </summary>
+        private bool _safeGuard;
+        
+        /// <summary>
+        /// Internal synchronous recording state
+        /// </summary>
+        private bool _synchronousRecording;
+        
+        /// <summary>
+        /// Internal name state
+        /// </summary>
+        private string _selectedConfigurationName;
     }
 }

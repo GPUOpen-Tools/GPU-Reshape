@@ -22,39 +22,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.Models.Workspace.Objects;
-using Studio.ViewModels.Workspace.Objects;
+using DynamicData;
 
-namespace Studio.ViewModels.Shader
+namespace Studio.ViewModels.Workspace.Configurations
 {
-    public class NavigationLocation
+    public interface IBasicConfigurationViewModel : IWorkspaceConfigurationViewModel
     {
         /// <summary>
-        /// Construct from a validation object
+        /// All configurations
         /// </summary>
-        public static NavigationLocation? FromObject(ValidationObject validationObject)
-        {
-            // If no segment has been bound, its invalid
-            if (validationObject.Segment == null)
-            {
-                return null;
-            }
-
-            return new NavigationLocation()
-            {
-                Location = validationObject.Segment.Location,
-                Object = validationObject
-            };
-        }
-        
-        /// <summary>
-        /// Source location
-        /// </summary>
-        public ShaderLocation Location;
-
-        /// <summary>
-        /// Optional, the actual validation object
-        /// </summary>
-        public ValidationObject? Object;
+        public ISourceList<IWorkspaceConfigurationViewModel> Configurations { get; }
     }
 }

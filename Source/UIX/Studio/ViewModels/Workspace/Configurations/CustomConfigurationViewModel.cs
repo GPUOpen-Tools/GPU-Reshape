@@ -22,39 +22,39 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using Studio.Models.Workspace.Objects;
-using Studio.ViewModels.Workspace.Objects;
-
-namespace Studio.ViewModels.Shader
+namespace Studio.ViewModels.Workspace.Configurations
 {
-    public class NavigationLocation
+    public class CustomConfigurationViewModel : IWorkspaceConfigurationViewModel
     {
         /// <summary>
-        /// Construct from a validation object
+        /// Name of this configuration
         /// </summary>
-        public static NavigationLocation? FromObject(ValidationObject validationObject)
-        {
-            // If no segment has been bound, its invalid
-            if (validationObject.Segment == null)
-            {
-                return null;
-            }
+        public string Name { get; } = Resources.Resources.Workspace_Configuration_Custom_Name;
 
-            return new NavigationLocation()
-            {
-                Location = validationObject.Segment.Location,
-                Object = validationObject
-            };
+        /// <summary>
+        /// Can this configuration safe guard?
+        /// </summary>
+        public bool CanSafeGuard => true;
+
+        /// <summary>
+        /// Does this configuration require safe guarding?
+        /// </summary>
+        public bool RequiresSynchronousRecording => false;
+
+        /// <summary>
+        /// Get the description for a message
+        /// </summary>
+        public string GetDescription(IWorkspaceViewModel workspaceViewModel)
+        {
+            return Resources.Resources.Workspace_Configuration_Custom_Description;
         }
         
         /// <summary>
-        /// Source location
+        /// Install this configuration
         /// </summary>
-        public ShaderLocation Location;
-
-        /// <summary>
-        /// Optional, the actual validation object
-        /// </summary>
-        public ValidationObject? Object;
+        public void Install(IWorkspaceViewModel workspaceViewModel)
+        {
+            
+        }
     }
 }

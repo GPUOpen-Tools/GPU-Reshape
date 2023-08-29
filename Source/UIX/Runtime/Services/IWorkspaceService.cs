@@ -29,6 +29,7 @@ using DynamicData;
 using ReactiveUI;
 using Runtime.ViewModels.Shader;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Services
@@ -44,6 +45,11 @@ namespace Studio.Services
         /// All extensions
         /// </summary>
         public ISourceList<IWorkspaceExtension> Extensions { get; }
+        
+        /// <summary>
+        /// All configurations
+        /// </summary>
+        public ISourceList<IWorkspaceConfigurationViewModel> Configurations { get; }
         
         /// <summary>
         /// Current workspace
@@ -88,5 +94,27 @@ namespace Studio.Services
         /// Clear all workspaces
         /// </summary>
         void Clear();
+    }
+
+    /// <summary>
+    /// Extensions
+    /// </summary>
+    public static class WorkspaceServiceExtensions
+    {
+        /// <summary>
+        /// Get a typed configuration of this service
+        /// </summary>
+        public static T? GetConfiguration<T>(this IWorkspaceService self) where T : class
+        {
+            foreach (IWorkspaceConfigurationViewModel workspaceConfigurationViewModel in self.Configurations.Items)
+            {
+                if (workspaceConfigurationViewModel is T typed)
+                {
+                    return typed;
+                }
+            }
+
+            return null;
+        }
     }
 }
