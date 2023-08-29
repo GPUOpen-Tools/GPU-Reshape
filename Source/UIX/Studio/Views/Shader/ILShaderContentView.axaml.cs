@@ -23,6 +23,7 @@
 // 
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -114,6 +115,15 @@ namespace Studio.Views.Shader
                     // Set text
                     Editor.Text = assembled;
                     
+                    // Push all pending objects
+                    _pendingAssembling.ForEach(OnValidationObjectAdded);
+                    _pendingAssembling.Clear();
+
+                    // Bind navigation location
+                    ilViewModel.WhenAnyValue(y => y.NavigationLocation)
+                        .WhereNotNull()
+                        .Subscribe(location => UpdateNavigationLocation(ilViewModel, location!));
+                    
                     // Invalidate marker layout
                     MarkerCanvas.UpdateLayout();
                 });
@@ -145,11 +155,6 @@ namespace Studio.Views.Shader
                 // Reset front state
                 ilViewModel.SelectedValidationObject = null;
                 ilViewModel.DetailViewModel = null;
-
-                // Bind navigation location
-                ilViewModel.WhenAnyValue(y => y.NavigationLocation)
-                    .WhereNotNull()
-                    .Subscribe(location => UpdateNavigationLocation(ilViewModel, location!));
             });
         }
 
@@ -214,6 +219,13 @@ namespace Studio.Views.Shader
         /// <param name="validationObject"></param>
         private void OnValidationObjectAdded(ValidationObject validationObject)
         {
+            // Pending assembling?
+            if (DataContext is ILShaderContentViewModel { Assembler: null })
+            {
+                _pendingAssembling.Add(validationObject);
+                return;
+            }
+            
             // Update services
             _validationTextMarkerService.Add(validationObject);
             
@@ -250,6 +262,11 @@ namespace Studio.Views.Shader
         /// </summary>
         private ValidationTextMarkerService _validationTextMarkerService;
 
+        /// <summary>
+        /// All pending assembling objects
+        /// </summary>
+        private List<ValidationObject> _pendingAssembling = new();
+        
         /// <summary>
         /// Disposable for detailed data
         /// </summary>
