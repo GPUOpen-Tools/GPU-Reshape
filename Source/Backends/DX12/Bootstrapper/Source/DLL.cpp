@@ -31,6 +31,7 @@
 #include <Backends/DX12/Layer.h>
 #include <Backends/DX12/Ordinal.h>
 #include <Backends/DX12/Shared.h>
+#include <Backend/EnvironmentKeys.h>
 
 // System
 #include <Windows.h>
@@ -577,6 +578,13 @@ bool IsServiceActive() {
         return true;
     }
 
+    // Bootstrapper may still be valid if there's an environment token, implies that it was launched from the toolkit
+    size_t size;
+    if (char* tokenKey{nullptr}; _dupenv_s(&tokenKey, &size, Backend::kReservedEnvironmentTokenKey) == 0 && tokenKey) {
+        free(tokenKey);
+        return true;
+    }
+
     // Not active
     return false;
 }
@@ -585,6 +593,14 @@ void ServiceTrap() {
     // Running?
     if (IsServiceActive()) {
         return;
+    }
+    
+    // Fire event just in case some module has locked ours
+    if (!SetEvent(InitializationEvent))
+    {
+#if ENABLE_LOGGING
+        LogContext{} << "Failed to release deferred initialization lock\n";
+#endif // ENABLE_LOGGING
     }
     
 #if ENABLE_LOGGING

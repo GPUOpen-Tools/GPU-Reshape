@@ -49,7 +49,14 @@ else()
 endif()
 
 # Include directories
-target_include_directories(GRS.Backends.DX12.Bootstrapper${ARCH_POSTFIX} PUBLIC Layer/Include Bootstrapper/Include)
+target_include_directories(
+    GRS.Backends.DX12.Bootstrapper${ARCH_POSTFIX} PUBLIC 
+    Layer/Include 
+    Bootstrapper/Include
+    
+    # Special include, used for backend environment keys, no linkage required (and preferred not to in thin-x86)
+    ${CMAKE_SOURCE_DIR}/Source/Libraries/Backend/Include
+)
 
 # Dependencies
 target_link_libraries(GRS.Backends.DX12.Bootstrapper${ARCH_POSTFIX} PUBLIC GRS.Libraries.Common)
