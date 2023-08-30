@@ -165,7 +165,7 @@ bool StartupEnvironment::LoadFromConfig(MessageStream &stream) {
 
 std::string StartupEnvironment::WriteEnvironment(const MessageStream& stream) {
     // Create new environment path
-    std::filesystem::path path = GetIntermediatePath("StartupEnvironment") / (GlobalUID::New().ToString() + ".env");
+    std::filesystem::path path = GetIntermediatePath("LaunchEnvironment") / (GlobalUID::New().ToString() + ".env");
 
     // Write to output
     std::ofstream file(path, std::ios::binary);
