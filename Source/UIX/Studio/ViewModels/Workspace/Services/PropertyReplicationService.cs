@@ -349,9 +349,16 @@ namespace Studio.ViewModels.Workspace.Services
                 {
                     continue;
                 }
+
+                // Doesn't exist? (Probably a synchronization issue...)
+                if (!_propertyServices.ContainsKey(mask))
+                {
+                    Studio.Logging.Error($"Missing state replication on feature bit {i} for {propertyViewModel.Name}");
+                    return;
+                }
                 
                 // Get the service for specified mask
-                IPropertyViewModel? featureProperty = await _propertyServices.GetValueOrDefault(mask, null)?.CreateInstrumentationObjectProperty(propertyViewModel, true);
+                IPropertyViewModel? featureProperty = await _propertyServices[mask].CreateInstrumentationObjectProperty(propertyViewModel, true);
                 if (featureProperty == null)
                 {
                     Studio.Logging.Error($"Failed state replication on feature bit {i} for {propertyViewModel.Name}");

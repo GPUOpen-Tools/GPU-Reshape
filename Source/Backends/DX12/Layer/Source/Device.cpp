@@ -656,8 +656,8 @@ void GlobalDeviceDetour::Uninstall() {
 
 void BridgeDeviceSyncPoint(DeviceState *device) {
     // Commit controllers
-    device->instrumentationController->Commit();
     device->featureController->Commit();
+    device->instrumentationController->Commit();
     device->metadataController->Commit();
     device->versioningController->Commit();
 
