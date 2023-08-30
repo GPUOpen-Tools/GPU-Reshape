@@ -98,6 +98,11 @@ public:
     /// Invoked on pipeline creation
     /// \param state given state
     void CreatePipeline(PipelineState* state);
+    
+    /// Invoked on pipeline creation
+    /// Performs synchronized state addition
+    /// \param state given state
+    void CreatePipelineAndAdd(PipelineState* state);
 
 protected:
     void CommitShaders(DispatcherBucket* bucket, void *data);
@@ -146,6 +151,10 @@ private:
     /// \param filter tested filter
     /// \return true if passes
     bool FilterPipeline(PipelineState* state, const FilterEntry& filter);
+
+    /// Invoked on pipeline creation
+    /// \param state given state
+    void CreatePipelineNoLock(PipelineState* state);
 
 private:
     DeviceDispatchTable* table;

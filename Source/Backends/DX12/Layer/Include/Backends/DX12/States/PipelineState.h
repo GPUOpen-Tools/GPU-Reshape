@@ -46,6 +46,9 @@
 struct RootSignatureState;
 struct ShaderState;
 
+/// An invalid pipeline UID
+static constexpr uint64_t kInvalidPipelineUID = ~0ull;
+
 struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : public ReferenceObject {
     PipelineState(const Allocators& allocators) : shaders(allocators), subObjectStreamBlob(allocators) {
         
@@ -120,7 +123,7 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
     Vector<uint8_t> subObjectStreamBlob;
 
     /// Unique ID
-    uint64_t uid{0};
+    uint64_t uid{kInvalidPipelineUID};
 
     /// Module specific lock
     std::mutex mutex;

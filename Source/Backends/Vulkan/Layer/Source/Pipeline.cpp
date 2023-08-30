@@ -72,16 +72,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateGraphicsPipelines(VkDevice device, V
             // Add reference
             shaderModuleState->AddUser();
             state->shaderModules.push_back(shaderModuleState);
-
-            // Add dependency, shader module -> pipeline
-            table->dependencies_shaderModulesPipelines.Add(shaderModuleState, state);
         }
 
-        // Store lookup
-        table->states_pipeline.Add(pipelines[i], state);
-
         // Inform the controller
-        table->instrumentationController->CreatePipeline(state);
+        table->instrumentationController->CreatePipelineAndAdd(state);
     }
 
     // Writeout
@@ -125,14 +119,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateComputePipelines(VkDevice device, Vk
         shaderModuleState->AddUser();
         state->shaderModules.push_back(shaderModuleState);
 
-        // Add dependency, shader module -> pipeline
-        table->dependencies_shaderModulesPipelines.Add(shaderModuleState, state);
-
-        // Store lookup
-        table->states_pipeline.Add(pipelines[i], state);
-
         // Inform the controller
-        table->instrumentationController->CreatePipeline(state);
+        table->instrumentationController->CreatePipelineAndAdd(state);
     }
 
     // Writeout

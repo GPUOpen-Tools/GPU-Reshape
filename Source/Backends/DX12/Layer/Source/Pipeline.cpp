@@ -155,9 +155,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                         // Create VS state
                         if (vs.BytecodeLength) {
                             state->vs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, vs));
-
-                            // Add dependency, shader module -> pipeline
-                            table.state->dependencies_shaderPipelines.Add(state->vs, state);
                         }
                         break;
                     }
@@ -167,9 +164,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                         // Create VS state
                         if (ps.BytecodeLength) {
                             state->ps = state->shaders.emplace_back(GetOrCreateShaderState(table.state, ps));
-
-                            // Add dependency, shader module -> pipeline
-                            table.state->dependencies_shaderPipelines.Add(state->ps, state);
                         }
                         break;
                     }
@@ -179,9 +173,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                         // Create VS state
                         if (ds.BytecodeLength) {
                             state->ds = state->shaders.emplace_back(GetOrCreateShaderState(table.state, ds));
-
-                            // Add dependency, shader module -> pipeline
-                            table.state->dependencies_shaderPipelines.Add(state->ds, state);
                         }
                         break;
                     }
@@ -191,9 +182,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                         // Create VS state
                         if (hs.BytecodeLength) {
                             state->hs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, hs));
-
-                            // Add dependency, shader module -> pipeline
-                            table.state->dependencies_shaderPipelines.Add(state->hs, state);
                         }
                         break;
                     }
@@ -203,9 +191,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                         // Create VS state
                         if (gs.BytecodeLength) {
                             state->gs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, gs));
-
-                            // Add dependency, shader module -> pipeline
-                            table.state->dependencies_shaderPipelines.Add(state->gs, state);
                         }
                         break;
                     }
@@ -254,9 +239,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                         // Create VS state
                         if (cs.BytecodeLength) {
                             state->cs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, cs));
-
-                            // Add dependency, shader module -> pipeline
-                            table.state->dependencies_shaderPipelines.Add(state->cs, state);
                         }
                         break;
                     }
@@ -276,9 +258,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
     opaqueState->subObjectStreamBlob.resize(desc->SizeInBytes);
     std::memcpy(opaqueState->subObjectStreamBlob.data(), desc->pPipelineStateSubobjectStream, desc->SizeInBytes);
 
-    // Add to state
-    table.state->states_Pipelines.Add(opaqueState);
-
     // Create detours
     pipeline = CreateDetour(opaqueState->allocators, pipeline, opaqueState);
 
@@ -288,6 +267,9 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
         if (FAILED(hr)) {
             return hr;
         }
+
+        // Inform the controller
+        table.state->instrumentationController->CreatePipelineAndAdd(opaqueState);
     }
 
     // Cleanup
@@ -450,41 +432,26 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     // Create VS state
     if (desc->VS.BytecodeLength) {
         state->vs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->VS));
-
-        // Add dependency, shader module -> pipeline
-        table.state->dependencies_shaderPipelines.Add(state->vs, state);
     }
 
     // Create GS state
     if (desc->GS.BytecodeLength) {
         state->gs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->GS));
-
-        // Add dependency, shader module -> pipeline
-        table.state->dependencies_shaderPipelines.Add(state->gs, state);
     }
 
     // Create DS state
     if (desc->DS.BytecodeLength) {
         state->ds = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->DS));
-
-        // Add dependency, shader module -> pipeline
-        table.state->dependencies_shaderPipelines.Add(state->ds, state);
     }
 
     // Create HS state
     if (desc->HS.BytecodeLength) {
         state->hs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->HS));
-
-        // Add dependency, shader module -> pipeline
-        table.state->dependencies_shaderPipelines.Add(state->hs, state);
     }
 
     // Create PS state
     if (desc->PS.BytecodeLength) {
         state->ps = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->PS));
-
-        // Add dependency, shader module -> pipeline
-        table.state->dependencies_shaderPipelines.Add(state->ps, state);
     }
 
     // Empty shader deep copies
@@ -493,9 +460,6 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     state->deepCopy->HS = {};
     state->deepCopy->DS = {};
     state->deepCopy->VS = {};
-
-    // Add to state
-    table.state->states_Pipelines.Add(state);
 
     // Create detours
     ID3D12PipelineState* detourPipeline = CreateDetour(state->allocators, state->object, state);
@@ -508,7 +472,7 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
         }
 
         // Inform the controller
-        table.state->instrumentationController->CreatePipeline(state);
+        table.state->instrumentationController->CreatePipelineAndAdd(state);
     }
 
     // Cleanup
@@ -554,16 +518,10 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
     // Create VS state
     if (desc->CS.BytecodeLength) {
         state->cs = state->shaders.emplace_back(GetOrCreateShaderState(table.state, state->deepCopy->CS));
-
-        // Add dependency, shader module -> pipeline
-        table.state->dependencies_shaderPipelines.Add(state->cs, state);
     }
 
     // Empty shader deep copies
     state->deepCopy->CS = {};
-
-    // Add to state
-    table.state->states_Pipelines.Add(state);
 
     // Create detours
     ID3D12PipelineState* detourPipeline = CreateDetour(state->allocators, state->object, state);
@@ -576,7 +534,7 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
         }
 
         // Inform the controller
-        table.state->instrumentationController->CreatePipeline(state);
+        table.state->instrumentationController->CreatePipelineAndAdd(state);
     }
 
     // Cleanup
@@ -621,7 +579,10 @@ PipelineState::~PipelineState() {
     }
 
     // Remove state lookup
-    device.state->states_Pipelines.Remove(this);
+    // May not have a slot if it's not queried
+    if (uid != kInvalidPipelineUID) {
+        device.state->states_Pipelines.Remove(this);
+    }
 
     // Release debug name
     if (debugName) {
@@ -636,6 +597,7 @@ PipelineState::~PipelineState() {
     // Release all references to the shader modules
     for (ShaderState* shader : shaders) {
         // Release dependency
+        // Note: May not exist if the object was not queried, that's fine
         device.state->dependencies_shaderPipelines.Remove(shader, this);
 
         // Release ref

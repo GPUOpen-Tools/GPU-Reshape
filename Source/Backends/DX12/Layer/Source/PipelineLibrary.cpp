@@ -125,41 +125,26 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     // Create VS state
     if (pDesc->VS.BytecodeLength) {
         state->vs = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, state->deepCopy->VS));
-
-        // Add dependency, shader module -> pipeline
-        deviceTable.state->dependencies_shaderPipelines.Add(state->vs, state);
     }
 
     // Create GS state
     if (pDesc->GS.BytecodeLength) {
         state->gs = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, state->deepCopy->GS));
-
-        // Add dependency, shader module -> pipeline
-        deviceTable.state->dependencies_shaderPipelines.Add(state->gs, state);
     }
 
     // Create DS state
     if (pDesc->DS.BytecodeLength) {
         state->ds = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, state->deepCopy->DS));
-
-        // Add dependency, shader module -> pipeline
-        deviceTable.state->dependencies_shaderPipelines.Add(state->ds, state);
     }
 
     // Create HS state
     if (pDesc->HS.BytecodeLength) {
         state->hs = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, state->deepCopy->HS));
-
-        // Add dependency, shader module -> pipeline
-        deviceTable.state->dependencies_shaderPipelines.Add(state->hs, state);
     }
 
     // Create PS state
     if (pDesc->PS.BytecodeLength) {
         state->ps = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, state->deepCopy->PS));
-
-        // Add dependency, shader module -> pipeline
-        deviceTable.state->dependencies_shaderPipelines.Add(state->ps, state);
     }
 
     // Empty shader deep copies
@@ -168,9 +153,6 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
     state->deepCopy->HS = {};
     state->deepCopy->DS = {};
     state->deepCopy->VS = {};
-
-    // Add to state
-    deviceTable.state->states_Pipelines.Add(state);
 
     // Create detours
     pipeline = CreateDetour(state->allocators, pipeline, state);
@@ -183,7 +165,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadGraphicsPipeline(ID3D12PipelineLibra
         }
 
         // Inform the controller
-        deviceTable.state->instrumentationController->CreatePipeline(state);
+        deviceTable.state->instrumentationController->CreatePipelineAndAdd(state);
     }
 
     // Cleanup
@@ -240,16 +222,10 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
     // Create VS state
     if (pDesc->CS.BytecodeLength) {
         state->cs = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, state->deepCopy->CS));
-
-        // Add dependency, shader module -> pipeline
-        deviceTable.state->dependencies_shaderPipelines.Add(state->cs, state);
     }
 
     // Empty shader deep copies
     state->deepCopy->CS = {};
-
-    // Add to state
-    deviceTable.state->states_Pipelines.Add(state);
 
     // Create detours
     pipeline = CreateDetour(state->allocators, pipeline, state);
@@ -262,7 +238,7 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
         }
 
         // Inform the controller
-        deviceTable.state->instrumentationController->CreatePipeline(state);
+        deviceTable.state->instrumentationController->CreatePipelineAndAdd(state);
     }
 
     // Cleanup

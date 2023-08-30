@@ -90,6 +90,27 @@ uint32_t InstrumentationController::GetJobCount() {
 void InstrumentationController::CreatePipeline(PipelineState *state) {
     std::lock_guard guard(mutex);
 
+    // Pass down
+    CreatePipelineNoLock(state);
+}
+
+void InstrumentationController::CreatePipelineAndAdd(PipelineState *state) {
+    std::lock_guard guard(mutex);
+
+    // Pass down
+    CreatePipelineNoLock(state);
+
+    // Add dependencies, shader module -> pipeline
+    for (ShaderState * shader : state->shaders) {
+        device->dependencies_shaderPipelines.Add(shader, state);
+    }
+    
+    // Add to state
+    // ! This is a double lock, however, the lock hierarchy should be the same
+    device->states_Pipelines.Add(state);
+}
+
+void InstrumentationController::CreatePipelineNoLock(PipelineState *state) {
     // Mark as pending
     pendingResummarization = true;
 
