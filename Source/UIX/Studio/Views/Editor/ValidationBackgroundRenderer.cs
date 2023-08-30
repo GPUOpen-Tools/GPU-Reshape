@@ -23,6 +23,7 @@
 // 
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia;
@@ -45,11 +46,6 @@ namespace Studio.Views.Editor
         /// Current content view model
         /// </summary>
         public ITextualShaderContentViewModel? ShaderContentViewModel { get; set; }
-        
-        /// <summary>
-        /// All validation objects
-        /// </summary>
-        public ObservableCollection<ValidationObject>? ValidationObjects { get; set; }
 
         /// <summary>
         /// Invoked on document draws
@@ -68,7 +64,7 @@ namespace Studio.Views.Editor
             textView.EnsureVisualLines();
             
             // Draw all objects
-            foreach (ValidationObject validationObject in ValidationObjects ?? Enumerable.Empty<ValidationObject>())
+            foreach (ValidationObject validationObject in _validationObjects)
             {
                 // Valid file?
                 if (!ShaderContentViewModel.IsObjectVisible(validationObject))
@@ -92,6 +88,27 @@ namespace Studio.Views.Editor
                 ));
             }
         }
+
+        /// <summary>
+        /// Add a new object
+        /// </summary>
+        public void Add(ValidationObject validationObject)
+        {
+            _validationObjects.Add(validationObject);
+        }
+
+        /// <summary>
+        /// Remove a new object
+        /// </summary>
+        public void Remove(ValidationObject validationObject)
+        {
+            _validationObjects.Remove(validationObject);
+        }
+
+        /// <summary>
+        /// All validation objects
+        /// </summary>
+        private List<ValidationObject> _validationObjects = new();
 
         /// <summary>
         /// Default validation brush

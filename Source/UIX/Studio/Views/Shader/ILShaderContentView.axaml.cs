@@ -131,9 +131,6 @@ namespace Studio.Views.Shader
                 // Bind object model
                 ilViewModel.WhenAnyValue(y => y.Object).WhereNotNull().Subscribe(_object =>
                 {
-                    // Set objects
-                    _validationBackgroundRenderer.ValidationObjects = _object.ValidationObjects;
-
                     // Bind objects
                     _object.ValidationObjects.ToObservableChangeSet()
                         .AsObservableList()
@@ -228,6 +225,7 @@ namespace Studio.Views.Shader
             
             // Update services
             _validationTextMarkerService.Add(validationObject);
+            _validationBackgroundRenderer.Add(validationObject);
             
             // Update canvas
             MarkerCanvas.Add(validationObject);
@@ -244,6 +242,7 @@ namespace Studio.Views.Shader
         {
             // Update services
             _validationTextMarkerService.Remove(validationObject);
+            _validationBackgroundRenderer.Remove(validationObject);
             
             // Update canvas
             MarkerCanvas.Remove(validationObject);
