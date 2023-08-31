@@ -59,7 +59,7 @@ namespace Runtime.ViewModels.Workspace.Properties
             }
             
             // Commit pending if requested
-            if (_service.Mode == BusMode.RecordAndCommit)
+            if (_service.Mode == BusMode.RecordAndCommit && _reconstruct != BusMode.RecordAndCommit)
             {
                 _service.Commit();
             }
