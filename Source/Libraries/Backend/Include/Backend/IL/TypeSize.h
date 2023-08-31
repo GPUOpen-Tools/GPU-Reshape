@@ -106,6 +106,17 @@ namespace Backend::IL {
 
                 return nullptr;
             }
+            case TypeKind::Array: {
+                auto _type = type->As<ArrayType>();
+                
+                for (uint32_t i = 0; i < _type->count; i++) {
+                    if (const Type* result = GetStructuredTypeAtOffsetRef(_type->elementType, byteOffset)) {
+                        return result;
+                    }
+                }
+
+                return nullptr;
+            }
         }
     }
 
