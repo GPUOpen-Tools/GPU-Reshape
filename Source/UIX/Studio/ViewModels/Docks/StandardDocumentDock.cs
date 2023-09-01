@@ -104,6 +104,9 @@ namespace Studio.ViewModels.Docks
                 return;
             }
 
+            // ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+            dockable.CanFloat = false;
+
             // Assign descriptor if possible
             if (dockable is IDocumentViewModel { } documentViewModel)
             {

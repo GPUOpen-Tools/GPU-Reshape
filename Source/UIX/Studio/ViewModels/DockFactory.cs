@@ -100,6 +100,9 @@ namespace Studio.ViewModels
             var shaders = new ShaderTreeViewModel() {Id = "ShadersTool", Title = "Shaders", CanClose = false};
             var pipelines = new PipelineTreeViewModel() {Id = "PipelinesTool", Title = "Pipelines", CanClose = false};
 
+            // ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+            welcome.CanFloat = false;
+            
             var leftDock = new ProportionalDock
             {
                 Proportion = 0.20,

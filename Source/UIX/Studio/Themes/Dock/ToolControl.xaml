@@ -15,16 +15,26 @@
 
         <Setter Property="Template">
             <ControlTemplate>
+                <!--
+                    DockProperties.IsDragEnabled="False"
+                    ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+                 -->
                 <DockPanel x:Name="PART_DockPanel"
                            DockProperties.IsDropArea="True"
                            DockProperties.IsDockTarget="True"
+                           DockProperties.IsDragEnabled="False"
                            x:DataType="controls:IToolDock"
                            x:CompileBindings="True">
 
+                    <!--
+                        DockProperties.IsDragEnabled="False"
+                        ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+                     -->
                     <ct:CollapsableDockTabStrip x:Name="PART_TabStrip"
                                                 Items="{Binding VisibleDockables}"
                                                 SelectedItem="{Binding ActiveDockable, Mode=TwoWay}"
-                                                DockProperties.IsDropArea="True">
+                                                DockProperties.IsDropArea="True"
+                                                DockProperties.IsDragEnabled="False">
                         <DockTabStrip.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <WrapPanel Orientation="Vertical"
@@ -34,12 +44,17 @@
                         <DockTabStrip.DataTemplates>
                             <DataTemplate DataType="core:IDockable">
                                 <DockableControl TrackingMode="Tab">
+                                    <!--
+                                        DockProperties.IsDragEnabled="False"
+                                        ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+                                     -->
                                     <StackPanel x:Name="DragTool"
                                                 Background="Transparent"
                                                 Orientation="Vertical"
                                                 Spacing="2"
                                                 DockProperties.IsDragArea="True"
-                                                DockProperties.IsDropArea="True">
+                                                DockProperties.IsDropArea="True"
+                                                DockProperties.IsDragEnabled="False">
                                         <Panel Margin="2">
                                             <ContentPresenter
                                                 ContentTemplate="{Binding $parent[ToolControl].HeaderTemplate}"

@@ -73,8 +73,13 @@
                                     </ItemsControl.Styles>
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
+                                            <!--
+                                                DockProperties.IsDragEnabled="False"
+                                                ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+                                             -->
                                             <themes:CollapsableProportionalStackPanel
                                                 DockProperties.IsDropArea="True"
+                                                DockProperties.IsDragEnabled="False"
                                                 Background="Transparent"
                                                 Orientation="{Binding Orientation, Converter={x:Static OrientationConverter.Instance}}" />
                                         </ItemsPanelTemplate>
@@ -94,7 +99,12 @@
                                     </ItemsControl.Styles>
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
+                                            <!--
+                                                DockProperties.IsDragEnabled="False"
+                                                ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+                                             -->
                                             <DockPanel DockProperties.IsDropArea="True"
+                                                       DockProperties.IsDragEnabled="False"
                                                        Background="Transparent"
                                                        LastChildFill="{Binding LastChildFill}" />
                                         </ItemsPanelTemplate>
@@ -105,7 +115,12 @@
                         <!-- Root Dock -->
                         <DataTemplate DataType="controls:IRootDock">
                             <DockableControl TrackingMode="Visible">
-                                <DockPanel DockProperties.IsDropArea="False" Background="Transparent">
+                                <!--
+                                    DockProperties.IsDragEnabled="False"
+                                    ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+                                 -->
+                                <DockPanel DockProperties.IsDropArea="False"
+                                           DockProperties.IsDragEnabled="False" Background="Transparent">
                                     <ContentControl Content="{Binding ActiveDockable}" />
                                 </DockPanel>
                             </DockableControl>
