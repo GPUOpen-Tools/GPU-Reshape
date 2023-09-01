@@ -192,10 +192,15 @@ struct MessageStream {
         // Attempt to inherit the schema
         ValidateOrSetSchema(other.GetSchema());
 
+        // Destination offset
+        const size_t offset = buffer.size();
+
         // Copy all data
-        buffer.resize(other.GetByteSize());
-        std::memcpy(buffer.data(), other.GetDataBegin(), buffer.size());
-        count = other.GetCount();
+        buffer.resize(offset + other.GetByteSize());
+        std::memcpy(buffer.data() + offset, other.GetDataBegin(), other.GetByteSize());
+
+        // Add countsf
+        count += other.GetCount();
     }
 
     /// Get the data begin pointer

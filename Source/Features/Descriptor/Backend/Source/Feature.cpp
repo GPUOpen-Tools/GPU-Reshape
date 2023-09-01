@@ -22,6 +22,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+// Feature
 #include <Features/Descriptor/Feature.h>
 
 // Backend
@@ -40,6 +41,7 @@
 // Generated schema
 #include <Schemas/Features/Descriptor.h>
 #include <Schemas/Instrumentation.h>
+#include <Schemas/InstrumentationCommon.h>
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -217,7 +219,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
 
 void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
-    const SetInstrumentationConfigMessage config = FindOrDefault<SetInstrumentationConfigMessage>(specialization);
+    const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext &context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {

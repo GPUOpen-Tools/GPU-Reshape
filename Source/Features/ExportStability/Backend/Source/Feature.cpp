@@ -22,6 +22,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+// Feature
 #include <Features/ExportStability//Feature.h>
 
 // Backend
@@ -34,6 +35,7 @@
 // Generated schema
 #include <Schemas/Features/ExportStability.h>
 #include <Schemas/Instrumentation.h>
+#include <Schemas/InstrumentationCommon.h>
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -73,7 +75,7 @@ void ExportStabilityFeature::CollectMessages(IMessageStorage *storage) {
 
 void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
-    const SetInstrumentationConfigMessage config = FindOrDefault<SetInstrumentationConfigMessage>(specialization);
+    const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {

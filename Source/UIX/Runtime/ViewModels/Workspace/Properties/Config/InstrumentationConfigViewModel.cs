@@ -86,9 +86,9 @@ namespace Studio.ViewModels.Workspace.Properties.Config
             }
             
             // Submit request
-            var request = state.SpecializationStream.Add<SetInstrumentationConfigMessage>();
-            request.safeGuard = _safeGuard ? 1 : 0;
-            request.detail = _detail ? 1 : 0;
+            var request = state.GetOrDefault<SetInstrumentationConfigMessage>();
+            request.safeGuard |= _safeGuard ? 1 : 0;
+            request.detail |= _detail ? 1 : 0;
         }
 
         /// <summary>

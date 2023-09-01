@@ -38,5 +38,28 @@ namespace Runtime.Models.Objects
         /// Instrumentation specialization stream
         /// </summary>
         public OrderedMessageView<ReadWriteMessageStream> SpecializationStream { get; set; }
+        
+        /// <summary>
+        /// Get a specialization state or create a default value
+        /// </summary>
+        public T GetOrDefault<T>() where T : struct, IMessage
+        {
+            // Create default request
+            IMessageAllocationRequest request = new T().DefaultRequest();
+            
+            // Already exists?
+            foreach (OrderedMessage existing in SpecializationStream)
+            {
+                if (existing.ID == request.ID)
+                {
+                    return existing.Get<T>();
+                }
+            }
+
+            // Allocate new message
+            T message = SpecializationStream.Add<T>(request);
+            request.Default(message);
+            return message;
+        }
     }
 }

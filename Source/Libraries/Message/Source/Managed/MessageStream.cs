@@ -60,6 +60,9 @@ namespace Message.CLR
         // Patch a given message with the expected local structure from allocation parameters
         void Patch(IMessage message);
 
+        // Set the contents to their default values
+        void Default(IMessage message);
+
         // Get the expected byte size of the message
         ulong ByteSize { get; }
 

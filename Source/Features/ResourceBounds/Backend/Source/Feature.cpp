@@ -22,6 +22,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+// Feature
 #include <Features/ResourceBounds/Feature.h>
 #include <Features/Descriptor/Feature.h>
 
@@ -35,6 +36,7 @@
 // Generated schema
 #include <Schemas/Features/ResourceBounds.h>
 #include <Schemas/Instrumentation.h>
+#include <Schemas/InstrumentationCommon.h>
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -74,7 +76,7 @@ void ResourceBoundsFeature::CollectMessages(IMessageStorage *storage) {
 
 void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
-    const SetInstrumentationConfigMessage config = FindOrDefault<SetInstrumentationConfigMessage>(specialization);
+    const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
 
     // Unsigned target type
     const Backend::IL::Type* uint32Type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false});

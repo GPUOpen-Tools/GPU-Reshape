@@ -22,6 +22,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+// Feature
 #include <Features/Initialization/Feature.h>
 #include <Features/Initialization/SRBMaskingShaderProgram.h>
 #include <Features/Descriptor/Feature.h>
@@ -46,6 +47,7 @@
 // Generated schema
 #include <Schemas/Features/Initialization.h>
 #include <Schemas/Instrumentation.h>
+#include <Schemas/InstrumentationCommon.h>
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -142,7 +144,7 @@ void InitializationFeature::CollectMessages(IMessageStorage *storage) {
 
 void InitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
-    const SetInstrumentationConfigMessage config = FindOrDefault<SetInstrumentationConfigMessage>(specialization);
+    const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
     
     // Get the data ids
     IL::ID initializationMaskBufferDataID = program.GetShaderDataMap().Get(initializationMaskBufferID)->id;

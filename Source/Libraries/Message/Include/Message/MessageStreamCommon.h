@@ -58,3 +58,19 @@ T FindOrDefault(const MessageStreamView<>& view, const T& _default = {}) {
     // Not found
     return _default;
 }
+
+/// Collapse a message type in a stream
+/// \tparam T expected type
+/// \param view ordered view
+/// \return collapsed message
+template<typename T>
+T CollapseOrDefault(const MessageStreamView<>& view, T _default = {}) {
+    for (auto it = view.GetIterator(); it; ++it) {
+        if (it.Is(T::kID)) {
+            _default |= *it.Get<T>();
+        }
+    }
+
+    // OK
+    return _default;
+}

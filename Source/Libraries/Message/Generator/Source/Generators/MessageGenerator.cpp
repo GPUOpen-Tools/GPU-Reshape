@@ -934,14 +934,37 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     out.types << "\t\t\t}\n";
 
     // Allocation patching
-    out.types << "\n";
-    out.types << "\t\t\tpublic void Patch(IMessage message) {\n";
-    if (patch.str().length()) {
-        out.types << "\t\t\t\tvar self = (" << message.name << "Message)message;\n";
-        out.types << "\t\t\t\tulong offset = 0;\n";
-        out.types << patch.str();
+    {
+        out.types << "\n";
+        out.types << "\t\t\tpublic void Patch(IMessage message) {\n";
+        if (patch.str().length()) {
+            out.types << "\t\t\t\tvar self = (" << message.name << "Message)message;\n";
+            out.types << "\t\t\t\tulong offset = 0;\n";
+            out.types << patch.str();
+        }
+        out.types << "\t\t\t}\n";
     }
-    out.types << "\t\t\t}\n";
+
+    // Default helper
+    {
+        // Begin helper
+        out.types << "\n";
+        out.types << "\t\t\tpublic void Default(IMessage message)\n";
+        out.types << "\t\t\t{\n";
+        out.types << "\t\t\t\tvar self = (" << message.name << "Message)message;\n";
+
+        // Default initialize all primitive members
+        for (auto fieldIt = message.fields.begin(); fieldIt != message.fields.end(); fieldIt++) {
+            const Field &field = *fieldIt;
+
+            if (auto it = primitiveTypeMap.types.find(field.type); it != primitiveTypeMap.types.end()) {
+                out.types << "\t\t\t\tself." << field.name << " = default;\n";
+            }
+        }
+
+        // End helper
+        out.types << "\t\t\t}\n";
+    }
 
     // Allocation parameters
     out.types << "\n\n";
