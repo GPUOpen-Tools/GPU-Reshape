@@ -37,10 +37,8 @@
     </UserControl.DataContext>
     
     <Button 
-        Background="Transparent"
         ToolTip.Tip="{x:Static r:Resources.Discovery_DropDown_Tooltip}"
-        Padding="0" 
-        BorderThickness="0"
+        Classes="Icon"
         Width="20"
         Height="22">
         <PathIcon Data="{StaticResource Radar}" Foreground="{Binding StatusColor}" Width="15" />

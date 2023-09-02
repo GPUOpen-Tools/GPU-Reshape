@@ -9,75 +9,87 @@
     <Style Selector="ToolControl">
         <Setter Property="HeaderTemplate">
             <DataTemplate DataType="core:IDockable">
-                <PathIcon Data="{Binding (tools:ToolViewModel).Icon}" Width="18" Height="20" />
+                <PathIcon
+                    Margin="0 3 0 3"
+                    Data="{Binding (tools:ToolViewModel).Icon}"
+                    Width="20"
+                    Height="20" />
             </DataTemplate>
         </Setter>
 
         <Setter Property="Template">
             <ControlTemplate>
-                <!--
-                    DockProperties.IsDragEnabled="False"
-                    ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
-                 -->
-                <DockPanel x:Name="PART_DockPanel"
-                           DockProperties.IsDropArea="True"
-                           DockProperties.IsDockTarget="True"
-                           DockProperties.IsDragEnabled="False"
-                           x:DataType="controls:IToolDock"
-                           x:CompileBindings="True">
-
+                <Grid>
                     <!--
                         DockProperties.IsDragEnabled="False"
                         ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
                      -->
-                    <ct:CollapsableDockTabStrip x:Name="PART_TabStrip"
-                                                Items="{Binding VisibleDockables}"
-                                                SelectedItem="{Binding ActiveDockable, Mode=TwoWay}"
-                                                DockProperties.IsDropArea="True"
-                                                DockProperties.IsDragEnabled="False">
-                        <DockTabStrip.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Vertical"
-                                           VerticalAlignment="{Binding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}" />
-                            </ItemsPanelTemplate>
-                        </DockTabStrip.ItemsPanel>
-                        <DockTabStrip.DataTemplates>
-                            <DataTemplate DataType="core:IDockable">
-                                <DockableControl TrackingMode="Tab">
-                                    <!--
-                                        DockProperties.IsDragEnabled="False"
-                                        ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
-                                     -->
-                                    <StackPanel x:Name="DragTool"
-                                                Background="Transparent"
-                                                Orientation="Vertical"
-                                                Spacing="2"
-                                                DockProperties.IsDragArea="True"
-                                                DockProperties.IsDropArea="True"
-                                                DockProperties.IsDragEnabled="False">
-                                        <Panel Margin="2">
-                                            <ContentPresenter
-                                                ContentTemplate="{Binding $parent[ToolControl].HeaderTemplate}"
-                                                Content="{Binding}" />
-                                        </Panel>
-                                    </StackPanel>
-                                </DockableControl>
-                            </DataTemplate>
-                        </DockTabStrip.DataTemplates>
-                    </ct:CollapsableDockTabStrip>
+                    <DockPanel x:Name="PART_DockPanel"
+                               DockProperties.IsDropArea="True"
+                               DockProperties.IsDockTarget="True"
+                               DockProperties.IsDragEnabled="False"
+                               x:DataType="controls:IToolDock"
+                               x:CompileBindings="True">
 
-                    <Separator x:Name="PART_Separator" />
+                        <!--
+                            DockProperties.IsDragEnabled="False"
+                            ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+                         -->
+                        <ct:CollapsableDockTabStrip x:Name="PART_TabStrip"
+                                                    Items="{Binding VisibleDockables}"
+                                                    SelectedItem="{Binding ActiveDockable, Mode=TwoWay}"
+                                                    DockProperties.IsDropArea="True"
+                                                    DockProperties.IsDragEnabled="False">
+                            <DockTabStrip.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Vertical"
+                                               VerticalAlignment="{Binding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}" />
+                                </ItemsPanelTemplate>
+                            </DockTabStrip.ItemsPanel>
+                            <DockTabStrip.DataTemplates>
+                                <DataTemplate DataType="core:IDockable">
+                                    <DockableControl TrackingMode="Tab">
+                                        <!--
+                                            DockProperties.IsDragEnabled="False"
+                                            ISSUE: https://github.com/GPUOpen-Tools/GPU-Reshape/issues/37
+                                         -->
+                                        <StackPanel x:Name="DragTool"
+                                                    Orientation="Vertical"
+                                                    Spacing="2"
+                                                    DockProperties.IsDragArea="True"
+                                                    DockProperties.IsDropArea="True"
+                                                    DockProperties.IsDragEnabled="False">
+                                            <Panel Margin="2">
+                                                <ContentPresenter
+                                                    ContentTemplate="{Binding $parent[ToolControl].HeaderTemplate}"
+                                                    Content="{Binding}" />
+                                            </Panel>
+                                        </StackPanel>
+                                    </DockableControl>
+                                </DataTemplate>
+                            </DockTabStrip.DataTemplates>
+                        </ct:CollapsableDockTabStrip>
 
-                    <Border x:Name="PART_Border" Margin="0 25 0 0" IsVisible="{Binding IsExpanded}">
-                        <DockableControl DataContext="{Binding ActiveDockable}"
-                                         TrackingMode="Visible">
-                            <ContentControl x:Name="PART_ContentPresenter"
-                                            Content="{Binding}"
-                                            HorizontalAlignment="Stretch"
-                                            VerticalAlignment="Stretch" />
-                        </DockableControl>
-                    </Border>
-                </DockPanel>
+                        <Separator x:Name="PART_Separator" />
+
+                        <Border x:Name="PART_Border" Margin="0 30 0 0" Padding="0 5 0 0" IsVisible="{Binding IsExpanded}">
+                            <DockableControl DataContext="{Binding ActiveDockable}"
+                                             TrackingMode="Visible">
+                                <ContentControl x:Name="PART_ContentPresenter"
+                                                Content="{Binding}"
+                                                HorizontalAlignment="Stretch"
+                                                VerticalAlignment="Stretch" />
+                            </DockableControl>
+                        </Border>
+                    </DockPanel>
+                    
+                    <Separator 
+                        ZIndex="100"
+                        HorizontalAlignment="Stretch"
+                        Height="1"
+                        VerticalAlignment="{Binding Converter={x:Static themes:ThemeConverters.ToolControlTabStripDock}}"
+                        Background="{DynamicResource BorderColor}"/>
+                </Grid>
             </ControlTemplate>
         </Setter>
     </Style>
@@ -85,6 +97,7 @@
     <Style Selector="ToolControl /template/ TabStrip#PART_TabStrip">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Focusable" Value="False" />
+        <Setter Property="Width" Value="32" />
         <Setter Property="ClipToBounds" Value="False" />
         <Setter Property="ZIndex" Value="1" />
         <Setter Property="DockPanel.Dock"
@@ -137,10 +150,12 @@
             </ControlTemplate>
         </Setter>
     </Style>
+    
     <Style Selector="ToolControl /template/ DockPanel#PART_DockPanel">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="ZIndex" Value="1" />
     </Style>
+    
     <Style Selector="ToolControl /template/ TabStrip#PART_TabStrip TabStripItem">
         <Setter Property="FontSize" Value="{DynamicResource DockFontSizeNormal}" />
         <Setter Property="FontWeight" Value="Normal" />
@@ -153,14 +168,16 @@
         <Setter Property="Margin" Value="0" />
         <Setter Property="Padding" Value="4 1 4 0" />
     </Style>
-    <Style Selector="ToolControl /template/ TabStrip#PART_TabStrip TabStripItem:pointerover">
-        <Setter Property="Background" Value="{DynamicResource DockApplicationAccentBrushMed}" />
-    </Style>
     <Style Selector="ToolControl /template/ TabStrip#PART_TabStrip:singleitem">
         <Setter Property="IsVisible" Value="True" />
     </Style>
+    
+    <Style Selector="ToolControl /template/ TabStrip#PART_TabStrip TabStripItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource SystemBaseMediumLowColor}" />
+    </Style>
+    
     <Style Selector="ToolControl /template/ TabStrip#PART_TabStrip TabStripItem:selected">
-        <Setter Property="Background" Value="{DynamicResource DockThemeBackgroundBrush}" />
+        <Setter Property="Background" Value="{DynamicResource BorderColor}" />
         <Setter Property="Foreground" Value="{DynamicResource DockApplicationAccentBrushMed}" />
         <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
         <Setter Property="BorderThickness" Value="0 0 0 0" />
@@ -168,10 +185,12 @@
         <Setter Property="Margin" Value="0 -1 0 0" />
         <Setter Property="Padding" Value="4 2 4 0" />
     </Style>
+    
     <Style Selector="ToolControl /template/ TabStrip#PART_TabStrip TabStripItem:selected:pointerover">
-        <Setter Property="Background" Value="{DynamicResource DockThemeBackgroundBrush}" />
+        <Setter Property="Background" Value="{DynamicResource BorderColor}" />
         <Setter Property="BorderBrush" Value="{DynamicResource DockThemeBorderLowBrush}" />
     </Style>
+    
     <Style Selector="ToolControl /template/ Separator#PART_Separator">
 
         <Setter Property="Margin" Value="1,0,1,0" />
@@ -186,6 +205,6 @@
         <Setter Property="Background" Value="{DynamicResource DockThemeBackgroundBrush}" />
         <Setter Property="Margin" Value="0" />
         <Setter Property="BorderBrush" Value="{DynamicResource DockThemeBorderLowBrush}" />
-        <Setter Property="BorderThickness" Value="1 0 1 0" />
+        <Setter Property="BorderThickness" Value="1 1 1 0" />
     </Style>
 </Styles>

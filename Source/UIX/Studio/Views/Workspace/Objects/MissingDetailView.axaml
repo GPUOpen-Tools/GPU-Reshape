@@ -32,7 +32,7 @@
              mc:Ignorable="d" d:DesignWidth="800"
              x:Class="Studio.Views.Workspace.Objects.MissingDetailView"
              x:DataType="objects:MissingDetailViewModel">
-    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{StaticResource InfoMediumBackground}">
+    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Background="{StaticResource DockApplicationAccentBrushLow}">
         <StackPanel 
             Orientation="Horizontal" 
             HorizontalAlignment="Center"

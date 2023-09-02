@@ -47,12 +47,10 @@
     </UserControl.Resources>
     
     <Grid Focusable="True" RowDefinitions="Auto,*">
-        <StackPanel Orientation="Vertical" Background="{DynamicResource DockApplicationAccentBrushLow}">
-            <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
-
+        <StackPanel Orientation="Vertical">
             <Grid Margin="5,0,5,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.ShaderTree_Refresh_Tooltip}" Command="{Binding Refresh}">
+                    <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.ShaderTree_Refresh_Tooltip}" Command="{Binding Refresh}">
                         <PathIcon Data="{StaticResource Refresh}" Width="13" />
                     </Button>
                 </StackPanel>
@@ -62,14 +60,13 @@
                     <TextBlock VerticalAlignment="Center" Text="shaders" Margin="5 0 0 0"/>
                 </StackPanel>
             </Grid>
-
-            <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
         </StackPanel>
 
         <ListBox 
             Grid.Row="1" 
             x:Name="ShaderList" 
             ContextMenu="{StaticResource ReactiveContextMenu}" 
+            BorderThickness="0"
             Tag="{Binding}"
             Items="{Binding ShaderIdentifiers}" >
             <ListBox.ItemTemplate>

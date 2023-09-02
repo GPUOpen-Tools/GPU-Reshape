@@ -24,27 +24,36 @@
   
 -->
 
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
-             xmlns:r="clr-namespace:Studio.Resources"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Studio.Views.Controls.BusModeButton">
-    <UserControl.DataContext>
-        <controls:BusModeButtonViewModel/>
-    </UserControl.DataContext>
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Grid Width="300" Height="200">
+            <TreeView Width="200" VerticalAlignment="Center">
+                <TreeViewItem Header="Item A"/>
+                <TreeViewItem Header="Item B" IsExpanded="True">
+                    <TreeViewItem Header="Sub B:A"/>
+                </TreeViewItem>
+                <TreeViewItem Header="Item C"/>
+            </TreeView>
+        </Grid>
+    </Design.PreviewWith>
     
-    <Button 
-        ToolTip.Tip="{x:Static r:Resources.BusMode_Toggle_Tooltip}"
-        Classes="Icon"
-        Width="20"
-        Height="22" 
-        Command="{Binding Toggle}">
-        <PathIcon 
-            Data="{Binding StatusGeometry}" 
-            Foreground="{Binding StatusColor}" 
-            Width="13" />
-    </Button>
-</UserControl>
+    <Style Selector="TreeView">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="1" />
+    </Style>
+    
+    <Style Selector="TreeViewItem">
+        <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    
+    <Style Selector="TreeViewItem:pointerover">
+        <Setter Property="CornerRadius" Value="3.5" />
+    </Style>
+    
+    <Style Selector="TreeViewItem:selected">
+        <Setter Property="CornerRadius" Value="3.5" />
+    </Style>
+</Styles>

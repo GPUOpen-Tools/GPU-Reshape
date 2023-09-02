@@ -35,7 +35,7 @@
              x:DataType="properties:MessageCollectionViewModel">
     <Grid>
         <StackPanel Orientation="Vertical" HorizontalAlignment="Left">
-            <Button ToolTip.Tip="{x:Static r:Resources.MessageCollection_Filter_Tooltip}" Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22">
+            <Button ToolTip.Tip="{x:Static r:Resources.MessageCollection_Filter_Tooltip}" Classes="Icon" Width="20" Height="22">
                 <PathIcon Data="{StaticResource FilterMultiple}" Width="15" />
 
                 <Button.Flyout>
@@ -57,7 +57,7 @@
                 Background="{StaticResource DockThemeBorderLowBrush}"
                 HorizontalAlignment="Stretch" Height="1" />
 
-            <Button Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" Command="{Binding Clear}">
+            <Button Classes="Icon" Width="20" Height="22" Command="{Binding Clear}">
                 <PathIcon ToolTip.Tip="{x:Static r:Resources.MessageCollection_Clear_Tooltip}" Data="{StaticResource Close}" Width="12" />
             </Button>
         </StackPanel>
@@ -71,7 +71,7 @@
             Margin="20 0 0 0"
             Items="{Binding FilteredValidationObjects}" 
             IsReadOnly="True"
-            Height="300"
+            Height="380"
             CanUserResizeColumns="True"
             VerticalAlignment="Top"
             HorizontalAlignment="Stretch">

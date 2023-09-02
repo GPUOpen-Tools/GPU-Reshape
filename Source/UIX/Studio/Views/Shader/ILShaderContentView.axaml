@@ -89,9 +89,7 @@
                 HorizontalAlignment="Left"
                 IsVisible="{Binding DetailViewModel, Converter={StaticResource DetailVisibilityConverter}}">
                 <Button 
-                    Background="Transparent"
-                    Padding="0"
-                    BorderThickness="0"
+                    Classes="Icon"
                     Width="20"
                     Height="22"
                     ToolTip.Tip="{x:Static r:Resources.Shader_Code_ShowInSource}"
@@ -100,9 +98,7 @@
                 </Button>
                 
                 <Button 
-                    Background="Transparent"
-                    Padding="0"
-                    BorderThickness="0"
+                    Classes="Icon"
                     Width="20"
                     Height="22"
                     Command="{Binding CloseDetail}">

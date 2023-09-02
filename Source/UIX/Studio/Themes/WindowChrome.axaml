@@ -1,0 +1,89 @@
+﻿<!--
+
+  The MIT License (MIT)
+  
+  Copyright (c) 2023 Miguel Petersen
+  Copyright (c) 2023 Advanced Micro Devices, Inc
+  Copyright (c) 2023 Avalanche Studios Group
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy 
+  of this software and associated documentation files (the "Software"), to deal 
+  in the Software without restriction, including without limitation the rights 
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+  of the Software, and to permit persons to whom the Software is furnished to do so, 
+  subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all 
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+-->
+
+<Styles
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:Studio.Views.Controls">
+    <Design.PreviewWith>
+        <Grid Width="300" Height="500">
+            <StackPanel Orientation="Vertical">
+                <local:WindowChrome Title="Poof" Separator="True"/>
+                <Button/>
+            </StackPanel>
+        </Grid>
+    </Design.PreviewWith>
+
+    <Style Selector="local|WindowChrome">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid>
+                    <StackPanel 
+                        VerticalAlignment="Top"
+                        Margin="0 7 0 5" 
+                        Orientation="Vertical">
+                        <StackPanel 
+                            Margin="12 0 5 0"
+                            Orientation="Horizontal">
+                            <Image
+                                Width="16"
+                                Margin="1 1 0 0"
+                                Source="/Resources/Icons/Icon_NoFrame16.png" />
+
+                            <TextBlock 
+                                FontSize="13"
+                                Margin="11,1,0,0"
+                                Text="{TemplateBinding Title}"/>
+                        </StackPanel>
+                        
+                        <Separator
+                            Margin="0,10,0,0" 
+                            IsVisible="{TemplateBinding Separator}"
+                            Background="{StaticResource DockApplicationAccentBrushLow}"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Stretch" Height="1"/>
+                    </StackPanel>
+        
+                    <StackPanel 
+                        ZIndex="100"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top">
+                        <Button 
+                            Command="{TemplateBinding CloseCommand}"
+                            Classes="Close">
+                            <PathIcon Data="{StaticResource Close}" Width="12" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+</Styles>

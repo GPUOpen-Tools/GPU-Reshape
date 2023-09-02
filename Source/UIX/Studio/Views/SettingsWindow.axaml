@@ -47,28 +47,17 @@
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="PreferSystemChrome">
+        ExtendClientAreaChromeHints="NoChrome">
     <Window.DataContext>
         <vm:SettingsViewModel />
     </Window.DataContext>
     
     <Grid>
         <!-- Tool Header -->
-        <StackPanel VerticalAlignment="Top" Orientation="Horizontal"  Margin="5">
-            <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="17" />
-
-            <TextBlock Margin="7,0,0,0">Settings</TextBlock>
-        </StackPanel>
-        
-        <Border 
-            Margin="0,28,0,0" 
-            Height="2" 
-            Background="{StaticResource DockThemeBorderLowBrush}"
-            HorizontalAlignment="Stretch" 
-            VerticalAlignment="Top"/>
+        <controls:WindowChrome Title="Settings" Separator="True"/>
 
         <!-- Categories -->
-        <Grid Margin="0,30,5,0" Width="200" HorizontalAlignment="Left" VerticalAlignment="Stretch">
+        <Grid Margin="0,35,5,0" Width="200" HorizontalAlignment="Left" VerticalAlignment="Stretch">
             <TreeView 
                 x:Name="SettingTree" 
                 HorizontalAlignment="Stretch"
@@ -89,7 +78,7 @@
         </Grid>
 
         <!-- View -->
-        <Grid Margin="210,35,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Grid Margin="210,45,5,5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <controls:LocatorViewHost 
                 HorizontalAlignment="Stretch" 
                 VerticalAlignment="Stretch" 

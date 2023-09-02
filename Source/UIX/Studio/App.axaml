@@ -38,6 +38,7 @@
     <Application.Styles>
         <StyleInclude Source="avares://GPUReshape/Icons.axaml" />
         <StyleInclude Source="avares://GPUReshape/Themes/SectionView.axaml" />
+        <StyleInclude Source="avares://GPUReshape/Themes/WindowChrome.axaml" />
     </Application.Styles>
 
     <Application.Resources>

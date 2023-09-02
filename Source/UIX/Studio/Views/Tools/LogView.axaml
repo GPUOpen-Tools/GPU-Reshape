@@ -45,8 +45,8 @@
     </UserControl.Resources>
 
     <Grid Focusable="True">
-        <StackPanel Orientation="Vertical" HorizontalAlignment="Left">
-            <Button ToolTip.Tip="{x:Static r:Resources.Log_Filter_Tooltip}" Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22">
+        <StackPanel Margin="2 0 0 0" Orientation="Vertical" HorizontalAlignment="Left">
+            <Button ToolTip.Tip="{x:Static r:Resources.Log_Filter_Tooltip}" Classes="Icon" Width="20" Height="22">
                 <PathIcon Data="{StaticResource FilterMultiple}" Width="15" />
 
                 <Button.Flyout>
@@ -81,21 +81,25 @@
 
             <Separator
                 Margin="2,2,2,2"
-                Background="{StaticResource DockThemeBorderLowBrush}"
+                Background="{StaticResource BorderColorHigh}"
                 HorizontalAlignment="Stretch" Height="1" />
 
-            <Button ToolTip.Tip="{x:Static r:Resources.Log_Close_Tooltip}" Background="Transparent" Padding="0" BorderThickness="0" Width="20" Height="22" Command="{Binding Clear}">
+            <Button ToolTip.Tip="{x:Static r:Resources.Log_Close_Tooltip}" Classes="Icon" Width="20" Height="22" Command="{Binding Clear}">
                 <PathIcon Data="{StaticResource Close}" Width="12" />
             </Button>
         </StackPanel>
         
         <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" HorizontalAlignment="Left">
-            <ToggleButton ToolTip.Tip="{x:Static r:Resources.Log_ScrollToBottom_Tooltip}" Background="Transparent" Padding="0" IsChecked="{Binding IsScrollLock}" BorderThickness="0" Width="20" Height="22">
+            <ToggleButton ToolTip.Tip="{x:Static r:Resources.Log_ScrollToBottom_Tooltip}" Classes="Icon" IsChecked="{Binding IsScrollLock}" BorderThickness="0" Width="20" Height="22">
                 <PathIcon Data="{StaticResource ArrowDown}" Width="12" />
             </ToggleButton>
         </StackPanel>
 
-        <ListBox x:Name="LogListbox" Margin="20 0 0 0" Items="{Binding FilteredEvents}">
+        <ListBox 
+            x:Name="LogListbox"
+            BorderThickness="1 0 0 0"
+            Margin="24 0 0 0" 
+            Items="{Binding FilteredEvents}">
             <ListBox.DataTemplates>
                 <DataTemplate DataType="logging:LogEvent">
                     <Grid ColumnDefinitions="25,*">

@@ -93,7 +93,7 @@ namespace Studio.ViewModels
         public override IRootDock CreateLayout()
         {
             var welcome = new WelcomeViewModel {Id = "WelcomeDocument", Title = "Welcome" };
-            var workspace = new WorkspaceViewModel {Id = "WorkspaceTool", Title = "Workspace", CanClose = false};
+            var workspace = new WorkspaceViewModel {Id = "WorkspaceTool", Title = "Workspaces", CanClose = false};
             var files = new FilesViewModel() {Id = "FilesTool", Title = "Files", CanClose = false};
             var log = new LogViewModel {Id = "LogTool", Title = "Log", CanClose = false};
             var properties = new PropertyViewModel {Id = "PropertiesTool", Title = "Properties", CanClose = false};

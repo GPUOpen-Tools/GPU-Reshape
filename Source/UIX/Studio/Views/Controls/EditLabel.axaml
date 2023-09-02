@@ -62,9 +62,7 @@
             CommandParameter="{Binding}"
             VerticalAlignment="Center"
             HorizontalAlignment="Right"
-            Background="Transparent"
-            Padding="0"
-            BorderThickness="0"
+            Classes="Icon"
             IsVisible="False"
             Width="20"
             Height="22">

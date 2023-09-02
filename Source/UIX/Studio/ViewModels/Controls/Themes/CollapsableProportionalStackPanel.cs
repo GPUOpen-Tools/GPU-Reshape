@@ -284,8 +284,7 @@ namespace Studio.ViewModels.Controls.Themes
         /// </summary>
         private double GetTotalSplitterThickness(IList<IControl> children)
         {
-            var result = children.OfType<ProportionalStackPanelSplitter>().Sum(c => c.Thickness);
-            return double.IsNaN(result) ? 0 : result;
+            return 0;
         }
 
         /// <summary>
@@ -379,26 +378,32 @@ namespace Studio.ViewModels.Controls.Themes
                     case Orientation.Horizontal:
                         maximumHeight = Math.Max(maximumHeight, usedHeight + desiredSize.Height);
 
-                        if (element is ProportionalStackPanelSplitter || !isExpanded)
+                        if (element is not ProportionalStackPanelSplitter)
                         {
-                            usedWidth += desiredSize.Width;
-                        }
-                        else
-                        {
-                            usedWidth += Math.Max(0, (constraint.Width - splitterThickness) * proportion);
+                            if (!isExpanded)
+                            {
+                                usedWidth += desiredSize.Width;
+                            }
+                            else
+                            {
+                                usedWidth += Math.Max(0, (constraint.Width - splitterThickness) * proportion);
+                            }
                         }
 
                         break;
                     case Orientation.Vertical:
                         maximumWidth = Math.Max(maximumWidth, usedWidth + desiredSize.Width);
 
-                        if (element is ProportionalStackPanelSplitter || !isExpanded)
+                        if (element is not ProportionalStackPanelSplitter)
                         {
-                            usedHeight += desiredSize.Height;
-                        }
-                        else
-                        {
-                            usedHeight += Math.Max(0, (constraint.Height - splitterThickness) * proportion);
+                            if (!isExpanded)
+                            {
+                                usedHeight += desiredSize.Height;
+                            }
+                            else
+                            {
+                                usedHeight += Math.Max(0, (constraint.Height - splitterThickness) * proportion);
+                            }
                         }
 
                         break;
@@ -450,35 +455,53 @@ namespace Studio.ViewModels.Controls.Themes
                     switch (Orientation)
                     {
                         case Orientation.Horizontal:
-                            if (element is ProportionalStackPanelSplitter || !isExpanded)
+                        {
+                            if (element is not ProportionalStackPanelSplitter splitter)
                             {
-                                left += desiredSize.Width;
-                                remainingRect = remainingRect.WithWidth(desiredSize.Width);
+                                if (element is ProportionalStackPanelSplitter || !isExpanded)
+                                {
+                                    left += desiredSize.Width;
+                                    remainingRect = remainingRect.WithWidth(desiredSize.Width);
+                                }
+                                else
+                                {
+                                    Debug.Assert(!double.IsNaN(proportion));
+                                    remainingRect = remainingRect.WithWidth(Math.Max(0,
+                                        (arrangeSize.Width - splitterThickness) * proportion));
+                                    left += Math.Max(0, (arrangeSize.Width - splitterThickness) * proportion);
+                                }
                             }
                             else
                             {
-                                Debug.Assert(!double.IsNaN(proportion));
-                                remainingRect = remainingRect.WithWidth(Math.Max(0,
-                                    (arrangeSize.Width - splitterThickness) * proportion));
-                                left += Math.Max(0, (arrangeSize.Width - splitterThickness) * proportion);
+                                remainingRect = remainingRect.WithX(left - splitter.Thickness).WithWidth(desiredSize.Width);
                             }
 
                             break;
+                        }
                         case Orientation.Vertical:
-                            if (element is ProportionalStackPanelSplitter || !isExpanded)
+                        {
+                            if (element is not ProportionalStackPanelSplitter splitter)
                             {
-                                top += desiredSize.Height;
-                                remainingRect = remainingRect.WithHeight(desiredSize.Height);
+                                if (element is ProportionalStackPanelSplitter || !isExpanded)
+                                {
+                                    top += desiredSize.Height;
+                                    remainingRect = remainingRect.WithHeight(desiredSize.Height);
+                                }
+                                else
+                                {
+                                    Debug.Assert(!double.IsNaN(proportion));
+                                    remainingRect = remainingRect.WithHeight(Math.Max(0,
+                                        (arrangeSize.Height - splitterThickness) * proportion));
+                                    top += Math.Max(0, (arrangeSize.Height - splitterThickness) * proportion);
+                                }
                             }
                             else
                             {
-                                Debug.Assert(!double.IsNaN(proportion));
-                                remainingRect = remainingRect.WithHeight(Math.Max(0,
-                                    (arrangeSize.Height - splitterThickness) * proportion));
-                                top += Math.Max(0, (arrangeSize.Height - splitterThickness) * proportion);
+                                remainingRect = remainingRect.WithY(top - splitter.Thickness).WithHeight(desiredSize.Height);
                             }
 
                             break;
+                        }
                     }
                 }
 

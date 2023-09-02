@@ -34,7 +34,10 @@
              x:Class="Studio.Views.Workspace.Objects.ResourceValidationDetailView"
              x:DataType="objects:ResourceValidationDetailViewModel">
     <Grid>
-        <StackPanel Orientation="Vertical" HorizontalAlignment="Left">
+        <StackPanel 
+            Orientation="Vertical"
+            HorizontalAlignment="Left"
+            Background="{DynamicResource DockApplicationAccentBrushLow}">
             <ToggleButton
                 Margin="0 0 0 0" 
                 Background="Transparent"
@@ -51,9 +54,13 @@
             Margin="25 0 0 0"
             VerticalAlignment="Stretch"
             HorizontalAlignment="Stretch" 
-            Background="{StaticResource InfoMediumBackground}"
+            Background="{StaticResource DockApplicationAccentBrushLow}"
             LastChildFill="True">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 5 0 0" DockPanel.Dock="Bottom">
+            <StackPanel 
+                Orientation="Horizontal" 
+                VerticalAlignment="Center" 
+                Margin="0 5 0 0"
+                DockPanel.Dock="Bottom">
                 <TextBlock Height="20" Text="Name: " Margin="5 0 0 0" />
                 <TextBlock Height="20" Text="{Binding SelectedResource.Resource.Name, FallbackValue=None}" />
                 <TextBlock Height="20" Text="- Width: " Margin="5 0 0 0" />
@@ -91,8 +98,15 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
                 
-                <GridSplitter Grid.Column="1" Background="{StaticResource ThemeBorderMidBrush}"/>
+                <GridSplitter Grid.Column="1" Background="{StaticResource BorderColor}"/>
             </Grid>
         </DockPanel>
+        
+        <Separator 
+            Width="1"
+            Margin="25 0 0 0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Stretch"
+            Background="{DynamicResource BorderColor}"/>
     </Grid>
 </UserControl>

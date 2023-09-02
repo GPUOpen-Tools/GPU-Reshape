@@ -24,27 +24,29 @@
   
 -->
 
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
-             xmlns:r="clr-namespace:Studio.Resources"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Studio.Views.Controls.BusModeButton">
-    <UserControl.DataContext>
-        <controls:BusModeButtonViewModel/>
-    </UserControl.DataContext>
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Grid Width="200" Height="200">
+            <Button Classes="Icon" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <PathIcon Data="{StaticResource Expand}" Width="13" />
+            </Button>
+        </Grid>
+    </Design.PreviewWith>
     
-    <Button 
-        ToolTip.Tip="{x:Static r:Resources.BusMode_Toggle_Tooltip}"
-        Classes="Icon"
-        Width="20"
-        Height="22" 
-        Command="{Binding Toggle}">
-        <PathIcon 
-            Data="{Binding StatusGeometry}" 
-            Foreground="{Binding StatusColor}" 
-            Width="13" />
-    </Button>
-</UserControl>
+    <Style Selector="Button.Icon">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="3" />
+        <Setter Property="CornerRadius" Value="2" />
+    </Style>
+    
+    <Style Selector="Button.Icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SystemBaseMediumLowColor}" />
+    </Style>
+    
+    <Style Selector="Button.Icon:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource IconPressedColor}" />
+        <Setter Property="Padding" Value="3 " />
+    </Style>
+</Styles>

@@ -40,28 +40,25 @@
              d:DesignWidth="300" d:DesignHeight="400"
              x:DataType="vm:FilesViewModel" x:CompileBindings="True">
     <Grid Focusable="True" RowDefinitions="Auto,*">
-        <StackPanel Orientation="Vertical" Background="{DynamicResource DockApplicationAccentBrushLow}">
-            <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
-
+        <StackPanel Orientation="Vertical">
             <Grid Margin="5,0,5,0">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Expand_Tooltip}" Command="{Binding Expand}">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="5">
+                    <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.Tree_Expand_Tooltip}" Command="{Binding Expand}">
                         <PathIcon Data="{StaticResource Expand}" Width="13" />
                     </Button>
                     
-                    <Button Background="Transparent" BorderThickness="0" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}" Command="{Binding Collapse}">
+                    <Button Classes="Icon" ToolTip.Tip="{x:Static r:Resources.Tree_Collapse_Tooltip}" Command="{Binding Collapse}">
                         <PathIcon Data="{StaticResource Collapse}" Width="13" />
                     </Button>
                 </StackPanel>
             </Grid>
-
-            <Border Height="1" Margin="0,0,0,0" Background="{DynamicResource DockThemeBorderLowBrush}" />
         </StackPanel>
 
         <TreeView 
             Grid.Row="1" 
             x:Name="FilesTree" 
             ContextMenu="{StaticResource ReactiveContextMenu}" 
+            BorderThickness="0"
             Tag="{Binding}"
             Items="{Binding Files}"
             AutoScrollToSelectedItem="False">

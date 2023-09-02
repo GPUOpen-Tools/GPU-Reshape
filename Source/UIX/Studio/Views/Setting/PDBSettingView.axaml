@@ -46,9 +46,7 @@
                 ToolTip.Tip="{x:Static r:Resources.PDBSetting_Add_Tooltip}"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Right"
-                Background="Transparent"
-                Padding="0"
-                BorderThickness="0"
+                Classes="Icon"
                 Width="20"
                 Height="22">
                 <PathIcon Data="{StaticResource Add}" Width="15" />

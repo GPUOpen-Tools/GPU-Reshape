@@ -80,7 +80,6 @@
                                             <themes:CollapsableProportionalStackPanel
                                                 DockProperties.IsDropArea="True"
                                                 DockProperties.IsDragEnabled="False"
-                                                Background="Transparent"
                                                 Orientation="{Binding Orientation, Converter={x:Static OrientationConverter.Instance}}" />
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
@@ -129,5 +128,10 @@
                 </ContentControl>
             </ControlTemplate>
         </Setter>
+    </Style>
+    
+    <Style Selector="ProportionalStackPanelSplitter">
+        <Setter Property="Width" Value="25"/>
+        <Setter Property="ZIndex" Value="25"/>
     </Style>
 </Styles>

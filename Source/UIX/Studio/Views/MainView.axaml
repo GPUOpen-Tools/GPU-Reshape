@@ -44,10 +44,11 @@
     <Design.DataContext>
         <vm:MainWindowViewModel />
     </Design.DataContext>
+    
     <Grid RowDefinitions="30,*,25" ColumnDefinitions="*" Name="MainGrid">
         <!-- Toolbox left hand side -->
         <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0">
-            <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="20" Margin="5,0,0,0" HorizontalAlignment="Left" />
+            <Image Source="/Resources/Icons/Icon_NoFrame16.png" Width="16" Margin="5,0,0,0" HorizontalAlignment="Left" />
 
             <Menu 
                 Grid.Row="0" 

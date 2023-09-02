@@ -44,11 +44,9 @@
             <ControlTemplate>
                 <Border Background="{StaticResource DockApplicationAccentBrushLow}" Padding="10">
                     <Grid>
-                        <Button Background="Transparent"
+                        <Button Classes="Icon"
                                 VerticalAlignment="Top"
                                 HorizontalAlignment="Left"
-                                Padding="0"
-                                BorderThickness="0"
                                 Command="{TemplateBinding ExpandCommand}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{TemplateBinding Title}" FontSize="16" />

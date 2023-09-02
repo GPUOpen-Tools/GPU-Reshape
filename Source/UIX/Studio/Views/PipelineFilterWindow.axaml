@@ -38,7 +38,7 @@
         xmlns:controls="clr-namespace:Studio.Views.Controls"
         mc:Ignorable="d"
         CanResize="False"
-        Width="550" Height="100"
+        Width="550" Height="110"
         UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
         WindowState="Normal" WindowStartupLocation="CenterScreen"
         TransparencyLevelHint="None"
@@ -46,7 +46,7 @@
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="PreferSystemChrome">
+        ExtendClientAreaChromeHints="NoChrome">
     <Window.Resources>
         <ResourceDictionary>
             <vc:QueryResultToProgressConverter x:Key="QueryResultToProgressConverter" />
@@ -54,16 +54,12 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Grid Margin="5">
+    <Grid>
         <!-- Tool Header -->
-        <StackPanel VerticalAlignment="Top" Orientation="Horizontal">
-            <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="17" />
-
-            <TextBlock Margin="7,0,0,0">Create pipeline filter</TextBlock>
-        </StackPanel>
+        <controls:WindowChrome Title="Create Pipeline Filter" Separator="True"/>
 
         <!-- Content -->
-        <Grid Margin="5,30,5,30" VerticalAlignment="Stretch">
+        <Grid Margin="10,45,5,35" VerticalAlignment="Stretch">
             <Panel VerticalAlignment="Top">
                 <AutoCompleteBox 
                     x:Name="QueryBox"
@@ -74,8 +70,7 @@
                     Text="{Binding FilterString}" />
                     
                 <Button 
-                    Background="Transparent"
-                    BorderThickness="0"
+                    Classes="Icon"
                     HorizontalAlignment="Right"
                     Width="25"
                     Height="25"
@@ -116,7 +111,7 @@ Examples:
         </Grid>
 
         <!-- Tool Result -->
-        <Grid VerticalAlignment="Bottom">
+        <Grid VerticalAlignment="Bottom" Margin="5">
             <TextBlock
                 x:Name="StatusBlock"
                 Margin="5,0,0,0"
@@ -124,7 +119,7 @@ Examples:
                 HorizontalAlignment="Left"
                 Text="{Binding FilterStatus, Converter={StaticResource QueryResultToProgressConverter}}" />
 
-            <StackPanel Margin="0,0,5,0" HorizontalAlignment="Right" Orientation="Horizontal">
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                 <Button
                     HorizontalAlignment="Right"
                     Command="{Binding Create}"

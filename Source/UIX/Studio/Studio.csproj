@@ -179,6 +179,12 @@
         <DependentUpon>GlobalSettingView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <None Remove="Resources\Icons\Icon_NoFrame16.png" />
+      <AvaloniaResource Include="Resources\Icons\Icon_NoFrame16.png" />
+      <Compile Update="Themes\WindowChrome.axaml.cs">
+        <DependentUpon>WindowChrome.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
@@ -222,6 +228,7 @@
     </ItemGroup>
     <ItemGroup>
       <AvaloniaXaml Include="Themes\Dock\DockControl.xaml" />
+      <AvaloniaXaml Include="Themes\Dock\DocumentControl.xaml" />
       <AvaloniaXaml Include="Themes\Dock\ToolControl.xaml" />
       <AvaloniaXaml Include="Themes\Dock\ToolChromeControl.xaml" />
     </ItemGroup>

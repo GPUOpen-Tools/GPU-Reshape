@@ -1,0 +1,110 @@
+﻿<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Dock.Model.Core;assembly=Dock.Model"
+        xmlns:controls="clr-namespace:Dock.Model.Controls;assembly=Dock.Model"
+        xmlns:themes="clr-namespace:Studio.ValueConverters.Themes"
+        xmlns:tools="clr-namespace:Runtime.ViewModels.Tools;assembly=UIX.Studio.Runtime"
+        xmlns:ct="clr-namespace:Studio.ViewModels.Controls.Themes"
+        xmlns:documents="clr-namespace:Studio.ViewModels.Documents;assembly=UIX.Studio.Runtime"
+        xmlns:localControls="clr-namespace:Studio.Views.Controls">
+    <!-- Modified DocumentControl implementation from https://github.com/wieslawsoltes/Dock/ -->
+    <Style Selector="DocumentControl">
+        <Setter Property="HeaderTemplate">
+            <DataTemplate DataType="core:IDockable">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Stretch" Margin="0 1 0 0">
+                    <PathIcon
+                        Data="{Binding Path=(documents:IDocumentViewModel).Icon}"
+                        Foreground="{Binding Path=(documents:IDocumentViewModel).IconForeground}"
+                        Width="12"
+                        Height="12"
+                        Margin="0" />
+
+                    <TextBlock Text="{Binding Title}"
+                               VerticalAlignment="Center"
+                               Padding="4,0,0,0" />
+                </StackPanel>
+            </DataTemplate>
+        </Setter>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <DockPanel x:Name="PART_DockPanel"
+                           DockProperties.IsDropArea="True"
+                           DockProperties.IsDockTarget="True"
+                           Background="{DynamicResource BorderColor}"
+                           ZIndex="1"
+                           x:DataType="controls:IDocumentDock"
+                           x:CompileBindings="True">
+                    <DockTabStrip x:Name="PART_TabStrip"
+                                  Items="{Binding VisibleDockables}"
+                                  SelectedItem="{Binding ActiveDockable, Mode=TwoWay}"
+                                  CanCreateItem="{Binding CanCreateDocument}"
+                                  DockProperties.IsDropArea="True">
+                        <DockTabStrip.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <localControls:ScrollingTabStripPanel/>
+                            </ItemsPanelTemplate>
+                        </DockTabStrip.ItemsPanel>
+                        <DockTabStrip.DataTemplates>
+                            <DataTemplate DataType="core:IDockable">
+                                <DockableControl TrackingMode="Tab">
+                                    <StackPanel Background="Transparent"
+                                                Orientation="Horizontal"
+                                                Spacing="2"
+                                                DockProperties.IsDragArea="True"
+                                                DockProperties.IsDropArea="True">
+                                        <Panel Margin="2">
+                                            <ContentPresenter
+                                                ContentTemplate="{Binding $parent[DocumentControl].HeaderTemplate}"
+                                                Content="{Binding}" />
+                                        </Panel>
+                                        <Button x:Name="PART_CloseButton"
+                                                Command="{Binding Owner.Factory.CloseDockable}"
+                                                CommandParameter="{Binding}"
+                                                Classes="documentTabButton closeButton Icon"
+                                                IsVisible="{Binding CanClose}"
+                                                Margin="0 3 0 0"
+                                                x:CompileBindings="False">
+                                            <Path x:Name="PART_ClosePath" Classes="closeButton" Height="8" Width="8" />
+                                        </Button>
+                                    </StackPanel>
+                                </DockableControl>
+                            </DataTemplate>
+                        </DockTabStrip.DataTemplates>
+                    </DockTabStrip>
+                    <DockableControl DataContext="{Binding ActiveDockable}"
+                                     TrackingMode="Visible">
+                        <ContentControl x:Name="PART_ContentPresenter"
+                                        Content="{Binding}"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Stretch" />
+                    </DockableControl>
+                </DockPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    
+    <Style Selector="DocumentControl /template/ TabStrip#PART_TabStrip">
+        <Setter Property="BorderThickness" Value="0 0 0 3" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Height" Value="30" />
+    </Style>
+    
+    <Style Selector="DocumentControl /template/ TabStrip#PART_TabStrip TabStripItem:selected">
+        <Setter Property="BorderThickness" Value="0 0 0 3" />
+        <Setter Property="CornerRadius" Value="3" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+    </Style>
+    
+    <Style Selector="DocumentControl:not(:active) /template/ TabStrip#PART_TabStrip TabStripItem:selected">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    
+    <Style Selector="DocumentControl:active /template/ TabStrip#PART_TabStrip TabStripItem:selected">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    
+    <Style Selector="DocumentControl /template/ TabStrip#PART_TabStrip TabStripItem">
+        <Setter Property="MinHeight" Value="30" />
+    </Style>
+</Styles>

@@ -47,7 +47,6 @@
     <Grid x:Name="ContentGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=5, Converter={StaticResource GridVisibilityConverter}}"/>
             <RowDefinition Height="{Binding DetailViewModel, ConverterParameter=150, Converter={StaticResource GridVisibilityConverter}}"/>
         </Grid.RowDefinitions>
         
@@ -74,13 +73,7 @@
             HorizontalAlignment="Stretch" 
             VerticalAlignment="Stretch"/>
         
-        <GridSplitter
-            Grid.Row="1"
-            Background="{StaticResource InfoMediumBackground}"
-            Height="3"
-            ResizeDirection="Rows"/>
-        
-        <Grid Grid.Row="2" x:Name="DetailGrid">
+        <Grid Grid.Row="1" x:Name="DetailGrid">
             <controls:LocatorViewHost 
                 x:Name="DetailViewHost" 
                 HorizontalAlignment="Stretch" 
@@ -93,9 +86,7 @@
                 HorizontalAlignment="Left"
                 IsVisible="{Binding DetailViewModel, Converter={StaticResource DetailVisibilityConverter}}">
                 <Button 
-                    Background="Transparent"
-                    Padding="0"
-                    BorderThickness="0"
+                    Classes="Icon"
                     Width="20"
                     Height="22"
                     ToolTip.Tip="{x:Static r:Resources.Shader_Code_ShowInIL}"
@@ -104,9 +95,7 @@
                 </Button>
                 
                 <Button 
-                    Background="Transparent"
-                    Padding="0"
-                    BorderThickness="0"
+                    Classes="Icon"
                     Width="20"
                     Height="22"
                     Command="{Binding CloseDetail}">
@@ -114,5 +103,13 @@
                 </Button>
             </StackPanel>
         </Grid>
+        
+        <GridSplitter
+            Grid.Row="1"
+            ZIndex="25"
+            VerticalAlignment="Top"
+            Background="Transparent"
+            Height="5"
+            ResizeDirection="Rows"/>
     </Grid>
 </UserControl>

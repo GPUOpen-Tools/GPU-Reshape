@@ -42,7 +42,7 @@
         </ResourceDictionary>
     </UserControl.Resources>
     
-    <Grid Focusable="True">
+    <Grid Focusable="True" Background="{DynamicResource DockApplicationAccentBrushLow}">
         <ScrollViewer>
             <StackPanel Orientation="Vertical" Margin="2.5">
                 <controls:SectionView Title="Workspace">
@@ -80,11 +80,18 @@
                     Items="{Binding Properties}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="properties:IPropertyViewModel">
-                            <controls:SectionView
-                                Title="{Binding Name, FallbackValue=[PropertyName]}"
-                                IsExpanded="{Binding Visibility, Mode=OneTime, Converter={StaticResource PropertyVisibilityConverter}}">
-                                <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
-                            </controls:SectionView>
+                            <StackPanel Orientation="Vertical">
+                                <Separator 
+                                    Background="{DynamicResource BorderColor}" 
+                                    HorizontalAlignment="Stretch"
+                                    Height="2"/>
+                                
+                                <controls:SectionView
+                                    Title="{Binding Name, FallbackValue=[PropertyName]}"
+                                    IsExpanded="{Binding Visibility, Mode=OneTime, Converter={StaticResource PropertyVisibilityConverter}}">
+                                    <controls:UniformViewHost VerticalAlignment="Stretch" DataContext="{Binding}" />
+                                </controls:SectionView>
+                            </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

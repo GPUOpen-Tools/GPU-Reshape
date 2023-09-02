@@ -24,27 +24,17 @@
   
 -->
 
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
-             xmlns:r="clr-namespace:Studio.Resources"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="Studio.Views.Controls.BusModeButton">
-    <UserControl.DataContext>
-        <controls:BusModeButtonViewModel/>
-    </UserControl.DataContext>
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Design.PreviewWith>
+        <Grid Width="200" Height="200">
+            <TextBox Width="100" VerticalAlignment="Center" Text="Text!" />
+        </Grid>
+    </Design.PreviewWith>
     
-    <Button 
-        ToolTip.Tip="{x:Static r:Resources.BusMode_Toggle_Tooltip}"
-        Classes="Icon"
-        Width="20"
-        Height="22" 
-        Command="{Binding Toggle}">
-        <PathIcon 
-            Data="{Binding StatusGeometry}" 
-            Foreground="{Binding StatusColor}" 
-            Width="13" />
-    </Button>
-</UserControl>
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource InputBorderColor}"/>
+        <Setter Property="CornerRadius" Value="1" />
+    </Style>
+</Styles>
