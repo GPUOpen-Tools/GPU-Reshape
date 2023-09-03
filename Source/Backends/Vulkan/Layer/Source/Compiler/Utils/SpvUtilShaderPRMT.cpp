@@ -257,6 +257,10 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
                     ASSERT(false, "Backtracking not implemented for unexposed p-code");
                     return {};
                 }
+                case SpvOpImage: {
+                    // Get from sampled image operand
+                    return GetSourceResourceDecoration(job, stream, instr->Word(3));
+                }
                 case SpvOpCopyObject: {
                     // Get from source operand
                     return GetSourceResourceDecoration(job, stream, instr->Word(3));
