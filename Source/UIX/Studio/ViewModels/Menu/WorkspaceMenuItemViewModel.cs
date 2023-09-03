@@ -25,6 +25,7 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Media;
 using DynamicData;
 using ReactiveUI;
 using Studio.Services;
@@ -62,6 +63,11 @@ namespace Studio.ViewModels.Menu
         public ICommand? Command { get; } = null;
 
         /// <summary>
+        /// Icon for this item
+        /// </summary>
+        public StreamGeometry? Icon => null;
+
+        /// <summary>
         /// Constructor
         /// </summary>
         public WorkspaceMenuItemViewModel()
@@ -71,7 +77,8 @@ namespace Studio.ViewModels.Menu
                 new MenuItemViewModel()
                 {
                     Header = "Launch Application",
-                    Command = ReactiveCommand.Create(OnLaunchApplication)
+                    Command = ReactiveCommand.Create(OnLaunchApplication),
+                    IconPath = "OpenInApp"
                 },
                 
                 new MenuItemViewModel()
@@ -82,7 +89,8 @@ namespace Studio.ViewModels.Menu
                 new MenuItemViewModel()
                 {
                     Header = "Create Connection",
-                    Command = ReactiveCommand.Create(OnCreateConnection)
+                    Command = ReactiveCommand.Create(OnCreateConnection),
+                    IconPath = "Connect"
                 },
                 
                 new MenuItemViewModel()

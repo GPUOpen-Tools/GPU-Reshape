@@ -70,8 +70,6 @@
                             </DockTabStrip.DataTemplates>
                         </ct:CollapsableDockTabStrip>
 
-                        <Separator x:Name="PART_Separator" />
-
                         <Border x:Name="PART_Border" Margin="0 30 0 0" Padding="0 5 0 0" IsVisible="{Binding IsExpanded}">
                             <DockableControl DataContext="{Binding ActiveDockable}"
                                              TrackingMode="Visible">

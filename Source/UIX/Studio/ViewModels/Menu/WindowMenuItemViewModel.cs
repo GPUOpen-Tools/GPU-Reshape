@@ -25,6 +25,7 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Media;
 using DynamicData;
 using ReactiveUI;
 using Studio.Extensions;
@@ -61,6 +62,11 @@ namespace Studio.ViewModels.Menu
         /// Target command
         /// </summary>
         public ICommand? Command { get; } = null;
+
+        /// <summary>
+        /// Icon for this item
+        /// </summary>
+        public StreamGeometry? Icon => null;
 
         /// <summary>
         /// Constructor

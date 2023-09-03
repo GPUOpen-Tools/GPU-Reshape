@@ -48,14 +48,14 @@
     <Grid RowDefinitions="30,*,25" ColumnDefinitions="*" Name="MainGrid">
         <!-- Toolbox left hand side -->
         <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0">
-            <Image Source="/Resources/Icons/Icon_NoFrame16.png" Width="16" Margin="5,0,0,0" HorizontalAlignment="Left" />
+            <Image Source="/Resources/Icons/Icon_NoFrame16.png" Width="16" Margin="8,0,0,0" HorizontalAlignment="Left" />
 
             <Menu 
                 Grid.Row="0" 
                 Grid.Column="0" 
                 VerticalAlignment="Center" 
                 Height="30" 
-                Margin="5,0,0,0"
+                Margin="8,0,0,0"
                 Items="{Binding Menu}">
                 <Menu.Styles>
                     <Style Selector="MenuItem">
@@ -63,6 +63,13 @@
                         <Setter Property="Items" Value="{Binding (m:IMenuItemViewModel).Items}"/>
                         <Setter Property="Command" Value="{Binding (m:IMenuItemViewModel).Command}"/>
                         <Setter Property="IsEnabled" Value="{Binding Path=(m:IMenuItemViewModel).IsEnabled}"/>
+                        <Setter Property="Icon">
+                            <Template>
+                                <PathIcon 
+                                    Width="12"
+                                    Data="{Binding Path=(m:IMenuItemViewModel).Icon}"/>
+                            </Template>
+                        </Setter>
                     </Style>
                 </Menu.Styles>
             </Menu>

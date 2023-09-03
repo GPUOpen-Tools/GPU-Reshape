@@ -24,6 +24,7 @@
 
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Avalonia.Media;
 
 namespace Studio.ViewModels.Menu
 {
@@ -48,5 +49,15 @@ namespace Studio.ViewModels.Menu
         /// If this context menu is enabled
         /// </summary>
         public bool IsEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Icon for this item
+        /// </summary>
+        public StreamGeometry? Icon => ResourceLocator.GetIcon(IconPath);
+
+        /// <summary>
+        /// Path for the icon
+        /// </summary>
+        public string IconPath = string.Empty;
     }
 }

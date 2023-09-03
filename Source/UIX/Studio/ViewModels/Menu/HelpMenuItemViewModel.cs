@@ -26,6 +26,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows.Input;
 using Avalonia;
+using Avalonia.Media;
 using DynamicData;
 using ReactiveUI;
 using Studio.Services;
@@ -63,6 +64,11 @@ namespace Studio.ViewModels.Menu
         public ICommand? Command { get; } = null;
 
         /// <summary>
+        /// Icon for this item
+        /// </summary>
+        public StreamGeometry? Icon => null;
+
+        /// <summary>
         /// Constructor
         /// </summary>
         public HelpMenuItemViewModel()
@@ -72,7 +78,8 @@ namespace Studio.ViewModels.Menu
                 new MenuItemViewModel()
                 {
                     Header = "Documentation",
-                    Command = ReactiveCommand.Create(OnDocumentation)
+                    Command = ReactiveCommand.Create(OnDocumentation),
+                    IconPath = "Question"
                 },
                 
                 new MenuItemViewModel()

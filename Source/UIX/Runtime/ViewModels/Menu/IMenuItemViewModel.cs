@@ -24,6 +24,7 @@
 
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Avalonia.Media;
 
 namespace Studio.ViewModels.Menu
 {
@@ -48,6 +49,11 @@ namespace Studio.ViewModels.Menu
         /// Is this menu item enabled?
         /// </summary>
         public bool IsEnabled { get; set; }
+
+        /// <summary>
+        /// Icon for this item
+        /// </summary>
+        public StreamGeometry? Icon { get; }
     }
 
     public static class MenuItemExtensions
