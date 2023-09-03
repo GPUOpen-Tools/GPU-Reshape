@@ -108,11 +108,7 @@ namespace Runtime.Threading
                 }
                 
                 // If we're slacking, re-enqueue, otherwise stop it
-                if (_stepSlackCounter > 0)
-                {
-                    EnqueueMainThread();
-                }
-                else
+                if (_stepSlackCounter == 0)
                 {
                     _disposable?.Dispose();
                     _enqueued = false;
