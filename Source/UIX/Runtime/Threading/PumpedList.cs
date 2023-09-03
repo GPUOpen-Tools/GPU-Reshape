@@ -98,6 +98,9 @@ namespace Runtime.Threading
                 return;
             }
             
+            // Mark as local pending
+            _localPending = true;
+            
             // Thread has requested an update
             lock (this)
             {
@@ -115,7 +118,7 @@ namespace Runtime.Threading
             }
             
             // Schedule
-            GlobalBus.Add(Interval, Commit);
+            GlobalIntervalBus.Add(Interval, Commit);
         }
 
         /// <summary>
@@ -123,6 +126,8 @@ namespace Runtime.Threading
         /// </summary>
         private void Commit()
         {
+            _localPending = false;
+            
             lock (this)
             {
                 Debug.Assert(_committed != null);

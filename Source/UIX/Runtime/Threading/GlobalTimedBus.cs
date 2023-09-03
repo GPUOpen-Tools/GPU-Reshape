@@ -29,9 +29,9 @@ using Avalonia.Threading;
 
 namespace Runtime.Threading
 {
-    public static class GlobalBus
+    public static class GlobalIntervalBus
     {
-        static GlobalBus()
+        static GlobalIntervalBus()
         {
             // Start watch, potentially hi-res
             Stopwatch.Start();

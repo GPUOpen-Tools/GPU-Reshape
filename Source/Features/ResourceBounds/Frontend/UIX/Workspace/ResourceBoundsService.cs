@@ -30,6 +30,7 @@ using Studio.ViewModels.Workspace;
 using Message.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
+using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
@@ -204,7 +205,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                 {
                     if (kv.Value > 0)
                     {
-                        Dispatcher.UIThread.InvokeAsync(() => { value.Count += kv.Value; });
+                        ValidationMergePumpBus.Increment(value, kv.Value);
                     }
                 }
             }

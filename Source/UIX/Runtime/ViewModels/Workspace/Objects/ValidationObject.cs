@@ -88,6 +88,14 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
+        /// Notify that the count has changed
+        /// </summary>
+        public void NotifyCountChanged()
+        {
+            this.RaisePropertyChanged(nameof(Count));
+        }
+
+        /// <summary>
         /// Internal count
         /// </summary>
         private uint _count;
