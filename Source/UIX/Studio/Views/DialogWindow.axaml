@@ -29,6 +29,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModels="clr-namespace:Studio.ViewModels;assembly=UIX.Studio.Runtime"
+        xmlns:controls="clr-namespace:Studio.Views.Controls"
         mc:Ignorable="d" Width="400" d:DesignWidth="400"
         x:Class="Studio.Views.DialogWindow"
         x:DataType="viewModels:DialogViewModel"
@@ -39,23 +40,17 @@
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="PreferSystemChrome"
+        ExtendClientAreaChromeHints="NoChrome"
         Title="DialogView"
         CanResize="False"
         >
     <StackPanel Margin="5 5 5 5" Orientation="Vertical">
         <!-- Tool Header -->
-        <StackPanel VerticalAlignment="Top" Orientation="Horizontal" IsHitTestVisible="False">
-            <Image Source="/Resources/Icons/Icon_NoFrame.png" Width="17" />
+        <controls:WindowChrome Title="{Binding Title}" Separator="True"/>
 
-            <TextBlock 
-                Margin="7,0,0,0" 
-                Text="{Binding Title, FallbackValue=Dialog Title}" />
-        </StackPanel>
-
-        <!-- Tool Result -->
+        <!-- Tool Content -->
         <TextBlock
-            Margin="25 10 0 10"
+            Margin="25 10 15 10"
             TextWrapping="Wrap"
             Text="{Binding Content, FallbackValue=Dialog Content}" />
 
@@ -78,6 +73,7 @@
                 Orientation="Horizontal">
                 <Button
                     x:Name="CancelButton"
+                    Classes="Primary"
                     HorizontalAlignment="Right">
                     Cancel
                 </Button>
