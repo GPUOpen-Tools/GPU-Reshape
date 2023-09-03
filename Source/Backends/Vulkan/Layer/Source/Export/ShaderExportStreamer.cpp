@@ -109,6 +109,9 @@ ShaderExportQueueState *ShaderExportStreamer::AllocateQueueState(QueueState* que
 }
 
 ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
+    std::lock_guard guard(mutex);
+
+    // Existing?
     if (ShaderExportStreamState* streamState = streamStatePool.TryPop()) {
         return streamState;
     }
@@ -319,15 +322,49 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
 }
 
 void ShaderExportStreamer::Process() {
-    // ! Linear view locks
-    for (QueueState* queueState : table->states_queue.GetLinear()) {
-        ProcessSegmentsNoQueueLock(queueState->exportState);
+    // Released handles
+    TrivialStackVector<CommandContextHandle, 32u> completedHandles;
+
+    // Handle segments
+    {
+        // Maintain lock hierarchy, streamer -> queue
+        std::lock_guard guard(mutex);
+        
+        // Process queues
+        // ! Linear view locks
+        for (QueueState* queueState : table->states_queue.GetLinear()) {
+            ProcessSegmentsNoQueueLock(queueState->exportState, completedHandles);
+        }
+    }
+    
+    // Invoke proxies for all handles
+    for (CommandContextHandle handle : completedHandles) {
+        for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+            proxyTable.join.TryInvoke(handle);
+        }
     }
 }
 
 void ShaderExportStreamer::Process(ShaderExportQueueState* queueState) {
-    std::lock_guard guard(table->states_queue.GetLock());
-    ProcessSegmentsNoQueueLock(queueState);
+    // Released handles
+    TrivialStackVector<CommandContextHandle, 32u> completedHandles;
+
+    // Handle segments
+    {
+        // Maintain lock hierarchy, streamer -> queue
+        std::lock_guard guard(mutex);
+        
+        // Process queue
+        std::lock_guard queueGuard(table->states_queue.GetLock());
+        ProcessSegmentsNoQueueLock(queueState, completedHandles);
+    }
+    
+    // Invoke proxies for all handles
+    for (CommandContextHandle handle : completedHandles) {
+        for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+            proxyTable.join.TryInvoke(handle);
+        }
+    }
 }
 
 void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBindPoint bindPoint, VkCommandBuffer commandBuffer) {
@@ -577,14 +614,14 @@ void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExpo
     state->pending = false;
 }
 
-void ShaderExportStreamer::ProcessSegmentsNoQueueLock(ShaderExportQueueState* queue) {
+void ShaderExportStreamer::ProcessSegmentsNoQueueLock(ShaderExportQueueState* queue, TrivialStackVector<CommandContextHandle, 32u>& completedHandles) {
     // TODO: Does not hold true for all queues
     auto it = queue->liveSegments.begin();
 
     // Segments are enqueued in order of completion
     for (; it != queue->liveSegments.end(); it++) {
         // If failed to process, none of the succeeding are ready
-        if (!ProcessSegment(*it)) {
+        if (!ProcessSegment(*it, completedHandles)) {
             break;
         }
 
@@ -596,7 +633,7 @@ void ShaderExportStreamer::ProcessSegmentsNoQueueLock(ShaderExportQueueState* qu
     queue->liveSegments.erase(queue->liveSegments.begin(), it);
 }
 
-bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
+bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment, TrivialStackVector<CommandContextHandle, 32u>& completedHandles) {
     // Ready?
     if (!segment->fence->IsCommitted(segment->fenceNextCommitId)) {
         return false;
@@ -645,11 +682,9 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
     ASSERT(segment->versionSegPoint.id != UINT32_MAX, "Untracked versioning");
     table->versioningController->CollapseOnFork(segment->versionSegPoint);
 
-    // Invoke proxies for all handles
+    // Collect all handles
     for (CommandContextHandle handle : segment->commandContextHandles) {
-        for (const FeatureHookTable &proxyTable: table->featureHookTables) {
-            proxyTable.join.TryInvoke(handle);
-        }
+        completedHandles.Add(handle);
     }
 
     // Done!
@@ -657,8 +692,6 @@ bool ShaderExportStreamer::ProcessSegment(ShaderExportStreamSegment *segment) {
 }
 
 void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue, ShaderExportStreamSegment *segment) {
-    std::lock_guard guard(mutex);
-
     // Get queue
     QueueState* queueState = table->states_queue.GetNoLock(queue->queue);
 

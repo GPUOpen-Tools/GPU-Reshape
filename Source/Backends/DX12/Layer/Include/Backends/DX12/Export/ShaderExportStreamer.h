@@ -38,6 +38,7 @@
 #include <Common/Allocator/Vector.h>
 #include <Common/Containers/ObjectPool.h>
 #include <Common/Containers/TrivialObjectPool.h>
+#include <Common/Containers/TrivialStackVector.h>
 
 // Std
 #include <mutex>
@@ -262,10 +263,10 @@ private:
 
     /// Process all segments within a queue
     /// \param queue the queue state
-    void ProcessSegmentsNoQueueLock(CommandQueueState* queue);
+    void ProcessSegmentsNoQueueLock(CommandQueueState* queue, TrivialStackVector<CommandContextHandle, 32u>& completedHandles);
 
     /// Process a segment
-    bool ProcessSegment(ShaderExportStreamSegment* segment);
+    bool ProcessSegment(ShaderExportStreamSegment* segment, TrivialStackVector<CommandContextHandle, 32u>& completedHandles);
 
     /// Free a segment
     void FreeSegmentNoQueueLock(CommandQueueState* queue, ShaderExportStreamSegment* segment);
