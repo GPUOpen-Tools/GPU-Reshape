@@ -38,7 +38,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
-    public class InstrumentAllContextViewModel : ReactiveObject, IInstrumentContextViewModel
+    public class InstrumentAllContextViewModel : ReactiveObject, IInstrumentAllContextViewModel
     {
         /// <summary>
         /// Target view model of the context
@@ -67,6 +67,11 @@ namespace Studio.ViewModels.Contexts
         /// Target command
         /// </summary>
         public ICommand Command { get; }
+
+        /// <summary>
+        /// All ignored features
+        /// </summary>
+        public ISourceList<string> IgnoredFeatures { get; } = new SourceList<string>();
 
         /// <summary>
         /// Is this context enabled?
@@ -99,6 +104,13 @@ namespace Studio.ViewModels.Contexts
             // Create all instrumentation properties
             foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspace()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
             {
+                // Ignored?
+                if (IgnoredFeatures.Items.Contains(service.Name))
+                {
+                    continue;
+                }
+                
+                // Create feature
                 if (await service.CreateInstrumentationObjectProperty(propertyViewModel, false) is { } instrumentationObjectProperty)
                 {
                     propertyViewModel.Properties.Add(instrumentationObjectProperty);

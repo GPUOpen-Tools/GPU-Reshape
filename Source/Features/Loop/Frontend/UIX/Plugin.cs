@@ -32,6 +32,7 @@ using Studio.Services;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
+using Studio.ViewModels.Workspace.Configurations;
 
 namespace GRS.Features.Loop.UIX
 {
@@ -53,13 +54,23 @@ namespace GRS.Features.Loop.UIX
         /// <returns></returns>
         public bool Install()
         {
+            // Get instrument context
+            var instrumentContextViewModel = AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel.GetItem<IInstrumentContextViewModel>();
+            
             // Add to context menus
-            AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel
-                .GetItem<IInstrumentContextViewModel>()?
-                .Items.Add(new LoopContextMenuItemViewModel());
+            instrumentContextViewModel?.Items.Add(new LoopContextMenuItemViewModel());
+            
+            // Ignore the All loop context
+            instrumentContextViewModel?.GetItem<IInstrumentAllContextViewModel>()?.IgnoredFeatures.Add("Loop");
+            
+            // Get workspace service
+            var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
             
             // Add workspace extension
-            AvaloniaLocator.Current.GetService<IWorkspaceService>()?.Extensions.Add(this);
+            workspaceService?.Extensions.Add(this);
+            
+            // Ignore the All loop configuration
+            workspaceService?.GetConfiguration<IAllConfigurationViewModel>()?.IgnoredFeatures.Add("Loop");
 
             // OK
             return true;

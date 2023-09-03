@@ -32,7 +32,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace.Configurations
 {
-    public class AllConfigurationViewModel : IWorkspaceConfigurationViewModel
+    public class AllConfigurationViewModel : IAllConfigurationViewModel
     {
         /// <summary>
         /// Name of this configuration
@@ -50,13 +50,20 @@ namespace Studio.ViewModels.Workspace.Configurations
         public bool RequiresSynchronousRecording => true;
 
         /// <summary>
+        /// All ignored features
+        /// </summary>
+        public ISourceList<string> IgnoredFeatures { get; } = new SourceList<string>();
+
+        /// <summary>
         /// Get the description for a message
         /// </summary>
         public string GetDescription(IWorkspaceViewModel workspaceViewModel)
         {
+            // Get features, filter by ignore list
             IEnumerable<string>? features = workspaceViewModel.PropertyCollection
                 .GetProperty<IFeatureCollectionViewModel>()?.Features
-                .Select(x => x.Name);
+                .Select(x => x.Name)
+                .Where(x => !IgnoredFeatures.Items.Contains(x));
                 
             return $"{Resources.Resources.Workspace_Configuration_All_Header} {features?.NaturalJoin() ?? "None"}";
         }
@@ -75,6 +82,13 @@ namespace Studio.ViewModels.Workspace.Configurations
             // Create all instrumentation properties
             foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspace()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
             {
+                // Ignored?
+                if (IgnoredFeatures.Items.Contains(service.Name))
+                {
+                    continue;
+                }
+                
+                // Create feature
                 if (await service.CreateInstrumentationObjectProperty(propertyViewModel, true) is { } instrumentationObjectProperty)
                 {
                     propertyViewModel.Properties.Add(instrumentationObjectProperty);
