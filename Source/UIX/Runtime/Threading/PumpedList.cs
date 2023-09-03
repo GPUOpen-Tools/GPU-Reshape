@@ -93,13 +93,10 @@ namespace Runtime.Threading
         private void Schedule()
         {
             // Check thread specific value
-            if (_localPending)
+            if (_remotePending)
             {
                 return;
             }
-            
-            // Mark as local pending
-            _localPending = true;
             
             // Thread has requested an update
             lock (this)
@@ -126,8 +123,6 @@ namespace Runtime.Threading
         /// </summary>
         private void Commit()
         {
-            _localPending = false;
-            
             lock (this)
             {
                 Debug.Assert(_committed != null);
@@ -146,11 +141,6 @@ namespace Runtime.Threading
         /// Target list
         /// </summary>
         private IList<T> _target;
-
-        /// <summary>
-        /// Thread visible pending state
-        /// </summary>
-        private volatile bool _localPending = false;
 
         /// <summary>
         /// Remote pending state

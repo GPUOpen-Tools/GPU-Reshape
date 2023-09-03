@@ -90,8 +90,8 @@
                 IsVisible="{Binding DetailViewModel, Converter={StaticResource DetailVisibilityConverter}}">
                 <Button 
                     Classes="Icon"
-                    Width="20"
-                    Height="22"
+                    Width="25"
+                    Height="25"
                     ToolTip.Tip="{x:Static r:Resources.Shader_Code_ShowInSource}"
                     Command="{Binding ShowInSource}">
                     <PathIcon Data="{StaticResource Code}" Margin="1 0 0 0" Width="14" />
@@ -99,8 +99,8 @@
                 
                 <Button 
                     Classes="Icon"
-                    Width="20"
-                    Height="22"
+                    Width="25"
+                    Height="25"
                     Command="{Binding CloseDetail}">
                     <PathIcon Data="{StaticResource Close}" Width="12" />
                 </Button>

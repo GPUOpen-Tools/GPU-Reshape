@@ -71,7 +71,7 @@
             Margin="20 0 0 0"
             Items="{Binding FilteredValidationObjects}" 
             IsReadOnly="True"
-            Height="380"
+            Height="375"
             CanUserResizeColumns="True"
             VerticalAlignment="Top"
             HorizontalAlignment="Stretch">
