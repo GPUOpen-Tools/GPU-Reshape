@@ -22,28 +22,42 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-namespace Studio.ViewModels.Workspace
+using System;
+using System.Globalization;
+using Avalonia.Data.Converters;
+using Studio.ViewModels.Workspace;
+
+namespace Studio.ValueConverters
 {
-    public interface IWorkspaceConfigurationViewModel
+    public class WorkspaceConfigurationFlagVisibilityConverter : IValueConverter
     {
         /// <summary>
-        /// Name of this configuration
+        /// Convert value
         /// </summary>
-        public string Name { get; }
-        
-        /// <summary>
-        /// Configuration flags
-        /// </summary>
-        public WorkspaceConfigurationFlag Flags { get; }
-        
-        /// <summary>
-        /// Get the description for a message
-        /// </summary>
-        public string GetDescription(IWorkspaceViewModel workspaceViewModel);
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            // Casting
+            var flags = (WorkspaceConfigurationFlag)(value ?? WorkspaceConfigurationFlag.None);
+            var test  = (WorkspaceConfigurationFlag)(parameter ?? WorkspaceConfigurationFlag.None);
+
+            // Perform test
+            bool result = flags.HasFlag(test & WorkspaceConfigurationFlag.All);
+            
+            // Handle negation
+            if (test.HasFlag(WorkspaceConfigurationFlag.BindingNegation))
+            {
+                result = !result;
+            }
+            
+            return result;
+        }
 
         /// <summary>
-        /// Install this configuration
+        /// Convert back
         /// </summary>
-        public void Install(IWorkspaceViewModel workspaceViewModel);
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

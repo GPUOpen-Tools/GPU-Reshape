@@ -69,6 +69,7 @@ namespace GRS.Features.ResourceBounds.UIX
             {
                 Name = Resources.Workspace_Configuration_ResourceBounds_Name,
                 Description = Resources.Workspace_Configuration_ResourceBounds_Description,
+                Flags = WorkspaceConfigurationFlag.CanDetail,
                 FeatureName = "Resource Bounds"
             });
 

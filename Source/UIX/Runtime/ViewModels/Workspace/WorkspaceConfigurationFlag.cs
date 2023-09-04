@@ -22,28 +22,51 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
+
 namespace Studio.ViewModels.Workspace
 {
-    public interface IWorkspaceConfigurationViewModel
+    [Flags]
+    public enum WorkspaceConfigurationFlag
     {
         /// <summary>
-        /// Name of this configuration
+        /// No flags
         /// </summary>
-        public string Name { get; }
+        None = 0,
         
         /// <summary>
-        /// Configuration flags
+        /// Supports detailed reporting
         /// </summary>
-        public WorkspaceConfigurationFlag Flags { get; }
-        
-        /// <summary>
-        /// Get the description for a message
-        /// </summary>
-        public string GetDescription(IWorkspaceViewModel workspaceViewModel);
+        CanDetail = (1 << 0),
 
         /// <summary>
-        /// Install this configuration
+        /// May be safe guarded
         /// </summary>
-        public void Install(IWorkspaceViewModel workspaceViewModel);
+        CanSafeGuard = (1 << 1),
+        
+        /// <summary>
+        /// Requires synchronous reporting for valid instrumentation
+        /// </summary>
+        RequiresSynchronousRecording = (1 << 2),
+        
+        /// <summary>
+        /// All valid flags
+        /// </summary>
+        All = (1 << 3) - 1,
+        
+        /// <summary>
+        /// Binding only, negates the test
+        /// </summary>
+        BindingNegation = (1 << 3)
+    }
+
+    public static class WorkspaceConfigurationFlagBindings
+    {
+        /// <summary>
+        /// Recording binding
+        /// </summary>
+        public static WorkspaceConfigurationFlag RequiresSynchronousRecordingBinding =
+            WorkspaceConfigurationFlag.RequiresSynchronousRecording | 
+            WorkspaceConfigurationFlag.BindingNegation;
     }
 }

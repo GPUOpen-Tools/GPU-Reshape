@@ -76,7 +76,7 @@ namespace GRS.Features.Initialization.UIX
             {
                 Name = Resources.Workspace_Configuration_Initialization_Name,
                 Description = Resources.Workspace_Configuration_Initialization_Description,
-                RequiresSynchronousRecording = true,
+                Flags = WorkspaceConfigurationFlag.CanDetail | WorkspaceConfigurationFlag.RequiresSynchronousRecording,
                 FeatureName = "Initialization"
             });
 

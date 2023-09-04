@@ -117,6 +117,20 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
+        /// Should the configuration report detailed errors?
+        /// </summary>
+        [DataMember]
+        public bool Detail
+        {
+            get => _detail;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _detail, value);
+                OnDetailChanged();
+            }
+        }
+
+        /// <summary>
         /// Should the configuration safe guard?
         /// </summary>
         [DataMember]
@@ -341,12 +355,13 @@ namespace Studio.ViewModels
             SelectedConfiguration.Install(WorkspaceViewModel);
 
             // Force recording state?
-            if (SelectedConfiguration.RequiresSynchronousRecording)
+            if (SelectedConfiguration.Flags.HasFlag(WorkspaceConfigurationFlag.RequiresSynchronousRecording))
             {
                 SynchronousRecording = true;
             }
             
             // Re-apply properties
+            OnDetailChanged();
             OnSafeGuardChanged();
             OnSynchronousRecordingChanged();
 
@@ -365,6 +380,17 @@ namespace Studio.ViewModels
             if ((WorkspaceViewModel.PropertyCollection as IInstrumentableObject)?.GetOrCreateInstrumentationProperty()?.GetProperty<InstrumentationConfigViewModel>() is {} config)
             {
                 config.SafeGuard = SafeGuard;
+            }
+        }
+
+        /// <summary>
+        /// Invoked on detailed changes
+        /// </summary>
+        private void OnDetailChanged()
+        {
+            if ((WorkspaceViewModel.PropertyCollection as IInstrumentableObject)?.GetOrCreateInstrumentationProperty()?.GetProperty<InstrumentationConfigViewModel>() is {} config)
+            {
+                config.Detail = Detail;
             }
         }
 
@@ -695,6 +721,11 @@ namespace Studio.ViewModels
         /// Internal safe guard state
         /// </summary>
         private bool _safeGuard;
+
+        /// <summary>
+        /// Internal detail state
+        /// </summary>
+        private bool _detail;
         
         /// <summary>
         /// Internal synchronous recording state

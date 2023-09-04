@@ -72,6 +72,7 @@ namespace GRS.Features.ResourceBounds.UIX
             {
                 Name = Resources.Workspace_Configuration_ExportStability_Name,
                 Description = Resources.Workspace_Configuration_ExportStability_Description,
+                Flags = WorkspaceConfigurationFlag.CanDetail,
                 FeatureName = "Export Stability"
             });
 

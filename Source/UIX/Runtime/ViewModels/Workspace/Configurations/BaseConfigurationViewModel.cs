@@ -48,14 +48,9 @@ namespace Studio.ViewModels.Workspace.Configurations
         public string FeatureName { get; set; }
 
         /// <summary>
-        /// Can this configuration safe guard?
+        /// Configuration flags
         /// </summary>
-        public bool CanSafeGuard { get; set; }
-
-        /// <summary>
-        /// Does this configuration require safe guarding?
-        /// </summary>
-        public bool RequiresSynchronousRecording { get; set; }
+        public WorkspaceConfigurationFlag Flags { get; set; } = WorkspaceConfigurationFlag.None;
 
         /// <summary>
         /// Get the description for a message

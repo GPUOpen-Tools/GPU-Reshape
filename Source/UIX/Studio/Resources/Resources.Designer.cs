@@ -138,7 +138,16 @@ namespace Studio.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Safe guarding prevents undefined behaviour from taking place due to erroneous operations.
+        ///   Looks up a localized string similar to Enables detailed validation reporting, affects performance..
+        /// </summary>
+        public static string Launch_Detail {
+            get {
+                return ResourceManager.GetString("Launch_Detail", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Safe guarding prevents undefined behaviour from taking place due to erroneous operations. Affects performance..
         /// </summary>
         public static string Launch_SafeGuard {
             get {

@@ -40,14 +40,12 @@ namespace Studio.ViewModels.Workspace.Configurations
         public string Name { get; } = Resources.Resources.Workspace_Configuration_All_Name;
 
         /// <summary>
-        /// Can this configuration safe guard?
+        /// Configuration flags
         /// </summary>
-        public bool CanSafeGuard => true;
-
-        /// <summary>
-        /// Does this configuration require safe guarding?
-        /// </summary>
-        public bool RequiresSynchronousRecording => true;
+        public WorkspaceConfigurationFlag Flags =>
+            WorkspaceConfigurationFlag.RequiresSynchronousRecording |
+            WorkspaceConfigurationFlag.CanSafeGuard |
+            WorkspaceConfigurationFlag.CanDetail;
 
         /// <summary>
         /// All ignored features

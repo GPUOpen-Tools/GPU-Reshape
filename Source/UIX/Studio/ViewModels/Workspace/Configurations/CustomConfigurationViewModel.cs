@@ -32,14 +32,9 @@ namespace Studio.ViewModels.Workspace.Configurations
         public string Name { get; } = Resources.Resources.Workspace_Configuration_Custom_Name;
 
         /// <summary>
-        /// Can this configuration safe guard?
+        /// Configuration flags
         /// </summary>
-        public bool CanSafeGuard => true;
-
-        /// <summary>
-        /// Does this configuration require safe guarding?
-        /// </summary>
-        public bool RequiresSynchronousRecording => false;
+        public WorkspaceConfigurationFlag Flags => WorkspaceConfigurationFlag.None;
 
         /// <summary>
         /// Get the description for a message

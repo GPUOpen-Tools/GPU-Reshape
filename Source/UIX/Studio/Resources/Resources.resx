@@ -118,9 +118,12 @@
         <value>All configurations</value>
     </data>
     <data name="Launch_SafeGuard" xml:space="preserve">
-        <value>Safe guarding prevents undefined behaviour from taking place due to erroneous operations</value>
+        <value>Safe guarding prevents undefined behaviour from taking place due to erroneous operations. Affects performance.</value>
     </data>
     <data name="Launch_SynchronousRecording" xml:space="preserve">
         <value>Enables use of synchronous recording, pipeline usage waits on compilation to finish. Required for certain features.</value>
+    </data>
+    <data name="Launch_Detail" xml:space="preserve">
+        <value>Enables detailed validation reporting, affects performance.</value>
     </data>
 </root>

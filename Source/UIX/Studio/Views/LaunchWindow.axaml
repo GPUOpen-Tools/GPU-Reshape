@@ -54,6 +54,7 @@
         <ResourceDictionary>
             <valueConverters:ConnectionStatusToProgressConverter x:Key="ConnectionStatusToProgressConverter" />
             <valueConverters:ConfigurationVisibilityConverter x:Key="ConfigurationVisibilityConverter" />
+            <valueConverters:WorkspaceConfigurationFlagVisibilityConverter x:Key="WorkspaceConfigurationFlagVisibilityConverter" />
         </ResourceDictionary>
     </Window.Resources>
     
@@ -129,16 +130,23 @@
                 
                     <CheckBox
                         IsChecked="{Binding SafeGuard}"
-                        IsVisible="{Binding SelectedConfiguration.CanSafeGuard}"
+                        IsVisible="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlag.CanSafeGuard}}"
                         Margin="0 10 0 0"
                         ToolTip.Tip="{x:Static r:Resources.Launch_SafeGuard}"
                         Content="Safe guarding">
                     </CheckBox>
                 
                     <CheckBox
+                        IsChecked="{Binding Detail}"
+                        IsVisible="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlag.CanDetail}}"
+                        Margin="0 10 0 0"
+                        ToolTip.Tip="{x:Static r:Resources.Launch_Detail}"
+                        Content="Detailed reporting">
+                    </CheckBox>
+                
+                    <CheckBox
                         IsChecked="{Binding SynchronousRecording}"
-                        IsEnabled="{Binding !SelectedConfiguration.RequiresSynchronousRecording}"
-                        
+                        IsEnabled="{Binding SelectedConfiguration.Flags, Converter={StaticResource WorkspaceConfigurationFlagVisibilityConverter}, ConverterParameter={x:Static workspace:WorkspaceConfigurationFlagBindings.RequiresSynchronousRecordingBinding}}"
                         Margin="0 10 0 0"
                         ToolTip.Tip="{x:Static r:Resources.Launch_SynchronousRecording}"
                         Content="Synchronous recording">

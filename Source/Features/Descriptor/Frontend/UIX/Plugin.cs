@@ -72,8 +72,8 @@ namespace GRS.Features.Descriptor.UIX
             {
                 Name = Resources.Workspace_Configuration_Descriptor_Name,
                 Description = Resources.Workspace_Configuration_Descriptor_Description,
-                FeatureName = "Descriptor",
-                CanSafeGuard = true
+                Flags = WorkspaceConfigurationFlag.CanDetail | WorkspaceConfigurationFlag.CanSafeGuard,
+                FeatureName = "Descriptor"
             });
 
             // OK

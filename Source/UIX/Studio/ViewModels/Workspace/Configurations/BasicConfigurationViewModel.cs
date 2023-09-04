@@ -37,14 +37,9 @@ namespace Studio.ViewModels.Workspace.Configurations
         public string Name { get; } = Resources.Resources.Workspace_Configuration_Basic_Name;
 
         /// <summary>
-        /// Can this configuration safe guard?
+        /// Configuration flags
         /// </summary>
-        public bool CanSafeGuard => false;
-
-        /// <summary>
-        /// Does this configuration require safe guarding?
-        /// </summary>
-        public bool RequiresSynchronousRecording => false;
+        public WorkspaceConfigurationFlag Flags => WorkspaceConfigurationFlag.CanDetail;
 
         /// <summary>
         /// All configurations within
