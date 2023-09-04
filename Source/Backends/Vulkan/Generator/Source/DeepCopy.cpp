@@ -191,7 +191,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
         bool isArray{false};
 
         // Array size
-        uint32_t arrayCount = 0;
+        std::string arrayCount = "0";
 
         // Postfixes?
         for (auto postfix = memberType->NextSibling(); postfix != memberName; postfix = postfix->NextSibling()) {
@@ -213,13 +213,21 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                     isArray = true;
 
                     uint64_t end = trimmed.find(']');
-                    if (end == std::string::npos) {
+                    if (end != std::string::npos) {
+                        arrayCount = trimmed.substr(1, end - 1);
+                    } else if (auto next = array->NextSibling()) {
+                        const char* value = next->Value();
+
+                        if (value && !std::strcmp(value, "enum")) {
+                            arrayCount = next->ToElement()->GetText();
+                        } else {
+                            std::cerr << "Malformed type in line: " << memberNode->GetLineNum() << ", unexpected contained array type '" << value << "'" << std::endl;
+                            return false;
+                        }
+                    } else {
                         std::cerr << "Malformed type in line: " << memberNode->GetLineNum() << ", array length end not found" << std::endl;
                         return false;
                     }
-
-                    std::string length = trimmed.substr(1, end - 1);
-                    arrayCount = std::atoi(length.c_str());
                 }
             }
         }

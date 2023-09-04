@@ -328,7 +328,7 @@ void FeatureHook_vkCmdBeginRenderPass::operator()(CommandBufferObject *object, C
     
     // Translate render targets
     for (uint32_t i = 0; i < renderPassState->deepCopy.createInfo.attachmentCount; i++) {
-        const VkAttachmentDescription& description = renderPassState->deepCopy.createInfo.pAttachments[i];
+        const VkAttachmentDescription2& description = renderPassState->deepCopy.createInfo.pAttachments[i];
 
         // Respective frame buffer view
         ImageViewState* state = frameBufferState->imageViews[i];

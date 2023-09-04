@@ -26,6 +26,38 @@
 #include "Backends/Vulkan/States/FrameBufferState.h"
 #include "Backends/Vulkan/Tables/DeviceDispatchTable.h"
 
+static void ShallowDeepCopy(RenderPassState* state, const VkRenderPassCreateInfo* pCreateInfo) {
+    // Setup shallow copy
+    VkRenderPassCreateInfo2 shallow{};
+    shallow.sType = pCreateInfo->sType;
+    shallow.pNext = pCreateInfo->pNext;
+    shallow.flags = pCreateInfo->flags;
+    shallow.attachmentCount = pCreateInfo->attachmentCount;
+
+    // Local copy
+    auto* shallowAttachments  = ALLOCA_ARRAY(VkAttachmentDescription2, pCreateInfo->attachmentCount);
+
+    // Fill copy
+    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
+        shallowAttachments[i] = {};
+        shallowAttachments[i].flags = pCreateInfo->pAttachments[i].flags;
+        shallowAttachments[i].format = pCreateInfo->pAttachments[i].format;
+        shallowAttachments[i].samples = pCreateInfo->pAttachments[i].samples;
+        shallowAttachments[i].loadOp = pCreateInfo->pAttachments[i].loadOp;
+        shallowAttachments[i].storeOp = pCreateInfo->pAttachments[i].storeOp;
+        shallowAttachments[i].stencilLoadOp = pCreateInfo->pAttachments[i].stencilLoadOp;
+        shallowAttachments[i].stencilStoreOp = pCreateInfo->pAttachments[i].stencilStoreOp;
+        shallowAttachments[i].initialLayout = pCreateInfo->pAttachments[i].initialLayout;
+        shallowAttachments[i].finalLayout = pCreateInfo->pAttachments[i].finalLayout;
+    }
+
+    // Set indirections
+    shallow.pAttachments = shallowAttachments;
+
+    // Create deep copy
+    state->deepCopy.DeepCopy(state->table->allocators, shallow);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass(VkDevice device, const VkRenderPassCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkRenderPass* pRenderPass) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
@@ -40,8 +72,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass(VkDevice device, const Vk
     state->table = table;
     state->object = *pRenderPass;
 
-    // Create deep copy
-    state->deepCopy.DeepCopy(table->allocators, *pCreateInfo);
+    // Create a deep copy from the migrated state
+    ShallowDeepCopy(state, pCreateInfo);
 
     // External user
     state->AddUser();
@@ -67,6 +99,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2(VkDevice device, const V
     state->table = table;
     state->object = *pRenderPass;
 
+    // Create deep copy
+    state->deepCopy.DeepCopy(table->allocators, *pCreateInfo);
+
     // External user
     state->AddUser();
 
@@ -90,6 +125,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2KHR(VkDevice device, cons
     auto state = new(table->allocators) RenderPassState;
     state->table = table;
     state->object = *pRenderPass;
+
+    // Create deep copy
+    state->deepCopy.DeepCopy(table->allocators, *pCreateInfo);
 
     // External user
     state->AddUser();

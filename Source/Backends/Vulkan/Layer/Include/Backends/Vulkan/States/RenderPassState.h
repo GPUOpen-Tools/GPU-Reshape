@@ -48,7 +48,7 @@ struct RenderPassState : public ReferenceObject {
     VkRenderPass object{VK_NULL_HANDLE};
 
     /// Deep copy info
-    VkRenderPassCreateInfoDeepCopy deepCopy;
+    VkRenderPassCreateInfo2DeepCopy deepCopy;
 
     /// Unique identifier, unique for the type
     uint64_t uid;
