@@ -100,6 +100,12 @@ namespace Studio.Models.IL
                 program.Lookup.Add(program.Types[i].ID, program.Types[i]);
             }
 
+            // Parse all type references
+            for (int i = 0; i < program.Types.Length; i++)
+            {
+                ParseTypeReferences(program.Types[i], node.Types[i], program);
+            }
+
             // Parse all constants
             for (int i = 0; i < program.Constants.Length; i++)
             {
@@ -173,7 +179,6 @@ namespace Studio.Models.IL
                     {
                         Kind = TypeKind.Vector,
                         ID = node.ID,
-                        ContainedType = (Type)program.Lookup[(uint)node.Contained],
                         Dimension = node.Dim
                     };
                 }
@@ -183,7 +188,6 @@ namespace Studio.Models.IL
                     {
                         Kind = TypeKind.Matrix,
                         ID = node.ID,
-                        ContainedType = (Type)program.Lookup[(uint)node.Contained],
                         Rows = node.Rows,
                         Columns = node.Columns
                     };
@@ -194,7 +198,6 @@ namespace Studio.Models.IL
                     {
                         Kind = TypeKind.Pointer,
                         ID = node.ID,
-                        Pointee = (Type)program.Lookup[(uint)node.Pointee],
                         AddressSpace = (AddressSpace)node.AddressSpace
                     };
                 }
@@ -204,7 +207,6 @@ namespace Studio.Models.IL
                     {
                         Kind = TypeKind.Array,
                         ID = node.ID,
-                        ElementType = (Type)program.Lookup[(uint)node.Contained],
                         Count = node.Count
                     };
                 }
@@ -215,7 +217,6 @@ namespace Studio.Models.IL
                         Kind = TypeKind.Texture,
                         ID = node.ID,
                         Dimension = node.Dimension,
-                        SampledType = (Type)program.Lookup[(uint)node.SampledType],
                         Format = (Format)node.Format,
                         SamplerMode = (ResourceSamplerMode)node.SamplerMode,
                         Multisampled = node.MultiSampled,
@@ -228,7 +229,6 @@ namespace Studio.Models.IL
                         Kind = TypeKind.Buffer,
                         ID = node.ID,
                         TexelType = (Format)node.TexelType,
-                        ElementType = (Type)program.Lookup[(uint)node.TexelType],
                         SamplerMode = (ResourceSamplerMode)node.SamplerMode
                     };
                 }
@@ -250,36 +250,19 @@ namespace Studio.Models.IL
                 }
                 case TypeKind.Function:
                 {
-                    FunctionType type = new()
+                    return new FunctionType()
                     {
                         Kind = TypeKind.Function,
-                        ID = node.ID,
-                        ReturnType = (Type)program.Lookup[(uint)node.ReturnType]
+                        ID = node.ID
                     };
-
-                    type.ParameterTypes = new Type[node.ParameterTypes.Count];
-                    for (int i = 0; i < type.ParameterTypes.Length; i++)
-                    {
-                        type.ParameterTypes[i] = (Type)program.Lookup[(uint)node.ParameterTypes[i]];
-                    }
-
-                    return type;
                 }
                 case TypeKind.Struct:
                 {
-                    StructType type = new()
+                    return new StructType()
                     {
                         Kind = TypeKind.Struct,
                         ID = node.ID
                     };
-
-                    type.MemberTypes = new Type[node.Members.Count];
-                    for (int i = 0; i < type.MemberTypes.Length; i++)
-                    {
-                        type.MemberTypes[i] = (Type)program.Lookup[(uint)node.Members[i]];
-                    }
-
-                    return type;
                 }
                 case TypeKind.Unexposed:
                 {
@@ -292,6 +275,80 @@ namespace Studio.Models.IL
                 default:
                 {
                     throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Parse a type
+        /// </summary>
+        private void ParseTypeReferences(Type type, dynamic node, Program program)
+        {
+            // Handle type
+            switch (type.Kind)
+            {
+                default:
+                    break;
+                case TypeKind.Vector:
+                {
+                    var typed = (VectorType)type;
+                    typed.ContainedType = (Type)program.Lookup[(uint)node.Contained];
+                    break;
+                }
+                case TypeKind.Matrix:
+                {
+                    var typed = (MatrixType)type;
+                    typed.ContainedType = (Type)program.Lookup[(uint)node.Contained];
+                    break;
+                }
+                case TypeKind.Pointer:
+                {
+                    var typed = (PointerType)type;
+                    typed.Pointee = (Type)program.Lookup[(uint)node.Pointee];
+                    break;
+                }
+                case TypeKind.Array:
+                {
+                    var typed = (ArrayType)type;
+                    typed.ElementType = (Type)program.Lookup[(uint)node.Contained];
+                    break;
+                }
+                case TypeKind.Texture:
+                {
+                    var typed = (TextureType)type;
+                    typed.SampledType = (Type)program.Lookup[(uint)node.SampledType];
+                    break;
+                }
+                case TypeKind.Buffer:
+                {
+                    var typed = (BufferType)type;
+                    typed.ElementType = (Type)program.Lookup[(uint)node.ElementType];
+                    break;
+                }
+                case TypeKind.Function:
+                {
+                    var typed = (FunctionType)type;
+                    typed.ReturnType = (Type)program.Lookup[(uint)node.ReturnType];
+
+                    typed.ParameterTypes = new Type[node.ParameterTypes.Count];
+                    for (int i = 0; i < node.ParameterTypes.Count; i++)
+                    {
+                        typed.ParameterTypes[i] = (Type)program.Lookup[(uint)node.ParameterTypes[i]];
+                    }
+
+                    break;
+                }
+                case TypeKind.Struct:
+                {
+                    var typed = (StructType)type;
+
+                    typed.MemberTypes = new Type[node.Members.Count];
+                    for (int i = 0; i < typed.MemberTypes.Length; i++)
+                    {
+                        typed.MemberTypes[i] = (Type)program.Lookup[(uint)node.Members[i]];
+                    }
+
+                    break;
                 }
             }
         }
