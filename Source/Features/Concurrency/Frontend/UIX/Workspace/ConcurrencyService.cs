@@ -30,6 +30,7 @@ using Studio.ViewModels.Workspace;
 using Message.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
+using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.ViewModels.Traits;
@@ -88,41 +89,32 @@ namespace GRS.Features.Concurrency.UIX.Workspace
             var view = new StaticMessageView<ResourceRaceConditionMessage>(streams);
 
             // Latent update set
-            var lookup = new Dictionary<uint, ResourceRaceConditionMessage>();
             var enqueued = new Dictionary<uint, uint>();
-
-            // Consume all messages
-            foreach (ResourceRaceConditionMessage message in view)
+            
+            // Preallocate initial latents
+            foreach (var kv in _reducedMessages)
             {
-                if (enqueued.TryGetValue(message.sguid, out uint enqueuedCount))
-                {
-                    enqueued[message.sguid] = enqueuedCount + 1;
-                }
-                else
-                {
-                    lookup.Add(message.sguid, message);
-                    enqueued.Add(message.sguid, 1);
-                }
+                enqueued.Add(kv.Key, 0);
             }
 
-            foreach (var kv in enqueued)
+            foreach (ResourceRaceConditionMessage message in view)
             {
-                // Add to reduced set
-                if (_reducedMessages.ContainsKey(kv.Key))
+                // Add to latent set
+                if (enqueued.TryGetValue(message.sguid, out uint enqueuedCount))
                 {
-                    Dispatcher.UIThread.InvokeAsync(() => { _reducedMessages[kv.Key].Count += kv.Value; });
+                    enqueued[message.sguid] = enqueuedCount + 1u;
                 }
                 else
                 {
-                    // Get from key
-                    var message = lookup[kv.Key];
-
                     // Create object
                     var validationObject = new ValidationObject()
                     {
                         Content = $"Potential race condition detected",
-                        Count = kv.Value
+                        Count = 1u
                     };
+                    
+                    // Register with latent
+                    enqueued.Add(message.sguid, 1u);
 
                     // Shader view model injection
                     validationObject.WhenAnyValue(x => x.Segment).WhereNotNull().Subscribe(x =>
@@ -143,10 +135,22 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                     _shaderMappingService?.EnqueueMessage(validationObject, message.sguid);
 
                     // Insert lookup
-                    _reducedMessages.Add(kv.Key, validationObject);
+                    _reducedMessages.Add(message.sguid, validationObject);
 
                     // Add to UI visible collection
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
+                }
+            }
+            
+            // Update counts on main thread
+            foreach (var kv in enqueued)
+            {
+                if (_reducedMessages.TryGetValue(kv.Key, out ValidationObject? value))
+                {
+                    if (kv.Value > 0)
+                    {
+                        ValidationMergePumpBus.Increment(value, kv.Value);
+                    }
                 }
             }
         }
