@@ -684,6 +684,7 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
         // Release the blob
         deepCopy << "\tif (blob) {\n";
         deepCopy << "\t\tdestroy(blob, allocators);\n";
+        deepCopy << "\t\tblob = nullptr;\n";
         deepCopy << "\t}\n";
 
         // End destructor
