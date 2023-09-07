@@ -169,7 +169,6 @@ bool RemoteLoadBootstrapper(PTHREAD_START_ROUTINE loadLibraryAGPA, const std::st
     // Try to allocate path memory
     void* remoteSessionPathA = VirtualAllocEx(process, nullptr, sessionPathStr.length() + 1u, MEM_COMMIT, PAGE_READWRITE);
     if (!remoteSessionPathA) {
-        DWORD error = GetLastError();
         return false;
     }
 

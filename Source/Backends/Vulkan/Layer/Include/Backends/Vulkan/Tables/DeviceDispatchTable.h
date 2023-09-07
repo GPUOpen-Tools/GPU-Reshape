@@ -236,6 +236,7 @@ struct DeviceDispatchTable {
     PFN_vkUpdateDescriptorSetWithTemplate next_vkUpdateDescriptorSetWithTemplate;
     PFN_vkBindBufferMemory                next_vkBindBufferMemory;
     PFN_vkGetDeviceQueue                  next_vkGetDeviceQueue;
+    PFN_vkGetDeviceQueue2                 next_vkGetDeviceQueue2;
     PFN_vkCreateImage                     next_vkCreateImage;
     PFN_vkCreateImageView                 next_vkCreateImageView;
     PFN_vkDestroyImage                    next_vkDestroyImage;

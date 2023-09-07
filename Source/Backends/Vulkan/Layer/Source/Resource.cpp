@@ -23,6 +23,7 @@
 // 
 
 #include <Backends/Vulkan/Resource.h>
+#include <Backends/Vulkan/Queue.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/States/BufferState.h>
 #include <Backends/Vulkan/States/ImageState.h>
@@ -35,8 +36,18 @@
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Redirect all queue families
+    auto* queueFamilies = ALLOCA_ARRAY(uint32_t, pCreateInfo->queueFamilyIndexCount);
+    for (uint32_t i = 0; i < pCreateInfo->queueFamilyIndexCount; i++) {
+        queueFamilies[i] = RedirectQueueFamily(table, pCreateInfo->pQueueFamilyIndices[i]);
+    }
+
+    // Copy creation info
+    VkBufferCreateInfo createInfo = *pCreateInfo;
+    createInfo.pQueueFamilyIndices = queueFamilies;
+
     // Pass down callchain
-    VkResult result = table->next_vkCreateBuffer(device, pCreateInfo, pAllocator, pBuffer);
+    VkResult result = table->next_vkCreateBuffer(device, &createInfo, pAllocator, pBuffer);
     if (result != VK_SUCCESS) {
         return result;
     }
@@ -89,8 +100,18 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBufferView(VkDevice device, const Vk
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImageCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkImage* pImage) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Redirect all queue families
+    auto* queueFamilies = ALLOCA_ARRAY(uint32_t, pCreateInfo->queueFamilyIndexCount);
+    for (uint32_t i = 0; i < pCreateInfo->queueFamilyIndexCount; i++) {
+        queueFamilies[i] = RedirectQueueFamily(table, pCreateInfo->pQueueFamilyIndices[i]);
+    }
+
+    // Copy creation info
+    VkImageCreateInfo createInfo = *pCreateInfo;
+    createInfo.pQueueFamilyIndices = queueFamilies;
+
     // Pass down callchain
-    VkResult result = table->next_vkCreateImage(device, pCreateInfo, pAllocator, pImage);
+    VkResult result = table->next_vkCreateImage(device, &createInfo, pAllocator, pImage);
     if (result != VK_SUCCESS) {
         return result;
     }

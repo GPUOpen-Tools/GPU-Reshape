@@ -98,6 +98,7 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkDestroyDescriptorUpdateTemplate = reinterpret_cast<PFN_vkDestroyDescriptorUpdateTemplate>(getDeviceProcAddr(object, "vkDestroyDescriptorUpdateTemplate"));
     next_vkUpdateDescriptorSetWithTemplate = reinterpret_cast<PFN_vkUpdateDescriptorSetWithTemplate>(getDeviceProcAddr(object, "vkUpdateDescriptorSetWithTemplate"));
     next_vkGetDeviceQueue = reinterpret_cast<PFN_vkGetDeviceQueue>(getDeviceProcAddr(object, "vkGetDeviceQueue"));
+    next_vkGetDeviceQueue2 = reinterpret_cast<PFN_vkGetDeviceQueue2>(getDeviceProcAddr(object, "vkGetDeviceQueue2"));
     next_vkCreateImage = reinterpret_cast<PFN_vkCreateImage>(getDeviceProcAddr(object, "vkCreateImage"));
     next_vkDestroyImage = reinterpret_cast<PFN_vkDestroyImage>(getDeviceProcAddr(object, "vkDestroyImage"));
     next_vkCreateImageView = reinterpret_cast<PFN_vkCreateImageView>(getDeviceProcAddr(object, "vkCreateImageView"));
@@ -191,6 +192,12 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkDeviceWaitIdle"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDeviceWaitIdle);
+
+    if (!std::strcmp(name, "vkGetDeviceQueue"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetDeviceQueue);
+
+    if (!std::strcmp(name, "vkGetDeviceQueue2"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkGetDeviceQueue2);
 
     if (!std::strcmp(name, "vkQueueWaitIdle"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueueWaitIdle);

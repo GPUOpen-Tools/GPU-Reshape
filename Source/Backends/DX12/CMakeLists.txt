@@ -463,7 +463,7 @@ target_include_directories(GRS.Backends.DX12.Service PUBLIC Service/Include Boot
 target_link_libraries(GRS.Backends.DX12.Service PUBLIC GRS.Libraries.Common Dbghelp.lib)
 
 # Binary dependencies, pull in x64 and x86 bootstrapper
-add_dependencies(GRS.Backends.DX12.Service GRS.Backends.DX12.Layer GRS.Backends.DX12.Bootstrapper${ARCH_POSTFIX} ThinX86Build)
+add_dependencies(GRS.Backends.DX12.Service GRS.Backends.DX12.Layer GRS.Backends.DX12.Bootstrapper${ARCH_POSTFIX} ${ThinX86BuildDependency})
 
 #----- Discovery -----#
 

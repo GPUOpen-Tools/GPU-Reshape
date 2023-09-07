@@ -496,7 +496,7 @@ void BootstrapLayer(const char* invoker) {
     }
 }
 
-void D3D12GetGPUOpenBootstrapperInfo(D3D12GPUOpenBootstrapperInfo* out) {
+void WINAPI D3D12GetGPUOpenBootstrapperInfo(D3D12GPUOpenBootstrapperInfo* out) {
     out->version = 1;
 }
 
@@ -1448,6 +1448,7 @@ void DetachInitialCreation() {
 }
 
 /// Pin this module
+[[maybe_unused]]
 static void PinBootstrapper() {
     wchar_t buffer[FILENAME_MAX]{0};
 

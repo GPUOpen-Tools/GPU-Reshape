@@ -306,6 +306,35 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkDeviceWaitIdle(VkDevice device) {
     return VK_SUCCESS;
 }
 
+VKAPI_ATTR void VKAPI_CALL Hook_vkGetDeviceQueue(VkDevice device, uint32_t queueFamilyIndex, uint32_t queueIndex, VkQueue* pQueue) {
+    DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Emulation check
+    if (IsFamilyEmulated(table, queueFamilyIndex)) {
+        queueFamilyIndex = table->preferredExclusiveComputeQueue.familyIndex;
+        queueIndex       = table->preferredExclusiveComputeQueue.queueIndex;
+    }
+
+    // Pass down callchain
+    table->next_vkGetDeviceQueue(device, queueFamilyIndex, queueIndex, pQueue);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkGetDeviceQueue2(VkDevice device, const VkDeviceQueueInfo2* pQueueInfo, VkQueue* pQueue) {
+    DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Copy info
+    VkDeviceQueueInfo2 queueInfo = *pQueueInfo;
+
+    // Emulation check
+    if (IsFamilyEmulated(table, queueInfo.queueFamilyIndex)) {
+        queueInfo.queueFamilyIndex = table->preferredExclusiveComputeQueue.familyIndex;
+        queueInfo.queueIndex       = table->preferredExclusiveComputeQueue.queueIndex;
+    }
+
+    // Pass down callchain
+    table->next_vkGetDeviceQueue2(device, &queueInfo, pQueue);
+}
+
 VkResult Hook_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentInfo) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(queue));
 
@@ -345,4 +374,26 @@ VkResult Hook_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentI
 
     // OK
     return VK_SUCCESS;
+}
+
+bool IsFamilyEmulated(DeviceDispatchTable *table, uint32_t familyIndex) {
+    // Special case
+    if (familyIndex == VK_QUEUE_FAMILY_IGNORED) {
+        return false;
+    }
+
+    // Emulated if it's transfer without compute, graphics families implicitly support compute
+    // If neither of the trio, there's no commands to inject.
+    const VkQueueFamilyProperties& family = table->queueFamilyProperties[familyIndex];
+    return (family.queueFlags & VK_QUEUE_TRANSFER_BIT) && !(family.queueFlags & VK_QUEUE_COMPUTE_BIT);
+}
+
+uint32_t RedirectQueueFamily(DeviceDispatchTable *table, uint32_t familyIndex) {
+    // If emulated, use the exclusive compute queue
+    if (IsFamilyEmulated(table, familyIndex)) {
+        return table->preferredExclusiveComputeQueue.familyIndex;
+    }
+
+    // Standard queue, ignore
+    return familyIndex;
 }

@@ -62,6 +62,8 @@ set(DeepCopyObjectsTemplate            ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Tem
 set(DeepCopyTemplate                   ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/DeepCopy.cppt)
 set(SpvTemplate                        ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Spv.ht)
 
+# TODO: Move all configuration to a json file, the same as the DX12 generator
+
 # Generated hooks
 set(
     VkHooks
@@ -109,6 +111,11 @@ set(
     vkCmdEndRenderPass
     vkCmdPushDescriptorSetKHR
     vkCmdPushDescriptorSetWithTemplateKHR
+    vkCmdWaitEvents
+    vkCmdPipelineBarrier
+    vkCmdSetEvent2
+    vkCmdWaitEvents2
+    vkCmdPipelineBarrier2
 )
 
 # Join lists

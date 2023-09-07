@@ -34,6 +34,9 @@
 #include <cstdint>
 #include <fstream>
 
+// Validation
+static_assert(sizeof(void*) == 4, "Unexpected architecture");
+
 int main(int32_t argc, const char *const *argv) {
     /**
         Note for readers.
@@ -52,8 +55,8 @@ int main(int32_t argc, const char *const *argv) {
 
     // Local table
     X86RelFunTBL table;
-    table.kernel32LoadLibraryA = reinterpret_cast<uint32_t>(LoadLibraryA);
-    table.kernel32FreeLibrary  = reinterpret_cast<uint32_t>(FreeLibrary);
+    table.kernel32LoadLibraryA = reinterpret_cast<uint32_t>(reinterpret_cast<void*>(LoadLibraryA));
+    table.kernel32FreeLibrary  = reinterpret_cast<uint32_t>(reinterpret_cast<void*>(FreeLibrary));
 
     // Write table
     stream.write(reinterpret_cast<const char*>(&table), sizeof(table));

@@ -23,6 +23,7 @@
 // 
 
 #include <Backends/Vulkan/Swapchain.h>
+#include <Backends/Vulkan/Queue.h>
 #include <Backends/Vulkan/States/SwapchainState.h>
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
@@ -33,8 +34,18 @@
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSwapchainKHR(VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSwapchainKHR* pSwapchain) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // Redirect all queue families
+    auto* queueFamilies = ALLOCA_ARRAY(uint32_t, pCreateInfo->queueFamilyIndexCount);
+    for (uint32_t i = 0; i < pCreateInfo->queueFamilyIndexCount; i++) {
+        queueFamilies[i] = RedirectQueueFamily(table, pCreateInfo->pQueueFamilyIndices[i]);
+    }
+
+    // Create copy
+    VkSwapchainCreateInfoKHR createInfo = *pCreateInfo;
+    createInfo.pQueueFamilyIndices = queueFamilies;
+
     // Pass down callchain
-    VkResult result = table->next_vkCreateSwapchainKHR(device, pCreateInfo, pAllocator, pSwapchain);
+    VkResult result = table->next_vkCreateSwapchainKHR(device, &createInfo, pAllocator, pSwapchain);
     if (result != VK_SUCCESS) {
         return result;
     }
