@@ -33,11 +33,14 @@
 // Std
 #include <cstdint>
 
+/// Invalid file UID
+static constexpr uint16_t kInvalidShaderSourceFileUID = 0xFFFF;
+
 struct ShaderSourceMapping {
     /// Constructor
     ShaderSourceMapping()
         : shaderGUID(0),
-          fileUID(0),
+          fileUID(kInvalidShaderSourceFileUID),
           line(0),
           column(0),
           basicBlockId(0),

@@ -126,15 +126,11 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::BasicBlo
     // Debug modules are optional
     if (IDXDebugModule* debugModule = shaderState->module->GetDebug()) {
         // Try to get the association
-        DXSourceAssociation sourceAssociation = debugModule->GetSourceAssociation(ptr->source.codeOffset);
-        if (!sourceAssociation) {
-            return InvalidShaderSGUID;
+        if (DXSourceAssociation sourceAssociation = debugModule->GetSourceAssociation(ptr->source.codeOffset)) {
+            mapping.fileUID = sourceAssociation.fileUID;
+            mapping.line = sourceAssociation.line;
+            mapping.column = sourceAssociation.column;
         }
-
-        // Mapping source association
-        mapping.fileUID = sourceAssociation.fileUID;
-        mapping.line = sourceAssociation.line;
-        mapping.column = sourceAssociation.column;
     }
 
     // Serial
@@ -190,6 +186,11 @@ std::string_view ShaderSGUIDHost::GetSource(ShaderSGUID sguid) {
 }
 
 std::string_view ShaderSGUIDHost::GetSource(const ShaderSourceMapping &mapping) {
+    // May not be mapped (IL only)
+    if (mapping.fileUID == kInvalidShaderSourceFileUID) {
+        return {};
+    }
+    
     // Get shader state
     ShaderState* shaderState = device->states_Shaders.GetFromUID(mapping.shaderGUID);
     if (!shaderState || !shaderState->module) {

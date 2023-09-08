@@ -118,15 +118,11 @@ ShaderSGUID ShaderSGUIDHost::Bind(const IL::Program &program, const IL::BasicBlo
     // Find the source map
     if (const SpvSourceMap* sourceMap = GetSourceMap(program.GetShaderGUID()); sourceMap && ptr->source.IsValid()) {
         // Try to get the association
-        SpvSourceAssociation sourceAssociation = sourceMap->GetSourceAssociation(ptr->source.codeOffset);
-        if (!sourceAssociation) {
-            return InvalidShaderSGUID;
+        if (SpvSourceAssociation sourceAssociation = sourceMap->GetSourceAssociation(ptr->source.codeOffset)) {
+            mapping.fileUID = sourceAssociation.fileUID;
+            mapping.line = sourceAssociation.line;
+            mapping.column = sourceAssociation.column;
         }
-        
-        // Mapping source association
-        mapping.fileUID = sourceAssociation.fileUID;
-        mapping.line = sourceAssociation.line;
-        mapping.column = sourceAssociation.column;
     }
 
     // Serial
@@ -198,6 +194,12 @@ std::string_view ShaderSGUIDHost::GetSource(ShaderSGUID sguid) {
 }
 
 std::string_view ShaderSGUIDHost::GetSource(const ShaderSourceMapping &mapping) {
+    // May not be mapped (IL only)
+    if (mapping.fileUID == kInvalidShaderSourceFileUID) {
+        return {};
+    }
+
+    // Get source map
     const SpvSourceMap* map = GetSourceMap(mapping.shaderGUID);
 
     // Get line
