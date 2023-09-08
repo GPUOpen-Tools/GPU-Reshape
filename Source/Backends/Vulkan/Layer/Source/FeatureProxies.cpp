@@ -395,3 +395,133 @@ void FeatureHook_vkCmdBeginRenderPass::operator()(CommandBufferObject *object, C
 void FeatureHook_vkCmdEndRenderPass::operator()(CommandBufferObject *object, CommandContext *context) const {
     hook.Invoke(context);
 }
+
+void FeatureHook_vkCmdBeginRenderingKHR::operator()(CommandBufferObject *object, CommandContext *context, const VkRenderingInfo *pRenderingInfo) const {
+    // Local data
+    TextureDescriptor* descriptors = ALLOCA_ARRAY(TextureDescriptor, pRenderingInfo->colorAttachmentCount);
+    AttachmentInfo*    attachments = ALLOCA_ARRAY(AttachmentInfo, pRenderingInfo->colorAttachmentCount);
+    
+    // Translate render targets
+    for (uint32_t i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
+        const VkRenderingAttachmentInfo& description = pRenderingInfo->pColorAttachments[i];
+
+        // Respective frame buffer view
+        ImageViewState* state = object->table->states_imageView.Get(description.imageView);
+
+        // Setup descriptor
+        descriptors[i] = TextureDescriptor{
+            .region = TextureRegion { },
+            .uid = 0u
+        };
+
+        // Setup attachment
+        AttachmentInfo& attachmentInfo = attachments[i];
+        attachmentInfo.resource.token = GetResourceToken(state);
+        attachmentInfo.resource.textureDescriptor = descriptors + i;
+
+        // Translate action
+        switch (description.loadOp) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
+            case VK_ATTACHMENT_LOAD_OP_LOAD:
+                attachmentInfo.loadAction = AttachmentAction::Load;
+                break;
+            case VK_ATTACHMENT_LOAD_OP_CLEAR:
+                attachmentInfo.loadAction = AttachmentAction::Clear;
+                break;
+            case VK_ATTACHMENT_LOAD_OP_DONT_CARE:
+                attachmentInfo.loadAction = AttachmentAction::Discard;
+                break;
+            case VK_ATTACHMENT_LOAD_OP_NONE_EXT:
+                attachmentInfo.loadAction = AttachmentAction::None;
+                break;
+        }
+
+        // Translate action
+        switch (description.storeOp) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
+            case VK_ATTACHMENT_STORE_OP_STORE:
+                attachmentInfo.storeAction = AttachmentAction::Store;
+                break;
+            case VK_ATTACHMENT_STORE_OP_DONT_CARE:
+                attachmentInfo.storeAction = AttachmentAction::Discard;
+                break;
+            case VK_ATTACHMENT_STORE_OP_NONE:
+                attachmentInfo.storeAction = AttachmentAction::None;
+                break;
+        }
+    }
+
+    // Render pass info
+    RenderPassInfo passInfo;
+    passInfo.attachmentCount = pRenderingInfo->colorAttachmentCount;
+    passInfo.attachments = attachments;
+
+    // Optional depth data
+    TextureDescriptor depthDescriptor;
+    AttachmentInfo    depthInfo;
+    
+    if (pRenderingInfo->pDepthAttachment) {
+        // Respective frame buffer view
+        ImageViewState* depthState = object->table->states_imageView.Get(pRenderingInfo->pDepthAttachment->imageView);
+
+        // Setup descriptor
+        depthDescriptor = TextureDescriptor{
+            .region = TextureRegion { },
+            .uid = 0u
+        };
+
+        // Translate action
+        switch (pRenderingInfo->pDepthAttachment->loadOp) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
+            case VK_ATTACHMENT_LOAD_OP_LOAD:
+                depthInfo.loadAction = AttachmentAction::Load;
+                break;
+            case VK_ATTACHMENT_LOAD_OP_CLEAR:
+                depthInfo.loadAction = AttachmentAction::Clear;
+                break;
+            case VK_ATTACHMENT_LOAD_OP_DONT_CARE:
+                depthInfo.loadAction = AttachmentAction::Discard;
+                break;
+            case VK_ATTACHMENT_LOAD_OP_NONE_EXT:
+                depthInfo.loadAction = AttachmentAction::None;
+                break;
+        }
+
+        // Translate action
+        switch (pRenderingInfo->pDepthAttachment->storeOp) {
+            default:
+                ASSERT(false, "Invalid handle");
+                break;
+            case VK_ATTACHMENT_STORE_OP_STORE:
+                depthInfo.storeAction = AttachmentAction::Store;
+                break;
+            case VK_ATTACHMENT_STORE_OP_DONT_CARE:
+                depthInfo.storeAction = AttachmentAction::Discard;
+                break;
+            case VK_ATTACHMENT_STORE_OP_NONE:
+                depthInfo.storeAction = AttachmentAction::None;
+                break;
+        }
+
+        // Set resource info
+        depthInfo.resource.token = GetResourceToken(depthState);
+        depthInfo.resource.textureDescriptor = &depthDescriptor;
+        passInfo.depthAttachment = &depthInfo;
+    }
+    
+    // Invoke hook
+    hook.Invoke(
+        context,
+        passInfo
+    );
+}
+
+void FeatureHook_vkCmdEndRenderingKHR::operator()(CommandBufferObject *object, CommandContext *context) const {
+    hook.Invoke(context);
+}

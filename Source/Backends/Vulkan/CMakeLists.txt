@@ -83,6 +83,8 @@ set(
     vkCmdResolveImage
     vkCmdBeginRenderPass
     vkCmdEndRenderPass
+    vkCmdBeginRenderingKHR
+    vkCmdEndRenderingKHR
 )
 
 # White list

@@ -288,6 +288,7 @@ void InitializationFeature::OnWriteResource(CommandContext* context, const Resou
 }
 
 void InitializationFeature::OnBeginRenderPass(CommandContext *context, const RenderPassInfo &passInfo) {
+    // Initialize all color targets
     for (uint32_t i = 0; i < passInfo.attachmentCount; i++) {
         const AttachmentInfo& info = passInfo.attachments[i];
 
@@ -297,6 +298,16 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
             info.storeAction == AttachmentAction::Resolve) {
             MaskResourceSRB(context, info.resource.token.puid, ~0u);
         }
+    }
+
+    // Has depth?
+    if (passInfo.depthAttachment) {
+        // Only mark as initialized if the destination is written to
+        if (passInfo.depthAttachment->loadAction == AttachmentAction::Clear ||
+            passInfo.depthAttachment->storeAction == AttachmentAction::Store ||
+            passInfo.depthAttachment->storeAction == AttachmentAction::Resolve) {
+            MaskResourceSRB(context, passInfo.depthAttachment->resource.token.puid, ~0u);
+        }   
     }
 }
 

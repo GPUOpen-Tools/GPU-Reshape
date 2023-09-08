@@ -97,11 +97,15 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
         if (hookTable.beginRenderPass.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderPass[i] = hookTable.beginRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderingKHR[i] = hookTable.beginRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderingKHR |= (1ull << i);
         }
         
         if (hookTable.endRenderPass.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdEndRenderPass[i] = hookTable.endRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderPass |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdEndRenderingKHR[i] = hookTable.endRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderingKHR |= (1ull << i);
         }
     }
 }
@@ -125,6 +129,8 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdResolveImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdResolveImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderPass & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderingKHR & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderingKHR & featureSet;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkCommandPool *pCommandPool) {
