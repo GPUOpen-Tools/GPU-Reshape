@@ -665,7 +665,11 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
         deepCopy << state.byteSize.str();
 
         deepCopy << "\n\t// Create the blob allocation\n";
-        deepCopy << "\tblob = new (allocators) uint8_t[blobSize];\n";
+        deepCopy << "\tif (length < blobSize) {\n";
+        deepCopy << "\t\tdestroy(blob, allocators);\n\n";
+        deepCopy << "\t\tblob = new (allocators) uint8_t[blobSize];\n";
+        deepCopy << "\t\tlength = blobSize;\n";
+        deepCopy << "\t}\n";
 
         // Deep copy
         deepCopy << "\n\t// Create the deep copies\n";
@@ -684,7 +688,6 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
         // Release the blob
         deepCopy << "\tif (blob) {\n";
         deepCopy << "\t\tdestroy(blob, allocators);\n";
-        deepCopy << "\t\tblob = nullptr;\n";
         deepCopy << "\t}\n";
 
         // End destructor

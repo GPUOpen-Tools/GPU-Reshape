@@ -69,7 +69,7 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
         // Indirection size
         ss << "\tuint64_t length{0u};\n";
 
-        // Indirection size
+        // Copy validity
         ss << "\tbool valid{false};\n";
 
         // End object

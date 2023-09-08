@@ -292,8 +292,13 @@ void ShaderExportStreamer::EndCommandBuffer(ShaderExportStreamState* state, VkCo
         for (ShaderExportDescriptorState& descriptorState : bindState.persistentDescriptorState) {
             // Free all dynamic offsets
             if (descriptorState.dynamicOffsets) {
-                std::lock_guard guard(mutex);
-                dynamicOffsetAllocator.Free(descriptorState.dynamicOffsets);
+                {
+                    std::lock_guard guard(mutex);
+                    dynamicOffsetAllocator.Free(descriptorState.dynamicOffsets);
+                }
+
+                // Cleanup
+                descriptorState.dynamicOffsets = {};
             }
         }
 
