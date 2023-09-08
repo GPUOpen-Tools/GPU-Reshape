@@ -317,7 +317,13 @@ static HRESULT CreateOrAddToStateObject(ID3D12Device2* device, const D3D12_STATE
                 break;
             }
             case D3D12_STATE_SUBOBJECT_TYPE_EXISTING_COLLECTION: {
-                writer.Add(subObject.Type, subObject.pDesc);
+                auto object = StateSubObjectWriter::Read<D3D12_EXISTING_COLLECTION_DESC>(subObject);
+
+                writer.Add(subObject.Type, D3D12_EXISTING_COLLECTION_DESC {
+                    .pExistingCollection = Next(object.pExistingCollection),
+                    .NumExports = object.NumExports,
+                    .pExports = object.pExports
+                });
                 break;
             }
             case D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE: {
