@@ -27,8 +27,9 @@
 #include <Backends/DX12/Export/ShaderExportHost.h>
 #include <Backends/DX12/States/DeviceState.h>
 
-void ShaderExportDescriptorLayout::Install(DeviceState *device, uint32_t stride) {
-    descriptorStride = stride;
+void ShaderExportDescriptorLayout::Install(DeviceState *device) {
+    // Get stride
+    descriptorStride = device->object->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     // Number of exports
     uint32_t exportCount;

@@ -24,7 +24,7 @@
 
 #include <Backends/DX12/Compiler/ShaderCompilerDebug.h>
 #include <Backends/DX12/States/DeviceState.h>
-#include <Backends/DX12/Export/ShaderExportDescriptorAllocator.h>
+#include <Backends/DX12/Export/ShaderExportFixedTwoSidedDescriptorAllocator.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCModule.h>
 #include <Backends/DX12/Compiler/DXCompileJob.h>

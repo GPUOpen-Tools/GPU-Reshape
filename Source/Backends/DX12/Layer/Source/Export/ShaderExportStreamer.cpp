@@ -25,7 +25,7 @@
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/Export/ShaderExportConstantAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamState.h>
-#include <Backends/DX12/Export/ShaderExportDescriptorAllocator.h>
+#include <Backends/DX12/Export/ShaderExportFixedTwoSidedDescriptorAllocator.h>
 #include <Backends/DX12/Export/ShaderExportStreamAllocator.h>
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/CommandQueueState.h>
@@ -96,12 +96,12 @@ bool ShaderExportStreamer::Install() {
         return false;
     }
 
-    // Create allocators
-    sharedCPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportDescriptorAllocator(allocators, device->object, sharedCPUHeap, kSharedHeapBound);
-    sharedGPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportDescriptorAllocator(allocators, device->object, sharedGPUHeap, kSharedHeapBound);
-
     // Create the shared layout
-    descriptorLayout.Install(device, sharedCPUHeapAllocator->GetAdvance());
+    descriptorLayout.Install(device);
+
+    // Create allocators
+    sharedCPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportFixedTwoSidedDescriptorAllocator(device->object, sharedCPUHeap, 1u, descriptorLayout.Count(), kSharedHeapBound);
+    sharedGPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportFixedTwoSidedDescriptorAllocator(device->object, sharedGPUHeap, 1u, descriptorLayout.Count(), kSharedHeapBound);
 
     // OK
     return true;
@@ -192,6 +192,16 @@ ShaderExportStreamSegment *ShaderExportStreamer::AllocateSegment() {
 
     // OK
     return segment;
+}
+
+ShaderExportFixedTwoSidedDescriptorAllocator * ShaderExportStreamer::AllocateTwoSidedAllocator(ID3D12DescriptorHeap* heap, uint32_t bound) {
+    return new (device->allocators, kAllocShaderExport) ShaderExportFixedTwoSidedDescriptorAllocator(
+        device->object, 
+        heap,
+        1u,
+        descriptorLayout.Count(),
+        bound
+    );
 }
 
 void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportStreamSegment *segment) {

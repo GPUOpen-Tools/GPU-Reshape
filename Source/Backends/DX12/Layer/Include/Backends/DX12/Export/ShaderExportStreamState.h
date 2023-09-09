@@ -48,7 +48,7 @@
 struct RootSignatureState;
 struct ShaderExportSegmentInfo;
 struct IncrementalFence;
-class ShaderExportDescriptorAllocator;
+class ShaderExportFixedTwoSidedDescriptorAllocator;
 struct FenceState;
 struct PipelineState;
 class DescriptorDataAppendAllocator;
@@ -57,7 +57,7 @@ struct DescriptorHeapState;
 /// Tracked descriptor allocation
 struct ShaderExportSegmentDescriptorAllocation {
     /// Owning allocation
-    ShaderExportDescriptorAllocator* allocator{nullptr};
+    ShaderExportFixedTwoSidedDescriptorAllocator* allocator{nullptr};
 
     /// Allocated info
     ShaderExportSegmentDescriptorInfo info;

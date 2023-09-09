@@ -44,7 +44,7 @@
 #include <mutex>
 
 // Forward declarations
-class ShaderExportDescriptorAllocator;
+class ShaderExportFixedTwoSidedDescriptorAllocator;
 class ShaderExportStreamAllocator;
 class DeviceAllocator;
 struct DeviceDispatchTable;
@@ -79,6 +79,12 @@ public:
     /// Allocate a new submission segment
     /// \return the segment
     ShaderExportStreamSegment* AllocateSegment();
+
+    /// Allocate a new two sided allocator
+    /// \param heap the descriptor heap
+    /// \param bound the descriptor prefix
+    /// \return the allocator
+    ShaderExportFixedTwoSidedDescriptorAllocator* AllocateTwoSidedAllocator(ID3D12DescriptorHeap* heap, uint32_t bound);
 
     /// Free a stream state
     /// \param state the state
@@ -297,8 +303,8 @@ private:
     ID3D12DescriptorHeap* sharedGPUHeap{ nullptr };
 
     /// Shared allocators
-    ShaderExportDescriptorAllocator* sharedCPUHeapAllocator{ nullptr };
-    ShaderExportDescriptorAllocator* sharedGPUHeapAllocator{nullptr};
+    ShaderExportFixedTwoSidedDescriptorAllocator* sharedCPUHeapAllocator{ nullptr };
+    ShaderExportFixedTwoSidedDescriptorAllocator* sharedGPUHeapAllocator{ nullptr };
 
     /// All pools
     ObjectPool<ShaderExportStreamState> streamStatePool;

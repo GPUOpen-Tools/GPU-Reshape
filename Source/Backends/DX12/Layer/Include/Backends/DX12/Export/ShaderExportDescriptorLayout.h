@@ -35,8 +35,7 @@ class ShaderExportDescriptorLayout {
 public:
     /// Install the layout
     /// \param device parent device
-    /// \param stride descriptor stride
-    void Install(DeviceState *device, uint32_t stride);
+    void Install(DeviceState *device);
 
     /// Get the export counter handle
     /// \param base base address

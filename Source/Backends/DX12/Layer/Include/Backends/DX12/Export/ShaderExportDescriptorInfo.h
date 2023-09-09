@@ -43,6 +43,9 @@ struct ShaderExportSegmentDescriptorInfo {
     /// Base GPU handle
     D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
 
+    /// Descriptor length
+    uint32_t width{};
+
     /// Offset within the heap
     uint32_t offset{};
 };

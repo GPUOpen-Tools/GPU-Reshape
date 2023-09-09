@@ -26,7 +26,8 @@
 #include <Backends/DX12/Table.Gen.h>
 #include <Backends/DX12/States/DescriptorHeapState.h>
 #include <Backends/DX12/States/DeviceState.h>
-#include <Backends/DX12/Export/ShaderExportDescriptorAllocator.h>
+#include <Backends/DX12/Export/ShaderExportStreamer.h>
+#include <Backends/DX12/Export/ShaderExportFixedTwoSidedDescriptorAllocator.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 
 // Backend
@@ -53,7 +54,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     // Heap of interest?
     if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
         // Get desired bound
-        uint32_t bound = ShaderExportDescriptorAllocator::GetDescriptorBound(table.state->exportHost.GetUnsafe());
+        uint32_t bound = ShaderExportFixedTwoSidedDescriptorAllocator::GetDescriptorBound(table.state->exportHost.GetUnsafe());
 
         // There is little to no insight for the internal driver limits, so, attempt various sizes
         for (uint32_t divisor = 0; divisor < 4; divisor++) {
@@ -80,7 +81,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
             state->physicalDescriptorCount = desc->NumDescriptors + bound;
 
             // Create unique allocator
-            state->allocator = new (table.state->allocators, kAllocShaderExport) ShaderExportDescriptorAllocator(table.state->allocators.Tag(kAllocShaderExport), table.next, heap, bound);
+            state->allocator = table.state->exportStreamer->AllocateTwoSidedAllocator(heap, bound);
         }
     }
 

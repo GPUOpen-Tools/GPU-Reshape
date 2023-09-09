@@ -31,7 +31,7 @@
 #include <Common/Allocators.h>
 
 // Forward declarations
-class ShaderExportDescriptorAllocator;
+class ShaderExportFixedTwoSidedDescriptorAllocator;
 class PhysicalResourceMappingTable;
 struct ResourceState;
 
@@ -86,7 +86,7 @@ struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapSt
     uint32_t physicalDescriptorCount{0};
 
     /// Internal allocator
-    ShaderExportDescriptorAllocator* allocator{nullptr};
+    ShaderExportFixedTwoSidedDescriptorAllocator* allocator{nullptr};
 
     /// Mapping table
     PhysicalResourceMappingTable* prmTable{nullptr};

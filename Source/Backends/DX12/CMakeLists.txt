@@ -366,7 +366,7 @@ add_library(
     Layer/Source/Controllers/FeatureController.cpp
     Layer/Source/Controllers/PDBController.cpp
     Layer/Source/Export/ExportHost.cpp
-    Layer/Source/Export/ShaderExportDescriptorAllocator.cpp
+    Layer/Source/Export/ShaderExportFixedTwoSidedDescriptorAllocator.cpp
     Layer/Source/Export/ShaderExportStreamer.cpp
     Layer/Source/Export/ShaderExportStreamAllocator.cpp
     Layer/Source/Export/ShaderExportDescriptorLayout.cpp

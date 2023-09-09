@@ -37,18 +37,18 @@
 // Forward declarations
 class ShaderExportHost;
 
-class ShaderExportDescriptorAllocator {
+class ShaderExportFixedTwoSidedDescriptorAllocator {
 public:
     /// Constructor
     /// \param device parent device
     /// \param heap target heap
     /// \param bound expected bound
-    ShaderExportDescriptorAllocator(const Allocators& allocators, ID3D12Device* device, ID3D12DescriptorHeap* heap, uint32_t bound);
+    ShaderExportFixedTwoSidedDescriptorAllocator(ID3D12Device* device, ID3D12DescriptorHeap* heap, uint32_t lhsWidth, uint32_t rhsWidth, uint32_t bound);
 
     /// Allocate a new descriptor
-    /// \param count number of descriptors to allocate
+    /// \param width number of descriptors to allocate
     /// \return descriptor base info
-    ShaderExportSegmentDescriptorInfo Allocate(uint32_t count);
+    ShaderExportSegmentDescriptorInfo Allocate(uint32_t width);
 
     /// Free a descriptor
     /// \param id
@@ -61,12 +61,12 @@ public:
 
     /// Get the allocation prefix offset
     uint64_t GetPrefixOffset() const {
-        return bound * descriptorAdvance;
+        return bound * static_cast<uint32_t>(lhsBucket.descriptorAdvance);
     }
 
     /// Get the descriptor ptr advance
     uint32_t GetAdvance() const {
-        return descriptorAdvance;
+        return static_cast<uint32_t>(lhsBucket.descriptorAdvance);
     }
 
 public:
@@ -76,25 +76,41 @@ public:
     static uint32_t GetDescriptorBound(ShaderExportHost* host);
 
 private:
-    /// Current allocation counter
-    uint32_t slotAllocationCounter{0};
+    struct AllocationBucket {
+        /// Bucket width
+        uint32_t width{0};
+        
+        /// Current allocation counter
+        uint32_t slotAllocationCounter{0};
 
-    /// Currently free descriptors
-    Vector<uint32_t> freeDescriptors;
+        /// Heap advance
+        int64_t descriptorAdvance;
+        
+        /// Currently free descriptors
+        std::vector<uint32_t> freeDescriptors;
 
+        /// Base CPU handle
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+
+        /// Base GPU handle
+        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
+    };
+
+    /// Get the forward bucket for allocations
+    AllocationBucket& GetForwardBucket(uint32_t width);
+
+    // Get the backwards bucket for complimentary checks
+    AllocationBucket& GetBackwardBucket(uint32_t width);
+
+    /// Double sided buckets
+    AllocationBucket lhsBucket;
+    AllocationBucket rhsBucket;
+
+private:
     /// Parent bound
     uint32_t bound;
 
     /// Parent heap
     ID3D12DescriptorHeap* heap;
-
-    /// Heap advance
-    uint32_t descriptorAdvance;
-
-    /// Base CPU handle
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-
-    /// Base GPU handle
-    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
 };
 
