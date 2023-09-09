@@ -205,15 +205,24 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             IL::ID SRB = token.GetSRB();
             IL::ID PUID = token.GetPUID();
 
-            // Load buffer pointer
-            IL::ID bufferID = emitter.Load(initializationMaskBufferDataID);
+            // Multiple events may write to the same resource, accumulate the SRB atomically
+            const bool UseAtomics = true;
 
-            // Get current mask
-            IL::ID srbMask = emitter.Extract(emitter.LoadBuffer(bufferID, PUID), 0u);
+            // Atomics?
+            if (UseAtomics) {
+                // Or the destination resource
+                emitter.AtomicOr(emitter.AddressOf(initializationMaskBufferDataID, PUID), SRB);
+            } else {
+                // Load buffer pointer
+                IL::ID bufferID = emitter.Load(initializationMaskBufferDataID);
+                
+                // Get current mask
+                IL::ID srbMask = emitter.Extract(emitter.LoadBuffer(bufferID, PUID), 0u);
 
-            // Bit-Or with resource mask
-            emitter.StoreBuffer(bufferID, PUID, emitter.BitOr(srbMask, SRB));
-
+                // Bit-Or with resource mask
+                emitter.StoreBuffer(bufferID, PUID, emitter.BitOr(srbMask, SRB));
+            }
+            
             // Resume on next
             return emitter.GetIterator();
         }
