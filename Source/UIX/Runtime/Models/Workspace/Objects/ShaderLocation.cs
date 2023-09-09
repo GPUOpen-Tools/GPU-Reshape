@@ -29,6 +29,11 @@ namespace Studio.Models.Workspace.Objects
     public struct ShaderLocation
     {
         /// <summary>
+        /// Represents an invalid file uid, shared with backend
+        /// </summary>
+        public static readonly uint InvalidFileUID = 0xFFFF;
+        
+        /// <summary>
         /// Originating shader UID
         /// </summary>
         public UInt64 SGUID { get; set; }

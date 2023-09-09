@@ -31,6 +31,7 @@ using Dock.Model.ReactiveUI.Controls;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
+using Runtime.ViewModels.Shader;
 using Runtime.ViewModels.Traits;
 using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
@@ -55,17 +56,16 @@ namespace Studio.ViewModels.Documents
                 {
                     return;
                 }
-
+                
                 // Construction descriptor?
                 if (_descriptor == null)
                 {
+                    _descriptor = descriptor;
                     ConstructDescriptor(descriptor);
                 }
                 
                 // Update content descriptors
                 ShaderContentViewModels.ForEach(x => x.Descriptor = descriptor);
-                
-                _descriptor = descriptor;
             }
         }
         
@@ -231,18 +231,57 @@ namespace Studio.ViewModels.Documents
                 }
             });
 
+            // Bind files
+            _object!.FileViewModels
+                .ToObservableChangeSet()
+                .OnItemAdded(OnFileAdded)
+                .Subscribe();
+
             // Bind async status
-            _object!.WhenAnyValue(x => x.AsyncStatus).Subscribe(x =>
+            _object.WhenAnyValue(x => x.AsyncStatus).Subscribe(x =>
             {
                 // Ready?
                 Ready = x != AsyncShaderStatus.Pending;
 
                 // Switch to IL content view if there's no debug symbols
-                if (x == AsyncShaderStatus.NoDebugSymbols)
+                // Or, if the startup location doesn't have a source mapping
+                if (x == AsyncShaderStatus.NoDebugSymbols || _descriptor?.StartupLocation?.Location.FileUID == ShaderLocation.InvalidFileUID)
                 {
                     SelectedShaderContentViewModel = ShaderContentViewModels.First(scvm => scvm is ILShaderContentViewModel);
                 }
             });
+        }
+
+        /// <summary>
+        /// Invoked on file added
+        /// </summary>
+        private void OnFileAdded(ShaderFileViewModel file)
+        {
+            // Only for code navigation
+            if (SelectedShaderContentViewModel is not CodeShaderContentViewModel)
+            {
+                return;
+            }
+            
+            // Validate descriptor
+            if (_descriptor is not { StartupLocation: { } location })
+            {
+                return;
+            }
+
+            // Not the same file?
+            if (file.UID != location.Location.FileUID)
+            {
+                return;
+            }
+            
+            // Location matches the file, check validity
+            // Shader compilers may provide source information without the source itself
+            if (string.IsNullOrWhiteSpace(file.Contents))
+            {
+                // Navigation location has no real source code, go to IL
+                SelectedShaderContentViewModel = ShaderContentViewModels.First(scvm => scvm is ILShaderContentViewModel);
+            }
         }
 
         private void OnSetContentViewModel(IShaderContentViewModel shaderContentViewModel, bool state)

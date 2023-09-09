@@ -81,7 +81,7 @@ namespace Studio.ViewModels.Workspace.Services
                             }
 
                             // Only native?
-                            else if (shaderCode.native == 1)
+                            else if (shaderCode.native == 1 || shaderCode.fileCount == 0)
                             {
                                 status = AsyncShaderStatus.NoDebugSymbols;
                             }

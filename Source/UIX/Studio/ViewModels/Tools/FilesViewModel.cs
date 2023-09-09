@@ -52,7 +52,20 @@ namespace Studio.ViewModels.Tools
         /// <summary>
         /// Is the help message visible?
         /// </summary>
-        public bool IsHelpVisible => (ShaderViewModel?.Shader?.FileViewModels.Count ?? 0) == 0;
+        public bool IsHelpVisible
+        {
+            get => _isHelpVisible;
+            set => this.RaiseAndSetIfChanged(ref _isHelpVisible, value);
+        }
+
+        /// <summary>
+        /// Help message
+        /// </summary>
+        public string HelpMessage
+        {
+            get => _helpMessage;
+            set => this.RaiseAndSetIfChanged(ref _helpMessage, value);
+        }
         
         /// <summary>
         /// All child items
@@ -157,9 +170,21 @@ namespace Studio.ViewModels.Tools
         {
             Files.Clear();
 
+            // TODO: Feed message through localization
+            
             // Invalid?
             if (ShaderViewModel?.Shader == null)
             {
+                IsHelpVisible = true;
+                HelpMessage = "No shader selected";
+                return;
+            }
+
+            // No files at all?
+            if (ShaderViewModel.Shader.FileViewModels.Count == 0)
+            {
+                IsHelpVisible = true;
+                HelpMessage = "No files";
                 return;
             }
 
@@ -186,6 +211,17 @@ namespace Studio.ViewModels.Tools
             
             // Events
             this.RaisePropertyChanged(nameof(IsHelpVisible));
+
+            // No collapsed children?
+            if (root.Children.Count == 0)
+            {
+                IsHelpVisible = true;
+                HelpMessage = "All files empty";
+                return;
+            }
+            
+            // Valid files
+            IsHelpVisible = false;
         }
 
         /// <summary>
@@ -366,5 +402,15 @@ namespace Studio.ViewModels.Tools
         /// Disposer
         /// </summary>
         private CompositeDisposable _lastFileComposite = new();
+
+        /// <summary>
+        /// Internal help state
+        /// </summary>
+        private bool _isHelpVisible = true;
+
+        /// <summary>
+        /// Internal message state
+        /// </summary>
+        private string _helpMessage = "No files";
     }
 }

@@ -82,10 +82,10 @@
                     Margin="0 0 0 0"
                     Width="10" />
                 <TextBlock
-                    Margin="5 0 0 0"
+                    Margin="7 0 0 0"
                     Foreground="{StaticResource InfoMediumForeground}"
                     VerticalAlignment="Center"
-                    Text=" No files"/>
+                    Text="{Binding HelpMessage}"/>
             </StackPanel>
         </Grid>
     </Grid>
