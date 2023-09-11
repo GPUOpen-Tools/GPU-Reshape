@@ -113,14 +113,13 @@ namespace Studio
                 IntPtr handle = processes[0].MainWindowHandle;
                 
                 // Restore if needed
-                if (IsIconic(handle))
+                if (Win32.IsIconic(handle))
                 {
-                    const int restoreId = 9;
-                    ShowWindow(handle, restoreId);
+                    Win32.ShowWindow(handle, Win32.CmdShowRestoreId);
                 }
 
                 // Bring to focus
-                SetForegroundWindow(handle);
+                Win32.SetForegroundWindow(handle);
             }
             else
             {
@@ -189,16 +188,5 @@ namespace Studio
         };
 
         private Discovery.CLR.DiscoveryService _service;
-        
-        // https://stackoverflow.com/questions/2636721/bring-another-processes-window-to-foreground-when-it-has-showintaskbar-false
-        
-        [System.Runtime.InteropServices.DllImport("User32.dll")]
-        private static extern bool SetForegroundWindow(IntPtr handle);
-        
-        [System.Runtime.InteropServices.DllImport("User32.dll")]
-        private static extern bool ShowWindow(IntPtr handle, int nCmdShow);
-        
-        [System.Runtime.InteropServices.DllImport("User32.dll")]
-        private static extern bool IsIconic(IntPtr handle);
     }
 }

@@ -30,17 +30,12 @@
 #include <locale>
 
 namespace std {
-    // https://stackoverflow.com/questions/216823/how-to-trim-a-stdstring
     static inline void ltrim(std::string &s) {
-        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-            return !std::isspace(ch);
-        }));
+        s.erase(0, s.find_first_not_of(" \n\t\v\f\r"));
     }
 
     static inline void rtrim(std::string &s) {
-        s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-            return !std::isspace(ch);
-        }).base(), s.end());
+        s.erase(s.find_last_not_of(" \n\t\v\f\r") + 1u);
     }
 
     static inline void trim(std::string &s) {
@@ -102,14 +97,20 @@ namespace std {
         return isearch(a, b) != a.end();
     }
 
-    // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
     inline bool ends_with(std::string_view const &value, std::string_view const &ending) {
-        if (ending.size() > value.size()) return false;
-        return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+        if (ending.length() > value.length()) {
+            return false;
+        }
+        
+        return !value.compare(value.length() - ending.length(), ending.length(), ending);
     }
 
     inline bool starts_with(std::string_view const &value, std::string_view const &ending) {
-        return value.rfind(ending, 0) == 0;
+        if (ending.length() > value.length()) {
+            return false;
+        }
+        
+        return !value.compare(0, ending.length(), ending);
     }
 
     static inline bool iswhitespace(char c) {

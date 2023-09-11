@@ -371,28 +371,22 @@ static bool IsSupportedFeatureLevel(IUnknown* opaqueAdapter, D3D_FEATURE_LEVEL f
     return true;
 }
 
-// https://stackoverflow.com/questions/41231586/how-to-detect-if-developer-mode-is-active-on-windows-10
 [[maybe_unused]]
 static bool IsDevelopmentModeEnabled() {
-    HKEY keyHandle;
+    // Query data
+    DWORD value{0};
+    DWORD valueLength = sizeof(value);
 
-    // Development mode path
-    if (LSTATUS result = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock", 0, KEY_READ, &keyHandle); result != ERROR_SUCCESS) {
-        return false;
-    }
-
-    // Resulting data
-    DWORD value{};
-    DWORD valueSize = sizeof(value);
-
-    // Query development mode
-    LRESULT result = RegQueryValueExW(keyHandle, L"AllowDevelopmentWithoutDevLicense", 0, nullptr, reinterpret_cast<LPBYTE>(&value), &valueSize);
-
-    // Cleanup
-    RegCloseKey(keyHandle);
-
-    // Failed?
-    if (result != ERROR_SUCCESS) {
+    // Query development mode value
+    if (DWORD result = RegGetValueW(
+        HKEY_LOCAL_MACHINE,
+        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock",
+        L"AllowDevelopmentWithoutDevLicense",
+        RRF_RT_DWORD,
+        nullptr,
+        &value,
+        &valueLength
+    ); result != ERROR_SUCCESS) {
         return false;
     }
 
