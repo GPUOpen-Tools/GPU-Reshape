@@ -5,14 +5,11 @@
 
 Modern APIs are rapidly growing in complexity, with each added feature introducing more responsibility and risk. Typically, the first tool we turn to
 is the standard set of validation layers, to ensure we write specification compliant code. However, what if the problem persists despite the lack of
-validation errors? Is it due to a bug in the validation layers, or perhaps even a bug in the driver?
+validation errors?
 
-What if the error is within a shader? Is it due to dynamic behaviour that cannot be statically validated? If so, this can result in hours-long debugging 
-sessions to find the one culprit among a heap of operations. Perhaps the index was out of bounds? Was a NaN was propagated across multiple stages? Did you
-forget to initialize something?
+The error could be due to dynamic behaviour that cannot be statically validated. If so, this can result in hours-long debugging sessions to find the one culprit among a heap of operations. Potential issues include indices getting out of bounds, propagated NaN values across multiple stages or a missing initialization and the resulting access of invalid data.
 
-Have you ever wished for a tool that validates dynamic shader behaviour? Warning you on code that results in undefined behaviour, causes corruption, 
-or worse, even random crashes?
+Have you ever wished for a tool that helps you in finding these types of errors? That validates dynamic shader behaviour?
 
 ---
 
@@ -26,7 +23,7 @@ undefined behavior, supporting both DX12 & Vulkan. No integration required.
 My name is Miguel Petersen, Senior Rendering Engineer at Striking Distance Studios, author of GPU Reshape.
 
 The toolset was developed in collaboration with AMD and Avalanche Studios Group, initially as a proof-of-concept Vulkan layer at Avalanche, 
-after which development was continued externally. Development supported by Lou Kramer, Jonas Gustavsson, Rys Sommefeldt, Marek Machlinski, Daniel Isheden, 
+after which development was continued externally. Development was supported by Lou Kramer, Jonas Gustavsson, Rys Sommefeldt, Marek Machlinski, Daniel Isheden, 
 and William Hjelm. Thank you all.
 
 ### Making the GPU a First Class Citizen
@@ -90,6 +87,7 @@ and other implementation details. Given **compliance**, each feature will transl
 ### Writing a Feature
 
 (Miguel P: Perhaps too long, could condense it by not including the final function)
+(Lou K: We could also write a follow-up in-depth tutorial blogpost on this topic. This way, the initial release announcement blogpost gets shorter and is more to the point about the actual released tool. That's a very common approach we do on GPUOpen when releasing a tool.)
 
 That was a lot of words, let's showcase this by writing a simple feature which validates buffer load bounds, and writes out data when out of bounds. 
 For simplicity, we are skipping initialization code, and only focusing on the actual instrumentation. Suppose we have the class `ResourceBoundsFeature`
