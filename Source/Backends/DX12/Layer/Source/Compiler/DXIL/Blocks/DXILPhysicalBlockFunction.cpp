@@ -34,6 +34,7 @@
 #include <Backends/DX12/Compiler/Tags.h>
 #include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Resource/VirtualResourceMapping.h>
+#include <Backends/DX12/Resource/DescriptorData.h>
 
 // Backend
 #include <Backend/IL/TypeCommon.h>
@@ -4778,6 +4779,8 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
 
     // Allocate ids
     uint32_t legacyLoad = program.GetIdentifierMap().AllocID();
+    uint32_t oobValidated = program.GetIdentifierMap().AllocID();
+    uint32_t rootOffset = program.GetIdentifierMap().AllocID();
 
     // Get the current root offset for the descriptor, entirely scalarized
     {
@@ -4811,6 +4814,9 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         block->AddRecord(CompileIntrinsicCall(legacyLoad, intrinsic, 3, ops));
     }
 
+    // Literal used for invalid bindings
+    uint32_t invalidBindingLiteral{ 0 };
+    
     // Root parameters are hosted inline
     if (userMapping.source->isRootResourceParameter) {
         ASSERT(userMapping.dynamicOffset == IL::InvalidID, "Dynamic offset on inline root parameter");
@@ -4818,14 +4824,20 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         // Extract respective value (uint4)
         {
             LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-            recordExtract.SetUser(true, ~0u, _instr->result);
+            recordExtract.SetUser(true, ~0u, rootOffset);
             recordExtract.opCount = 2;
             recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
             recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyLoad);
             recordExtract.ops[1] = userMapping.source->rootParameter % 4u;
             block->AddRecord(recordExtract);
         }
-    } else {
+
+        // Root bindings are always resources
+        invalidBindingLiteral = kDescriptorDataResourceInvalidOffset;
+
+        // The oob validated index is the root binding
+        oobValidated = rootOffset;
+    } else {        
         // Determine the appropriate PRMT handle
         IL::ID prmtBufferId;
         switch (program.GetTypeMap().GetType(_instr->resource)->kind) {
@@ -4836,15 +4848,16 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             case Backend::IL::TypeKind::Texture:
             case Backend::IL::TypeKind::Buffer:
                 prmtBufferId = resourcePRMTHandle;
+                invalidBindingLiteral = kDescriptorDataResourceInvalidOffset;
                 break;
             case Backend::IL::TypeKind::Sampler:
                 prmtBufferId = samplerPRMTHandle;
+                invalidBindingLiteral = kDescriptorDataSamplerInvalidOffset;
                 break;
         }
 
         // Alloc IDs
         uint32_t retOffset = program.GetIdentifierMap().AllocID();
-        uint32_t rootOffset = program.GetIdentifierMap().AllocID();
         uint32_t descriptorOffset = program.GetIdentifierMap().AllocID();
         
         // Extract respective value (uint4)
@@ -4994,7 +5007,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         if (outOfHeapOperand == IL::InvalidID) {
             // Extract first value
             LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-            recordExtract.SetUser(true, ~0u, _instr->result);
+            recordExtract.SetUser(true, ~0u, oobValidated);
             recordExtract.opCount = 2;
             recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
             recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(retOffset);
@@ -5015,7 +5028,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
 
             // OutOfBounds ? kResourceTokenPUIDInvalidOutOfBounds : ResourceToken
             LLVMRecord recordSelect(LLVMFunctionRecord::InstVSelect);
-            recordSelect.SetUser(true, ~0u, _instr->result);
+            recordSelect.SetUser(true, ~0u, oobValidated);
             recordSelect.opCount = 3;
             recordSelect.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
             recordSelect.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
@@ -5026,6 +5039,37 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             recordSelect.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(outOfHeapOperand);
             block->AddRecord(recordSelect);
         }
+    }
+
+    // Validate the root binding itself
+    {
+        uint32_t isTableNotBound = program.GetIdentifierMap().AllocID();
+        
+        // CBufferData == 0u
+        LLVMRecord recordCmp(LLVMFunctionRecord::InstCmp);
+        recordCmp.SetUser(true, ~0u, isTableNotBound);
+        recordCmp.opCount = 3;
+        recordCmp.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+        recordCmp.ops[0] = DXILIDRemapper::EncodeUserOperand(rootOffset);
+        recordCmp.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = invalidBindingLiteral}
+        )->id);
+        recordCmp.ops[2] = static_cast<uint64_t>(LLVMCmpOp::IntEqual);
+        block->AddRecord(recordCmp);
+
+        // TableNotBound ? kResourceTokenPUIDInvalidTableNotBound : ResourceToken
+        LLVMRecord recordSelect(LLVMFunctionRecord::InstVSelect);
+        recordSelect.SetUser(true, ~0u, _instr->result);
+        recordSelect.opCount = 3;
+        recordSelect.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+        recordSelect.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+            Backend::IL::IntConstant{.value = IL::kResourceTokenPUIDInvalidTableNotBound}
+        )->id);
+        recordSelect.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(oobValidated);
+        recordSelect.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(isTableNotBound);
+        block->AddRecord(recordSelect);
     }
 }
 

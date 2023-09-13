@@ -40,9 +40,16 @@ PhysicalResourceMappingTable::~PhysicalResourceMappingTable() {
 
 void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType, uint32_t count) {
     std::lock_guard guard(mutex);
-    virtualMappingCount = count;
     type = valueType;
 
+    // Sampler heaps append a "null" descriptor, provide space for it
+    if (valueType == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+        count++;
+    }
+    
+    // Set count
+    virtualMappingCount = count;
+    
     // Mapped description
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;

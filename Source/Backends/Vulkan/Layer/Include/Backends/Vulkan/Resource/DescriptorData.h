@@ -32,5 +32,11 @@ static constexpr uint32_t kDescriptorDataOffsetDWord = 0u;
 static constexpr uint32_t kDescriptorDataLengthDWord = 1u;
 static constexpr uint32_t kDescriptorDataDWordCount  = 2u;
 
+/// A null offset, i.e., nothing bound
+static constexpr uint32_t kDescriptorDataNullOffset  = 0u;
+
+/// Binding starting offset
+static constexpr uint32_t kDescriptorDataStartOffset = 1u;
+
 /// Sanity check
 static_assert(kDescriptorDataDWordCount == kDescriptorDataLengthDWord + 1u, "Mismatched descriptor data length");

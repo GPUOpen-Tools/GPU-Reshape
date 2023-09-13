@@ -34,9 +34,10 @@ namespace IL {
     static constexpr uint32_t kResourceTokenPUIDMask  = (1u << kResourceTokenPUIDBitCount) - 1u;
 
     /// Unmapped and invalid physical unique ids
-    static constexpr uint32_t kResourceTokenPUIDInvalidUndefined    = kResourceTokenPUIDMask - 0;
-    static constexpr uint32_t kResourceTokenPUIDInvalidOutOfBounds  = kResourceTokenPUIDMask - 1;
-    static constexpr uint32_t kResourceTokenPUIDInvalidStart        = kResourceTokenPUIDInvalidOutOfBounds;
+    static constexpr uint32_t kResourceTokenPUIDInvalidUndefined     = kResourceTokenPUIDMask - 0;
+    static constexpr uint32_t kResourceTokenPUIDInvalidOutOfBounds   = kResourceTokenPUIDMask - 1;
+    static constexpr uint32_t kResourceTokenPUIDInvalidTableNotBound = kResourceTokenPUIDMask - 2;
+    static constexpr uint32_t kResourceTokenPUIDInvalidStart         = kResourceTokenPUIDInvalidTableNotBound;
 
     /// Reserved physical unique ids
     static constexpr uint32_t kResourceTokenPUIDReservedNullTexture = 0;

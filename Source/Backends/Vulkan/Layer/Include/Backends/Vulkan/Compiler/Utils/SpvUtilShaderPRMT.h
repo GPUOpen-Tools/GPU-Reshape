@@ -63,6 +63,9 @@ private:
         /// Computed offset
         IL::ID offset{IL::InvalidID};
 
+        /// Parent table was not bound
+        IL::ID tableNotBound{IL::InvalidID};
+
         /// Optional bounds operand
         IL::ID outOfBounds{IL::InvalidID};
     };

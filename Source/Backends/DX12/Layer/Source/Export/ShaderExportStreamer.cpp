@@ -45,6 +45,7 @@
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/States/RootSignaturePhysicalMapping.h>
 #include <Backends/DX12/Resource/DescriptorResourceMapping.h>
+#include <Backends/DX12/Resource/DescriptorData.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -399,6 +400,13 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
         for (ShaderExportRootParameterValue& persistent : bindState.persistentRootParameters) {
             persistent.type = ShaderExportRootParameterValueType::None;
         }
+
+        // Invalidate sampler bindings
+        for (size_t i = 0; i < rootSignature->logicalMapping.userRootHeapTypes.size(); i++) {
+            if (rootSignature->logicalMapping.userRootHeapTypes[i] == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+                bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
+            }
+        }
     }
     
     // Keep state
@@ -429,6 +437,13 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
         // Old bindings are invalidated
         for (ShaderExportRootParameterValue& persistent : bindState.persistentRootParameters) {
             persistent.type = ShaderExportRootParameterValueType::None;
+        }
+
+        // Invalidate sampler bindings
+        for (size_t i = 0; i < rootSignature->logicalMapping.userRootHeapTypes.size(); i++) {
+            if (rootSignature->logicalMapping.userRootHeapTypes[i] == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+                bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
+            }
         }
     }
     

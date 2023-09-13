@@ -62,9 +62,11 @@ public:
         // Set mapped
         mapped = static_cast<uint32_t*>(mappedOpaque);
 #ifndef NDEBUG
-        memset(mapped, 0u, chunkSize * sizeof(uint32_t));
         localSegmentBindMask = 0u;
 #endif // NDEBUG
+        
+        // Clear mapped data
+        std::memset(mapped, 0x0, chunkSize * sizeof(uint32_t));
     }
 
     /// Begin a new segment
@@ -191,8 +193,7 @@ private:
             }
         } else {
             // Migrate last segment?
-            if (mappedSegmentLength == pendingRootCount) {
-                ASSERT(pendingRootCount == mappedSegmentLength, "Requested migration with mismatched root counts");
+            if (mappedSegmentLength == pendingRootCount && migrateLastSegment) {
                 std::memcpy(mapped + nextMappedOffset, mapped + mappedOffset, sizeof(uint32_t) * mappedSegmentLength);
 
 #ifndef NDEBUG

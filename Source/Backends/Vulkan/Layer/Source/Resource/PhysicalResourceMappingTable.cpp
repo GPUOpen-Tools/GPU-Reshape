@@ -34,6 +34,11 @@ PhysicalResourceMappingTable::PhysicalResourceMappingTable(DeviceDispatchTable* 
 bool PhysicalResourceMappingTable::Install() {
     deviceAllocator = registry->Get<DeviceAllocator>();
 
+    // Dummy allocation for fast nullability
+    //  This effectively invalidates the PRMT at 0 / null, which allows for fast shader checking without
+    //  needing additional guarding on the subsequent loads.
+    Allocate(4u);
+
     // OK
     return true;
 }

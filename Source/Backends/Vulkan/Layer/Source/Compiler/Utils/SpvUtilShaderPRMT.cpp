@@ -97,6 +97,7 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
 
     // Identifiers
     out.offset = table.scan.header.bound++;
+    out.tableNotBound = table.scan.header.bound++;
 
     // UInt32
     const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType {
@@ -133,6 +134,25 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
         spv[4] = baseLengthId;
     }
 
+    // Validate table binding
+    {
+        // Null constant id
+        IL::ID nullId = table.scan.header.bound++;
+
+        // Null value
+        SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+        spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+        spvOffset[2] = nullId;
+        spvOffset[3] = kDescriptorDataNullOffset;
+
+        // BaseOffset == kDescriptorDataNullOffset
+        SpvInstruction& spv = stream.Allocate(SpvOpIEqual, 5);
+        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType { }));
+        spv[2] = out.tableNotBound;
+        spv[3] = baseOffsetId;
+        spv[4] = nullId;
+    }
+    
     // OK
     return out;
 }
@@ -155,6 +175,7 @@ void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID re
     // Identifiers
     uint32_t bufferId = table.scan.header.bound++;
     uint32_t texelId = table.scan.header.bound++;
+    uint32_t oobValidationId = table.scan.header.bound++;
 
     // Get offset
     SpvPRMTOffset mappingOffset = GetResourcePRMTOffset(job, stream, resource);
@@ -182,7 +203,7 @@ void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID re
         // Fetch texel
         SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
         spvExtract[1] = uintTypeId;
-        spvExtract[2] = result;
+        spvExtract[2] = oobValidationId;
         spvExtract[3] = texelId;
         spvExtract[4] = 0;
     } else {
@@ -205,10 +226,29 @@ void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID re
         // Select out-of-bounds value if needed
         SpvInstruction& spvSelect = stream.Allocate(SpvOpSelect, 6);
         spvSelect[1] = uintTypeId;
-        spvSelect[2] = result;
+        spvSelect[2] = oobValidationId;
         spvSelect[3] = mappingOffset.outOfBounds;
         spvSelect[4] = outOfBoundsConstantId;
         spvSelect[5] = extractId;
+    }
+
+    // Table binding selection
+    {
+        uint32_t tableNotBoundConstantId = table.scan.header.bound++;
+
+        // Special table-not-bound value
+        SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+        spvZero[1] = uintTypeId;
+        spvZero[2] = tableNotBoundConstantId;
+        spvZero[3] = IL::kResourceTokenPUIDInvalidTableNotBound;
+
+        // Select table-not-bound value if needed
+        SpvInstruction& spvSelect = stream.Allocate(SpvOpSelect, 6);
+        spvSelect[1] = uintTypeId;
+        spvSelect[2] = result;
+        spvSelect[3] = mappingOffset.tableNotBound;
+        spvSelect[4] = tableNotBoundConstantId;
+        spvSelect[5] = oobValidationId;
     }
 }
 

@@ -56,6 +56,9 @@ public:
         // Set mapped
         mapped = static_cast<uint32_t*>(allocator->Map(segmentEntry.allocation.host));
 
+        // Clear mapped data
+        std::memset(mapped, 0x0, segmentEntry.width);
+
         // Guard against render passes
         CommandBufferRenderPassScope renderPassScope(table, commandBuffer, renderPass);
 
