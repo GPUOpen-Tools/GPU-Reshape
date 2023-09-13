@@ -172,8 +172,9 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
         IL::Emitter<> mismatch(program, *mismatchBlock);
 
         // Special PUIDs
-        IL::ID isUndefined   = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDInvalidUndefined));
-        IL::ID isOutOfBounds = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDInvalidOutOfBounds));
+        IL::ID isUndefined     = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDInvalidUndefined));
+        IL::ID isOutOfBounds   = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDInvalidOutOfBounds));
+        IL::ID isTableNotBound = mismatch.Equal(runtimePUID, mismatch.UInt32(IL::kResourceTokenPUIDInvalidTableNotBound));
 
         // Setup message
         DescriptorMismatchMessage::ShaderExport msg;
@@ -182,6 +183,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
         msg.runtimeType = runtimeType;
         msg.isUndefined = mismatch.Select(isUndefined, mismatch.UInt32(1), mismatch.UInt32(0));
         msg.isOutOfBounds = mismatch.Select(isOutOfBounds, mismatch.UInt32(1), mismatch.UInt32(0));
+        msg.isTableNotBound = mismatch.Select(isTableNotBound, mismatch.UInt32(1), mismatch.UInt32(0));
         
         // Detailed instrumentation?
         if (config.detail) {

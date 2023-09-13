@@ -122,6 +122,10 @@ namespace GRS.Features.Descriptor.UIX.Workspace
                     {
                         contents = $"Descriptor indexing out of bounds, shader expected {typeLookup[message.Flat.compileType]}";
                     }
+                    else if (message.isTableNotBound != 0)
+                    {
+                        contents = $"Descriptor table not bound, shader expected {typeLookup[message.Flat.compileType]}";
+                    }
                     else
                     {
                         contents = $"Descriptor mismatch detected, shader expected {typeLookup[message.Flat.compileType]} but received {typeLookup[message.Flat.runtimeType]}";
