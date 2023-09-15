@@ -39,6 +39,7 @@
 #endif // NDEBUG
 
 bool DXBCSigner::Install() {
+#if USE_DXBC_SIGNER
     // Get path of the layer
     std::filesystem::path modulePath = GetBaseModuleDirectory();
 
@@ -51,17 +52,24 @@ bool DXBCSigner::Install() {
 
     // Get gpa
     dxbcSign = reinterpret_cast<PFN_DXBCSign>(GetProcAddress(module, "SignDxbc"));
+#endif // USE_DXBC_SIGNER
 
     // OK
     return true;
 }
 
 DXBCSigner::~DXBCSigner() {
+#if USE_DXBC_SIGNER
     if (module) {
         FreeLibrary(module);
     }
+#endif // USE_DXBC_SIGNER
 }
 
 bool DXBCSigner::Sign(void *code, uint64_t length) {
+#if USE_DXBC_SIGNER
     return SUCCEEDED(dxbcSign(static_cast<BYTE*>(code), static_cast<uint32_t>(length)));
+#else // USE_DXBC_SIGNER
+    return false;
+#endif // USE_DXBC_SIGNER
 }

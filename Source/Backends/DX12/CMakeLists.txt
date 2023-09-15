@@ -436,7 +436,6 @@ target_link_libraries(
 
 # Setup dependencies
 ExternalProject_Link(GRS.Backends.DX12.Layer Detour Detour)
-ExternalProject_Link(GRS.Backends.DX12.Layer DxbcSigner)
 ExternalProject_Link(GRS.Backends.DX12.Layer D3D12MA $<$<CONFIG:Debug>:D3D12MAd> $<$<CONFIG:Release>:D3D12MAr> $<$<CONFIG:RelWithDebInfo>:D3D12MArd>)
 
 # Include directories
