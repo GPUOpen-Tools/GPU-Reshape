@@ -36,4 +36,7 @@ struct PhysicalResourceMappingTableSegment {
 
     /// Number of entries
     uint32_t length{0};
+
+    /// Has this segment been destroyed?
+    bool destroyed{false};
 };

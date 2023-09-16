@@ -121,7 +121,7 @@ void PhysicalResourceMappingTable::Free(PhysicalResourceSegmentID id) {
         fragmentedEntries += segments[index].length;
         
         // Let the defragmentation pick it up
-        segments[index].length = 0;
+        segments[index].destroyed = true;
     }
 
     // Not live
@@ -259,20 +259,18 @@ void PhysicalResourceMappingTable::Defragment() {
     // Defragment all live mappings
     for (size_t i = 0; i < segments.size(); i++) {
         // Removed segment?
-        if (segments[i].length == 0) {
+        if (segments[i].destroyed) {
             continue;
         }
 
         // Already in optimal placement?
-        if (relocatedOffset == segments[i].offset) {
-            continue;
+        if (relocatedOffset != segments[i].offset) {
+            // Move data to placement
+            std::memmove(virtualMappings + relocatedOffset, virtualMappings + segments[i].offset, segments[i].length * sizeof(VirtualResourceMapping));
+
+            // Update offset
+            segments[i].offset = relocatedOffset;
         }
-
-        // Move data to placement
-        std::memmove(virtualMappings + relocatedOffset, virtualMappings + segments[i].offset, segments[i].length * sizeof(VirtualResourceMapping));
-
-        // Update offset
-        segments[i].offset = relocatedOffset;
 
         // Offset
         relocatedOffset += segments[i].length;
@@ -285,8 +283,8 @@ void PhysicalResourceMappingTable::Defragment() {
     for (size_t i = 0; i < segments.size(); i++) {
         const PhysicalResourceMappingTableSegment& peekSegment = segments[i];
 
-        // Skip if removed, or not fragmented
-        if (peekSegment.length == 0 || liveHead == i) {
+        // Skip if removed
+        if (peekSegment.destroyed) {
             continue;
         }
 
