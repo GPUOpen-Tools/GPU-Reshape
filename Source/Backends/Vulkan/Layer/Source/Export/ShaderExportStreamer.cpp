@@ -423,19 +423,22 @@ void ShaderExportStreamer::Commit(ShaderExportStreamState *state, VkPipelineBind
     if (bindState.descriptorDataAllocator->HasRolled()) {
         // The underlying chunk may have changed, recreate the export data if needed
         if (!bindState.currentSegment.descriptorRollChunk || bindState.currentSegment.descriptorRollChunk != bindState.descriptorDataAllocator->GetSegmentBuffer()) {
-            // Set current view
-            bindState.currentSegment.descriptorRollChunk = bindState.descriptorDataAllocator->GetSegmentBuffer();
-
+            // Get current chunk
+            VkBuffer chunkBuffer = bindState.descriptorDataAllocator->GetSegmentBuffer();
+            
             // Allocate a new descriptor set
             ShaderExportSegmentDescriptorAllocation allocation;
             allocation.info = descriptorAllocator->Allocate();
             state->segmentDescriptors.push_back(allocation);
 
             // Update all immutable descriptors
-            descriptorAllocator->UpdateImmutable(allocation.info, bindState.currentSegment.descriptorRollChunk, state->constantShaderDataBuffer.buffer);
+            descriptorAllocator->UpdateImmutable(allocation.info, chunkBuffer, state->constantShaderDataBuffer.buffer);
 
             // Set current for successive binds
             bindState.currentSegment = allocation;
+            
+            // Set current view
+            bindState.currentSegment.descriptorRollChunk = chunkBuffer;
 
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
             // Bind the new export
