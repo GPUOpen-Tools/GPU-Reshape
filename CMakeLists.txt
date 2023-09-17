@@ -55,8 +55,12 @@ if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)
     execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${ThinBinaryDir}")
     
     # Configuration target
+    # Note: I had great difficulty in getting the secondary-cmake targets to \DEPENDS on the sources, even
+    #       when explicitly marked. So, a terrible workaround is to increment the V[X] below, and reconfigure.
+    #       I'll find a proper solution at some point.
     add_custom_target(
         ThinX86Configure
+        COMMAND ${CMAKE_COMMAND} -E echo Configuring X86-V87
         COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
@@ -70,13 +74,10 @@ if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)
     )
     
     # Build target
-    # Note: I had great difficulty in getting the secondary-cmake targets to \DEPENDS on the sources, even
-    #       when explicitly marked. So, a terrible workaround is to increment the V[X] below, and reconfigure.
-    #       I'll find a proper solution at some point.
     add_custom_target(
         ThinX86Build
-        COMMAND ${CMAKE_COMMAND} -E echo Building X86-V85
-        COMMAND ${CMAKE_COMMAND} --build .
+        COMMAND ${CMAKE_COMMAND} -E echo Building X86-V87
+        COMMAND ${CMAKE_COMMAND} --build . --config $<CONFIG>
         DEPENDS ThinX86Configure ${path}
         WORKING_DIRECTORY "${ThinBinaryDir}"
     )
@@ -90,6 +91,9 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(ARCH_POSTFIX "X64")
 else()
     set(ARCH_POSTFIX "X32")
+    
+    # Force configuration for X86 build
+    set(CMAKE_CONFIGURATION_TYPES Debug;Release;MinSizeRel;RelWithDebInfo)
     
     # Statically link runtimes
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MT")
