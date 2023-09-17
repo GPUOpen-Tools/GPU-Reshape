@@ -314,6 +314,41 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
     // Restore the expected environment
     MigrateDescriptorEnvironment(state, pipeline, commandBuffer);
 
+    // Needs reconstruction of the descriptor segment?
+    if (pipeline != bindState.pipeline || pipeline->layout->compatabilityHash != bindState.pipeline->layout->compatabilityHash) {
+        // Begin new descriptor segment
+        bindState.descriptorDataAllocator->BeginSegment(pipeline->layout->boundUserDescriptorStates * kDescriptorDataDWordCount, false);
+
+        // Setup new segment
+        for (size_t i = 0; i < pipeline->layout->compatabilityHashes.size(); i++) {
+            const ShaderExportDescriptorState &descriptorState = bindState.persistentDescriptorState.at(i);
+
+            // No persistent data? Mapped segment is null, just continue
+            if (!descriptorState.set) {
+                continue;
+            }
+
+            // Base dword offset for descriptor data
+            const uint32_t descriptorDWordOffset = static_cast<uint32_t>(i) * kDescriptorDataDWordCount;
+
+            // Mismatched compatability?
+            if (pipeline->layout->compatabilityHashes[i] != descriptorState.compatabilityHash) {
+                bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDWordOffset + kDescriptorDataOffsetDWord, 0x0);
+                continue;
+            }
+        
+            // Get the state
+            DescriptorSetState* persistentState = table->states_descriptorSet.Get(bindState.persistentDescriptorState[i].set);
+
+            // Get the segment
+            PhysicalResourceMappingTableSegment segment = table->prmTable->GetSegmentShader(persistentState->segmentID);
+
+            // Set offset and length
+            bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDWordOffset + kDescriptorDataOffsetDWord, segment.offset);
+            bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDWordOffset + kDescriptorDataLengthDWord, segment.length);
+        }
+    }
+
     // State tracking
     bindState.pipeline = pipeline;
     bindState.pipelineObject = object;

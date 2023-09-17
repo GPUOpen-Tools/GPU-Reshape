@@ -90,7 +90,7 @@ public:
     /// Begin a new segment
     /// \param rootCount number of root parameters
     void BeginSegment(uint32_t rootCount, bool migrateData) {
-        migrateLastSegment = migrateData && mappedSegmentLength == rootCount;
+        migrateLastSegment = migrateData;
         pendingRootCount = rootCount;
         pendingRoll = true;
     }
@@ -205,14 +205,14 @@ private:
 
             // Migrate last segment?
             if (migrateLastSegment) {
-                ASSERT(pendingRootCount == lastSegmentLength, "Requested migration with mismatched root counts");
-                std::memcpy(mapped + nextMappedOffset, lastChunkDwords, sizeof(uint32_t) * lastSegmentLength);
+                size_t count = std::min<size_t>(pendingRootCount, lastSegmentLength);
+                std::memcpy(mapped + nextMappedOffset, lastChunkDwords, sizeof(uint32_t) * count);
             }
         } else {
             // Migrate last segment?
-            if (mappedSegmentLength == pendingRootCount) {
-                ASSERT(pendingRootCount == mappedSegmentLength, "Requested migration with mismatched root counts");
-                std::memcpy(mapped + nextMappedOffset, mapped + mappedOffset, sizeof(uint32_t) * mappedSegmentLength);
+            if (migrateLastSegment) {
+                size_t count = std::min<size_t>(pendingRootCount, mappedSegmentLength);
+                std::memcpy(mapped + nextMappedOffset, mapped + mappedOffset, sizeof(uint32_t) * count);
             }
             
             // Set new offset
