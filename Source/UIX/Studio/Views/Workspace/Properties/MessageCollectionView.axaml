@@ -34,7 +34,7 @@
              x:Class="Studio.Views.Workspace.Properties.MessageCollectionView"
              x:DataType="properties:MessageCollectionViewModel">
     <Grid>
-        <StackPanel Orientation="Vertical" HorizontalAlignment="Left">
+        <StackPanel Margin="0 1 0 0" Orientation="Vertical" HorizontalAlignment="Left">
             <Button ToolTip.Tip="{x:Static r:Resources.MessageCollection_Filter_Tooltip}" Classes="Icon" Width="20" Height="22">
                 <PathIcon Data="{StaticResource FilterMultiple}" Width="15" />
 
@@ -71,7 +71,7 @@
             Margin="20 0 0 0"
             Items="{Binding FilteredValidationObjects}" 
             IsReadOnly="True"
-            Height="375"
+            Height="365"
             CanUserResizeColumns="True"
             VerticalAlignment="Top"
             HorizontalAlignment="Stretch">
