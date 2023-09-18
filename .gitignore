@@ -13,7 +13,7 @@ cmake-build-*/
 /Lib/
 
 # Package ignore
-/Publish/PackageDebug/Intermediate
+/Package
 
 # Pulled third party dependencies
 ThirdParty/Fmt/
