@@ -129,8 +129,9 @@ if (${ENABLE_UIX} AND CMAKE_GENERATOR MATCHES "Visual Studio")
     enable_language(CSharp)
 
     # Set standard C# properties
-    set(CMAKE_DOTNET_SDK "Microsoft.NET.Sdk")
-    set(CMAKE_CSharp_FLAGS "/langversion:8 /platform:x64")
+    SET(CMAKE_DOTNET_TARGET_FRAMEWORK_VERSION "v4.8")
+    SET(CMAKE_CSharp_FLAGS "/langversion:6")
+    SET(CMAKE_CSharp_FLAGS "/platform:x64")
 else()
     set(BUILD_UIX OFF)
 endif()

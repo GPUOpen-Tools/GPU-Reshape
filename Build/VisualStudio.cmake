@@ -110,25 +110,14 @@ function(SetVisualStudioSourceDiscovery NAME LANG)
     endforeach()
 endfunction()
 
-function(MSBuildPost NAME)
-    # By default, do not resolve packages
-    # Overwritten by projects as needed
-	set_target_properties(
-		${NAME} PROPERTIES 
-		VS_GLOBAL_ResolveNuGetPackages false
-	)
-endfunction(MSBuildPost)
-
 function(add_library NAME)
     _add_library(${NAME} ${ARGN})
     VisualStudioProjectPostfix(${NAME})
-    MSBuildPost(${NAME})
 endfunction(add_library)
 
 function(add_executable NAME)
     _add_executable(${NAME} ${ARGN})
     VisualStudioProjectPostfix(${NAME})
-    MSBuildPost(${NAME})
 endfunction(add_executable)
 
 function(add_custom_target NAME)

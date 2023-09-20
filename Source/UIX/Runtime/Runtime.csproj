@@ -2,17 +2,13 @@
 
     <PropertyGroup>
         <TargetFramework>net5.0</TargetFramework>
-        <TargetFrameworkVersion>5.0</TargetFrameworkVersion>
         <TargetCulture>en</TargetCulture>
         <Nullable>enable</Nullable>
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
         <PublishTrimmed>true</PublishTrimmed>
-		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<WindowsTargetPlatformVersion>10.0.22000.0</WindowsTargetPlatformVersion>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AssemblyName>UIX.Studio.Runtime</AssemblyName>
-        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">

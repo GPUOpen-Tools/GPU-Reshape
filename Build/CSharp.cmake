@@ -32,8 +32,8 @@ function(Project_AddDotNet NAME)
     # DotNet
     set_target_properties(
         ${NAME} PROPERTIES
+        VS_DOTNET_TARGET_FRAMEWORK_VERSION "v4.8"
         VS_GLOBAL_ROOTNAMESPACE ${NAME}
-		VS_GLOBAL_ResolveNuGetPackages true
     )
 
     # IDE source discovery
@@ -55,13 +55,6 @@ function(Project_AddDotNetEx)
         #                 Check introduced by 3.24
         add_library(${ARGS_NAME}.Sham INTERFACE ${${ARGS_GENERATED}_Sham})
 		
-        # Set SDK, do not resolve nuget on sham targets
-        set_target_properties(
-			${ARGS_NAME}.Sham PROPERTIES 
-			VS_GLOBAL_TargetFramework net5.0
-			VS_GLOBAL_ResolveNuGetPackages false
-		)
-		
 		# Create dummy file to keep MSVC happy
 		if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${${ARGS_GENERATED}_Sham}")
 			file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${${ARGS_GENERATED}_Sham}" Sham)
@@ -80,15 +73,7 @@ function(Project_AddDotNetEx)
         target_include_directories(${ARGS_NAME} PUBLIC Include)
 
         # Enable CLR
-        # Enforce NetCore CLR for net5.0
-        set_target_properties(
-			${ARGS_NAME} PROPERTIES 
-			COMMON_LANGUAGE_RUNTIME ""
-			VS_GLOBAL_CLRSupport NetCore
-			VS_GLOBAL_TargetFramework net5.0
-			VS_GLOBAL_AppendTargetFrameworkToOutputPath false
-            VS_GLOBAL_AppendRuntimeIdentifierToOutputPath false
-		)
+        set_target_properties(${ARGS_NAME} PROPERTIES COMMON_LANGUAGE_RUNTIME "")
         
 		# C++/CLI does not support 20 at the moment, downgrade to 17 
 		get_target_property(CLIOptions ${ARGS_NAME} COMPILE_OPTIONS)
@@ -97,14 +82,10 @@ function(Project_AddDotNetEx)
 		set_property(TARGET ${ARGS_NAME} PROPERTY COMPILE_OPTIONS ${CLIOptions})
     endif()
 
-    # Set SDK, link to assemblies and libs
+    # Set .NET, link to assemblies and libs
     set_target_properties(
         ${ARGS_NAME} PROPERTIES
-        VS_GLOBAL_RuntimeIdentifier win-x64
-		VS_GLOBAL_TargetFramework net5.0
-        VS_GLOBAL_AppendTargetFrameworkToOutputPath false
-        VS_GLOBAL_AppendRuntimeIdentifierToOutputPath false
-		VS_GLOBAL_ResolveNuGetPackages true
+        VS_DOTNET_TARGET_FRAMEWORK_VERSION "v4.8"
         VS_GLOBAL_ROOTNAMESPACE "${ARGS_NAME}"
         VS_DOTNET_REFERENCES "${ARGS_ASSEMBLIES};${ARGS_LIBS}"
     )

@@ -9,13 +9,10 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>x64</Platforms>
         <PublishTrimmed>true</PublishTrimmed>
-		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<WindowsTargetPlatformVersion>10.0.22000.0</WindowsTargetPlatformVersion>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <StartupObject>Studio.Program</StartupObject>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AssemblyName>GPUReshape</AssemblyName>
-        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <DebugType>portable</DebugType>

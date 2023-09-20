@@ -32,14 +32,3 @@ set(CSProjPath "${CMAKE_ARGV3}/GPU-Reshape.sln")
 file(READ ${CSProjPath} SolutionContents)
 string(REPLACE "Any CPU" "x64" FILE_CONTENTS "${SolutionContents}")
 file(WRITE ${CSProjPath} ${FILE_CONTENTS})
-
-# Find all DotNet projects
-file(GLOB_RECURSE ProjectFiles ${CMAKE_ARGV3}/**/*.DotNet.vcxproj)
-
-# Set the correct SDK, remove CompiledAsManaged for CLR projects, results in compiler crash with CLRSupport
-foreach(ProjectPath ${ProjectFiles})
-    file(READ ${ProjectPath} SolutionContents)
-    string(REPLACE "DefaultTargets=\"Build\" ToolsVersion=\"16.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"" "Sdk=\"Microsoft.NET.Sdk\"" SolutionContents "${SolutionContents}")
-    string(REPLACE "<CompileAsManaged>true</CompileAsManaged>" "" SolutionContents "${SolutionContents}")
-    file(WRITE ${ProjectPath} "${SolutionContents}")
-endforeach()
