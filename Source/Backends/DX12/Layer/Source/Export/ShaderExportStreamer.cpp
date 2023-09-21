@@ -396,6 +396,9 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
         bindState.bindMask = 0x0;
 #endif // NDEBUG
 
+        // As the bindings have been invalidated, we must roll the chunk
+        bindState.descriptorDataAllocator->ConditionalRoll();
+
         // Old bindings are invalidated
         for (ShaderExportRootParameterValue& persistent : bindState.persistentRootParameters) {
             persistent.type = ShaderExportRootParameterValueType::None;
@@ -433,6 +436,9 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
 #ifndef NDEBUG
         bindState.bindMask = 0x0;
 #endif // NDEBUG
+
+        // As the bindings have been invalidated, we must roll the chunk
+        bindState.descriptorDataAllocator->ConditionalRoll();
 
         // Old bindings are invalidated
         for (ShaderExportRootParameterValue& persistent : bindState.persistentRootParameters) {

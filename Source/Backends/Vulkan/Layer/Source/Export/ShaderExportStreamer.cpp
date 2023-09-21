@@ -347,6 +347,9 @@ void ShaderExportStreamer::BindPipeline(ShaderExportStreamState *state, const Pi
             bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDWordOffset + kDescriptorDataOffsetDWord, segment.offset);
             bindState.descriptorDataAllocator->Set(commandBuffer, descriptorDWordOffset + kDescriptorDataLengthDWord, segment.length);
         }
+
+        // As the bindings have been (potentially) invalidated, we must roll the chunk
+        bindState.descriptorDataAllocator->ConditionalRoll(commandBuffer);
     }
 
     // State tracking

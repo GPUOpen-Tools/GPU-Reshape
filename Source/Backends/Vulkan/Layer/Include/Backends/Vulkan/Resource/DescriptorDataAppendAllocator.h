@@ -127,6 +127,13 @@ public:
         ASSERT(offset < mappedSegmentLength, "Chunk allocation failed");
         mapped[mappedOffset + offset] = value;
     }
+    
+    /// Manually roll the chunk
+    void ConditionalRoll(VkCommandBuffer commandBuffer) {
+        if (pendingRoll) {
+            RollChunk(commandBuffer);
+        }
+    }
 
     /// Has this allocator been rolled? i.e. a new segment has begun
     /// \return

@@ -93,6 +93,13 @@ public:
         mapped[mappedOffset + offset] = value;
     }
 
+    /// Manually roll the chunk
+    void ConditionalRoll() {
+        if (pendingRoll) {
+            RollChunk();
+        }
+    }
+
 #ifndef NDEBUG
     /// Validate current mask against another
     void ValidateAgainst(uint64_t mask) {
