@@ -688,6 +688,13 @@ namespace Runtime.ViewModels.IL
                 AssembleInlineBasicBlock(block, builder);
                 return;
             }
+
+            // Variable?
+            if (value is Variable variable)
+            {
+                AssembleInlineVariable(variable, builder);
+                return;
+            }
         }
 
         /// <summary>
@@ -696,6 +703,14 @@ namespace Runtime.ViewModels.IL
         private void AssembleInlineBasicBlock(BasicBlock block, StringBuilder builder)
         {
             builder.AppendFormat("label %{0}", block.ID);
+        }
+
+        /// <summary>
+        /// Assemble an inline variable
+        /// </summary>
+        private void AssembleInlineVariable(Variable variable, StringBuilder builder)
+        {
+            builder.AppendFormat("{0}* %{1}", variable.AddressSpace, variable.ID);
         }
 
         /// <summary>
