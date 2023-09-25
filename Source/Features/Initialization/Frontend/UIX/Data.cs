@@ -47,7 +47,8 @@ namespace GRS.Features.Initialization.UIX
         
         public Data() : base("Initialization")
         {
-            
+            // Data only, no configurables
+            Visibility = SettingVisibility.None;
         }
 
         /// <summary>
