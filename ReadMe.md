@@ -5,14 +5,7 @@ No application side integration is required.
 
 GPU Reshape is an open collaboration between **Miguel Petersen** (author), **Advanced Micro Devices** and **Avalanche Studios Group**.
 
-<p float="left" align="center">
-  <img src="/Documentation/Resources/Images/StudioD.png" width="500" /> 
-</p>
-
-<p float="left" align="center">
-  <img src="/Documentation/Resources/Images/StudioC.png" width="400" /> 
-  <img src="/Documentation/Resources/Images/StudioB.png" width="360" />
-</p>
+![Cover.png](Documentation/Resources/Images/Cover.png)
 
 ---
 
@@ -31,11 +24,12 @@ GPU Reshape is an open collaboration between **Miguel Petersen** (author), **Adv
 
 Current feature scope provides instrumentation on operations which are either undefined behaviour, or typically indicative of user fault such as:
 
-- Validation on out-of-bounds resource reads / writes
-- Validation on out-of-bounds descriptor reads, and descriptor compatability testing
-- Validation of floating point exports (fragment, unordered access view) against NaN / Inf
-- Detection of potentially hazardous concurrent resource read / writes
-- Validation of resource initialization during reads
+- **Resource Bounds** </br> Validation of resource read / write coordinates against its bounds.
+- **Export Stability** </br> Numeric stability validation of floating point exports (unordered writes, render targets), e.g. NaN / Inf.
+- **Descriptor Validation** </br> Validation of descriptors, potentially dynamically indexed. This includes undefined, mismatched (compile-time to runtime), out of bounds descriptor indexing, and missing table bindings.
+- **Concurrency Validation** </br> Validation of resource concurrency, i.e. single-producer or multiple-consumer, between queues and events.
+- **Resource Initialization** </br> Validation of resource initialization, ensures any read was preceded by a write.
+- **Infinite Loops** </br> Detection of infinite loops. _Experimental_.
 
 The future feature scope includes profiling and debugging functionality, such as branch hot spots, live breakpoints, and assertions. 
 For the full planned feature set, see [Features](Documentation/Features.md).
@@ -70,17 +64,27 @@ A list of applications GPU Reshape is tested against for stability and validity.
 Games
 - **Call of the Wild: The Angler** (Avalanche, DX12)
 - **Second Extinction** (Avalanche, Vulkan)
+- **Rage 2** (Avalanche, Vulkan)
+- **Chernobylite** (The Farm 51, DX12)
+- **Dying Light 2** (Techland, DX12)
+- **The Lord of the Rings: Gollum** (Daedalic Entertainment, DX12)
+- **A Plague Tale: Requiem** (Asobo Studio, DX12)
+- **Ratchet & Clank: Rift Apart** (Insomniac Games / Nixxes Software, DX12)
 
 Engines
 - **Unreal Engine 4** (Epic Games, DX12, Vulkan)
 
 AMD
+- **FidelityFX-3** (DX12, Vulkan)
 - **FSR2** (DX12, Vulkan)
 - **GLTFSample** (DX12, Vulkan)
 - **ParallelSort** (DX12, Vulkan)
 - **SPDSample** (DX12, Vulkan)
 - **SSSRSample** (DX12, Vulkan)
 - **TressFX** (DX12, Vulkan)
+
+Khronos
+- **Vulkan-Samples** (Vulkan, *certain extensions pending support, e.g. descriptor buffers*)
 
 Microsoft
 - **MiniEngine ModelViewer** (DX12)
@@ -95,10 +99,12 @@ Microsoft
 GPU Reshape was initially developed as a prototype tool by Miguel Petersen at Avalanche Studios Group, extending validation tools to shader side operations.
 It was then requested to continue development externally through an open collaboration on GPUOpen.
 
-Development is lead by Miguel Petersen, with support by:
+Development was supported by:
 
 - Lou Kramer (AMD)
 - Jonas Gustavsson (AMD)
+- Marek Machlinski (AMD)
+- Rys Sommefeldt (AMD)
 - Daniel Isheden (Avalanche Studios)
 - Alexander Polya (Avalanche Studios)
 - Wiliam Hjelm (Avalanche Studios)
