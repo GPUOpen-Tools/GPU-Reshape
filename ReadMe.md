@@ -25,7 +25,7 @@ GPU Reshape is an open collaboration between **Miguel Petersen** (author), **Adv
 Current feature scope provides instrumentation on operations which are either undefined behaviour, or typically indicative of user fault such as:
 
 - **Resource Bounds** </br> Validation of resource read / write coordinates against its bounds.
-- **Export Stability** </br> Numeric stability validation of floating point exports (unordered writes, render targets), e.g. NaN / Inf.
+- **Export Stability** </br> Numeric stability validation of floating point exports (UAV writes, render targets, vertex exports), e.g. NaN / Inf.
 - **Descriptor Validation** </br> Validation of descriptors, potentially dynamically indexed. This includes undefined, mismatched (compile-time to runtime), out of bounds descriptor indexing, and missing table bindings.
 - **Concurrency Validation** </br> Validation of resource concurrency, i.e. single-producer or multiple-consumer, between queues and events.
 - **Resource Initialization** </br> Validation of resource initialization, ensures any read was preceded by a write.
