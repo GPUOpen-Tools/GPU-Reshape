@@ -25,56 +25,47 @@
 #pragma once
 
 // Layer
-#include <Backends/Vulkan/Vulkan.h>
-#include <Backends/Vulkan/States/FenceState.h>
-#include <Backends/Vulkan/Resource/PhysicalResourceMappingTableQueueState.h>
+#include <Backends/Vulkan/Allocation/MirrorAllocation.h>
 
 // Common
-#include <Common/Containers/ObjectPool.h>
-
-// Std
-#include <cstdint>
-#include <vector>
-#include <mutex>
+#include <Common/Containers/ReferenceObject.h>
+#include <Common/ComRef.h>
 
 // Forward declarations
-struct ShaderExportQueueState;
 struct DeviceDispatchTable;
+struct VirtualResourceMapping;
+class DeviceAllocator;
 
-struct QueueState {
-    ~QueueState();
+class PhysicalResourceMappingTablePersistentVersion : public ReferenceObject {
+public:
+    COMPONENT(PhysicalResourceMappingTable);
 
-    VkCommandBuffer PopCommandBuffer();
+    /// Constructor
+    /// \param table parent device table 
+    /// \param allocator device allocator
+    /// \param count number of virtual mappings
+    PhysicalResourceMappingTablePersistentVersion(DeviceDispatchTable* table, const ComRef<DeviceAllocator>& allocator, uint32_t count);
 
-    void PushCommandBuffer(VkCommandBuffer commandBuffer);
+    /// Destructor
+    ~PhysicalResourceMappingTablePersistentVersion();
 
-    /// Backwards reference
+    /// Mapped virtual entries
+    VirtualResourceMapping* virtualMappings{nullptr};
+
+    /// Underlying allocation
+    MirrorAllocation allocation;
+
+    /// Buffer handles
+    VkBuffer hostBuffer{nullptr};
+    VkBuffer deviceBuffer{nullptr};
+
+    /// Descriptor handles
+    VkBufferView deviceView{nullptr};
+
+private:
+    /// Device table
     DeviceDispatchTable* table;
 
-    /// User pipeline
-    VkQueue object{VK_NULL_HANDLE};
-
-    /// Family index of this queue
-    uint32_t familyIndex{~0U};
-
-    /// Shared command pool
-    VkCommandPool commandPool{VK_NULL_HANDLE};
-
-    /// Immediate command buffers
-    std::vector<VkCommandBuffer> commandBuffers;
-
-    /// Object pools
-    ObjectPool<FenceState> pools_fences;
-
-    /// Current export state
-    ShaderExportQueueState* exportState{nullptr};
-
-    /// PRMT queue state
-    PhysicalResourceMappingTableQueueState prmtState;
-
-    /// Shared lock
-    std::mutex mutex;
-
-    /// Unique identifier, unique for the type
-    uint64_t uid;
+    /// Components
+    ComRef<DeviceAllocator> deviceAllocator{};
 };

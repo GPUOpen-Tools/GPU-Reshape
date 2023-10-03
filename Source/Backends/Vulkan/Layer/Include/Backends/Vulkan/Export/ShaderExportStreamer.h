@@ -45,6 +45,7 @@
 class ShaderExportDescriptorAllocator;
 class ShaderExportStreamAllocator;
 class DeviceAllocator;
+struct PhysicalResourceMappingTableQueueState;
 struct DeviceDispatchTable;
 struct PipelineState;
 struct FenceState;
@@ -88,7 +89,8 @@ public:
     /// \param queueState the queue to record for
     /// \param state the segment state
     /// \return command buffer to be submitted
-    VkCommandBuffer RecordPreCommandBuffer(ShaderExportQueueState* queueState, ShaderExportStreamSegment* state);
+    /// \param prmtState prmt state
+    VkCommandBuffer RecordPreCommandBuffer(ShaderExportQueueState* queueState, ShaderExportStreamSegment* state, PhysicalResourceMappingTableQueueState* prmtState);
 
     /// Record a patch command buffer for submissions
     /// \param queueState the queue to record for

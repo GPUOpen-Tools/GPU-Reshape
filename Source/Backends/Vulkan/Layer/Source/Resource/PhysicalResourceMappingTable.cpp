@@ -26,6 +26,7 @@
 #include <Backends/Vulkan/Allocation/DeviceAllocator.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/CommandBufferRenderPassScope.h>
+#include <Backends/Vulkan/Resource/PhysicalResourceMappingTablePersistentVersion.h>
 
 PhysicalResourceMappingTable::PhysicalResourceMappingTable(DeviceDispatchTable* table) : table(table) {
 
@@ -44,40 +45,25 @@ bool PhysicalResourceMappingTable::Install() {
 }
 
 PhysicalResourceMappingTable::~PhysicalResourceMappingTable() {
-    if (!virtualMappings) {
-        return;
+    if (persistentVersion) {
+        destroyRef(persistentVersion, allocators);
     }
-
-    // Unmap host data
-    deviceAllocator->Unmap(allocation.host);
-
-    // Destroy handles
-    table->next_vkDestroyBufferView(table->object, deviceView, nullptr);
-    table->next_vkDestroyBuffer(table->object, deviceBuffer, nullptr);
-    table->next_vkDestroyBuffer(table->object, hostBuffer, nullptr);
-
-    // Free underlying allocation
-    deviceAllocator->Free(allocation);
-}
-
-uint32_t PhysicalResourceMappingTable::GetHeadOffset() const {
-    if (segments.empty()) {
-        return 0;
-    }
-
-    return segments.back().offset + segments.back().length;
 }
 
 PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count) {
     std::lock_guard guard(mutex);
-    
-    uint32_t head = GetHeadOffset();
 
-    // Out of (potentially fragmented) space?
-    if (head + count >= virtualMappingCount) {
-        // TODO: We could try to defragment here, but I don't think that's worth it
-        //       It could lead to constant micro-defragmentation that is better handled later.
-        AllocateTable(head + count);
+    // Allocate block
+    size_t blockOffset = partitionedAllocator.Allocate(count);
+
+    // Out of space?
+    if (blockOffset == kInvalidPartitionBlock) {
+        // Allocate with safe bound
+        AllocateTable(virtualMappingCount + count);
+
+        // Re-allocate
+        blockOffset = partitionedAllocator.Allocate(count);
+        ASSERT(blockOffset != kInvalidPartitionBlock, "Partition re-allocation failed");
     }
 
     // Determine index
@@ -98,7 +84,7 @@ PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count)
     // Create new segment
     PhysicalResourceMappingTableSegment& entry = segments.emplace_back();
     entry.id = id;
-    entry.offset = head;
+    entry.offset = static_cast<uint32_t>(blockOffset);
     entry.length = count;
 
     // Add as live
@@ -110,18 +96,19 @@ PhysicalResourceSegmentID PhysicalResourceMappingTable::Allocate(uint32_t count)
 
 void PhysicalResourceMappingTable::Free(PhysicalResourceSegmentID id) {
     std::lock_guard guard(mutex);
-    
+
+    // Get segment
     uint32_t index = indices[id];
+    PhysicalResourceMappingTableSegment& segment = segments[index];
+
+    // Mark as free to the partitioned allocator
+    partitionedAllocator.Free(segment.offset, segment.length);
 
     // Last segments do not require segmentation
     if (index + 1 == segments.size()) {
         segments.pop_back();
     } else {
-        // Track fragmentation
-        fragmentedEntries += segments[index].length;
-        
-        // Let the defragmentation pick it up
-        segments[index].destroyed = true;
+        segment.destroyed = true;
     }
 
     // Not live
@@ -137,55 +124,33 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
     // Number of old mappings
     uint32_t migratedCount = virtualMappingCount;
 
-    // Old mapping data
-    const VirtualResourceMapping* migratedMappings = virtualMappings;
+    // Previous persistent version
+    PhysicalResourceMappingTablePersistentVersion* previousVersion = persistentVersion;
 
     // Set new allocation count
     virtualMappingCount = std::max(64'000u, static_cast<uint32_t>(static_cast<float>(count) * GrowthFactor));
 
-    // Buffer info
-    VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    bufferInfo.size = sizeof(VirtualResourceMapping) * virtualMappingCount;
+    // Set new partitioning length
+    partitionedAllocator.SetLength(virtualMappingCount);
 
-    // Attempt to create the buffers
-    if (table->next_vkCreateBuffer(table->object, &bufferInfo, nullptr, &hostBuffer) != VK_SUCCESS ||
-        table->next_vkCreateBuffer(table->object, &bufferInfo, nullptr, &deviceBuffer) != VK_SUCCESS) {
-        return;
-    }
+    // Create new persistent version
+    persistentVersion = new (allocators) PhysicalResourceMappingTablePersistentVersion(table, deviceAllocator, virtualMappingCount);
 
-    // Get the requirements
-    VkMemoryRequirements requirements;
-    table->next_vkGetBufferMemoryRequirements(table->object, deviceBuffer, &requirements);
-
-    // Create the allocation
-    allocation = deviceAllocator->AllocateMirror(requirements);
-
-    // Bind against the allocation
-    deviceAllocator->BindBuffer(allocation.host, hostBuffer);
-    deviceAllocator->BindBuffer(allocation.device, deviceBuffer);
-
-    // View creation info
-    VkBufferViewCreateInfo viewInfo{VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO};
-    viewInfo.buffer = deviceBuffer;
-    viewInfo.format = VK_FORMAT_R32_UINT;
-    viewInfo.range = VK_WHOLE_SIZE;
-
-    // Create the view
-    if (table->next_vkCreateBufferView(table->object, &viewInfo, nullptr, &deviceView) != VK_SUCCESS) {
-        return;
-    }
-
-    // Map the host data (persistent)
-    virtualMappings = static_cast<VirtualResourceMapping*>(deviceAllocator->Map(allocation.host));
+    // Add internal user
+    persistentVersion->AddUser();
 
     // Migrate old data
-    std::memcpy(virtualMappings, migratedMappings, migratedCount * sizeof(VirtualResourceMapping));
+    if (previousVersion) {
+        std::memcpy(persistentVersion->virtualMappings, previousVersion->virtualMappings, migratedCount * sizeof(VirtualResourceMapping));
+
+        // Release old version
+        destroyRef(previousVersion, allocators);
+    }
+
 
     // Dummy initialize all new VRMs
     for (uint32_t i = migratedCount; i < virtualMappingCount; i++) {
-        virtualMappings[i] = VirtualResourceMapping{
+         persistentVersion->virtualMappings[i] = VirtualResourceMapping{
             .puid = IL::kResourceTokenPUIDInvalidUndefined,
             .type = 0,
             .srb = 0
@@ -193,28 +158,15 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
     }
 }
 
-void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
+PhysicalResourceMappingTablePersistentVersion* PhysicalResourceMappingTable::GetPersistentVersion(VkCommandBuffer commandBuffer, PhysicalResourceMappingTableQueueState* queueState) {
     std::lock_guard guard(mutex);
-    
-    if (!isDirty || !liveSegmentCount) {
-        return;
-    }
 
-    // Ratio threshold at which to defragment the virtual mappings
-    constexpr double DefragmentationThreshold = 0.5f;
+    // Add external user
+    persistentVersion->AddUser();
 
-    // Validate ranges
-#if !defined(NDEBUG)
-    // Count all loose data
-    for (size_t i = 0; i < segments.size() - 1; i++) {
-        uint64_t end = segments[i].offset + segments[i].length;
-        ASSERT(segments[i + 1].offset >= end, "Overlapping PRMT segment");
-    }
-#endif // !defined(NDEBUG)
-
-    // Defragment if needed
-    if (fragmentedEntries && fragmentedEntries / static_cast<double>(virtualMappingCount) >= DefragmentationThreshold) {
-        Defragment();
+    // Skip updates if the queue state is at head, or if there's no segments
+    if (commitHead == queueState->commitHead || !liveSegmentCount) {
+        return persistentVersion;
     }
 
     // Copy host to device
@@ -222,7 +174,7 @@ void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
     copyRegion.size = virtualMappingCount * sizeof(VirtualResourceMapping);
     copyRegion.srcOffset = 0;
     copyRegion.dstOffset = 0;
-    table->commandBufferDispatchTable.next_vkCmdCopyBuffer(commandBuffer, hostBuffer, deviceBuffer, 1u, &copyRegion);
+    table->commandBufferDispatchTable.next_vkCmdCopyBuffer(commandBuffer, persistentVersion->hostBuffer, persistentVersion->deviceBuffer, 1u, &copyRegion);
 
     // Flush the copy for shader reads
     VkMemoryBarrier barrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
@@ -236,76 +188,25 @@ void PhysicalResourceMappingTable::Update(VkCommandBuffer commandBuffer) {
         0, nullptr
     );
 
+    // Set new head
+    queueState->commitHead = commitHead;
+
     // OK
-    isDirty = false;
+    return persistentVersion;
 }
 
 void PhysicalResourceMappingTable::WriteMapping(PhysicalResourceSegmentID id, uint32_t offset, const VirtualResourceMapping &mapping) {
     std::lock_guard guard(mutex);
-    isDirty = true;
 
     // Get the underlying segment
     PhysicalResourceMappingTableSegment& segment = segments.at(indices.at(id));
 
     // Write mapping
     ASSERT(offset < segment.length, "Physical segment offset out of bounds");
-    virtualMappings[segment.offset + offset] = mapping;
-}
+    persistentVersion->virtualMappings[segment.offset + offset] = mapping;
 
-void PhysicalResourceMappingTable::Defragment() {
-    // The current optimal offset
-    uint32_t relocatedOffset = 0;
-
-    // Defragment all live mappings
-    for (size_t i = 0; i < segments.size(); i++) {
-        // Removed segment?
-        if (segments[i].destroyed) {
-            continue;
-        }
-
-        // Already in optimal placement?
-        if (relocatedOffset != segments[i].offset) {
-            // Move data to placement
-            std::memmove(virtualMappings + relocatedOffset, virtualMappings + segments[i].offset, segments[i].length * sizeof(VirtualResourceMapping));
-
-            // Update offset
-            segments[i].offset = relocatedOffset;
-        }
-
-        // Offset
-        relocatedOffset += segments[i].length;
-    }
-
-    // Current live offset
-    uint32_t liveHead = 0;
-
-    // Remove dead segments
-    for (size_t i = 0; i < segments.size(); i++) {
-        const PhysicalResourceMappingTableSegment& peekSegment = segments[i];
-
-        // Skip if removed
-        if (peekSegment.destroyed) {
-            continue;
-        }
-
-        // Move peek segment to current
-        segments[liveHead] = peekSegment;
-
-        // Update lookup for peek segment to live
-        indices[peekSegment.id] = liveHead;
-
-        // Next!
-        liveHead++;
-    }
-
-    // Remove dead segments
-    segments.erase(segments.begin() + liveHead, segments.end());
-
-    // Validate
-    ASSERT(liveHead == liveSegmentCount, "Invalid tracked live count to segment");
-
-    // No longer fragmented
-    fragmentedEntries = 0;
+    // Advance head
+    commitHead++;
 }
 
 size_t PhysicalResourceMappingTable::GetMappingOffset(PhysicalResourceSegmentID id, uint32_t offset) {
@@ -317,6 +218,27 @@ size_t PhysicalResourceMappingTable::GetMappingOffset(PhysicalResourceSegmentID 
     // Get mapping offset
     ASSERT(offset < segment.length, "Physical segment offset out of bounds");
     return segment.offset + offset;
+}
+
+void PhysicalResourceMappingTable::CopyMappings(PhysicalResourceSegmentID source, PhysicalResourceSegmentID dest) {
+    std::lock_guard guard(mutex);
+    
+    // Get the underlying segment
+    const PhysicalResourceMappingTableSegment& sourceSegment = segments.at(indices.at(source));
+    const PhysicalResourceMappingTableSegment& destSegment   = segments.at(indices.at(dest));
+
+    // Validation
+    ASSERT(sourceSegment.length == destSegment.length, "Length mismatch");
+
+    // Copy range
+    std::memcpy(
+        persistentVersion->virtualMappings + sourceSegment.offset,
+        persistentVersion->virtualMappings + destSegment.offset,
+        sourceSegment.length
+    );
+    
+    // Advance head
+    commitHead++;
 }
 
 PhysicalResourceMappingTableSegment PhysicalResourceMappingTable::GetSegmentShader(PhysicalResourceSegmentID id) {
@@ -332,5 +254,5 @@ VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(PhysicalResource
 
     // Get mapping
     ASSERT(offset < segment.length, "Physical segment offset out of bounds");
-    return virtualMappings[segment.offset + offset];
+    return persistentVersion->virtualMappings[segment.offset + offset];
 }

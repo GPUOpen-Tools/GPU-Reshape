@@ -29,6 +29,7 @@
 #include <Backends/Vulkan/Export/SegmentInfo.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
+#include <Backends/Vulkan/Resource/PhysicalResourceMappingTablePersistentVersion.h>
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -100,7 +101,7 @@ bool ShaderExportDescriptorAllocator::Install() {
     prmtLayout.stageFlags = VK_SHADER_STAGE_ALL;
     prmtLayout.descriptorCount = 1;
     prmtLayout.binding = bindingInfo.prmtDescriptorOffset;
-    bindingFlags.Add(0x0);
+    bindingFlags.Add(VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
 
     // Binding for descriptor data
     VkDescriptorSetLayoutBinding& descriptorDataLayout = bindings.Add({});
@@ -375,18 +376,6 @@ void ShaderExportDescriptorAllocator::Free(const ShaderExportSegmentDescriptorIn
 void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentDescriptorInfo &info, VkBuffer descriptorChunk, VkBuffer constantsChunk) {
     TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites(allocators);
 
-    // Get prmt view
-    VkBufferView prmtBufferView = table->prmTable->GetDeviceView();
-
-    // PRMT buffer
-    VkWriteDescriptorSet& prmtWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
-    prmtWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-    prmtWrite.descriptorCount = 1u;
-    prmtWrite.pTexelBufferView = &prmtBufferView;
-    prmtWrite.dstArrayElement = 0;
-    prmtWrite.dstSet = info.set;
-    prmtWrite.dstBinding = bindingInfo.prmtDescriptorOffset;
-
     // Chunk info
     VkDescriptorBufferInfo chunkBufferInfo;
     chunkBufferInfo.buffer = descriptorChunk;
@@ -434,9 +423,18 @@ void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentD
     table->dataHost->CreateDescriptors(info.set, bindingInfo.shaderDataDescriptorOffset);
 }
 
-void ShaderExportDescriptorAllocator::Update(const ShaderExportSegmentDescriptorInfo &info, const ShaderExportSegmentInfo *segment) {
+void ShaderExportDescriptorAllocator::Update(const ShaderExportSegmentDescriptorInfo &info, const ShaderExportSegmentInfo *segment, PhysicalResourceMappingTablePersistentVersion* prmtPersistentVersion) {
     TrivialStackVector<VkWriteDescriptorSet, 16u> descriptorWrites(allocators);
 
+    // PRMT buffer
+    VkWriteDescriptorSet& prmtWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
+    prmtWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    prmtWrite.descriptorCount = 1u;
+    prmtWrite.pTexelBufferView = &prmtPersistentVersion->deviceView;
+    prmtWrite.dstArrayElement = 0;
+    prmtWrite.dstSet = info.set;
+    prmtWrite.dstBinding = bindingInfo.prmtDescriptorOffset;
+    
     // Single counter
     VkWriteDescriptorSet& counterWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
     counterWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;

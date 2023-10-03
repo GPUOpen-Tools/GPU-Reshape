@@ -28,10 +28,12 @@
 #include "VirtualResourceMapping.h"
 #include "PhysicalResourceMappingTableSegment.h"
 #include "PhysicalResourceSegment.h"
+#include "PhysicalResourceMappingTableQueueState.h"
 #include <Backends/Vulkan/Allocation/MirrorAllocation.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
 
 // Common
+#include <Common/Containers/PartitionedAllocator.h>
 #include <Common/IComponent.h>
 #include <Common/ComRef.h>
 
@@ -40,6 +42,7 @@
 #include <mutex>
 
 // Forward declarations
+class PhysicalResourceMappingTablePersistentVersion;
 struct DeviceDispatchTable;
 class DeviceAllocator;
 
@@ -56,7 +59,9 @@ public:
 
     /// Update the table for use on a given list
     /// \param commandBuffer buffer to be updated on
-    void Update(VkCommandBuffer commandBuffer);
+    /// \param queueState queue state
+    /// \return persistent version, must be manually released
+    PhysicalResourceMappingTablePersistentVersion* GetPersistentVersion(VkCommandBuffer commandBuffer, PhysicalResourceMappingTableQueueState* queueState);
 
     /// Allocate a new segment
     /// \param count number of descriptors
@@ -89,47 +94,32 @@ public:
     /// \return mapping offset
     size_t GetMappingOffset(PhysicalResourceSegmentID id, uint32_t offset);
 
-    /// Get the underlying buffer
-    VkBuffer GetDeviceBuffer() const {
-        return deviceBuffer;
-    }
-
-    /// Get the descriptor view
-    const VkBufferView GetDeviceView() const {
-        return deviceView;
-    }
+    /// \brief Copy all mappings, must be of same length
+    /// \param source source segment
+    /// \param dest destination segment
+    void CopyMappings(PhysicalResourceSegmentID source, PhysicalResourceSegmentID dest);
 
 private:
-    /// Get the current offset
-    /// \return element offset
-    uint32_t GetHeadOffset() const;
-
     /// Allocate a new table with a given size
     /// \param count number of descriptors
     void AllocateTable(uint32_t count);
 
-    /// Defragment the table
-    void Defragment();
-
 private:
-    /// Does this table need updating?
-    bool isDirty{true};
+    /// Table (global) commit head
+    size_t commitHead{0};
 
     /// Number of mappings contained
     uint32_t virtualMappingCount{0};
 
-    /// Mapped virtual entries
-    VirtualResourceMapping* virtualMappings{nullptr};
+    /// Current persistent version
+    PhysicalResourceMappingTablePersistentVersion* persistentVersion{nullptr};
 
-    /// Underlying allocation
-    MirrorAllocation allocation;
-
-    /// Buffer handles
-    VkBuffer hostBuffer{nullptr};
-    VkBuffer deviceBuffer{nullptr};
-
-    /// Descriptor handles
-    VkBufferView deviceView{nullptr};
+    /// Partitioned allocator for reduced fragmentation
+    PartitionedAllocator<
+        12,   /// Total of 12 partition levels
+        4096, /// Each partition to 4096 elements
+        512   /// Slack of 512 on large blocks
+    > partitionedAllocator;
 
 private:
     /// Free indices to be used immediately
@@ -143,9 +133,6 @@ private:
 
     /// Number of live segments
     uint32_t liveSegmentCount{0};
-
-    /// Current fragmentation
-    uint32_t fragmentedEntries{0};
 
 private:
     DeviceDispatchTable* table;

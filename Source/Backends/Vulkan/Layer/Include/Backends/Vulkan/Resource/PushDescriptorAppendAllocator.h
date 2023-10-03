@@ -66,9 +66,6 @@ public:
         // Get the set entry
         SetEntry& setEntry = GetEntryFor(layoutState, set, commandBuffer);
 
-        // Local stack for mappings
-        TrivialStackVector<VirtualResourceMapping, 128> mappingStack;
-
         // Handle all writes
         for (uint32_t i = 0; i < descriptorWriteCount; i++) {
             const VkWriteDescriptorSet& write = pDescriptorWrites[i];
@@ -76,25 +73,11 @@ public:
             // Map current binding to an offset
             const uint32_t prmtOffset = physicalMapping.bindings.at(write.dstBinding).prmtOffset;
 
-            // Preallocate (hopefully stack) descriptors
-            mappingStack.Resize(write.descriptorCount);
-            
             // Create mappings for all descriptors written
             for (uint32_t descriptorIndex = 0; descriptorIndex < write.descriptorCount; descriptorIndex++) {
-                mappingStack[descriptorIndex] = GetVirtualResourceMapping(table, write, descriptorIndex);
+                // Write mapping
+                table->prmTable->WriteMapping(setEntry.segmentId, prmtOffset + write.dstArrayElement, GetVirtualResourceMapping(table, write, descriptorIndex));
             }
-
-            // Determine byte offset
-            size_t byteOffset = table->prmTable->GetMappingOffset(setEntry.segmentId, prmtOffset + write.dstArrayElement) * sizeof(VirtualResourceMapping);
-
-            // Enqueue copy of stack PRMs
-            table->commandBufferDispatchTable.next_vkCmdUpdateBuffer(
-                commandBuffer,
-                table->prmTable->GetDeviceBuffer(),
-                byteOffset,
-                mappingStack.Size() * sizeof(VirtualResourceMapping),
-                mappingStack.Data()
-            );
         }
 
         // Mark as pending writes
@@ -116,9 +99,6 @@ public:
         // Get the set entry
         SetEntry& setEntry = GetEntryFor(layoutState, set, commandBuffer);
         
-        // Local stack for mappings
-        TrivialStackVector<VirtualResourceMapping, 128> mappingStack;
-        
         // Handle each entry
         for (uint32_t i = 0; i < descriptorUpdateTemplate->createInfo->descriptorUpdateEntryCount; i++) {
             const VkDescriptorUpdateTemplateEntry& entry = descriptorUpdateTemplate->createInfo->pDescriptorUpdateEntries[i];
@@ -126,28 +106,13 @@ public:
             // Map current binding to an offset
             const uint32_t prmtOffset = physicalMapping.bindings.at(entry.dstBinding).prmtOffset;
 
-            // Preallocate (hopefully stack) descriptors
-            mappingStack.Resize(entry.descriptorCount);
-
             // Handle each binding write
             for (uint32_t descriptorIndex = 0; descriptorIndex < entry.descriptorCount; descriptorIndex++) {
                 const void *descriptorData = static_cast<const uint8_t*>(pData) + entry.offset + descriptorIndex * entry.stride;
                 
                 // Write mapping
-                mappingStack[descriptorIndex] = GetVirtualResourceMapping(table, entry.descriptorType, descriptorData);
+                table->prmTable->WriteMapping(setEntry.segmentId, prmtOffset + entry.dstArrayElement, GetVirtualResourceMapping(table, entry.descriptorType, descriptorData));
             }
-
-            // Determine byte offset
-            size_t byteOffset = table->prmTable->GetMappingOffset(setEntry.segmentId, prmtOffset + entry.dstArrayElement) * sizeof(VirtualResourceMapping);
-
-            // Enqueue copy of stack PRMs
-            table->commandBufferDispatchTable.next_vkCmdUpdateBuffer(
-                commandBuffer,
-                table->prmTable->GetDeviceBuffer(),
-                byteOffset,
-                mappingStack.Size() * sizeof(VirtualResourceMapping),
-                mappingStack.Data()
-            );
         }
 
         // Mark as pending writes
@@ -177,8 +142,6 @@ public:
     /// \param commandBuffer command buffer to commit to
     /// \param pipelineBindPoint current bind point
     void Commit(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint) {
-        bool anyPendingWrite = false;
-
         // Check all entries
         for (size_t set = 0; set < setEntries.size(); set++) {
             SetEntry& entry = setEntries[set];
@@ -195,52 +158,11 @@ public:
                 PhysicalResourceMappingTableSegment segmentShader = table->prmTable->GetSegmentShader(entry.segmentId);
                 dataAllocator->SetOrAllocate(commandBuffer, descriptorDataDWordOffset + kDescriptorDataLengthDWord, descriptorDataDWordBound, segmentShader.length);
                 dataAllocator->Set(commandBuffer, descriptorDataDWordOffset + kDescriptorDataOffsetDWord, segmentShader.offset);
-
-                // Ensure stall on write
-                anyPendingWrite = true;
             }
 
             // Mark as pending roll, the data from here on is considered immutable
             entry.pendingRoll = true;
         }
-
-        // Early out if nothing is to be committed
-        if (!anyPendingWrite) {
-            return;
-        }
-        
-        // Handle bind point
-        VkPipelineStageFlags stageFlags{0};
-        switch (pipelineBindPoint) {
-            default:
-                return;
-            case VK_PIPELINE_BIND_POINT_GRAPHICS:
-                stageFlags = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
-                break;
-            case VK_PIPELINE_BIND_POINT_COMPUTE:
-                stageFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-                break;
-        }
-        
-        // Setup barrier
-        VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
-        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.buffer = table->prmTable->GetDeviceBuffer();
-        barrier.offset = 0x0;
-        barrier.size = VK_WHOLE_SIZE;
-
-        // Enqueue barrier
-        table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
-            commandBuffer,
-            stageFlags, stageFlags,
-            0x0,
-            0u, nullptr,
-            1u, &barrier,
-            0u, nullptr
-        );
     }
 
     /// Release the current segment
@@ -324,24 +246,9 @@ private:
 
             // If this segment is pending a roll, reconstruct the previous descriptor data
             if (setEntries[set].pendingRoll) {
-                // Determine byte offsets
-                size_t srcByteOffset = table->prmTable->GetMappingOffset(setEntry.segmentId, 0u) * sizeof(VirtualResourceMapping);
-                size_t dstByteOffset = table->prmTable->GetMappingOffset(nextSegmentID, 0u) * sizeof(VirtualResourceMapping);
-
-                // Setup the region
-                VkBufferCopy region{};
-                region.size = physicalMapping.bindings.size() * sizeof(VirtualResourceMapping);
-                region.srcOffset = srcByteOffset;
-                region.dstOffset = dstByteOffset;
-
-                // Copy all contents
-                table->commandBufferDispatchTable.next_vkCmdCopyBuffer(
-                    commandBuffer,
-                    table->prmTable->GetDeviceBuffer(),
-                    table->prmTable->GetDeviceBuffer(),
-                    1u, &region
-                );
-
+                // Copy all mappings
+                table->prmTable->CopyMappings(setEntry.segmentId, nextSegmentID);
+                
                 // Successfully rolled
                 setEntries[set].pendingRoll = false;
             }

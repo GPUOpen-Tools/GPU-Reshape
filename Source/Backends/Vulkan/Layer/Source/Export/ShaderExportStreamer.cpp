@@ -41,6 +41,7 @@
 #include <Backends/Vulkan/Controllers/VersioningController.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 #include <Backends/Vulkan/Resource/PushDescriptorAppendAllocator.h>
+#include <Backends/Vulkan/Resource/PhysicalResourceMappingTablePersistentVersion.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -630,7 +631,7 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, cons
 
 void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {
     for (const ShaderExportSegmentDescriptorAllocation &allocation: state->segmentDescriptors) {
-        descriptorAllocator->Update(allocation.info, segment->allocation);
+        descriptorAllocator->Update(allocation.info, segment->allocation, segment->prmtPersistentVersion);
     }
 
     // Cleanup data segments
@@ -778,6 +779,9 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(ShaderExportQueueState* queue,
     queueState->PushCommandBuffer(segment->prePatchCommandBuffer);
     queueState->PushCommandBuffer(segment->postPatchCommandBuffer);
 
+    // Release persistent version
+    destroyRef(segment->prmtPersistentVersion, allocators);
+
     // Add back to pool
     segmentPool.Push(segment);
 }
@@ -796,7 +800,7 @@ void ShaderExportStreamer::ReleaseDescriptorDataSegment(const DescriptorDataSegm
     freeDescriptorDataSegmentEntries.push_back(dataSegment.entries.back());
 }
 
-VkCommandBuffer ShaderExportStreamer::RecordPreCommandBuffer(ShaderExportQueueState* state, ShaderExportStreamSegment* segment) {
+VkCommandBuffer ShaderExportStreamer::RecordPreCommandBuffer(ShaderExportQueueState* state, ShaderExportStreamSegment* segment, PhysicalResourceMappingTableQueueState* prmtState) {
     std::lock_guard guard(mutex);
 
     // Get queue
@@ -815,7 +819,7 @@ VkCommandBuffer ShaderExportStreamer::RecordPreCommandBuffer(ShaderExportQueueSt
     }
 
     // Update all PRM data
-    table->prmTable->Update(segment->prePatchCommandBuffer);
+    segment->prmtPersistentVersion = table->prmTable->GetPersistentVersion(segment->prePatchCommandBuffer, prmtState);
 
     // Done
     table->next_vkEndCommandBuffer(segment->prePatchCommandBuffer);

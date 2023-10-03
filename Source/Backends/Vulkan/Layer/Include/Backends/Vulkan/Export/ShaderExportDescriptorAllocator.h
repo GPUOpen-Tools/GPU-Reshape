@@ -45,6 +45,7 @@
 struct DeviceDispatchTable;
 struct ShaderExportSegmentInfo;
 class DeviceAllocator;
+class PhysicalResourceMappingTablePersistentVersion;
 
 class ShaderExportDescriptorAllocator : public TComponent<ShaderExportDescriptorAllocator> {
 public:
@@ -70,7 +71,8 @@ public:
     /// Update a segment
     /// \param info the descriptor segment to be updated
     /// \param segment the allocation segment [info] is bound to
-    void Update(const ShaderExportSegmentDescriptorInfo& info, const ShaderExportSegmentInfo *segment);
+    /// \param prmtPersistentVersion persistent version to bind to
+    void Update(const ShaderExportSegmentDescriptorInfo& info, const ShaderExportSegmentInfo *segment, PhysicalResourceMappingTablePersistentVersion* prmtPersistentVersion);
 
     /// Free a given segment
     /// \param info

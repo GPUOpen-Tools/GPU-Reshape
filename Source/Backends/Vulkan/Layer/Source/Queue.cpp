@@ -178,7 +178,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     TrivialStackVector<VkSubmitInfo, 32u> vkSubmits;
     
     // Record the streaming pre patching
-    VkCommandBuffer prePatchCommandBuffer = table->exportStreamer->RecordPreCommandBuffer(queueState->exportState, segment);
+    VkCommandBuffer prePatchCommandBuffer = table->exportStreamer->RecordPreCommandBuffer(queueState->exportState, segment, &queueState->prmtState);
 
     // Fill patch submission info
     VkSubmitInfo& prePatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});

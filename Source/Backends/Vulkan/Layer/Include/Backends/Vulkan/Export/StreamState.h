@@ -47,6 +47,7 @@ struct PushDescriptorSegment;
 struct FenceState;
 class DescriptorDataAppendAllocator;
 class PushDescriptorAppendAllocator;
+class PhysicalResourceMappingTablePersistentVersion;
 
 /// Tracked descriptor allocation
 struct ShaderExportSegmentDescriptorAllocation {
@@ -158,6 +159,9 @@ struct ShaderExportStreamSegment {
 
     /// Combined context handles
     std::vector<CommandContextHandle> commandContextHandles;
+
+    /// Persistent version for the PRM-Table
+    PhysicalResourceMappingTablePersistentVersion* prmtPersistentVersion{nullptr};
 
     /// Versioning segmentation point during submission
     VersionSegmentationPoint versionSegPoint{};
