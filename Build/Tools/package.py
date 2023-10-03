@@ -32,9 +32,6 @@ pck_dir_root = os.path.join("../", "../", "Package")
 
 # Ignore list
 ignore_list = [
-    # Packaged separately
-    ".pdb",
-    
     # Executables, handled through required files
     # Mostly unit testing, build time tooling
     ".exe",
@@ -51,6 +48,13 @@ ignore_list = [
 require_list = [
     # <The> GPU Reshape
     "GPUReshape.exe",
+    
+    # Dependencies
+    "GPUReshape.NotifyIcon.exe",
+    "GRS.Backends.DX12.Service.exe",
+    "GRS.Backends.DX12.Service.RelFunTBL.exe",
+    "GRS.Services.HostResolver.Standalone.exe",
+    "XamlColorSchemeGenerator.exe",
 ]
 
 # All required folders
@@ -77,14 +81,21 @@ for package in packages:
     
     # Destination directory
     pck_dir = os.path.join(pck_dir_root, package)
+    sym_dir = os.path.join(pck_dir_root, package + "Sym")
 
     # Remove old package data
     if os.path.exists(pck_dir):
         sys.stdout.write("\tRemoving old package...\n")
         shutil.rmtree(pck_dir)
+
+    # Remove old package symbol data
+    if os.path.exists(sym_dir):
+        sys.stdout.write("\tRemoving old package symbols...\n")
+        shutil.rmtree(sym_dir)
        
     # Ensure tree exists
     os.makedirs(pck_dir)
+    os.makedirs(sym_dir)
     
     # Process all files
     for filename in os.listdir(bin_dir):
@@ -102,10 +113,13 @@ for package in packages:
         if not is_required and is_ignored:
             sys.stdout.write(f"\tIgnoring {filename}\n")
             continue
+            
+        # Destination folder
+        dest_dir = sym_dir if ".pdb" in filename else pck_dir
 
         # Copy!
         sys.stdout.write(f"\tPackaging {filename}\n")
-        shutil.copyfile(src_path, os.path.join(pck_dir, filename))
+        shutil.copyfile(src_path, os.path.join(dest_dir, filename))
         
     # Process all folders
     for folder in require_folders:
