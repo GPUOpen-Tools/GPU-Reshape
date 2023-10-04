@@ -38,6 +38,7 @@
 
 // Std
 #include <vector>
+#include <bit>
 
 class SpvConstantMap {
 public:

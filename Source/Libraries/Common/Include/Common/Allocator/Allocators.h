@@ -27,6 +27,9 @@
 // Common
 #include "AllocatorTag.h"
 
+// Std
+#include <cstdlib>
+
 /// Default allocator
 inline void *AllocateDefault(void*, size_t size, size_t align, AllocationTag) {
     return malloc(size);
