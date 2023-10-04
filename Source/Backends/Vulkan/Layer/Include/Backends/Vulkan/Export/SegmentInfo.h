@@ -74,4 +74,7 @@ struct ShaderExportSegmentInfo {
 
     /// Counter batch
     ShaderExportSegmentCounterInfo counter;
+
+    /// Does this segment require initialization?
+    bool pendingInitialization{true};
 };

@@ -1128,11 +1128,58 @@ void ShaderExportStreamer::FreeSegmentNoQueueLock(CommandQueueState* queue, Shad
 ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPreCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* segment) {
     std::lock_guard guard(mutex);
 
+    // Create descriptors
+    segment->patchDeviceCPUDescriptor = sharedCPUHeapAllocator->Allocate(1);
+    segment->patchDeviceGPUDescriptor = sharedGPUHeapAllocator->Allocate(1);
+
+    // Counter to be initialized
+    const ShaderExportSegmentCounterInfo& counter = segment->allocation->counter;
+
+    // Create CPU only descriptor
+    device->object->CreateUnorderedAccessView(
+        counter.allocation.device.resource, nullptr,
+        &counter.view,
+        segment->patchDeviceCPUDescriptor.cpuHandle
+    );
+
+    // Create GPU only descriptor
+    device->object->CreateUnorderedAccessView(
+        counter.allocation.device.resource, nullptr,
+        &counter.view,
+        segment->patchDeviceGPUDescriptor.cpuHandle
+    );
+
     // Pop a new command list
     segment->immediatePrePatch = queueState->PopCommandList();
     
     // Ease of use
     ID3D12GraphicsCommandList* patchList = segment->immediatePrePatch.commandList;
+
+    // Has the counter data been initialized?
+    //   Only required once per segment allocation, as the segments are recycled this usually
+    //   only occurs during application startup.
+    if (segment->allocation->pendingInitialization) {
+        uint32_t clearValue[4] = { 0x0, 0x0, 0x0, 0x0 };
+
+        // Clear device counters
+        patchList->ClearUnorderedAccessViewUint(
+            segment->patchDeviceGPUDescriptor.gpuHandle, segment->patchDeviceCPUDescriptor.cpuHandle,
+            counter.allocation.device.resource,
+            clearValue,
+            0u,
+            nullptr
+        );
+        
+        // Flush all pending work and transition to src
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.UAV.pResource = counter.allocation.device.resource;
+        patchList->ResourceBarrier(1u, &barrier);
+
+        // Mark as initialized
+        segment->allocation->pendingInitialization = false;
+    }
 
     // Patch all referenced heaps
     // Note: Internally dirty tested, duplicates are fine
@@ -1155,25 +1202,8 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPreCommandList(CommandQue
 ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPostCommandList(CommandQueueState* queueState, ShaderExportStreamSegment* segment) {
     std::lock_guard guard(mutex);
     
-    segment->patchDeviceCPUDescriptor = sharedCPUHeapAllocator->Allocate(1);
-    segment->patchDeviceGPUDescriptor = sharedGPUHeapAllocator->Allocate(1);
-
     // Counter to be copied
     const ShaderExportSegmentCounterInfo& counter = segment->allocation->counter;
-
-    // Create CPU only descriptor
-    device->object->CreateUnorderedAccessView(
-        counter.allocation.device.resource, nullptr,
-        &counter.view,
-        segment->patchDeviceCPUDescriptor.cpuHandle
-    );
-
-    // Create GPU only descriptor
-    device->object->CreateUnorderedAccessView(
-        counter.allocation.device.resource, nullptr,
-        &counter.view,
-        segment->patchDeviceGPUDescriptor.cpuHandle
-    );
 
     // Pop a new command list
     segment->immediatePostPatch = queueState->PopCommandList();

@@ -818,6 +818,38 @@ VkCommandBuffer ShaderExportStreamer::RecordPreCommandBuffer(ShaderExportQueueSt
         return nullptr;
     }
 
+    // Has the counter data been initialized?
+    //   Only required once per segment allocation, as the segments are recycled this usually
+    //   only occurs during application startup.
+    if (segment->allocation->pendingInitialization) {
+        // Clear device counters
+        VkBufferCopy copy{};
+        copy.size = sizeof(ShaderExportCounter) * segment->allocation->streams.size();
+        table->commandBufferDispatchTable.next_vkCmdFillBuffer(segment->prePatchCommandBuffer, segment->allocation->counter.buffer, 0u, copy.size, 0x0);
+
+        // Flush barrier
+        VkBufferMemoryBarrier barrier{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+        barrier.buffer = segment->allocation->counter.buffer;
+        barrier.offset = 0;
+        barrier.size = copy.size;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+        // Flush the counter fill
+        table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
+            segment->prePatchCommandBuffer,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0x0,
+            0, nullptr,
+            1, &barrier,
+            0, nullptr
+        );
+
+        // Mark as initialized
+        segment->allocation->pendingInitialization = false;
+    }
+
     // Update all PRM data
     segment->prmtPersistentVersion = table->prmTable->GetPersistentVersion(segment->prePatchCommandBuffer, prmtState);
 
@@ -867,8 +899,8 @@ VkCommandBuffer ShaderExportStreamer::RecordPostCommandBuffer(ShaderExportQueueS
     table->commandBufferDispatchTable.next_vkCmdCopyBuffer(segment->postPatchCommandBuffer, counter.buffer, counter.bufferHost, 1u, &copy);
 
     // Flush all queue work
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_HOST_READ_BIT;
-    barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_HOST_READ_BIT;
     table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
             segment->postPatchCommandBuffer,
             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0x0,
@@ -880,6 +912,17 @@ VkCommandBuffer ShaderExportStreamer::RecordPostCommandBuffer(ShaderExportQueueS
     // Clear device counters
     table->commandBufferDispatchTable.next_vkCmdFillBuffer(segment->postPatchCommandBuffer, counter.buffer, 0u, copy.size, 0x0);
 
+    // Flush all queue work
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+    table->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
+            segment->postPatchCommandBuffer,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0x0,
+            1, &barrier,
+            0, nullptr,
+            0, nullptr
+    );
+    
     // Done
     table->next_vkEndCommandBuffer(segment->postPatchCommandBuffer);
 
