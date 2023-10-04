@@ -250,6 +250,7 @@ add_library(
     Layer/Source/Compiler/SpvPhysicalBlockTable.cpp
     Layer/Source/ShaderData/ShaderDataHost.cpp
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
+    Layer/Source/Resource/PhysicalResourceMappingTablePersistentVersion.cpp
     Layer/Source/Resource.cpp
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
     Layer/Source/Command/UserCommandBuffer.cpp
