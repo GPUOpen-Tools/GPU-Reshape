@@ -46,6 +46,7 @@
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/Vulkan/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/Vulkan/Scheduler/Scheduler.h>
+#include <Backends/Vulkan/QueueInfoWriter.h>
 
 // Common
 #include <Common/Registry.h>
@@ -177,73 +178,6 @@ static void CreateEventRemappingTable(DeviceDispatchTable* table) {
     }
 }
 
-static uint32_t FindQueueWithFlags(DeviceDispatchTable* table, VkQueueFlags flags) {
-    uint32_t candidate = UINT32_MAX;
-    uint32_t distance  = UINT32_MAX;
-
-    // Visit all families
-    for (size_t i = 0; i < table->queueFamilyProperties.size(); i++) {
-        const VkQueueFamilyProperties& properties = table->queueFamilyProperties[i];
-
-        // Contains requested flags?
-        if ((properties.queueFlags & flags) != flags) {
-            continue;
-        }
-
-        // Better match?
-        if (properties.queueFlags < distance) {
-            candidate = static_cast<uint32_t>(i);
-            distance = properties.queueFlags;
-        }
-    }
-
-    // OK
-    return candidate;
-}
-
-static ExclusiveQueue RequestExclusiveQueueOfType(DeviceDispatchTable* table, VkQueueFlags flags, std::vector<VkDeviceQueueCreateInfo>& out) {
-    ExclusiveQueue queue;
-
-    // Find the most appropriate family
-    queue.familyIndex = FindQueueWithFlags(table, flags);
-
-    // May not be supported
-    if (queue.familyIndex == UINT32_MAX) {
-        return queue;
-    }
-
-    // Get family
-    const VkQueueFamilyProperties& family = table->queueFamilyProperties[queue.familyIndex];
-
-    // Check all existing queues
-    for (VkDeviceQueueCreateInfo& createInfo : out) {
-        if (createInfo.queueFamilyIndex != queue.familyIndex) {
-            continue;
-        }
-
-        // Exceeded queue count?
-        // Just use the last one
-        if (createInfo.queueCount == family.queueCount) {
-            queue.queueIndex = createInfo.queueCount - 1u;
-            return queue;
-        }
-
-        // Queues are available, increment
-        queue.queueIndex = createInfo.queueCount;
-        createInfo.queueCount++;
-        return queue;
-    }
-
-    // No match was found, append a new request
-    VkDeviceQueueCreateInfo& createInfo = out.emplace_back() = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
-    createInfo.queueFamilyIndex = queue.familyIndex;
-    createInfo.queueCount = 1;
-    queue.queueIndex = 0;
-
-    // OK
-    return queue;
-}
-
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     auto chainInfo = static_cast<VkLayerDeviceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
@@ -326,18 +260,17 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->queueFamilyProperties.resize(queueFamilyPropertyCount);
     table->parent->next_vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertyCount, table->queueFamilyProperties.data());
 
-    // Copy queues
-    std::vector<VkDeviceQueueCreateInfo> queues(table->createInfo->pQueueCreateInfos, table->createInfo->pQueueCreateInfos + table->createInfo->queueCreateInfoCount);
+    // Create queue writer
+    QueueInfoWriter queueWriter(table);
 
     // Request exclusive queues of given type
-    table->preferredExclusiveGraphicsQueue = RequestExclusiveQueueOfType(table, VK_QUEUE_GRAPHICS_BIT, queues);
-    table->preferredExclusiveComputeQueue  = RequestExclusiveQueueOfType(table, VK_QUEUE_COMPUTE_BIT, queues);
-    table->preferredExclusiveTransferQueue = RequestExclusiveQueueOfType(table, VK_QUEUE_TRANSFER_BIT, queues);
+    table->preferredExclusiveGraphicsQueue = queueWriter.RequestExclusiveQueueOfType(VK_QUEUE_GRAPHICS_BIT);
+    table->preferredExclusiveComputeQueue  = queueWriter.RequestExclusiveQueueOfType(VK_QUEUE_COMPUTE_BIT);
+    table->preferredExclusiveTransferQueue = queueWriter.RequestExclusiveQueueOfType(VK_QUEUE_TRANSFER_BIT);
 
     // Set new queues
-    table->createInfo->pQueueCreateInfos = queues.data();
-    table->createInfo->queueCreateInfoCount = static_cast<uint32_t>(queues.size());
-
+    queueWriter.Assign();
+    
     // Pass down the chain
     VkResult result = reinterpret_cast<PFN_vkCreateDevice>(getInstanceProcAddr(nullptr, "vkCreateDevice"))(physicalDevice, &table->createInfo.createInfo, pAllocator, pDevice);
     if (result != VK_SUCCESS) {
