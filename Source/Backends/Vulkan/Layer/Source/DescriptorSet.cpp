@@ -496,10 +496,6 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
         // Last set is export data
         setLayouts[pCreateInfo->setLayoutCount] = table->exportDescriptorAllocator->GetLayout();
 
-        // Copy previous ranges
-        auto *ranges = ALLOCA_ARRAY(VkPushConstantRange, pCreateInfo->pushConstantRangeCount + 1);
-        std::memcpy(ranges, pCreateInfo->pPushConstantRanges, sizeof(VkPushConstantRange) * pCreateInfo->pushConstantRangeCount);
-
         // Get number of events
         uint32_t eventCount{0};
         table->dataHost->Enumerate(&eventCount, nullptr, ShaderDataType::Event);
@@ -507,7 +503,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
         // To length
         dataPushConstantLength += eventCount * sizeof(uint32_t);
 
-        // Append after all user PCs
+        // Summarize user PCs
         for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
             const VkPushConstantRange& userRange = pCreateInfo->pPushConstantRanges[i];
 
@@ -518,11 +514,27 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
             userPushConstantLength = std::max(userPushConstantLength, userRange.offset + userRange.size);
         }
 
+#if PIPELINE_MERGE_PC_RANGES
+        // Create a merged range
+        VkPushConstantRange mergedRange{};
+        mergedRange.offset = 0;
+        mergedRange.stageFlags = VK_SHADER_STAGE_ALL;
+#else // PIPELINE_MERGE_PC_RANGES
+        // Copy previous ranges
+        auto *ranges = ALLOCA_ARRAY(VkPushConstantRange, pCreateInfo->pushConstantRangeCount + 1);
+        std::memcpy(ranges, pCreateInfo->pPushConstantRanges, sizeof(VkPushConstantRange) * pCreateInfo->pushConstantRangeCount);
+#endif // PIPELINE_MERGE_PC_RANGES
+
         // Mirror creation info
         VkPipelineLayoutCreateInfo createInfo = *pCreateInfo;
         createInfo.setLayoutCount = pCreateInfo->setLayoutCount + 1;
         createInfo.pSetLayouts = setLayouts;
+#if PIPELINE_MERGE_PC_RANGES
+        createInfo.pPushConstantRanges = &mergedRange;
+        createInfo.pushConstantRangeCount = 1u;
+#else // PIPELINE_MERGE_PC_RANGES
         createInfo.pPushConstantRanges = ranges;
+#endif // PIPELINE_MERGE_PC_RANGES
 
         // Instrumented length
         uint32_t extendedPushConstantLength = userPushConstantLength;
@@ -537,6 +549,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
         dataPushConstantOffset = extendedPushConstantLength;
         extendedPushConstantLength += dataPushConstantLength;
 
+#if PIPELINE_MERGE_PC_RANGES
+        // Extend merged range
+        mergedRange.size = extendedPushConstantLength;
+#else // PIPELINE_MERGE_PC_RANGES
         // Any data?
         if (extendedPushConstantLength > userPushConstantLength) {
             VkPushConstantRange* range{nullptr};
@@ -562,6 +578,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
                 range->size = extendedPushConstantLength - range->offset;
             }
         }
+#endif // PIPELINE_MERGE_PC_RANGES
 
         // Pass down callchain
         VkResult result = table->next_vkCreatePipelineLayout(device, &createInfo, pAllocator, pPipelineLayout);

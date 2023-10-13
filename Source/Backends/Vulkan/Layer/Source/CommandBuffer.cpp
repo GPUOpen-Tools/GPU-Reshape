@@ -461,6 +461,12 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPushConstants(CommandBufferObject *commandB
     ASSERT(offset + size <= commandBuffer->streamState->persistentPushConstantData.size(), "Out of bounds push constant range");
     std::memcpy(commandBuffer->streamState->persistentPushConstantData.data() + offset, pValues, size);
 
+#if PIPELINE_MERGE_PC_RANGES
+    // Vulkan requires that the overlapping range flags are the exact same
+    // As the merged ranges put everything in a single range, just assume its stage flags.
+    stageFlags = VK_SHADER_STAGE_ALL;
+#endif // PIPELINE_MERGE_PC_RANGES
+
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdPushConstants(commandBuffer->object, layout, stageFlags, offset, size, pValues);
 }

@@ -69,3 +69,9 @@
 
 /// Current PRMT method
 #define PRMT_METHOD PRMT_METHOD_UB_PC
+
+/// Merge all push-constant ranges, this greatly simplifies mappings
+///   Push constant ranges may be overlapping, however, the mappings are contiguous host side.
+///   An alternative implementations would extend each staged bit, and then append new stages if
+///   needed. However, this complicates the user side updates.
+#define PIPELINE_MERGE_PC_RANGES 1
