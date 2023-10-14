@@ -253,6 +253,9 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
             D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = graphicsState->deepCopy.desc;
 
+            // Ignore cache
+            desc.CachedPSO = {};
+
             // Instrumentation offset
             uint32_t keyOffset{0};
 
@@ -382,6 +385,9 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
             // Copy the deep creation info
             //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
             D3D12_COMPUTE_PIPELINE_STATE_DESC desc = computeState->deepCopy.desc;
+
+            // Ignore cache
+            desc.CachedPSO = {};
 
             // Assign instrumented version
             desc.CS = computeState->cs->GetInstrument(job.shaderInstrumentationKeys[0]);

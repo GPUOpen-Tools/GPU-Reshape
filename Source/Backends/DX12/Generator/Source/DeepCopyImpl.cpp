@@ -330,8 +330,8 @@ static bool DeepCopyObjectTree(const GeneratorInfo& info, DeepCopyState &state, 
             // Name of the contained type
             std::string containedName = memberType["name"].get<std::string>();
 
-            // Never copy shader bytecode
-            if (containedName == "D3D12_SHADER_BYTECODE") {
+            // Never copy shader bytecodes or caches
+            if (containedName == "D3D12_SHADER_BYTECODE" || containedName == "D3D12_CACHED_PIPELINE_STATE") {
                 state.deepCopy << Pad(indent) << destAccessorPrefix << memberName << " = " << sourceAccessorPrefix << memberName << ";\n";
                 continue;
             }
