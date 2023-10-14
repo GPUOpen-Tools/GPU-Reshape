@@ -40,6 +40,9 @@ DX12_C_LINKAGE HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ v
 DX12_C_LINKAGE HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory);
 HRESULT WINAPI HookIDXGIFactoryEnumAdapters(IDXGIFactory* self, UINT Output, IDXGIAdapter **ppAdapter);
 HRESULT WINAPI HookIDXGIFactoryEnumAdapters1(IDXGIFactory* self, UINT Output, IDXGIAdapter1 **ppAdapter);
+HRESULT WINAPI HookIDXGIFactoryEnumAdapterByLuid(IDXGIFactory* self, LUID AdapterLuid, const IID& riid, void** ppvAdapter);
+HRESULT WINAPI HookIDXGIFactoryEnumWarpAdapter(IDXGIFactory* self, const IID& riid, void** ppvAdapter);
+HRESULT WINAPI HookIDXGIFactoryEnumAdapterByGpuPreference(IDXGIFactory* self, UINT Adapter, DXGI_GPU_PREFERENCE GpuPreference, const IID& riid, void** ppvAdapter);
 HRESULT WINAPI HookIDXGIFactoryGetParent(IDXGIFactory* self, REFIID riid, void **ppParent);
 HRESULT WINAPI HookIDXGIAdapterEnumOutputs(IDXGIAdapter* self, UINT Output, IDXGIOutput **ppOutput);
 HRESULT WINAPI HookIDXGIAdapterGetParent(IDXGIAdapter* self, REFIID riid, void **ppParent);

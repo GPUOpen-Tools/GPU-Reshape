@@ -212,6 +212,129 @@ HRESULT WINAPI HookIDXGIFactoryEnumAdapters1(IDXGIFactory* self, UINT Output, ID
     return S_OK;
 }
 
+HRESULT WINAPI HookIDXGIFactoryEnumAdapterByLuid(IDXGIFactory* self, LUID AdapterLuid, const IID& riid, void** ppvAdapter) {
+    auto table = GetTable(self);
+
+    // Object
+    IDXGIAdapter *adapter{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.next->EnumAdapterByLuid(AdapterLuid, __uuidof(IDXGIAdapter), reinterpret_cast<void**>(&adapter));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Default allocators
+    Allocators allocators = {};
+
+    // Create state
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIAdapterState();
+    state->allocators = allocators;
+    state->parent = self;
+
+    // Keep reference to parent
+    self->AddRef();
+
+    // Create detours
+    adapter = CreateDetour(state->allocators, adapter, state);
+
+    // Query to external object if requested
+    if (ppvAdapter) {
+        hr = adapter->QueryInterface(riid, ppvAdapter);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    adapter->Release();
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookIDXGIFactoryEnumWarpAdapter(IDXGIFactory* self, const IID& riid, void** ppvAdapter) {
+    auto table = GetTable(self);
+
+    // Object
+    IDXGIAdapter *adapter{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.next->EnumWarpAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&adapter));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Default allocators
+    Allocators allocators = {};
+
+    // Create state
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIAdapterState();
+    state->allocators = allocators;
+    state->parent = self;
+
+    // Keep reference to parent
+    self->AddRef();
+
+    // Create detours
+    adapter = CreateDetour(state->allocators, adapter, state);
+
+    // Query to external object if requested
+    if (ppvAdapter) {
+        hr = adapter->QueryInterface(riid, ppvAdapter);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    adapter->Release();
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookIDXGIFactoryEnumAdapterByGpuPreference(IDXGIFactory* self, UINT Adapter, DXGI_GPU_PREFERENCE GpuPreference, const IID& riid, void** ppvAdapter) {
+    auto table = GetTable(self);
+
+    // Object
+    IDXGIAdapter *adapter{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.next->EnumAdapterByGpuPreference(Adapter, GpuPreference, __uuidof(IDXGIAdapter), reinterpret_cast<void**>(&adapter));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Default allocators
+    Allocators allocators = {};
+
+    // Create state
+    auto *state = new (allocators, kAllocStateDXGIFactory) DXGIAdapterState();
+    state->allocators = allocators;
+    state->parent = self;
+
+    // Keep reference to parent
+    self->AddRef();
+
+    // Create detours
+    adapter = CreateDetour(state->allocators, adapter, state);
+
+    // Query to external object if requested
+    if (ppvAdapter) {
+        hr = adapter->QueryInterface(riid, ppvAdapter);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    adapter->Release();
+
+    // OK
+    return S_OK;
+}
+
 HRESULT WINAPI HookIDXGIAdapterEnumOutputs(IDXGIAdapter* self, UINT Output, IDXGIOutput **ppOutput) {
     auto table = GetTable(self);
 

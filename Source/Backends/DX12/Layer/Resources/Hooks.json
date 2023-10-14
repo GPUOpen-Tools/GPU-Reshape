@@ -58,6 +58,9 @@
         "CreateSwapChainForComposition",
         "EnumAdapters",
         "EnumAdapters1",
+        "EnumAdapterByLuid",
+        "EnumWarpAdapter",
+        "EnumAdapterByGpuPreference",
         "GetParent"
       ]
     },
