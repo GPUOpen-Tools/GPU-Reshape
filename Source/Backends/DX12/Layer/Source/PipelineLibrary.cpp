@@ -28,6 +28,8 @@
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/PipelineLibraryState.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
+#include <Backends/DX12/PipelineSubObjectReader.h>
+#include <Backends/DX12/PipelineSubObjectWriter.h>
 
 HRESULT WINAPI HookID3D12DeviceCreatePipelineLibrary(ID3D12Device* device, const void *pLibraryBlob, SIZE_T BlobLength, REFIID riid, void **ppPipelineLibrary) {
     auto table = GetTable(device);
@@ -239,6 +241,192 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadComputePipeline(ID3D12PipelineLibrar
 
         // Inform the controller
         deviceTable.state->instrumentationController->CreatePipelineAndAdd(state);
+    }
+
+    // Cleanup
+    pipeline->Release();
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookID3D12PipelineLibraryLoadPipeline(ID3D12PipelineLibrary* library, LPCWSTR pName, const D3D12_PIPELINE_STATE_STREAM_DESC* pDesc, const IID& riid, void** ppPipelineState) {
+    auto table       = GetTable(library);
+    auto deviceTable = GetTable(table.state->parent);
+
+    // Get device
+    ID3D12Device* device = table.state->parent;
+
+    // Unwrapping writer
+    PipelineSubObjectWriter writer(table.state->allocators);
+
+    // Hosted root signature
+    ID3D12RootSignature* rootSignature{nullptr};
+
+    // Unwrap the stream
+    D3D12_PIPELINE_STATE_STREAM_DESC unwrappedDesc = UnwrapPipelineStateStream(writer, pDesc, &rootSignature);
+
+    // Object
+    ID3D12PipelineState *pipeline{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.next->LoadPipeline(pName, &unwrappedDesc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Final pipeline
+    PipelineState* opaqueState{nullptr};
+    
+    // Create reader (use unwrapped stream for offset safety)
+    PipelineSubObjectReader reader(&unwrappedDesc);
+
+    // Handle type
+    switch (reader.GetPipelineType()) {
+        default:
+            ASSERT(false, "Invalid pipeline type");
+            return E_FAIL;
+        case PipelineType::Graphics: {
+            // Create state
+            auto state = new (table.state->allocators, kAllocStatePipeline) GraphicsPipelineState(table.state->allocators.Tag(kAllocStatePipeline));
+            state->allocators = table.state->allocators;
+            state->parent = device;
+            state->type = PipelineType::Graphics;
+            state->object = pipeline;
+            state->signature = GetState(rootSignature);
+    
+            // Add reference to signature
+            rootSignature->AddRef();
+    
+            // External users
+            device->AddRef();
+            state->AddUser();
+
+            // Consume all sub-objects
+            while (reader.IsGood()) {
+                auto type = reader.Consume<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE>();
+
+                // Handle sub-object
+                switch (type) {
+                    default:
+                        reader.Skip(PipelineSubObjectReader::GetSize(type));
+                        break;
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS: {
+                        auto&& vs = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamVSOffset);
+
+                        // Create VS state
+                        if (vs.BytecodeLength) {
+                            state->vs = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, vs));
+                        }
+                        break;
+                    }
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS: {
+                        auto&& ps = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamPSOffset);
+
+                        // Create VS state
+                        if (ps.BytecodeLength) {
+                            state->ps = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, ps));
+                        }
+                        break;
+                    }
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS: {
+                        auto&& ds = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamDSOffset);
+
+                        // Create VS state
+                        if (ds.BytecodeLength) {
+                            state->ds = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, ds));
+                        }
+                        break;
+                    }
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_HS: {
+                        auto&& hs = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamHSOffset);
+
+                        // Create VS state
+                        if (hs.BytecodeLength) {
+                            state->hs = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, hs));
+                        }
+                        break;
+                    }
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_GS: {
+                        auto&& gs = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamGSOffset);
+
+                        // Create VS state
+                        if (gs.BytecodeLength) {
+                            state->gs = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, gs));
+                        }
+                        break;
+                    }
+                }
+
+                // To void*
+                reader.Align();
+            }
+
+            // OK
+            opaqueState = state;
+            break;
+        }
+        case PipelineType::Compute: {
+            // Create state
+            auto *state = new (table.state->allocators, kAllocStatePipeline) ComputePipelineState(table.state->allocators.Tag(kAllocStatePipeline));
+            state->allocators = table.state->allocators;
+            state->parent = device;
+            state->type = PipelineType::Compute;
+            state->object = pipeline;
+            state->signature = GetState(rootSignature);
+    
+            // Add reference to signature
+            rootSignature->AddRef();
+    
+            // External users
+            device->AddRef();
+            state->AddUser();
+
+            // Consume all sub-objects
+            while (reader.IsGood()) {
+                auto type = reader.Consume<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE>();
+
+                // Handle sub-object
+                switch (type) {
+                    default:
+                        reader.Skip(PipelineSubObjectReader::GetSize(type));
+                        break;
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS: {
+                        auto&& cs = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamCSOffset);
+
+                        // Create VS state
+                        if (cs.BytecodeLength) {
+                            state->cs = state->shaders.emplace_back(GetOrCreateShaderState(deviceTable.state, cs));
+                        }
+                        break;
+                    }
+                }
+
+                // To void*
+                reader.Align();
+            }
+
+            // OK
+            opaqueState = state;
+            break;
+        }
+    }
+
+    // Copy unwrapped stream blob
+    writer.Swap(opaqueState->subObjectStreamBlob);
+
+    // Create detours
+    pipeline = CreateDetour(opaqueState->allocators, pipeline, opaqueState);
+
+    // Query to external object if requested
+    if (ppPipelineState) {
+        hr = pipeline->QueryInterface(riid, ppPipelineState);
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        // Inform the controller
+        deviceTable.state->instrumentationController->CreatePipelineAndAdd(opaqueState);
     }
 
     // Cleanup

@@ -30,11 +30,18 @@
 /// Forward declarations
 struct ShaderState;
 struct DeviceState;
+struct PipelineSubObjectWriter;
 
 /// Get an existing shader state or create a new one
 /// \param device the parent device
 /// \param byteCode user shader byte code 
 ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTECODE &byteCode);
+
+/// Unwrap a pipeline state stream
+/// \param writer the destination writer
+/// \param desc the wrapped pipeline state stream 
+/// \param rootSignature the optional root signature
+D3D12_PIPELINE_STATE_STREAM_DESC UnwrapPipelineStateStream(PipelineSubObjectWriter& writer, const D3D12_PIPELINE_STATE_STREAM_DESC* desc, ID3D12RootSignature** rootSignature);
 
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreatePipelineState(ID3D12Device2*, const D3D12_PIPELINE_STATE_STREAM_DESC*, const IID&, void**);

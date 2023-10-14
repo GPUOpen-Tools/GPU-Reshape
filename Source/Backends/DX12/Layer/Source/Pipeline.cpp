@@ -32,6 +32,7 @@
 #include <Backends/DX12/StateSubObjectWriter.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCUtils.h>
+#include <Backends/DX12/PipelineSubObjectWriter.h>
 
 // Common
 #include <Common/Allocator/TrackedAllocator.h>
@@ -97,20 +98,71 @@ ShaderState *GetOrCreateShaderState(DeviceState *device, const D3D12_SHADER_BYTE
     return shaderState;
 }
 
+D3D12_PIPELINE_STATE_STREAM_DESC UnwrapPipelineStateStream(PipelineSubObjectWriter& writer, const D3D12_PIPELINE_STATE_STREAM_DESC* desc, ID3D12RootSignature** outRootSignature) {
+    // Create reader
+    PipelineSubObjectReader reader(desc);
+
+    // Consume all sub-objects
+    while (reader.IsGood()) {
+        auto type = reader.Consume<D3D12_PIPELINE_STATE_SUBOBJECT_TYPE>();
+
+        // Set chunk
+        writer.Write(type);
+
+        // Handle sub-object
+        switch (type) {
+            default: {
+                // No unwrapping needed
+                size_t size = PipelineSubObjectReader::GetSize(type);
+                writer.Append(reader.Skip(size), size);
+                break;
+            }
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE: {
+                auto rootSignature = reader.AlignedConsume<ID3D12RootSignature *>();
+
+                // Requested?
+                if (rootSignature) {
+                    *outRootSignature = rootSignature;
+                }
+
+                // Write the unwrapped signature
+                writer.WriteAligned(Next(rootSignature));
+                break;
+            }
+        }
+
+        // To void*
+        reader.Align();
+        writer.Align();
+    }
+
+    // Get new description
+    return writer.GetDesc();
+}
+
 HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_PIPELINE_STATE_STREAM_DESC *desc, const IID &riid, void **pPipeline) {
     auto table = GetTable(device);
 
     // Object
     ID3D12PipelineState *pipeline{nullptr};
 
+    // Unwrapping writer
+    PipelineSubObjectWriter writer(table.state->allocators);
+
+    // Hosted root signature
+    ID3D12RootSignature* rootSignature{nullptr};
+
+    // Unwrap the stream
+    D3D12_PIPELINE_STATE_STREAM_DESC unwrappedDesc = UnwrapPipelineStateStream(writer, desc, &rootSignature);
+
     // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePipelineState(table.next, desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
+    HRESULT hr = table.bottom->next_CreatePipelineState(table.next, &unwrappedDesc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
     if (FAILED(hr)) {
         return hr;
     }
 
-    // Create reader
-    PipelineSubObjectReader reader(desc);
+    // Create reader (use unwrapped stream for offset safety)
+    PipelineSubObjectReader reader(&unwrappedDesc);
 
     // Final pipeline
     PipelineState* opaqueState{nullptr};
@@ -127,7 +179,11 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
             state->parent = device;
             state->type = PipelineType::Graphics;
             state->object = pipeline;
+            state->signature = GetState(rootSignature);
     
+            // Add reference to signature
+            rootSignature->AddRef();
+            
             // External users
             device->AddRef();
             state->AddUser();
@@ -141,14 +197,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                     default:
                         reader.Skip(PipelineSubObjectReader::GetSize(type));
                         break;
-                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE: {
-                        auto&& rootSignature = reader.AlignedConsume<ID3D12RootSignature*>();
-
-                        // Add reference to signature
-                        rootSignature->AddRef();
-                        state->signature = GetTable(rootSignature).state;
-                        break;
-                    }
                     case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS: {
                         auto&& vs = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamVSOffset);
 
@@ -211,6 +259,10 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
             state->parent = device;
             state->type = PipelineType::Compute;
             state->object = pipeline;
+            state->signature = GetState(rootSignature);
+    
+            // Add reference to signature
+            rootSignature->AddRef();
     
             // External users
             device->AddRef();
@@ -225,14 +277,6 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                     default:
                         reader.Skip(PipelineSubObjectReader::GetSize(type));
                         break;
-                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE: {
-                        auto&& rootSignature = reader.AlignedConsume<ID3D12RootSignature*>();
-
-                        // Add reference to signature
-                        rootSignature->AddRef();
-                        state->signature = GetTable(rootSignature).state;
-                        break;
-                    }
                     case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS: {
                         auto&& cs = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamCSOffset);
 
@@ -255,8 +299,7 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
     }
 
     // Copy stream blob
-    opaqueState->subObjectStreamBlob.resize(desc->SizeInBytes);
-    std::memcpy(opaqueState->subObjectStreamBlob.data(), desc->pPipelineStateSubobjectStream, desc->SizeInBytes);
+    writer.Swap(opaqueState->subObjectStreamBlob);
 
     // Create detours
     pipeline = CreateDetour(opaqueState->allocators, pipeline, opaqueState);

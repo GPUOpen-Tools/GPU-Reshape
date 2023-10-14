@@ -307,6 +307,7 @@
         "StorePipeline",
         "LoadGraphicsPipeline",
         "LoadComputePipeline",
+        "LoadPipeline",
         "GetDevice"
       ]
     }

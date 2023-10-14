@@ -181,9 +181,15 @@ struct PipelineSubObjectReader {
 
     /// Skip a number of bytes
     /// \param size byte count
-    void Skip(uint64_t size) {
+    const void* Skip(uint64_t size) {
+        const void* data = static_cast<uint8_t*>(desc->pPipelineStateSubobjectStream) + consumeOffset;
+        
+        // Align offset
         ASSERT(consumeOffset + size <= desc->SizeInBytes, "Sub-object consume out of bounds");
         consumeOffset += size;
+
+        // OK
+        return data;
     }
 
     /// Is the stream in a good state? (i.e. not EOS)
