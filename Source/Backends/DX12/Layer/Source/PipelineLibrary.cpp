@@ -412,8 +412,8 @@ HRESULT WINAPI HookID3D12PipelineLibraryLoadPipeline(ID3D12PipelineLibrary* libr
         }
     }
 
-    // Copy unwrapped stream blob
-    writer.Swap(opaqueState->subObjectStreamBlob);
+    // Set unwrapped stream blob
+    writer.Swap(opaqueState->subObjectWriter);
 
     // Create detours
     pipeline = CreateDetour(opaqueState->allocators, pipeline, opaqueState);

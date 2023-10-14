@@ -112,9 +112,15 @@ D3D12_PIPELINE_STATE_STREAM_DESC UnwrapPipelineStateStream(PipelineSubObjectWrit
         // Handle sub-object
         switch (type) {
             default: {
+                // Align chunk if needed
+                if (PipelineSubObjectReader::ShouldAlign(type)) {
+                    reader.Align();
+                    writer.Align();
+                }
+                
                 // No unwrapping needed
                 size_t size = PipelineSubObjectReader::GetSize(type);
-                writer.Append(reader.Skip(size), size);
+                writer.AppendChunk(type, reader.Skip(size), size);
                 break;
             }
             case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE: {
@@ -298,8 +304,8 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
         }
     }
 
-    // Copy stream blob
-    writer.Swap(opaqueState->subObjectStreamBlob);
+    // Set stream blob
+    writer.Swap(opaqueState->subObjectWriter);
 
     // Create detours
     pipeline = CreateDetour(opaqueState->allocators, pipeline, opaqueState);

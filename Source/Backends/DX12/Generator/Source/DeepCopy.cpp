@@ -76,6 +76,12 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
         ss << "};\n\n";
     }
 
+    // Handle all serializers
+    for (auto&& object : info.deepCopy["serializers"]) {
+        std::string name = object.get<std::string>();
+        ss << "size_t Serialize(const " << name << "& source, " << name << "& dest, void* blob);\n";
+    }
+
     // Instantiate template
     if (!templateEngine.Substitute("$OBJECTS", ss.str().c_str())) {
         std::cerr << "Bad template, failed to substitute $OBJECTS" << std::endl;

@@ -91,6 +91,67 @@ struct PipelineSubObjectReader {
         }
     }
 
+    /// Get the alignment of a type
+    /// \param type given type
+    /// \return alignment, 0 if invalid
+    static uint64_t GetAlignOf(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type) {
+        switch (type) {
+            default:
+                ASSERT(false, "Invalid sub-object type");
+                return 0;
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE:
+                return alignof(ID3D12RootSignature*);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS:
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS:
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS:
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_HS:
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_GS:
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS:
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS:
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS:
+                return alignof(D3D12_SHADER_BYTECODE);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_STREAM_OUTPUT:
+                return alignof(D3D12_STREAM_OUTPUT_DESC);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND:
+                return alignof(D3D12_BLEND_DESC);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK:
+                return alignof(uint32_t);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER:
+                return alignof(D3D12_RASTERIZER_DESC);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL:
+                return alignof(D3D12_DEPTH_STENCIL_DESC);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_INPUT_LAYOUT:
+                return alignof(D3D12_INPUT_LAYOUT_DESC);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_IB_STRIP_CUT_VALUE:
+                return alignof(D3D12_INDEX_BUFFER_STRIP_CUT_VALUE);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY:
+                return alignof(D3D12_PRIMITIVE_TOPOLOGY_TYPE);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS:
+                return alignof(D3D12_RT_FORMAT_ARRAY);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT:
+                return alignof(DXGI_FORMAT);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC:
+                return alignof(DXGI_SAMPLE_DESC);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_NODE_MASK:
+                return alignof(uint32_t);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO:
+                return alignof(D3D12_CACHED_PIPELINE_STATE);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_FLAGS:
+                return alignof(D3D12_PIPELINE_STATE_FLAGS);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL1:
+                return alignof(D3D12_DEPTH_STENCIL_DESC1);
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING:
+                return alignof(D3D12_VIEW_INSTANCING_DESC);
+        }
+    }
+
+    /// Should a type be aligned?
+    /// \param type given type
+    /// \return requires alignment?
+    static bool ShouldAlign(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type) {
+        return GetAlignOf(type) != sizeof(uint32_t);
+    }
+
     /// Get the type of a pipeline
     /// \return type
     PipelineType GetPipelineType() {

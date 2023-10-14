@@ -28,6 +28,7 @@
 #include <Backends/DX12/Detour.Gen.h>
 #include <Backends/DX12/DeepCopy.Gen.h>
 #include <Backends/DX12/InstrumentationInfo.h>
+#include <Backends/DX12/PipelineSubObjectWriter.h>
 #include "PipelineType.h"
 
 // Common
@@ -50,7 +51,7 @@ struct ShaderState;
 static constexpr uint64_t kInvalidPipelineUID = ~0ull;
 
 struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : public ReferenceObject {
-    PipelineState(const Allocators& allocators) : shaders(allocators), subObjectStreamBlob(allocators) {
+    PipelineState(const Allocators& allocators) : shaders(allocators), subObjectWriter(allocators) {
         
     }
     
@@ -120,7 +121,7 @@ struct __declspec(uuid("7C251A06-33FD-42DF-8850-40C1077FCAFE")) PipelineState : 
     std::map<uint64_t, ID3D12PipelineState*> instrumentObjects;
 
     /// Optional pipeline stream blob
-    Vector<uint8_t> subObjectStreamBlob;
+    PipelineSubObjectWriter subObjectWriter;
 
     /// Unique ID
     uint64_t uid{kInvalidPipelineUID};

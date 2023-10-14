@@ -138,6 +138,14 @@ struct LinearBlockAllocator {
         }
     }
 
+    /// Swap this container
+    /// \param rhs container to swap with
+    void Swap(LinearBlockAllocator<BLOCK_SIZE>& rhs) {
+        std::swap(freeBlockHead, rhs.freeBlockHead);
+        blocks.swap(rhs.blocks);
+        freeAllocations.swap(rhs.freeAllocations);
+    }
+
 private:
     struct Block {
         uint8_t* data{nullptr};
@@ -158,7 +166,6 @@ private:
         block.data = new (allocators) uint8_t[block.tail];
         return block;
     }
-    
 
 private:
     Allocators allocators;

@@ -94,7 +94,14 @@ static bool IsPOD(const GeneratorInfo& info, const std::string& name) {
 /// \return success state
 [[nodiscard]]
 static bool DeepCopyObjectTree(const GeneratorInfo& info, DeepCopyState &state, const std::string& typeName, const std::string &sourceAccessorPrefix = "source.", const std::string &destAccessorPrefix = "desc.", uint32_t indent = 1) {
-    auto&& type = info.specification["structs"][typeName];
+    auto&& structs = info.specification["structs"];
+    if (!structs.contains(typeName)) {
+        std::cerr << "Failed to resolve typename: \"" << typeName << "\"" << std::endl;
+        return false;
+    }
+
+    // Get type
+    auto&& type = structs[typeName];
 
     // Go through all members
     for (auto&& field : type["fields"]) {
@@ -406,6 +413,41 @@ bool Generators::DeepCopyImpl(const GeneratorInfo &info, TemplateEngine &templat
         deepCopy << "\t}\n";
 
         // End destructor
+        deepCopy << "}\n\n";
+    }
+    
+    // Handle all serializers
+    for (auto&& object : info.deepCopy["serializers"]) {
+        std::string name = object.get<std::string>();
+
+        // Open function
+        deepCopy << "size_t Serialize(const " << name << "& source, " << name << "& dest, void* opaqueBlob) {\n";
+        deepCopy << "\tsize_t blobSize = 0;\n\n";
+        
+        // Attempt to generate a deep copy
+        DeepCopyState state;
+        if (!DeepCopyObjectTree(info, state, name, "source.", "dest.")) {
+            return false;
+        }
+
+        // Byte size
+        deepCopy << state.byteSize.str();
+        deepCopy << "\n";
+
+        // Size only?
+        deepCopy << "\tif (!opaqueBlob) {\n";
+        deepCopy << "\t\treturn blobSize;\n";
+        deepCopy << "\t}\n\n";
+
+        // Typed for offsets
+        deepCopy << "\tauto* blob = static_cast<uint8_t*>(opaqueBlob);\n\n";
+
+        // Actual deep copy
+        deepCopy << "\tsize_t blobOffset = 0;\n";
+        deepCopy << state.deepCopy.str();
+
+        // Close function
+        deepCopy << "\treturn blobSize;\n";
         deepCopy << "}\n\n";
     }
 

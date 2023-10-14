@@ -170,9 +170,12 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
                 continue;
             }
 
+            // Get deep copy
+            D3D12_PIPELINE_STATE_STREAM_DESC deepCopyDesc = state->subObjectWriter.GetDesc();
+
             // Copy stream data
-            streamStack.Resize(state->subObjectStreamBlob.size());
-            std::memcpy(streamStack.Data(), state->subObjectStreamBlob.data(), state->subObjectStreamBlob.size());
+            streamStack.Resize(deepCopyDesc.SizeInBytes);
+            std::memcpy(streamStack.Data(), deepCopyDesc.pPipelineStateSubobjectStream, deepCopyDesc.SizeInBytes);
 
             // Instrumentation offset
             uint32_t keyOffset{0};
@@ -363,9 +366,12 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
                 continue;
             }
 
+            // Get deep copy
+            D3D12_PIPELINE_STATE_STREAM_DESC deepCopyDesc = state->subObjectWriter.GetDesc();
+
             // Copy stream data
-            streamStack.Resize(state->subObjectStreamBlob.size());
-            std::memcpy(streamStack.Data(), state->subObjectStreamBlob.data(), state->subObjectStreamBlob.size());
+            streamStack.Resize(deepCopyDesc.SizeInBytes);
+            std::memcpy(streamStack.Data(), deepCopyDesc.pPipelineStateSubobjectStream, deepCopyDesc.SizeInBytes);
 
             // Overwrite compute sub-object
             *reinterpret_cast<D3D12_SHADER_BYTECODE*>(streamStack.Data() + computeState->streamCSOffset) = computeState->cs->GetInstrument(job.shaderInstrumentationKeys[0]);
