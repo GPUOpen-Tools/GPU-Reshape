@@ -3,7 +3,7 @@
 # 
 # Copyright (c) 2023 Miguel Petersen
 # Copyright (c) 2023 Advanced Micro Devices, Inc
-# Copyright (c) 2023 Avalanche Studios Group
+# Copyright (c) 2023 Fatalist Development AB
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy 
 # of this software and associated documentation files (the "Software"), to deal 
@@ -88,7 +88,7 @@ license_contents = f"""
 
 Copyright (c) {license_range} Miguel Petersen
 Copyright (c) {license_range} Advanced Micro Devices, Inc
-Copyright (c) {license_range} Avalanche Studios Group
+Copyright (c) {license_range} Fatalist Development AB
 
 Permission is hereby granted, free of charge, to any person obtaining a copy 
 of this software and associated documentation files (the "Software"), to deal 

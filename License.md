@@ -6,7 +6,7 @@ Copyright (c) 2023 Miguel Petersen
 
 Copyright (c) 2023 Advanced Micro Devices, Inc
 
-Copyright (c) 2023 Avalanche Studios Group
+Copyright (c) 2023 Fatalist Development AB
 
 Permission is hereby granted, free of charge, to any person obtaining a copy 
 of this software and associated documentation files (the “Software”), to deal 

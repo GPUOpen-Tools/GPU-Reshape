@@ -113,4 +113,4 @@ Copyright © 2023 Miguel Petersen
 </br>
 Copyright © 2023 Advanced Micro Devices
 </br>
-Copyright © 2023 Avalanche Studios Group
+Copyright © 2023 Fatalist Development AB
