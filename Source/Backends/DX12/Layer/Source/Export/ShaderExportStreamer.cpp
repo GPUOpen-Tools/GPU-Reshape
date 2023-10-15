@@ -1155,6 +1155,9 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPreCommandList(CommandQue
     // Ease of use
     ID3D12GraphicsCommandList* patchList = segment->immediatePrePatch.commandList;
 
+    // Set heap
+    patchList->SetDescriptorHeaps(1u, &sharedGPUHeap);
+
     // Has the counter data been initialized?
     //   Only required once per segment allocation, as the segments are recycled this usually
     //   only occurs during application startup.
