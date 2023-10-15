@@ -4149,7 +4149,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
 
             case LLVMFunctionRecord::InstStore: {
                 writer.RemapRelativeValue(anchor);
-                writer.RemapRelative(anchor);
+                writer.RemapRelativeValue(anchor);
                 break;
             }
 
