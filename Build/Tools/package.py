@@ -27,8 +27,9 @@ import sys
 import shutil
 
 # Paths
-bin_dir_root = os.path.join("../", "../", "Bin")
-pck_dir_root = os.path.join("../", "../", "Package")
+root_dir     = os.path.join("../", "../")
+bin_dir_root = os.path.join(root_dir, "Bin")
+pck_dir_root = os.path.join(root_dir, "Package")
 
 # Ignore list
 ignore_list = [
@@ -64,6 +65,11 @@ require_folders = [
     "runtimes/win-x64",
     "runtimes/win-arm64",
     "runtimes/win7-x64"
+]
+
+# All extra folders
+extra_folders = [
+    ("Documentation/Redist", "Redist")
 ]
 
 # Get all packages
@@ -133,3 +139,16 @@ for package in packages:
         # Copy all contents
         sys.stdout.write(f"\tPackaging {folder}\n")
         shutil.copytree(bin_folder_dir, pck_folder_dir)
+        
+    # Process all extra folders
+    for folder in extra_folders:
+        src_folder_dir = os.path.join(root_dir, folder[0])
+        pck_folder_dir = os.path.join(pck_dir,  folder[1])
+        
+        # Remove old path
+        if os.path.exists(pck_folder_dir):
+            os.makedirs(pck_folder_dir)
+            
+        # Copy all contents
+        sys.stdout.write(f"\tPackaging {folder[0]}\n")
+        shutil.copytree(src_folder_dir, pck_folder_dir)
