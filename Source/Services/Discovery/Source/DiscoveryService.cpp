@@ -218,7 +218,7 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
     // Copy arguments
     // Note: Win32 always has the path as the first argument
     std::stringstream argumentStream;
-    argumentStream << info.applicationPath;
+    argumentStream << "\"" << info.applicationPath << "\"";
     argumentStream << " ";
     argumentStream << info.arguments;
 
