@@ -4780,7 +4780,8 @@ DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResource
                     break;
                 }
                 case Backend::IL::ConstantKind::Null: {
-                    // Null constants are allowed
+                    // Null constants are allowed, SRV -> 0
+                    metadata._class = DXILShaderResourceClass::SRVs;
                     break;
                 }
             }
