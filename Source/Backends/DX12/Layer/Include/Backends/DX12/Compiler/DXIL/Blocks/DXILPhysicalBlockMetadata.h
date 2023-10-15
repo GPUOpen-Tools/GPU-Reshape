@@ -84,6 +84,22 @@ public:
     /// \param job job to be compiled against
     void CreateResourceHandles(const DXCompileJob& job);
 
+public:
+    /// Get the IL component format
+    /// \param type dxil type
+    /// \return format, optionally unexposed
+    Backend::IL::Format GetComponentFormat(ComponentType type);
+
+    /// Get the component type
+    /// \param format the IL format
+    /// \return component type
+    ComponentType GetFormatComponent(Backend::IL::Format format);
+    
+    /// Get the IL component ype
+    /// \param type dxil type
+    /// \return type, optionally unexposed
+    const Backend::IL::Type* GetComponentType(ComponentType type);
+
 private:
     void CompileProgramEntryPoints();
 
@@ -136,21 +152,6 @@ private:
     /// \param type the class type
     /// \param id
     void ParseResourceList(MetadataBlock& metadataBlock, const struct LLVMBlock *block, DXILShaderResourceClass type, uint32_t id);
-
-    /// Get the IL component ype
-    /// \param type dxil type
-    /// \return type, optionally unexposed
-    const Backend::IL::Type* GetComponentType(ComponentType type);
-
-    /// Get the IL component format
-    /// \param type dxil type
-    /// \return format, optionally unexposed
-    Backend::IL::Format GetComponentFormat(ComponentType type);
-
-    /// Get the component type
-    /// \param format the IL format
-    /// \return component type
-    ComponentType GetFormatComponent(Backend::IL::Format format);
 
     /// Get an operand constant
     const IL::Constant* GetOperandConstant(MetadataBlock& block, uint32_t id) {

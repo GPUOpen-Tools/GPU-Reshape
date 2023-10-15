@@ -1888,12 +1888,34 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t properties = reader.GetMappedRelative(anchor);
 
             // Unused
-            GRS_SINK(opCode, properties);
+            GRS_SINK(opCode, resource);
 
-            // Inherit the type
-            const auto* type = ilTypeMap.GetType(resource);
-            ilTypeMap.SetType(result, type);
+            // Get the annotation constant
+            auto constant = program.GetConstants().GetConstant(properties);
+            
+            // Optional annotation
+            DXILResourceProperties annotation{};
 
+            // To property map
+            switch (constant->kind) {
+                default: {
+                    break;
+                }
+                case Backend::IL::ConstantKind::Struct: {
+                    auto _struct = constant->As<IL::StructConstant>();
+                    annotation.basic.opaque = static_cast<uint32_t>(_struct->members.at(0)->As<IL::IntConstant>()->value);
+                    annotation.typed.opaque = static_cast<uint32_t>(_struct->members.at(1)->As<IL::IntConstant>()->value);
+                    break;
+                }
+                case Backend::IL::ConstantKind::Null: {
+                    // Null constants are allowed
+                    break;
+                }
+            }
+
+            // Set from annotation
+            ilTypeMap.SetType(result, GetTypeFromProperties(annotation));
+            
             // Emit as unexposed
             IL::UnexposedInstruction instr{};
             instr.opCode = IL::OpCode::Unexposed;
@@ -1904,7 +1926,153 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             basicBlock->Append(instr);
             return true;
         }
+
+        case GRS_CRC32("dx.op.createHandleFromHeap"): {
+            if (!view.StartsWith("dx.op.createHandleFromHeap")) {
+                return false;
+            }
+
+            // Get op-code
+            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+
+            // Get operands, ignore offset for now
+            uint32_t index = reader.GetMappedRelative(anchor);
+            uint32_t sampler = reader.GetMappedRelative(anchor);
+            uint32_t nonUniform = reader.GetMappedRelative(anchor);
+
+            // Unused
+            GRS_SINK(opCode, index, sampler, nonUniform);
+            
+            // Emit as unexposed
+            IL::UnexposedInstruction instr{};
+            instr.opCode = IL::OpCode::Unexposed;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.backendOpCode = 0x0;
+            instr.symbol = "CreateHandleFromHeap";
+            basicBlock->Append(instr);
+            return true;
+        }
     }
+}
+
+const Backend::IL::Type* DXILPhysicalBlockFunction::GetTypeFromProperties(const DXILResourceProperties& properties) {
+    Backend::IL::TypeMap &types = program.GetTypeMap();
+
+    // Handle on shape
+    switch (static_cast<DXILShaderResourceShape>(properties.basic.shape)) {
+        default: {
+            return types.FindTypeOrAdd(Backend::IL::UnexposedType{});
+        }
+        case DXILShaderResourceShape::Texture1D:
+        case DXILShaderResourceShape::Texture2D:
+        case DXILShaderResourceShape::Texture2DMS:
+        case DXILShaderResourceShape::Texture3D:
+        case DXILShaderResourceShape::TextureCube:
+        case DXILShaderResourceShape::Texture1DArray:
+        case DXILShaderResourceShape::Texture2DArray:
+        case DXILShaderResourceShape::Texture2DMSArray:
+        case DXILShaderResourceShape::TextureCubeArray: {
+            return GetTypeFromTextureProperties(properties);
+        }
+        case DXILShaderResourceShape::TypedBuffer:
+        case DXILShaderResourceShape::RawBuffer:
+        case DXILShaderResourceShape::StructuredBuffer: {
+            return GetTypeFromBufferProperties(properties);
+        }
+        case DXILShaderResourceShape::CBuffer: {
+            return types.FindTypeOrAdd(Backend::IL::CBufferType{});
+        }
+        case DXILShaderResourceShape::Sampler: {
+            return types.FindTypeOrAdd(Backend::IL::SamplerType{});
+        }
+    }
+}
+
+const Backend::IL::Type* DXILPhysicalBlockFunction::GetTypeFromTextureProperties(const DXILResourceProperties& properties) {
+    Backend::IL::TypeMap &types = program.GetTypeMap();
+
+    // Final format
+    Backend::IL::Format format = table.metadata.GetComponentFormat(static_cast<ComponentType>(properties.typed.resource.componentType));
+
+    // Final sampled type
+    const Backend::IL::Type* sampledType = table.metadata.GetComponentType(static_cast<ComponentType>(properties.typed.resource.componentType));
+
+    // Vectorized?
+    if (properties.typed.resource.componentCount > 1) {
+        sampledType = types.FindTypeOrAdd(Backend::IL::VectorType {
+            .containedType = sampledType,
+            .dimension = properties.typed.resource.componentCount
+        });
+    }
+
+    // Translate dimension
+    Backend::IL::TextureDimension dimension;
+    switch (static_cast<DXILShaderResourceShape>(properties.basic.shape)) {
+        default: {
+            ASSERT(false, "Unexpected shape");
+            return nullptr;
+        }
+        case DXILShaderResourceShape::Texture1D:
+            dimension = Backend::IL::TextureDimension::Texture1D;
+            break;
+        case DXILShaderResourceShape::Texture2D:
+        case DXILShaderResourceShape::Texture2DMS:
+            dimension = Backend::IL::TextureDimension::Texture2D;
+            break;
+        case DXILShaderResourceShape::Texture3D:
+            dimension = Backend::IL::TextureDimension::Texture3D;
+            break;
+        case DXILShaderResourceShape::TextureCube:
+            dimension = Backend::IL::TextureDimension::Texture2DCube;
+            break;
+        case DXILShaderResourceShape::Texture1DArray:
+            dimension = Backend::IL::TextureDimension::Texture1DArray;
+            break;
+        case DXILShaderResourceShape::Texture2DArray:
+            dimension = Backend::IL::TextureDimension::Texture2DArray;
+            break;
+        case DXILShaderResourceShape::Texture2DMSArray:
+            dimension = Backend::IL::TextureDimension::Texture2DArray;
+            break;
+        case DXILShaderResourceShape::TextureCubeArray:
+            dimension = Backend::IL::TextureDimension::Texture2DCubeArray;
+            break;
+    }
+
+    // Create type
+    return types.FindTypeOrAdd(Backend::IL::TextureType{
+        .sampledType = sampledType,
+        .dimension = dimension,
+        .multisampled = properties.typed.resource.sampleCount > 1,
+        .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
+        .format = format
+    });
+}
+
+const Backend::IL::Type * DXILPhysicalBlockFunction::GetTypeFromBufferProperties(const DXILResourceProperties &properties) {
+    Backend::IL::TypeMap &types = program.GetTypeMap();
+
+    // Final format
+    Backend::IL::Format format = table.metadata.GetComponentFormat(static_cast<ComponentType>(properties.typed.resource.componentType));
+
+    // Final sampled type
+    const Backend::IL::Type* sampledType = table.metadata.GetComponentType(static_cast<ComponentType>(properties.typed.resource.componentType));
+
+    // Vectorized?
+    if (properties.typed.resource.componentCount > 1) {
+        sampledType = types.FindTypeOrAdd(Backend::IL::VectorType {
+            .containedType = sampledType,
+            .dimension = properties.typed.resource.componentCount
+        });
+    }
+
+    // Create type
+    return types.FindTypeOrAdd(Backend::IL::BufferType{
+        .elementType = sampledType,
+        .samplerMode = properties.basic.isUAV ? Backend::IL::ResourceSamplerMode::Writable : Backend::IL::ResourceSamplerMode::RuntimeOnly,
+        .texelType = format
+    });
 }
 
 uint32_t DXILPhysicalBlockFunction::GetSVOXCount(IL::ID value) {
@@ -4629,6 +4797,41 @@ DXILPhysicalBlockFunction::HandleMetadata DXILPhysicalBlockFunction::GetResource
             metadata.rangeConstantOrValue = table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(6));
             break;
         }
+        case DXILOpcodes::CreateHandleFromHeap: {
+            // Translate class
+            switch (static_cast<DXILShaderResourceShape>(annotation.basic.shape)) {
+                default:
+                    metadata._class = DXILShaderResourceClass::SRVs;
+                    break;
+                case DXILShaderResourceShape::Texture1D:
+                case DXILShaderResourceShape::Texture2D:
+                case DXILShaderResourceShape::Texture2DMS:
+                case DXILShaderResourceShape::Texture3D:
+                case DXILShaderResourceShape::TextureCube:
+                case DXILShaderResourceShape::Texture1DArray:
+                case DXILShaderResourceShape::Texture2DArray:
+                case DXILShaderResourceShape::Texture2DMSArray:
+                case DXILShaderResourceShape::TextureCubeArray:
+                case DXILShaderResourceShape::TypedBuffer:
+                case DXILShaderResourceShape::RawBuffer:
+                case DXILShaderResourceShape::StructuredBuffer:
+                    metadata._class = annotation.basic.isUAV ? DXILShaderResourceClass::UAVs : DXILShaderResourceClass::SRVs;
+                    break;
+                case DXILShaderResourceShape::CBuffer:
+                    metadata._class = DXILShaderResourceClass::CBVs;
+                    break;
+                case DXILShaderResourceShape::Sampler:
+                    metadata._class = DXILShaderResourceClass::Samplers;
+                    break;
+            }
+
+            // No actual entry, just assume from the range value
+            metadata.entry = nullptr;
+            
+            // Index
+            metadata.rangeConstantOrValue = table.idMap.GetMappedRelative(resourceRecord->sourceAnchor, resourceRecord->Op32(5));
+            break;
+        }
     }
 
     // OK
@@ -4642,6 +4845,12 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
 
     // Get and validate record
     HandleMetadata metadata = GetResourceHandleRecord(source, resource);
+
+    // Runtime only bindings just export the dynamic offset
+    if (!metadata.entry) {
+        out.dynamicOffset = metadata.rangeConstantOrValue;
+        return out;
+    }
 
     /*
      * DXIL Specification
@@ -4758,10 +4967,10 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
 
 void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJob& job, LLVMBlock* block, const Vector<LLVMRecord>& source, const IL::ResourceTokenInstruction* _instr) {
     DynamicRootSignatureUserMapping userMapping = GetResourceUserMapping(job, source, _instr->resource);
-    ASSERT(userMapping.source, "Fallback user mappings not supported yet");
+    ASSERT(userMapping.source || userMapping.dynamicOffset != IL::InvalidID, "Fallback user mappings not supported yet");
 
     // Static samplers are valid by default, however have no "real" data
-    if (userMapping.source->isStaticSampler) {
+    if (userMapping.source && userMapping.source->isStaticSampler) {
         // Create constant
         IL::ID id = program.GetConstants().FindConstantOrAdd(
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
@@ -4778,12 +4987,16 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     }
 
     // Allocate ids
-    uint32_t legacyLoad = program.GetIdentifierMap().AllocID();
+    uint32_t legacyLoad = IL::InvalidID;
     uint32_t oobValidated = program.GetIdentifierMap().AllocID();
     uint32_t rootOffset = program.GetIdentifierMap().AllocID();
 
     // Get the current root offset for the descriptor, entirely scalarized
+    if (userMapping.source)
     {
+        // Allocate
+        legacyLoad = program.GetIdentifierMap().AllocID();
+    
         // Get intrinsic
         const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpCBufferLoadLegacyI32);
 
@@ -4794,7 +5007,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
           *       i32,                  ; opcode
           *       %dx.types.Handle,     ; resource handle
           *       i32)                  ; 0-based row index (row = 16-byte DXBC register)
-         */
+          */
 
         uint64_t ops[3];
 
@@ -4818,7 +5031,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     uint32_t invalidBindingLiteral{ 0 };
     
     // Root parameters are hosted inline
-    if (userMapping.source->isRootResourceParameter) {
+    if (userMapping.source && userMapping.source->isRootResourceParameter) {
         ASSERT(userMapping.dynamicOffset == IL::InvalidID, "Dynamic offset on inline root parameter");
 
         // Extract respective value (uint4)
@@ -4837,7 +5050,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
 
         // The oob validated index is the root binding
         oobValidated = rootOffset;
-    } else {        
+    } else {
         // Determine the appropriate PRMT handle
         IL::ID prmtBufferId;
         switch (program.GetTypeMap().GetType(_instr->resource)->kind) {
@@ -4859,35 +5072,44 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         // Alloc IDs
         uint32_t retOffset = program.GetIdentifierMap().AllocID();
         uint32_t descriptorOffset = program.GetIdentifierMap().AllocID();
-        
-        // Extract respective value (uint4)
-        {
-            LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-            recordExtract.SetUser(true, ~0u, rootOffset);
-            recordExtract.opCount = 2;
-            recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
-            recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyLoad);
-            recordExtract.ops[1] = userMapping.source->rootParameter % 4u;
-            block->AddRecord(recordExtract);
-        }
-        
-        // Add local descriptor offset
-        {
-            LLVMRecord addRecord;
-            addRecord.SetUser(true, ~0u, descriptorOffset);
-            addRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
-            addRecord.opCount = 3u;
-            addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
-            addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Add);
 
-            addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(rootOffset);
+        // Root wise offset?
+        if (userMapping.source) {
+            // Extract respective value (uint4)
+            {
+                LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+                recordExtract.SetUser(true, ~0u, rootOffset);
+                recordExtract.opCount = 2;
+                recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+                recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyLoad);
+                recordExtract.ops[1] = userMapping.source->rootParameter % 4u;
+                block->AddRecord(recordExtract);
+            }
+        
+            // Add local descriptor offset
+            {
+                LLVMRecord addRecord;
+                addRecord.SetUser(true, ~0u, descriptorOffset);
+                addRecord.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+                addRecord.opCount = 3u;
+                addRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                addRecord.ops[2] = static_cast<uint64_t>(LLVMBinOp::Add);
 
-            addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                addRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(rootOffset);
+
+                addRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                    Backend::IL::IntConstant{.value = userMapping.source->offset}
+                )->id);
+
+                block->AddRecord(addRecord);
+            }
+        } else {
+            // Source wise offset is the heap prefix
+            descriptorOffset = program.GetConstants().FindConstantOrAdd(
                 program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                Backend::IL::IntConstant{.value = userMapping.source->offset}
-            )->id);
-
-            block->AddRecord(addRecord);
+                Backend::IL::IntConstant{.value = 0u}
+            )->id;
         }
 
         // Optional, out of bounds checking
@@ -5003,6 +5225,11 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             block->AddRecord(CompileIntrinsicCall(retOffset, intrinsic, 4, ops));
         }
 
+        // If there's no source mapping, write to the result immediately
+        if (!userMapping.source) {
+            oobValidated = _instr->result;
+        }
+
         // Requires out of bounds safe-guarding?
         if (outOfHeapOperand == IL::InvalidID) {
             // Extract first value
@@ -5042,6 +5269,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     }
 
     // Validate the root binding itself
+    if (userMapping.source)
     {
         uint32_t isTableNotBound = program.GetIdentifierMap().AllocID();
         

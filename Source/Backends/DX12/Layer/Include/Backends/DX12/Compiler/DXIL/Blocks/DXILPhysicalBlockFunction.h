@@ -223,7 +223,7 @@ private:
 
     struct HandleMetadata {
         /// Underlying class
-        DXILShaderResourceClass _class;
+        DXILShaderResourceClass _class{DXILShaderResourceClass::Count};
 
         /// Representative handle
         const struct DXILMetadataHandleEntry* entry{nullptr};
@@ -244,6 +244,21 @@ private:
     /// \param resource resource to be fetched
     /// \return empty if not found
     DynamicRootSignatureUserMapping GetResourceUserMapping(const DXCompileJob& job, const Vector<LLVMRecord>& source, IL::ID resource);
+
+    /// Get a resource type from annotation
+    /// \param properties resource properties
+    /// \return resource type
+    const Backend::IL::Type* GetTypeFromProperties(const DXILResourceProperties& properties);
+
+    /// Get a texture resource type from annotation
+    /// \param properties resource properties
+    /// \return resource type
+    const Backend::IL::Type* GetTypeFromTextureProperties(const DXILResourceProperties& properties);
+
+    /// Get a buffer resource type from annotation
+    /// \param properties resource properties
+    /// \return resource type
+    const Backend::IL::Type* GetTypeFromBufferProperties(const DXILResourceProperties& properties);
 
 private:
     /// Compile an export instruction
