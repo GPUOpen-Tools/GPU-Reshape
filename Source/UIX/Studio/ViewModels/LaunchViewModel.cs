@@ -428,6 +428,12 @@ namespace Studio.ViewModels
             processInfo.arguments = _arguments;
             processInfo.reservedToken = _pendingReservedToken;
 
+            // If no working directory has been specified, default to the executable
+            if (string.IsNullOrWhiteSpace(processInfo.workingDirectoryPath))
+            {
+                processInfo.workingDirectoryPath = Path.GetDirectoryName(processInfo.applicationPath);
+            }
+
             // Create environment view
             var view = new OrderedMessageView<ReadWriteMessageStream>(new ReadWriteMessageStream());
             
