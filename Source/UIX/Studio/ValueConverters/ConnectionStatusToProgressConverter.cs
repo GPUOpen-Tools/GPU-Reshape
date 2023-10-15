@@ -89,6 +89,8 @@ namespace Studio.ValueConverters
                 case ConnectionStatus.QueryInvalidPort:
                 case ConnectionStatus.QueryInvalidPID:
                     return ResourceLocator.GetResource<SolidColorBrush>("ErrorBrush") ?? _default;
+                case ConnectionStatus.DiscoveryNotActive:
+                    return ResourceLocator.GetResource<SolidColorBrush>("WarningBrush") ?? _default;
                 case ConnectionStatus.ResolveAccepted:
                 case ConnectionStatus.ApplicationAccepted:
                 case ConnectionStatus.EndpointConnected:
@@ -144,6 +146,8 @@ namespace Studio.ValueConverters
                     return "Endpoint query has an invalid process ID";
                 case ConnectionStatus.EndpointConnected:
                     return "Connected to endpoint";
+                case ConnectionStatus.DiscoveryNotActive:
+                    return "Discovery is disabled, connection limited to manual registrations";
             }
         }
         

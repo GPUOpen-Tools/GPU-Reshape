@@ -32,6 +32,11 @@ namespace Studio.Models.Workspace
         None,
         
         /// <summary>
+        /// Discovery is currently disabled
+        /// </summary>
+        DiscoveryNotActive,
+        
+        /// <summary>
         /// Connecting to the endpoint machine
         /// </summary>
         ConnectingEndpoint,

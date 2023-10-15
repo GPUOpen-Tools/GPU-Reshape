@@ -209,7 +209,7 @@ namespace Studio.ViewModels
             }
             else
             {
-                ConnectionStatus = _endpointConnected ? ConnectionStatus.EndpointConnected : ConnectionStatus.None;
+                ConnectionStatus = _endpointConnected ? GetEndpointConnectionStatus(ConnectionStatus.EndpointConnected) : ConnectionStatus.None;
             }
 
             // Set query
@@ -247,7 +247,7 @@ namespace Studio.ViewModels
             _pendingQuery = query;
 
             // Set status
-            ConnectionStatus = ConnectionStatus.ConnectingEndpoint;
+            ConnectionStatus = GetEndpointConnectionStatus(ConnectionStatus.ConnectingEndpoint);
         }
 
         /// <summary>
@@ -456,7 +456,7 @@ namespace Studio.ViewModels
                 if (!_endpointConnected)
                 {
                     _endpointConnected = true;
-                    ConnectionStatus = ConnectionStatus.EndpointConnected;
+                    ConnectionStatus = GetEndpointConnectionStatus(ConnectionStatus.EndpointConnected);
                 }
 
                 // Set new app list
@@ -466,6 +466,25 @@ namespace Studio.ViewModels
                 // Re-filter
                 FilterApplications();
             });
+        }
+
+        /// <summary>
+        /// Get the endpoint connection status override
+        /// </summary>
+        private ConnectionStatus GetEndpointConnectionStatus(ConnectionStatus status)
+        {
+            // Local host?
+            if (ConnectionQuery?.IPvX?.Trim() == "localhost")
+            {
+                // Check discovery, even if the local host connects, it's limited to manual registrations
+                if (App.Locator.GetService<IBackendDiscoveryService>()?.Service is { } service && !service.IsRunning())
+                {
+                    return ConnectionStatus.DiscoveryNotActive;
+                }
+            }
+
+            // Remote host
+            return status;
         }
 
         /// <summary>
