@@ -31,6 +31,7 @@
 #include <Backends/DX12/Compiler/DXIL/Blocks/DXILPhysicalBlockSection.h>
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
 #include <Backends/DX12/Compiler/DXCodeOffsetTraceback.h>
+#include <Backends/DX12/Resource/ReservedConstantData.h>
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -211,6 +212,10 @@ private:
     /// Create the event handle
     /// \param block appended block
     void CreateConstantHandle(const DXCompileJob &job, struct LLVMBlock* block);
+
+private:
+    /// All reserved constant ranges
+    IL::ID reservedConstantRange[static_cast<uint32_t>(ReservedConstantDataDWords::Prefix)];
 
 private:
     struct DynamicRootSignatureUserMapping {

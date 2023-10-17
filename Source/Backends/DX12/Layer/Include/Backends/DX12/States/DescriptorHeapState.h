@@ -26,6 +26,7 @@
 
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
+#include <Backends/DX12/Config.h>
 
 // Common
 #include <Common/Allocators.h>
@@ -60,6 +61,15 @@ struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapSt
     /// Get the state from a handle
     ResourceState* GetStateFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const;
 
+    /// Get the virtual bound
+    uint32_t GetVirtualRangeBound() const {
+#if DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
+        return physicalDescriptorCount;
+#else // DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
+        return virtualDescriptorCount;
+#endif // DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
+    }
+
     /// Parent state
     ID3D12Device* parent{};
 
@@ -81,6 +91,9 @@ struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapSt
 
     /// Stride of this heap
     uint64_t stride{0};
+
+    /// Number of user descriptors
+    uint32_t virtualDescriptorCount{0};
 
     /// Number of descriptors, includes prefix
     uint32_t physicalDescriptorCount{0};

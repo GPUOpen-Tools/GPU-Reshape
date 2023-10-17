@@ -76,5 +76,20 @@
 ///    When such a fault occurs, it is very useful to simply be able to iterate on a binary file.
 #define SHADER_COMPILER_DEBUG_FILE (DX12_DIAGNOSTIC && 0)
 
+/** Options **/
+
+/// Prefix all injected descriptors
+/// |-GRS-|-USER-SPACE-| 
+#define DESCRIPTOR_HEAP_METHOD_PREFIX  0
+
+/// Postfix all injected descriptors
+/// |-USER-SPACE-|-GRS-| 
+#define DESCRIPTOR_HEAP_METHOD_POSTFIX 1
+
+/// Current heap method
+#define DESCRIPTOR_HEAP_METHOD DESCRIPTOR_HEAP_METHOD_POSTFIX
+
+/** Constants **/
+
 /// Maximum number of dwords in a root signature
 static constexpr uint32_t MaxRootSignatureDWord = 64;

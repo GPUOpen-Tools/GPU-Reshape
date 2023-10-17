@@ -82,9 +82,10 @@ public:
 
     /// Allocate a new two sided allocator
     /// \param heap the descriptor heap
+    /// \param virtualCount the virtual descriptor space length used by the user
     /// \param bound the descriptor prefix
     /// \return the allocator
-    ShaderExportFixedTwoSidedDescriptorAllocator* AllocateTwoSidedAllocator(ID3D12DescriptorHeap* heap, uint32_t bound);
+    ShaderExportFixedTwoSidedDescriptorAllocator* AllocateTwoSidedAllocator(ID3D12DescriptorHeap* heap, uint32_t virtualCount, uint32_t bound);
 
     /// Free a stream state
     /// \param state the state
@@ -288,6 +289,26 @@ private:
 
     /// Invalidate persistent root heap mappings for a given type
     void InvalidateHeapMappingsFor(ShaderExportStreamState* state, D3D12_DESCRIPTOR_HEAP_TYPE type);
+
+    /// Invalidate all descriptor constant slots
+    /// \param state streaming state
+    /// \param bindState target bind state
+    /// \param rootSignature root signature to clear for
+    /// \param type type to invalidate for
+    void InvalidateDescriptorSlots(ShaderExportStreamState* state, ShaderExportStreamBindState& bindState, const RootSignatureState* rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE type);
+
+private:
+    /// Update all reserved heap data
+    /// \param state streaming state
+    /// \param commandList command list used for updating
+    void UpdateReservedHeapConstantData(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList);
+
+    /// Write the reserved constant region
+    /// \param state streaming state
+    /// \param dwords dwords to be written
+    /// \param dwordCount number of dwords to write
+    /// \param commandList command list used for writing
+    void WriteReservedHeapConstantBuffer(ShaderExportStreamState* state, const uint32_t* dwords, uint32_t dwordCount, ID3D12GraphicsCommandList* commandList);
 
 private:
     DeviceState* device;

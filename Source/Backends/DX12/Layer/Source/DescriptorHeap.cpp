@@ -43,6 +43,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
     state->type = desc->Type;
     state->flags = desc->Flags;
     state->physicalDescriptorCount = desc->NumDescriptors;
+    state->virtualDescriptorCount = desc->NumDescriptors;
     state->exhausted = false;
 
     // Keep reference
@@ -81,7 +82,7 @@ HRESULT WINAPI HookID3D12DeviceCreateDescriptorHeap(ID3D12Device *device, const 
             state->physicalDescriptorCount = desc->NumDescriptors + bound;
 
             // Create unique allocator
-            state->allocator = table.state->exportStreamer->AllocateTwoSidedAllocator(heap, bound);
+            state->allocator = table.state->exportStreamer->AllocateTwoSidedAllocator(heap, desc->NumDescriptors, bound);
         }
     }
 

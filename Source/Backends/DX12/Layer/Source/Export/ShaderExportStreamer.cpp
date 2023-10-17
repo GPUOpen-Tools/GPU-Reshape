@@ -46,6 +46,7 @@
 #include <Backends/DX12/States/RootSignaturePhysicalMapping.h>
 #include <Backends/DX12/Resource/DescriptorResourceMapping.h>
 #include <Backends/DX12/Resource/DescriptorData.h>
+#include <Backends/DX12/Resource/ReservedConstantData.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -101,8 +102,8 @@ bool ShaderExportStreamer::Install() {
     descriptorLayout.Install(device);
 
     // Create allocators
-    sharedCPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportFixedTwoSidedDescriptorAllocator(device->object, sharedCPUHeap, 1u, descriptorLayout.Count(), kSharedHeapBound);
-    sharedGPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportFixedTwoSidedDescriptorAllocator(device->object, sharedGPUHeap, 1u, descriptorLayout.Count(), kSharedHeapBound);
+    sharedCPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportFixedTwoSidedDescriptorAllocator(device->object, sharedCPUHeap, 1u, descriptorLayout.Count(), 0u, kSharedHeapBound);
+    sharedGPUHeapAllocator = new (device->allocators, kAllocShaderExport) ShaderExportFixedTwoSidedDescriptorAllocator(device->object, sharedGPUHeap, 1u, descriptorLayout.Count(), 0u, kSharedHeapBound);
 
     // OK
     return true;
@@ -195,12 +196,19 @@ ShaderExportStreamSegment *ShaderExportStreamer::AllocateSegment() {
     return segment;
 }
 
-ShaderExportFixedTwoSidedDescriptorAllocator * ShaderExportStreamer::AllocateTwoSidedAllocator(ID3D12DescriptorHeap* heap, uint32_t bound) {
+ShaderExportFixedTwoSidedDescriptorAllocator * ShaderExportStreamer::AllocateTwoSidedAllocator(ID3D12DescriptorHeap* heap, uint32_t virtualCount, uint32_t bound) {
+#if DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
+    uint32_t offset = 0;
+#else // DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
+    uint32_t offset = virtualCount;
+#endif // DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
+    
     return new (device->allocators, kAllocShaderExport) ShaderExportFixedTwoSidedDescriptorAllocator(
         device->object, 
         heap,
         1u,
         descriptorLayout.Count(),
+        offset,
         bound
     );
 }
@@ -300,7 +308,7 @@ void ShaderExportStreamer::InvalidateHeapMappingsFor(ShaderExportStreamState *st
     for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
         ShaderExportStreamBindState &bindState = state->bindStates[i];
 
-        // Check all 
+        // Check all
         for (uint32_t rootIndex = 0; bindState.rootSignature && rootIndex < bindState.rootSignature->logicalMapping.userRootCount; rootIndex++) {
             // Get the expected heap type
             D3D12_DESCRIPTOR_HEAP_TYPE heapType = bindState.rootSignature->logicalMapping.userRootHeapTypes[rootIndex];
@@ -310,7 +318,79 @@ void ShaderExportStreamer::InvalidateHeapMappingsFor(ShaderExportStreamState *st
                 bindState.persistentRootParameters[rootIndex].type = ShaderExportRootParameterValueType::None;
             }
         }
+
+        // If there's a currently set root signature, all bindings have become invalidated
+        if (bindState.rootSignature) {
+            InvalidateDescriptorSlots(state, bindState, bindState.rootSignature, type);
+        }
     }
+}
+
+void ShaderExportStreamer::InvalidateDescriptorSlots(ShaderExportStreamState* state, ShaderExportStreamBindState& bindState, const RootSignatureState* rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE type) {
+    // As the bindings have been invalidated, we must roll the chunk
+    bindState.descriptorDataAllocator->ConditionalRoll();
+
+    // Invalidate sampler bindings
+    for (size_t i = 0; i < rootSignature->logicalMapping.userRootHeapTypes.size(); i++) {
+        if (type != D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES && rootSignature->logicalMapping.userRootHeapTypes[i] != type) {
+            continue;
+        }
+
+        // Write invalidated slots
+        if (rootSignature->logicalMapping.userRootHeapTypes[i] == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+            bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
+        } else if (state->resourceHeap) {
+            bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), state->resourceHeap->GetVirtualRangeBound());
+        }
+    }
+}
+
+void ShaderExportStreamer::UpdateReservedHeapConstantData(ShaderExportStreamState *state, ID3D12GraphicsCommandList* commandList) {
+    uint32_t dwords[static_cast<uint32_t>(ReservedConstantDataDWords::Prefix)];
+
+    // Set the virtual bound of the heap, used for range and invalidation checking
+    dwords[static_cast<uint32_t>(ReservedConstantDataDWords::ResourceHeapInvalidationBound)] = state->resourceHeap->GetVirtualRangeBound();
+
+    // Write the data
+    WriteReservedHeapConstantBuffer(state, dwords, static_cast<uint32_t>(ReservedConstantDataDWords::Prefix), commandList);
+}
+
+void ShaderExportStreamer::WriteReservedHeapConstantBuffer(ShaderExportStreamState *state, const uint32_t* dwords, uint32_t dwordCount, ID3D12GraphicsCommandList *commandList) {
+    // Expected read state
+    D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+    // Graphics bit?
+    if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COMPUTE) {
+        readState |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    }
+
+    // Shader Read -> Copy Dest
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = state->constantShaderDataBuffer.allocation.resource;
+    barrier.Transition.StateBefore = readState;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+    commandList->ResourceBarrier(1u, &barrier);
+
+    // Allocate staging data
+    ShaderExportConstantAllocation stagingAllocation = state->constantAllocator.Allocate(device->deviceAllocator, dwordCount * sizeof(uint32_t));
+
+    // Update data
+    std::memcpy(stagingAllocation.staging, dwords, sizeof(uint32_t) * dwordCount);
+
+    // Copy from staging
+    commandList->CopyBufferRegion(
+        state->constantShaderDataBuffer.allocation.resource,
+        0u,
+        stagingAllocation.resource,
+        stagingAllocation.offset,
+        dwordCount * sizeof(uint32_t)
+    );
+
+    // Copy Dest -> Shader Read
+    barrier.Transition.StateAfter = readState;
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    commandList->ResourceBarrier(1u, &barrier);
 }
 
 void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, DescriptorHeapState* heap, ID3D12GraphicsCommandList* commandList) {
@@ -378,6 +458,9 @@ void ShaderExportStreamer::SetDescriptorHeap(ShaderExportStreamState* state, Des
             BindShaderExport(state, state->pipeline, commandList);
         }
     }
+
+    // Finally, update all reserved constant data
+    UpdateReservedHeapConstantData(state, commandList);
 }
 
 void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *state, const RootSignatureState *rootSignature, ID3D12GraphicsCommandList* commandList) {
@@ -396,20 +479,13 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
         bindState.bindMask = 0x0;
 #endif // NDEBUG
 
-        // As the bindings have been invalidated, we must roll the chunk
-        bindState.descriptorDataAllocator->ConditionalRoll();
-
         // Old bindings are invalidated
         for (ShaderExportRootParameterValue& persistent : bindState.persistentRootParameters) {
             persistent.type = ShaderExportRootParameterValueType::None;
         }
 
-        // Invalidate sampler bindings
-        for (size_t i = 0; i < rootSignature->logicalMapping.userRootHeapTypes.size(); i++) {
-            if (rootSignature->logicalMapping.userRootHeapTypes[i] == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
-                bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
-            }
-        }
+        // Invalidate all descriptor slots
+        InvalidateDescriptorSlots(state, bindState, rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES);
     }
     
     // Keep state
@@ -437,20 +513,13 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
         bindState.bindMask = 0x0;
 #endif // NDEBUG
 
-        // As the bindings have been invalidated, we must roll the chunk
-        bindState.descriptorDataAllocator->ConditionalRoll();
-
         // Old bindings are invalidated
         for (ShaderExportRootParameterValue& persistent : bindState.persistentRootParameters) {
             persistent.type = ShaderExportRootParameterValueType::None;
         }
 
-        // Invalidate sampler bindings
-        for (size_t i = 0; i < rootSignature->logicalMapping.userRootHeapTypes.size(); i++) {
-            if (rootSignature->logicalMapping.userRootHeapTypes[i] == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
-                bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
-            }
-        }
+        // Invalidate all descriptor slots
+        InvalidateDescriptorSlots(state, bindState, rootSignature, D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES);
     }
     
     // Keep state

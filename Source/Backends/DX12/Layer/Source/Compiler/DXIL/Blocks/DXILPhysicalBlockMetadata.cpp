@@ -1380,6 +1380,9 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
     // Requested dword count
     uint32_t dwordCount = 0;
 
+    // Reserved prefix
+    dwordCount += static_cast<uint32_t>(ReservedConstantDataDWords::Prefix);
+
     // Aggregate dword count
     for (const ShaderDataInfo& info : shaderDataMap) {
         if (info.type == ShaderDataType::Descriptor) {
@@ -1394,9 +1397,9 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
     uint32_t alignedDWords = dwordCount / 4;
 
     // Emit aligned data
-    Backend::IL::StructType eventStruct;
+    Backend::IL::StructType constantStruct;
     for (uint32_t i = 0; i < alignedDWords; i++) {
-        eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+        constantStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
             .containedType = i32,
             .dimension = 4
         }));
@@ -1409,9 +1412,9 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
     if (unalignedDWords) {
         // Naked single?
         if (unalignedDWords == 1) {
-            eventStruct.memberTypes.push_back(i32);
+            constantStruct.memberTypes.push_back(i32);
         } else {
-            eventStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
+            constantStruct.memberTypes.push_back(program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType {
                 .containedType = i32,
                 .dimension = static_cast<uint8_t>(unalignedDWords)
             }));
@@ -1419,7 +1422,7 @@ void DXILPhysicalBlockMetadata::CreateConstantsHandle(const DXCompileJob &job) {
     }
 
     // {[4xN] N-1}
-    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(eventStruct);
+    const Backend::IL::Type* cbufferType = program.GetTypeMap().FindTypeOrAdd(constantStruct);
 
     // Compile as named
     table.type.typeMap.CompileNamedType(cbufferType, "CBufferConstantData");

@@ -43,7 +43,7 @@ public:
     /// \param device parent device
     /// \param heap target heap
     /// \param bound expected bound
-    ShaderExportFixedTwoSidedDescriptorAllocator(ID3D12Device* device, ID3D12DescriptorHeap* heap, uint32_t lhsWidth, uint32_t rhsWidth, uint32_t bound);
+    ShaderExportFixedTwoSidedDescriptorAllocator(ID3D12Device* device, ID3D12DescriptorHeap* heap, uint32_t lhsWidth, uint32_t rhsWidth, uint32_t offset, uint32_t bound);
 
     /// Allocate a new descriptor
     /// \param width number of descriptors to allocate
@@ -56,12 +56,20 @@ public:
 
     /// Get the allocation prefix
     uint32_t GetPrefix() const {
+#if DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
         return bound;
+#else // DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
+        return 0u;
+#endif // DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
     }
 
     /// Get the allocation prefix offset
     uint64_t GetPrefixOffset() const {
+#if DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
         return bound * static_cast<uint32_t>(lhsBucket.descriptorAdvance);
+#else // DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
+        return 0u;
+#endif // DESCRIPTOR_HEAP_METHOD == DESCRIPTOR_HEAP_METHOD_PREFIX
     }
 
     /// Get the descriptor ptr advance

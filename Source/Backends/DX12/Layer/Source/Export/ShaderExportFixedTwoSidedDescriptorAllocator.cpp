@@ -28,7 +28,7 @@
 // Std
 #include <algorithm>
 
-ShaderExportFixedTwoSidedDescriptorAllocator::ShaderExportFixedTwoSidedDescriptorAllocator(ID3D12Device *device, ID3D12DescriptorHeap *heap, uint32_t lhsWidth, uint32_t rhsWidth, uint32_t bound) : bound(bound), heap(heap) {
+ShaderExportFixedTwoSidedDescriptorAllocator::ShaderExportFixedTwoSidedDescriptorAllocator(ID3D12Device *device, ID3D12DescriptorHeap *heap, uint32_t lhsWidth, uint32_t rhsWidth, uint32_t offset, uint32_t bound) : bound(bound), heap(heap) {
     // Get the advance
     auto advance = static_cast<int64_t>(device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
@@ -37,9 +37,14 @@ ShaderExportFixedTwoSidedDescriptorAllocator::ShaderExportFixedTwoSidedDescripto
     
     // Left bucket, advance right
     lhsBucket.width = lhsWidth;
-    lhsBucket.cpuHandle = heap->GetCPUDescriptorHandleForHeapStart();
-    lhsBucket.gpuHandle = isGPUVisible ? heap->GetGPUDescriptorHandleForHeapStart() : D3D12_GPU_DESCRIPTOR_HANDLE {};
+    lhsBucket.cpuHandle = { heap->GetCPUDescriptorHandleForHeapStart().ptr + advance * offset };
+    lhsBucket.gpuHandle = D3D12_GPU_DESCRIPTOR_HANDLE {};
     lhsBucket.descriptorAdvance = advance;
+
+    // GPU handle optional
+    if (isGPUVisible) {
+        lhsBucket.gpuHandle = { heap->GetGPUDescriptorHandleForHeapStart().ptr + advance * offset };
+    }
 
     // Right bucket, advance left
     rhsBucket.width = rhsWidth;

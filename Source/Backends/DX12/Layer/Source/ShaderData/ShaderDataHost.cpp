@@ -26,6 +26,7 @@
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Translation.h>
+#include <Backends/DX12/Resource/ReservedConstantData.h>
 
 ShaderDataHost::ShaderDataHost(DeviceState *device) :
     device(device),
@@ -280,6 +281,9 @@ ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
     // Total dword count
     uint32_t dwordCount = 0;
 
+    // Reserved data
+    dwordCount += static_cast<uint32_t>(ReservedConstantDataDWords::Prefix);
+
     // Summarize size
     for (uint32_t i = 0; i < resources.size(); i++) {
         if (resources[i].info.type == ShaderDataType::Descriptor) {
@@ -325,6 +329,9 @@ ShaderConstantsRemappingTable ShaderDataHost::CreateConstantMappingTable() {
 
     // Current offset
     uint32_t dwordOffset = 0;
+
+    // Offset by reserved data
+    dwordOffset += static_cast<uint32_t>(ReservedConstantDataDWords::Prefix);
 
     // Accumulate offsets
     for (uint32_t i = 0; i < resources.size(); i++) {

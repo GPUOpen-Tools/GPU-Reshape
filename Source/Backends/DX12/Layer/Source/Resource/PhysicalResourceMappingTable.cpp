@@ -42,19 +42,19 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     std::lock_guard guard(mutex);
     type = valueType;
 
-    // Sampler heaps append a "null" descriptor, provide space for it
-    if (valueType == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
-        count++;
-    }
-    
     // Set count
     virtualMappingCount = count;
+
+    // Heaps append a "null" / invalid descriptor, provide space for it
+    //   Instrumented shaders do not actually use the fetched data, but this indexing scheme speeds up things
+    //   as the alternative is to branch or bound the offsets somehow.
+    uint32_t allocationCount = count + 1u;
     
     // Mapped description
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Alignment = 0;
-    desc.Width = sizeof(uint32_t) * count;
+    desc.Width = sizeof(uint32_t) * allocationCount;
     desc.Height = 1;
     desc.DepthOrArraySize = 1;
     desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;

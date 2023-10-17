@@ -3,7 +3,7 @@
 // 
 // Copyright (c) 2023 Miguel Petersen
 // Copyright (c) 2023 Advanced Micro Devices, Inc
-// Copyright (c) 2023 Fatalist Development AB
+// Copyright (c) 2023 Avalanche Studios Group
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy 
 // of this software and associated documentation files (the "Software"), to deal 
@@ -24,9 +24,10 @@
 
 #pragma once
 
-// Std
-#include <cstdint>
+enum class ReservedConstantDataDWords {
+    /// The element bound on the heap's virtual range
+    ResourceHeapInvalidationBound,
 
-/// Invalid offset for sampler heaps, sampler heaps do not support prefixes and have a hard limit of 2048,
-/// so, treat that as invalid.
-static constexpr uint32_t kDescriptorDataSamplerInvalidOffset = 2048;
+    /// Final prefix
+    Prefix
+};

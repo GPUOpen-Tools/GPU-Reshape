@@ -4579,6 +4579,9 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, st
     // Requested dword count
     uint32_t dwordCount = 0;
 
+    // Reserved prefix
+    dwordCount += static_cast<uint32_t>(ReservedConstantDataDWords::Prefix);
+
     // Aggregate dword count
     for (const ShaderDataInfo& info : shaderDataMap) {
         if (info.type == ShaderDataType::Descriptor) {
@@ -4630,6 +4633,23 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, st
     // Current dword offset
     uint32_t dwordOffset = 0;
 
+    // Get reserved values
+    for (uint32_t i = 0; i < static_cast<uint32_t>(ReservedConstantDataDWords::Prefix); i++) {
+        reservedConstantRange[i] = program.GetIdentifierMap().AllocID();
+        
+        // Extract respective value
+        LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+        recordExtract.SetUser(true, ~0u, reservedConstantRange[i]);
+        recordExtract.opCount = 2;
+        recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+        recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyRows[dwordOffset / 4]);
+        recordExtract.ops[1] = dwordOffset % 4;
+        block->AddRecord(recordExtract);
+
+        // Next!
+        dwordOffset++;
+    }
+
     // Create shader data mappings to handle
     for (const ShaderDataInfo& info : shaderDataMap) {
         if (info.type != ShaderDataType::Descriptor) {
@@ -4651,6 +4671,9 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, st
         // Next!
         dwordOffset++;
     }
+
+    // Validation
+    ASSERT(dwordOffset == dwordCount, "DWord mismatch");
 }
 
 void DXILPhysicalBlockFunction::CreateShaderDataHandle(const DXCompileJob &job, struct LLVMBlock *block) {
@@ -5028,8 +5051,11 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         block->AddRecord(CompileIntrinsicCall(legacyLoad, intrinsic, 3, ops));
     }
 
-    // Literal used for invalid bindings
-    uint32_t invalidBindingLiteral{ 0 };
+    // Number of resource bindings
+    IL::ID resourceVirtualBound = reservedConstantRange[static_cast<uint32_t>(ReservedConstantDataDWords::ResourceHeapInvalidationBound)];
+
+    // Invalid binding identifier
+    IL::ID invalidBindingId{ IL::InvalidID };
     
     // Root parameters are hosted inline
     if (userMapping.source && userMapping.source->isRootResourceParameter) {
@@ -5046,8 +5072,8 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             block->AddRecord(recordExtract);
         }
 
-        // Root bindings are always resources
-        invalidBindingLiteral = kDescriptorDataResourceInvalidOffset;
+        // Resource invalidation literals are tied to the heap bounds
+        invalidBindingId = resourceVirtualBound;
 
         // The oob validated index is the root binding
         oobValidated = rootOffset;
@@ -5060,14 +5086,23 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
                 return;
             case Backend::IL::TypeKind::CBuffer:
             case Backend::IL::TypeKind::Texture:
-            case Backend::IL::TypeKind::Buffer:
+            case Backend::IL::TypeKind::Buffer: {
                 prmtBufferId = resourcePRMTHandle;
-                invalidBindingLiteral = kDescriptorDataResourceInvalidOffset;
+
+                // Resource invalidation literals are tied to the heap bounds
+                invalidBindingId = resourceVirtualBound;
                 break;
-            case Backend::IL::TypeKind::Sampler:
+            }
+            case Backend::IL::TypeKind::Sampler: {
                 prmtBufferId = samplerPRMTHandle;
-                invalidBindingLiteral = kDescriptorDataSamplerInvalidOffset;
+
+                // Sampler invalidation literals are constant
+                invalidBindingId = program.GetConstants().FindConstantOrAdd(
+                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
+                    IL::IntConstant{.value = kDescriptorDataSamplerInvalidOffset}
+                )->id;
                 break;
+            }
         }
 
         // Alloc IDs
@@ -5139,47 +5174,6 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
             // Allocate out of bounds identifier
             outOfHeapOperand = program.GetIdentifierMap().AllocID();
 
-            // Intermediate identifiers
-            IL::ID structDimensionsId = program.GetIdentifierMap().AllocID();
-            IL::ID vrmtCountId        = program.GetIdentifierMap().AllocID();
-
-            // Determine number of VRMTs
-            {
-                // Get intrinsic
-                const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpGetDimensions);
-
-                /*
-                 * declare %dx.types.Dimensions @dx.op.getDimensions(
-                 *   i32,                  ; opcode
-                 *   %dx.types.Handle,     ; resource handle
-                 *   i32)                  ; MIP level
-                 */
-
-                uint64_t ops[3];
-
-                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                    Backend::IL::IntConstant{.value = static_cast<uint32_t>(DXILOpcodes::GetDimensions)}
-                )->id);
-                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(prmtBufferId);
-                ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                    program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-                    Backend::IL::UndefConstant{}
-                )->id);
-
-                // Invoke
-                block->AddRecord(CompileIntrinsicCall(structDimensionsId, intrinsic, 3, ops));
-
-                // Extract first value
-                LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-                recordExtract.SetUser(true, ~0u, vrmtCountId);
-                recordExtract.opCount = 2;
-                recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
-                recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(structDimensionsId);
-                recordExtract.ops[1] = 0;
-                block->AddRecord(recordExtract);
-            }
-
             // DescriptorOffset > VRMTCount
             {
                 LLVMRecord cmpRecord;
@@ -5188,7 +5182,7 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
                 cmpRecord.opCount = 3u;
                 cmpRecord.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                 cmpRecord.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(descriptorOffset);
-                cmpRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(vrmtCountId);
+                cmpRecord.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(resourceVirtualBound);
                 cmpRecord.ops[2] = static_cast<uint64_t>(LLVMCmpOp::IntUnsignedGreaterEqual);
                 block->AddRecord(cmpRecord);
             }
@@ -5274,16 +5268,13 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
     {
         uint32_t isTableNotBound = program.GetIdentifierMap().AllocID();
         
-        // CBufferData == 0u
+        // CBufferData == Invalid
         LLVMRecord recordCmp(LLVMFunctionRecord::InstCmp);
         recordCmp.SetUser(true, ~0u, isTableNotBound);
         recordCmp.opCount = 3;
         recordCmp.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
         recordCmp.ops[0] = DXILIDRemapper::EncodeUserOperand(rootOffset);
-        recordCmp.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
-            Backend::IL::IntConstant{.value = invalidBindingLiteral}
-        )->id);
+        recordCmp.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(invalidBindingId);
         recordCmp.ops[2] = static_cast<uint64_t>(LLVMCmpOp::IntEqual);
         block->AddRecord(recordCmp);
 
