@@ -32,13 +32,13 @@ namespace Detail {
 /// Assertion
 #if defined(NDEBUG)
 #   define ASSERT(EXPRESSION, MESSAGE) while(false) { (void)(EXPRESSION); } (void)0
-#else
+#else // defined(NDEBUG)
 #   define ASSERT(EXPRESSION, MESSAGE) if (!(EXPRESSION)) { ::Detail::Break(MESSAGE); } (void)0
-#endif
+#endif // defined(NDEBUG)
 
 /// Ensure
 #if defined(NDEBUG)
-#   define ENSURE(EXPRESSION, MESSAGE) EXPRESSION
-#else
+#   define ENSURE(EXPRESSION, MESSAGE) (void)(EXPRESSION)
+#else // defined(NDEBUG)
 #   define ENSURE(EXPRESSION, MESSAGE) ASSERT(EXPRESSION, MESSAGE)
-#endif
+#endif // defined(NDEBUG)
