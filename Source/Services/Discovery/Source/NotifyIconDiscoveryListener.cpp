@@ -40,6 +40,9 @@
 #   error Not implemented
 #endif // _WIN32
 
+/// Registry key
+static constexpr const wchar_t* kNotifyIconKey = L"GPUReshape.NotifyIcon";
+
 #ifdef _WIN32
 inline bool InstallService(const wchar_t *name, const wchar_t *path) {
     // Create properties
@@ -208,12 +211,12 @@ inline void StartProcess(char* path) {
 NotifyIconDiscoveryListener::NotifyIconDiscoveryListener() {
     // Determine the service path
     notifyPath = GetCurrentExecutableDirectory() / "GPUReshape.NotifyIcon.exe";
-
-    // Always install startup keys
-    InstallService(L"GPUOpenNotifyIconService", notifyPath.wstring().c_str());
 }
 
 bool NotifyIconDiscoveryListener::InstallGlobal() {
+    // Global installation requires installation
+    InstallService(kNotifyIconKey, notifyPath.wstring().c_str());
+    
     // Begin
     StartProcess(notifyPath.string().data());
 
@@ -222,16 +225,20 @@ bool NotifyIconDiscoveryListener::InstallGlobal() {
 }
 
 bool NotifyIconDiscoveryListener::UninstallGlobal() {
+    // Uninstall the service
+    UninstallService(kNotifyIconKey);
+    
+    // OK 
     return true;
 }
 
 bool NotifyIconDiscoveryListener::HasConflictingInstances() {
-    return FindConflictingService(L"GPUOpenNotifyIconService", notifyPath.wstring().c_str());
+    return FindConflictingService(kNotifyIconKey, notifyPath.wstring().c_str());
 }
 
 bool NotifyIconDiscoveryListener::UninstallConflictingInstances() {
     // Remove bad service if needed
-    if (FindConflictingService(L"GPUOpenNotifyIconService", notifyPath.wstring().c_str()) && !UninstallService(L"GPUOpenNotifyIconService")) {
+    if (FindConflictingService(kNotifyIconKey, notifyPath.wstring().c_str()) && !UninstallService(kNotifyIconKey)) {
         return false;
     }
 
