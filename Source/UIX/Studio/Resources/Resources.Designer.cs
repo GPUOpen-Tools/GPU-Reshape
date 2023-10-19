@@ -120,6 +120,26 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Global discovery requires the installation of GPU Reshape services, which are added to the (OS) startup programs.
+        ///
+        ///Do you consent to this?.
+        /// </summary>
+        public static string Discovery_Warning_Content {
+            get {
+                return ResourceManager.GetString("Discovery_Warning_Content", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Service Installation.
+        /// </summary>
+        public static string Discovery_Warning_Title {
+            get {
+                return ResourceManager.GetString("Discovery_Warning_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Remove this entry.
         /// </summary>
         public static string EditLabel_Close_Tooltip {

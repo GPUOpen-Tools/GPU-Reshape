@@ -220,6 +220,7 @@
       <UpToDateCheckInput Remove="Views\Resources\ContextMenuView.axaml" />
     </ItemGroup>
     <ItemGroup>
+      <Folder Include="ViewModels\Data\" />
       <Folder Include="ViewModels\Instrumentation" />
       <Folder Include="Views\Themes" />
     </ItemGroup>

@@ -24,6 +24,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Threading;
@@ -31,6 +32,7 @@ using DynamicData;
 using ReactiveUI;
 using Studio.Models.Logging;
 using Studio.Services;
+using Studio.Services.Suspension;
 using Studio.ViewModels.Setting;
 
 namespace Studio.ViewModels.Setting
@@ -96,6 +98,16 @@ namespace Studio.ViewModels.Setting
                 }
             }
         }
+        
+        /// <summary>
+        /// Should the user be warned on global installation?
+        /// </summary>
+        [DataMember]
+        public bool WarnOnGlobalInstall
+        {
+            get => _warnOnGlobalInstall;
+            set => this.RaiseAndSetIfChanged(ref _warnOnGlobalInstall, value);
+        }
 
         /// <summary>
         /// Toggle the local state
@@ -135,6 +147,41 @@ namespace Studio.ViewModels.Setting
             
             // Subscribe tick
             _timer.Tick += OnTick;
+        }
+
+        /// <summary>
+        /// Start a conditional warning dialog, does not run if previously marked as hidden
+        /// </summary>
+        public async Task<bool> ConditionalWarning()
+        {
+            // Don't warn?
+            if (!WarnOnGlobalInstall)
+            {
+                return false;
+            }
+            
+            // Show window
+            var vm = await AvaloniaLocator.Current.GetService<IWindowService>()!.OpenFor<DialogViewModel>(new DialogViewModel()
+            {
+                Title = Resources.Resources.Discovery_Warning_Title,
+                Content = Resources.Resources.Discovery_Warning_Content,
+                ShowHideNextTime = true
+            });
+
+            // Failed to open?
+            if (vm == null)
+            {
+                return false;
+            }
+
+            // User requested not to warn next time?
+            if (vm.HideNextTime)
+            {
+                WarnOnGlobalInstall = false;
+            }
+            
+            // OK
+            return !vm.Result;
         }
 
         /// <summary>
@@ -196,7 +243,7 @@ namespace Studio.ViewModels.Setting
         /// <summary>
         /// Invoked on global toggles
         /// </summary>
-        private void OnGlobalStateToggle()
+        private async void OnGlobalStateToggle()
         {
             if (_discoveryService == null)
             {
@@ -209,6 +256,14 @@ namespace Studio.ViewModels.Setting
             }
             else
             {
+                // Global installation requires explicit user consent
+                if (await ConditionalWarning())
+                {
+                    // User has rejected, do not install
+                    return;
+                }
+                
+                // Consent has been granted, proceed
                 _discoveryService.InstallGlobal();
             }
         }
@@ -251,5 +306,10 @@ namespace Studio.ViewModels.Setting
         /// Internal conflicting state
         /// </summary>
         private bool _hasConflictingInstances = false;
+
+        /// <summary>
+        /// Internal warning state
+        /// </summary>
+        private bool _warnOnGlobalInstall = true;
     }
 }

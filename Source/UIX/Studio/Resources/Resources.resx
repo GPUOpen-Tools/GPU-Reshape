@@ -126,4 +126,12 @@
     <data name="Launch_Detail" xml:space="preserve">
         <value>Enables detailed validation reporting, affects performance.</value>
     </data>
+    <data name="Discovery_Warning_Title" xml:space="preserve">
+        <value>Service Installation</value>
+    </data>
+    <data name="Discovery_Warning_Content" xml:space="preserve">
+        <value>Global discovery requires the installation of GPU Reshape services, which are added to the (OS) startup programs.
+
+Do you consent to this?</value>
+    </data>
 </root>

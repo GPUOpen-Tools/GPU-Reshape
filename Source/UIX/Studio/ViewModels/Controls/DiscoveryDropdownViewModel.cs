@@ -29,6 +29,8 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Discovery.CLR;
 using ReactiveUI;
+using Studio.Services;
+using Studio.ViewModels.Setting;
 
 namespace Studio.ViewModels.Controls
 {
@@ -93,7 +95,7 @@ namespace Studio.ViewModels.Controls
         /// <summary>
         /// Invoked on global toggles
         /// </summary>
-        private void OnToggleGlobal()
+        private async void OnToggleGlobal()
         {
             // Bad service?
             if (_discoveryService == null)
@@ -108,6 +110,14 @@ namespace Studio.ViewModels.Controls
             }
             else
             {
+                // Global installation requires explicit user consent, reject if the VM could not be found (to be safe)
+                if (_settingViewModel == null || await _settingViewModel.ConditionalWarning())
+                {
+                    // User has rejected, do not install
+                    return;
+                }
+                
+                // Consent has been granted, proceed
                 _discoveryService.InstallGlobal();
             }
             
@@ -199,5 +209,10 @@ namespace Studio.ViewModels.Controls
         /// Backend discovery service
         /// </summary>
         private readonly DiscoveryService? _discoveryService;
+
+        /// <summary>
+        /// Setting view model
+        /// </summary>
+        private DiscoverySettingViewModel? _settingViewModel = AvaloniaLocator.Current.GetService<ISettingsService>()?.Get<DiscoverySettingViewModel>();
     }
 }
