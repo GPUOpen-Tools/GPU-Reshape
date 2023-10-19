@@ -1893,7 +1893,7 @@ void DXILPhysicalBlockMetadata::StitchMetadataAttachments(struct LLVMBlock *bloc
 
                 // Stitch metadata blocks
                 for (uint32_t i = 1; i < record.opCount; i += 2) {
-                    record.Op(i + 1) = mdBlock->sourceMappings[record.Op(i + 1) - 1] + 1;
+                    record.Op(i + 1) = mdBlock->sourceMappings[record.Op(i + 1)];
                 }
                 break;
             }
