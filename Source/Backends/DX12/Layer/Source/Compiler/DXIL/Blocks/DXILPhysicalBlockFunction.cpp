@@ -1075,6 +1075,11 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 continue;
             }
 
+            // Unexposed instructions are exempt
+            if (instr->Is<IL::UnexposedInstruction>()) {
+                continue;
+            }
+
             // While the instructions themselves can be unexposed, the resulting type must never be.
             // Supporting this from the user side would be needless complexity
             const Backend::IL::Type* type = ilTypeMap.GetType(instr->result);
