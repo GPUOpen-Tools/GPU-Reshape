@@ -37,6 +37,9 @@
 #include <tlhelp32.h>
 #include <Psapi.h>
 
+/// Registry key
+static constexpr const wchar_t* kDX12ServiceKey = L"GPUReshape.DX12Service";
+
 inline bool QueryService(const wchar_t *name, const wchar_t *path) {
     // Create properties
     HKEY keyHandle{};
@@ -221,12 +224,12 @@ DX12DiscoveryListener::DX12DiscoveryListener() {
     servicePath = GetCurrentExecutableDirectory() / "GRS.Backends.DX12.Service.exe";
 
     // Get current status
-    isGlobal |= QueryService(L"GPUOpenDX12Service", servicePath.wstring().c_str());
+    isGlobal |= QueryService(kDX12ServiceKey, servicePath.wstring().c_str());
 }
 
 bool DX12DiscoveryListener::InstallGlobal() {
     // Install startup keys
-    if (!InstallService(L"GPUOpenDX12Service", servicePath.wstring().c_str())) {
+    if (!InstallService(kDX12ServiceKey, servicePath.wstring().c_str())) {
         return false;
     }
 
@@ -246,7 +249,7 @@ bool DX12DiscoveryListener::InstallGlobal() {
 
 bool DX12DiscoveryListener::UninstallGlobal() {
     // Uninstall startup keys
-    if (!UninstallService(L"GPUOpenDX12Service")) {
+    if (!UninstallService(kDX12ServiceKey)) {
         return false;
     }
 
@@ -264,7 +267,7 @@ bool DX12DiscoveryListener::UninstallGlobal() {
 
 bool DX12DiscoveryListener::HasConflictingInstances() {
     // Check startup service
-    if (FindConflictingService(L"GPUOpenDX12Service", servicePath.wstring().c_str())) {
+    if (FindConflictingService(kDX12ServiceKey, servicePath.wstring().c_str())) {
         return true;
     }
     
@@ -313,7 +316,7 @@ bool DX12DiscoveryListener::HasConflictingInstances() {
 
 bool DX12DiscoveryListener::UninstallConflictingInstances() {
     // Remove bad service if needed
-    if (FindConflictingService(L"GPUOpenDX12Service", servicePath.wstring().c_str()) && !UninstallService(L"GPUOpenDX12Service")) {
+    if (FindConflictingService(kDX12ServiceKey, servicePath.wstring().c_str()) && !UninstallService(kDX12ServiceKey)) {
         return false;
     }
     
