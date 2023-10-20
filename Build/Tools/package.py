@@ -55,6 +55,7 @@ require_list = [
     "GRS.Backends.DX12.Service.exe",
     "GRS.Backends.DX12.Service.RelFunTBL.exe",
     "GRS.Services.HostResolver.Standalone.exe",
+    "GRS.Services.Discovery.Cleanup.exe",
     "XamlColorSchemeGenerator.exe",
 ]
 
