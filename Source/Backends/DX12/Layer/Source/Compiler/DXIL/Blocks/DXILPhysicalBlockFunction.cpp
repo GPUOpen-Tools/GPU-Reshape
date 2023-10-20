@@ -1297,6 +1297,10 @@ const DXILFunctionDeclaration * DXILPhysicalBlockFunction::GetFunctionDeclaratio
 }
 
 DXCodeOffsetTraceback DXILPhysicalBlockFunction::GetCodeOffsetTraceback(uint32_t codeOffset) {
+    if (codeOffset >= sourceTraceback.size()) {
+        return sourceTraceback.back();
+    }
+    
     return sourceTraceback.at(codeOffset);
 }
 
