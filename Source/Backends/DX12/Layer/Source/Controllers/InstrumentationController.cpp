@@ -84,7 +84,21 @@ void InstrumentationController::Uninstall() {
 
 uint32_t InstrumentationController::GetJobCount() {
     std::lock_guard guard(mutex);
-    return compilationBucket ? compilationBucket->GetCounter() : 0;
+
+    // No compiling batch?
+    if (!compilationBatch) {
+        return 0u;
+    }
+
+    // Get number of jobs in the stage
+    switch (compilationBatch->stage.load()) {
+        default:
+            return 0u;
+        case InstrumentationStage::Shaders:
+            return static_cast<uint32_t>(compilationBatch->shaderCompilerDiagnostic.GetRemainingJobs());
+        case InstrumentationStage::Pipelines:
+            return static_cast<uint32_t>(compilationBatch->pipelineCompilerDiagnostic.GetRemainingJobs());
+    }
 }
 
 void InstrumentationController::CreatePipeline(PipelineState *state) {
@@ -615,6 +629,20 @@ void InstrumentationController::CommitInstrumentation() {
         return;
     }
 
+    // Wait for pending buckets, compilation has to maintain ordering
+    if (compilationBatch) {
+        // Increment counter, pending work may require synchronous recording.
+        // If said work is scheduled in before the bucket is done compiling, and the counter has
+        // not been incremented, due to ordering, it may start ahead of schedule.
+        if (!immediateBatch.dirtyObjects.empty() && !hasPendingBucket) {
+            compilationEvent.IncrementHead();
+            hasPendingBucket = true;
+        }
+
+        // Skip
+        return;
+    }
+
     // Re-propagate all shaders
     for (ShaderState *state: immediateBatch.dirtyShaders) {
         PropagateInstrumentationInfo(state);
@@ -642,7 +670,9 @@ void InstrumentationController::CommitInstrumentation() {
     }
 
     // Mark next batch
-    compilationEvent.IncrementHead();
+    if (!hasPendingBucket) {
+        compilationEvent.IncrementHead();
+    }
 
     // Diagnostic
 #if LOG_INSTRUMENTATION
@@ -679,23 +709,43 @@ void InstrumentationController::CommitInstrumentation() {
     // Start the group
     group.Commit();
 
-    // Get the current bucket
-    compilationBucket = group.GetBucket();
+    // Keep the bucket for tracking
+    batch->bucket = group.GetBucket();
+
+    // Set the current batch
+    compilationBatch = batch;
 
     // Clean current batch
     immediateBatch.dirtyObjects.clear();
     immediateBatch.dirtyShaders.clear();
     immediateBatch.dirtyPipelines.clear();
+
+    // Cleanup
+    hasPendingBucket = false;
 }
 
 void InstrumentationController::Commit() {
     uint32_t count = GetJobCount();
 
+    // Serial
+    std::lock_guard guard(mutex);
+    
     // Any since last?
     if (lastPooledCount != count) {
         // Add diagnostic message
         auto message = MessageStreamView(commitStream).Add<JobDiagnosticMessage>();
         message->remaining = count;
+
+        // Set batch stage information
+        if (compilationBatch) {
+            message->stage        = static_cast<uint32_t>(compilationBatch->stage.load());
+            message->graphicsJobs = compilationBatch->stageCounters[static_cast<uint32_t>(PipelineType::GraphicsSlot)].load();
+            message->computeJobs  = compilationBatch->stageCounters[static_cast<uint32_t>(PipelineType::ComputeSlot)].load();
+        } else {
+            message->stage = 0;
+            message->graphicsJobs = 0;
+            message->computeJobs = 0;
+        }
 
         // OK
         lastPooledCount = count;
@@ -707,13 +757,30 @@ void InstrumentationController::Commit() {
     }
 
     // Commit all pending instrumentation
-    std::lock_guard guard(mutex);
     CommitInstrumentation();
+}
+
+static uint32_t GetPipelineSlot(const PipelineState* state) {
+    switch (state->type) {
+        case PipelineType::Graphics:
+            return static_cast<uint32_t>(PipelineType::GraphicsSlot);
+        case PipelineType::Compute:
+            return static_cast<uint32_t>(PipelineType::ComputeSlot);
+        default:
+            ASSERT(false, "Invalid type");
+            return 0u;
+    }
 }
 
 void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *data) {
     auto *batch = static_cast<Batch *>(data);
     batch->stampBeginShaders = std::chrono::high_resolution_clock::now();
+
+    // Set stage
+    batch->stage = InstrumentationStage::Shaders;
+
+    // Reset counters
+    std::fill_n(batch->stageCounters, static_cast<uint32_t>(PipelineType::Count), 0u);
 
     // Submit compiler jobs
     for (ShaderState *state: batch->dirtyShaders) {
@@ -748,6 +815,9 @@ void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *da
                 continue;
             }
 
+            // Increment counter
+            batch->stageCounters[GetPipelineSlot(dependentObject)]++;
+
             // Determine the shader module index within the dependent object
             uint64_t dependentIndex = std::ranges::find(dependentObject->shaders, state) - dependentObject->shaders.begin();
 
@@ -765,6 +835,12 @@ void InstrumentationController::CommitShaders(DispatcherBucket *bucket, void *da
 void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *data) {
     auto* batch = static_cast<Batch*>(data);
     batch->stampBeginPipelines = std::chrono::high_resolution_clock::now();
+
+    // Set stage
+    batch->stage = InstrumentationStage::Pipelines;
+
+    // Reset counters
+    std::fill_n(batch->stageCounters, static_cast<uint32_t>(PipelineType::Count), 0u);
 
     // Collection of keys which failed
     std::vector<std::pair<ShaderState*, ShaderInstrumentationKey>> rejectedKeys;
@@ -847,6 +923,9 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             destroy(job.shaderInstrumentationKeys, allocators);
             continue;
         }
+
+        // Increment counter
+        batch->stageCounters[GetPipelineSlot(state)]++;
 
         // Append commit entry
         batch->commitEntries.push_back(Batch::CommitEntry {
@@ -933,10 +1012,10 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
     // Release batch
     destroy(batch, allocators);
 
-    // Release the bucket handle, destructed after this call
+    // Release the batch, bucket destructed after this call
     {
         std::lock_guard guard(mutex);
-        compilationBucket = nullptr;
+        compilationBatch = nullptr;
     }
 
     // Mark as done

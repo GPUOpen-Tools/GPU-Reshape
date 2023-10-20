@@ -27,6 +27,7 @@
 // Layer
 #include <Backends/DX12/States/ShaderInstrumentationKey.h>
 #include <Backends/DX12/Controllers/IController.h>
+#include <Backends/DX12/Controllers/InstrumentationStage.h>
 #include <Backends/DX12/InstrumentationInfo.h>
 #include <Backends/DX12/States/PipelineType.h>
 #include <Backends/DX12/Compiler/ShaderCompilerDiagnostic.h>
@@ -37,6 +38,7 @@
 
 // Common
 #include <Common/Dispatcher/EventCounter.h>
+#include <Common/Dispatcher/RelaxedAtomic.h>
 #include <Common/ComRef.h>
 
 // Bridge
@@ -215,6 +217,15 @@ private:
         std::set<ReferenceObject*> dirtyObjects;
         Vector<ShaderState*> dirtyShaders;
         Vector<PipelineState*> dirtyPipelines;
+
+        /// Current stage
+        RelaxedAtomic<InstrumentationStage> stage{InstrumentationStage::None};
+
+        // All stage counters
+        RelaxedAtomic<uint32_t> stageCounters[static_cast<uint32_t>(PipelineType::Count)];
+
+        // Threading bucket
+        DispatcherBucket* bucket{nullptr};
     };
 
     /// Dirty states
@@ -227,8 +238,8 @@ private:
     /// Shared lock
     std::mutex mutex;
 
-    /// Current compilation bucket, not thread safe
-    DispatcherBucket* compilationBucket{nullptr};
+    /// Current compilation batch, not thread safe
+    Batch* compilationBatch{nullptr};
 
     /// Shared bridge stream
     MessageStream commitStream;
@@ -238,6 +249,9 @@ private:
 
     /// Is a summarization pass pending?
     bool pendingResummarization{false};
+
+    /// Pending compilation bucket?
+    bool hasPendingBucket{false};
 
 private:
     bool synchronousRecording{false};

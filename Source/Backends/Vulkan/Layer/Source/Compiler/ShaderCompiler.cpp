@@ -91,6 +91,8 @@ void ShaderCompiler::Add(DeviceDispatchTable *table, const ShaderJob& job, Dispa
         .info = job,
     };
 
+    job.diagnostic->totalJobs++;
+    
     dispatcher->Add(BindDelegate(this, ShaderCompiler::Worker), data, bucket);
 }
 

@@ -41,11 +41,9 @@ namespace Studio.Views.Status
         public InstrumentationStatusView()
         {
             InitializeComponent();
-
-            // Bind job counter
-            ((InstrumentationStatusViewModel)DataContext!)
-                .WhenAnyValue(x => x.JobCount)
-                .Subscribe(x => BlockBar.JobCount = x);
+                
+            // Set VM
+            BlockBar.ViewModel = (InstrumentationStatusViewModel)DataContext!;
         }
     }
 }

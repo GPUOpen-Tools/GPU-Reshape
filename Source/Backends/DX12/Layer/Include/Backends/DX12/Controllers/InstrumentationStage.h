@@ -24,32 +24,8 @@
 
 #pragma once
 
-// Std
-#include <atomic>
-
-struct ShaderCompilerDiagnostic {
-    /// Constructor
-    ShaderCompilerDiagnostic() = default;
-
-    /// Copy constructor
-    ShaderCompilerDiagnostic(const ShaderCompilerDiagnostic& other) :
-        failedJobs(other.failedJobs.load()),
-        passedJobs(other.passedJobs.load())
-    {
-        /** poof */
-    }
-
-    /// Get the number of remaining jobs
-    uint64_t GetRemainingJobs() const {
-        return totalJobs - (passedJobs + failedJobs);
-    }
-
-    /// Total number of failed jobs
-    std::atomic<uint64_t> failedJobs{0};
-
-    /// Total number of passed jobs
-    std::atomic<uint64_t> passedJobs{0};
-
-    /// Total number of passed jobs
-    std::atomic<uint64_t> totalJobs{0};
+enum class InstrumentationStage {
+    None,
+    Shaders,
+    Pipelines,
 };

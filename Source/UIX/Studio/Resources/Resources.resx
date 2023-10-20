@@ -134,4 +134,10 @@
 
 Do you consent to this?</value>
     </data>
+    <data name="Instrumentation_Stage_Shaders" xml:space="preserve">
+        <value>Compiling {0} shaders...</value>
+    </data>
+    <data name="Instrumentation_Stage_Pipelines" xml:space="preserve">
+        <value>Compiling {0} pipelines...</value>
+    </data>
 </root>

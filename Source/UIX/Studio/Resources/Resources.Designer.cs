@@ -158,6 +158,24 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Compiling {0} pipelines....
+        /// </summary>
+        public static string Instrumentation_Stage_Pipelines {
+            get {
+                return ResourceManager.GetString("Instrumentation_Stage_Pipelines", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Compiling {0} shaders....
+        /// </summary>
+        public static string Instrumentation_Stage_Shaders {
+            get {
+                return ResourceManager.GetString("Instrumentation_Stage_Shaders", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Enables detailed validation reporting, affects performance..
         /// </summary>
         public static string Launch_Detail {

@@ -98,6 +98,7 @@ bool ShaderCompiler::Install() {
 
 void ShaderCompiler::Add(const ShaderJob& job, DispatcherBucket *bucket) {
     auto data = new(registry->GetAllocators(), kAllocInstrumentation) ShaderJob(job);
+    job.diagnostic->totalJobs++;
     dispatcher->Add(BindDelegate(this, ShaderCompiler::Worker), data, bucket);
 }
 

@@ -113,6 +113,8 @@
         <!-- Stage brushes -->
         <SolidColorBrush x:Key="StageGraphics">#435140</SolidColorBrush>
         <SolidColorBrush x:Key="StageCompute">#385151</SolidColorBrush>
+        <SolidColorBrush x:Key="InstrumentationStageGraphics">#346733</SolidColorBrush>
+        <SolidColorBrush x:Key="InstrumentationStageCompute">#268487</SolidColorBrush>
         
         <!-- Button brushes -->
         <SolidColorBrush x:Key="CloseButtonColor">#9C1B25</SolidColorBrush>

@@ -27,29 +27,21 @@
 // Std
 #include <atomic>
 
-struct ShaderCompilerDiagnostic {
-    /// Constructor
-    ShaderCompilerDiagnostic() = default;
+/// Atomic with copy / move constructors
+template<typename T>
+struct RelaxedAtomic : public std::atomic<T> {
+    using std::atomic<T>::atomic;
+
+    // Inherit operators
+    using std::atomic<T>::operator=;
 
     /// Copy constructor
-    ShaderCompilerDiagnostic(const ShaderCompilerDiagnostic& other) :
-        failedJobs(other.failedJobs.load()),
-        passedJobs(other.passedJobs.load())
-    {
-        /** poof */
+    RelaxedAtomic(const RelaxedAtomic& other) : RelaxedAtomic(other.load(std::memory_order_seq_cst)) {
+        /** */
     }
 
-    /// Get the number of remaining jobs
-    uint64_t GetRemainingJobs() const {
-        return totalJobs - (passedJobs + failedJobs);
+    /// Move constructor
+    RelaxedAtomic(RelaxedAtomic&& other) noexcept : RelaxedAtomic(other.load(std::memory_order_seq_cst)) {
+        /** */
     }
-
-    /// Total number of failed jobs
-    std::atomic<uint64_t> failedJobs{0};
-
-    /// Total number of passed jobs
-    std::atomic<uint64_t> passedJobs{0};
-
-    /// Total number of passed jobs
-    std::atomic<uint64_t> totalJobs{0};
 };

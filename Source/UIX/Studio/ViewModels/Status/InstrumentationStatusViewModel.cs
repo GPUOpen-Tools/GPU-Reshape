@@ -29,6 +29,7 @@ using Bridge.CLR;
 using DynamicData;
 using Message.CLR;
 using ReactiveUI;
+using Studio.Models.Diagnostic;
 using Studio.Services;
 using Studio.ViewModels.Workspace;
 
@@ -41,6 +42,33 @@ namespace Studio.ViewModels.Status
         /// </summary>
         public StatusOrientation Orientation => StatusOrientation.Right;
 
+        /// <summary>
+        /// Current instrumentation stage
+        /// </summary>
+        public InstrumentationStage Stage
+        {
+            get => _stage;
+            set => this.RaiseAndSetIfChanged(ref _stage, value);
+        }
+
+        /// <summary>
+        /// Total number of graphics jobs
+        /// </summary>
+        public int GraphicsCount
+        {
+            get => _graphicsCount;
+            set => this.RaiseAndSetIfChanged(ref _graphicsCount, value);
+        }
+
+        /// <summary>
+        /// Total number of compute jobs
+        /// </summary>
+        public int ComputeCount
+        {
+            get => _computeCount;
+            set => this.RaiseAndSetIfChanged(ref _computeCount, value);
+        }
+        
         /// <summary>
         /// Number of jobs in flight
         /// </summary>
@@ -113,13 +141,37 @@ namespace Studio.ViewModels.Status
         /// <param name="message"></param>
         private void OnMessage(JobDiagnosticMessage message)
         {
-            int count = (int)message.remaining;
-            Dispatcher.UIThread.InvokeAsync(() => JobCount = count);
+            // Flatten message
+            var flat = message.Flat;
+            
+            // Schedule update
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                Stage         = (InstrumentationStage)flat.stage;
+                GraphicsCount = (int)flat.graphicsJobs;
+                ComputeCount  = (int)flat.computeJobs;
+                JobCount      = (int)flat.remaining;
+            });
         }
 
         /// <summary>
         /// Internal job counter
         /// </summary>
         private int _jobCount = 0;
+
+        /// <summary>
+        /// Internal stage
+        /// </summary>
+        private InstrumentationStage _stage = InstrumentationStage.None;
+
+        /// <summary>
+        /// Internal graphics count
+        /// </summary>
+        private int _graphicsCount = 0;
+        
+        /// <summary>
+        /// Internal compute count
+        /// </summary>
+        private int _computeCount = 0;
     }
 }

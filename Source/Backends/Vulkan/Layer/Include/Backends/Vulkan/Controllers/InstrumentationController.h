@@ -27,13 +27,14 @@
 // Layer
 #include <Backends/Vulkan/InstrumentationInfo.h>
 #include <Backends/Vulkan/Controllers/IController.h>
+#include <Backends/Vulkan/Controllers/InstrumentationStage.h>
 #include <Backends/Vulkan/States/PipelineType.h>
 #include <Backends/Vulkan/Compiler/ShaderCompilerDiagnostic.h>
 #include <Backends/Vulkan/Compiler/PipelineCompilerDiagnostic.h>
 
 // Common
-#include <Common/Allocator/Vector.h>
 #include <Common/Dispatcher/EventCounter.h>
+#include <Common/Dispatcher/RelaxedAtomic.h>
 #include <Common/ComRef.h>
 
 // Bridge
@@ -206,6 +207,15 @@ private:
         std::set<ReferenceObject*> dirtyObjects;
         std::vector<ShaderModuleState*> dirtyShaderModules;
         std::vector<PipelineState*> dirtyPipelines;
+
+        /// Current stage
+        RelaxedAtomic<InstrumentationStage> stage{InstrumentationStage::None};
+
+        // All stage counters
+        RelaxedAtomic<uint32_t> stageCounters[static_cast<uint32_t>(PipelineType::Count)];
+
+        // Threading bucket
+        DispatcherBucket* bucket{nullptr};
     };
 
     /// Dirty states
@@ -218,8 +228,8 @@ private:
     /// Shared lock
     std::mutex mutex;
 
-    /// Current compilation bucket, not thread safe
-    DispatcherBucket* compilationBucket{nullptr};
+    /// Current compilation batch, not thread safe
+    Batch* compilationBatch{nullptr};
 
     /// Shared bridge stream
     MessageStream commitStream;
@@ -229,6 +239,9 @@ private:
 
     /// Is a summarization pass pending?
     bool pendingResummarization{false};
+
+    /// Pending compilation bucket?
+    bool hasPendingBucket{false};
 
 private:
     bool synchronousRecording{false};

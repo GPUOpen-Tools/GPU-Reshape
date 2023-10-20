@@ -38,8 +38,21 @@
     <UserControl.DataContext>
         <vm:InstrumentationStatusViewModel />
     </UserControl.DataContext>
+    <UserControl.Resources>
+        <vc:InstrumentationStageConverter x:Key="InstrumentationStageConverter" />
+    </UserControl.Resources>
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 0 5 0">
-        <TextBlock Text="Compiling... " VerticalAlignment="Center" IsVisible="{Binding AnyJobs}"/>
-        <controls:BlockProgressBar x:Name="BlockBar" Width="100" Height="15"/>
+        <TextBlock
+            VerticalAlignment="Center"
+            IsVisible="{Binding AnyJobs}">
+            <TextBlock.Text>
+                <MultiBinding Converter="{StaticResource InstrumentationStageConverter}">
+                    <Binding Path="Stage"/>  
+                    <Binding Path="JobCount"/>
+                </MultiBinding>  
+            </TextBlock.Text>
+        </TextBlock>
+        
+        <controls:BlockProgressBar x:Name="BlockBar" Width="100" Height="15" />
     </StackPanel>
 </UserControl>

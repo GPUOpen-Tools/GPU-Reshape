@@ -23,37 +23,30 @@
 // 
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
-using Avalonia.Threading;
+using ReactiveUI;
+using Studio.Models.Diagnostic;
+using Studio.ViewModels.Status;
 
 namespace Studio.Views.Controls
 {
     public partial class BlockProgressBar : UserControl
     {
         /// <summary>
-        /// Current job counter
+        /// View model
         /// </summary>
-        public int JobCount
+        public InstrumentationStatusViewModel ViewModel
         {
-            get => _jobPeak;
+            get => _viewModel;
             set
             {
-                // Update peak
-                _jobPeak = Math.Max(_jobPeak, value);
-
-                // Reset peak, if the value exceeds the last count, this is a re-peak
-                if (value == 0 || value > _jobCount)
-                    _jobPeak = value;
-                
-                // Set value
-                _jobCount = value;
-                
-                // Force redraw
-                this.InvalidateMeasure();
-                this.InvalidateArrange();
+                _viewModel = value;
+                _viewModel.WhenAnyValue(x => x.JobCount).Subscribe(OnJobCount);
             }
         }
 
@@ -79,39 +72,95 @@ namespace Studio.Views.Controls
             return base.ArrangeOverride(finalSize);
         }
 
+        /// <summary>
+        /// Invoked on renders
+        /// </summary>
         public override void Render(DrawingContext context)
         {
-            // Standard number of blocks
-            const int maxBlockY = 4;
-            const int maxBlockX = 20;
-            const int maxBlocks = maxBlockX * maxBlockY;
-
-            // Default pixel padding
-            const int pad = 1;
-
             // Dimensions of each block
-            double blockWidth = _size.Width / maxBlockX - pad;
-            double blockHeight = _size.Height / maxBlockY - pad;
+            double blockWidth = _size.Width / MaxBlockX - BlockPadding;
+            double blockHeight = _size.Height / MaxBlockY - BlockPadding;
 
             // Current completion
             float normalized = _jobCount / ((float)_jobPeak);
 
             // Draw all blocks
-            for (int i = 0; i < maxBlocks; i++)
+            for (int i = 0; i < MaxBlocks; i++)
             {
-                bool isIncomplete = i < (int)(maxBlocks * normalized) && i < _jobCount;
+                bool isIncomplete = i < (int)(MaxBlocks * normalized) && i < _jobCount;
                 
                 // Position of block
-                int x = (maxBlockX - 1) - i / maxBlockY;
-                int y = i % maxBlockY;
-                
-                context.FillRectangle(isIncomplete ? _brushIncomplete : _brushCompleted, new Rect(
-                    pad / 2.0 + x * (blockWidth + pad),
-                    pad / 2.0 + y * (blockHeight + pad),
+                int x = (MaxBlockX - 1) - i / MaxBlockY;
+                int y = i % MaxBlockY;
+
+                // Select pending brush
+                SolidColorBrush? pendingBlock = i < _brushes.Count ? _brushes[i] : _brushIncomplete;
+
+                context.FillRectangle(isIncomplete ? pendingBlock : _brushCompleted, new Rect(
+                    BlockPadding / 2.0 + x * (blockWidth + BlockPadding),
+                    BlockPadding / 2.0 + y * (blockHeight + BlockPadding),
                     blockWidth,
                     blockHeight
                 ));
             }
+        }
+
+        /// <summary>
+        /// Invoked on job count updates
+        /// </summary>
+        public void OnJobCount(int value)
+        {
+            // Update peak
+            _jobPeak = Math.Max(_jobPeak, value);
+
+            // Reset peak, if the value exceeds the last count, this is a re-peak
+            if (value == 0 || value > _jobCount)
+            {
+                _jobPeak = value;
+                
+                // Remove previous brush distribution
+                _brushes.Clear();
+                
+                // Re-distribute the colors
+                if (ViewModel.Stage == InstrumentationStage.Pipeline)
+                {
+                    Distribute();
+                }
+            }
+                
+            // Set value
+            _jobCount = value;
+                
+            // Force redraw
+            this.InvalidateMeasure();
+            this.InvalidateArrange();
+        }
+
+        /// <summary>
+        /// Perform pseudo distribution
+        /// </summary>
+        private void Distribute()
+        {
+            // Limit block count
+            int blockCount = Math.Min(MaxBlocks, ViewModel.JobCount);
+
+            // Sum the job counts for normalization
+            int sourcedJobCount = ViewModel.GraphicsCount + ViewModel.ComputeCount;
+
+            // Normalize by stage
+            int normalizedGraphics = (int)(ViewModel.GraphicsCount / (float)sourcedJobCount * blockCount);
+            int normalizedCompute  = (int)(ViewModel.ComputeCount / (float)sourcedJobCount * blockCount);
+
+            // Safety bound to normalized job count
+            int totalNormalized = normalizedGraphics + normalizedCompute;
+            normalizedGraphics += blockCount - totalNormalized;
+            
+            // Initial distribution
+            _brushes.AddRange(Enumerable.Repeat(_brushGraphics, normalizedGraphics));
+            _brushes.AddRange(Enumerable.Repeat(_brushCompute, normalizedCompute));
+
+            // Ordering queries keys exactly once, sorting guaranteed to exit
+            _brushes = _brushes.OrderBy(x => _random.Next()).ToList();
         }
 
         /// <summary>
@@ -123,7 +172,9 @@ namespace Studio.Views.Controls
         /// Default brushes
         /// </summary>
         private SolidColorBrush? _brushIncomplete = ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushHigh");
-        private SolidColorBrush? _brushCompleted = ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushLow");
+        private SolidColorBrush? _brushCompleted  = ResourceLocator.GetResource<SolidColorBrush>("DockApplicationAccentBrushLow");
+        private SolidColorBrush? _brushGraphics   = ResourceLocator.GetResource<SolidColorBrush>("InstrumentationStageGraphics");
+        private SolidColorBrush? _brushCompute    = ResourceLocator.GetResource<SolidColorBrush>("InstrumentationStageCompute");
 
         /// <summary>
         /// Current number of jobs
@@ -134,5 +185,40 @@ namespace Studio.Views.Controls
         /// Current peak number of jobs
         /// </summary>
         private int _jobPeak = 0;
+
+        /// <summary>
+        /// Pending job distribution
+        /// </summary>
+        private List<SolidColorBrush?> _brushes = new();
+        
+        /// <summary>
+        /// Random device
+        /// </summary>
+        private static Random _random = new();
+
+        /// <summary>
+        /// Internal view model
+        /// </summary>
+        private InstrumentationStatusViewModel _viewModel;
+        
+        /// <summary>
+        /// Maximum number of blocks vertically
+        /// </summary>
+        private const int MaxBlockY = 4;
+        
+        /// <summary>
+        /// Maximum number of blocks horizontally
+        /// </summary>
+        private const int MaxBlockX = 20;
+        
+        /// <summary>
+        /// Maximum number of blocks
+        /// </summary>
+        private const int MaxBlocks = MaxBlockX * MaxBlockY;
+        
+        /// <summary>
+        /// Block padding
+        /// </summary>
+        private const int BlockPadding = 1;
     }
 }

@@ -55,6 +55,9 @@ bool PipelineCompiler::Install() {
 
 void PipelineCompiler::AddBatch(PipelineCompilerDiagnostic* diagnostic, PipelineJob *jobs, uint32_t count, DispatcherBucket *bucket) {
     std::lock_guard guard(mutex);
+
+    // Increment jobs
+    diagnostic->totalJobs += count;
     
     // Segment the types
     for (uint32_t i = 0; i < count; i++) {

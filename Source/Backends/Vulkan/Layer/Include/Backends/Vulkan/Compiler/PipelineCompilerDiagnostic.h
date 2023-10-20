@@ -39,9 +39,17 @@ struct PipelineCompilerDiagnostic {
         /** poof */
     }
 
+    /// Get the number of remaining jobs
+    uint64_t GetRemainingJobs() const {
+        return totalJobs - (passedJobs + failedJobs);
+    }
+
     /// Total number of failed jobs
     std::atomic<uint64_t> failedJobs{0};
 
     /// Total number of passed jobs
     std::atomic<uint64_t> passedJobs{0};
+
+    /// Total number of passed jobs
+    std::atomic<uint64_t> totalJobs{0};
 };

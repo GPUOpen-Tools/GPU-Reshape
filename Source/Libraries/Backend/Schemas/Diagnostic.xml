@@ -29,6 +29,15 @@
         <field name="remaining" type="uint32">
             Number of remaining jobs, opaque in nature
         </field>
+        <field name="stage" type="uint32">
+            Compilation stage
+        </field>
+        <field name="graphicsJobs" type="uint32">
+            Total number of graphics jobs
+        </field>
+        <field name="computeJobs" type="uint32">
+            Total number of compute jobs
+        </field>
     </message>
 
     <message name="PresentDiagnostic">
