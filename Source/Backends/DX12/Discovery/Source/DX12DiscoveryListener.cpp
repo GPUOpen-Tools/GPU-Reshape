@@ -367,11 +367,6 @@ bool DX12DiscoveryListener::UninstallConflictingInstances() {
 }
 
 bool DX12DiscoveryListener::Start() {
-    // No need to start if already attached
-    if (isGlobal) {
-        return true;
-    }
-
     // Already started?
     if (IPGlobalLock{}.Acquire(kSharedD3D12ServiceMutexName, false)) {
         if (!StartProcess()) {
@@ -384,9 +379,9 @@ bool DX12DiscoveryListener::Start() {
 }
 
 bool DX12DiscoveryListener::Stop() {
-    // Global listener is attached, cannot stop
+    // Global listener is attached, handled elsewhere
     if (isGlobal) {
-        return false;
+        return true;
     }
 
     // Attempt to stop

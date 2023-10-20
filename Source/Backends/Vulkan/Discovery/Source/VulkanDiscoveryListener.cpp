@@ -412,11 +412,6 @@ bool VulkanDiscoveryListener::UninstallConflictingInstances() {
 }
 
 bool VulkanDiscoveryListener::Start() {
-    // No need to start if already attached
-    if (isGlobal) {
-        return true;
-    }
-
     // Attempt to install implicit non-administrator layer
     if (!InstallImplicitLayer(HKEY_CURRENT_USER, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers")) {
         return false;
@@ -430,9 +425,9 @@ bool VulkanDiscoveryListener::Start() {
 }
 
 bool VulkanDiscoveryListener::Stop() {
-    // Global listener is attached, cannot stop
+    // Global listener is attached, handled elsewhere
     if (isGlobal) {
-        return false;
+        return true;
     }
 
     // Attempt to install implicit non-administrator layer
@@ -456,7 +451,13 @@ void VulkanDiscoveryListener::SetupBootstrappingEnvironment(const DiscoveryProce
 }
 
 bool VulkanDiscoveryListener::IsGloballyInstalled() {
-    return isGlobal;
+    if (!isGlobal) {
+        return false;
+    }
+
+    // Validate that the implicit layers are active
+    return QueryImplicitLayer(HKEY_CURRENT_USER, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers") ||
+           QueryImplicitLayer(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers");
 }
 
 bool VulkanDiscoveryListener::IsRunning() {

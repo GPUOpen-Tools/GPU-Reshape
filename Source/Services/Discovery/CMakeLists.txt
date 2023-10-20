@@ -67,6 +67,28 @@ endif()
 # Pull in all features, for convenience
 add_dependencies(GRS.Services.Discovery.Standalone Features)
 
+#------ Cleanup tool ------#
+
+# Create cleanup tool
+add_executable(
+    GRS.Services.Discovery.Cleanup
+    Cleanup/main.cpp
+)
+
+# IDE source discovery
+SetSourceDiscovery(GRS.Services.Discovery.Cleanup CXX Cleanup)
+
+# Dependencies
+target_link_libraries(GRS.Services.Discovery.Cleanup PUBLIC GRS.Services.Discovery)
+
+# Create dependencies on existing listeners, for convenience
+if (${ENABLE_BACKEND_VULKAN})
+    add_dependencies(GRS.Services.Discovery.Cleanup GRS.Backends.Vulkan.Discovery)
+endif()
+if (${ENABLE_BACKEND_DX12})
+    add_dependencies(GRS.Services.Discovery.Cleanup GRS.Backends.DX12.Discovery)
+endif()
+
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})

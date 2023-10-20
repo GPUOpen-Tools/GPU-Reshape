@@ -43,7 +43,9 @@
 #endif // _WIN32
 
 DiscoveryService::~DiscoveryService() {
-    resolver->Uninstall();
+    if (resolver) {
+        resolver->Uninstall();
+    }
 }
 
 bool DiscoveryService::Install() {
