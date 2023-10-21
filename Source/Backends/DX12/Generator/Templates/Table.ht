@@ -43,3 +43,9 @@ template<typename T>
 static inline T* UnwrapObject(T* object) {
     return static_cast<T*>(UnwrapObject(static_cast<IUnknown*>(object)));
 }
+
+/// Check if an object is wrapped
+static inline bool IsWrapped(IUnknown* object) {
+    IUnknown* next;
+    return SUCCEEDED(object->QueryInterface(IID_Unwrap, reinterpret_cast<void**>(&next)));
+}

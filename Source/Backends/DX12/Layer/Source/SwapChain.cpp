@@ -105,11 +105,13 @@ static OpaqueDeviceInfo QueryDeviceFromOpaque(IUnknown* pDevice) {
         // Immediately release the handle, parent keeps ownership
         queue->Release();
 
-        // Fill
-        auto table = GetTable(queue);
-        out.next = table.next;
-        out.device = table.state->parent;
-        return out;
+        // Fill if wrapped
+        if (IsWrapped(queue)) {
+            auto table = GetTable(queue);
+            out.next = table.next;
+            out.device = table.state->parent;
+            return out;
+        }
     }
 
     // Per D3D11, the opaque device is a device
@@ -118,11 +120,13 @@ static OpaqueDeviceInfo QueryDeviceFromOpaque(IUnknown* pDevice) {
         // Immediately release the handle, parent keeps ownership
         device->Release();
 
-        // Fill
-        auto table = GetTable(device);
-        out.next = table.next;
-        out.device = device;
-        return out;
+        // Fill if wrapped
+        if (IsWrapped(queue)) {
+            auto table = GetTable(device);
+            out.next = table.next;
+            out.device = device;
+            return out;
+        }
     }
 
     // Unknown

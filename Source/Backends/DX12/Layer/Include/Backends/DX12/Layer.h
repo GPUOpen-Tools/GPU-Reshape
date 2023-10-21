@@ -69,6 +69,9 @@ using PFN_AMD_AGS_PUSH_MARKER = AGSReturnCode(__stdcall *)(AGSContext* context, 
 using PFN_AMD_AGS_POP_MARKER = AGSReturnCode(__stdcall *)(AGSContext* context, ID3D12GraphicsCommandList* commandList);
 using PFN_AMD_AGS_SET_MARKER = AGSReturnCode(__stdcall *)(AGSContext* context, ID3D12GraphicsCommandList* commandList, const char* data);
 
+/// Vendor specific device IID
+static constexpr GUID kIIDD3D12DeviceVendor = { 0xc443b53a, 0xe4f6, 0x48f5, { 0x98, 0xed, 0xbe, 0x76, 0x8b, 0x47, 0xf, 0x6d } };
+
 /// Optional gpu reshape information
 struct D3D12_DEVICE_GPUOPEN_GPU_RESHAPE_INFO {
     /// Shared registry

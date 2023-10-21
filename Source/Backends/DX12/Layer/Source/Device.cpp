@@ -493,6 +493,11 @@ HRESULT WINAPI HookID3D12CreateDevice(
         return hr;
     }
 
+    // Vendor device?
+    if (riid == kIIDD3D12DeviceVendor) {
+        return device->QueryInterface(__uuidof(ID3D12Device), ppDevice);
+    }
+
     // Supported?
     if (!IsSupportedFeatureLevel(pAdapter, minimumFeatureLevel)) {
         return device->QueryInterface(riid, ppDevice);

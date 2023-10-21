@@ -38,6 +38,7 @@
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <Psapi.h>
+#include <intrin.h>
 
 // Std
 #include <cstring>
@@ -91,6 +92,7 @@ SYMBOL(DXGIModuleName, "dxgi.dll");
 SYMBOL(AMDAGSModuleName, "amd_ags_x64.dll");
 SYMBOL(LayerModuleName, "GRS.Backends.DX12.Layer.dll");
 SYMBOL(Kernel32ModuleName, "kernel32.dll");
+SYMBOL(IHVAMDXC64ModuleName, "amdxc64.dll");
 
 /// Function types
 using PFN_GET_PROC_ADDRESS         = FARPROC (WINAPI*)(HMODULE hModule, LPCSTR lpProcName);
@@ -120,6 +122,7 @@ uint32_t AMDAGSGuard{0u};
 uint32_t D3D12Guard{0u};
 uint32_t DXGIGuard{0u};
 uint32_t D3D11Guard{0u};
+uint32_t IHVAMDXC64Guard{0u};
 
 /// Detoured section
 struct DetourSection {
@@ -166,6 +169,12 @@ HMODULE D3D12Module;
 HMODULE D3D11Module;
 HMODULE DXGIModule;
 HMODULE AMDAGSModule;
+
+/// IHV modules
+HMODULE IHVAMDXC64Module;
+
+/// Special module ranges
+MODULEINFO IHVAMDXC64ModuleInfo{};
 
 /// Kernel32 module
 HMODULE Kernel32Module{nullptr};
@@ -498,6 +507,11 @@ void BootstrapLayer(const char* invoker) {
 
 void WINAPI D3D12GetGPUOpenBootstrapperInfo(D3D12GPUOpenBootstrapperInfo* out) {
     out->version = 1;
+}
+
+void OnDetourModule(HMODULE& module, HMODULE handle) {
+    ASSERT(module == nullptr, "Re-entrant detouring");
+    module = handle;
 }
 
 FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
@@ -951,6 +965,16 @@ BOOL WINAPI HookCreateProcessAsUserW(HANDLE hToken, LPCWSTR lpApplicationName, L
     return true;
 }
 
+void QueryIHVAMDXC64(HMODULE handle) {
+    // Keep a reference to it
+    OnDetourModule(IHVAMDXC64Module, handle);
+
+    // Get module info
+    if (!GetModuleInformation(GetCurrentProcess(), handle, &IHVAMDXC64ModuleInfo, sizeof(IHVAMDXC64ModuleInfo))) {
+        IHVAMDXC64ModuleInfo = {};
+    }
+}
+
 bool TryLoadEmbeddedModules(HMODULE handle) {
     bool any = false;
     
@@ -990,6 +1014,11 @@ bool TryLoadEmbeddedModules(HMODULE handle) {
     if (!std::strcmp(baseName, kD3D11ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D11On12CreateDevice") != nullptr && InterlockedCompareExchange(&D3D11Guard, 1u, 0u) == 0u) {
         DetourD3D11Module(handle, false);
         any = true;
+    }
+
+    // Is AMD Driver?
+    if (!std::strcmp(baseName, kIHVAMDXC64ModuleName) && InterlockedCompareExchange(&IHVAMDXC64Guard, 1u, 0u) == 0u) {
+        QueryIHVAMDXC64(handle);
     }
 
     // OK
@@ -1204,13 +1233,47 @@ void WaitForDeferredInitialization() {
     }
 }
 
+bool IsModuleRegion(const MODULEINFO& info, const void* address) {
+    auto addressValue = reinterpret_cast<size_t>(address);
+    auto moduleValue  = reinterpret_cast<size_t>(info.lpBaseOfDll);
+
+    // Check if in bounds
+    return
+        info.lpBaseOfDll &&
+        (addressValue >= moduleValue) &&
+        (addressValue < moduleValue + info.SizeOfImage);
+}
+
+bool IsIHVRegion(const void* address) {
+    return IsModuleRegion(IHVAMDXC64ModuleInfo, address);
+}
+
 HRESULT WINAPI HookID3D12CreateDevice(
     _In_opt_ IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
     _In_ REFIID riid,
     _COM_Outptr_opt_ void **ppDevice) {
+    // Keep parent frame
+    const void* callee = _ReturnAddress();
+
+    // Hold for deferred initialization, must happen before IHV region checks due to foreign modules
     WaitForDeferredInitialization();
-    return LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, riid, ppDevice);
+
+    // If this is not an IHV region, just pass down the call-chain
+    if (!IsIHVRegion(callee)) {
+        return LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, riid, ppDevice);
+    }
+
+    // Native device
+    ID3D12Device* device{nullptr};
+
+    // Create device with special vendor IID, this device is not wrapped
+    if (HRESULT hr = LayerFunctionTable.next_D3D12CreateDeviceOriginal(pAdapter, minimumFeatureLevel, kIIDD3D12DeviceVendor, reinterpret_cast<void**>(&device)); FAILED(hr)) {
+        return hr;
+    }
+
+    // Unwrap to expected IID
+    return device->QueryInterface(riid, ppDevice);
 }
 
 HRESULT HookD3D11On12CreateDevice(
@@ -1283,11 +1346,6 @@ HRESULT WINAPI HookCreateDXGIFactory1(REFIID riid, _COM_Outptr_ void **ppFactory
 HRESULT WINAPI HookCreateDXGIFactory2(UINT flags, REFIID riid, _COM_Outptr_ void **ppFactory) {
     WaitForDeferredInitialization();
     return LayerFunctionTable.next_CreateDXGIFactory2Original(flags, riid, ppFactory);
-}
-
-void OnDetourModule(HMODULE& module, HMODULE handle) {
-    ASSERT(module == nullptr, "Re-entrant detouring");
-    module = handle;
 }
 
 void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
