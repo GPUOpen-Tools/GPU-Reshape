@@ -455,30 +455,29 @@ int main(int32_t argc, const char *const *argv) {
     }
 
     std::cout << "OK" << std::endl;
-    
-    // Get current session dir
-    std::filesystem::path sessionDir = GetIntermediatePath("Bootstrapper\\Sessions");
 
 #if CLEAN_LAYER_SESSIONS
     std::cout << "Cleaning old sessions... " << std::flush;
+    
+    // Get current session dir
+    std::filesystem::path sessionsDir = GetIntermediatePath("Bootstrapper\\Sessions");
 
     // Clean all old sessions
-    for (std::filesystem::path file: std::filesystem::directory_iterator(sessionDir)) {
+    for (std::filesystem::path file: std::filesystem::directory_iterator(sessionsDir)) {
         std::error_code ignored;
         std::filesystem::remove(file, ignored);
     }
 
     std::cout << "OK" << std::endl;
-#endif
+#endif // CLEAN_LAYER_SESSIONS
 
 #if USE_BOOTSTRAP_SESSIONS
-    // Create unique name
-    std::string sessionNameX64 = "GRS.Backends.DX12.BootstrapperX64 " + GlobalUID::New().ToString() + ".dll";
-    std::string sessionNameX86 = "GRS.Backends.DX12.BootstrapperX86 " + GlobalUID::New().ToString() + ".dll";
+    // Get the bootstrapper session dir
+    std::filesystem::path sessionBootstrapperDir = GetIntermediatePath("Bootstrapper\\Sessions\\" + GlobalUID::New().ToString());
 
     // Copy the bootstrapper to a new session, makes handling unique sessions somewhat bearable (certain programs refuse to let go of handle)
-    std::filesystem::path sessionPathX64 = sessionDir / sessionNameX64;
-    std::filesystem::path sessionPathX86 = sessionDir / sessionNameX86;
+    std::filesystem::path sessionPathX64 = sessionBootstrapperDir / "GRS.Backends.DX12.BootstrapperX64.dll";
+    std::filesystem::path sessionPathX86 = sessionBootstrapperDir / "GRS.Backends.DX12.BootstrapperX32.dll";
 
     // Copy current bootstrapper
     std::filesystem::copy(GetCurrentModuleDirectory() / "GRS.Backends.DX12.BootstrapperX64.dll", sessionPathX64);
@@ -528,6 +527,8 @@ int main(int32_t argc, const char *const *argv) {
         return 1;
     }
 
+    // Bootstrapped sessioning do not use window hooks, may result in duplicate module loads
+#if !USE_BOOTSTRAP_SESSIONS
     // Attempt to attach global hook
     Hook = SetWindowsHookEx(WH_CBT, gpa, bootstrapperModule, 0);
     if (!Hook) {
@@ -548,6 +549,7 @@ int main(int32_t argc, const char *const *argv) {
 #endif
         return 1;
     }
+#endif // USE_BOOTSTRAP_SESSIONS
 
     // Hold and start pump
     std::cout << "Holding hook..." << std::endl;
