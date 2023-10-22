@@ -188,6 +188,9 @@ void WriteRootMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserCl
             case D3D12_SHADER_VISIBILITY_PIXEL:
                 localVisibility = RootParameterVisibility::Pixel;
                 break;
+            case D3D12_SHADER_VISIBILITY_MESH:
+                localVisibility = RootParameterVisibility::Mesh;
+                break;
         }
 
         // Write value
