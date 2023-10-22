@@ -4,26 +4,33 @@
         <TargetFramework>net5.0</TargetFramework>
         <TargetCulture>en</TargetCulture>
         <Nullable>enable</Nullable>
-        <Configurations>Debug;Release</Configurations>
+        <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
         <Platforms>x64</Platforms>
         <PublishTrimmed>true</PublishTrimmed>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AssemblyName>GRS.Features.Descriptor.UIX</AssemblyName>
     </PropertyGroup>
-    
+
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
         <DebugType>none</DebugType>
         <OutputPath>..\..\..\..\..\Bin\MSVC\Release\</OutputPath>
     </PropertyGroup>
-    
+
     <PropertyGroup Condition=" '$(Configuration)' == 'RelWithDebInfo' ">
-        <DebugType>none</DebugType>
+        <DebugType>portable</DebugType>
         <OutputPath>..\..\..\..\..\Bin\MSVC\RelWithDebInfo\</OutputPath>
+        <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
-    
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'MinSizeRel' ">
+        <DebugType>none</DebugType>
+        <OutputPath>..\..\..\..\..\Bin\MSVC\MinSizeRel\</OutputPath>
+    </PropertyGroup>
+
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <OutputPath>..\..\..\..\..\Bin\MSVC\Debug\</OutputPath>
     </PropertyGroup>
+    
     <ItemGroup>
         <None Remove=".gitignore" />
     </ItemGroup>

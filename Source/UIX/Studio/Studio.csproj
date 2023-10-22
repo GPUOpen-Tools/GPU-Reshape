@@ -6,7 +6,7 @@
         <ApplicationIcon>Resources\Icons\Icon_Frame.ico</ApplicationIcon>
         <TargetCulture>en</TargetCulture>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-        <Configurations>Debug;Release</Configurations>
+        <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
         <Platforms>x64</Platforms>
         <PublishTrimmed>true</PublishTrimmed>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -14,21 +14,31 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AssemblyName>GPUReshape</AssemblyName>
     </PropertyGroup>
+    
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DebugType>portable</DebugType>
-      <OutputPath>..\..\..\Bin\MSVC\Release\</OutputPath>
-      <DebugSymbols>true</DebugSymbols>
-    </PropertyGroup>
-    <PropertyGroup Condition=" '$(Configuration)' == 'RelWithDebInfo' ">
         <DebugType>none</DebugType>
+        <OutputPath>..\..\..\Bin\MSVC\Release\</OutputPath>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(Configuration)' == 'RelWithDebInfo' ">
+        <DebugType>portable</DebugType>
         <OutputPath>..\..\..\Bin\MSVC\RelWithDebInfo\</OutputPath>
+        <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
+    
+    <PropertyGroup Condition=" '$(Configuration)' == 'MinSizeRel' ">
+        <DebugType>none</DebugType>
+        <OutputPath>..\..\..\Bin\MSVC\MinSizeRel\</OutputPath>
+    </PropertyGroup>
+    
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-      <OutputPath>..\..\..\Bin\MSVC\Debug\</OutputPath>
+        <OutputPath>..\..\..\Bin\MSVC\Debug\</OutputPath>
     </PropertyGroup>
+    
     <ItemGroup>
         <None Remove=".gitignore" />
     </ItemGroup>
+    
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="0.10.22" />
         <PackageReference Include="Avalonia.AvaloniaEdit" Version="0.10.12.2" />

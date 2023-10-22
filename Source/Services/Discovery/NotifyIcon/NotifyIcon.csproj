@@ -5,7 +5,7 @@
         <Nullable>enable</Nullable>
         <TargetCulture>en</TargetCulture>
         <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-        <Configurations>Debug;Release</Configurations>
+        <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
         <Platforms>x64</Platforms>
         <PublishTrimmed>true</PublishTrimmed>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -13,14 +13,19 @@
     </PropertyGroup>
     
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-        <DebugType>portable</DebugType>
+        <DebugType>none</DebugType>
         <OutputPath>..\..\..\..\Bin\MSVC\Release\</OutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'RelWithDebInfo' ">
+        <DebugType>portable</DebugType>
+        <OutputPath>..\..\..\..\Bin\MSVC\RelWithDebInfo\</OutputPath>
         <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
-    
-    <PropertyGroup Condition=" '$(Configuration)' == 'RelWithDebInfo' ">
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'MinSizeRel' ">
         <DebugType>none</DebugType>
-        <OutputPath>..\..\..\..\Bin\MSVC\RelWithDebInfo\</OutputPath>
+        <OutputPath>..\..\..\..\Bin\MSVC\MinSizeRel\</OutputPath>
     </PropertyGroup>
     
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
