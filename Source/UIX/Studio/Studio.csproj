@@ -140,9 +140,7 @@
         <SubType>Code</SubType>
       </Compile>
       <AvaloniaResource Include="Resources\Icons\Icon_NoFrame.png" />
-      <AvaloniaResource Include="Resources\Icons\Icon.svg" />
       <AvaloniaResource Include="Resources\Icons\Icon_Frame.ico" />
-      <AvaloniaResource Include="Resources\Icons\Icon_Frame.png" />
       <Compile Update="Views\Controls\LocatorViewHost.axaml.cs">
         <DependentUpon>LocatorViewHost.axaml</DependentUpon>
         <SubType>Code</SubType>
@@ -189,7 +187,6 @@
         <DependentUpon>GlobalSettingView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
-      <None Remove="Resources\Icons\Icon_NoFrame16.png" />
       <AvaloniaResource Include="Resources\Icons\Icon_NoFrame16.png" />
       <Compile Update="Themes\WindowChrome.axaml.cs">
         <DependentUpon>WindowChrome.axaml</DependentUpon>
@@ -201,7 +198,6 @@
         <Generator>PublicResXFileCodeGenerator</Generator>
         <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       </EmbeddedResource>
-      <None Remove="Resources\Icons\App.png" />
     </ItemGroup>
     <ItemGroup>
       <Reference Include="GRS.Features.ResourceBounds.Backend.DotNet">
