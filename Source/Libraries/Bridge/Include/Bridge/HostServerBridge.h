@@ -45,6 +45,10 @@ public:
     /// \return success state
     bool Install(const EndpointConfig& config);
 
+    /// Update the device configuration
+    /// \param config given configuration
+    void UpdateDeviceConfig(const EndpointDeviceConfig& config);
+
     /// Overrides
     void Register(MessageID mid, const ComRef<IBridgeListener>& listener) override;
     void Deregister(MessageID mid, const ComRef<IBridgeListener>& listener) override;
@@ -74,6 +78,9 @@ private:
 
     /// Info across lifetime
     BridgeInfo info;
+
+    /// Asio client information
+    AsioHostClientInfo asioInfo{};
 
     /// Cache for commits
     std::vector<MessageStream> streamCache;

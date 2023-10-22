@@ -28,6 +28,9 @@
 #define VK_NO_PROTOTYPES 1
 #include <vulkan/vulkan_core.h>
 
+// Std
+#include <atomic>
+
 // TODO: Exactly what is the right way of registering new extension types?
 static constexpr VkStructureType VK_STRUCTURE_TYPE_GPUOPEN_GPURESHAPE_CREATE_INFO = static_cast<VkStructureType>(1100000001);
 
@@ -48,3 +51,12 @@ struct VkGPUOpenGPUReshapeCreateInfo {
     /// Shared registry
     Registry* registry;
 };
+
+/// Process state
+struct VulkanGPUReshapeProcessState {
+    /// Device UID allocator
+    std::atomic<uint32_t> deviceUID; 
+};
+
+/// Shared process info
+extern VulkanGPUReshapeProcessState VulkanGPUReshapeProcessInfo;

@@ -39,6 +39,7 @@
 #include <Common/ComRef.h>
 #include <Common/Registry.h>
 #include <Common/Containers/ObjectPool.h>
+#include <Common/IntervalAction.h>
 
 // Generated
 #include "Backends/Vulkan/CommandBufferDispatchTable.Gen.h"
@@ -122,6 +123,9 @@ struct DeviceDispatchTable {
     /// States
     VkDevice object;
     VkPhysicalDevice physicalDevice;
+
+    /// Unique identifier
+    uint32_t uid{UINT32_MAX};
 
     /// Parent table
     InstanceDispatchTable* parent{nullptr};
@@ -289,6 +293,9 @@ struct DeviceDispatchTable {
     /// Creation extensions
     std::vector<const char*> enabledLayers;
     std::vector<const char*> enabledExtensions;
+
+    /// Environment actions
+    IntervalAction environmentUpdateAction = IntervalAction::FromMS(1000);
 
 private:
     /// Lookup

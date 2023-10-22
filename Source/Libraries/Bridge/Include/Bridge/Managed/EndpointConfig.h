@@ -34,9 +34,6 @@ namespace Bridge::CLR {
     public:
         /// Shared port
         UInt32 sharedPort = kBridgeSharedPort;
-
-        /// Name of connecting application
-        String^ applicationName = "Unknown";
     };
 
     public ref class EndpointResolve {

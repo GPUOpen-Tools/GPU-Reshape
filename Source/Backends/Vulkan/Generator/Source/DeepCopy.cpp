@@ -144,7 +144,7 @@ std::string AssignPtrAndGetMutable(DeepCopyState &state, const std::string &acce
 /// \param indent the current indentation level
 /// \return success state
 [[nodiscard]]
-static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tinyxml2::XMLElement *type, const std::string &sourceAccessorPrefix = "source.", const std::string &destAccessorPrefix = "createInfo.", uint32_t indent = 1, bool alwaysEmitSize = false) {
+static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tinyxml2::XMLElement *type, const std::string &sourceAccessorPrefix = "source.", const std::string &destAccessorPrefix = "createInfo.", uint32_t indent = 1, bool alwaysEmitSize = false, bool extensionCheck = false) {
     const char *name = type->Attribute("name", nullptr);
     if (!name) {
         std::cerr << "Malformed type in line: " << type->GetLineNum() << ", name not found" << std::endl;
@@ -173,12 +173,25 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
         // Ignore next pointers
         if (!std::strcmp(memberName->GetText(), "pNext")) {
             // Add check
-            state.byteSize << Pad(indent) << "if (" << sourceAccessorPrefix << memberName->GetText() << ") {\n";
+            state.byteSize << Pad(indent) << "if (";
+
+            if (extensionCheck) {
+                state.byteSize << "copyExtensionStructures && ";
+            }
+
+            state.byteSize << sourceAccessorPrefix << memberName->GetText() << ") {\n";
             state.byteSize << Pad(indent + 1) << "blobSize += DeepCopyExtensionByteSize(" << sourceAccessorPrefix << memberName->GetText() << ");\n";
             state.byteSize << Pad(indent) << "}\n";
 
             state.deepCopy << "\n" << Pad(indent) << "// " << sourceAccessorPrefix << memberName->GetText() << "\n";
-            state.deepCopy << Pad(indent) << "if (" << sourceAccessorPrefix << memberName->GetText() << ") {\n";
+            state.deepCopy << Pad(indent) << "if (";
+
+            if (extensionCheck) {
+                state.deepCopy << "copyExtensionStructures && ";
+            }
+            
+            state.deepCopy << sourceAccessorPrefix << memberName->GetText() << ") {\n";
+            
             state.deepCopy << Pad(indent + 1) << destAccessorPrefix << memberName->GetText() << " = DeepCopyExtension(" << sourceAccessorPrefix << memberName->GetText() << ", blob, blobOffset);\n";
             state.deepCopy << Pad(indent) << "} else {\n";
             state.deepCopy << Pad(indent + 1) << destAccessorPrefix << memberName->GetText() << " = nullptr;\n";
@@ -345,7 +358,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                         state.deepCopy << Pad(indent) << "for (size_t " << counterVar << " = 0; " << counterVar << " < " << sizeVar << "; " << counterVar << "++) {\n";
 
                         // Copy the tree
-                        if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + "[" + counterVar + "].", mutableName + "[" + counterVar + "].", indent + 1, alwaysEmitSize)) {
+                        if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + "[" + counterVar + "].", mutableName + "[" + counterVar + "].", indent + 1, alwaysEmitSize, extensionCheck)) {
                             return false;
                         }
 
@@ -381,7 +394,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                     state.deepCopy << ", sizeof(" << sizeType << "));\n";
                 } else {
                     // Copy the tree
-                    if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + "->", mutableName + "->", indent, alwaysEmitSize)) {
+                    if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + "->", mutableName + "->", indent, alwaysEmitSize, extensionCheck)) {
                         return false;
                     }
                 }
@@ -417,7 +430,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                     md, state, elementType->second,
                     sourceAccessorPrefix + memberName->GetText() + "[" + counterVar + "]",
                     destAccessorPrefix + memberName->GetText() + "[" + counterVar + "]",
-                    indent, alwaysEmitSize
+                    indent, alwaysEmitSize, extensionCheck
                 )) {
                     return false;
                 }
@@ -434,7 +447,7 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
                 state.deepCopy << Pad(indent) << destAccessorPrefix << memberName->GetText() << " = " << sourceAccessorPrefix << memberName->GetText() << ";\n";
             } else {
                 // Copy the tree
-                if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + ".", destAccessorPrefix + memberName->GetText() + ".", indent, alwaysEmitSize)) {
+                if (!DeepCopyObjectTree(md, state, elementType->second, sourceAccessorPrefix + memberName->GetText() + ".", destAccessorPrefix + memberName->GetText() + ".", indent, alwaysEmitSize, extensionCheck)) {
                     return false;
                 }
             }
@@ -443,6 +456,10 @@ static bool DeepCopyObjectTree(ObjectTreeMetadata &md, DeepCopyState &state, tin
 
     // OK
     return true;
+}
+
+static bool IsIgnoredStruct(const char* name) {
+    return !std::strcmp(name, "VkExportMetalObjectCreateInfoEXT");
 }
 
 static bool CollectDeepCopyExtensionStructures(ObjectTreeMetadata& md, tinyxml2::XMLElement *types, const std::string_view& parent) {
@@ -464,6 +481,11 @@ static bool CollectDeepCopyExtensionStructures(ObjectTreeMetadata& md, tinyxml2:
         if (!name) {
             std::cerr << "Malformed type in line: " << typeNode->GetLineNum() << ", name not found" << std::endl;
             return false;
+        }
+
+        // Ignored?
+        if (IsIgnoredStruct(name)) {
+            continue;
         }
 
         // Try to get the extensions, if not, not interested
@@ -651,12 +673,12 @@ bool Generators::DeepCopy(const GeneratorInfo &info, TemplateEngine &templateEng
 
         // Attempt to generate a deep copy
         DeepCopyState state;
-        if (!DeepCopyObjectTree(md, state, typeNode)) {
+        if (!DeepCopyObjectTree(md, state, typeNode, "source.", "createInfo.", 1u, false, true)) {
             return false;
         }
 
         // Begin deep copy constructor
-        deepCopy << "void " << name << "DeepCopy::DeepCopy(const Allocators& _allocators, const " << name << "& source) {\n";
+        deepCopy << "void " << name << "DeepCopy::DeepCopy(const Allocators& _allocators, const " << name << "& source, bool copyExtensionStructures) {\n";
         deepCopy << "\tallocators = _allocators;\n";
 
         // Byte size

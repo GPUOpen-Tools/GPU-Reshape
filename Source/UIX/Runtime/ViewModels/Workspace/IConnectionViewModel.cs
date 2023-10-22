@@ -42,7 +42,7 @@ namespace Studio.ViewModels.Workspace
         /// <summary>
         /// Associated application information
         /// </summary>
-        public ApplicationInfo? Application { get; }
+        public ApplicationInfoViewModel? Application { get; }
         
         /// <summary>
         /// Invoked during connection

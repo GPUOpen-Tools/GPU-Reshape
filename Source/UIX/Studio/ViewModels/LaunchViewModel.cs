@@ -288,7 +288,7 @@ namespace Studio.ViewModels
             {
                 Connection = new VirtualConnectionViewModel
                 {
-                    Application = new ApplicationInfo
+                    Application = new ApplicationInfoViewModel
                     {
                         Process = "Application"
                     }
@@ -610,7 +610,7 @@ namespace Studio.ViewModels
         private void Handle(HostDiscoveryMessage discovery)
         {
             // Assigned to reserved application
-            ApplicationInfo? applicationInfo = null;
+            ApplicationInfoViewModel? applicationInfo = null;
 
             // Visit typed
             foreach (OrderedMessage message in new OrderedMessageView(discovery.infos.Stream))
@@ -624,12 +624,14 @@ namespace Studio.ViewModels
                         // Matched against pending?
                         if (info.guid.String.Equals(_pendingReservedToken, StringComparison.InvariantCultureIgnoreCase))
                         {
-                            applicationInfo = new Models.Workspace.ApplicationInfo
+                            applicationInfo = new ApplicationInfoViewModel
                             {
                                 Name = info.application.String,
                                 Process = info.process.String,
                                 API = info.api.String,
                                 Pid = info.processId,
+                                DeviceUid = info.deviceUid,
+                                DeviceObjects = info.deviceObjects,
                                 Guid = new Guid(info.guid.String)
                             };
                         }

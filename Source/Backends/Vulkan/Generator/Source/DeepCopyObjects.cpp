@@ -75,7 +75,7 @@ bool Generators::DeepCopyObjects(const GeneratorInfo& info, TemplateEngine& temp
         objects << "\t~" << name << "DeepCopy();\n\n";
 
         // Deep copy constructor
-        objects << "\tvoid DeepCopy(const Allocators& allocators, const " << name << "& source);\n\n";
+        objects << "\tvoid DeepCopy(const Allocators& allocators, const " << name << "& source, bool copyExtensionStructures = true);\n\n";
 
         // Deep copy accessor
         objects << "\t" << name << "* operator->() {\n";

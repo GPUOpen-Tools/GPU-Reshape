@@ -44,6 +44,7 @@ using Studio.Models.Workspace;
 using Studio.Services;
 using Studio.Services.Suspension;
 using Studio.ViewModels.Query;
+using Studio.ViewModels.Workspace;
 using Color = Avalonia.Media.Color;
 
 namespace Studio.ViewModels
@@ -82,7 +83,7 @@ namespace Studio.ViewModels
         /// <summary>
         /// All resolved applications
         /// </summary>
-        public ObservableCollection<Models.Workspace.ApplicationInfo> ResolvedApplications => _resolvedApplications;
+        public ObservableCollection<ApplicationInfoViewModel> ResolvedApplications => _resolvedApplications;
 
         /// <summary>
         /// User interaction during connection acceptance
@@ -92,7 +93,7 @@ namespace Studio.ViewModels
         /// <summary>
         /// Selected application for connection
         /// </summary>
-        public Models.Workspace.ApplicationInfo? SelectedApplication
+        public ApplicationInfoViewModel? SelectedApplication
         {
             get => _selectedApplication;
             set => this.RaiseAndSetIfChanged(ref _selectedApplication, value);
@@ -424,7 +425,7 @@ namespace Studio.ViewModels
             var schema = new OrderedMessageView(discovery.infos.Stream);
 
             // Create new app list
-            var apps = new List<Models.Workspace.ApplicationInfo>();
+            var apps = new List<ApplicationInfoViewModel>();
 
             // Visit typed
             foreach (OrderedMessage message in schema)
@@ -436,12 +437,14 @@ namespace Studio.ViewModels
                         var info = message.Get<HostServerInfoMessage>();
 
                         // Add application
-                        apps.Add(new Models.Workspace.ApplicationInfo
+                        apps.Add(new ApplicationInfoViewModel
                         {
                             Name = info.application.String,
                             Process = info.process.String,
                             API = info.api.String,
                             Pid = info.processId,
+                            DeviceUid = info.deviceUid,
+                            DeviceObjects= info.deviceObjects,
                             Guid = new Guid(info.guid.String)
                         });
                         break;
@@ -498,7 +501,7 @@ namespace Studio.ViewModels
             }
 
             // Filter by current query
-            List<ApplicationInfo> applications = _discoveryApplications.Where(x =>
+            List<ApplicationInfoViewModel> applications = _discoveryApplications.Where(x =>
                 {
                     return (ConnectionQuery.ApplicationPid?.Equals((int)x.Pid) ?? true) &&
                            x.API.Contains(ConnectionQuery.ApplicationAPI ?? string.Empty, StringComparison.InvariantCultureIgnoreCase) &&
@@ -509,12 +512,23 @@ namespace Studio.ViewModels
             HashSet<Guid> resolved = new(_resolvedApplications.Select(x => x.Guid));
             HashSet<Guid> incomingGuids = new(applications.Select(x => x.Guid));
             
-            // Add new applications
-            foreach (ApplicationInfo applicationInfo in applications)
+            // Add or update applications
+            foreach (ApplicationInfoViewModel applicationInfo in applications)
             {
                 if (!resolved.Contains(applicationInfo.Guid))
                 {
                     _resolvedApplications.Add(applicationInfo);
+                }
+                else
+                {
+                    // Find resolved application
+                    var app = _resolvedApplications.First(x => x.Guid == applicationInfo.Guid);
+
+                    // Update dynamic properties
+                    app.Name = applicationInfo.Name;
+                    app.API = applicationInfo.API;
+                    app.DeviceUid = applicationInfo.DeviceUid;
+                    app.DeviceObjects = applicationInfo.DeviceObjects;
                 }
             }
             
@@ -535,17 +549,17 @@ namespace Studio.ViewModels
         /// <summary>
         /// Internal selected application
         /// </summary>
-        private Models.Workspace.ApplicationInfo? _selectedApplication;
+        private ApplicationInfoViewModel? _selectedApplication;
 
         /// <summary>
         /// Internal application list
         /// </summary>
-        private ObservableCollection<Models.Workspace.ApplicationInfo> _resolvedApplications = new();
+        private ObservableCollection<ApplicationInfoViewModel> _resolvedApplications = new();
 
         /// <summary>
         /// Internal discovery, unfiltered
         /// </summary>
-        private List<Models.Workspace.ApplicationInfo> _discoveryApplications = new();
+        private List<ApplicationInfoViewModel> _discoveryApplications = new();
 
         /// <summary>
         /// Internal, default, connection string

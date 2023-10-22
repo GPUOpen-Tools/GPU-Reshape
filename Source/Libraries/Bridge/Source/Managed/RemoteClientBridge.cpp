@@ -61,7 +61,6 @@ bool Bridge::CLR::RemoteClientBridge::Install(const EndpointResolve^resolve) {
     // Convert to native resolve
     ::EndpointResolve nativeResolve;
     nativeResolve.config.sharedPort = resolve->config->sharedPort;
-    nativeResolve.config.applicationName = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(resolve->config->applicationName).ToPointer());
     nativeResolve.ipvxAddress = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(resolve->ipvxAddress).ToPointer());
 
     // Pass down
@@ -72,7 +71,6 @@ void Bridge::CLR::RemoteClientBridge::InstallAsync(const EndpointResolve ^ resol
     // Convert to native resolve
     ::EndpointResolve nativeResolve;
     nativeResolve.config.sharedPort = resolve->config->sharedPort;
-    nativeResolve.config.applicationName = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(resolve->config->applicationName).ToPointer());
     nativeResolve.ipvxAddress = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(resolve->ipvxAddress).ToPointer());
 
     // Pass down

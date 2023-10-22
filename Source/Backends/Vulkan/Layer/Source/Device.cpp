@@ -178,6 +178,20 @@ static void CreateEventRemappingTable(DeviceDispatchTable* table) {
     }
 }
 
+static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceDispatchTable* device) {
+    Backend::EnvironmentDeviceInfo info;
+    info.applicationName = device->parent->createInfo->pApplicationInfo ? device->parent->createInfo->pApplicationInfo->pApplicationName : "Unknown";
+    info.apiName = "Vulkan";
+    info.deviceUID = device->uid;
+
+    // Accumulate objects
+    info.deviceObjects += static_cast<uint32_t>(device->states_buffer.GetCount());
+    info.deviceObjects += static_cast<uint32_t>(device->states_image.GetCount());
+
+    // OK
+    return info;
+}
+
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
     auto chainInfo = static_cast<VkLayerDeviceCreateInfo *>(const_cast<void*>(pCreateInfo->pNext));
 
@@ -203,6 +217,7 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Create dispatch table
     auto table = new DeviceDispatchTable{};
+    table->uid = VulkanGPUReshapeProcessInfo.deviceUID++;
 
     // Inherit shared utilities from the instance
     table->parent     = instanceTable;
@@ -440,6 +455,11 @@ void BridgeDeviceSyncPoint(DeviceDispatchTable *table) {
     table->instrumentationController->Commit();
     table->metadataController->Commit();
     table->versioningController->Commit();
+
+    // Update the environment?
+    if (table->environmentUpdateAction.Step()) {
+        table->parent->environment.Update(GetEnvironmentDeviceInfo(table));
+    }
 
     // Commit instance
     BridgeInstanceSyncPoint(table->parent);

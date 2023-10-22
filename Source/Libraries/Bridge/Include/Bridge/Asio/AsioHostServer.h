@@ -91,6 +91,18 @@ struct AsioHostServer {
         }
     }
 
+    /// Update the server info
+    /// \param value host resolver info
+    void UpdateInfo(const AsioHostClientInfo& value) {
+        info = value;
+
+        // Send request
+        AsioHostClientResolverUpdate update;
+        update.info = info;
+        update.token = token;
+        resolveClient.WriteAsync(&update, sizeof(update));
+    }
+
 protected:
     /// Allocate a new client token
     void AllocateToken(const AsioHostClientToken& reservedToken) {

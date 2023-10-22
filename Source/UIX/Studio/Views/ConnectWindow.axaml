@@ -124,8 +124,10 @@ Examples:
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Process" Width="*" Binding="{Binding Process}" />
                         <DataGridTextColumn Header="Name" Width="*" Binding="{Binding Name}" />
-                        <DataGridTextColumn Header="API" Width="75" Binding="{Binding API }" />
-                        <DataGridTextColumn Header="PID" Width="50" Binding="{Binding Pid}" />
+                        <DataGridTextColumn Header="API" Width="55" Binding="{Binding API }" />
+                        <DataGridTextColumn Header="Objects" Width="55" Binding="{Binding DeviceObjects}" />
+                        <DataGridTextColumn Header="UID" Width="40" Binding="{Binding DeviceUid}" />
+                        <DataGridTextColumn Header="PID" Width="40" Binding="{Binding Pid}" />
                     </DataGrid.Columns>
                 </DataGrid>
             </Grid>

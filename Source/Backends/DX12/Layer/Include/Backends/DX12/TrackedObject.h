@@ -133,6 +133,11 @@ struct TrackedObject {
         return it->second.state;
     }
 
+    /// Get the number of objects
+    size_t GetCount() const {
+        return linear.size();
+    }
+
     LinearView GetLinear() {
         return LinearView(mutex, linear);
     }

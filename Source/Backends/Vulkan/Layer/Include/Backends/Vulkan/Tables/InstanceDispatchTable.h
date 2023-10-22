@@ -81,6 +81,9 @@ struct InstanceDispatchTable {
     /// States
     VkInstance object;
 
+    /// Creation deep copy
+    VkInstanceCreateInfoDeepCopy createInfo;
+
     /// Allocators
     Allocators allocators;
 

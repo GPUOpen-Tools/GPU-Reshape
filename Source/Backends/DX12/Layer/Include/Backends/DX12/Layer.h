@@ -33,6 +33,7 @@
 
 // Std
 #include <optional>
+#include <atomic>
 
 // Cleanup
 #undef OPAQUE
@@ -101,10 +102,14 @@ struct D3D12GPUOpenFunctionTable {
 
 /// Process state
 struct D3D12GPUOpenProcessState {
+    /// Runtime feature set
     bool isExperimentalModeEnabled{false};
     bool isExperimentalShaderModelsEnabled{false};
     bool applicationRequestedExperimentalShadingModels{false};
     bool isDXBCConversionEnabled{false};
+
+    /// Device UID allocator
+    std::atomic<uint32_t> deviceUID; 
 };
 
 /// Bootstrapper info

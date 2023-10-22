@@ -124,8 +124,8 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     } else {
         // Setup info
         Backend::EnvironmentInfo environmentInfo;
-        environmentInfo.applicationName = pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->pApplicationName : "Unknown";
-        environmentInfo.apiName = "Vulkan";
+        environmentInfo.device.applicationName = pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->pApplicationName : "Unknown";
+        environmentInfo.device.apiName = "Vulkan";
 
         // Initialize the standard environment
         table->environment.Install(environmentInfo);
@@ -139,6 +139,9 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
 
     // Setup the default allocators
     table->allocators = table->registry.GetAllocators();
+
+    // Create creation deep copy
+    table->createInfo.DeepCopy(table->allocators, *pCreateInfo, false);
 
     // Create application info deep copy
     if (pCreateInfo->pApplicationInfo) {

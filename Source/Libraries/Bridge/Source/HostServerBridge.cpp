@@ -41,9 +41,10 @@ bool HostServerBridge::Install(const EndpointConfig &config) {
     asioConfig.reservedToken = config.reservedToken;
 
     // Local info
-    AsioHostClientInfo asioInfo;
-    strcpy_s(asioInfo.applicationName, config.applicationName);
-    strcpy_s(asioInfo.apiName, config.apiName);
+    asioInfo.deviceUid = config.device.deviceUID;
+    asioInfo.deviceObjects = config.device.deviceObjects;
+    strcpy_s(asioInfo.applicationName, config.device.applicationName);
+    strcpy_s(asioInfo.apiName, config.device.apiName);
     strcpy_s(asioInfo.processName, GetCurrentExecutableName().c_str());
 
     // Platform info
@@ -61,6 +62,17 @@ bool HostServerBridge::Install(const EndpointConfig &config) {
 
     // OK
     return true;
+}
+
+void HostServerBridge::UpdateDeviceConfig(const EndpointDeviceConfig& config) {
+    // Update info
+    asioInfo.deviceUid = config.deviceUID;
+    asioInfo.deviceObjects = config.deviceObjects;
+    strcpy_s(asioInfo.applicationName, config.applicationName);
+    strcpy_s(asioInfo.apiName, config.apiName);
+
+    // Notify resolver
+    server->UpdateInfo(asioInfo);
 }
 
 HostServerBridge::~HostServerBridge() {

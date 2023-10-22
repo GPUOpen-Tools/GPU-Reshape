@@ -46,6 +46,7 @@
 #include <Common/ComRef.h>
 #include <Common/Registry.h>
 #include <Common/Allocators.h>
+#include <Common/IntervalAction.h>
 
 // Forward declarations
 class ShaderSet;
@@ -87,6 +88,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Owned object
     ID3D12Device* object{nullptr};
+
+    /// Unique identifier
+    uint32_t uid{UINT32_MAX};
     
     /// Shared allocators
     Allocators allocators;
@@ -157,6 +161,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Optional environment, ignored if creation parameters supply a registry
     Backend::Environment environment;
+
+    /// Environment actions
+    IntervalAction environmentUpdateAction = IntervalAction::FromMS(1000);
 
     /// All features
     Vector<ComRef<IFeature>> features;

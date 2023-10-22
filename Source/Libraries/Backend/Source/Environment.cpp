@@ -42,6 +42,7 @@
 #include <Common/Alloca.h>
 #include <Common/Dispatcher/Dispatcher.h>
 #include <Common/Plugin/PluginResolver.h>
+#include <Common/Hash.h>
 
 using namespace Backend;
 
@@ -63,6 +64,7 @@ static AsioHostClientToken GetReservedStartupAsioToken() {
 } 
 
 Environment::Environment() {
+
 }
 
 Environment::~Environment() {
@@ -96,21 +98,23 @@ bool Environment::Install(const EnvironmentInfo &info) {
         }
 
         // Networked
-        auto network = registry.AddNew<HostServerBridge>();
+        hostServerBridge = registry.AddNew<HostServerBridge>();
         
         // Endpoint info
         EndpointConfig endpointConfig;
-        endpointConfig.applicationName = info.applicationName;
-        endpointConfig.apiName = info.apiName;
+        endpointConfig.device.applicationName = info.device.applicationName;
+        endpointConfig.device.apiName = info.device.apiName;
+        endpointConfig.device.deviceUID = info.device.deviceUID;
+        endpointConfig.device.deviceObjects = info.device.deviceObjects;
         endpointConfig.reservedToken = GetReservedStartupAsioToken();
 
         // Attempt to install as server
-        if (!network->Install(endpointConfig)) {
+        if (!hostServerBridge->Install(endpointConfig)) {
             return false;
         }
 
         // Add default ping pong listener
-        network->Register(PingPongMessage::kID, registry.New<PingPongListener>(network.GetUnsafe()));
+        hostServerBridge->Register(PingPongMessage::kID, registry.New<PingPongListener>(hostServerBridge.GetUnsafe()));
     }
 
     // Install feature host
@@ -129,4 +133,34 @@ bool Environment::Install(const EnvironmentInfo &info) {
 
     // OK
     return true;
+}
+
+void Environment::Update(const EnvironmentDeviceInfo &info) {
+    // Nothing to update for memory bridges
+    if (!hostServerBridge) {
+        return;
+    }
+
+    // Hash object
+    uint64_t hash = 0;
+    CombineHash(hash, info.deviceUID);
+    CombineHash(hash, info.deviceObjects);
+    CombineHash(hash, StringCRC32Short(info.applicationName));
+    CombineHash(hash, StringCRC32Short(info.apiName));
+
+    // No changes?
+    if (deviceUpdateHash == hash) {
+        return;
+    }
+
+    // Write update
+    EndpointDeviceConfig config{};
+    config.applicationName = info.applicationName;
+    config.apiName = info.apiName;
+    config.deviceUID = info.deviceUID;
+    config.deviceObjects = info.deviceObjects;
+    hostServerBridge->UpdateDeviceConfig(config);
+
+    // Keep hash
+    deviceUpdateHash = hash;
 }

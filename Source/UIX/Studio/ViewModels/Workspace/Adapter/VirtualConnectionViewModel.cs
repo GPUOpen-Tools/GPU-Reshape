@@ -57,7 +57,7 @@ namespace Studio.ViewModels.Workspace
         /// <summary>
         /// Endpoint application info
         /// </summary>
-        public ApplicationInfo? Application { get; set; }
+        public ApplicationInfoViewModel? Application { get; set; }
 
         /// <summary>
         /// Underlying bridge of this connection

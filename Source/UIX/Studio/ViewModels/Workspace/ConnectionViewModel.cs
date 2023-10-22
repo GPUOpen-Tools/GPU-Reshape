@@ -82,7 +82,7 @@ namespace Studio.ViewModels.Workspace
         /// <summary>
         /// Endpoint application info
         /// </summary>
-        public Models.Workspace.ApplicationInfo? Application { get; private set; }
+        public ApplicationInfoViewModel? Application { get; private set; }
 
         public ConnectionViewModel()
         {
@@ -147,10 +147,7 @@ namespace Studio.ViewModels.Workspace
                 }
 
                 // Create config
-                var config = new EndpointConfig()
-                {
-                    applicationName = "Studio"
-                };
+                var config = new EndpointConfig();
 
                 // Optional port
                 if (port.HasValue)
@@ -182,7 +179,7 @@ namespace Studio.ViewModels.Workspace
         /// Submit client request asynchronously
         /// </summary>
         /// <param name="guid">endpoint application GUID</param>
-        public void RequestClientAsync(ApplicationInfo applicationInfo)
+        public void RequestClientAsync(ApplicationInfoViewModel applicationInfo)
         {
             lock (this)
             {

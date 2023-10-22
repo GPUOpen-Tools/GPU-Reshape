@@ -28,8 +28,12 @@
 #include <Common/Registry.h>
 #include <Common/Plugin/PluginList.h>
 
+// Forward declarations
+class HostServerBridge;
+
 namespace Backend {
     struct EnvironmentInfo;
+    struct EnvironmentDeviceInfo;
 
     /// Standard backend environment
     class Environment {
@@ -42,6 +46,10 @@ namespace Backend {
         /// \return success state
         bool Install(const EnvironmentInfo& info);
 
+        /// Update this environment
+        /// \param info update info
+        void Update(const EnvironmentDeviceInfo& info);
+
         /// Get the registry of this environment
         /// \return
         Registry* GetRegistry() {
@@ -52,7 +60,13 @@ namespace Backend {
         /// Internal registry
         Registry registry;
 
+        /// Optional, host server bridge
+        ComRef<HostServerBridge> hostServerBridge;
+
         /// Listed plugins
         PluginList plugins;
+
+        /// Last update hash
+        uint64_t deviceUpdateHash{0};
     };
 }

@@ -149,6 +149,16 @@ static void CreateEventRemappingTable(DeviceState* state) {
     }
 }
 
+static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceState* state) {
+    // TODO: Does DX12 have the concept of application names?
+    Backend::EnvironmentDeviceInfo info;
+    info.applicationName = "Unknown";
+    info.apiName = "D3D12";
+    info.deviceUID = state->uid;
+    info.deviceObjects = static_cast<uint32_t>(state->states_Resources.GetCount());
+    return info;
+}
+
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     ID3D12Device* device,
     IUnknown *pAdapter,
@@ -166,6 +176,7 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
     // Create state
     auto *state = new (allocators, kAllocStateDevice) DeviceState(allocators.Tag(kAllocStateDevice));
     state->object = device;
+    state->uid = D3D12GPUOpenProcessInfo.deviceUID++;
 
     // Create detours
     device = CreateDetour(state->allocators, device, state);
@@ -183,10 +194,8 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
             state->registry.SetParent(info->registry);
         } else {
             // Setup info
-            // TODO: Does DX12 have the concept of application names?
             Backend::EnvironmentInfo environmentInfo;
-            environmentInfo.applicationName = "Unknown";
-            environmentInfo.apiName = "D3D12";
+            environmentInfo.device = GetEnvironmentDeviceInfo(state);
 
             // Initialize the standard environment
             state->environment.Install(environmentInfo);
@@ -668,6 +677,11 @@ void BridgeDeviceSyncPoint(DeviceState *device) {
 
     // Sync the scheduler
     device->scheduler->SyncPoint();
+
+    // Update the environment?
+    if (device->environmentUpdateAction.Step()) {
+        device->environment.Update(GetEnvironmentDeviceInfo(device));
+    }
 
     // Debugging helper
 #ifndef NDEBUG

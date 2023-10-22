@@ -43,6 +43,9 @@
 #	define EXPORT_C __attribute__((visibility("default")))
 #endif
 
+/// Shared process info
+VulkanGPUReshapeProcessState VulkanGPUReshapeProcessInfo;
+
 // All exports
 extern "C" {
     [[maybe_unused]]

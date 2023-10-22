@@ -29,15 +29,26 @@
 class IBridge;
 
 namespace Backend {
-    struct EnvironmentInfo {
-        /// Allocators
-        Allocators allocators;
-
+    struct EnvironmentDeviceInfo {
         /// Application name
         const char* applicationName{"Unknown"};
 
         /// API name
         const char* apiName{"Unknown"};
+
+        /// Device UID
+        uint32_t deviceUID{0};
+        
+        /// Device object count
+        uint32_t deviceObjects{0};
+    };
+    
+    struct EnvironmentInfo {
+        /// Allocators
+        Allocators allocators;
+
+        /// Device info
+        EnvironmentDeviceInfo device;
 
         /// In memory bridge?
         bool memoryBridge{false};

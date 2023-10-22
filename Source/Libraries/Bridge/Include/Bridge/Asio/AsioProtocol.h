@@ -46,6 +46,7 @@ using AsioHostClientToken = GlobalUID;
 enum class AsioHeaderType {
     None,
     HostClientResolverAllocate,
+    HostClientResolverUpdate,
     HostClientResolverAllocateResponse,
     HostResolverClientRequest,
     HostResolverClientRequestResolveResponse,
@@ -61,6 +62,8 @@ inline const char* ToString(AsioHeaderType type) {
             return "None";
         case AsioHeaderType::HostClientResolverAllocate:
             return "AsioHostClientResolverAllocate";
+        case AsioHeaderType::HostClientResolverUpdate:
+            return "AsioHostClientResolverUpdate";
         case AsioHeaderType::HostClientResolverAllocateResponse:
             return "AsioHostClientResolverAllocate::Response";
         case AsioHeaderType::HostResolverClientRequest:
@@ -99,10 +102,23 @@ struct ALIGN_PACK TAsioHeader : public AsioHeader {
 };
 
 struct AsioHostClientInfo {
+    /// Name of the process
     char processName[512]{0};
+
+    /// Name of the application, if the API allows
     char applicationName[512]{0};
+
+    /// Name of the backend API
     char apiName[256]{0};
+
+    /// Process identifier
     uint32_t processId{0};
+
+    /// Unique identifier of the device
+    uint32_t deviceUid{0};
+
+    /// Number of objects associated with the device
+    uint32_t deviceObjects{0};
 };
 
 /// Host resolver to host client request
@@ -119,6 +135,17 @@ struct ALIGN_PACK AsioHostClientResolverAllocate : public TAsioHeader<AsioHostCl
 
         AsioHostClientToken token{};
     };
+};
+
+/// Host resolver to host client request
+struct ALIGN_PACK AsioHostClientResolverUpdate : public TAsioHeader<AsioHostClientResolverUpdate> {
+    static constexpr auto kType = AsioHeaderType::HostClientResolverUpdate;
+
+    /// Client token to update for
+    AsioHostClientToken token{};
+
+    /// Info to write
+    AsioHostClientInfo info{};
 };
 
 /// Host resolver to host client request

@@ -32,18 +32,29 @@
 
 static constexpr uint32_t kBridgeSharedPort = 34'213;
 
+struct EndpointDeviceConfig {
+    /// Name of the application
+    const char* applicationName{"Unknown"};
+
+    /// Name of the API
+    const char* apiName{"Unknown"};
+
+    /// UID of the device
+    uint32_t deviceUID{0};
+
+    /// Number of objects in the device
+    uint32_t deviceObjects{0};
+};
+
 struct EndpointConfig {
     /// Shared port for resolving
     uint32_t sharedPort = kBridgeSharedPort;
 
     /// Optional, reserved token
     AsioHostClientToken reservedToken{};
-    
-    /// Name of the application
-    const char* applicationName{"Unknown"};
 
-    /// Name of the API
-    const char* apiName{"Unknown"};
+    /// Device configuration
+    EndpointDeviceConfig device;
 };
 
 struct EndpointResolve {

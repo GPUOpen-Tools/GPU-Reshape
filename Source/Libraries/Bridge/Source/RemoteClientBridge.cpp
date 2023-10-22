@@ -156,6 +156,8 @@ void RemoteClientBridge::OnDiscovery(const AsioRemoteServerResolverDiscoveryRequ
             info->application.Set(entry.info.applicationName);
             info->api.Set(entry.info.apiName);
             info->processId = entry.info.processId;
+            info->deviceUid = entry.info.deviceUid;
+            info->deviceObjects = entry.info.deviceObjects;
         }
     }
 

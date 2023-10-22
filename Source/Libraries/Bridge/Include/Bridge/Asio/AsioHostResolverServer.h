@@ -110,6 +110,9 @@ protected:
             case AsioHostClientResolverAllocate::kType:
                 OnAllocateRequest(handler, static_cast<const AsioHostClientResolverAllocate*>(header));
                 break;
+            case AsioHostClientResolverUpdate::kType:
+                OnAllocateUpdate(handler, static_cast<const AsioHostClientResolverUpdate*>(header));
+                break;
             case AsioRemoteServerResolverDiscoveryRequest::kType:
                 OnDiscoveryRequest(handler, static_cast<const AsioRemoteServerResolverDiscoveryRequest*>(header));
                 break;
@@ -171,6 +174,26 @@ protected:
         AsioHostClientResolverAllocate::Response response;
         response.token = info.token;
         handler.WriteAsync(&response, sizeof(response));
+    }
+
+    /// Invoked on allocate requests
+    /// \param handler responsible handler
+    /// \param request the inbound request
+    void OnAllocateUpdate(AsioSocketHandler& handler, const AsioHostClientResolverUpdate* request) {
+        std::lock_guard guard(mutex);
+
+        // Find the handler
+        auto it = std::find_if(clients.begin(), clients.end(), [request](const ClientInfo& candidate) {
+            return candidate.token == request->token;
+        });
+
+        // Ignore if not found
+        if (it == clients.end()) {
+            return;
+        }
+
+        // Update info
+        it->info = request->info;
     }
 
     /// Invoked on discovery requests

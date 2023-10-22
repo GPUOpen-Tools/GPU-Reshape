@@ -29,6 +29,7 @@
 
 // Std
 #include <cstdint>
+#include <cstring>
 #include <type_traits>
 
 /** Precomputed table */
@@ -111,6 +112,14 @@ constexpr uint32_t StringCRC32Short(const char* data, uint64_t len, uint32_t crc
     }
 
     return ~crc;
+}
+
+/// Compute a short string CRC32
+/// \param data given data to hash
+/// \param crc initial crc
+/// \return full crc32
+constexpr uint32_t StringCRC32Short(const char* data, uint32_t crc = ~0u) {
+    return StringCRC32Short(data, strlen(data), crc);
 }
 
 /// Compute a short CRC32
