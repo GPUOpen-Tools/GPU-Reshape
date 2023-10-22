@@ -23,7 +23,7 @@
 // 
 
 // System wise include
-#include <d3d12.h>
+#include <AgilitySDK/d3d12.h>
 #include <d3d11.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>

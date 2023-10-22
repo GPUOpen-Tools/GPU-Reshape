@@ -24,7 +24,11 @@
 
 #pragma once
 
+// Layer
+#include <Backends/DX12/DX12.h>
+
 // D3D12MA
+#define  D3D12MA_D3D12_HEADERS_ALREADY_INCLUDED
 #include <D3D12MemAlloc.h>
 
 /// A single allocation

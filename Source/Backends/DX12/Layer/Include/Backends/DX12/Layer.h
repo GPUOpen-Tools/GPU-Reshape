@@ -25,7 +25,7 @@
 #pragma once
 
 // System
-#include <d3d12.h>
+#include <AgilitySDK/d3d12.h>
 
 // AMD
 #define AGS_GCC 1

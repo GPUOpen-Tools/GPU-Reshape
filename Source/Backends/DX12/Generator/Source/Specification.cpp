@@ -399,6 +399,9 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
     std::vector<const char *> args {
         // C++ language specifier
         "-x", "c++",
+
+        // Third party includes
+        "-I", EXTERNAL_INCLUDE
     };
 
     // Create index
@@ -449,7 +452,7 @@ bool Generators::Specification(const GeneratorInfo &info, TemplateEngine &templa
 
         // Ignore all files not form sources
         for (auto &&specFile: info.hooks["files"]) {
-            if (specFile.get<std::string>() == filename.filename()) {
+            if (std::filesystem::path(specFile.get<std::string>()).filename() == filename.filename()) {
                 relevant = true;
             }
         }

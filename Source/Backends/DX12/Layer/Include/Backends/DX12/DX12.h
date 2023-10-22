@@ -33,7 +33,7 @@
 #include <Common/Assert.h>
 
 // System
-#include <d3d12.h>
+#include <AgilitySDK/d3d12.h>
 #include <dxgi1_6.h>
 #include <dxgi.h>
 

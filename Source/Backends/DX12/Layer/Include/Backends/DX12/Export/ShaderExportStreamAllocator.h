@@ -35,7 +35,6 @@
 #include <Backend/ShaderExportTypeInfo.h>
 
 // Layer
-#include <D3D12MemAlloc.h>
 #include "ShaderExportAllocationMode.h"
 #include "ShaderExportStream.h"
 #include "ShaderExportSegmentInfo.h"

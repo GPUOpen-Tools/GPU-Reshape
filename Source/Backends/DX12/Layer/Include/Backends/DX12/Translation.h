@@ -28,7 +28,7 @@
 #include <Backend/IL/Format.h>
 
 // System
-#include <d3d12.h>
+#include <AgilitySDK/d3d12.h>
 
 inline DXGI_FORMAT Translate(Backend::IL::Format format) {
     switch (format) {

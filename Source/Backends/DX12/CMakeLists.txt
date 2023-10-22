@@ -59,6 +59,9 @@ add_executable(
 # IDE source discovery
 SetSourceDiscovery(GRS.Backends.DX12.Generator CXX Generator)
 
+# Definitions
+target_compile_definitions(GRS.Backends.DX12.Generator PRIVATE -DEXTERNAL_INCLUDE="${CMAKE_BINARY_DIR}/External/include")
+
 # Local links
 target_link_libraries(GRS.Backends.DX12.Generator PUBLIC GRS.Libraries.Common)
 
@@ -78,10 +81,12 @@ ExternalProject_Link(GRS.Backends.DX12.Generator ArgParse)
 ExternalProject_Link(GRS.Backends.DX12.Generator TinyXML2 tinyxml2)
 ExternalProject_Link(GRS.Backends.DX12.Generator JSON)
 ExternalProject_Link(GRS.Backends.DX12.Generator LibClang libclang)
+ExternalProject_Link(GRS.Backends.DX12.Generator AgilitySDK)
 
 #----- Layer -----#
 
 # Paths
+set(SpecificationHeader                ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Resources/D3D12Specification.h)
 set(Specification                      ${CMAKE_CURRENT_BINARY_DIR}/Generator/Specification.json)
 set(SpecificationTemplate              ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Specification.json)
 set(DetourTemplate                     ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Templates/Detour.ht)
@@ -108,6 +113,7 @@ add_custom_command(
     DEPENDS
         ${DXILTemplate}
         ${DXILRST}
+        ${HooksSpec}
     COMMAND GRS.Backends.DX12.Generator
         -template ${DXILTemplate}
         -dxilrst ${DXILRST}
@@ -136,13 +142,14 @@ add_custom_command(
     OUTPUT ${Specification}
     DEPENDS GRS.Backends.DX12.Generator
     DEPENDS
+        ${SpecificationHeader}
         ${SpecificationTemplate}
         ${HooksSpec}
     COMMAND GRS.Backends.DX12.Generator
         -template ${SpecificationTemplate}
         -gentype specification
         -hooksjson ${HooksSpec}
-        -d3d12h ${CMAKE_CURRENT_SOURCE_DIR}/Generator/Resources/D3D12Specification.h
+        -d3d12h ${SpecificationHeader}
         -o ${Specification}
 )
 
@@ -154,6 +161,7 @@ add_custom_command(
         ${FeatureProxiesTemplate}
         ${Specification}
         ${DXILRST}
+        ${HooksSpec}
     COMMAND GRS.Backends.DX12.Generator
         -template ${FeatureProxiesTemplate}
         -dxilrst ${DXILRST}
@@ -170,6 +178,7 @@ add_custom_command(
     DEPENDS
         ${DetourTemplate}
         ${Specification}
+        ${HooksSpec}
         ${HooksSpec}
     COMMAND GRS.Backends.DX12.Generator
         -template ${DetourTemplate}
@@ -435,6 +444,7 @@ target_link_libraries(
 )
 
 # Setup dependencies
+ExternalProject_Link(GRS.Backends.DX12.Layer AgilitySDK)
 ExternalProject_Link(GRS.Backends.DX12.Layer Detour Detour)
 ExternalProject_Link(GRS.Backends.DX12.Layer D3D12MA $<$<CONFIG:Debug>:D3D12MAd> $<$<CONFIG:Release>:D3D12MAr> $<$<CONFIG:RelWithDebInfo>:D3D12MArd>)
 
