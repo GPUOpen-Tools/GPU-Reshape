@@ -185,6 +185,36 @@ HRESULT WINAPI HookID3D12DeviceCreateCommittedResource2(ID3D12Device* device, co
     return S_OK;
 }
 
+HRESULT WINAPI HookID3D12DeviceCreateCommittedResource3(ID3D12Device* device, const D3D12_HEAP_PROPERTIES* pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, const D3D12_RESOURCE_DESC1* pDesc, D3D12_BARRIER_LAYOUT InitialLayout, const D3D12_CLEAR_VALUE* pOptimizedClearValue, ID3D12ProtectedResourceSession* pProtectedSession, UINT32 NumCastableFormats, const DXGI_FORMAT* pCastableFormats, const IID& riidResource, void** ppvResource) {
+    auto table = GetTable(device);
+
+    // Object
+    ID3D12Resource* resource{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateCommittedResource3(table.next, pHeapProperties, HeapFlags, pDesc, InitialLayout, pOptimizedClearValue, pProtectedSession, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create state with lowered description
+    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc));
+
+    // Query to external object if requested
+    if (ppvResource) {
+        hr = resource->QueryInterface(riidResource, ppvResource);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    resource->Release();
+
+    // OK
+    return S_OK;
+}
+
 HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * heap, UINT64 heapFlags, const D3D12_RESOURCE_DESC *desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE * clearValue, const IID& riid, void ** pResource) {
     auto table = GetTable(device);
 
@@ -245,6 +275,36 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource1(ID3D12Device* device, ID3D1
     return S_OK;
 }
 
+HRESULT WINAPI HookID3D12DeviceCreatePlacedResource2(ID3D12Device* device, ID3D12Heap* pHeap, UINT64 HeapOffset, const D3D12_RESOURCE_DESC1* pDesc, D3D12_BARRIER_LAYOUT InitialLayout, const D3D12_CLEAR_VALUE* pOptimizedClearValue, UINT32 NumCastableFormats, const DXGI_FORMAT* pCastableFormats, const IID& riid, void** ppvResource) {
+    auto table = GetTable(device);
+
+    // Object
+    ID3D12Resource* resource{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreatePlacedResource2(table.next, Next(pHeap), HeapOffset, pDesc, InitialLayout, pOptimizedClearValue, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create state with lowered description
+    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc));
+
+    // Query to external object if requested
+    if (ppvResource) {
+        hr = resource->QueryInterface(riid, ppvResource);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    resource->Release();
+
+    // OK
+    return S_OK;
+}
+
 HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12_RESOURCE_DESC *desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE *clearValue, const IID& riid, void **pResource) {
     auto table = GetTable(device);
 
@@ -283,6 +343,36 @@ HRESULT WINAPI HookID3D12DeviceCreateReservedResource1(ID3D12Device* device, con
 
     // Pass down callchain
     HRESULT hr = table.bottom->next_CreateReservedResource1(table.next, pDesc, InitialState, pOptimizedClearValue, pProtectedSession, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    // Create state
+    resource = CreateResourceState(device, table, resource, pDesc);
+
+    // Query to external object if requested
+    if (ppvResource) {
+        hr = resource->QueryInterface(riid, ppvResource);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+
+    // Cleanup
+    resource->Release();
+
+    // OK
+    return S_OK;
+}
+
+HRESULT WINAPI HookID3D12DeviceCreateReservedResource2(ID3D12Device* device, const D3D12_RESOURCE_DESC* pDesc, D3D12_BARRIER_LAYOUT InitialLayout, const D3D12_CLEAR_VALUE* pOptimizedClearValue, ID3D12ProtectedResourceSession* pProtectedSession, UINT32 NumCastableFormats, const DXGI_FORMAT* pCastableFormats, const IID& riid, void** ppvResource) {
+    auto table = GetTable(device);
+
+    // Object
+    ID3D12Resource* resource{nullptr};
+
+    // Pass down callchain
+    HRESULT hr = table.bottom->next_CreateReservedResource2(table.next, pDesc, InitialLayout, pOptimizedClearValue,  pProtectedSession, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
     if (FAILED(hr)) {
         return hr;
     }
