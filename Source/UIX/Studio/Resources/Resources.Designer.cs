@@ -120,7 +120,7 @@ namespace Studio.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Global discovery requires the installation of GPU Reshape services, which are added to the (OS) startup programs.
+        ///   Looks up a localized string similar to Global discovery requires the installation of GPU Reshape services, which are added to the (OS) startup programs. Disabling global discovery will uninstall the services.
         ///
         ///Do you consent to this?.
         /// </summary>

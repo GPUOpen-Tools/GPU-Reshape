@@ -130,7 +130,7 @@
         <value>Service Installation</value>
     </data>
     <data name="Discovery_Warning_Content" xml:space="preserve">
-        <value>Global discovery requires the installation of GPU Reshape services, which are added to the (OS) startup programs.
+        <value>Global discovery requires the installation of GPU Reshape services, which are added to the (OS) startup programs. Disabling global discovery will uninstall the services.
 
 Do you consent to this?</value>
     </data>
