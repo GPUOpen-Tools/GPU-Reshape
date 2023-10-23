@@ -45,6 +45,9 @@ if (NOT "${Checksum}" STREQUAL ${AgilitySDKSHA256})
     if (NOT "${Checksum}" STREQUAL ${AgilitySDKSHA256})
         message(FATAL_ERROR "AgilitySDK checksum mismatch\n\tGot: ${Checksum}\n\tExpected: ${AgilitySDKSHA256}")
     endif()
+    
+    # Ensure path exists
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AgilitySDK/)
 
     # Unzip
     execute_process(
