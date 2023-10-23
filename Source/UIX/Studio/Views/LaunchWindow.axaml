@@ -68,7 +68,7 @@
                 <TextBlock Text="Application" />
 
                 <Grid Margin="0 5 0 0">
-                    <TextBox Text="{Binding ApplicationPath}" />
+                    <TextBox Text="{Binding ApplicationPath}" Padding="4 4 22 4"/>
 
                     <Button
                         x:Name="ApplicationButton"
@@ -83,7 +83,7 @@
 
                 <TextBlock Text="Working directory" Margin="0 15 0 0" />
                 <Grid Margin="0 5 0 0">
-                    <TextBox Text="{Binding WorkingDirectoryPath}" />
+                    <TextBox Text="{Binding WorkingDirectoryPath}" Padding="4 4 22 4"/>
 
                     <Button
                         x:Name="WorkingDirectoryButton"
