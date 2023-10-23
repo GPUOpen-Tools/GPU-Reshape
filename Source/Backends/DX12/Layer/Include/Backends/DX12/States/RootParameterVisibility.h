@@ -32,5 +32,6 @@ enum class RootParameterVisibility {
     Geometry,
     Pixel,
     Mesh,
+    Amplification,
     Count
 };
