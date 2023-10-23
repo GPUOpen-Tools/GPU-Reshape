@@ -54,12 +54,12 @@ if (NOT THIN_X86_BUILD)
     include(UnorderedDense.cmake)
     include(BTree.cmake)
     include(ZLIB.cmake)
-    include(AgilitySDK.cmake)
 endif()
 
 # Shared between x86 and x64
 include(Detour.cmake)
 include(AMDAGS.cmake)
+include(AgilitySDK.cmake)
 
 # UI?
 if (${BUILD_UIX})

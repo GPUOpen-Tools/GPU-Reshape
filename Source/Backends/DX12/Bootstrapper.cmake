@@ -63,3 +63,4 @@ target_link_libraries(GRS.Backends.DX12.Bootstrapper${ARCH_POSTFIX} PUBLIC GRS.L
 
 # External dependencies
 ExternalProject_Link(GRS.Backends.DX12.Bootstrapper${ARCH_POSTFIX} Detour Detour)
+ExternalProject_Link(GRS.Backends.DX12.Bootstrapper${ARCH_POSTFIX} AgilitySDK)
