@@ -84,6 +84,9 @@ static T* CreateSwapChainState(const DXGIFactoryTable& table, IDXGIFactory* fact
     state->object = swapChain;
     state->buffers.resize(desc->BufferCount);
 
+    // Keep reference to parent
+    factory->AddRef();
+
     // Create wrappers
     CreateSwapchainBufferWrappers(state, desc->BufferCount);
 
@@ -413,4 +416,7 @@ SwapChainState::~SwapChainState() {
     for (ID3D12Resource *buffer : buffers) {
         buffer->Release();
     }
+
+    // Release ref
+    parent->Release();
 }
