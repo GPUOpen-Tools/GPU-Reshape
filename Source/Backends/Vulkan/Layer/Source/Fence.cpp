@@ -29,6 +29,10 @@
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateFence(VkDevice device, const VkFenceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkFence *pFence) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // The vulkan specification provides no guarantees on allocation lifetimes *beyond* destruction.
+    // So, we cannot safely keep the handles around. Use the internal allocators instead.
+    pAllocator = nullptr;
+
     // Pass down callchain
     VkResult result = table->next_vkCreateFence(device, pCreateInfo, pAllocator, pFence);
     if (result != VK_SUCCESS) {

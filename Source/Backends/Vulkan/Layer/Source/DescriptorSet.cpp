@@ -480,6 +480,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreatePipelineLayout(VkDevice device, cons
     uint32_t dataPushConstantLength = 0;
     VkShaderStageFlags pushConstantRangeMask = 0;
 
+    // The vulkan specification provides no guarantees on allocation lifetimes *beyond* destruction.
+    // So, we cannot safely keep the handles around. Use the internal allocators instead.
+    pAllocator = nullptr;
+
     // If we have exhausted all the sets, we can't add further records
     bool exhausted = pCreateInfo->setLayoutCount >= table->physicalDeviceProperties.limits.maxBoundDescriptorSets;
     if (exhausted) {

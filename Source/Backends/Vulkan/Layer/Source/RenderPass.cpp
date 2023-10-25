@@ -61,6 +61,10 @@ static void ShallowDeepCopy(RenderPassState* state, const VkRenderPassCreateInfo
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass(VkDevice device, const VkRenderPassCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkRenderPass* pRenderPass) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // The vulkan specification provides no guarantees on allocation lifetimes *beyond* destruction.
+    // So, we cannot safely keep the handles around. Use the internal allocators instead.
+    pAllocator = nullptr;
+
     // Pass down callchain
     VkResult result = table->next_vkCreateRenderPass(device, pCreateInfo, pAllocator, pRenderPass);
     if (result != VK_SUCCESS) {
@@ -88,6 +92,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass(VkDevice device, const Vk
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2(VkDevice device, const VkRenderPassCreateInfo2* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkRenderPass* pRenderPass) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
+    // The vulkan specification provides no guarantees on allocation lifetimes *beyond* destruction.
+    // So, we cannot safely keep the handles around. Use the internal allocators instead.
+    pAllocator = nullptr;
+
     // Pass down callchain
     VkResult result = table->next_vkCreateRenderPass2(device, pCreateInfo, pAllocator, pRenderPass);
     if (result != VK_SUCCESS) {
@@ -114,6 +122,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2(VkDevice device, const V
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2KHR(VkDevice device, const VkRenderPassCreateInfo2* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkRenderPass* pRenderPass) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // The vulkan specification provides no guarantees on allocation lifetimes *beyond* destruction.
+    // So, we cannot safely keep the handles around. Use the internal allocators instead.
+    pAllocator = nullptr;
 
     // Pass down callchain
     VkResult result = table->next_vkCreateRenderPass2KHR(device, pCreateInfo, pAllocator, pRenderPass);
@@ -157,6 +169,10 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyRenderPass(VkDevice device, VkRenderPas
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateFramebuffer(VkDevice device, const VkFramebufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkFramebuffer* pFramebuffer) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // The vulkan specification provides no guarantees on allocation lifetimes *beyond* destruction.
+    // So, we cannot safely keep the handles around. Use the internal allocators instead.
+    pAllocator = nullptr;
 
     // Pass down callchain
     VkResult result = table->next_vkCreateFrameBuffer(device, pCreateInfo, pAllocator, pFramebuffer);
