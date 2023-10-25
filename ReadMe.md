@@ -64,12 +64,15 @@ A list of applications GPU Reshape is tested against for stability and validity.
 Games
 - **Call of the Wild: The Angler** (Avalanche, DX12)
 - **Second Extinction** (Avalanche, Vulkan)
-- **Rage 2** (Avalanche, Vulkan)
+- **Rage 2** (Avalanche / id Software, Vulkan)
 - **Chernobylite** (The Farm 51, DX12)
 - **Dying Light 2** (Techland, DX12)
 - **The Lord of the Rings: Gollum** (Daedalic Entertainment, DX12)
 - **A Plague Tale: Requiem** (Asobo Studio, DX12)
 - **Ratchet & Clank: Rift Apart** (Insomniac Games / Nixxes Software, DX12)
+- **Forspoken** (Square Enix, DX12)
+- **The Riftbreaker** (EXOR Studios, DX12)
+- **Starfield** (Bethesda Game Studios, DX12)
 
 Engines
 - **Unreal Engine 4** (Epic Games, DX12, Vulkan)
