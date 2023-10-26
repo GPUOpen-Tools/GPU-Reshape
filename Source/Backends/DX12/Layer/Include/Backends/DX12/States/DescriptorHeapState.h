@@ -27,6 +27,7 @@
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
 #include <Backends/DX12/Config.h>
+#include <Backends/DX12/Resource/VirtualResourceMapping.h>
 
 // Common
 #include <Common/Allocators.h>
@@ -60,6 +61,12 @@ struct __declspec(uuid("35585A4B-17E0-4D0C-BE86-D6CB806C93A5")) DescriptorHeapSt
 
     /// Get the state from a handle
     ResourceState* GetStateFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const;
+
+    /// Get the token from a handle
+    VirtualResourceMapping GetVirtualMappingFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const;
+
+    /// Get the token from a handle
+    VirtualResourceMapping GetVirtualMappingFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const;
 
     /// Get the virtual bound
     uint32_t GetVirtualRangeBound() const {

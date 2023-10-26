@@ -62,6 +62,27 @@ static ResourceState* GetResourceStateFromHeapHandle(CommandListState* state, D3
     return heap->GetStateFromHeapHandle(handle);
 }
 
+/// Get the resource token from a heap handle
+/// \param state given command list state
+/// \param handle opaque handle
+/// \return resource token
+static ResourceToken GetResourceTokenFromHeapHandle(CommandListState* state, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+    auto table = GetTable(state->parent);
+
+    // Get heap from handle ptr
+    DescriptorHeapState* heap = table.state->cpuHeapTable.Find(type, handle.ptr);
+
+    // Get virtual mapping
+    VirtualResourceMapping virtualMapping = heap->GetVirtualMappingFromHeapHandle(handle);
+
+    // To token
+    return ResourceToken {
+        .puid = virtualMapping.puid,
+        .type = static_cast<Backend::IL::ResourceTokenType>(virtualMapping.type),
+        .srb= virtualMapping.srb
+    };
+}
+
 void FeatureHook_CopyBufferRegion::operator()(CommandListState *list, CommandContext *context, ID3D12Resource* pDstBuffer, UINT64 DstOffset, ID3D12Resource* pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes) const {
     // Get states
     ResourceState* dstState = GetState(pDstBuffer);
@@ -199,7 +220,7 @@ void FeatureHook_ResolveSubresource::operator()(CommandListState *object, Comman
 
 void FeatureHook_ClearDepthStencilView::operator()(CommandListState *object, CommandContext *context, D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView, D3D12_CLEAR_FLAGS ClearFlags, FLOAT Depth, UINT8 Stencil, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, DepthStencilView);
+    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, DepthStencilView);
 
     // Setup source descriptor
     TextureDescriptor descriptor{
@@ -210,13 +231,13 @@ void FeatureHook_ClearDepthStencilView::operator()(CommandListState *object, Com
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(state), &descriptor)
+        ResourceInfo::Texture(token, &descriptor)
     );
 }
 
 void FeatureHook_ClearRenderTargetView::operator()(CommandListState *object, CommandContext *context, D3D12_CPU_DESCRIPTOR_HANDLE RenderTargetView, const FLOAT *ColorRGBA, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, RenderTargetView);
+    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, RenderTargetView);
 
     // Setup source descriptor
     TextureDescriptor descriptor{
@@ -227,13 +248,13 @@ void FeatureHook_ClearRenderTargetView::operator()(CommandListState *object, Com
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(state), &descriptor)
+        ResourceInfo::Texture(token, &descriptor)
     );
 }
 
 void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *object, CommandContext *context, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const UINT *Values, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
+    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
 
     // Setup source descriptor
     TextureDescriptor descriptor{
@@ -244,13 +265,13 @@ void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *obje
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(state), &descriptor)
+        ResourceInfo::Texture(token, &descriptor)
     );
 }
 
 void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *object, CommandContext *context, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const FLOAT *Values, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
+    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
 
     // Setup source descriptor
     TextureDescriptor descriptor{
@@ -261,7 +282,7 @@ void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *obj
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(state), &descriptor)
+        ResourceInfo::Texture(token, &descriptor)
     );
 }
 
@@ -296,7 +317,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
     // Translate render targets
     for (uint32_t i = 0; i < NumRenderTargets; i++) {
-        ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, pRenderTargets[i].cpuDescriptor);
+        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, pRenderTargets[i].cpuDescriptor);
 
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
@@ -306,7 +327,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
         // Setup attachment
         AttachmentInfo& info = attachments[i];
-        info.resource.token = GetResourceToken(state);
+        info.resource.token = token;
         info.resource.textureDescriptor = descriptors + i;
 
         // Translate action
@@ -358,7 +379,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
     AttachmentInfo    depthInfo;
 
     if (pDepthStencil) {
-        ResourceState* depthState = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, pDepthStencil->cpuDescriptor);
+        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, pDepthStencil->cpuDescriptor);
 
         // Setup destination descriptor
         depthDescriptor = TextureDescriptor{
@@ -405,7 +426,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
         }
 
         // Set resource info
-        depthInfo.resource.token = GetResourceToken(depthState);
+        depthInfo.resource.token = token;
         depthInfo.resource.textureDescriptor = &depthDescriptor;
         passInfo.depthAttachment = &depthInfo;
     }
@@ -438,7 +459,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         }
 
         // Get state
-        ResourceState* state = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, renderTargetHandle);
+        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, renderTargetHandle);
 
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
@@ -448,7 +469,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
 
         // Setup attachment
         AttachmentInfo& info = attachments[i];
-        info.resource.token = GetResourceToken(state);
+        info.resource.token = token;
         info.resource.textureDescriptor = descriptors + i;
         info.loadAction = AttachmentAction::Load;
         info.storeAction = AttachmentAction::Store;
@@ -464,7 +485,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
     AttachmentInfo    depthInfo;
 
     if (pDepthStencilDescriptor) {
-        ResourceState* depthState = GetResourceStateFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, *pDepthStencilDescriptor);
+        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, *pDepthStencilDescriptor);
 
         // Setup destination descriptor
         depthDescriptor = TextureDescriptor{
@@ -473,7 +494,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         };
 
         // Setup attachment
-        depthInfo.resource.token = GetResourceToken(depthState);
+        depthInfo.resource.token = token;
         depthInfo.resource.textureDescriptor = &depthDescriptor;
         depthInfo.loadAction = AttachmentAction::Load;
         depthInfo.storeAction = AttachmentAction::Store;

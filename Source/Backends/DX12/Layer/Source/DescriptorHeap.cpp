@@ -199,6 +199,36 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_SRV_DIMENSION dimensi
     }
 }
 
+static VirtualResourceMapping GetNullResourceMapping(D3D12_RTV_DIMENSION dimension) {
+    // Handle by dimension
+    switch (dimension) {
+        default: {
+            ASSERT(false, "Unsupported value");
+            return {};
+        }
+        case D3D12_RTV_DIMENSION_BUFFER:{
+            return VirtualResourceMapping {
+                .puid = IL::kResourceTokenPUIDReservedNullBuffer,
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer),
+                .srb  = 0x1
+            };
+        }
+        case D3D12_RTV_DIMENSION_TEXTURE1D:
+        case D3D12_RTV_DIMENSION_TEXTURE1DARRAY:
+        case D3D12_RTV_DIMENSION_TEXTURE2D:
+        case D3D12_RTV_DIMENSION_TEXTURE2DARRAY:
+        case D3D12_RTV_DIMENSION_TEXTURE2DMS:
+        case D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY:
+        case D3D12_RTV_DIMENSION_TEXTURE3D: {
+            return VirtualResourceMapping {
+                .puid = IL::kResourceTokenPUIDReservedNullTexture,
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture),
+                .srb  = 0x1
+            };
+        }
+    }
+}
+
 static VirtualResourceMapping GetNullResourceMapping(D3D12_UAV_DIMENSION dimension) {
     // Handle by dimension
     switch (dimension) {
@@ -217,7 +247,31 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_UAV_DIMENSION dimensi
         case D3D12_UAV_DIMENSION_TEXTURE1DARRAY:
         case D3D12_UAV_DIMENSION_TEXTURE2D:
         case D3D12_UAV_DIMENSION_TEXTURE2DARRAY:
+        case D3D12_UAV_DIMENSION_TEXTURE2DMS:
+        case D3D12_UAV_DIMENSION_TEXTURE2DMSARRAY:
         case D3D12_UAV_DIMENSION_TEXTURE3D: {
+            return VirtualResourceMapping {
+                .puid = IL::kResourceTokenPUIDReservedNullTexture,
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture),
+                .srb  = 0x1
+            };
+        }
+    }
+}
+
+static VirtualResourceMapping GetNullResourceMapping(D3D12_DSV_DIMENSION dimension) {
+    // Handle by dimension
+    switch (dimension) {
+        default: {
+            ASSERT(false, "Unsupported value");
+            return {};
+        }
+        case D3D12_DSV_DIMENSION_TEXTURE1D:
+        case D3D12_DSV_DIMENSION_TEXTURE1DARRAY:
+        case D3D12_DSV_DIMENSION_TEXTURE2D:
+        case D3D12_DSV_DIMENSION_TEXTURE2DARRAY:
+        case D3D12_DSV_DIMENSION_TEXTURE2DMS:
+        case D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY: {
             return VirtualResourceMapping {
                 .puid = IL::kResourceTokenPUIDReservedNullTexture,
                 .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture),
@@ -285,18 +339,23 @@ void WINAPI HookID3D12DeviceCreateRenderTargetView(ID3D12Device* _this, ID3D12Re
     auto table = GetTable(_this);
     auto resource = GetTable(pResource);
 
-    // TODO: Implications on null RTVs
-    if (pResource) {
-        // Associated heap?
-        if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, DestDescriptor.ptr)) {
-            uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
-            ASSERT(offset % heap->stride == 0, "Invalid heap offset");
+    // Associated heap?
+    if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, DestDescriptor.ptr)) {
+        uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
+        ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
+        // Table wise offset
+        const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
+
+        // Null descriptors are handled separately
+        if (pResource) {
             // TODO: SRB masking
-            heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state, resource.state->virtualMapping);
+            heap->prmTable->WriteMapping(tableOffset, resource.state, resource.state->virtualMapping);
         } else {
-            ASSERT(false, "Failed to associate descriptor handle to heap");
+            heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
+    } else {
+        ASSERT(false, "Failed to associate descriptor handle to heap");
     }
 
     // Pass down callchain
@@ -307,18 +366,23 @@ void WINAPI HookID3D12DeviceCreateDepthStencilView(ID3D12Device* _this, ID3D12Re
     auto table = GetTable(_this);
     auto resource = GetTable(pResource);
 
-    // TODO: Implications on null DSVs
-    if (pResource) {
-        // Associated heap?
-        if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, DestDescriptor.ptr)) {
-            uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
-            ASSERT(offset % heap->stride == 0, "Invalid heap offset");
+    // Associated heap?
+    if (DescriptorHeapState* heap = table.state->cpuHeapTable.Find(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, DestDescriptor.ptr)) {
+        uint64_t offset = DestDescriptor.ptr - heap->cpuDescriptorBase.ptr;
+        ASSERT(offset % heap->stride == 0, "Invalid heap offset");
 
+        // Table wise offset
+        const uint32_t tableOffset = static_cast<uint32_t>(offset / heap->stride);
+
+        // Null descriptors are handled separately
+        if (pResource) {
             // TODO: SRB masking
-            heap->prmTable->WriteMapping(static_cast<uint32_t>(offset / heap->stride), resource.state, resource.state->virtualMapping);
+            heap->prmTable->WriteMapping(tableOffset, resource.state, resource.state->virtualMapping);
         } else {
-            ASSERT(false, "Failed to associate descriptor handle to heap");
+            heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
+    } else {
+        ASSERT(false, "Failed to associate descriptor handle to heap");
     }
 
     // Pass down callchain
@@ -529,4 +593,12 @@ ResourceState * DescriptorHeapState::GetStateFromHeapHandle(D3D12_CPU_DESCRIPTOR
 
 ResourceState * DescriptorHeapState::GetStateFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const {
     return prmTable->GetMappingState(GetOffsetFromHeapHandle(handle));
+}
+
+VirtualResourceMapping DescriptorHeapState::GetVirtualMappingFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {
+    return prmTable->GetMapping(GetOffsetFromHeapHandle(handle));
+}
+
+VirtualResourceMapping DescriptorHeapState::GetVirtualMappingFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const {
+    return prmTable->GetMapping(GetOffsetFromHeapHandle(handle));
 }
