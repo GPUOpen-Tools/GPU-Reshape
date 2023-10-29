@@ -50,7 +50,7 @@ The toolset additionally provides a set of building blocks needed for instrument
 - User programs, entirely user driven compute kernels written through the intermediate language. All persistent data visible.
 - User side command hooking, certain features may wish to modify state, invoke kernels, before the pending command.
 - Resource tokens, abstracting away differences in binding models by providing a token from shader resource handles. Each token provides a physical UID, resource type and sub-resource base.
-- (*, there's more, need to expand, and write documentation...)
+- Command scheduling, record and submit custom (abstracted) command buffers / lists.
 
 Features do not need to concern themselves with backend specifics, such as vectorized versus scalarized execution, control-flow requirements, and other implementation details. Given compliance, each feature
 will translate seamlessly to the backend language.
