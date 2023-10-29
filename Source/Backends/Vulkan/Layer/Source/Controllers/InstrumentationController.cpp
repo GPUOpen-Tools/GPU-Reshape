@@ -32,6 +32,7 @@
 #include <Backends/Vulkan/States/PipelineState.h>
 #include <Backends/Vulkan/CommandBuffer.h>
 #include <Backends/Vulkan/Symbolizer/ShaderSGUIDHost.h>
+#include <Backends/Vulkan/Compiler/Diagnostic/DiagnosticPrettyPrint.h>
 
 // Backend
 #include <Backend/IFeature.h>
@@ -752,8 +753,9 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
     auto* batch = static_cast<Batch*>(data);
     batch->stampBeginShaders = std::chrono::high_resolution_clock::now();
 
-    // Set stage
+    // Configure
     batch->stage = InstrumentationStage::Shaders;
+    batch->shaderCompilerDiagnostic.messages = &batch->messages;
 
     // Reset counters
     std::fill_n(batch->stageCounters, static_cast<uint32_t>(PipelineType::Count), 0u);
@@ -827,8 +829,9 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
     auto* batch = static_cast<Batch*>(data);
     batch->stampBeginPipelines = std::chrono::high_resolution_clock::now();
 
-    // Set stage
+    // Set configure
     batch->stage = InstrumentationStage::Pipelines;
+    batch->pipelineCompilerDiagnostic.messages = &batch->messages;
 
     // Reset counters
     std::fill_n(batch->stageCounters, static_cast<uint32_t>(PipelineType::Count), 0u);
@@ -986,30 +989,57 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
         }
     }
 
-    // Diagnostic
+    // Sync scope
+    {
+        std::lock_guard guard(mutex);
+        
+        // Diagnostic
 #if LOG_INSTRUMENTATION
-    // Get failure counts
-    const uint64_t failedShaders   = batch->shaderCompilerDiagnostic.failedJobs.load();
-    const uint64_t failedPipelines = batch->pipelineCompilerDiagnostic.failedJobs.load();
+        // Create diagnostic stream
+        MessageStream diagnosticStream;
+        {
+            // Shared buffer
+            std::stringstream stream;
 
-    // Log on failure
-    if (failedShaders || failedPipelines) {
-        table->parent->logBuffer.Add("Vulkan", LogSeverity::Error, Format(
-            "Instrumentation failed for {} shaders and {} pipelines",
-            failedShaders,
-            failedPipelines
-        ));
+            // Append view
+            MessageStreamView<CompilationDiagnosticMessage> view(diagnosticStream);
+
+            // Translate all messages
+            for (const DiagnosticMessage<DiagnosticType>& message : batch->messages) {
+                DiagnosticPrettyPrint(message, stream);
+                
+                // Create message
+                stream.seekg(0, std::ios_base::end);
+                auto&& diag = view.Add(CompilationDiagnosticMessage::AllocationInfo {
+                    .contentLength = static_cast<uint32_t>(stream.tellg())
+                });
+
+                // Copy contents
+                stream.seekg(0, std::ios_base::beg);
+                diag->content.Set(stream.view());
+                stream.str(std::string());
+            }
+        }
+
+        // Create final diagnostics message
+        auto message = MessageStreamView(commitStream).Add<InstrumentationDiagnosticMessage>(InstrumentationDiagnosticMessage::AllocationInfo {
+            .messagesByteSize = diagnosticStream.GetByteSize()
+        });
+
+        // Fill message
+        message->messages.Set(diagnosticStream);
+        message->passedShaders = static_cast<uint32_t>(batch->shaderCompilerDiagnostic.passedJobs.load());
+        message->failedShaders = static_cast<uint32_t>(batch->shaderCompilerDiagnostic.failedJobs.load());
+        message->passedPipelines = static_cast<uint32_t>(batch->pipelineCompilerDiagnostic.passedJobs.load());
+        message->failedPipelines = static_cast<uint32_t>(batch->pipelineCompilerDiagnostic.failedJobs.load());
+        message->millisecondsShaders = msShaders;
+        message->millisecondsPipelines = msPipelines;
+        message->millisecondsTotal = msTotal;
+#endif // LOG_INSTRUMENTATION
+
+        // Release the batch, bucket destructed after this call
+        compilationBatch = nullptr;
     }
-    
-    table->parent->logBuffer.Add("Vulkan", LogSeverity::Info, Format(
-        "Instrumented {} shaders ({} ms) and {} pipelines ({} ms), total {} ms",
-        batch->shaderCompilerDiagnostic.passedJobs.load(),
-        msShaders,
-        batch->pipelineCompilerDiagnostic.passedJobs.load(),
-        msPipelines,
-        msTotal
-    ));
-#endif
 
     // Release handles
     for (ReferenceObject* object : batch->dirtyObjects) {
@@ -1018,12 +1048,6 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Release batch
     destroy(batch, allocators);
-
-    // Release the batch, bucket destructed after this call
-    {
-        std::lock_guard guard(mutex);
-        compilationBatch = nullptr;
-    }
 
     // Mark as done
     compilationEvent.IncrementCounter();

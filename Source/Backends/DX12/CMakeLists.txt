@@ -341,6 +341,7 @@ add_library(
     Layer/Source/Compiler/ShaderCompilerDebug.cpp
     Layer/Source/Compiler/PipelineCompiler.cpp
     Layer/Source/Compiler/IDXModule.cpp
+    Layer/Source/Compiler/Diagnostic/DiagnosticPrettyPrint.cpp
     Layer/Source/Compiler/DXBC/DXBCModule.cpp
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockScan.cpp
     Layer/Source/Compiler/DXBC/DXBCPhysicalBlockTable.cpp

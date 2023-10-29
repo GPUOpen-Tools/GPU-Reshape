@@ -177,9 +177,6 @@ void VKAPI_PTR Hook_vkDestroyInstance(VkInstance instance, const VkAllocationCal
 }
 
 void BridgeInstanceSyncPoint(InstanceDispatchTable *table) {
-    // Commit all logging to bridge
-    table->logBuffer.Commit(table->bridge.GetUnsafe());
-
     // Commit bridge
     table->bridge->Commit();
 }

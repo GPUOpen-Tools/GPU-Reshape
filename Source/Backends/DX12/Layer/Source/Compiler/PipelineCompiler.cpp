@@ -27,6 +27,10 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
+#include <Backends/DX12/Compiler/Diagnostic/DiagnosticType.h>
+
+// Backend
+#include <Backend/Diagnostic/DiagnosticBucketScope.h>
 
 // Common
 #include <Common/Dispatcher/Dispatcher.h>
@@ -160,6 +164,9 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
         PipelineJob &job = batch.jobs[i];
         PipelineState *state = job.state;
 
+        // Diagnostic scope
+        DiagnosticBucketScope scope(batch.diagnostic->messages, job.state->uid);
+
         // State
         ASSERT(state->type == PipelineType::Graphics, "Unexpected pipeline type");
         auto graphicsState = static_cast<GraphicsPipelineState *>(state);
@@ -170,6 +177,8 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
         // Stream based?
         if (!graphicsState->deepCopy.valid) {
             if (!streamDevice) {
+                scope.Add(DiagnosticType::PipelineInternalError);
+                ++batch.diagnostic->failedJobs;
                 continue;
             }
 
@@ -187,6 +196,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->vs) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->vs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -199,6 +209,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->hs) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->hs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -211,6 +222,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->ds) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->ds->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -223,6 +235,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->gs) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->gs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -235,6 +248,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->ps) {
                 D3D12_SHADER_BYTECODE overwrite = graphicsState->ps->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!overwrite.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -251,6 +265,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             // Pass down callchain
             HRESULT hr = streamDevice->CreatePipelineState(&desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
             if (FAILED(hr)) {
+                scope.Add(DiagnosticType::PipelineCreationFailed);
                 ++batch.diagnostic->failedJobs;
                 continue;
             }
@@ -269,6 +284,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->vs) {
                 desc.VS = graphicsState->vs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.VS.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -278,6 +294,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->hs) {
                 desc.HS = graphicsState->hs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.HS.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -287,6 +304,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->ds) {
                 desc.DS = graphicsState->ds->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.DS.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -296,6 +314,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->gs) {
                 desc.GS = graphicsState->gs->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.GS.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -305,6 +324,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             if (graphicsState->ps) {
                 desc.PS = graphicsState->ps->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
                 if (!desc.PS.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
                     ++batch.diagnostic->failedJobs;
                     continue;
                 }
@@ -313,6 +333,7 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
             // Attempt to create pipeline
             HRESULT result = device->object->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipeline));
             if (FAILED(result)) {
+                scope.Add(DiagnosticType::PipelineCreationFailed);
                 ++batch.diagnostic->failedJobs;
                 continue;
             }
@@ -355,6 +376,9 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         PipelineJob &job = batch.jobs[i];
         PipelineState *state = job.state;
 
+        // Diagnostic scope
+        DiagnosticBucketScope scope(batch.diagnostic->messages, job.state->uid);
+
         // Destination pipeline
         ID3D12PipelineState* pipeline{nullptr};
 
@@ -365,6 +389,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         // Stream based?
         if (!computeState->deepCopy.valid) {
             if (!streamDevice) {
+                scope.Add(DiagnosticType::PipelineInternalError);
                 ++batch.diagnostic->failedJobs;
                 continue;
             }
@@ -387,6 +412,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
             // Pass down callchain
             HRESULT hr = streamDevice->CreatePipelineState(&desc, __uuidof(ID3D12PipelineState), reinterpret_cast<void **>(&pipeline));
             if (FAILED(hr)) {
+                scope.Add(DiagnosticType::PipelineCreationFailed);
                 ++batch.diagnostic->failedJobs;
                 continue;
             }
@@ -401,6 +427,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
             // Assign instrumented version
             desc.CS = computeState->cs->GetInstrument(job.shaderInstrumentationKeys[0]);
             if (!desc.CS.pShaderBytecode) {
+                scope.Add(DiagnosticType::PipelineMissingShaderKey);
                 ++batch.diagnostic->failedJobs;
                 continue;
             }
@@ -408,6 +435,7 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
             // Attempt to create pipeline
             HRESULT result = device->object->CreateComputePipelineState(&desc, IID_PPV_ARGS(&pipeline));
             if (FAILED(result)) {
+                scope.Add(DiagnosticType::PipelineCreationFailed);
                 ++batch.diagnostic->failedJobs;
                 continue;
             }

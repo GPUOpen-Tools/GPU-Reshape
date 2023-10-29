@@ -225,6 +225,7 @@ add_library(
     Layer/Source/Compiler/ShaderCompiler.cpp
     Layer/Source/Compiler/ShaderCompilerDebug.cpp
     Layer/Source/Compiler/PipelineCompiler.cpp
+    Layer/Source/Compiler/Diagnostic/DiagnosticPrettyPrint.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Controllers/FeatureController.cpp
     Layer/Source/Controllers/MetadataController.cpp

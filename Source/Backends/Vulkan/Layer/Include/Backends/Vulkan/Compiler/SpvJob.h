@@ -24,8 +24,13 @@
 
 #pragma once
 
+// Layer
 #include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
 #include <Backends/Vulkan/States/PipelineLayoutBindingInfo.h>
+#include <Backends/Vulkan/Compiler/Diagnostic/DiagnosticType.h>
+
+// Backend
+#include <Backend/Diagnostic/DiagnosticBucketScope.h>
 
 /// Job description
 struct SpvJob {
@@ -37,4 +42,7 @@ struct SpvJob {
 
     /// Sets up PRMT data for user descriptor mapping
     bool requiresUserDescriptorMapping{true};
+
+    /// Diagnostic
+    DiagnosticBucketScope<DiagnosticType, uint64_t> messages;
 };

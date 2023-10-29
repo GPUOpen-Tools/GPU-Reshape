@@ -24,6 +24,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Threading;
 using DynamicData;
@@ -32,6 +33,7 @@ using ReactiveUI;
 using Studio.Models.Logging;
 using Studio.Services;
 using Studio.ViewModels.Logging;
+using Studio.ViewModels.Reports;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
@@ -47,7 +49,8 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         private void OnConnectionChanged()
         {
-            // Register to logging messages
+            // Register to messages
+            ConnectionViewModel?.Bridge?.Register(this);
             ConnectionViewModel?.Bridge?.Register(LogMessage.ID, this);
 
             // Create all properties
@@ -84,30 +87,104 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsDynamic(LogMessage.ID))
+            List<LogEvent> events = new();
+
+            // If ordered, handle per message
+            if (streams.GetSchema().IsOrdered())
             {
-                return;
+                foreach (OrderedMessage message in new OrderedMessageView(streams))
+                {
+                    switch (message.ID)
+                    {
+                        case InstrumentationDiagnosticMessage.ID:
+                            Handle(message.Get<InstrumentationDiagnosticMessage>(), events);
+                            break;
+                    }
+                }
+            }
+            else
+            {
+                // Dynamic / static messages
+                switch (streams.GetSchema().id)
+                {
+                    case LogMessage.ID:
+                        Handle(new DynamicMessageView<LogMessage>(streams), events);
+                        break;
+                }  
             }
 
-            List<Tuple<LogSeverity, string>> messages = new();
-
-            // Enumerate all messages
-            foreach (LogMessage message in new DynamicMessageView<LogMessage>(streams))
+            // Nothing to append?
+            if (events.Count == 0)
             {
-                messages.Add(Tuple.Create((LogSeverity)message.severity, $"{ConnectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}"));
+                return;
             }
 
             // Append messages on UI thread
             Dispatcher.UIThread.InvokeAsync(() =>
             {
-                foreach (var message in messages)
+                foreach (LogEvent instance in events)
                 {
-                    _loggingViewModel?.Events.Add(new LogEvent()
-                    {
-                        Severity = message.Item1,
-                        Message = message.Item2
-                    });
+                    _loggingViewModel?.Events.Add(instance);
                 }
+            });
+        }
+
+        /// <summary>
+        /// Handle all logging messages
+        /// </summary>
+        public void Handle(DynamicMessageView<LogMessage> view, List<LogEvent> events)
+        {
+            // Enumerate all messages
+            foreach (LogMessage message in view)
+            {
+                events.Add(new LogEvent
+                {
+                    Severity = (LogSeverity)message.severity,
+                    Message = $"{ConnectionViewModel?.Application?.Name} - [{message.system.String}] {message.message.String}"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Handle an instrumentation report
+        /// </summary>
+        public void Handle(InstrumentationDiagnosticMessage message, List<LogEvent> events)
+        {
+            // Create bindable report
+            InstrumentationReportViewModel report = new()
+            {
+                PassedShaders = (int)message.passedShaders,
+                FailedShaders = (int)message.failedShaders,
+                PassedPipelines = (int)message.passedPipelines,
+                FailedPipelines = (int)message.failedPipelines,
+                TotalMilliseconds = (int)message.millisecondsTotal,
+                ShaderMilliseconds = (int)message.millisecondsShaders,
+                PipelineMilliseconds = (int)message.millisecondsPipelines
+            };
+
+            // Get all compiler messages
+            foreach (CompilationDiagnosticMessage compilerMessage in new DynamicMessageView<CompilationDiagnosticMessage>(message.messages.Stream))
+            {
+                report.Messages.Add(compilerMessage.content.String);
+            }
+            
+            // Any failed?
+            if (message.failedShaders + message.failedPipelines > 0)
+            {
+                events.Add(new LogEvent
+                {
+                    Severity = LogSeverity.Error,
+                    Message = $"Instrumentation failed for {message.failedShaders} shaders and {message.failedPipelines} pipelines",
+                    ViewModel = report
+                });
+            }
+            
+            // Report passed objects
+            events.Add(new LogEvent
+            {
+                Severity = LogSeverity.Info,
+                Message = $"Instrumented {message.passedShaders} shaders ({message.millisecondsShaders} ms) and {message.passedPipelines} pipelines ({message.millisecondsPipelines} ms), total {message.millisecondsTotal} ms",
+                ViewModel = report
             });
         }
 

@@ -1,0 +1,108 @@
+﻿<!--
+
+  The MIT License (MIT)
+  
+  Copyright (c) 2023 Miguel Petersen
+  Copyright (c) 2023 Advanced Micro Devices, Inc
+  Copyright (c) 2023 Fatalist Development AB
+  
+  Permission is hereby granted, free of charge, to any person obtaining a copy 
+  of this software and associated documentation files (the "Software"), to deal 
+  in the Software without restriction, including without limitation the rights 
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+  of the Software, and to permit persons to whom the Software is furnished to do so, 
+  subject to the following conditions:
+  
+  The above copyright notice and this permission notice shall be included in all 
+  copies or substantial portions of the Software.
+  
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
+  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+-->
+
+<Window x:Class="Studio.Views.Reports.InstrumentationReportWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:controls="clr-namespace:Studio.Views.Controls"
+        xmlns:reports="clr-namespace:Studio.ViewModels.Reports"
+        mc:Ignorable="d"
+        d:DesignWidth="550" d:DesignHeight="350"
+        Width="550" Height="350"
+        UseLayoutRounding="True" RenderOptions.BitmapInterpolationMode="HighQuality"
+        WindowState="Normal" WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="None"
+        Foreground="{DynamicResource DockThemeForegroundBrush}"
+        BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
+        FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        x:DataType="reports:InstrumentationReportViewModel">
+    <Grid>
+        <!-- Tool Header -->
+        <controls:WindowChrome Title="Instrumentation Report" Separator="True" />
+
+        <!-- Content -->
+        <Grid Margin="5,40,5,5" VerticalAlignment="Stretch">
+            <DockPanel LastChildFill="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <controls:SectionView DockPanel.Dock="Top" Title="Summary">
+                    <Grid ColumnDefinitions="100,*,100,*,100,*" HorizontalAlignment="Stretch">
+                        <StackPanel Orientation="Vertical" Grid.Column="0">
+                            <TextBlock Text="Passed Shaders" />
+                            <TextBlock Text="Passed Pipelines" />
+                            <TextBlock Text="Total Time (s)" />
+                        </StackPanel>
+                        <StackPanel Orientation="Vertical" Grid.Column="1">
+                            <TextBlock Text="{Binding PassedShaders, FallbackValue=0}" />
+                            <TextBlock Text="{Binding PassedPipelines, FallbackValue=0}" />
+                            <TextBlock Text="{Binding TotalSeconds, FallbackValue=0}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Vertical" Grid.Column="2">
+                            <TextBlock Text="Failed Shaders" />
+                            <TextBlock Text="Failed Pipelines" />
+                        </StackPanel>
+                        <StackPanel Orientation="Vertical" Grid.Column="3">
+                            <TextBlock Text="{Binding FailedShaders, FallbackValue=0}" />
+                            <TextBlock Text="{Binding FailedPipelines, FallbackValue=0}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Vertical" Grid.Column="4">
+                            <TextBlock Text="Compile Time (s)" />
+                            <TextBlock Text="Compile Time (s)" />
+                        </StackPanel>
+                        <StackPanel Orientation="Vertical" Grid.Column="5">
+                            <TextBlock Text="{Binding ShaderSeconds, FallbackValue=0}" />
+                            <TextBlock Text="{Binding PipelineSeconds, FallbackValue=0}" />
+                        </StackPanel>
+                    </Grid>
+                </controls:SectionView>
+                <controls:SectionView DockPanel.Dock="Bottom" Title="Backend Diagnostic">
+                    <Grid>
+                        <ListBox Items="{Binding Messages}" />
+
+                        <StackPanel 
+                            IsVisible="{Binding !Messages.Count}"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                            <PathIcon
+                                Data="{StaticResource InfoHollow}"
+                                VerticalAlignment="Center"
+                                Margin="0 0 0 0"
+                                Width="10" />
+                            <TextBlock
+                                Margin="5 0 0 0"
+                                Foreground="{StaticResource InfoMediumForeground}"
+                                VerticalAlignment="Center"
+                                Text=" No diagnostic messages" />
+                        </StackPanel>
+                    </Grid>
+                </controls:SectionView>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</Window>

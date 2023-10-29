@@ -51,6 +51,9 @@ namespace Studio.Services
             AddDerived(typeof(ViewModels.PipelineFilterViewModel), typeof(Views.PipelineFilter));
             AddDerived(typeof(ViewModels.DialogViewModel), typeof(Views.DialogWindow));
             
+            // Report types
+            AddDerived(typeof(ViewModels.Reports.InstrumentationReportViewModel), typeof(Views.Reports.InstrumentationReportWindow));
+            
             // Object types
             AddDerived(typeof(ViewModels.Workspace.Objects.MissingDetailViewModel), typeof(Views.Workspace.Objects.MissingDetailView));
             AddDerived(typeof(ViewModels.Workspace.Objects.ResourceValidationDetailViewModel), typeof(Views.Workspace.Objects.ResourceValidationDetailView));

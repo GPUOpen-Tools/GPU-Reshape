@@ -22,23 +22,29 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-namespace Studio.Models.Logging
+using System;
+using System.Globalization;
+using Avalonia.Controls;
+using Avalonia.Data.Converters;
+
+namespace Studio.ValueConverters
 {
-    public class LogEvent
+    public class NullabilityVisibilityConverter : IValueConverter
     {
         /// <summary>
-        /// Severity of this event
+        /// Convert the value
         /// </summary>
-        public LogSeverity Severity { get; set; }
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            return value != null;
+        }
 
         /// <summary>
-        /// Message of this event
+        /// Convert the value back
         /// </summary>
-        public string Message { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Optional, view model associated with this event
-        /// </summary>
-        public object? ViewModel { get; set; }
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

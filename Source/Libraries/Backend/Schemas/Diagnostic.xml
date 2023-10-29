@@ -40,6 +40,24 @@
         </field>
     </message>
 
+    <message name="CompilationDiagnostic">
+        <field name="content" type="string"/>
+    </message>
+    
+    <message name="InstrumentationDiagnostic">
+        <field name="messages" type="stream"/>
+        
+        <field name="passedShaders" type="uint32"/>
+        <field name="failedShaders" type="uint32"/>
+        
+        <field name="passedPipelines" type="uint32"/>
+        <field name="failedPipelines" type="uint32"/>
+        
+        <field name="millisecondsTotal" type="uint32"/>
+        <field name="millisecondsShaders" type="uint32"/>
+        <field name="millisecondsPipelines" type="uint32"/>
+    </message>
+
     <message name="PresentDiagnostic">
         <field name="intervalMS" type="float"/>
     </message>

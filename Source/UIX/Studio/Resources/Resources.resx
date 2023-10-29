@@ -140,4 +140,7 @@ Do you consent to this?</value>
     <data name="Instrumentation_Stage_Pipelines" xml:space="preserve">
         <value>Compiling {0} pipelines...</value>
     </data>
+    <data name="Log_Report_Tooltip" xml:space="preserve">
+        <value>Open attached report</value>
+    </data>
 </root>

@@ -22,23 +22,19 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-namespace Studio.Models.Logging
-{
-    public class LogEvent
-    {
-        /// <summary>
-        /// Severity of this event
-        /// </summary>
-        public LogSeverity Severity { get; set; }
+using Avalonia;
+using Avalonia.ReactiveUI;
 
-        /// <summary>
-        /// Message of this event
-        /// </summary>
-        public string Message { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Optional, view model associated with this event
-        /// </summary>
-        public object? ViewModel { get; set; }
+namespace Studio.Views.Reports
+{
+    public partial class InstrumentationReportWindow : ReactiveWindow<ViewModels.ConnectViewModel>
+    {
+        public InstrumentationReportWindow()
+        {
+            InitializeComponent();
+#if DEBUG
+            this.AttachDevTools();
+#endif
+        }
     }
 }

@@ -27,7 +27,7 @@
 // Layer
 #include <Backends/Vulkan/States/PipelineState.h>
 #include <Backends/Vulkan/States/ShaderModuleInstrumentationKey.h>
-#include <Backends/Vulkan/Compiler/PipelineCompilerDiagnostic.h>
+#include <Backends/Vulkan/Compiler/Diagnostic/PipelineCompilerDiagnostic.h>
 
 // Common
 #include <Common/IComponent.h>

@@ -663,14 +663,14 @@ void GlobalDeviceDetour::Uninstall() {
 }
 
 void BridgeDeviceSyncPoint(DeviceState *device) {
+    // Commit all logging to bridge
+    device->logBuffer.Commit(device->bridge.GetUnsafe());
+    
     // Commit controllers
     device->featureController->Commit();
     device->instrumentationController->Commit();
     device->metadataController->Commit();
     device->versioningController->Commit();
-
-    // Commit all logging to bridge
-    device->logBuffer.Commit(device->bridge.GetUnsafe());
 
     // Commit bridge
     device->bridge->Commit();

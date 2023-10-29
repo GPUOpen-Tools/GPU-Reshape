@@ -29,8 +29,9 @@
 #include <Backends/Vulkan/Controllers/IController.h>
 #include <Backends/Vulkan/Controllers/InstrumentationStage.h>
 #include <Backends/Vulkan/States/PipelineType.h>
-#include <Backends/Vulkan/Compiler/ShaderCompilerDiagnostic.h>
-#include <Backends/Vulkan/Compiler/PipelineCompilerDiagnostic.h>
+#include <Backends/Vulkan/Compiler/Diagnostic/ShaderCompilerDiagnostic.h>
+#include <Backends/Vulkan/Compiler/Diagnostic/PipelineCompilerDiagnostic.h>
+#include <Backends/Vulkan/Compiler/Diagnostic/DiagnosticType.h>
 
 // Common
 #include <Common/Dispatcher/EventCounter.h>
@@ -194,6 +195,9 @@ private:
         /// Compiler diagnostics
         ShaderCompilerDiagnostic shaderCompilerDiagnostic;
         PipelineCompilerDiagnostic pipelineCompilerDiagnostic;
+
+        /// All diagnostic messages
+        DiagnosticBucket<DiagnosticType> messages;
 
         /// Stamps
         std::chrono::high_resolution_clock::time_point stampBegin;

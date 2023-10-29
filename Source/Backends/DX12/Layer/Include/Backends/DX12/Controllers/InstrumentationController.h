@@ -30,8 +30,9 @@
 #include <Backends/DX12/Controllers/InstrumentationStage.h>
 #include <Backends/DX12/InstrumentationInfo.h>
 #include <Backends/DX12/States/PipelineType.h>
-#include <Backends/DX12/Compiler/ShaderCompilerDiagnostic.h>
-#include <Backends/DX12/Compiler/PipelineCompilerDiagnostic.h>
+#include <Backends/DX12/Compiler/Diagnostic/ShaderCompilerDiagnostic.h>
+#include <Backends/DX12/Compiler/Diagnostic/PipelineCompilerDiagnostic.h>
+#include <Backends/DX12/Compiler/Diagnostic/DiagnosticType.h>
 
 // Message
 #include <Message/MessageStream.h>
@@ -205,6 +206,9 @@ private:
         ShaderCompilerDiagnostic shaderCompilerDiagnostic;
         PipelineCompilerDiagnostic pipelineCompilerDiagnostic;
 
+        /// All diagnostic messages
+        DiagnosticBucket<DiagnosticType> messages;
+        
         /// All pending entries
         Vector<CommitEntry> commitEntries;
 

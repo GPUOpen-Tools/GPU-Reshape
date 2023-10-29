@@ -27,7 +27,7 @@
 // Layer
 #include <Backends/DX12/States/PipelineState.h>
 #include <Backends/DX12/States/ShaderInstrumentationKey.h>
-#include <Backends/DX12/Compiler/PipelineCompilerDiagnostic.h>
+#include <Backends/DX12/Compiler/Diagnostic/PipelineCompilerDiagnostic.h>
 
 // Common
 #include <Common/IComponent.h>

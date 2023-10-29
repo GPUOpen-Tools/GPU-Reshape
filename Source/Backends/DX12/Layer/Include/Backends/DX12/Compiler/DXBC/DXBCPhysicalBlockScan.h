@@ -51,7 +51,7 @@ public:
 
     /// Stitch the resulting stream
     /// \param out
-    void Stitch(const DXCompileJob& job, DXStream& out, bool sign);
+    bool Stitch(const DXCompileJob& job, DXStream& out, bool sign);
 
     /// Copy to a new table
     /// \param out the destination table

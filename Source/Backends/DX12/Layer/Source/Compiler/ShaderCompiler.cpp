@@ -35,12 +35,14 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCConverter.h>
 #include <Backends/DX12/Compiler/Tags.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
+#include <Backends/DX12/Compiler/Diagnostic/DiagnosticType.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
 #include <Backend/IFeature.h>
 #include <Backend/IShaderFeature.h>
 #include <Backend/IShaderExportHost.h>
+#include <Backend/Diagnostic/DiagnosticBucketScope.h>
 
 // Common
 #include <Common/Dispatcher/Dispatcher.h>
@@ -152,8 +154,12 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     std::lock_guard guard(mutex);
 #endif
 
+    // Diagnostic scope
+    DiagnosticBucketScope scope(job.diagnostic->messages, job.state->uid);
+
     // Initialize module
     if (!InitializeModule(job.state)) {
+        scope.Add(DiagnosticType::ShaderUnknownHeader, *static_cast<const uint32_t *>(job.state->byteCode.pShaderBytecode));
         ++job.diagnostic->failedJobs;
         return;
     }
@@ -195,6 +201,7 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
     compileJob.streamCount = exportCount;
     compileJob.dxilSigner = dxilSigner;
     compileJob.dxbcSigner = dxbcSigner;
+    compileJob.messages = scope;
 
     // Instrumented data
     DXStream stream(allocators);

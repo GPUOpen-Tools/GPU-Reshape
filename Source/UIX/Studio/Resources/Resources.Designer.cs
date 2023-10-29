@@ -230,6 +230,15 @@ namespace Studio.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Open attached report.
+        /// </summary>
+        public static string Log_Report_Tooltip {
+            get {
+                return ResourceManager.GetString("Log_Report_Tooltip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Scroll to the bottom with new logging entries.
         /// </summary>
         public static string Log_ScrollToBottom_Tooltip {

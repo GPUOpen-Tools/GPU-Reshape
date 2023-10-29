@@ -28,6 +28,7 @@
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Export/ShaderExportDescriptorAllocator.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
+#include <Backends/Vulkan/Compiler/Diagnostic/DiagnosticType.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
@@ -35,6 +36,7 @@
 #include <Backend/IShaderFeature.h>
 #include <Backend/IShaderExportHost.h>
 #include <Backend/IL/PrettyPrint.h>
+#include <Backend/Diagnostic/DiagnosticBucketScope.h>
 
 // Common
 #include "Common/Dispatcher/Dispatcher.h"
@@ -145,8 +147,12 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     job.state->createInfoDeepCopy.createInfo.codeSize = debugBinary.size();
 #endif
 
+    // Diagnostic scope
+    DiagnosticBucketScope scope(job.info.diagnostic->messages, job.info.state->uid);
+
     // Ensure state is initialized
     if (!InitializeModule(job.info.state)) {
+        scope.Add(DiagnosticType::ShaderParsingFailed);
         ++job.info.diagnostic->failedJobs;
         return;
     }
@@ -192,6 +198,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     SpvJob spvJob;
     spvJob.instrumentationKey = job.info.instrumentationKey;
     spvJob.bindingInfo = shaderExportDescriptorAllocator->GetBindingInfo();
+    spvJob.messages = scope;
 
     // Recompile the program
     if (!module->Recompile(
@@ -199,6 +206,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
         static_cast<uint32_t>(job.info.state->createInfoDeepCopy.createInfo.codeSize / 4u),
         spvJob
     )) {
+        scope.Add(DiagnosticType::ShaderInternalCompilerError);
         ++job.info.diagnostic->failedJobs;
         return;
     }

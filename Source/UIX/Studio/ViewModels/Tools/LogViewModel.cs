@@ -65,6 +65,11 @@ namespace Studio.ViewModels.Tools
         public ICommand ToggleError { get; }
 
         /// <summary>
+        /// Toggle the error state
+        /// </summary>
+        public ICommand Open { get; }
+
+        /// <summary>
         /// Should info messages be shown
         /// </summary>
         public bool IsShowInfo
@@ -122,6 +127,7 @@ namespace Studio.ViewModels.Tools
             ToggleInfo = ReactiveCommand.Create(OnToggleInfo);
             ToggleWarning = ReactiveCommand.Create(OnToggleWarning);
             ToggleError = ReactiveCommand.Create(OnToggleError);
+            Open = ReactiveCommand.Create<LogEvent>(OnOpen);
 
             // Create initial filter
             CreateFilter();
@@ -188,6 +194,24 @@ namespace Studio.ViewModels.Tools
         {
             _isShowError = !_isShowError;
             CreateFilter();
+        }
+
+        /// <summary>
+        /// Invoked on view model handling
+        /// </summary>
+        private void OnOpen(LogEvent instance)
+        {
+            // Must have valid view model
+            if (instance.ViewModel == null)
+            {
+                return;
+            }
+            
+            // Open from derived
+            if (App.Locator.GetService<IWindowService>() is { } service)
+            {
+                service.OpenFor(instance.ViewModel);
+            }
         }
 
         /// <summary>

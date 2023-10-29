@@ -192,6 +192,10 @@
         <DependentUpon>WindowChrome.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\Reports\InstrumentationReportWindow.axaml.cs">
+        <DependentUpon>ConnectWindow.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">
@@ -227,8 +231,6 @@
     </ItemGroup>
     <ItemGroup>
       <Folder Include="ViewModels\Data\" />
-      <Folder Include="ViewModels\Instrumentation" />
-      <Folder Include="Views\Themes" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\Runtime\Runtime.csproj" />

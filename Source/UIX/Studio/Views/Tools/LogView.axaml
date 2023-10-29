@@ -41,6 +41,7 @@
     <UserControl.Resources>
         <ResourceDictionary>
             <valueConverters:LogSeverityToIconConverter x:Key="LogSeverityToIconConverter" />
+            <valueConverters:NullabilityVisibilityConverter x:Key="NullabilityVisibilityConverter" />
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -104,10 +105,29 @@
                 <DataTemplate DataType="logging:LogEvent">
                     <Grid ColumnDefinitions="25,*">
                         <PathIcon 
-                            Data="{Binding Severity, Converter={StaticResource LogSeverityToIconConverter}}" 
-                            Foreground="{Binding Severity, Converter={StaticResource LogSeverityToIconConverter}}" 
+                            Data="{Binding Severity, Converter={StaticResource LogSeverityToIconConverter}}"
+                            Foreground="{Binding Severity, Converter={StaticResource LogSeverityToIconConverter}}"
                             Width="10" />
-                        <TextBlock Grid.Column="1" Text="{Binding Message}" VerticalAlignment="Center" Height="20" Padding="0 2" />
+                        <StackPanel Orientation="Horizontal" Grid.Column="1">
+                            <TextBlock Text="{Binding Message}" VerticalAlignment="Center" Height="20" Padding="0 2" />
+                            <Separator 
+                                IsVisible="{Binding ViewModel, Converter={StaticResource NullabilityVisibilityConverter}}"
+                                Margin="10 0 0 0" 
+                                Height="10"
+                                Width="1"
+                                Background="{StaticResource BorderColorHigh}"/>
+                            <Button 
+                                ToolTip.Tip="{x:Static r:Resources.Log_Report_Tooltip}"
+                                IsVisible="{Binding ViewModel, Converter={StaticResource NullabilityVisibilityConverter}}"
+                                Classes="Icon"
+                                Margin="5 0 0 0"
+                                Width="20"
+                                Height="22"
+                                Command="{Binding $parent[ListBox].((vm:LogViewModel)DataContext).Open}"
+                                CommandParameter="{Binding}">
+                                <PathIcon Data="{StaticResource OpenInApp}" Width="10" />
+                            </Button>
+                        </StackPanel>
                     </Grid>
                 </DataTemplate>
             </ListBox.DataTemplates>

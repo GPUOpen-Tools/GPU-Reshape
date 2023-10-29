@@ -26,7 +26,7 @@
 
 // Layer
 #include <Backends/Vulkan/States/ShaderModuleState.h>
-#include <Backends/Vulkan/Compiler/ShaderCompilerDiagnostic.h>
+#include <Backends/Vulkan/Compiler/Diagnostic/ShaderCompilerDiagnostic.h>
 
 // Backend
 #include <Backend/ShaderData/ShaderDataInfo.h>

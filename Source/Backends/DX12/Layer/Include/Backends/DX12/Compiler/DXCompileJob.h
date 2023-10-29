@@ -26,6 +26,10 @@
 
 // Layer
 #include <Backends/DX12/States/ShaderInstrumentationKey.h>
+#include <Backends/DX12/Compiler/Diagnostic/DiagnosticType.h>
+
+// Backend
+#include <Backend/Diagnostic/DiagnosticBucketScope.h>
 
 // Common
 #include <Common/ComRef.h>
@@ -45,6 +49,9 @@ struct DXCompileJob {
     /// Signers
     ComRef<DXILSigner> dxilSigner;
     ComRef<DXBCSigner> dxbcSigner;
+
+    /// Diagnostic
+    DiagnosticBucketScope<DiagnosticType, uint64_t> messages;
 
     /// Compatability states
     struct {

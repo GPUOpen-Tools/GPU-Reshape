@@ -24,6 +24,12 @@
 
 #pragma once
 
+// Layer
+#include "DiagnosticType.h"
+
+// Backend
+#include <Backend/Diagnostic/DiagnosticBucket.h>
+
 // Std
 #include <atomic>
 
@@ -43,6 +49,9 @@ struct ShaderCompilerDiagnostic {
     uint64_t GetRemainingJobs() const {
         return totalJobs - (passedJobs + failedJobs);
     }
+
+    /// All messages
+    DiagnosticBucket<DiagnosticType>* messages{nullptr};
 
     /// Total number of failed jobs
     std::atomic<uint64_t> failedJobs{0};

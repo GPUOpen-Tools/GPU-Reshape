@@ -26,7 +26,7 @@
 
 // Layer
 #include <Backends/DX12/States/ShaderState.h>
-#include <Backends/DX12/Compiler/ShaderCompilerDiagnostic.h>
+#include <Backends/DX12/Compiler/Diagnostic/ShaderCompilerDiagnostic.h>
 
 // Backend
 #include <Backend/ShaderData/ShaderDataInfo.h>

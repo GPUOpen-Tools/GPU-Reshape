@@ -26,6 +26,7 @@
 #include <Backends/DX12/Compiler/DXParseJob.h>
 #include <Backends/DX12/Compiler/Tags.h>
 #include <Backends/DX12/Compiler/DXCompileJob.h>
+#include <Backends/DX12/Compiler/Diagnostic/DiagnosticType.h>
 
 // DXIL Extension
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
@@ -107,10 +108,12 @@ bool DXBCPhysicalBlockTable::Compile(const DXCompileJob &job) {
 
         // Attempt to compile contained module
         if (!dxilModule->Compile(dxilJob, block->stream)) {
+            job.messages.Add(DiagnosticType::ShaderInternalCompilerError);
             return false;
         }
     } else {
         // non-DXIL DXBC recompilation is not supported yet
+        job.messages.Add(DiagnosticType::ShaderNativeDXBCNotSupported);
         return false;
     }
 
@@ -125,8 +128,8 @@ bool DXBCPhysicalBlockTable::Compile(const DXCompileJob &job) {
     return true;
 }
 
-void DXBCPhysicalBlockTable::Stitch(const DXCompileJob& job, DXStream &out, bool sign) {
-    scan.Stitch(job, out, sign);
+bool DXBCPhysicalBlockTable::Stitch(const DXCompileJob& job, DXStream &out, bool sign) {
+    return scan.Stitch(job, out, sign);
 }
 
 void DXBCPhysicalBlockTable::CopyTo(DXBCPhysicalBlockTable &out) {

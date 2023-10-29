@@ -29,6 +29,7 @@
 #include <Backends/DX12/Compiler/DXStream.h>
 #include <Backends/DX12/Compiler/DXCompileJob.h>
 #include <Backends/DX12/Config.h>
+#include <Backends/DX12/Compiler/Diagnostic/DiagnosticType.h>
 
 // Special includes
 #if DXBC_DUMP_STREAM
@@ -137,7 +138,7 @@ bool DXBCPhysicalBlockScan::Scan(const void* byteCode, uint64_t byteLength) {
     return true;
 }
 
-void DXBCPhysicalBlockScan::Stitch(const DXCompileJob& job, DXStream &out, bool sign) {
+bool DXBCPhysicalBlockScan::Stitch(const DXCompileJob& job, DXStream &out, bool sign) {
     // Write header out
     uint64_t headerOffset = out.Append(header);
 
@@ -207,17 +208,31 @@ void DXBCPhysicalBlockScan::Stitch(const DXCompileJob& job, DXStream &out, bool 
 
     // No signing?
     if (!sign) {
-        return;
+        return true;
     }
 
     // Finally, sign the resulting byte-code using the official signers
+    bool result;
     if (GetPhysicalBlock(DXBCPhysicalBlockType::DXIL)) {
-        bool result = job.dxilSigner->Sign(out.GetMutableDataAt(headerOffset), byteLength);
-        ASSERT(result, "Failed to sign DXIL");
+        result = job.dxilSigner->Sign(out.GetMutableDataAt(headerOffset), byteLength);
+
+        // Failed?
+        if (!result) {
+            job.messages.Add(DiagnosticType::ShaderDXILSigningFailed);
+            ASSERT(false, "Failed to sign DXIL");
+        }
     } else {
-        bool result = job.dxbcSigner->Sign(out.GetMutableDataAt(headerOffset), byteLength);
-        ASSERT(result, "Failed to sign DXBC");
+        result = job.dxbcSigner->Sign(out.GetMutableDataAt(headerOffset), byteLength);
+
+        // Failed?
+        if (!result) {
+            job.messages.Add(DiagnosticType::ShaderDXBCSigningFailed);
+            ASSERT(false, "Failed to sign DXBC");
+        }
     }
+
+    // OK
+    return result;
 }
 
 void DXBCPhysicalBlockScan::CopyTo(DXBCPhysicalBlockScan& out) {

@@ -30,6 +30,7 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCConverter.h>
 #include <Backends/DX12/Layer.h>
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
+#include <Backends/DX12/Compiler/DXCompileJob.h>
 
 // Common
 #include <Common/FileSystem.h>
@@ -152,7 +153,9 @@ bool DXBCModule::Compile(const DXCompileJob& job, DXStream& out) {
     }
 
     // Stitch to the program
-    table.Stitch(job, out, sign);
+    if (!table.Stitch(job, out, sign)) {
+        return false;
+    }
 
     // OK!
     return true;

@@ -25,9 +25,13 @@
 #include <Backends/Vulkan/Compiler/PipelineCompiler.h>
 #include <Backends/Vulkan/States/ShaderModuleState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Compiler/Diagnostic/DiagnosticType.h>
+
+// Backend
+#include <Backend/Diagnostic/DiagnosticBucketScope.h>
 
 // Common
-#include "Common/Dispatcher/Dispatcher.h"
+#include <Common/Dispatcher/Dispatcher.h>
 #include <Common/Registry.h>
 
 PipelineCompiler::PipelineCompiler(DeviceDispatchTable *table) : table(table) {
@@ -155,6 +159,9 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
         PipelineJob &job = batch.jobs[i];
         PipelineState *state = job.state;
 
+        // Diagnostic scope
+        DiagnosticBucketScope scope(batch.diagnostic->messages, job.state->uid);
+
         // Copy the deep creation info
         //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
         ASSERT(state->type == PipelineType::Graphics, "Unexpected pipeline type");
@@ -166,6 +173,11 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
 
             std::memcpy(&stageInfos[shaderIndex], &createInfos[i].pStages[shaderIndex], sizeof(VkPipelineShaderStageCreateInfo));
             stageInfos[shaderIndex].module = shaderState->GetInstrument(job.shaderModuleInstrumentationKeys[shaderIndex]);
+
+            // Validate
+            if (!stageInfos[shaderIndex].module) {
+                scope.Add(DiagnosticType::PipelineMissingShaderKey);
+            }
         }
 
         // Set new stage info
@@ -192,6 +204,11 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
     // TODO: Pipeline cache?
     VkResult result = batch.table->next_vkCreateGraphicsPipelines(batch.table->object, nullptr, batch.count, createInfos, nullptr, pipelines);
     if (result != VK_SUCCESS) {
+        // Add diagnostics for all failed pipelines
+        for (uint32_t i = 0; i < batch.count; i++) {
+            batch.diagnostic->messages->Add(DiagnosticType::PipelineCreationFailed, batch.jobs[i].state->uid);
+        }
+        
         batch.diagnostic->failedJobs += batch.count;
         return;
     }
@@ -227,6 +244,9 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
         PipelineJob &job = batch.jobs[i];
         PipelineState *state = job.state;
 
+        // Diagnostic scope
+        DiagnosticBucketScope scope(batch.diagnostic->messages, job.state->uid);
+
         // Copy the deep creation info
         //  This is safe, as the change is done on the copy itself, the original deep copy is untouched
         ASSERT(state->type == PipelineType::Compute, "Unexpected pipeline type");
@@ -238,7 +258,12 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
 
         // Assign instrumented version
         createInfos[i].stage.module = shaderState->GetInstrument(job.shaderModuleInstrumentationKeys[0]);
-        ASSERT(createInfos[i].stage.module, "Invalid module");
+
+        // Validate
+        if (!createInfos[i].stage.module) {
+            ASSERT(false, "Invalid module");
+            scope.Add(DiagnosticType::PipelineMissingShaderKey);
+        }
     }
 
     // Created pipelines
@@ -247,6 +272,11 @@ void PipelineCompiler::CompileCompute(const PipelineJobBatch &batch) {
     // TODO: Pipeline cache?
     VkResult result = batch.table->next_vkCreateComputePipelines(batch.table->object, nullptr, batch.count, createInfos, nullptr, pipelines);
     if (result != VK_SUCCESS) {
+        // Add diagnostics for all failed pipelines
+        for (uint32_t i = 0; i < batch.count; i++) {
+            batch.diagnostic->messages->Add(DiagnosticType::PipelineCreationFailed, batch.jobs[i].state->uid);
+        }
+        
         batch.diagnostic->failedJobs += batch.count;
         return;
     }
