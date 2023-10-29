@@ -91,7 +91,15 @@
         </StackPanel>
         
         <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" HorizontalAlignment="Left">
-            <ToggleButton ToolTip.Tip="{x:Static r:Resources.Log_ScrollToBottom_Tooltip}" Classes="Icon" IsChecked="{Binding IsScrollLock}" BorderThickness="0" Width="20" Height="22">
+            <ToggleButton 
+                ToolTip.Tip="{x:Static r:Resources.Log_ScrollToBottom_Tooltip}" 
+                Margin="2 0 0 2"
+                Classes="Icon" 
+                IsChecked="{Binding !IsScrollLock}" 
+                BorderThickness="0"
+                CornerRadius="2.5"
+                Width="20"
+                Height="20">
                 <PathIcon Data="{StaticResource ArrowDown}" Width="12" />
             </ToggleButton>
         </StackPanel>
