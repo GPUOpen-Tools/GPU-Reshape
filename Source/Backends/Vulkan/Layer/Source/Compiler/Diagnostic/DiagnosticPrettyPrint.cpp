@@ -41,6 +41,9 @@ void DiagnosticPrettyPrint(const DiagnosticMessage<DiagnosticType> &message, std
         case DiagnosticType::ShaderInternalCompilerError:
             out << "Shader " << view.Get<uint64_t>() << " - Internal compiler error";
             break;
+        case DiagnosticType::ShaderCreationFailed:
+            out << "Shader " << view.Get<uint64_t>() << " - Driver creation failed";
+            break;
         case DiagnosticType::PipelineMissingShaderKey:
             out << "Pipeline " << view.Get<uint64_t>() << " - Missing shader stage key";
             break;

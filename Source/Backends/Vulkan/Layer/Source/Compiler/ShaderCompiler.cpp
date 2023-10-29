@@ -237,6 +237,7 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     // Attempt to compile the program
     VkResult result = job.table->next_vkCreateShaderModule(job.table->object, &createInfo, nullptr, &instrument);
     if (result != VK_SUCCESS) {
+        scope.Add(DiagnosticType::ShaderCreationFailed);
         ++job.info.diagnostic->failedJobs;
         return;
     }

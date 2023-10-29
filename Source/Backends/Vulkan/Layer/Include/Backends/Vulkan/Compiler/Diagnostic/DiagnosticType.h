@@ -30,6 +30,7 @@ enum class DiagnosticType {
     /** Shader diagnostics */
     ShaderParsingFailed,
     ShaderInternalCompilerError,
+    ShaderCreationFailed,
 
     /** Pipeline diagnostics */
     PipelineMissingShaderKey,
