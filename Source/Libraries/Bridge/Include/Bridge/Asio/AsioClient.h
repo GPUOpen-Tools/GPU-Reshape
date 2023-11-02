@@ -64,6 +64,13 @@ public:
         asyncConnectedDelegate = delegate;
     }
 
+    /// Write synchronous
+    /// \param data data to be sent, lifetime bound to this call
+    /// \param size byte count of data
+    void WriteSync(const void *data, uint64_t size) {
+        connection.WriteSync(data, size);
+    }
+
     /// Write async
     /// \param data data to be sent, lifetime bound to this call
     /// \param size byte count of data

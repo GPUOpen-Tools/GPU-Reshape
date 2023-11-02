@@ -46,6 +46,7 @@ using AsioHostClientToken = GlobalUID;
 enum class AsioHeaderType {
     None,
     HostClientResolverAllocate,
+    HostClientResolverDeallocate,
     HostClientResolverUpdate,
     HostClientResolverAllocateResponse,
     HostResolverClientRequest,
@@ -62,6 +63,8 @@ inline const char* ToString(AsioHeaderType type) {
             return "None";
         case AsioHeaderType::HostClientResolverAllocate:
             return "AsioHostClientResolverAllocate";
+        case AsioHeaderType::HostClientResolverDeallocate:
+            return "AsioHostClientResolverDeallocate";
         case AsioHeaderType::HostClientResolverUpdate:
             return "AsioHostClientResolverUpdate";
         case AsioHeaderType::HostClientResolverAllocateResponse:
@@ -135,6 +138,14 @@ struct ALIGN_PACK AsioHostClientResolverAllocate : public TAsioHeader<AsioHostCl
 
         AsioHostClientToken token{};
     };
+};
+
+/// Host resolver to host client request
+struct ALIGN_PACK AsioHostClientResolverDeallocate : public TAsioHeader<AsioHostClientResolverDeallocate> {
+    static constexpr auto kType = AsioHeaderType::HostClientResolverDeallocate;
+
+    /// Token to be deallocated
+    AsioHostClientToken token{};
 };
 
 /// Host resolver to host client request

@@ -110,6 +110,9 @@ protected:
             case AsioHostClientResolverAllocate::kType:
                 OnAllocateRequest(handler, static_cast<const AsioHostClientResolverAllocate*>(header));
                 break;
+            case AsioHostClientResolverDeallocate::kType:
+                OnDeallocateRequest(handler, static_cast<const AsioHostClientResolverDeallocate*>(header));
+                break;
             case AsioHostClientResolverUpdate::kType:
                 OnAllocateUpdate(handler, static_cast<const AsioHostClientResolverUpdate*>(header));
                 break;
@@ -174,6 +177,26 @@ protected:
         AsioHostClientResolverAllocate::Response response;
         response.token = info.token;
         handler.WriteAsync(&response, sizeof(response));
+    }
+
+    /// Invoked on allocate requests
+    /// \param handler responsible handler
+    /// \param request the inbound request
+    void OnDeallocateRequest(AsioSocketHandler& handler, const AsioHostClientResolverDeallocate* request) {
+        std::lock_guard guard(mutex);
+
+        // Find the handler
+        auto it = std::find_if(clients.begin(), clients.end(), [request](const ClientInfo& candidate) {
+            return candidate.token == request->token;
+        });
+        
+        // Ignore if not found
+        if (it == clients.end()) {
+            return;
+        }
+
+        // Remove client, let the socket drop as needed
+        clients.erase(it);
     }
 
     /// Invoked on allocate requests

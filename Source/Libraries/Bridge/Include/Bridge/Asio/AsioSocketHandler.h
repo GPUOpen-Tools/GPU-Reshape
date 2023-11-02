@@ -86,6 +86,18 @@ public:
         socket.close();
     }
 
+    /// Write synchronous
+    /// \param data data to be sent, lifetime bound to this call
+    /// \param size byte count of data
+    bool WriteSync(const void *data, uint64_t size) {
+        try {
+            asio::write(socket, asio::buffer(data, size));
+            return true;
+        } catch (const asio::system_error&) {
+            return false;
+        }
+    }
+
     /// Write async
     /// \param data data to be sent, lifetime bound to this call
     /// \param size byte count of data

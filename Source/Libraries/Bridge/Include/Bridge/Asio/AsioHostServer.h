@@ -72,9 +72,16 @@ struct AsioHostServer {
 
     /// Stop the server
     void Stop() {
+        // Deallocate the token if valid
+        if (token.IsValid()) {
+            DeallocateTokenSync();
+        }
+    
+        // Stop resolver
         resolveClient.Stop();
         resolveClientRunner.Stop();
 
+        // Stop instantiated server if present
         if (server) {
             server->Stop();
             serverRunner.Stop();
@@ -110,6 +117,13 @@ protected:
         allocate.info = info;
         allocate.reservedToken = reservedToken;
         resolveClient.WriteAsync(&allocate, sizeof(allocate));
+    }
+    
+    /// Deallocate the token
+    void DeallocateTokenSync() {
+        AsioHostClientResolverDeallocate deallocate;
+        deallocate.token = token;
+        resolveClient.WriteSync(&deallocate, sizeof(deallocate));
     }
 
 protected:
