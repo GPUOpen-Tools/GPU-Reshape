@@ -73,6 +73,7 @@ Games
 - **Forspoken** (Square Enix, DX12)
 - **The Riftbreaker** (EXOR Studios, DX12)
 - **Starfield** (Bethesda Game Studios, DX12)
+- **Cyberpunk 2077** (CD PROJEKT RED, DX12)
 
 Engines
 - **Unreal Engine 4** (Epic Games, DX12, Vulkan)
