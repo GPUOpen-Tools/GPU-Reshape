@@ -245,6 +245,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                             break;
                     }
 
+                    // Manually specified offset?
+                    if (range.OffsetInDescriptorsFromTableStart != D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND) {
+                        // Assume offset, next append will start from this value
+                        descriptorOffset = range.OffsetInDescriptorsFromTableStart;
+                    }
+
                     // Account for unbounded ranges
                     if (range.NumDescriptors == UINT_MAX) {
                         // Create at space[base + idx]
@@ -253,9 +259,6 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                         user.offset = descriptorOffset;
                         user.isUnbounded = true;
                         WriteRootMapping(mapping, classType, parameter.ShaderVisibility, range.RegisterSpace, range.BaseShaderRegister, user);
-
-                        // Next!
-                        ASSERT(rangeIdx + 1 == parameter.DescriptorTable.NumDescriptorRanges, "Unbounded range must be last slot");
                     } else {
                         // Create a mapping per internal register
                         for (uint32_t registerIdx = 0; registerIdx < range.NumDescriptors; registerIdx++) {
@@ -265,10 +268,10 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                             user.offset = descriptorOffset + registerIdx;
                             WriteRootMapping(mapping, classType, parameter.ShaderVisibility, range.RegisterSpace, range.BaseShaderRegister + registerIdx, user);
                         }
-
-                        // Next!
-                        descriptorOffset += range.NumDescriptors;
                     }
+
+                    // Next! Proceeding range may ignore it, in which case it's overwritten
+                    descriptorOffset += range.NumDescriptors;
                 }
 
                 break;
