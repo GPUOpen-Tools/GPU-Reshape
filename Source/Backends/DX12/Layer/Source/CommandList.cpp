@@ -239,10 +239,8 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
                 state->activeTypes |= PipelineType::Compute;
                 break;
             case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS:
-                ASSERT(false, "Raytracing is not supported yet");
-                break;
             case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH:
-                ASSERT(false, "Mesh shaders are not supported yet");
+                // No active types as there's no instrumentation yet
                 break;
         }
     }
