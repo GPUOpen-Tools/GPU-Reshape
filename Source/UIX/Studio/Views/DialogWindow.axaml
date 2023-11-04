@@ -39,9 +39,10 @@
         Foreground="{DynamicResource DockThemeForegroundBrush}"
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
+        Icon="/Resources/Icons/Icon_Frame.ico"
+        Title="{Binding Title}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
-        Title="DialogView"
         CanResize="False"
         >
     <StackPanel Margin="5 5 5 5" Orientation="Vertical">

@@ -47,6 +47,8 @@
         Foreground="{DynamicResource DockThemeForegroundBrush}"
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
+        Icon="/Resources/Icons/Icon_Frame.ico"
+        Title="Launch Application"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
         x:DataType="viewModels:LaunchViewModel">

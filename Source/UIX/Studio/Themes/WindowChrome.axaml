@@ -60,7 +60,8 @@
                             <TextBlock 
                                 FontSize="13"
                                 Margin="11,1,0,0"
-                                Text="{TemplateBinding Title}"/>
+                                Text="{TemplateBinding Title}"
+                                IsHitTestVisible="False"/>
                         </StackPanel>
                         
                         <Separator
