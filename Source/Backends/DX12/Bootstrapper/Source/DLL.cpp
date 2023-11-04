@@ -39,6 +39,7 @@
 #include <dxgi1_6.h>
 #include <Psapi.h>
 #include <intrin.h>
+#include <winternl.h>
 
 // Std
 #include <cstring>
@@ -92,30 +93,38 @@ SYMBOL(DXGIModuleName, "dxgi.dll");
 SYMBOL(AMDAGSModuleName, "amd_ags_x64.dll");
 SYMBOL(LayerModuleName, "GRS.Backends.DX12.Layer.dll");
 SYMBOL(Kernel32ModuleName, "kernel32.dll");
+SYMBOL(KernelBaseModuleName, "KernelBase.dll");
+SYMBOL(NtDLLModuleName, "ntdll.dll");
 SYMBOL(IHVAMDXC64ModuleName, "amdxc64.dll");
 
 /// Function types
-using PFN_GET_PROC_ADDRESS         = FARPROC (WINAPI*)(HMODULE hModule, LPCSTR lpProcName);
-using PFN_LOAD_LIBRARY_A           = HMODULE (WINAPI*)(LPCSTR lpLibFileName);
-using PFN_LOAD_LIBRARY_W           = HMODULE (WINAPI*)(LPCWSTR lpLibFileName);
-using PFN_LOAD_LIBRARY_EX_A        = HMODULE (WINAPI*)(LPCSTR lpLibFileName, HANDLE, DWORD);
-using PFN_LOAD_LIBRARY_EX_W        = HMODULE (WINAPI*)(LPCWSTR lpLibFileName, HANDLE, DWORD);
-using PFN_CREATE_PROCESS_A         = BOOL (WINAPI*)(LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
-using PFN_CREATE_PROCESS_W         = BOOL (WINAPI*)(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
-using PFN_CREATE_PROCESS_AS_USER_A = BOOL (WINAPI*)(HANDLE hToken, LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
-using PFN_CREATE_PROCESS_AS_USER_W = BOOL (WINAPI*)(HANDLE hToken, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+using PFN_GET_PROC_ADDRESS             = FARPROC (WINAPI*)(HMODULE hModule, LPCSTR lpProcName);
+using PFN_GET_PROC_ADDRESS_FOR_CALLER  = FARPROC (WINAPI*)(HMODULE hModule, LPCSTR lpProcName, LPVOID lpCaller);
+using PFN_LOAD_LIBRARY_A               = HMODULE (WINAPI*)(LPCSTR lpLibFileName);
+using PFN_LOAD_LIBRARY_W               = HMODULE (WINAPI*)(LPCWSTR lpLibFileName);
+using PFN_LOAD_LIBRARY_EX_A            = HMODULE (WINAPI*)(LPCSTR lpLibFileName, HANDLE, DWORD);
+using PFN_LOAD_LIBRARY_EX_W            = HMODULE (WINAPI*)(LPCWSTR lpLibFileName, HANDLE, DWORD);
+using PFN_CREATE_PROCESS_A             = BOOL (WINAPI*)(LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+using PFN_CREATE_PROCESS_W             = BOOL (WINAPI*)(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+using PFN_CREATE_PROCESS_AS_USER_A     = BOOL (WINAPI*)(HANDLE hToken, LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+using PFN_CREATE_PROCESS_AS_USER_W     = BOOL (WINAPI*)(HANDLE hToken, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+using PFN_NT_QUERY_INFORMATION_PROCESS = NTSTATUS (NTAPI*)(HANDLE hProcess, PROCESSINFOCLASS processInformationClass, PVOID pProcessInformation, ULONG processInformationLength, PULONG returnLength);
 
 /// Next
-PFN_GET_PROC_ADDRESS         Kernel32GetProcAddressOriginal;
-PFN_LOAD_LIBRARY_A           Kernel32LoadLibraryAOriginal;
-PFN_LOAD_LIBRARY_W           Kernel32LoadLibraryWOriginal;
-PFN_LOAD_LIBRARY_EX_A        Kernel32LoadLibraryExAOriginal;
-PFN_LOAD_LIBRARY_EX_W        Kernel32LoadLibraryExWOriginal;
-PFN_CREATE_PROCESS_A         Kernel32CreateProcessAOriginal;
-PFN_CREATE_PROCESS_W         Kernel32CreateProcessWOriginal;
-PFN_CREATE_PROCESS_AS_USER_A Kernel32CreateProcessAsUserAOriginal;
-PFN_CREATE_PROCESS_AS_USER_W Kernel32CreateProcessAsUserWOriginal;
-D3D12GPUOpenFunctionTable    DetourFunctionTable;
+PFN_GET_PROC_ADDRESS            KernelXGetProcAddressOriginal;
+PFN_GET_PROC_ADDRESS_FOR_CALLER KernelXGetProcAddressForCallerOriginal;
+PFN_LOAD_LIBRARY_A              KernelXLoadLibraryAOriginal;
+PFN_LOAD_LIBRARY_W              KernelXLoadLibraryWOriginal;
+PFN_LOAD_LIBRARY_EX_A           KernelXLoadLibraryExAOriginal;
+PFN_LOAD_LIBRARY_EX_W           KernelXLoadLibraryExWOriginal;
+PFN_CREATE_PROCESS_A            KernelXCreateProcessAOriginal;
+PFN_CREATE_PROCESS_W            KernelXCreateProcessWOriginal;
+PFN_CREATE_PROCESS_AS_USER_A    KernelXCreateProcessAsUserAOriginal;
+PFN_CREATE_PROCESS_AS_USER_W    KernelXCreateProcessAsUserWOriginal;
+D3D12GPUOpenFunctionTable       DetourFunctionTable;
+
+/// Special functions
+PFN_NT_QUERY_INFORMATION_PROCESS NtDLLQueryInformationProcess;
 
 /// Module lock-free acquisition states
 uint32_t AMDAGSGuard{0u};
@@ -137,10 +146,10 @@ struct DetourSection {
 };
 
 /// Detour sections
-DetourSection Kernel32CreateProcessASection;
-DetourSection Kernel32CreateProcessWSection;
-DetourSection Kernel32CreateProcessAsUserASection;
-DetourSection Kernel32CreateProcessAsUserWSection;
+DetourSection KernelXCreateProcessASection;
+DetourSection KernelXCreateProcessWSection;
+DetourSection KernelXCreateProcessAsUserASection;
+DetourSection KernelXCreateProcessAsUserWSection;
 
 /// Bootstrapper path, relative to the current module
 static std::string BootstrapperPathX64 = (GetCurrentModuleDirectory() / "GRS.Backends.DX12.BootstrapperX64.dll").string();
@@ -176,8 +185,11 @@ HMODULE IHVAMDXC64Module;
 /// Special module ranges
 MODULEINFO IHVAMDXC64ModuleInfo{};
 
-/// Kernel32 module
-HMODULE Kernel32Module{nullptr};
+/// Kernel module, either KernelBase.dll or Kernel32.dll
+HMODULE KernelXModule{nullptr};
+
+/// NtDLL module, guaranteed to be present by linker
+HMODULE NtDLLModule;
 
 /// Layer function table
 D3D12GPUOpenFunctionTable LayerFunctionTable;
@@ -299,6 +311,11 @@ DetourSection DetourAttachProtect(void** ppPointer, void* pDetour) {
 }
 
 void CommitDetourSection(DetourSection& section) {
+    // Ignore if the section is invalid, may be caused by rejected hooks
+    if (!section.jmpBlockAddr) {
+        return;
+    }
+    
     // Set the operand count
 #if defined(_WIN64) || defined(_WIN32)
     section.operandCount = 5;
@@ -322,7 +339,7 @@ bool BootstrapCheckLibrary(HMODULE& handle, const wchar_t* name, bool native) {
     if (native) {
         handle = LoadLibraryExW(name, nullptr, 0x0);
     } else {
-        handle = Kernel32LoadLibraryExWOriginal(name, nullptr, 0x0);
+        handle = KernelXLoadLibraryExWOriginal(name, nullptr, 0x0);
     }
 
     // Check
@@ -336,7 +353,7 @@ void CommitFunctionTable() {
     }
 
     // Set function table in layer
-    auto* gpaSetFunctionTable = reinterpret_cast<PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN>(Kernel32GetProcAddressOriginal(LayerModule, "D3D12SetFunctionTableGPUOpen"));
+    auto* gpaSetFunctionTable = reinterpret_cast<PFN_D3D12_SET_FUNCTION_TABLE_GPUOPEN>(KernelXGetProcAddressOriginal(LayerModule, "D3D12SetFunctionTableGPUOpen"));
     if (!gpaSetFunctionTable || FAILED(gpaSetFunctionTable(&DetourFunctionTable))) {
 #if ENABLE_LOGGING
         LogContext{} << "Failed to set layer function table\n";
@@ -451,7 +468,14 @@ void BootstrapLayer(const char* invoker) {
     std::filesystem::path sessionPath = sessionDir / sessionName;
 
     // Copy current bootstrapper
-    std::filesystem::copy(path, sessionPath);
+    std::error_code errorCode;
+    std::filesystem::copy(path, sessionPath, errorCode);
+
+    // This may fail due to a number of reasons, such as sand-boxing APIs
+    if (errorCode) {
+        // Just fall back to the top bootstrapper
+        sessionPath = path;
+    }
 #else // USE_BOOTSTRAP_SESSIONS
     // No copy
     std::filesystem::path sessionPath = path;
@@ -461,7 +485,7 @@ void BootstrapLayer(const char* invoker) {
     ModuleSnapshot snapshot = GetModuleSnapshot();
     
     // User attempting to load instrumentable object, warranting bootstrapping of the layer
-    LayerModule = Kernel32LoadLibraryExWOriginal(sessionPath.wstring().c_str(), nullptr, 0x0);
+    LayerModule = KernelXLoadLibraryExWOriginal(sessionPath.wstring().c_str(), nullptr, 0x0);
 
     // Query embedded hooks
     DetourForeignModules(snapshot);
@@ -469,11 +493,11 @@ void BootstrapLayer(const char* invoker) {
     // Fetch function table
     if (LayerModule) {
         // Get hook points
-        LayerFunctionTable.next_D3D12CreateDeviceOriginal  = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice"));
-        LayerFunctionTable.next_CreateDXGIFactoryOriginal  = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(Kernel32GetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory"));
-        LayerFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(Kernel32GetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory1"));
-        LayerFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(Kernel32GetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory2"));
-        LayerFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(Kernel32GetProcAddressOriginal(LayerModule, "HookD3D12EnableExperimentalFeatures"));
+        LayerFunctionTable.next_D3D12CreateDeviceOriginal  = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice"));
+        LayerFunctionTable.next_CreateDXGIFactoryOriginal  = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory"));
+        LayerFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory1"));
+        LayerFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory2"));
+        LayerFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(KernelXGetProcAddressOriginal(LayerModule, "HookD3D12EnableExperimentalFeatures"));
         LayerFunctionTable.next_AMDAGSCreateDevice         = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(GetProcAddress(LayerModule, "HookAMDAGSCreateDevice"));
         LayerFunctionTable.next_AMDAGSDestroyDevice        = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(GetProcAddress(LayerModule, "HookAMDAGSDestroyDevice"));
         LayerFunctionTable.next_AMDAGSPushMarker           = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(GetProcAddress(LayerModule, "HookAMDAGSPushMarker"));
@@ -481,7 +505,7 @@ void BootstrapLayer(const char* invoker) {
         LayerFunctionTable.next_AMDAGSSetMarker            = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(GetProcAddress(LayerModule, "HookAMDAGSSetMarker"));
 
         // Wrappers
-        LayerFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(LayerModule, "HookD3D11On12CreateDevice"));
+        LayerFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(LayerModule, "HookD3D11On12CreateDevice"));
 
         // Initial commit
         CommitFunctionTable();
@@ -529,35 +553,35 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
             // DXGI query?
             if (hModule == DXGIModule) {
                 if (!std::strcmp(lpProcName, "CreateDXGIFactory")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory");
                 } else if (!std::strcmp(lpProcName, "CreateDXGIFactory1")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory1");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory1");
                 } else if (!std::strcmp(lpProcName, "CreateDXGIFactory2")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory2");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory2");
                 }
             }
 
             // D3D12 query?
             else if (LayerModule == D3D12Module) {
                 if (!std::strcmp(lpProcName, "D3D12CreateDevice")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice");
                 } else if (!std::strcmp(lpProcName, "D3D12EnableExperimentalFeatures")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookD3D12EnableExperimentalFeatures");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookD3D12EnableExperimentalFeatures");
                 }
             }
 
             // AGS query?
             else if (LayerModule == AMDAGSModule) {
                 if (!std::strcmp(lpProcName, "agsDriverExtensionsDX12_CreateDevice")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookAMDAGSCreateDevice");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookAMDAGSCreateDevice");
                 } else if (!std::strcmp(lpProcName, "agsDriverExtensionsDX12_DestroyDevice")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookAMDAGSDestroyDevice");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookAMDAGSDestroyDevice");
                 } else if (!std::strcmp(lpProcName, "agsDriverExtensionsDX12_PushMarker")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookAMDAGSPushMarker");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookAMDAGSPushMarker");
                 } else if (!std::strcmp(lpProcName, "agsDriverExtensionsDX12_PopMarker")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookAMDAGSPopMarker");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookAMDAGSPopMarker");
                 } else if (!std::strcmp(lpProcName, "agsDriverExtensionsDX12_SetMarker")) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookAMDAGSSetMarker");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookAMDAGSSetMarker");
                 }
             }
         } else {
@@ -571,7 +595,7 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
             // D3D12 query?
             if (hModule == D3D12Module) {
                 if (ordinalIndex == static_cast<uint32_t>(D3D12Ordinals::D3D12CreateDevice)) {
-                    return Kernel32GetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice");
+                    return KernelXGetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice");
                 }
             }
         }
@@ -579,7 +603,19 @@ FARPROC WINAPI HookGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
 #endif // 0
 
     // Pass down callchain
-    return Kernel32GetProcAddressOriginal(hModule, lpProcName);
+    return KernelXGetProcAddressOriginal(hModule, lpProcName);
+}
+
+FARPROC WINAPI HookGetProcAddressForCaller(HMODULE hModule, LPCSTR lpProcName, LPVOID* lpCaller) {
+    // Special name
+    if (HIWORD(lpProcName) && !std::strcmp(lpProcName, "D3D12GetGPUOpenBootstrapperInfo")) {
+        return reinterpret_cast<FARPROC>(&D3D12GetGPUOpenBootstrapperInfo);
+    }
+
+    /** Note: Ordinals exempt, see above function for details. */
+    
+    // Pass down callchain
+    return KernelXGetProcAddressForCallerOriginal(hModule, lpProcName, lpCaller);
 }
 
 bool IsServiceActive() {
@@ -643,6 +679,124 @@ bool GetBootstrapperForArch(HANDLE process, const char** out) {
     return true;
 }
 
+IMAGE_NT_HEADERS32 ReadRemoteNTHeaders(HANDLE hProcess) {
+    static constexpr uint32_t kBaseModuleOffset = 0x10;
+
+    // Sanity check
+    if (!NtDLLQueryInformationProcess) {
+        return {};
+    }
+
+    // Get the process information to retrieve the PEB base
+    PROCESS_BASIC_INFORMATION processBasicInfo{};
+    if (DWORD ignore{0}; NT_ERROR(NtDLLQueryInformationProcess(hProcess, ProcessBasicInformation, &processBasicInfo, sizeof(PROCESS_BASIC_INFORMATION), &ignore))) {
+        return {};
+    }
+
+    // Invalid base?
+    if (!processBasicInfo.PebBaseAddress) {
+        return {};
+    }
+
+    // Address of base module from PEB
+    size_t baseModuleAddress = reinterpret_cast<size_t>(processBasicInfo.PebBaseAddress) + kBaseModuleOffset;
+
+    // Get the base image starting address
+    size_t baseImageAddress{0u};
+    if(!ReadProcessMemory(hProcess, reinterpret_cast<LPCVOID>(baseModuleAddress), &baseImageAddress, sizeof(LPVOID), nullptr)) {
+        return {};
+    }
+
+    // Interpret the base image address as a DOS header
+    IMAGE_DOS_HEADER dosHeader;
+    if(!ReadProcessMemory(hProcess, reinterpret_cast<LPCVOID>(baseImageAddress), &dosHeader, sizeof(dosHeader), nullptr)) {
+        return {};
+    }
+
+    // Validate DOS header
+    if (dosHeader.e_magic != IMAGE_DOS_SIGNATURE || dosHeader.e_lfanew < sizeof(IMAGE_DOS_HEADER)) {
+        return {};
+    }
+
+    // Read the NT header, assume 32 bit (works for both 64 and 32 bit for the members we care about)
+    IMAGE_NT_HEADERS32 ntHeader32{};
+    if (!ReadProcessMemory(hProcess, reinterpret_cast<LPCVOID>(baseImageAddress + dosHeader.e_lfanew), &ntHeader32, sizeof(ntHeader32), nullptr)) {
+        return {};
+    }
+
+    // Validate NT header
+    if (ntHeader32.Signature != IMAGE_NT_SIGNATURE) {
+        return {};
+    }
+
+    // OK!
+    return ntHeader32;
+}
+
+bool IsImageForcedIntegrity(HANDLE hProcess) {
+    // Get the headers
+    IMAGE_NT_HEADERS32 ntHeaders = ReadRemoteNTHeaders(hProcess);
+
+    // If the image has forced integrity checks, do not bootstrap
+    //   The modified module import table will fail the check
+    return ntHeaders.OptionalHeader.DllCharacteristics & IMAGE_DLLCHARACTERISTICS_FORCE_INTEGRITY;
+}
+
+struct _PROC_THREAD_ATTRIBUTE_LIST_ATTRIBUTE {
+    DWORD_PTR Attribute;
+    SIZE_T Size;
+    LPVOID Payload;
+};
+ 
+struct _PROC_THREAD_ATTRIBUTE_LIST {
+    DWORD Mask;
+    DWORD Capacity;
+    DWORD Count;
+    DWORD Pad;
+    DWORD_PTR Reserved;
+    _PROC_THREAD_ATTRIBUTE_LIST_ATTRIBUTE Attributes[1u];
+};
+
+bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
+    // Do not bootstrap if the service isn't running
+    if (!IsServiceActive()) {
+        return false;
+    }
+
+    // Has extended startup information?
+    if (creationFlags & EXTENDED_STARTUPINFO_PRESENT) {
+        auto extendedInfo = reinterpret_cast<LPSTARTUPINFOEX>(startupInfo);
+
+        // Check all attributes
+        for (ULONG i = 0; i < extendedInfo->lpAttributeList->Count; i++) {
+            const _PROC_THREAD_ATTRIBUTE_LIST_ATTRIBUTE& entry = extendedInfo->lpAttributeList->Attributes[i];
+            
+            // Do not bootstrap AppContainer processes
+            if (entry.Attribute == PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES) {
+                return false;
+            }
+
+            // Mitigation may conflict
+            if (entry.Attribute == PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY) {
+                auto* policyPayloads = static_cast<const uint64_t*>(entry.Payload);
+
+                // Policy1
+                if (entry.Size >= sizeof(uint64_t)) {
+                    // - Disabled remote loading will cause the image to be rejected
+                    // - Microsoft sign checks will cause the image to be rejected
+                    if ((policyPayloads[0] & PROCESS_CREATION_MITIGATION_POLICY_IMAGE_LOAD_NO_REMOTE_ALWAYS_ON) ||
+                        (policyPayloads[0] & PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON)) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    // OK
+    return true;
+}
+
 BOOL BootstrapSuspendedProcessA(PROCESS_INFORMATION* lpProcessInformation, DWORD dwCreationFlags, bool owner) {
     const char* dlls[] = { nullptr };
     
@@ -662,9 +816,10 @@ BOOL BootstrapSuspendedProcessA(PROCESS_INFORMATION* lpProcessInformation, DWORD
     LogContext{} << "\t" << dlls[0] << "\n";
 #endif // ENABLE_LOGGING
 
-    // Try to bootstrap
-    if (!DetourUpdateProcessWithDll(lpProcessInformation->hProcess, dlls, 1u) &&
-        !DetourProcessViaHelperDllsA(lpProcessInformation->dwProcessId, 1u, dlls, Kernel32CreateProcessAOriginal)) {
+    // Try to bootstrap, check that the image has no forced integrity validation
+    if (!IsImageForcedIntegrity(lpProcessInformation->hProcess) &&
+        !DetourUpdateProcessWithDll(lpProcessInformation->hProcess, dlls, 1u) &&
+        !DetourProcessViaHelperDllsA(lpProcessInformation->dwProcessId, 1u, dlls, KernelXCreateProcessAOriginal)) {
         // Critical failure! Kill the process
         TerminateProcess(lpProcessInformation->hProcess, ~0u);
     
@@ -710,9 +865,10 @@ BOOL BootstrapSuspendedProcessW(PROCESS_INFORMATION* lpProcessInformation, DWORD
     LogContext{} << "\t" << dlls[0] << "\n";
 #endif // ENABLE_LOGGING
 
-    // Try to bootstrap
-    if (!DetourUpdateProcessWithDll(lpProcessInformation->hProcess, dlls, 1u) &&
-        !DetourProcessViaHelperDllsW(lpProcessInformation->dwProcessId, 1u, dlls, Kernel32CreateProcessWOriginal)) {
+    // Try to bootstrap, check that the image has no forced integrity validation
+    if (!IsImageForcedIntegrity(lpProcessInformation->hProcess) &&
+        !DetourUpdateProcessWithDll(lpProcessInformation->hProcess, dlls, 1u) &&
+        !DetourProcessViaHelperDllsW(lpProcessInformation->dwProcessId, 1u, dlls, KernelXCreateProcessWOriginal)) {
 #if ENABLE_LOGGING
         LogContext{} << "\tInjection failed, terminating!\n";
 #endif // ENABLE_LOGGING
@@ -755,14 +911,14 @@ BOOL WINAPI HookCreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine, LP
     PROCESS_INFORMATION processInfo{};
 
     // Detour jump trap guard
-    DetourJmpSectionTrapGuard guard(Kernel32CreateProcessASection);
+    DetourJmpSectionTrapGuard guard(KernelXCreateProcessASection);
     
 #if ENABLE_LOGGING
     LogContext{} << "HookCreateProcessA-Detour\n\t'" << (lpApplicationName ? lpApplicationName : "<no-app>") << "'\n\t'" << (lpCommandLine ? lpCommandLine : "<no-app>") << "'\n";
 #endif // ENABLE_LOGGING
 
     // Should we bootstrap the process?
-    bool bootstrapProcess = IsServiceActive();
+    bool bootstrapProcess = ShouldBootstrapProcess(dwCreationFlags, lpStartupInfo);
 
     // Creation flags
     DWORD creationFlags = dwCreationFlags;
@@ -776,7 +932,7 @@ BOOL WINAPI HookCreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine, LP
     }
     
     // Start process suspended
-    if (!Kernel32CreateProcessAOriginal(
+    if (!KernelXCreateProcessAOriginal(
         lpApplicationName,
         lpCommandLine,
         lpProcessAttributes,
@@ -807,7 +963,7 @@ BOOL WINAPI HookCreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, 
     PROCESS_INFORMATION processInfo{};
 
     // Detour jump trap guard
-    DetourJmpSectionTrapGuard guard(Kernel32CreateProcessWSection);
+    DetourJmpSectionTrapGuard guard(KernelXCreateProcessWSection);
     
 #if ENABLE_LOGGING
     LogContext{} << "HookCreateProcessW-Detour\n\t'"
@@ -818,7 +974,7 @@ BOOL WINAPI HookCreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, 
 #endif // ENABLE_LOGGING
 
     // Should we bootstrap the process?
-    bool bootstrapProcess = IsServiceActive();
+    bool bootstrapProcess = ShouldBootstrapProcess(dwCreationFlags, lpStartupInfo);
 
     // Creation flags
     DWORD creationFlags = dwCreationFlags;
@@ -832,7 +988,7 @@ BOOL WINAPI HookCreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, 
     }
 
     // Start process suspended
-    if (!Kernel32CreateProcessWOriginal(
+    if (!KernelXCreateProcessWOriginal(
         lpApplicationName,
         lpCommandLine,
         lpProcessAttributes,
@@ -863,14 +1019,14 @@ BOOL WINAPI HookCreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LP
     PROCESS_INFORMATION processInfo{};
 
     // Detour jump trap guard
-    DetourJmpSectionTrapGuard guard(Kernel32CreateProcessAsUserASection);
+    DetourJmpSectionTrapGuard guard(KernelXCreateProcessAsUserASection);
     
 #if ENABLE_LOGGING
     LogContext{} << "HookCreateProcessAsUserA-Detour\n\t'" << (lpApplicationName ? lpApplicationName : "<no-app>") << "'\n\t'" << (lpCommandLine ? lpCommandLine : "<no-app>") << "'\n";
 #endif // ENABLE_LOGGING
 
     // Should we bootstrap the process?
-    bool bootstrapProcess = IsServiceActive();
+    bool bootstrapProcess = ShouldBootstrapProcess(dwCreationFlags, lpStartupInfo);
 
     // Creation flags
     DWORD creationFlags = dwCreationFlags;
@@ -884,7 +1040,7 @@ BOOL WINAPI HookCreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LP
     }
     
     // Start process suspended
-    if (!Kernel32CreateProcessAsUserAOriginal(
+    if (!KernelXCreateProcessAsUserAOriginal(
         hToken,
         lpApplicationName,
         lpCommandLine,
@@ -916,14 +1072,14 @@ BOOL WINAPI HookCreateProcessAsUserW(HANDLE hToken, LPCWSTR lpApplicationName, L
     PROCESS_INFORMATION processInfo{};
 
     // Detour jump trap guard
-    DetourJmpSectionTrapGuard guard(Kernel32CreateProcessAsUserWSection);
+    DetourJmpSectionTrapGuard guard(KernelXCreateProcessAsUserWSection);
     
 #if ENABLE_LOGGING
     LogContext{} << "HookCreateProcessAsUserW-Detour\n\t'" << (lpApplicationName ? lpApplicationName : L"<no-app>") << "'\n\t'" << (lpCommandLine ? lpCommandLine : L"<no-app>") << "'\n";
 #endif // ENABLE_LOGGING
 
     // Should we bootstrap the process?
-    bool bootstrapProcess = IsServiceActive();
+    bool bootstrapProcess = ShouldBootstrapProcess(dwCreationFlags, lpStartupInfo);
 
     // Creation flags
     DWORD creationFlags = dwCreationFlags;
@@ -937,7 +1093,7 @@ BOOL WINAPI HookCreateProcessAsUserW(HANDLE hToken, LPCWSTR lpApplicationName, L
     }
     
     // Start process suspended
-    if (!Kernel32CreateProcessAsUserWOriginal(
+    if (!KernelXCreateProcessAsUserWOriginal(
         hToken,
         lpApplicationName,
         lpCommandLine,
@@ -993,25 +1149,25 @@ bool TryLoadEmbeddedModules(HMODULE handle) {
 #endif // ENABLE_LOGGING
     
     // Is AGS?
-    if (Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr && InterlockedCompareExchange(&AMDAGSGuard, 1u, 0u) == 0u) {
+    if (KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice") != nullptr && InterlockedCompareExchange(&AMDAGSGuard, 1u, 0u) == 0u) {
         DetourAMDAGSModule(handle, false);
         any = true;
     }
 
     // Is D3D12?
-    if (!std::strcmp(baseName, kD3D12ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D12CreateDevice") != nullptr && InterlockedCompareExchange(&D3D12Guard, 1u, 0u) == 0u) {
+    if (!std::strcmp(baseName, kD3D12ModuleName) && KernelXGetProcAddressOriginal(handle, "D3D12CreateDevice") != nullptr && InterlockedCompareExchange(&D3D12Guard, 1u, 0u) == 0u) {
         DetourD3D12Module(handle, false);
         any = true;
     }
 
     // Is DXGI?
-    if (!std::strcmp(baseName, kDXGIModuleName) && Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory") != nullptr && InterlockedCompareExchange(&DXGIGuard, 1u, 0u) == 0u) {
+    if (!std::strcmp(baseName, kDXGIModuleName) && KernelXGetProcAddressOriginal(handle, "CreateDXGIFactory") != nullptr && InterlockedCompareExchange(&DXGIGuard, 1u, 0u) == 0u) {
         DetourDXGIModule(handle, false);
         any = true;
     }
 
     // Is D3D11?
-    if (!std::strcmp(baseName, kD3D11ModuleName) && Kernel32GetProcAddressOriginal(handle, "D3D11On12CreateDevice") != nullptr && InterlockedCompareExchange(&D3D11Guard, 1u, 0u) == 0u) {
+    if (!std::strcmp(baseName, kD3D11ModuleName) && KernelXGetProcAddressOriginal(handle, "D3D11On12CreateDevice") != nullptr && InterlockedCompareExchange(&D3D11Guard, 1u, 0u) == 0u) {
         DetourD3D11Module(handle, false);
         any = true;
     }
@@ -1089,7 +1245,7 @@ HMODULE WINAPI HookLoadLibraryA(LPCSTR lpLibFileName) {
     ModuleSnapshot snapshot = GetModuleSnapshot();
     
     // Pass down call chain, preserve error stack
-    HMODULE module = Kernel32LoadLibraryAOriginal(lpLibFileName);
+    HMODULE module = KernelXLoadLibraryAOriginal(lpLibFileName);
     if (!module) {
         return module;
     }
@@ -1112,7 +1268,7 @@ HMODULE WINAPI HookLoadLibraryW(LPCWSTR lpLibFileName) {
     ModuleSnapshot snapshot = GetModuleSnapshot();
 
     // Pass down call chain, preserve error stack
-    HMODULE module = Kernel32LoadLibraryWOriginal(lpLibFileName);
+    HMODULE module = KernelXLoadLibraryWOriginal(lpLibFileName);
     if (!module) {
         return module;
     }
@@ -1135,7 +1291,7 @@ HMODULE WINAPI HookLoadLibraryExA(LPCSTR lpLibFileName, HANDLE handle, DWORD fla
     ModuleSnapshot snapshot = GetModuleSnapshot();
 
     // Pass down call chain, preserve error stack
-    HMODULE module = Kernel32LoadLibraryExAOriginal(lpLibFileName, handle, flags);
+    HMODULE module = KernelXLoadLibraryExAOriginal(lpLibFileName, handle, flags);
     if (!module) {
         return module;
     }
@@ -1158,7 +1314,7 @@ HMODULE WINAPI HookLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE handle, DWORD fl
 #endif // ENABLE_LOGGING
 
     // Pass down call chain, preserve error stack
-    HMODULE module = Kernel32LoadLibraryExWOriginal(lpLibFileName, handle, flags);
+    HMODULE module = KernelXLoadLibraryExWOriginal(lpLibFileName, handle, flags);
     if (!module) {
         return module;
     }
@@ -1196,11 +1352,11 @@ DWORD WINAPI DeferredInitialization(void*) {
 
     // Function table
     LogContext{} << "Function table:\n" << std::hex
-                 << "LoadLibraryA: 0x" << reinterpret_cast<void *>(HookLoadLibraryA) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryAOriginal) << "\n"
-                 << "LoadLibraryW: 0x" << reinterpret_cast<void *>(HookLoadLibraryW) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryWOriginal) << "\n"
-                 << "LoadLibraryExA: 0x" << reinterpret_cast<void *>(HookLoadLibraryExA) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryExAOriginal) << "\n"
-                 << "LoadLibraryExW: 0x" << reinterpret_cast<void *>(HookLoadLibraryExW) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32LoadLibraryExWOriginal) << "\n"
-                 << "GetProcAddress: 0x" << reinterpret_cast<void *>(HookGetProcAddress) << " -> 0x" << reinterpret_cast<uint64_t>(Kernel32GetProcAddressOriginal) << "\n";
+                 << "LoadLibraryA: 0x" << reinterpret_cast<void *>(HookLoadLibraryA) << " -> 0x" << reinterpret_cast<uint64_t>(KernelXLoadLibraryAOriginal) << "\n"
+                 << "LoadLibraryW: 0x" << reinterpret_cast<void *>(HookLoadLibraryW) << " -> 0x" << reinterpret_cast<uint64_t>(KernelXLoadLibraryWOriginal) << "\n"
+                 << "LoadLibraryExA: 0x" << reinterpret_cast<void *>(HookLoadLibraryExA) << " -> 0x" << reinterpret_cast<uint64_t>(KernelXLoadLibraryExAOriginal) << "\n"
+                 << "LoadLibraryExW: 0x" << reinterpret_cast<void *>(HookLoadLibraryExW) << " -> 0x" << reinterpret_cast<uint64_t>(KernelXLoadLibraryExWOriginal) << "\n"
+                 << "GetProcAddress: 0x" << reinterpret_cast<void *>(HookGetProcAddress) << " -> 0x" << reinterpret_cast<uint64_t>(KernelXGetProcAddressOriginal) << "\n";
 #endif // ENABLE_LOGGING
 
     // Attempt to find module, directly load the layer if available
@@ -1359,23 +1515,23 @@ void DetourAMDAGSModule(HMODULE handle, bool insideTransaction) {
     ConditionallyBeginDetour(insideTransaction);
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSCreateDevice = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice"));
+    DetourFunctionTable.next_AMDAGSCreateDevice = reinterpret_cast<PFN_AMD_AGS_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_CreateDevice"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSCreateDevice), reinterpret_cast<void*>(HookAMDAGSCreateDevice));
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSDestroyDevice = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_DestroyDevice"));
+    DetourFunctionTable.next_AMDAGSDestroyDevice = reinterpret_cast<PFN_AMD_AGS_DESTRIY_DEVICE>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_DestroyDevice"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSDestroyDevice), reinterpret_cast<void*>(HookAMDAGSDestroyDevice));
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSPushMarker = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_PushMarker"));
+    DetourFunctionTable.next_AMDAGSPushMarker = reinterpret_cast<PFN_AMD_AGS_PUSH_MARKER>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_PushMarker"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPushMarker), reinterpret_cast<void*>(HookAMDAGSPushMarker));
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSPopMarker = reinterpret_cast<PFN_AMD_AGS_POP_MARKER>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_PopMarker"));
+    DetourFunctionTable.next_AMDAGSPopMarker = reinterpret_cast<PFN_AMD_AGS_POP_MARKER>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_PopMarker"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSPopMarker), reinterpret_cast<void*>(HookAMDAGSPopMarker));
 
     // Attach against original address
-    DetourFunctionTable.next_AMDAGSSetMarker = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(Kernel32GetProcAddressOriginal(handle, "agsDriverExtensionsDX12_SetMarker"));
+    DetourFunctionTable.next_AMDAGSSetMarker = reinterpret_cast<PFN_AMD_AGS_SET_MARKER>(KernelXGetProcAddressOriginal(handle, "agsDriverExtensionsDX12_SetMarker"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_AMDAGSSetMarker), reinterpret_cast<void*>(HookAMDAGSSetMarker));
 
     // End and update
@@ -1393,11 +1549,11 @@ void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
     ConditionallyBeginDetour(insideTransaction);
 
     // Attach against original address
-    DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(handle, "D3D12CreateDevice"));
+    DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "D3D12CreateDevice"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
 
     // Attach against original address
-    DetourFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(Kernel32GetProcAddressOriginal(handle, "D3D12EnableExperimentalFeatures"));
+    DetourFunctionTable.next_EnableExperimentalFeatures = reinterpret_cast<PFN_ENABLE_EXPERIMENTAL_FEATURES>(KernelXGetProcAddressOriginal(handle, "D3D12EnableExperimentalFeatures"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
 
     // End and update
@@ -1415,7 +1571,7 @@ void DetourD3D11Module(HMODULE handle, bool insideTransaction) {
     ConditionallyBeginDetour(insideTransaction);
 
     // Attach against original address
-    DetourFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(Kernel32GetProcAddressOriginal(handle, "D3D11On12CreateDevice"));
+    DetourFunctionTable.next_D3D11On12CreateDeviceOriginal = reinterpret_cast<PFN_D3D11_ON_12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "D3D11On12CreateDevice"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D11On12CreateDeviceOriginal), reinterpret_cast<void*>(HookD3D11On12CreateDevice));
 
     // End and update
@@ -1433,17 +1589,17 @@ void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
     ConditionallyBeginDetour(insideTransaction);
 
     // Attach against original address
-    DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory"));
+    DetourFunctionTable.next_CreateDXGIFactoryOriginal = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(KernelXGetProcAddressOriginal(handle, "CreateDXGIFactory"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactoryOriginal), reinterpret_cast<void*>(HookCreateDXGIFactory));
 
     // Attach against original address
-    DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory1"));
+    DetourFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(KernelXGetProcAddressOriginal(handle, "CreateDXGIFactory1"));
     if (DetourFunctionTable.next_CreateDXGIFactory1Original) {
         DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_CreateDXGIFactory1Original), reinterpret_cast<void*>(HookCreateDXGIFactory1));
     }
 
     // Attach against original address
-    DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(Kernel32GetProcAddressOriginal(handle, "CreateDXGIFactory2"));
+    DetourFunctionTable.next_CreateDXGIFactory2Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY2>(KernelXGetProcAddressOriginal(handle, "CreateDXGIFactory2"));
     if (DetourFunctionTable.next_CreateDXGIFactory2Original) {
         DetourAttach(&reinterpret_cast<void *&>(DetourFunctionTable.next_CreateDXGIFactory2Original), reinterpret_cast<void *>(HookCreateDXGIFactory2));
     }
@@ -1592,43 +1748,58 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         DetourTransactionBegin();
         DetourUpdateThread(GetCurrentThread());
 
-        // Attempt to find kernel module
-        if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, kKernel32ModuleNameW, &Kernel32Module)) {
+        // Attempt to find ntdll
+        GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, kNtDLLModuleNameW, &NtDLLModule);
+
+        // Attempt to find kernel module, try KernelBase.dll first, then kernel32.dll
+        if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, kKernelBaseModuleNameW, &KernelXModule) &&
+            !GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN, kKernel32ModuleNameW, &KernelXModule)) {
             // Nothing we are interested in
             return false;
         }
 
         // Get addresses
-        Kernel32LoadLibraryAOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_A>(GetProcAddress(Kernel32Module, "LoadLibraryA"));
-        Kernel32LoadLibraryWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_W>(GetProcAddress(Kernel32Module, "LoadLibraryW"));
-        Kernel32LoadLibraryExAOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_A>(GetProcAddress(Kernel32Module, "LoadLibraryExA"));
-        Kernel32LoadLibraryExWOriginal = reinterpret_cast<PFN_LOAD_LIBRARY_EX_W>(GetProcAddress(Kernel32Module, "LoadLibraryExW"));
-        Kernel32GetProcAddressOriginal = reinterpret_cast<PFN_GET_PROC_ADDRESS>(GetProcAddress(Kernel32Module, "GetProcAddress"));
+        KernelXLoadLibraryAOriginal            = reinterpret_cast<PFN_LOAD_LIBRARY_A>(GetProcAddress(KernelXModule, "LoadLibraryA"));
+        KernelXLoadLibraryWOriginal            = reinterpret_cast<PFN_LOAD_LIBRARY_W>(GetProcAddress(KernelXModule, "LoadLibraryW"));
+        KernelXLoadLibraryExAOriginal          = reinterpret_cast<PFN_LOAD_LIBRARY_EX_A>(GetProcAddress(KernelXModule, "LoadLibraryExA"));
+        KernelXLoadLibraryExWOriginal          = reinterpret_cast<PFN_LOAD_LIBRARY_EX_W>(GetProcAddress(KernelXModule, "LoadLibraryExW"));
+        KernelXGetProcAddressOriginal          = reinterpret_cast<PFN_GET_PROC_ADDRESS>(GetProcAddress(KernelXModule, "GetProcAddress"));
+        KernelXGetProcAddressForCallerOriginal = reinterpret_cast<PFN_GET_PROC_ADDRESS_FOR_CALLER>(GetProcAddress(KernelXModule, "GetProcAddressForCaller"));
+
+        // Get special addresses
+        if (NtDLLModule) {
+            NtDLLQueryInformationProcess = reinterpret_cast<PFN_NT_QUERY_INFORMATION_PROCESS>(GetProcAddress(NtDLLModule, "NtQueryInformationProcess"));
+        }
         
 #ifndef THIN_X86
         // Attach against original address
-        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryAOriginal), reinterpret_cast<void*>(HookLoadLibraryA));
-        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
-        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
-        DetourAttach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
-        DetourAttach(&reinterpret_cast<void *&>(Kernel32GetProcAddressOriginal), reinterpret_cast<void *>(HookGetProcAddress));
+        DetourAttach(&reinterpret_cast<void*&>(KernelXLoadLibraryAOriginal), reinterpret_cast<void*>(HookLoadLibraryA));
+        DetourAttach(&reinterpret_cast<void*&>(KernelXLoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
+        DetourAttach(&reinterpret_cast<void*&>(KernelXLoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
+        DetourAttach(&reinterpret_cast<void*&>(KernelXLoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
+        DetourAttach(&reinterpret_cast<void *&>(KernelXGetProcAddressOriginal), reinterpret_cast<void *>(HookGetProcAddress));
+
+        // KernelBase.dll only
+        if (KernelXGetProcAddressForCallerOriginal) {
+            DetourAttach(&reinterpret_cast<void *&>(KernelXGetProcAddressForCallerOriginal), reinterpret_cast<void *>(HookGetProcAddressForCaller));
+        }
 #endif // THIN_X86
 
         // Attach against original address
-        Kernel32CreateProcessAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_A>(GetProcAddress(Kernel32Module, "CreateProcessA"));
-        Kernel32CreateProcessASection = DetourAttachProtect(&reinterpret_cast<void *&>(Kernel32CreateProcessAOriginal), reinterpret_cast<void *>(HookCreateProcessA));
+        KernelXCreateProcessAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_A>(GetProcAddress(KernelXModule, "CreateProcessA"));
+        KernelXCreateProcessASection = DetourAttachProtect(&reinterpret_cast<void *&>(KernelXCreateProcessAOriginal), reinterpret_cast<void *>(HookCreateProcessA));
 
         // Attach against original address
-        Kernel32CreateProcessWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_W>(GetProcAddress(Kernel32Module, "CreateProcessW"));
-        Kernel32CreateProcessWSection = DetourAttachProtect(&reinterpret_cast<void *&>(Kernel32CreateProcessWOriginal), reinterpret_cast<void *>(HookCreateProcessW));
+        KernelXCreateProcessWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_W>(GetProcAddress(KernelXModule, "CreateProcessW"));
+        KernelXCreateProcessWSection = DetourAttachProtect(&reinterpret_cast<void *&>(KernelXCreateProcessWOriginal), reinterpret_cast<void *>(HookCreateProcessW));
 
         // Attach against original address
-        Kernel32CreateProcessAsUserAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_A>(GetProcAddress(Kernel32Module, "CreateProcessAsUserA"));
-        Kernel32CreateProcessAsUserASection = DetourAttachProtect(&reinterpret_cast<void *&>(Kernel32CreateProcessAsUserAOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserA));
+        KernelXCreateProcessAsUserAOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_A>(GetProcAddress(KernelXModule, "CreateProcessAsUserA"));
+        KernelXCreateProcessAsUserASection = DetourAttachProtect(&reinterpret_cast<void *&>(KernelXCreateProcessAsUserAOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserA));
 
         // Attach against original address
-        Kernel32CreateProcessAsUserWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_W>(GetProcAddress(Kernel32Module, "CreateProcessAsUserW"));
-        Kernel32CreateProcessAsUserWSection = DetourAttachProtect(&reinterpret_cast<void *&>(Kernel32CreateProcessAsUserWOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserW));
+        KernelXCreateProcessAsUserWOriginal = reinterpret_cast<PFN_CREATE_PROCESS_AS_USER_W>(GetProcAddress(KernelXModule, "CreateProcessAsUserW"));
+        KernelXCreateProcessAsUserWSection = DetourAttachProtect(&reinterpret_cast<void *&>(KernelXCreateProcessAsUserWOriginal), reinterpret_cast<void *>(HookCreateProcessAsUserW));
 
         // Attempt to create initial detours
         DetourForeignModules(ModuleSnapshot {});
@@ -1639,10 +1810,10 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
         }
 
         // Commit all sections
-        CommitDetourSection(Kernel32CreateProcessASection);
-        CommitDetourSection(Kernel32CreateProcessWSection);
-        CommitDetourSection(Kernel32CreateProcessAsUserASection);
-        CommitDetourSection(Kernel32CreateProcessAsUserWSection);
+        CommitDetourSection(KernelXCreateProcessASection);
+        CommitDetourSection(KernelXCreateProcessWSection);
+        CommitDetourSection(KernelXCreateProcessAsUserASection);
+        CommitDetourSection(KernelXCreateProcessAsUserWSection);
     }
 
     // Detach?
@@ -1656,23 +1827,28 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
 #endif // ENABLE_LOGGING
 
         // May not have detoured at all
-        if (Kernel32LoadLibraryAOriginal) {
+        if (KernelXLoadLibraryAOriginal) {
             // Open transaction
             DetourTransactionBegin();
             DetourUpdateThread(GetCurrentThread());
 
             // Detach from detours
 #ifndef THIN_X86
-            DetourDetach(&reinterpret_cast<void*&>(Kernel32GetProcAddressOriginal), reinterpret_cast<void*>(HookGetProcAddress));
-            DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryAOriginal), reinterpret_cast<void*>(HookLoadLibraryA));
-            DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
-            DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
-            DetourDetach(&reinterpret_cast<void*&>(Kernel32LoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
+            DetourDetach(&reinterpret_cast<void*&>(KernelXGetProcAddressOriginal), reinterpret_cast<void*>(HookGetProcAddress));
+            DetourDetach(&reinterpret_cast<void*&>(KernelXLoadLibraryAOriginal), reinterpret_cast<void*>(HookLoadLibraryA));
+            DetourDetach(&reinterpret_cast<void*&>(KernelXLoadLibraryWOriginal), reinterpret_cast<void*>(HookLoadLibraryW));
+            DetourDetach(&reinterpret_cast<void*&>(KernelXLoadLibraryExAOriginal), reinterpret_cast<void*>(HookLoadLibraryExA));
+            DetourDetach(&reinterpret_cast<void*&>(KernelXLoadLibraryExWOriginal), reinterpret_cast<void*>(HookLoadLibraryExW));
+            
+            // KernelBase.dll only
+            if (KernelXGetProcAddressForCallerOriginal) {
+                DetourDetach(&reinterpret_cast<void*&>(KernelXGetProcAddressForCallerOriginal), reinterpret_cast<void*>(HookGetProcAddressForCaller));
+            }
 #endif // THIN_X86
-            DetourDetach(&reinterpret_cast<void*&>(Kernel32CreateProcessAOriginal), reinterpret_cast<void*>(HookCreateProcessA));
-            DetourDetach(&reinterpret_cast<void*&>(Kernel32CreateProcessWOriginal), reinterpret_cast<void*>(HookCreateProcessW));
-            DetourDetach(&reinterpret_cast<void*&>(Kernel32CreateProcessAsUserAOriginal), reinterpret_cast<void*>(HookCreateProcessAsUserA));
-            DetourDetach(&reinterpret_cast<void*&>(Kernel32CreateProcessAsUserWOriginal), reinterpret_cast<void*>(HookCreateProcessAsUserW));
+            DetourDetach(&reinterpret_cast<void*&>(KernelXCreateProcessAOriginal), reinterpret_cast<void*>(HookCreateProcessA));
+            DetourDetach(&reinterpret_cast<void*&>(KernelXCreateProcessWOriginal), reinterpret_cast<void*>(HookCreateProcessW));
+            DetourDetach(&reinterpret_cast<void*&>(KernelXCreateProcessAsUserAOriginal), reinterpret_cast<void*>(HookCreateProcessAsUserA));
+            DetourDetach(&reinterpret_cast<void*&>(KernelXCreateProcessAsUserWOriginal), reinterpret_cast<void*>(HookCreateProcessAsUserW));
 
             // Detach initial creation
 #ifndef THIN_X86
