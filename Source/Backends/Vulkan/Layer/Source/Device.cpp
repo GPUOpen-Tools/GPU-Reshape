@@ -180,9 +180,14 @@ static void CreateEventRemappingTable(DeviceDispatchTable* table) {
 
 static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceDispatchTable* device) {
     Backend::EnvironmentDeviceInfo info;
-    info.applicationName = device->parent->createInfo->pApplicationInfo ? device->parent->createInfo->pApplicationInfo->pApplicationName : "Unknown";
+    info.applicationName = device->parent->createInfo->pApplicationInfo ? device->parent->createInfo->pApplicationInfo->pApplicationName : nullptr;
     info.apiName = "Vulkan";
     info.deviceUID = device->uid;
+
+    // Ensure there's a valid name
+    if (!info.applicationName) {
+        info.applicationName = "Unknown";
+    }
 
     // Accumulate objects
     info.deviceObjects += static_cast<uint32_t>(device->states_buffer.GetCount());

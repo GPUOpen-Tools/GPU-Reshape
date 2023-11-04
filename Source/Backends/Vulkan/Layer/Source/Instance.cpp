@@ -124,8 +124,13 @@ VkResult VKAPI_PTR Hook_vkCreateInstance(const VkInstanceCreateInfo *pCreateInfo
     } else {
         // Setup info
         Backend::EnvironmentInfo environmentInfo;
-        environmentInfo.device.applicationName = pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->pApplicationName : "Unknown";
+        environmentInfo.device.applicationName = pCreateInfo->pApplicationInfo ? pCreateInfo->pApplicationInfo->pApplicationName : nullptr;
         environmentInfo.device.apiName = "Vulkan";
+
+        // Ensure there's a valid name
+        if (!environmentInfo.device.applicationName) {
+            environmentInfo.device.applicationName = "Unknown";
+        }
 
         // Initialize the standard environment
         table->environment.Install(environmentInfo);
