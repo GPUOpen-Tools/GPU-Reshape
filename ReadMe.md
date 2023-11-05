@@ -80,7 +80,7 @@ Engines
 - **Unreal Engine 5** (Epic Games, DX12, Vulkan)
 
 AMD
-- **FidelityFX** (DX12, Vulkan)
+- **FidelityFX-SDK** (DX12, Vulkan)
 - **FSR2** (DX12, Vulkan)
 - **GLTFSample** (DX12, Vulkan)
 - **ParallelSort** (DX12, Vulkan)
