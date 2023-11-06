@@ -76,7 +76,9 @@ namespace Studio.ViewModels.Workspace.Services
                     // If the current branch is ahead, the resource was not found, this could be caused by de-synchronization
                     if (branch.Head > version)
                     {
-                        return null;
+                        // TODO: We need queue wise synchronization, the branches may be collapsed prematurely
+                        //       Ignore this for now.
+                        // return null;
                     }
 
                     // Try to find the puid
