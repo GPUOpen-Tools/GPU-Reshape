@@ -84,6 +84,9 @@ private:
     /// \param block source block
     void ParseFunction(LLVMBlock* block);
 
+    /// Remap all line scopes for unresolved metadata
+    void RemapLineScopes();
+
     /// Get the linear file index
     /// \param scopeMdId scope id
     uint32_t GetLinearFileUID(uint32_t scopeMdId);
@@ -93,8 +96,19 @@ private:
     DXILPhysicalBlockScan scan;
 
 private:
+    struct SourceFragmentDirective {
+        /// File identifier
+        uint16_t fileUID{UINT16_MAX};
+
+        /// Line offset within the target file
+        uint32_t fileLineOffset{0};
+
+        /// Line offset in the target fragment
+        uint32_t directiveLineOffset{0};
+    };
+    
     struct SourceFragment {
-        SourceFragment(const Allocators& allocators) : lineOffsets(allocators) {
+        SourceFragment(const Allocators& allocators) : lineOffsets(allocators), preprocessedDirectives(allocators) {
             /** */
         }
         
@@ -104,9 +118,18 @@ private:
         /// Total contents of this fragment
         std::string contents;
 
+        /// Identifier of this file
+        uint16_t uid{0};
+
         /// All summarized line offsets, including base (0) line
         Vector<uint32_t> lineOffsets;
+
+        /// All preprocessed fragments within this, f.x. files on line directives
+        Vector<SourceFragmentDirective> preprocessedDirectives;
     };
+
+    /// Is the contents considered unresolved? f.x. may happen with already preprocessed files
+    bool isContentsUnresolved{false};
 
     /// Find or create a source fragment
     /// \param view filename view

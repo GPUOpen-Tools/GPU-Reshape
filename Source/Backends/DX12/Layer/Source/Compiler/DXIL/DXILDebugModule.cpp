@@ -144,8 +144,51 @@ bool DXILDebugModule::Parse(const void *byteCode, uint64_t byteLength) {
         }
     }
 
+    // Do we need to resolve?
+    if (isContentsUnresolved) {
+        RemapLineScopes();
+    }
+
     // OK
     return true;
+}
+
+void DXILDebugModule::RemapLineScopes() {
+    for (InstructionMetadata& md : instructionMetadata) {
+        // Unmapped or invalid?
+        if (md.sourceAssociation.fileUID == UINT16_MAX ||
+            md.sourceAssociation.fileUID >= sourceFragments.size()) {
+            continue;
+        }
+
+        // The parent fragment
+        SourceFragment& targetFragment = sourceFragments.at(md.sourceAssociation.fileUID);
+
+        // Current directive
+        SourceFragmentDirective candidateDirective;
+
+        // Check all preprocessed fragments
+        for (const SourceFragmentDirective& directive : targetFragment.preprocessedDirectives) {
+            if (directive.directiveLineOffset > md.sourceAssociation.line) {
+                break;
+            }
+
+            // Consider candidate
+            candidateDirective = directive;
+        }
+
+        // No match? (Part of the primary fragment)
+        if (candidateDirective.fileUID == UINT16_MAX) {
+            continue;
+        }
+
+        // Offset within the directive file
+        const uint32_t intraDirectiveOffset = md.sourceAssociation.line - candidateDirective.directiveLineOffset;
+
+        // Remap the association
+        md.sourceAssociation.fileUID = candidateDirective.fileUID;
+        md.sourceAssociation.line = candidateDirective.fileLineOffset + intraDirectiveOffset; 
+    }
 }
 
 void DXILDebugModule::ParseTypes(LLVMBlock *block) {
@@ -395,6 +438,10 @@ void DXILDebugModule::ParseNamedMetadata(LLVMBlock* block, uint32_t anchor, cons
                 return;
             }
 
+            // A single file either indicates that there's a single file, or, that the contents are unresolved
+            // f.x. line directives that need to be mapped
+            isContentsUnresolved = (record.opCount == 1u);
+
             // Parse all files
             for (uint32_t i = 0; i < record.opCount; i++) {
                 ParseContents(block, static_cast<uint32_t>(record.Op(i)));
@@ -418,8 +465,11 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
     LLVMRecordStringView filename(block->records[record.Op(0) - 1], 0);
     LLVMRecordStringView contents(block->records[record.Op(1) - 1], 0);
 
-    // Target fragment
+    // Target fragment which may be derived
     SourceFragment* fragment = FindOrCreateSourceFragment(filename);
+
+    // Fragments are stored contiguously, just keep the uid
+    uint32_t targetUID = fragment->uid;
 
     // Already filled by another preprocessed segment?
     if (!fragment->lineOffsets.empty()) {
@@ -435,6 +485,9 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
     // Last known offset
     uint64_t lastSourceOffset = 0;
 
+    // Current target fragment line offset
+    uint32_t targetLineOffset = 0;
+
     /** TODO: This is such a mess! I'll clean this up when it's matured a bit. */
 
     // Append initial line
@@ -443,6 +496,11 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
     // Summarize the line offsets
     for (uint32_t i = 0; i < contents.Length(); i++) {
         constexpr const char *kLineDirective = "#line";
+
+        // Target newline?
+        if (contents[i] == '\n') {
+            targetLineOffset++;
+        }
 
         // Start of directive
         uint32_t directiveStart = i;
@@ -490,6 +548,9 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
             i++;
         }
 
+        // Directive newline
+        targetLineOffset++;
+
         // Deduce length
         size_t fragmentLength = directiveStart - lastSourceOffset;
 
@@ -521,6 +582,13 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
 
         // New offset
         lastSourceOffset = i + 1;
+
+        // Keep track of in the target
+        sourceFragments.at(targetUID).preprocessedDirectives.push_back(SourceFragmentDirective {
+            .fileUID = fragment->uid,
+            .fileLineOffset = offset - 1u,
+            .directiveLineOffset = targetLineOffset
+        });
     }
 
     // Pending last fragment?
@@ -629,6 +697,7 @@ DXILDebugModule::SourceFragment * DXILDebugModule::FindOrCreateSourceFragment(co
 
     // The fragment doesn't exist, likely indicating that it was not used in the shader
     SourceFragment& fragment = sourceFragments.emplace_back(allocators);
+    fragment.uid = static_cast<uint16_t>(sourceFragments.size()) - 1u;
 
     // Assign filename
     fragment.filename = std::move(view);
