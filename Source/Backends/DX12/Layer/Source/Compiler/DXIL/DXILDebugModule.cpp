@@ -551,13 +551,19 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
         // Directive newline
         targetLineOffset++;
 
+        // Do not include the directive new-line, search backwards
+        uint32_t lastSourceEnd = directiveStart;
+        while (lastSourceEnd > 0 && contents[lastSourceEnd] != '\n') {
+            lastSourceEnd--;
+        }
+
         // Deduce length
-        size_t fragmentLength = directiveStart - lastSourceOffset;
+        size_t fragmentLength = lastSourceEnd - lastSourceOffset;
 
         // Copy contents
         size_t contentOffset = fragment->contents.length();
         fragment->contents.resize(contentOffset + fragmentLength);
-        contents.SubStr(lastSourceOffset, directiveStart, fragment->contents.data() + contentOffset);
+        contents.SubStr(lastSourceOffset, lastSourceEnd, fragment->contents.data() + contentOffset);
 
         // Summarize line endings
         for (size_t j = contentOffset; j < fragment->contents.size(); j++) {
