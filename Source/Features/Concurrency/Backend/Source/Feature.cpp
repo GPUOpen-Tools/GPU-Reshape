@@ -35,9 +35,12 @@
 
 // Generated schema
 #include <Schemas/Features/Concurrency.h>
+#include <Schemas/Instrumentation.h>
+#include <Schemas/InstrumentationCommon.h>
 
 // Message
 #include <Message/IMessageStorage.h>
+#include <Message/MessageStreamCommon.h>
 
 // Common
 #include <Common/Registry.h>
@@ -90,6 +93,9 @@ void ConcurrencyFeature::CollectMessages(IMessageStorage *storage) {
 }
 
 void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
+    // Options
+    const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
+    
     // Get the data ids
     IL::ID lockBufferDataID = program.GetShaderDataMap().Get(lockBufferID)->id;
     IL::ID eventDataID = program.GetShaderDataMap().Get(eventID)->id;
@@ -139,31 +145,20 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         // Bind the SGUID
         ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
 
-        // Allocate resume
+        // Allocate blocks
         IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock();
+        IL::BasicBlock* oobBlock    = context.function.GetBasicBlocks().AllocBlock();
 
         // Split this basic block, move all instructions post and including the instrumented instruction to resume
         // ! iterator invalidated
         auto instr = context.basicBlock.Split(resumeBlock, it);
 
-        // Out of bounds block
-        IL::Emitter<> oob(program, *context.function.GetBasicBlocks().AllocBlock());
-        oob.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
-
-        // Export the message
-        ResourceRaceConditionMessage::ShaderExport msg;
-        msg.sguid = oob.UInt32(sguid);
-        msg.LUID = eventDataID;
-        oob.Export(exportID, msg);
-
-        // Branch back
-        oob.Branch(resumeBlock);
-
         // Perform instrumentation check
         IL::Emitter<> pre(program, context.basicBlock);
 
         // Get global id of resource
-        IL::ID puid = IL::ResourceTokenEmitter(pre, resource).GetPUID();
+        IL::ResourceTokenEmitter token(pre, resource);
+        IL::ID puid = token.GetPUID();
 
         // Load buffer
         IL::ID bufferValue = pre.Load(lockBufferDataID);
@@ -190,7 +185,28 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         );
 
         // If so, branch to failure, otherwise resume
-        pre.BranchConditional(cond, oob.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+        pre.BranchConditional(cond, oobBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+
+        // Out of bounds block
+        IL::Emitter<> oob(program, *oobBlock);
+        oob.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
+
+        // Export the message
+        ResourceRaceConditionMessage::ShaderExport msg;
+        msg.sguid = oob.UInt32(sguid);
+        msg.LUID = eventDataID;
+
+        // Detailed instrumentation?
+        if (config.detail) {
+            msg.chunks |= ResourceRaceConditionMessage::Chunk::Detail;
+            msg.detail.token = token.GetToken();
+        }
+        
+        // Export the message
+        oob.Export(exportID, msg);
+
+        // Branch back
+        oob.Branch(resumeBlock);
 
         // Reads have no lock
         if (!isWrite) {

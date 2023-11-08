@@ -26,6 +26,10 @@
 
 <schema>
     <shader-export name="ResourceRaceCondition">
-        <field name="LUID" type="uint32" bits="16"/>
+        <chunk name="Detail">
+            <field name="token" type="uint32"/>
+        </chunk>
+        
+        <field name="LUID" type="uint32" bits="10"/>
     </shader-export>
 </schema>

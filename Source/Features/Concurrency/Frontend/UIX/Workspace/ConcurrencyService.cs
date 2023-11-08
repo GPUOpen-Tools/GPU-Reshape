@@ -33,6 +33,7 @@ using ReactiveUI;
 using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
+using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Services;
 using Studio.ViewModels.Workspace.Objects;
@@ -64,6 +65,7 @@ namespace GRS.Features.Concurrency.UIX.Workspace
 
             // Get services
             _shaderMappingService = viewModel.PropertyCollection.GetService<IShaderMappingService>();
+            _versioningService = ViewModel.PropertyCollection.GetService<IVersioningService>();
         }
 
         /// <summary>
@@ -83,10 +85,10 @@ namespace GRS.Features.Concurrency.UIX.Workspace
         /// <exception cref="NotImplementedException"></exception>
         public void Handle(ReadOnlyMessageStream streams, uint count)
         {
-            if (!streams.GetSchema().IsStatic(ResourceRaceConditionMessage.ID))
+            if (!streams.GetSchema().IsChunked(ResourceRaceConditionMessage.ID))
                 return;
 
-            var view = new StaticMessageView<ResourceRaceConditionMessage>(streams);
+            var view = new ChunkedMessageView<ResourceRaceConditionMessage>(streams);
 
             // Latent update set
             var enqueued = new Dictionary<uint, uint>();
@@ -140,6 +142,55 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                     // Add to UI visible collection
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
                 }
+
+                // Detailed?
+                if (message.HasChunk(ResourceRaceConditionMessage.Chunk.Detail))
+                {
+                    ResourceRaceConditionMessage.DetailChunk detailChunk = message.GetDetailChunk();
+
+                    // To token
+                    var token = new ResourceToken()
+                    {
+                        Token = detailChunk.token
+                    };
+
+                    // Get detailed view model
+                    if (!_reducedDetails.TryGetValue(message.sguid, out ResourceValidationDetailViewModel? detailViewModel))
+                    {
+                        // Not found, find the object
+                        if (!_reducedMessages.TryGetValue(message.sguid, out ValidationObject? validationObject))
+                        {
+                            continue;
+                        }
+
+                        // Create the missing detail view model
+                        detailViewModel = new ResourceValidationDetailViewModel();
+                        
+                        // Assign on UI thread
+                        Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            validationObject.DetailViewModel = detailViewModel;
+                        });
+                        
+                        // Add lookup
+                        _reducedDetails.Add(message.sguid, detailViewModel);
+                    }
+
+                    // Try to find resource
+                    Resource resource = _versioningService?.GetResource(token.PUID, streams.VersionID) ?? new Resource()
+                    {
+                        PUID = token.PUID,
+                        Version = streams.VersionID,
+                        Name = $"#{token.PUID}",
+                        IsUnknown = true
+                    };
+                    
+                    // Get resource
+                    ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
+
+                    // Compose detailed message
+                    resourceValidationObject.AddUniqueInstance(_reducedMessages[message.sguid].Content);
+                }
             }
             
             // Update counts on main thread
@@ -190,9 +241,19 @@ namespace GRS.Features.Concurrency.UIX.Workspace
         private Dictionary<uint, ValidationObject> _reducedMessages = new();
 
         /// <summary>
+        /// All reduced resource messages
+        /// </summary>
+        private Dictionary<uint, ResourceValidationDetailViewModel> _reducedDetails = new();
+
+        /// <summary>
         /// Segment mapping
         /// </summary>
         private IShaderMappingService? _shaderMappingService;
+        
+        /// <summary>
+        /// Versioning service
+        /// </summary>
+        private IVersioningService? _versioningService;
 
         /// <summary>
         /// Validation container
