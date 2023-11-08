@@ -252,6 +252,14 @@ bool MessageGenerator::GenerateCPP(const Message &message, MessageStream &out) {
 
     // Chunked?
     if (!message.chunks.empty()) {
+        int64_t primaryKeyLimit = std::max<int64_t>(0, 32 - message.chunks.size());
+        
+        // Validate the header
+        if (cxxSizeType > sizeof(uint32_t) || bitFieldOffset > primaryKeyLimit) {
+            std::cerr << "Malformed message in line: " << message.line << ", chunk primary headers must be " << primaryKeyLimit << " bits or less" << std::endl;
+            return false;
+        }
+        
         // Chunk enum
         {
             out.chunks << "\n\tenum class Chunk {\n";
@@ -701,6 +709,14 @@ bool MessageGenerator::GenerateCS(const Message &message, MessageStream &out) {
     
     // Chunked?
     if (!message.chunks.empty()) {
+        int64_t primaryKeyLimit = std::max<int64_t>(0, 32 - message.chunks.size());
+        
+        // Validate the header
+        if (cxxSizeType > sizeof(uint32_t) || bitFieldOffset > primaryKeyLimit) {
+            std::cerr << "Malformed message in line: " << message.line << ", chunk primary headers must be " << primaryKeyLimit << " bits or less" << std::endl;
+            return false;
+        }
+        
         // Emit chunk enum
         {
             out.chunks << "\n\t\t[Flags]\n";
