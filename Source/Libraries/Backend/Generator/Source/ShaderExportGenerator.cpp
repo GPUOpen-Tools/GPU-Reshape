@@ -105,8 +105,11 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
             // Determine the size of this field
             uint32_t bitSize = bits ? std::atoi(bits->value.c_str()) : (static_cast<uint32_t>(it->second.size) * 8);
 
+            // Bit masking
+            uint32_t bitMask = static_cast<uint32_t>((1ull << bitSize) - 1u);
+
             // Append value
-            out.types << "\t\t\tprimary = emitter.BitOr(primary, emitter.BitShiftLeft(" << field.name << ", emitter.UInt(32, " << bitOffset << ")));\n";
+            out.types << "\t\t\tprimary = emitter.BitOr(primary, emitter.BitShiftLeft(emitter.BitAnd(" << field.name << ", emitter.UInt32(" << bitMask << ")), emitter.UInt(32, " << bitOffset << ")));\n";
 
             // Next
             bitOffset += bitSize;
@@ -168,8 +171,11 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
             // Determine the size of this field
             uint32_t bitSize = bits ? std::atoi(bits->value.c_str()) : (static_cast<uint32_t>(it->second.size) * 8);
 
+            // Bit masking
+            uint32_t bitMask = static_cast<uint32_t>((1ull << bitSize) - 1u);
+
             // Append value
-            out.types << "\t\t\tdwords[offset] = emitter.BitOr(dwords[offset], emitter.BitShiftLeft(" << field.name << ", emitter.UInt(32, " << bitOffset << ")));\n";
+            out.types << "\t\t\tdwords[offset] = emitter.BitOr(dwords[offset], emitter.BitShiftLeft(emitter.BitAnd(" << field.name << ", emitter.UInt32(" << bitMask << ")), emitter.UInt(32, " << bitOffset << ")));\n";
 
             // Next
             bitOffset += bitSize;
@@ -222,8 +228,11 @@ bool ShaderExportGenerator::GenerateCPP(const Message &message, MessageStream &o
                         out.types << "\t\t\t\tdwords[offset] = emitter.UInt(32, 0);\n";
                     }
 
+                    // Bit masking
+                    uint32_t bitMask = static_cast<uint32_t>((1ull << bitSize) - 1u);
+
                     // Append value
-                    out.types << "\t\t\t\tdwords[offset] = emitter.BitOr(dwords[offset], emitter.BitShiftLeft(" << scopeName << "." << field.name << ", emitter.UInt(32, " << bitOffset << ")));\n";
+                    out.types << "\t\t\t\tdwords[offset] = emitter.BitOr(dwords[offset], emitter.BitShiftLeft(emitter.BitAnd(" << scopeName << "." << field.name << ", emitter.UInt32(" << bitMask << ")), emitter.UInt(32, " << bitOffset << ")));\n";
 
                     // Next
                     bitOffset += bitSize;
