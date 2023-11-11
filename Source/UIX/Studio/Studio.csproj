@@ -24,6 +24,7 @@
         <DebugType>portable</DebugType>
         <OutputPath>..\..\..\Bin\MSVC\RelWithDebInfo\</OutputPath>
         <DebugSymbols>true</DebugSymbols>
+        <Optimize>true</Optimize>
     </PropertyGroup>
     
     <PropertyGroup Condition=" '$(Configuration)' == 'MinSizeRel' ">

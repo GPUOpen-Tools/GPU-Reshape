@@ -43,7 +43,7 @@ endfunction()
 function(Project_AddDotNetEx)
     cmake_parse_arguments(
         ARGS
-        "UNSAFE" # Options
+        "UNSAFE;EXECUTABLE" # Options
         "NAME;LANG;PROPS" # One Value
         "SOURCE;GENERATED;ASSEMBLIES;LIBS;FLAGS" # Multi Value
         ${ARGN}
@@ -62,11 +62,19 @@ function(Project_AddDotNetEx)
     endif()
 
     # Create library
-    add_library(
-        ${ARGS_NAME} SHARED
-        ${ARGS_SOURCE}
-        ${${ARGS_GENERATED}}
-    )
+    if ("${ARGS_EXECUTABLE}")
+        add_executable(
+            ${ARGS_NAME}
+            ${ARGS_SOURCE}
+            ${${ARGS_GENERATED}}
+        )
+    else()
+        add_library(
+            ${ARGS_NAME} SHARED
+            ${ARGS_SOURCE}
+            ${${ARGS_GENERATED}}
+        )
+    endif()
 
     # CLI Includes
     if ("${ARGS_LANG}" STREQUAL "CXX")
@@ -88,6 +96,7 @@ function(Project_AddDotNetEx)
         VS_DOTNET_TARGET_FRAMEWORK_VERSION "v4.8"
         VS_GLOBAL_ROOTNAMESPACE "${ARGS_NAME}"
         VS_DOTNET_REFERENCES "${ARGS_ASSEMBLIES};${ARGS_LIBS}"
+        VS_USER_PROPS "${CMAKE_SOURCE_DIR}/Build/cs.configuration.props"
     )
 
     # Add flags
