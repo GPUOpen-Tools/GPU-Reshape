@@ -28,9 +28,13 @@
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/States/BufferState.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
+#include <Backends/Vulkan/Objects/CommandBufferObject.h>
 
 VkResult Hook_vkSetDebugUtilsObjectNameEXT(VkDevice device, const VkDebugUtilsObjectNameInfoEXT* pNameInfo) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
+
+    // Name copy
+    VkDebugUtilsObjectNameInfoEXT nameInfo = *pNameInfo;
 
     // Handle type
     switch (pNameInfo->objectType) {
@@ -76,8 +80,15 @@ VkResult Hook_vkSetDebugUtilsObjectNameEXT(VkDevice device, const VkDebugUtilsOb
             table->versioningController->CreateOrRecommitBuffer(state);
             break;
         }
+        case VK_OBJECT_TYPE_COMMAND_BUFFER: {
+            const auto* commandBuffer = reinterpret_cast<const CommandBufferObject*>(pNameInfo->objectHandle);
+
+            // Unwrap object
+            nameInfo.objectHandle = reinterpret_cast<uint64_t>(commandBuffer->object);
+            break;
+        }
     }
 
     // Pass down callchain
-    return table->next_vkSetDebugUtilsObjectNameEXT(device, pNameInfo);
+    return table->next_vkSetDebugUtilsObjectNameEXT(device, &nameInfo);
 }
