@@ -463,6 +463,9 @@ add_executable(
     Service/Source/main.cpp
 )
 
+# Hide console by default
+target_link_options(GRS.Backends.DX12.Service PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
+
 # IDE source discovery
 SetSourceDiscovery(GRS.Backends.DX12.Service CXX Service)
 
