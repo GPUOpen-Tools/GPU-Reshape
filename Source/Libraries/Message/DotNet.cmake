@@ -41,6 +41,22 @@ Project_AddDotNetEx(
         System.Memory
 )
 
+# Benchmarking test
+Project_AddDotNetEx(
+    NAME GRS.Libraries.Message.Benchmark.DotNet
+    LANG CS
+    EXECUTABLE
+    SOURCE
+        Tests/Source/Managed/Benchmark.cs
+    LIBS
+        GRS.Libraries.Message.DotNet
+    ASSEMBLIES
+        System
+        System.Runtime
+        System.Memory
+        System.Runtime.CompilerServices.Unsafe
+)
+
 # Quick message project
 function(Project_AddSchemaDotNet NAME SCHEMA_GEN)
     Project_AddDotNetEx(

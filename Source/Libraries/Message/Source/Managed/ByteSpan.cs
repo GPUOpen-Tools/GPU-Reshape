@@ -81,7 +81,11 @@ namespace Message.CLR
         }
 
         // Is this span empty?
-        public bool IsEmpty { get => Length == 0; }
+        public bool IsEmpty
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Length == 0;
+        }
 
         // Optional pin
         public GCHandle? Pin;

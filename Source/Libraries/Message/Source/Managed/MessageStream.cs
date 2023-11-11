@@ -27,7 +27,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Message.CLR
@@ -246,9 +245,135 @@ namespace Message.CLR
         public MemoryStream Data = new MemoryStream();
     }
 
-    public class StaticMessageView<T, S> : IEnumerable<T> where T : IMessage, new() where S : IMessageStream
+    public class StaticMessageView<T, S> : IEnumerable<T> where T : struct, IMessage where S : IMessageStream
     {
         public S Storage => _storage;
+        
+        public struct UnsafeEnumerator : IEnumerator<T>
+        {
+            // Complete range
+            public ByteSpan Memory;
+
+            // Current object
+            public T Current => _current;
+
+            public UnsafeEnumerator(ByteSpan memory)
+            {
+                Memory = memory;
+                _currentSpan = Memory;
+                
+                // Share the object, generic instantiation is incredibly expensive
+                _current = new T();
+
+                // Get type properties
+                IMessageAllocationRequest request = _current.DefaultRequest();
+                _requestByteSize = request.ByteSize;
+            }
+
+            // Move to next object
+            public bool MoveNext()
+            {
+                if (_currentSpan.IsEmpty)
+                {
+                    return false;
+                }
+
+                // Set current memory
+                _current.Memory = _currentSpan;
+
+                // Skip contents
+                _currentSpan = _currentSpan.Slice((int)_requestByteSize);
+
+                // OK
+                return true;
+            }
+
+            // Reset this enumerator
+            public void Reset()
+            {
+                _currentSpan = Memory;
+            }
+
+            public void Dispose()
+            {
+                // Nothing
+            }
+
+            // Cached request byte size
+            private ulong _requestByteSize;
+
+            // The current iteration span
+            private ByteSpan _currentSpan;
+
+            // The current object
+            private T _current;
+
+            // Current object
+            object IEnumerator.Current => Current;
+        }
+
+        public struct GuardedEnumerator : IEnumerator<T>
+        {
+            // Complete range
+            public ByteSpan Memory;
+
+            // Current object
+            public T Current => _current;
+
+            public GuardedEnumerator(ByteSpan memory)
+            {
+                Memory = memory;
+                _currentSpan = Memory;
+                
+                // Share the object, generic instantiation is incredibly expensive
+                _current = new T();
+
+                // Get type properties
+                IMessageAllocationRequest request = _current.DefaultRequest();
+                _requestByteSize = request.ByteSize;
+            }
+
+            // Move to next object
+            public bool MoveNext()
+            {
+                if (_currentSpan.Length < (int)_requestByteSize)
+                {
+                    return false;
+                }
+
+                // Set current memory
+                _current.Memory = _currentSpan;
+
+                // Skip contents
+                _currentSpan = _currentSpan.Slice((int)_requestByteSize);
+
+                // OK
+                return true;
+            }
+
+            // Reset this enumerator
+            public void Reset()
+            {
+                _currentSpan = Memory;
+            }
+
+            public void Dispose()
+            {
+                // Nothing
+            }
+
+            // Cached request byte size
+            private ulong _requestByteSize;
+
+            // The current iteration span
+            private ByteSpan _currentSpan;
+
+            // The current object
+            private T _current;
+
+            // Current object
+            object IEnumerator.Current => Current;
+        }
 
         public StaticMessageView(S storage)
         {
@@ -302,27 +427,22 @@ namespace Message.CLR
             return message;
         }
 
+        // Get the unguarded enumerator
+        public UnsafeEnumerator GetUnsafeEnumerator()
+        {
+            return new UnsafeEnumerator(_storage.GetSpan());
+        }
+
+        // Get the guarded enumerator, performs partial message checks
+        public GuardedEnumerator GetGuardedEnumerator()
+        {
+            return new GuardedEnumerator(_storage.GetSpan());
+        }
+
         // Enumerate this view
         public IEnumerator<T> GetEnumerator()
         {
-            ByteSpan memory = _storage.GetSpan();
-
-            // Create default request for iteration
-            //   ? Acceptable for static message types
-            IMessageAllocationRequest request = new T().DefaultRequest();
-
-            // While messages to process
-            while (!memory.IsEmpty)
-            {
-                // Create message
-                yield return new T()
-                {
-                    Memory = memory
-                };
-
-                // Skip contents
-                memory = memory.Slice((int)request.ByteSize);
-            }
+            return GetGuardedEnumerator();
         }
 
         // Generic enumeration not supported
@@ -334,9 +454,134 @@ namespace Message.CLR
         private S _storage;
     }
 
-    public class ChunkedMessageView<T, S> : IEnumerable<T> where T : IChunkedMessage, new() where S : IMessageStream
+    public class ChunkedMessageView<T, S> : IEnumerable<T> where T : struct, IChunkedMessage where S : IMessageStream
     {
         public S Storage => _storage;
+
+        public struct UnsafeEnumerator : IEnumerator<T>
+        {
+            // Complete range
+            public ByteSpan Memory;
+
+            // Current object
+            public T Current => _current;
+
+            public UnsafeEnumerator(ByteSpan memory)
+            {
+                Memory = memory;
+                _currentSpan = Memory;
+                
+                // Share the object, generic instantiation is incredibly expensive
+                _current = new T();
+            }
+
+            // Move to next object
+            public bool MoveNext()
+            {
+                if (_currentSpan.IsEmpty)
+                {
+                    return false;
+                }
+
+                // Set current memory
+                _current.Memory = _currentSpan;
+
+                // Skip contents
+                _currentSpan = _currentSpan.Slice((int)_current.RuntimeByteSize);
+
+                // OK
+                return true;
+            }
+
+            // Reset this enumerator
+            public void Reset()
+            {
+                _currentSpan = Memory;
+            }
+
+            public void Dispose()
+            {
+                // Nothing
+            }
+
+            // The current iteration span
+            private ByteSpan _currentSpan;
+
+            // The current object
+            private T _current;
+
+            // Current object
+            object IEnumerator.Current => Current;
+        }
+
+        public struct GuardedEnumerator : IEnumerator<T>
+        {
+            // Complete range
+            public ByteSpan Memory;
+
+            // Current object
+            public T Current => _current;
+
+            public GuardedEnumerator(ByteSpan memory)
+            {
+                Memory = memory;
+                _currentSpan = Memory;
+                
+                // Share the object, generic instantiation is incredibly expensive
+                _current = new T();
+
+                // Get type properties
+                IMessageAllocationRequest request = _current.DefaultRequest();
+                _requestByteSize = request.ByteSize;
+            }
+
+            // Move to next object
+            public bool MoveNext()
+            {
+                if (_currentSpan.Length < (int)_requestByteSize)
+                {
+                    return false;
+                }
+
+                // Set current memory
+                _current.Memory = _currentSpan;
+                
+                // Ignore partial streams
+                if (_currentSpan.Length < _current.RuntimeByteSize)
+                {
+                    return false;
+                }
+
+                // Skip contents
+                _currentSpan = _currentSpan.Slice((int)_current.RuntimeByteSize);
+
+                // OK
+                return true;
+            }
+
+            // Reset this enumerator
+            public void Reset()
+            {
+                _currentSpan = Memory;
+            }
+
+            public void Dispose()
+            {
+                // Nothing
+            }
+
+            // Cached request byte size
+            private ulong _requestByteSize;
+
+            // The current iteration span
+            private ByteSpan _currentSpan;
+
+            // The current object
+            private T _current;
+
+            // Current object
+            object IEnumerator.Current => Current;
+        }
 
         public ChunkedMessageView(S storage)
         {
@@ -355,24 +600,23 @@ namespace Message.CLR
             _storage = storage;
         }
 
+
+        // Get the unguarded enumerator
+        public UnsafeEnumerator GetUnsafeEnumerator()
+        {
+            return new UnsafeEnumerator(_storage.GetSpan());
+        }
+
+        // Get the guarded enumerator, performs partial message checks
+        public GuardedEnumerator GetGuardedEnumerator()
+        {
+            return new GuardedEnumerator(_storage.GetSpan());
+        }
+
         // Enumerate this view
         public IEnumerator<T> GetEnumerator()
         {
-            ByteSpan memory = _storage.GetSpan();
-
-            // While messages to process
-            while (!memory.IsEmpty)
-            {
-                // Create message
-                T message = new T()
-                {
-                    Memory = memory
-                };
-                yield return message;
-
-                // Skip contents
-                memory = memory.Slice((int)message.RuntimeByteSize);
-            }
+            return GetGuardedEnumerator();
         }
 
         // Generic enumeration not supported
@@ -384,9 +628,145 @@ namespace Message.CLR
         private S _storage;
     }
 
-    public class DynamicMessageView<T, S> : IEnumerable<T> where T : IMessage, new() where S : IMessageStream
+    public class DynamicMessageView<T, S> : IEnumerable<T> where T : struct, IMessage where S : IMessageStream
     {
         public S Storage => _storage;
+
+        public struct UnsafeEnumerator : IEnumerator<T>
+        {
+            // Complete range
+            public ByteSpan Memory;
+
+            // Current object
+            public T Current => _current;
+
+            public UnsafeEnumerator(ByteSpan memory)
+            {
+                Memory = memory;
+                _currentSpan = Memory;
+                
+                // Share the object, generic instantiation is incredibly expensive
+                _current = new T();
+            }
+
+            // Move to next object
+            public bool MoveNext()
+            {
+                if (_currentSpan.IsEmpty)
+                {
+                    return false;
+                }
+                
+                // Get header
+                var header = MemoryMarshal.Read<DynamicMessageSchema.Header>(_currentSpan.AsRefSpan());
+                
+                // Skip contents
+                _currentSpan = _currentSpan.Slice(_headerByteSize);
+                
+                // Set current memory
+                _current.Memory = _currentSpan;
+
+                // Skip contents
+                _currentSpan = _currentSpan.Slice((int)header.byteSize);
+
+                // OK
+                return true;
+            }
+
+            // Reset this enumerator
+            public void Reset()
+            {
+                _currentSpan = Memory;
+            }
+
+            public void Dispose()
+            {
+                // Nothing
+            }
+
+            // The current iteration span
+            private ByteSpan _currentSpan;
+
+            // The current object
+            private T _current;
+            
+            // Expected header size
+            private static readonly int _headerByteSize = Marshal.SizeOf<DynamicMessageSchema.Header>();
+
+            // Current object
+            object IEnumerator.Current => Current;
+        }
+
+        public struct GuardedEnumerator : IEnumerator<T>
+        {
+            // Complete range
+            public ByteSpan Memory;
+
+            // Current object
+            public T Current => _current;
+
+            public GuardedEnumerator(ByteSpan memory)
+            {
+                Memory = memory;
+                _currentSpan = Memory;
+                
+                // Share the object, generic instantiation is incredibly expensive
+                _current = new T();
+            }
+
+            // Move to next object
+            public bool MoveNext()
+            {
+                if (_currentSpan.Length < _headerByteSize)
+                {
+                    return false;
+                }
+                
+                // Get header
+                var header = MemoryMarshal.Read<DynamicMessageSchema.Header>(_currentSpan.AsRefSpan());
+                
+                // Skip contents
+                _currentSpan = _currentSpan.Slice(_headerByteSize);
+                
+                // Ignore partial streams
+                if (_currentSpan.Length < (int)header.byteSize)
+                {
+                    return false;
+                }
+
+                // Set current memory
+                _current.Memory = _currentSpan;
+
+                // Skip contents
+                _currentSpan = _currentSpan.Slice((int)header.byteSize);
+
+                // OK
+                return true;
+            }
+
+            // Reset this enumerator
+            public void Reset()
+            {
+                _currentSpan = Memory;
+            }
+
+            public void Dispose()
+            {
+                // Nothing
+            }
+
+            // The current iteration span
+            private ByteSpan _currentSpan;
+
+            // The current object
+            private T _current;
+
+            // Expected header size
+            private static readonly int _headerByteSize = Marshal.SizeOf<DynamicMessageSchema.Header>();
+
+            // Current object
+            object IEnumerator.Current => Current;
+        }
 
         public DynamicMessageView(S storage)
         {
@@ -470,29 +850,22 @@ namespace Message.CLR
             return message;
         }
 
+        // Get the unguarded enumerator
+        public UnsafeEnumerator GetUnsafeEnumerator()
+        {
+            return new UnsafeEnumerator(_storage.GetSpan());
+        }
+
+        // Get the guarded enumerator, performs partial message checks
+        public GuardedEnumerator GetGuardedEnumerator()
+        {
+            return new GuardedEnumerator(_storage.GetSpan());
+        }
+
         // Enumerate this view
         public IEnumerator<T> GetEnumerator()
         {
-            ByteSpan memory = _storage.GetSpan();
-
-            // While messages to process
-            while (!memory.IsEmpty)
-            {
-                // Get header
-                var header = MemoryMarshal.Read<DynamicMessageSchema.Header>(memory.AsRefSpan());
-
-                // Skip header to message contents
-                memory = memory.Slice(Marshal.SizeOf<DynamicMessageSchema.Header>());
-
-                // Create message
-                yield return new T()
-                {
-                    Memory = memory
-                };
-
-                // Skip contents
-                memory = memory.Slice((int)header.byteSize);
-            }
+            return GetGuardedEnumerator();
         }
 
         // Generic enumeration not supported
@@ -524,6 +897,144 @@ namespace Message.CLR
     public class OrderedMessageView<S> : IEnumerable<OrderedMessage> where S : IMessageStream
     {
         public S Storage => _storage;
+        
+        public struct UnsafeEnumerator : IEnumerator<OrderedMessage>
+        {
+            // Complete range
+            public ByteSpan Memory;
+
+            // Current object
+            public OrderedMessage Current => _current;
+
+            public UnsafeEnumerator(ByteSpan memory)
+            {
+                Memory = memory;
+                _currentSpan = Memory;
+                
+                // Share the object
+                _current = new OrderedMessage();
+            }
+
+            // Move to next object
+            public bool MoveNext()
+            {
+                if (_currentSpan.IsEmpty)
+                {
+                    return false;
+                }
+                
+                // Get header
+                var header = MemoryMarshal.Read<OrderedMessageSchema.Header>(_currentSpan.AsRefSpan());
+                
+                // Skip contents
+                _currentSpan = _currentSpan.Slice(_headerByteSize);
+                
+                // Set current memory and id
+                _current.Memory = _currentSpan;
+                _current.ID = header.id;
+
+                // Skip contents
+                _currentSpan = _currentSpan.Slice((int)header.byteSize);
+
+                // OK
+                return true;
+            }
+
+            // Reset this enumerator
+            public void Reset()
+            {
+                _currentSpan = Memory;
+            }
+
+            public void Dispose()
+            {
+                // Nothing
+            }
+
+            // The current iteration span
+            private ByteSpan _currentSpan;
+
+            // The current object
+            private OrderedMessage _current;
+
+            // Expected header size
+            private static readonly int _headerByteSize = Marshal.SizeOf<OrderedMessageSchema.Header>();
+
+            // Current object
+            object IEnumerator.Current => Current;
+        }
+
+        public struct GuardedEnumerator : IEnumerator<OrderedMessage>
+        {
+            // Complete range
+            public ByteSpan Memory;
+
+            // Current object
+            public OrderedMessage Current => _current;
+
+            public GuardedEnumerator(ByteSpan memory)
+            {
+                Memory = memory;
+                _currentSpan = Memory;
+                
+                // Share the object
+                _current = new OrderedMessage();
+            }
+
+            // Move to next object
+            public bool MoveNext()
+            {
+                if (_currentSpan.Length < _headerByteSize)
+                {
+                    return false;
+                }
+                
+                // Get header
+                var header = MemoryMarshal.Read<OrderedMessageSchema.Header>(_currentSpan.AsRefSpan());
+                
+                // Skip contents
+                _currentSpan = _currentSpan.Slice(_headerByteSize);
+                
+                // Ignore partial streams
+                if (_currentSpan.Length < (int)header.byteSize)
+                {
+                    return false;
+                }
+
+                // Set current memory and id
+                _current.Memory = _currentSpan;
+                _current.ID = header.id;
+
+                // Skip contents
+                _currentSpan = _currentSpan.Slice((int)header.byteSize);
+
+                // OK
+                return true;
+            }
+
+            // Reset this enumerator
+            public void Reset()
+            {
+                _currentSpan = Memory;
+            }
+
+            public void Dispose()
+            {
+                // Nothing
+            }
+
+            // The current iteration span
+            private ByteSpan _currentSpan;
+
+            // The current object
+            private OrderedMessage _current;
+
+            // Expected header size
+            private static readonly int _headerByteSize = Marshal.SizeOf<OrderedMessageSchema.Header>();
+
+            // Current object
+            object IEnumerator.Current => Current;
+        }
 
         public OrderedMessageView(S storage)
         {
@@ -540,7 +1051,7 @@ namespace Message.CLR
         }
 
         // Add a new message with given allocation request
-        public T Add<T>(IMessageAllocationRequest request) where T : IMessage, new()
+        public T Add<T>(IMessageAllocationRequest request) where T : struct, IMessage
         {
             // Size of the schema header
             int headerSize = Marshal.SizeOf<OrderedMessageSchema.Header>();
@@ -572,7 +1083,7 @@ namespace Message.CLR
         }
 
         // Add a new message with default allocation requests
-        public T Add<T>() where T : IMessage, new()
+        public T Add<T>() where T : struct, IMessage
         {
             // Allocate message
             T message = new T();
@@ -606,30 +1117,22 @@ namespace Message.CLR
             return message;
         }
 
+        // Get the unguarded enumerator
+        public UnsafeEnumerator GetUnsafeEnumerator()
+        {
+            return new UnsafeEnumerator(_storage.GetSpan());
+        }
+
+        // Get the guarded enumerator, performs partial message checks
+        public GuardedEnumerator GetGuardedEnumerator()
+        {
+            return new GuardedEnumerator(_storage.GetSpan());
+        }
+
         // Enumerate this view
         public IEnumerator<OrderedMessage> GetEnumerator()
         {
-            ByteSpan memory = _storage.GetSpan();
-
-            // While messages to process
-            while (!memory.IsEmpty)
-            {
-                // Get header
-                var header = MemoryMarshal.Read<OrderedMessageSchema.Header>(memory.AsRefSpan());
-
-                // Skip header to message contents
-                memory = memory.Slice(Marshal.SizeOf<OrderedMessageSchema.Header>());
-
-                // Create message
-                yield return new OrderedMessage()
-                {
-                    Memory = memory,
-                    ID = header.id
-                };
-
-                // Skip contents
-                memory = memory.Slice((int)header.byteSize);
-            }
+            return GetGuardedEnumerator();
         }
 
         // Generic enumeration not supported
@@ -641,7 +1144,7 @@ namespace Message.CLR
         private S _storage;
     }
 
-    public class StaticMessageView<T> : StaticMessageView<T, ReadOnlyMessageStream> where T : IMessage, new()
+    public class StaticMessageView<T> : StaticMessageView<T, ReadOnlyMessageStream> where T : struct, IMessage
     {
         public StaticMessageView(ReadOnlyMessageStream _storage) : base(_storage)
         {
@@ -649,7 +1152,7 @@ namespace Message.CLR
         }
     }
 
-    public class ChunkedMessageView<T> : ChunkedMessageView<T, ReadOnlyMessageStream> where T : IChunkedMessage, new()
+    public class ChunkedMessageView<T> : ChunkedMessageView<T, ReadOnlyMessageStream> where T : struct, IChunkedMessage
     {
         public ChunkedMessageView(ReadOnlyMessageStream _storage) : base(_storage)
         {
@@ -657,7 +1160,7 @@ namespace Message.CLR
         }
     }
 
-    public class DynamicMessageView<T> : DynamicMessageView<T, ReadOnlyMessageStream> where T : IMessage, new()
+    public class DynamicMessageView<T> : DynamicMessageView<T, ReadOnlyMessageStream> where T : struct, IMessage
     {
         public DynamicMessageView(ReadOnlyMessageStream _storage) : base(_storage)
         {
