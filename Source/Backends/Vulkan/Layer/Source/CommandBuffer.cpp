@@ -529,7 +529,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdWaitEvents(CommandBufferObject* commandBuff
     CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers, pBufferMemoryBarriers, bufferMemoryBarrierCount);
 
     // Pass down callchain
-    commandBuffer->dispatchTable.next_vkCmdWaitEvents(commandBuffer->object, eventCount, pEvents, srcStageMask, dstStageMask, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
+    commandBuffer->dispatchTable.next_vkCmdWaitEvents(commandBuffer->object, eventCount, pEvents, srcStageMask, dstStageMask, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, bufferMemoryBarriers, imageMemoryBarrierCount, imageMemoryBarriers);
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPipelineBarrier(CommandBufferObject* commandBuffer, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags, uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier *pBufferMemoryBarriers, uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier *pImageMemoryBarriers) {
@@ -542,7 +542,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdPipelineBarrier(CommandBufferObject* comman
     CopyAndMigrateMemoryBarrier(commandBuffer->table, bufferMemoryBarriers, pBufferMemoryBarriers, bufferMemoryBarrierCount);
 
     // Pass down callchain
-    commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(commandBuffer->object, srcStageMask, dstStageMask, dependencyFlags, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
+    commandBuffer->dispatchTable.next_vkCmdPipelineBarrier(commandBuffer->object, srcStageMask, dstStageMask, dependencyFlags, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, bufferMemoryBarriers, imageMemoryBarrierCount, imageMemoryBarriers);
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdSetEvent2(CommandBufferObject* commandBuffer, VkEvent event, const VkDependencyInfo *pDependencyInfo) {
