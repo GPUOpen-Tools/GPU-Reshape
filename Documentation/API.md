@@ -1,6 +1,6 @@
 # API - Application Interface
 
-General documentation for the framework API.
+_General documentation for the framework API, incomplete._
 ___
 
 Contents
@@ -10,6 +10,5 @@ Contents
 - [SourceTrace](API/SourceTrace.md)
 - [Testing](API/Testing.md)
 - [Style Guide](API/StyleGuide.md)
-- [Tech Debt](API/TechDebt.md)
 
 ---

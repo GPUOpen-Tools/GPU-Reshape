@@ -1,7 +1,7 @@
 # UIX - User Interface
 
-General documentation for the UIX.
+_General documentation for the UIX, incomplete._
 
 ___
 
-![Studio Preview](Resources/Images/StudioC.png)
+For a quick start guide, please see [Quick Start](QuickStart.md).

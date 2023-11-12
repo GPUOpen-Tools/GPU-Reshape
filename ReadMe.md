@@ -11,13 +11,11 @@ GPU Reshape is an open collaboration between **Miguel Petersen** (author), **Adv
 
 <p align="center">
   <a href="Documentation/QuickStart.md">Quick Start</a> -
+  <a href="Documentation/Features.md">Features</a> -
   <a href="Documentation/Build.md">Build</a> -
-  <a href="Documentation/UIX.md">UIX</a> -
   <a href="Documentation/API.md">API</a> -
   <a href="Documentation/Motivation.md">Motivation</a> -
-  <a href="Documentation/Design.md">Design</a> -
-  <a href="Documentation/Features.md">Features</a> -
-  <a href="Avalanche/ReadMe.md">Proof of concept</a>
+  <a href="Documentation/UIX.md">UIX</a>
 </p>
 
 ---
