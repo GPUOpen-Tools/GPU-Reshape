@@ -103,7 +103,7 @@ namespace Studio.ViewModels.Menu
             // TODO: This is most definitely not the right way, will probably use the built chm or similar instead?
             System.Diagnostics.Process.Start(new ProcessStartInfo
             {
-                FileName = "https://github.com/GPUOpen-Tools/GPU-Reshape/blob/main/Documentation/UIX.md",
+                FileName = "https://github.com/GPUOpen-Tools/GPU-Reshape/blob/main/Documentation/QuickStart.md",
                 UseShellExecute = true
             });
         }
