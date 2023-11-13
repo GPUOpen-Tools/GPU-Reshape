@@ -94,8 +94,10 @@ Microsoft
 
 ## Known Issues
 
+- Raytracing and mesh shaders are currently pass-through, no instrumentation is done on them.
 - Initialization feature false positives. Resources can be initialized in a myriad of ways, this will be improved with time.
 - Loop feature not catching all timeouts. The loop feature is currently experimental, and relies on non-standard guarantees.
+- Application launches, not attaching, will only connect to the first device, which may not necessarily be the intended device.
 
 ## Credit
 
