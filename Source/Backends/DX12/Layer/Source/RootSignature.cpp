@@ -201,6 +201,80 @@ void WriteRootMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserCl
     }
 }
 
+/// Hash a descriptor range
+static void CombineHash(uint64_t& hash, D3D12_DESCRIPTOR_RANGE root) {
+    CombineHash(hash, root.RangeType);
+    CombineHash(hash, root.NumDescriptors);
+    CombineHash(hash, root.BaseShaderRegister);
+    CombineHash(hash, root.RegisterSpace);
+    CombineHash(hash, root.OffsetInDescriptorsFromTableStart);
+}
+
+/// Hash a descriptor range
+static void CombineHash(uint64_t& hash, D3D12_DESCRIPTOR_RANGE1 root) {
+    CombineHash(hash, root.RangeType);
+    CombineHash(hash, root.NumDescriptors);
+    CombineHash(hash, root.BaseShaderRegister);
+    CombineHash(hash, root.RegisterSpace);
+    CombineHash(hash, root.Flags);
+    CombineHash(hash, root.OffsetInDescriptorsFromTableStart);
+}
+
+/// Hash a root descriptor
+static void CombineHash(uint64_t& hash, D3D12_ROOT_DESCRIPTOR root) {
+    CombineHash(hash, root.ShaderRegister);
+    CombineHash(hash, root.RegisterSpace);
+}
+
+/// Hash a root descriptor
+static void CombineHash(uint64_t& hash, D3D12_ROOT_DESCRIPTOR1 root) {
+    CombineHash(hash, root.ShaderRegister);
+    CombineHash(hash, root.RegisterSpace);
+    CombineHash(hash, root.Flags);
+}
+
+/// Hash a root constant
+static void CombineHash(uint64_t& hash, D3D12_ROOT_CONSTANTS root) {
+    CombineHash(hash, root.ShaderRegister);
+    CombineHash(hash, root.RegisterSpace);
+    CombineHash(hash, root.Num32BitValues);
+}
+
+/// Hash a static sampler
+static void CombineHash(uint64_t& hash, D3D12_STATIC_SAMPLER_DESC root) {
+    CombineHash(hash, root.Filter);
+    CombineHash(hash, root.AddressU);
+    CombineHash(hash, root.AddressV);
+    CombineHash(hash, root.AddressW);
+    CombineHash(hash, root.MipLODBias);
+    CombineHash(hash, root.MaxAnisotropy);
+    CombineHash(hash, root.ComparisonFunc);
+    CombineHash(hash, root.BorderColor);
+    CombineHash(hash, root.MinLOD);
+    CombineHash(hash, root.MaxLOD);
+    CombineHash(hash, root.ShaderRegister);
+    CombineHash(hash, root.RegisterSpace);
+    CombineHash(hash, root.ShaderVisibility);
+}
+
+/// Hash a static sampler
+static void CombineHash(uint64_t& hash, D3D12_STATIC_SAMPLER_DESC1 root) {
+    CombineHash(hash, root.Filter);
+    CombineHash(hash, root.AddressU);
+    CombineHash(hash, root.AddressV);
+    CombineHash(hash, root.AddressW);
+    CombineHash(hash, root.MipLODBias);
+    CombineHash(hash, root.MaxAnisotropy);
+    CombineHash(hash, root.ComparisonFunc);
+    CombineHash(hash, root.BorderColor);
+    CombineHash(hash, root.MinLOD);
+    CombineHash(hash, root.MaxLOD);
+    CombineHash(hash, root.ShaderRegister);
+    CombineHash(hash, root.RegisterSpace);
+    CombineHash(hash, root.ShaderVisibility);
+    CombineHash(hash, root.Flags);
+}
+
 template<typename T>
 static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount, const D3D12_STATIC_SAMPLER_DESC* staticSamplers, uint32_t staticSamplerCount) {
     auto* mapping = new (state->allocators, kAllocStateRootSignature) RootSignaturePhysicalMapping;
@@ -219,7 +293,6 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
                 // Add to hash
                 CombineHash(mapping->signatureHash, parameter.DescriptorTable.NumDescriptorRanges);
-                CombineHash(mapping->signatureHash, BufferCRC32Short(parameter.DescriptorTable.pDescriptorRanges, sizeof(D3D12_DESCRIPTOR_RANGE1) * parameter.DescriptorTable.NumDescriptorRanges));
 
                 // Current descriptor offset
                 uint32_t descriptorOffset = 0;
@@ -227,6 +300,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 // Handle all ranges
                 for (uint32_t rangeIdx = 0; rangeIdx < parameter.DescriptorTable.NumDescriptorRanges; rangeIdx++) {
                     const auto& range = parameter.DescriptorTable.pDescriptorRanges[rangeIdx];
+
+                    // Add to hash
+                    CombineHash(mapping->signatureHash, range);
 
                     // To class type
                     RootSignatureUserClassType classType;
@@ -278,7 +354,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             }
             case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
                 // Add to hash
-                CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Constants, sizeof(parameter.Constants)));
+                CombineHash(mapping->signatureHash, parameter.Constants);
 
                 // Create mapping
                 RootSignatureUserMapping user;
@@ -290,7 +366,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV: {
                 // Add to hash
-                CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Descriptor, sizeof(parameter.Descriptor)));
+                CombineHash(mapping->signatureHash, parameter.Descriptor);
 
                 // Create mapping
                 RootSignatureUserMapping user;
@@ -302,7 +378,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             }
             case D3D12_ROOT_PARAMETER_TYPE_SRV: {
                 // Add to hash
-                CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Descriptor, sizeof(parameter.Descriptor)));
+                CombineHash(mapping->signatureHash, parameter.Descriptor);
 
                 // Create mapping
                 RootSignatureUserMapping user;
@@ -314,7 +390,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
             }
             case D3D12_ROOT_PARAMETER_TYPE_UAV: {
                 // Add to hash
-                CombineHash(mapping->signatureHash, BufferCRC32Short(&parameter.Descriptor, sizeof(parameter.Descriptor)));
+                CombineHash(mapping->signatureHash, parameter.Descriptor);
 
                 // Create mapping
                 RootSignatureUserMapping user;
@@ -332,7 +408,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
         const D3D12_STATIC_SAMPLER_DESC& sampler = staticSamplers[i];
 
         // Add to hash
-        CombineHash(mapping->signatureHash, BufferCRC32Short(&sampler, sizeof(sampler)));
+        CombineHash(mapping->signatureHash, sampler);
 
         // Create mapping
         RootSignatureUserMapping user;
