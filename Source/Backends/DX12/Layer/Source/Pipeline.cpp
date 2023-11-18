@@ -454,14 +454,29 @@ HRESULT WINAPI HookID3D12StateObjectGetDevice(ID3D12StateObject* _this, REFIID r
 HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc, const IID &riid, void **pPipeline) {
     auto table = GetTable(device);
 
+    // Extract root signature from shader bytecode if not supplied
+    // This is rather undocumented, but some titles depend on it.
+    ID3D12RootSignature* signature = desc->pRootSignature;
+    if (!signature) {
+        if (HRESULT hr = device->CreateRootSignature(0x0, desc->VS.pShaderBytecode, desc->VS.BytecodeLength, __uuidof(ID3D12RootSignature), reinterpret_cast<void**>(&signature)); FAILED(hr)) {
+            return hr;
+        }
+    }
+
     // Get root signature
-    auto rootSignatureTable = GetTable(desc->pRootSignature);
+    auto rootSignatureTable = GetTable(signature);
 
     // Create state
     auto *state = new (table.state->allocators, kAllocStatePipeline) GraphicsPipelineState(table.state->allocators.Tag(kAllocStatePipeline));
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Graphics;
+    state->signature = rootSignatureTable.state;
+
+    // Add reference to signature if external
+    if (desc->pRootSignature) {
+        signature->AddRef();
+    }
     
     // External users
     device->AddRef();
@@ -479,10 +494,6 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
         destroyRef(state, state->allocators);
         return hr;
     }
-
-    // Add reference to signature
-    desc->pRootSignature->AddRef();
-    state->signature = rootSignatureTable.state;
 
     // Create VS state
     if (desc->VS.BytecodeLength) {
@@ -540,14 +551,29 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
 HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc, const IID &riid, void **pPipeline) {
     auto table = GetTable(device);
 
+    // Extract root signature from shader bytecode if not supplied
+    // This is rather undocumented, but some titles depend on it.
+    ID3D12RootSignature* signature = desc->pRootSignature;
+    if (!signature) {
+        if (HRESULT hr = device->CreateRootSignature(0x0, desc->CS.pShaderBytecode, desc->CS.BytecodeLength, __uuidof(ID3D12RootSignature), reinterpret_cast<void**>(&signature)); FAILED(hr)) {
+            return hr;
+        }
+    }
+    
     // Get root signature
-    auto rootSignatureTable = GetTable(desc->pRootSignature);
+    auto rootSignatureTable = GetTable(signature);
 
     // Create state
     auto *state = new (table.state->allocators, kAllocStatePipeline) ComputePipelineState(table.state->allocators.Tag(kAllocStatePipeline));
     state->allocators = table.state->allocators;
     state->parent = device;
     state->type = PipelineType::Compute;
+    state->signature = rootSignatureTable.state;
+
+    // Add reference to signature if external
+    if (desc->pRootSignature) {
+        signature->AddRef();
+    }
     
     // External users
     device->AddRef();
@@ -565,10 +591,6 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
         destroyRef(state, state->allocators);
         return hr;
     }
-
-    // Add reference to signature
-    desc->pRootSignature->AddRef();
-    state->signature = rootSignatureTable.state;
 
     // Create VS state
     if (desc->CS.BytecodeLength) {
