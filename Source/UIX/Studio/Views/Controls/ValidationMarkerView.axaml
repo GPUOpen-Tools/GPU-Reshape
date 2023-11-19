@@ -30,7 +30,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:controls="clr-namespace:Studio.ViewModels.Controls"
              xmlns:objects="clr-namespace:Studio.ViewModels.Workspace.Objects;assembly=UIX.Studio.Runtime"
-             mc:Ignorable="d" d:DesignWidth="250" d:DesignHeight="35"
+             mc:Ignorable="d" d:DesignWidth="250" d:DesignHeight="75"
              x:Class="Studio.Views.Controls.ValidationMarkerView"
              x:DataType="controls:ValidationMarkerViewModel"
              HorizontalAlignment="Right"
@@ -64,7 +64,7 @@
             IsVisible="{Binding IsFlyoutVisible, FallbackValue=True}"
             Background="{StaticResource InfoMediumBackground}"
             VerticalAlignment="Stretch" 
-            Padding="0" 
+            Classes="NoPadding"
             BorderThickness="0"
             Margin="0 0 0 0"
             Width="30">

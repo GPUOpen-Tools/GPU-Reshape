@@ -49,4 +49,12 @@
         <Setter Property="Padding" Value="15 2 15 2 " />
         <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
     </Style>
+    
+    <Style Selector="Button.NoPadding">
+        <Setter Property="Padding" Value="0 0 0 0" />
+    </Style>
+    
+    <Style Selector="Button.NoPadding:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Padding" Value="0 0 0 0" />
+    </Style>
 </Styles>
