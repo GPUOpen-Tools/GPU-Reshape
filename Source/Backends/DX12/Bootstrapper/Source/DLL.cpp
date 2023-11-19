@@ -768,7 +768,7 @@ bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
         auto extendedInfo = reinterpret_cast<LPSTARTUPINFOEX>(startupInfo);
 
         // Check all attributes
-        for (ULONG i = 0; i < extendedInfo->lpAttributeList->Count; i++) {
+        for (ULONG i = 0; extendedInfo->lpAttributeList && i < extendedInfo->lpAttributeList->Count; i++) {
             const _PROC_THREAD_ATTRIBUTE_LIST_ATTRIBUTE& entry = extendedInfo->lpAttributeList->Attributes[i];
             
             // Do not bootstrap AppContainer processes

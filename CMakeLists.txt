@@ -60,7 +60,7 @@ if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)
     #       I'll find a proper solution at some point.
     add_custom_target(
         ThinX86Configure
-        COMMAND ${CMAKE_COMMAND} -E echo Configuring X86-V102
+        COMMAND ${CMAKE_COMMAND} -E echo Configuring X86-V103
         COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
@@ -76,7 +76,7 @@ if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)
     # Build target
     add_custom_target(
         ThinX86Build
-        COMMAND ${CMAKE_COMMAND} -E echo Building X86-V102
+        COMMAND ${CMAKE_COMMAND} -E echo Building X86-V103
         COMMAND ${CMAKE_COMMAND} --build . --config $<CONFIG>
         DEPENDS ThinX86Configure ${path}
         WORKING_DIRECTORY "${ThinBinaryDir}"
