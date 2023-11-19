@@ -258,6 +258,23 @@ enum class DXBCRootSignatureVersion : uint32_t {
     Version1 = 2
 };
 
+enum class DXBCRootSignatureFlags : uint32_t {
+    None = 0,
+    AllowInputAssemblerInputLayout = 1,
+    DenyVertexShaderRootAccess = 2,
+    DenyHullShaderRootAccess = 4,
+    DenyDomainShaderRootAccess = 8,
+    DenyGeometryShaderRootAccess = 16,
+    DenyPixelShaderRootAccess = 32,
+    AllowStreamOutput = 64,
+    LocalRootSignature = 128,
+    DenyAmplificationShaderRootAccess = 256,
+    DenyMeshShaderRootAccess = 512,
+    CBVSRVUAVHeapDirectlyIndexed = 1024,
+    SamplerHeapDirectlyIndexed = 2048,
+    AllowLowTierReservedHwCbLimit = 2147483648
+};
+
 struct DXBCRootSignatureHeader {
     DXBCRootSignatureVersion version;
     uint32_t parameterCount;

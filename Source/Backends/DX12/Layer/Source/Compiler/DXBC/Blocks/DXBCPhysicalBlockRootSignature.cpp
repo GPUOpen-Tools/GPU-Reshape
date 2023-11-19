@@ -334,6 +334,17 @@ void DXBCPhysicalBlockRootSignature::Compile() {
     auto *mutableHeader = block->stream.GetMutableDataAt<DXBCRootSignatureHeader>(headerOffset);
     mutableHeader->rootParameterOffset = rootParameterHeaderOffset;
     mutableHeader->staticSamplerOffset = samplerOffset;
+
+    // Instrumentation requires root access, make it visible across all stages
+    mutableHeader->flags &= ~(
+        static_cast<uint32_t>(DXBCRootSignatureFlags::DenyVertexShaderRootAccess) |
+        static_cast<uint32_t>(DXBCRootSignatureFlags::DenyHullShaderRootAccess) |
+        static_cast<uint32_t>(DXBCRootSignatureFlags::DenyDomainShaderRootAccess) |
+        static_cast<uint32_t>(DXBCRootSignatureFlags::DenyGeometryShaderRootAccess) |
+        static_cast<uint32_t>(DXBCRootSignatureFlags::DenyPixelShaderRootAccess) |
+        static_cast<uint32_t>(DXBCRootSignatureFlags::DenyAmplificationShaderRootAccess) |
+        static_cast<uint32_t>(DXBCRootSignatureFlags::DenyMeshShaderRootAccess)
+    );
 }
 
 void DXBCPhysicalBlockRootSignature::CopyTo(DXBCPhysicalBlockRootSignature &out) {
