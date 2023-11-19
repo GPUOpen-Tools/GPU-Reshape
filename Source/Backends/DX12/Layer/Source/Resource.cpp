@@ -58,9 +58,6 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     // Add state
     table.state->states_Resources.Add(state);
 
-    // Inform controller
-    table.state->versioningController->CreateOrRecommitResource(state);
-
     // Allocate PUID
     state->virtualMapping.puid = table.state->physicalResourceIdentifierMap.AllocatePUID();
 
@@ -90,6 +87,9 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
             table.state->virtualAddressTable.Add(state, resource->GetGPUVirtualAddress(), desc->Width);
             break;
     }
+
+    // Inform controller
+    table.state->versioningController->CreateOrRecommitResource(state);
 
     // Create detours
     return CreateDetour(state->allocators, resource, state);
