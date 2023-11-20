@@ -146,6 +146,10 @@ namespace Studio.Views.Controls
 
             // Sum the job counts for normalization
             int sourcedJobCount = ViewModel.GraphicsCount + ViewModel.ComputeCount;
+            if (sourcedJobCount == 0)
+            {
+                return;
+            }
 
             // Normalize by stage
             int normalizedGraphics = (int)(ViewModel.GraphicsCount / (float)sourcedJobCount * blockCount);
