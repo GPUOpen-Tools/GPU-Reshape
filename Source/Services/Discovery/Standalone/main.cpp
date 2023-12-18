@@ -230,7 +230,7 @@ int main(int32_t argc, const char *const *argv) {
     }
 
     // Get registry
-    Registry *registry = service.GetRegistry();
+    Registry *registry = service.GetLocalRegistry();
 
     // General resolver
     auto resolver = registry->New<PluginResolver>();

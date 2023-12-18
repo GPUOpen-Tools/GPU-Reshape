@@ -635,6 +635,12 @@ bool IsServiceActive() {
         return true;
     }
 
+    // May explicitly disable service traps
+    if (char* tokenKey{nullptr}; _dupenv_s(&tokenKey, &size, Backend::kNoServiceTrapKey) == 0 && tokenKey) {
+        free(tokenKey);
+        return true;
+    }
+
     // Not active
     return false;
 }

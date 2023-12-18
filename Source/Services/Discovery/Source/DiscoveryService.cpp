@@ -50,10 +50,10 @@ DiscoveryService::~DiscoveryService() {
 
 bool DiscoveryService::Install() {
     // Create the host
-    host = registry.AddNew<DiscoveryHost>();
+    host = localRegistry.AddNew<DiscoveryHost>();
 
     // Create the resolver
-    resolver = registry.AddNew<PluginResolver>();
+    resolver = localRegistry.AddNew<PluginResolver>();
 
     // Find all plugins
     PluginList list;
@@ -75,7 +75,7 @@ bool DiscoveryService::Install() {
     host->Enumerate(&listenerCount, listeners.data());
 
     // Add notify icon listener
-    listeners.push_back(registry.New<NotifyIconDiscoveryListener>());
+    listeners.push_back(localRegistry.New<NotifyIconDiscoveryListener>());
 
     // OK
     return true;
@@ -193,12 +193,17 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
     DiscoveryBootstrappingEnvironment bootstrappingEnvironment;
 
     // Write the startup environment
-    bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kStartupEnvironmentKey, Backend::StartupEnvironment{}.WriteEnvironment(environment));
+    if (environment.GetByteSize()) {
+        bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kStartupEnvironmentKey, Backend::StartupEnvironment{}.WriteEnvironment(environment));
+    }
 
     // Write token if valid
     if (info.reservedToken.IsValid()) {
         bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kReservedEnvironmentTokenKey, info.reservedToken.ToString());
     }
+
+    // Disable service traps, must always bootstrap regardless of discoverability
+    bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kNoServiceTrapKey, "");
     
     // Compose environment
     for (const ComRef<IDiscoveryListener>& listener : listeners) {
@@ -248,7 +253,7 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
         0x0,
         0x0,
         false,
-        DETACHED_PROCESS,
+        DETACHED_PROCESS | CREATE_SUSPENDED,
         environmentBlock.data(),
         info.workingDirectoryPath,
         &startupInfo, &processInfo,

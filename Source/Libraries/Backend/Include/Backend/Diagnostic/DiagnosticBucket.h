@@ -94,16 +94,16 @@ private:
     }
     
     /// Argument writer
-    template<typename T, typename... TX>
-    uint32_t WriteArguments(uint8_t* base, T&& first, TX&&... args) {
+    template<typename TA, typename... TX>
+    uint32_t WriteArguments(uint8_t* base, TA&& first, TX&&... args) {
         // Writing pass?
         if (base) {
             std::memcpy(base, &first, sizeof(first));
-            base += sizeof(T);
+            base += sizeof(TA);
         }
 
         // Accumulate size
-        return sizeof(T) + WriteArguments(base, args...);
+        return sizeof(TA) + WriteArguments(base, args...);
     }
 
 private:

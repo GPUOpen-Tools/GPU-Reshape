@@ -24,8 +24,13 @@
 
 #pragma once
 
-class HostResolverService {
+// Common
+#include <Common/IComponent.h>
+
+class HostResolverService : public IComponent {
 public:
+    COMPONENT(HostResolverService);
+    
     /// Install this service
     /// \return success state
     bool Install();

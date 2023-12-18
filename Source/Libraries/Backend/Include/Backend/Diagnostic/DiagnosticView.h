@@ -38,12 +38,12 @@ struct DiagnosticView {
     }
 
     /// Get an argument
-    /// \tparam T type must be exactly the same
+    /// \tparam U type must be exactly the same
     /// \return argument reference
-    template<typename T>
-    const T& Get() {
-        const T* ptr = reinterpret_cast<const T*>(base);
-        base += sizeof(T);
+    template<typename U>
+    const U& Get() {
+        const U* ptr = reinterpret_cast<const U*>(base);
+        base += sizeof(U);
         ASSERT(base <= end, "Out of bounds view");
         return *ptr;
     }

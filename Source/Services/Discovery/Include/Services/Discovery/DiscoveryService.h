@@ -39,8 +39,10 @@ class IDiscoveryHost;
 class IDiscoveryListener;
 struct MessageStream;
 
-class DiscoveryService {
+class DiscoveryService : public IComponent {
 public:
+    COMPONENT(DiscoveryService);
+    
     ~DiscoveryService();
 
     /// Install this service
@@ -88,13 +90,13 @@ public:
     bool StartBootstrappedProcess(const DiscoveryProcessInfo &info, const MessageStream& environment);
     
     /// Get the registry
-    Registry* GetRegistry() {
-        return &registry;
+    Registry* GetLocalRegistry() {
+        return &localRegistry;
     }
 
 private:
     /// Local registry
-    Registry registry;
+    Registry localRegistry;
 
     /// Shared listener host
     ComRef<IDiscoveryHost> host{nullptr};
