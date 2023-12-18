@@ -22,5 +22,5 @@
 :: ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 :: 
 
-taskkill /f /im Services.HostResolver.Standalone.exe 2>NUL | findstr SUCCESS >NUL
+taskkill /f /im GRS.Services.HostResolver.Standalone.exe 2>NUL | findstr SUCCESS >NUL
 exit /b 0
