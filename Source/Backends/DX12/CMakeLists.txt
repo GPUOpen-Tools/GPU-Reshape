@@ -73,7 +73,7 @@ target_include_directories(
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(GRS.Backends.DX12.Generator PRIVATE /EHa)
+    target_compile_options(GRS.Backends.DX12.Generator PRIVATE /EHs)
 endif()
 
 # Setup dependencies

@@ -59,7 +59,7 @@ target_link_libraries(GRS.Libraries.Message.Generator PUBLIC GRS.Libraries.Commo
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(GRS.Libraries.Message.Generator PRIVATE /EHa)
+    target_compile_options(GRS.Libraries.Message.Generator PRIVATE /EHs)
 endif()
 
 # Setup dependencies

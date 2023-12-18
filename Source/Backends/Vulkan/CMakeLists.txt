@@ -43,7 +43,7 @@ target_link_libraries(GRS.Backends.Vulkan.Generator PUBLIC GRS.Libraries.Common)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(GRS.Backends.Vulkan.Generator PRIVATE /EHa)
+    target_compile_options(GRS.Backends.Vulkan.Generator PRIVATE /EHs)
 endif()
 
 # Setup dependencies

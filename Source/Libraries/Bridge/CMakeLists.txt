@@ -57,7 +57,7 @@ target_link_libraries(GRS.Libraries.Bridge PUBLIC GRS.Libraries.Message)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(GRS.Libraries.Bridge PRIVATE /EHa)
+    target_compile_options(GRS.Libraries.Bridge PRIVATE /EHs)
 endif()
 
 #----- Tests -----#
@@ -72,7 +72,7 @@ add_executable(
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(GRS.Libraries.Bridge.Tests PRIVATE /EHa)
+    target_compile_options(GRS.Libraries.Bridge.Tests PRIVATE /EHs)
 endif()
 
 # IDE source discovery

@@ -46,7 +46,7 @@ SetSourceDiscovery(GRS.Test.Device.Generator CXX Generator)
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(GRS.Test.Device.Generator PRIVATE /EHa)
+    target_compile_options(GRS.Test.Device.Generator PRIVATE /EHs)
 endif()
 
 # Includes

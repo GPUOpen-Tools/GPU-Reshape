@@ -50,7 +50,7 @@ target_link_libraries(GRS.Services.HostResolver.Standalone PUBLIC GRS.Libraries.
 
 # Enable exceptions, only for clang-cl based compilers which seem to have it disabled implicitly
 if (MSVC)
-    target_compile_options(GRS.Services.HostResolver.Standalone PRIVATE /EHa)
+    target_compile_options(GRS.Services.HostResolver.Standalone PRIVATE /EHs)
 endif()
 
 #------ Service ------#
