@@ -52,6 +52,7 @@ static ResourceToken GetResourceToken(const T* state) {
 /// \param state given command list state
 /// \param handle opaque handle
 /// \return state, may be nullptr
+[[maybe_unused]]
 static ResourceState* GetResourceStateFromHeapHandle(CommandListState* state, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle) {
     auto table = GetTable(state->parent);
 

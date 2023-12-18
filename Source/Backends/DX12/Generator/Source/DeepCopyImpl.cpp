@@ -440,9 +440,11 @@ bool Generators::DeepCopyImpl(const GeneratorInfo &info, TemplateEngine &templat
         deepCopy << "\t}\n\n";
 
         // Typed for offsets
+        deepCopy << "\t[[maybe_unused]]\n";
         deepCopy << "\tauto* blob = static_cast<uint8_t*>(opaqueBlob);\n\n";
 
         // Actual deep copy
+        deepCopy << "\t[[maybe_unused]]\n";
         deepCopy << "\tsize_t blobOffset = 0;\n";
         deepCopy << state.deepCopy.str();
 

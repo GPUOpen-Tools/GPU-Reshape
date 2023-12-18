@@ -258,6 +258,7 @@ static void CombineHash(uint64_t& hash, D3D12_STATIC_SAMPLER_DESC root) {
 }
 
 /// Hash a static sampler
+[[maybe_unused]]
 static void CombineHash(uint64_t& hash, D3D12_STATIC_SAMPLER_DESC1 root) {
     CombineHash(hash, root.Filter);
     CombineHash(hash, root.AddressU);
@@ -275,8 +276,8 @@ static void CombineHash(uint64_t& hash, D3D12_STATIC_SAMPLER_DESC1 root) {
     CombineHash(hash, root.Flags);
 }
 
-template<typename T>
-static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount, const D3D12_STATIC_SAMPLER_DESC* staticSamplers, uint32_t staticSamplerCount) {
+template<typename T, typename U>
+static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount, const U* staticSamplers, uint32_t staticSamplerCount) {
     auto* mapping = new (state->allocators, kAllocStateRootSignature) RootSignaturePhysicalMapping;
 
     // TODO: Could do a pre-pass
@@ -405,7 +406,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
     // Create static sampler mappings
     for (uint32_t i = 0; i < staticSamplerCount; i++) {
-        const D3D12_STATIC_SAMPLER_DESC& sampler = staticSamplers[i];
+        const U& sampler = staticSamplers[i];
 
         // Add to hash
         CombineHash(mapping->signatureHash, sampler);
