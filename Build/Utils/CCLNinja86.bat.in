@@ -1,0 +1,9 @@
+setlocal
+call "$ENV{VCINSTALLDIR}Auxiliary\Build\vcvars32.bat"
+
+set CC=clang-cl
+set CFLAGS=-m32
+set CXX=clang-cl
+set CXXFLAGS=-m32
+%*
+endlocal

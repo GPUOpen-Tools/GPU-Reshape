@@ -53,6 +53,23 @@ if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)
     # CMake binary / cache folder
     set(ThinBinaryDir "${CMAKE_BINARY_DIR}/ThinX86")
     execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${ThinBinaryDir}")
+
+    # Architecture and bootstrapper
+    if (NOT "${CMAKE_GENERATOR}" MATCHES "Ninja")
+        # Let CMake handle the x86 architecture
+        set(X86CommandBootstrapper ${CMAKE_COMMAND})
+        set(X86ArchFlags           -A Win32 -DCMAKE_GENERATOR_PLATFORM=Win32)
+    else()
+        # Ninja (clang-cl) does not allow the platform / architecture to be supplied from command line
+        # It instead has to be supplied through environment flags, with the expected configuration set up,
+        # typical of vcvars.
+        set(X86CCLNinja            ${ThinBinaryDir}/CCLNinja86.bat)
+        set(X86CommandBootstrapper ${X86CCLNinja} ${CMAKE_COMMAND})
+        set(X86ArchFlags           -DTHIN_X86_M32=ON)
+
+        # Create cmake bootstrapper
+        configure_file(${CMAKE_SOURCE_DIR}/Build/Utils/CCLNinja86.bat.in ${X86CCLNinja})
+    endif()
     
     # Configuration target
     # Note: I had great difficulty in getting the secondary-cmake targets to \DEPENDS on the sources, even
@@ -61,14 +78,15 @@ if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)
     add_custom_target(
         ThinX86Configure
         COMMAND ${CMAKE_COMMAND} -E echo Configuring X86-V103
-        COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}"
+        COMMAND ${X86CommandBootstrapper} -G "${CMAKE_GENERATOR}"
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+            -DCMAKE_CXX_COMPILER="${CMAKE_CXX_COMPILER}"
+            -DCMAKE_C_COMPILER="${CMAKE_C_COMPILER}"
             -DTHIN_X86_BUILD=ON
             -DTHIN_X86_POSTFIX=X32
             -DENABLE_UIX=OFF
-            -DCMAKE_GENERATOR_PLATFORM=Win32
-            -A Win32
+            ${X86ArchFlags}
             ${CMAKE_SOURCE_DIR}
         WORKING_DIRECTORY "${ThinBinaryDir}"
     )
@@ -77,7 +95,7 @@ if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)
     add_custom_target(
         ThinX86Build
         COMMAND ${CMAKE_COMMAND} -E echo Building X86-V103
-        COMMAND ${CMAKE_COMMAND} --build . --config $<CONFIG>
+        COMMAND ${X86CommandBootstrapper} --build . --config $<CONFIG>
         DEPENDS ThinX86Configure ${path}
         WORKING_DIRECTORY "${ThinBinaryDir}"
     )
@@ -87,7 +105,7 @@ if (NOT THIN_X86_BUILD AND ENABLE_X86_BOOTSTRAPPER)
 endif()
 
 # Ensure 64 bit
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT THIN_X86_BUILD)
     set(ARCH_POSTFIX "X64")
 else()
     set(ARCH_POSTFIX "X32")
