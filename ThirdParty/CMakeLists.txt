@@ -54,6 +54,11 @@ if (NOT THIN_X86_BUILD)
     include(UnorderedDense.cmake)
     include(BTree.cmake)
     include(ZLIB.cmake)
+
+    if (${ENABLE_EXPERIMENTAL})
+        include(Eigen.cmake)
+        include(STB.cmake)
+    endif()
 endif()
 
 # Shared between x86 and x64
