@@ -57,14 +57,14 @@ void PoolingListener::Transfer(MessageSchema schema, MessageTask* from, MessageT
     to->controller = from->controller;
 }
 
-void PoolingListener::Commit(MessageSchema schema, const void* ptr, size_t length, uint32_t count) {
+void PoolingListener::Commit(MessageSchema schema, const void* ptr, size_t length, size_t count) {
     auto schemaIt = poolingSchemas.find(schema);
     if (schemaIt != poolingSchemas.end()) {
         Commit(schemaIt->second, ptr, length, count);
     }
 }
 
-void PoolingListener::Commit(TaskBucket& bucket, const void* ptr, size_t length, uint32_t count) {
+void PoolingListener::Commit(TaskBucket& bucket, const void* ptr, size_t length, size_t count) {
     for (MessageTask* task : bucket.tasks) {
         Commit(task, ptr, length, count);
     }
@@ -75,7 +75,7 @@ void PoolingListener::Commit(TaskBucket& bucket, const void* ptr, size_t length,
     });
 }
 
-void PoolingListener::Commit(MessageTask* task, const void* ptr, size_t length, uint32_t count) {
+void PoolingListener::Commit(MessageTask* task, const void* ptr, size_t length, size_t count) {
     std::lock_guard guard(task->controller->mutex);
 
     // Move all dadta

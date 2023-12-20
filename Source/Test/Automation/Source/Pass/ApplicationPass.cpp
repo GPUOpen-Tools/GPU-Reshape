@@ -147,7 +147,7 @@ void ApplicationPass::TerminateApplication(uint32_t processID) {
 
     // Terminate and wait
     TerminateProcess(process, 0u);
-    WaitForSingleObject(process, std::chrono::milliseconds(10000).count());
+    WaitForSingleObject(process, static_cast<DWORD>(std::chrono::milliseconds(10000).count()));
 #else // _WIN32
 #error Not implemented
 #endif // _WIN32
