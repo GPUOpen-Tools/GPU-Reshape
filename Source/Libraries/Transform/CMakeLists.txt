@@ -22,19 +22,21 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
+# Create library
+add_library(
+    GRS.Libraries.Transform STATIC
+    Source/Image/IO.cpp
+)
 
-# Feature libraries
-add_subdirectory(Common)
-add_subdirectory(Message)
-add_subdirectory(Backend)
-add_subdirectory(Discovery)
-add_subdirectory(Analysis)
-add_subdirectory(Frontend)
+# Include directories
+target_include_directories(GRS.Libraries.Transform PUBLIC Include)
 
-# Experimental libraries
-if (${ENABLE_EXPERIMENTAL})
-    add_subdirectory(Transform)
-endif()
+# Links
+target_link_libraries(GRS.Libraries.Transform PUBLIC GRS.Libraries.Common)
+target_link_libraries(GRS.Libraries.Transform PRIVATE STBLib)
 
-# Interop libraries
-add_subdirectory(Bridge)
+# IDE source discovery
+SetSourceDiscovery(GRS.Libraries.Transform CXX Include Source)
+
+# External links
+ExternalProject_Link(GRS.Libraries.Transform Eigen)
