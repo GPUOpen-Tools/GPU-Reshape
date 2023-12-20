@@ -1,9 +1,11 @@
 # 
 # The MIT License (MIT)
 # 
-# Copyright (c) 2023 Miguel Petersen
-# Copyright (c) 2023 Advanced Micro Devices, Inc
-# Copyright (c) 2023 Fatalist Development AB
+# Copyright (c) 2023 Advanced Micro Devices, Inc.,
+# Fatalist Development AB (Avalanche Studio Group),
+# and Miguel Petersen.
+# 
+# All Rights Reserved.
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy 
 # of this software and associated documentation files (the "Software"), to deal 
@@ -86,9 +88,11 @@ license_header = "The MIT License (MIT)"
 license_contents = f"""
 {license_header}
 
-Copyright (c) {license_range} Miguel Petersen
-Copyright (c) {license_range} Advanced Micro Devices, Inc
-Copyright (c) {license_range} Fatalist Development AB
+Copyright (c) {license_range} Advanced Micro Devices, Inc.,
+Fatalist Development AB (Avalanche Studio Group),
+and Miguel Petersen.
+
+All Rights Reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy 
 of this software and associated documentation files (the "Software"), to deal 
@@ -119,13 +123,28 @@ for ext in extensions:
     license_templates[ext] = comment[0] + license_contents.replace("\n", "\n" + comment[1]) + comment[2] + "\r\n\r\n"
 
 
+# Special condition, both the substring and line segment are whitespace
+def starts_with_whitespace(a, b, start):
+    if not b.isspace():
+        return False
+        
+    # Find end of line
+    aend = a.find('\n', start)
+    
+    # If valid, check if segment is all whitespace
+    return aend != -1 and a[start:aend].isspace()
+
 # Compare two strings, ignoring line ending differences
-def starts_with_no_le(a, b):
+def starts_with_no_le(a, b, start = 0):
     alen = len(a)
     blen = len(b)
+    
+    # Special case, check if the substr is all whitespace, if so, check if the line segment is all whitespace
+    if starts_with_whitespace(a, b, start):
+        return True
 
     # Iteration offsets
-    aoffset = 0
+    aoffset = start
     boffset = 0
 
     # While both offsets are in bounds
@@ -190,8 +209,9 @@ for directory in directories:
 
         # Find first non-comment
         end = 0
-        while any(len(x) > 0 and contents.startswith(x, end) for x in comment):
-            end = contents.index("\n", end) + 1
+        for x in [x for x in comment if len(x) > 0]:
+            while starts_with_no_le(contents, x, end):
+                end = contents.index("\n", end) + 1
 
         # Eat last newline
         end = contents.index("\n", end) + 1

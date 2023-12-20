@@ -114,8 +114,8 @@ Development was supported by:
 - Alexander Polya (Avalanche Studios)
 - Wiliam Hjelm (Avalanche Studios)
 
-Copyright © 2023 Miguel Petersen
-</br>
-Copyright © 2023 Advanced Micro Devices
-</br>
-Copyright © 2023 Fatalist Development AB
+Copyright (c) 2023 Advanced Micro Devices, Inc., 
+Fatalist Development AB (Avalanche Studio Group), 
+and Miguel Petersen.
+
+All Rights Reserved.
