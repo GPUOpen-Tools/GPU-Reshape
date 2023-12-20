@@ -359,12 +359,7 @@ void ShaderExportStreamer::UpdateReservedHeapConstantData(ShaderExportStreamStat
 
 void ShaderExportStreamer::WriteReservedHeapConstantBuffer(ShaderExportStreamState *state, const uint32_t* dwords, uint32_t dwordCount, ID3D12GraphicsCommandList *commandList) {
     // Expected read state
-    D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-
-    // Graphics bit?
-    if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COMPUTE) {
-        readState |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-    }
+    D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 
     // Shader Read -> Copy Dest
     D3D12_RESOURCE_BARRIER barrier{};

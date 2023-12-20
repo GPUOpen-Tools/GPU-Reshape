@@ -159,12 +159,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 auto *cmd = command.As<SetDescriptorDataCommand>();
 
                 // Expected read state
-                D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-
-                // Graphics bit?
-                if (!isCompute) {
-                    readState |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-                }
+                D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 
                 // Get offset
                 uint32_t dwordOffset = device->constantRemappingTable[cmd->id];
