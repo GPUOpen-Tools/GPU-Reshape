@@ -996,7 +996,13 @@ void ShaderExportStreamer::SetGraphicsRootConstants(ShaderExportStreamState* sta
 
     // Root parameter
     ShaderExportRootParameterValue& value = bindState.persistentRootParameters[rootParameterIndex];
-    value.type = ShaderExportRootParameterValueType::Constant;
+
+    // Constant root parameters are stateful, must be checked and initialized carefully
+    if (value.type != ShaderExportRootParameterValueType::Constant) {
+        value.payload.constant.data = nullptr;
+        value.payload.constant.dataByteCount = 0;
+        value.type = ShaderExportRootParameterValueType::Constant;
+    }
 
     // End offset
     uint64_t end = size + offset;
@@ -1017,7 +1023,13 @@ void ShaderExportStreamer::SetComputeRootConstants(ShaderExportStreamState* stat
 
     // Root parameter
     ShaderExportRootParameterValue& value = bindState.persistentRootParameters[rootParameterIndex];
-    value.type = ShaderExportRootParameterValueType::Constant;
+
+    // Constant root parameters are stateful, must be checked and initialized carefully
+    if (value.type != ShaderExportRootParameterValueType::Constant) {
+        value.payload.constant.data = nullptr;
+        value.payload.constant.dataByteCount = 0;
+        value.type = ShaderExportRootParameterValueType::Constant;
+    }
 
     // End offset
     uint64_t end = size + offset;
