@@ -203,6 +203,13 @@ struct MessageStream {
         count += other.GetCount();
     }
 
+    /// Erase a message byte range
+    /// \param begin byte begin
+    /// \param end byte end
+    void Erase(size_t begin, size_t end) {
+        buffer.erase(buffer.begin() + begin, buffer.begin() + end);
+    }
+
     /// Get the data begin pointer
     [[nodiscard]]
     const uint8_t* GetDataBegin() const {
@@ -278,7 +285,7 @@ struct MessageStreamSchema<StaticMessageSchema, STREAM> {
         }
 
         /// Post increment
-        ConstIterator operator++(int) const {
+        ConstIterator operator++(int) {
             ConstIterator self = *this;
             ++(*this);
             return self;
@@ -346,7 +353,7 @@ struct MessageStreamSchema<ChunkedMessageSchema, STREAM> {
         }
 
         /// Post increment
-        ConstIterator operator++(int) const {
+        ConstIterator operator++(int) {
             ConstIterator self = *this;
             ++(*this);
             return self;
@@ -414,7 +421,7 @@ struct MessageStreamSchema<DynamicMessageSchema, STREAM> {
         }
 
         /// Post increment
-        ConstIterator operator++(int) const {
+        ConstIterator operator++(int) {
             ConstIterator self = *this;
             ++(*this);
             return self;
@@ -505,8 +512,13 @@ struct MessageStreamSchema<OrderedMessageSchema, STREAM> {
             return reinterpret_cast<const OrderedMessageSchema::Header*>(ptr);
         }
 
+        /// Get the byte size of the current message
+        size_t GetByteSize() const {
+            return sizeof(OrderedMessageSchema::Header) + reinterpret_cast<const OrderedMessageSchema::Header*>(ptr)->byteSize;
+        }
+
         /// Post increment
-        ConstIterator operator++(int) const {
+        ConstIterator operator++(int) {
             ConstIterator self = *this;
             ++(*this);
             return self;

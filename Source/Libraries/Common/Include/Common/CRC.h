@@ -29,7 +29,7 @@
 
 // Std
 #include <cstdint>
-#include <cstring>
+#include <string>
 #include <type_traits>
 
 /** Precomputed table */
@@ -119,7 +119,7 @@ constexpr uint32_t StringCRC32Short(const char* data, uint64_t len, uint32_t crc
 /// \param crc initial crc
 /// \return full crc32
 constexpr uint32_t StringCRC32Short(const char* data, uint32_t crc = ~0u) {
-    return StringCRC32Short(data, strlen(data), crc);
+    return StringCRC32Short(data, std::char_traits<char>::length(data), crc);
 }
 
 /// Compute a short CRC32

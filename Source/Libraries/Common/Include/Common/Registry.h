@@ -65,7 +65,7 @@ public:
     template<typename T>
     ComRef<T> Add(T* component) {
         MutexGuard guard(mutex);
-        ASSERT(!component->registry, "Component belongs to another registry");
+        ASSERT(!component->registry || component->registry == this, "Component belongs to another registry");
 
         // Set the registry
         component->allocators    = allocators;
@@ -83,6 +83,14 @@ public:
         linear.push_back(component);
 
         return component;
+    }
+
+    /// Add a component to this registry
+    /// \param component component to be added
+    /// \return reference
+    template<typename T>
+    ComRef<T> Add(const ComRef<T>& component) {
+        return Add(component.GetUnsafe());
     }
 
     /// Add a component

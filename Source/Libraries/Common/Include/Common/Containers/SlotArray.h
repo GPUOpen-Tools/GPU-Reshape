@@ -55,6 +55,17 @@ struct SlotArray {
         array.pop_back();
     }
 
+    /// Remove all elements passing a condition
+    /// \param functor called functor per element
+    template<typename F>
+    void RemoveIf(F&& functor) {
+        for (size_t i = 0; i < array.size(); i++) {
+            if (functor(array[i])) {
+                Remove(array[i]);
+            }
+        }
+    }
+
     /// Get element at index
     /// \param i index
     /// \return value

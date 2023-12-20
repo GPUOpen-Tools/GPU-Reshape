@@ -1,0 +1,179 @@
+{
+	"Applications":
+	[
+		{
+			"SteamID": "1024380",
+			"Process": "SecondExtinction_F.exe",
+			"Discovery": true,
+			"Passes":
+			[
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\SecondExtinction_Intro.bmp", "Threshold": 0 },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 4, "Interval": 1000 },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\SecondExtinction_Menu.bmp" },
+				{ "Type": "Key", "Key": "Right" },
+				{ "Type": "Wait", "Duration": 500 },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 7, "Interval": 1000 },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\SecondExtinction_Insertion.bmp" },
+				{ "Type": "Click", "X": 0.52, "Y": 0.4537, "Normalized": true },
+				{ "Type": "Key", "Key": "Enter" },
+				{ "Type": "Wait", "Duration": 10000 },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 2, "Interval": 1000 },
+				{ "Type": "Wait", "Duration": 2500 }
+			]
+		},
+		{
+			"SteamID": "1716740",
+			"Process": "Starfield.exe",
+			"Discovery": true,
+			"Passes":
+			[
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Starfield_Intro.bmp", "Threshold": 1 },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 2, "Interval": 1000 },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Starfield_Save.bmp" },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 1, "Interval": 1000 },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Starfield_Save.bmp", "Negated": true },
+				{ "Type": "Wait", "Duration": 60000 }
+			]
+		},
+		{
+			"SteamID": "780310",
+			"Process": "riftbreaker_win_release.exe",
+			"Arguments": "-dx12",
+			"Discovery": true,
+			"Passes":
+			[
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Riftbreaker_Menu.bmp" },
+				{ "Type": "Wait", "Duration": 1000 },
+				{ "Type": "Key", "Key": "Down", "Repeat": 3, "Interval": 750 },
+				{ "Type": "Key", "Key": "Enter" },
+				{ "Type": "Wait", "Duration": 1000 },
+				{ "Type": "Key", "Key": "Left" },
+				{ "Type": "Wait", "Duration": 250 },
+				{ "Type": "Key", "Key": "Right" },
+				{ "Type": "Wait", "Duration": 250 },
+				{ "Type": "Key", "Key": "Enter" },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Riftbreaker_Loading.bmp" },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Riftbreaker_Loading.bmp", "Negated": true },
+				{ "Type": "Wait", "Duration": 2000 }
+			]
+		},
+		{
+			"SteamID": "1182900",
+			"Process": "APlagueTaleRequiem_x64.exe",
+			"Arguments": "-dx12",
+			"Discovery": true,
+			"Passes":
+			[
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Plague_Intro.bmp" },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 5, "Interval": 2500 },
+				{ "Type": "Wait", "Duration": 30000 },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 2, "Interval": 2500 },
+				{ "Type": "Wait", "Duration": 7500 }
+			]
+		},
+		{
+			"SteamID": "1265780",
+			"Process": "ToM-Win64-Shipping.exe",
+			"Arguments": "-dx12",
+			"Discovery": true,
+			"Passes":
+			[
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Gollum_Intro.bmp" },
+				{ "Type": "Key", "Key": "Enter" },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Gollum_Menu.bmp" },
+				{ "Type": "Key", "Key": "Enter" },
+				{ "Type": "Wait", "Duration": 7500 }
+			]
+		},
+		{
+			"SteamID": "1016800",
+			"Process": "ChernobylGame-Win64-Shipping.exe",
+			"Arguments": "-dx12",
+			"Discovery": true,
+			"Passes":
+			[
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Chernobyl_Intro.bmp" },
+				{ "Type": "Key", "Key": "Enter" },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Chernobyl_Menu.bmp" },
+				{ "Type": "Key", "Key": "s", "Repeat": 2, "Interval": 750 },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 2, "Interval": 750 },
+				{ "Type": "Wait", "Duration": 30000 }
+			]
+		},
+		{
+			"SteamID": "548570",
+			"Process": "RAGE2.exe",
+			"Discovery": true,
+			"Passes":
+			[
+				{ "Type": "Wait", "Duration": 15000 },
+				{ "Type": "Key", "Key": "Enter" },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Rage2_Intro.bmp" },
+				{ "Type": "Wait", "Duration": 250 },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 4, "Interval": 750 },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\Rage2_Loading.bmp", "Negated": true },
+				{ "Type": "Wait", "Duration": 1000 }
+			]
+		},
+		{
+			"SteamID": "1408610",
+			"Process": "CotWTheAngler_Steam.exe",
+			"Discovery": true,
+			"Passes":
+			[
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\COTW_Intro.bmp" },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 2, "Interval": 500 },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\COTW_Title.bmp" },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 2, "Interval": 500 },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\COTW_Login.bmp" },
+				{ "Type": "Key", "Key": "Down", "Repeat": 2, "Interval": 250 },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 5, "Interval": 750 },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\COTW_Title.bmp" },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\COTW_Title.bmp", "Negated": true },
+				{ "Type": "Wait", "Duration": 2000 }
+			]
+		},
+		{
+			"SteamID": "1680880",
+			"Process": "FORSPOKEN.exe",
+			"Discovery": true,
+			"Passes":
+			[
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\FORSPOKEN_Menu.bmp" },
+				{ "Type": "Wait", "Duration": 1500 },
+				{ "Type": "Click", "X": 64, "Y": 64 },
+				{ "Type": "Key", "Key": "Enter", "Repeat": 4, "Interval": 1000 },
+				{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\FORSPOKEN_Loading.bmp", "Negated": true },
+				{ "Type": "Wait", "Duration": 3000 }
+			]
+		},
+		{
+			"Path": "%SAMPLES%\\glTFSample\\bin\\GLTFSample_DX12d.exe",
+			"Passes": [{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\GLTFSampleDX12.bmp" }]
+		},
+		{
+			"Path": "%SAMPLES%\\FidelityFX-ParallelSort\\sample\\bin\\FFX_ParallelSort_DX12d.exe",
+			"Passes": [{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\FFX_ParallelSort_DX12d.bmp" }]
+		},
+		{
+			"Path": "%SAMPLES%\\FidelityFX-FSR2\\bin\\FSR2_Sample_DX12d.exe",
+			"Passes": [{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\FSR2_Sample_DX12d.bmp" }]
+		},
+		{
+			"Path": "%SAMPLES%\\FidelityFX-SPD\\sample\\bin\\SPDSample_DX12.exe",
+			"Passes": [{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\SPDSample_DX12.bmp" }]
+		},
+		{
+			"Path": "%SAMPLES%\\FidelityFX-SSSR\\sample\\bin\\SssrSample_DX12.exe",
+			"Passes": [{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\SssrSample_DX12.bmp" }]
+		},
+		{
+			"Path": "%SAMPLES%\\TressFX\\bin\\TressFX_DX12.exe",
+			"Passes": [{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\TressFX_DX12.bmp" }]
+		},
+		{
+			"Path": "%SAMPLES%\\TressFX\\bin\\TressFX_VK.exe",
+			"Passes": [{ "Type": "WaitForScreenshot", "Path": "%AUTOMATION%\\TressFX_VK.bmp" }]
+		}
+	]
+}
