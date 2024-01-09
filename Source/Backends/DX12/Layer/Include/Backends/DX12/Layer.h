@@ -1,7 +1,7 @@
 // 
 // The MIT License (MIT)
 // 
-// Copyright (c) 2023 Advanced Micro Devices, Inc.,
+// Copyright (c) 2024 Advanced Micro Devices, Inc.,
 // Fatalist Development AB (Avalanche Studio Group),
 // and Miguel Petersen.
 // 
