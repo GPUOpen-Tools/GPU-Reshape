@@ -29,6 +29,9 @@
 // Common
 #include "ContainerAllocator.h"
 
+// Std
+#include <bit>
+
 // BTree
 #include <btree/fc_btree.h>
 

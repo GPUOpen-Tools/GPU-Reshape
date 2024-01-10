@@ -44,6 +44,8 @@
 #include <atomic>
 #include <unordered_map>
 #include <chrono>
+#include <thread>
+#include <mutex>
 
 // Forward declarations
 class IShaderSGUIDHost;
