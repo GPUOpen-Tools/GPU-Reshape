@@ -12,13 +12,14 @@ build_release:
   stage: build
   artifacts:
     paths:
-    - Bin/MSVC/Release/
+    - Package/MSVC/Release/
   script:
   - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Release" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019" -DCMAKE_VS_NUGET_PACKAGE_RESTORE=ON'
   - 'cmake -P Build/Utils/CSProjPatch.cmake cmake-build-vs2019'
   # Workaround for https://gitlab.kitware.com/cmake/cmake/-/issues/18026
   #  'cmake --build cmake-build-vs2019 --config Release --parallel 4 -- /p:CL_MPcount=16'
   - '"cmake-build-vs2019/GRS_MSBuild.bat" "cmake-build-vs2019/GPU-Reshape.sln" /p:Configuration=Release'
+  - '"Build/Scripts/Package.bat" MSVC/Release'
 
 build_debug:
   tags:
@@ -27,11 +28,12 @@ build_debug:
   stage: build
   artifacts:
     paths:
-    - Bin/MSVC/Debug/
+    - Package/MSVC/Debug/
   script:
   - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Debug" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019" -DCMAKE_VS_NUGET_PACKAGE_RESTORE=ON'
   - 'cmake -P Build/Utils/CSProjPatch.cmake cmake-build-vs2019'
   # Workaround for https://gitlab.kitware.com/cmake/cmake/-/issues/18026
   #  'cmake --build cmake-build-vs2019 --config Debug --parallel 4 -- /p:CL_MPcount=16'
   - '"cmake-build-vs2019/GRS_MSBuild.bat" "cmake-build-vs2019/GPU-Reshape.sln" /p:Configuration=Debug'
+  - '"Build/Scripts/Package.bat" MSVC/Debug'
 
