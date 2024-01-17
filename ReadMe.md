@@ -110,6 +110,7 @@ Development was supported by:
 - Jonas Gustavsson (AMD)
 - Marek Machlinski (AMD)
 - Rys Sommefeldt (AMD)
+- Mark Simpson (AMD)
 - Daniel Isheden (Avalanche Studios)
 - Alexander Polya (Avalanche Studios)
 - Wiliam Hjelm (Avalanche Studios)
