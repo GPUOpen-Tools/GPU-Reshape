@@ -4,36 +4,66 @@ variables:
 
 stages:
   - build
+  - package
 
 build_release:
   tags:
   - windows
   - amd64
   stage: build
-  artifacts:
-    paths:
-    - Package/MSVC/Release/
   script:
   - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Release" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019" -DCMAKE_VS_NUGET_PACKAGE_RESTORE=ON'
   - 'cmake -P Build/Utils/CSProjPatch.cmake cmake-build-vs2019'
   # Workaround for https://gitlab.kitware.com/cmake/cmake/-/issues/18026
   #  'cmake --build cmake-build-vs2019 --config Release --parallel 4 -- /p:CL_MPcount=16'
   - '"cmake-build-vs2019/GRS_MSBuild.bat" "cmake-build-vs2019/GPU-Reshape.sln" /p:Configuration=Release'
-  - '"Build/Scripts/Package.bat" MSVC/Release'
+  artifacts:
+    name: "GPU-Reshape-Release-$CI_COMMIT_SHORT_SHA"
+    paths:
+    - Bin/MSVC/Release/
 
 build_debug:
   tags:
   - windows
   - amd64
   stage: build
-  artifacts:
-    paths:
-    - Package/MSVC/Debug/
+  when: manual
   script:
   - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Debug" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019" -DCMAKE_VS_NUGET_PACKAGE_RESTORE=ON'
   - 'cmake -P Build/Utils/CSProjPatch.cmake cmake-build-vs2019'
   # Workaround for https://gitlab.kitware.com/cmake/cmake/-/issues/18026
   #  'cmake --build cmake-build-vs2019 --config Debug --parallel 4 -- /p:CL_MPcount=16'
   - '"cmake-build-vs2019/GRS_MSBuild.bat" "cmake-build-vs2019/GPU-Reshape.sln" /p:Configuration=Debug'
-  - '"Build/Scripts/Package.bat" MSVC/Debug'
+  artifacts:
+    name: "GPU-Reshape-Debug-$CI_COMMIT_SHORT_SHA"
+    paths:
+    - Bin/MSVC/Debug/
 
+package_release:
+  tags:
+  - windows
+  - amd64
+  stage: package
+  dependencies:
+  - build_release
+  script:
+  - '"Build\Scripts\Package.bat" MSVC/Release'
+  artifacts:
+    name: "GPU-Reshape-Release-$CI_COMMIT_SHORT_SHA"
+    paths:
+    - Package/MSVC/Release/
+
+package_debug:
+  tags:
+  - windows
+  - amd64
+  stage: package
+  when: manual
+  dependencies:
+  - build_debug
+  script:
+  - '"Build\Scripts\Package.bat" MSVC/Debug'
+  artifacts:
+    name: "GPU-Reshape-Debug-$CI_COMMIT_SHORT_SHA"
+    paths:
+    - Package/MSVC/Debug/
