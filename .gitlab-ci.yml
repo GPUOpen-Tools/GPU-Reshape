@@ -18,7 +18,7 @@ build_release:
   #  'cmake --build cmake-build-vs2019 --config Release --parallel 4 -- /p:CL_MPcount=16'
   - '"cmake-build-vs2019/GRS_MSBuild.bat" "cmake-build-vs2019/GPU-Reshape.sln" /p:Configuration=Release'
   artifacts:
-    name: "GPU-Reshape-Release"
+    name: "GPU-Reshape-Release-$CI_COMMIT_SHORT_SHA"
     paths:
     - Bin/MSVC/Release/
 
@@ -34,7 +34,7 @@ build_debug:
   #  'cmake --build cmake-build-vs2019 --config Debug --parallel 4 -- /p:CL_MPcount=16'
   - '"cmake-build-vs2019/GRS_MSBuild.bat" "cmake-build-vs2019/GPU-Reshape.sln" /p:Configuration=Debug'
   artifacts:
-    name: "GPU-Reshape-Debug"
+    name: "GPU-Reshape-Debug-$CI_COMMIT_SHORT_SHA"
     paths:
     - Bin/MSVC/Debug/
 
@@ -48,7 +48,7 @@ package_release:
   script:
   - '"Build\Scripts\Package.bat" MSVC/Release'
   artifacts:
-    name: "GPU-Reshape-Release"
+    name: "GPU-Reshape-Release-$CI_COMMIT_SHORT_SHA"
     paths:
     - Package/MSVC/Release/
 
@@ -62,6 +62,6 @@ package_debug:
   script:
   - '"Build\Scripts\Package.bat" MSVC/Debug'
   artifacts:
-    name: "GPU-Reshape-Debug"
+    name: "GPU-Reshape-Debug-$CI_COMMIT_SHORT_SHA"
     paths:
     - Package/MSVC/Debug/
