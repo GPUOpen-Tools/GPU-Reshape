@@ -27,6 +27,7 @@ build_debug:
   - windows
   - amd64
   stage: build
+  when: manual
   script:
   - 'cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_CONFIGURATION_TYPES:STRING="Debug" -DINSTALL_THIRD_PARTY:BOOL="1" -B "cmake-build-vs2019" -DCMAKE_VS_NUGET_PACKAGE_RESTORE=ON'
   - 'cmake -P Build/Utils/CSProjPatch.cmake cmake-build-vs2019'
@@ -57,6 +58,7 @@ package_debug:
   - windows
   - amd64
   stage: package
+  when: manual
   dependencies:
   - build_debug
   script:
