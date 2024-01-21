@@ -76,5 +76,6 @@ Project_AddTest(
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(GRS.Features.Initialization.Backend.DotNet GeneratedCS)
+    Project_AddDotNetGeneratedMerge(GRS.Features.Initialization.Backend.DotNet.GenMerge GeneratedCS)
+    add_subdirectory(DotNet)
 endif()

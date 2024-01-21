@@ -34,7 +34,13 @@ function(Project_AddDotNet NAME)
     # DotNet
     set_target_properties(
         ${NAME} PROPERTIES
-        VS_DOTNET_TARGET_FRAMEWORK_VERSION "v4.8"
+		DOTNET_SDK "Microsoft.NET.Sdk"
+		DOTNET_TARGET_FRAMEWORK "net6.0"
+        VS_GLOBAL_Platforms "x64"
+		VS_GLOBAL_RuntimeIdentifier "win-x64"
+		VS_GLOBAL_SelfContained "true"
+		VS_GLOBAL_AppendTargetFrameworkToOutputPath "false"
+		VS_GLOBAL_AppendRuntimeIdentifierToOutputPath "false"
         VS_GLOBAL_ROOTNAMESPACE ${NAME}
     )
 
@@ -42,39 +48,50 @@ function(Project_AddDotNet NAME)
     SetSourceDiscovery(${NAME} CS Include Source Schema)
 endfunction()
 
+# Add a .NET merge target for generated files
+#  ! Must be called in the same CMakeLists.txt as the custom commands
+function(Project_AddDotNetGeneratedMerge NAME GENERATED_SOURCES)
+	set(Command "")
+	
+	# Copy each schema target
+	foreach(File ${${GENERATED_SOURCES}})
+		list(APPEND Command COMMAND "${CMAKE_COMMAND}" -E copy "${File}.gen" "${File}")
+		
+		# Generated project / MSBUILD does not check that if inbound file originates from
+		# another target.
+		if (NOT EXISTS ${File})
+			file(WRITE "${File}" "Generation target file")
+		endif()
+	endforeach()
+	
+	# Schema Gen -> Schema
+	add_custom_target(
+		${NAME}
+		DEPENDS ${${GENERATED_SOURCES}_Gen}
+		BYPRODUCTS ${${GENERATED_SOURCES}}
+		${Command}
+	)
+endfunction()
+
 function(Project_AddDotNetEx)
     cmake_parse_arguments(
         ARGS
         "UNSAFE;EXECUTABLE" # Options
         "NAME;LANG;PROPS" # One Value
-        "SOURCE;GENERATED;ASSEMBLIES;LIBS;FLAGS" # Multi Value
+        "SOURCE;DEPENDENCIES;ASSEMBLIES;LIBS;FLAGS" # Multi Value
         ${ARGN}
     )
-
-    if (NOT "${ARGS_GENERATED}" STREQUAL "")
-        # Generate sham target
-        #   ! WORKAROUND, Visual Studio generators do not support C# sources from add_custom_command
-        #                 Check introduced by 3.24
-        add_library(${ARGS_NAME}.Sham INTERFACE ${${ARGS_GENERATED}_Sham})
-		
-		# Create dummy file to keep MSVC happy
-		if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${${ARGS_GENERATED}_Sham}")
-			file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${${ARGS_GENERATED}_Sham}" Sham)
-		endif()
-    endif()
 
     # Create library
     if ("${ARGS_EXECUTABLE}")
         add_executable(
             ${ARGS_NAME}
             ${ARGS_SOURCE}
-            ${${ARGS_GENERATED}}
         )
     else()
         add_library(
             ${ARGS_NAME} SHARED
             ${ARGS_SOURCE}
-            ${${ARGS_GENERATED}}
         )
     endif()
 
@@ -95,7 +112,13 @@ function(Project_AddDotNetEx)
     # Set .NET, link to assemblies and libs
     set_target_properties(
         ${ARGS_NAME} PROPERTIES
-        VS_DOTNET_TARGET_FRAMEWORK_VERSION "v4.8"
+		DOTNET_SDK "Microsoft.NET.Sdk"
+		DOTNET_TARGET_FRAMEWORK "net6.0"
+        VS_GLOBAL_Platforms "x64"
+		VS_GLOBAL_RuntimeIdentifier "win-x64"
+		VS_GLOBAL_SelfContained "true"
+		VS_GLOBAL_AppendTargetFrameworkToOutputPath "false"
+		VS_GLOBAL_AppendRuntimeIdentifierToOutputPath "false"
         VS_GLOBAL_ROOTNAMESPACE "${ARGS_NAME}"
         VS_DOTNET_REFERENCES "${ARGS_ASSEMBLIES};${ARGS_LIBS}"
         VS_USER_PROPS "${CMAKE_SOURCE_DIR}/Build/cs.configuration.props"
@@ -128,10 +151,10 @@ function(Project_AddDotNetEx)
         endif()
     endif()
 
-    # Reference sham target to let dependencies generate before use
-    if (NOT "${ARGS_GENERATED}" STREQUAL "")
-        add_dependencies(${ARGS_NAME} ${ARGS_NAME}.Sham)
-    endif()
+    # Add additional dependencies	
+	if (NOT "${ARGS_DEPENDENCIES}" STREQUAL "")
+        add_dependencies(${ARGS_NAME} ${ARGS_DEPENDENCIES})
+	endif()
 
     # IDE source discovery
     SetSourceDiscovery(${ARGS_NAME} ${ARGS_LANG} Include Source)

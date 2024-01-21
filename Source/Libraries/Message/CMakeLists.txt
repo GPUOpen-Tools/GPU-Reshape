@@ -114,11 +114,11 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
 
     # C#
     if (${BUILD_UIX})
-        set(OutputPath ${SCHEMA_OUT_PATH}/${SchemaName}.cs)
+        set(OutputPath ${CMAKE_CURRENT_BINARY_DIR}/${SCHEMA_OUT_PATH}/${SchemaName}.cs)
 
         # Generate the schema
         add_custom_command(
-            OUTPUT ${OutputPath}.sham
+            OUTPUT ${OutputPath}.gen
             DEPENDS
                 GRS.Libraries.Message.Generator
                 ${LIBS}
@@ -132,18 +132,13 @@ function(Project_AddSchemaEx OUT_GENERATED LIBS SCHEMA SCHEMA_OUT_PATH)
                 -opath ${SCHEMA_OUT_PATH}
         )
 
-        # Write dummy generated file, do not overwrite if it already exists to preserve the build cache
-        if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${OutputPath})
-            file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${OutputPath} "Generated file")
-        endif()
-
         # Set output
         list(APPEND ${OUT_GENERATED}CS ${OutputPath})
         set(${OUT_GENERATED}CS "${${OUT_GENERATED}CS}" PARENT_SCOPE)
 
         # Set sham output
-        list(APPEND ${OUT_GENERATED}CS_Sham ${OutputPath}.sham)
-        set(${OUT_GENERATED}CS_Sham "${${OUT_GENERATED}CS_Sham}" PARENT_SCOPE)
+        list(APPEND ${OUT_GENERATED}CS_Gen ${OutputPath}.gen)
+        set(${OUT_GENERATED}CS_Gen "${${OUT_GENERATED}CS_Gen}" PARENT_SCOPE)
     endif()
 endfunction()
 
@@ -209,5 +204,6 @@ target_link_libraries(GRS.Libraries.Message.Tests PUBLIC GRS.Libraries.Message)
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    include(DotNet.cmake)
+	Project_AddDotNetGeneratedMerge(GRS.Libraries.Message.DotNet.GenMerge GeneratedSchemaCS)
+    add_subdirectory(DotNet)
 endif()

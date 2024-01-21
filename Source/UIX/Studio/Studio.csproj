@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net6.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ApplicationIcon>Resources\Icons\Icon_Frame.ico</ApplicationIcon>
         <TargetCulture>en</TargetCulture>
@@ -9,10 +9,14 @@
         <Configurations>Debug;Release;MinSizeRel;RelWithDebInfo</Configurations>
         <Platforms>x64</Platforms>
         <PublishTrimmed>true</PublishTrimmed>
-        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <StartupObject>Studio.Program</StartupObject>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AssemblyName>GPUReshape</AssemblyName>
+		<SelfContained>true</SelfContained>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
     </PropertyGroup>
     
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">

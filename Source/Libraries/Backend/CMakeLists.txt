@@ -119,5 +119,6 @@ target_link_libraries(GRS.Libraries.Backend.Tests PUBLIC GRS.Libraries.Backend)
 #---- .Net Bindings ----#
 
 if (${BUILD_UIX})
-    Project_AddSchemaDotNet(GRS.Libraries.Backend.Schema.DotNet GeneratedLibSchemaCS)
+    Project_AddDotNetGeneratedMerge(GRS.Libraries.Backend.DotNet.GenMerge GeneratedLibSchemaCS)
+    add_subdirectory(DotNet)
 endif()

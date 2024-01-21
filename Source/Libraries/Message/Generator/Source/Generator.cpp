@@ -304,7 +304,7 @@ int main(int argc, char *const argv[]) {
     // Language to template mappings
     std::map<Language, std::string> languageOutMappings = {
         { Language::CPP, ".h" },
-        { Language::CS, ".cs" }
+        { Language::CS, ".cs.gen" }
     };
 
     // Process languages

@@ -92,5 +92,6 @@ target_link_libraries(GRS.Libraries.Bridge.Tests PUBLIC GRS.Libraries.Bridge)
 #----- .Net bindings -----#
 
 if (${BUILD_UIX})
-    include(DotNet.cmake)
+	Project_AddDotNetGeneratedMerge(GRS.Libraries.Bridge.DotNet.GenMerge GeneratedLibSchemaCS)
+    add_subdirectory(DotNet)
 endif()

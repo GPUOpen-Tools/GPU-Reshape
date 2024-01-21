@@ -32,6 +32,9 @@
 // Managed
 #include <vcclr.h>
 
+#pragma warning(push)
+#pragma warning(disable : 4691)
+
 namespace Bridge::CLR {
     public class BridgeListenerInterop : public ::IBridgeListener {
     public:
@@ -64,3 +67,5 @@ namespace Bridge::CLR {
         gcroot<Bridge::CLR::IBridgeListener^> handle;
     };
 }
+
+#pragma warning(pop)
