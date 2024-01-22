@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,18 +26,31 @@
 
 #pragma once
 
-// Common
-#include "Common/Enum.h"
+// Layer
+#include <Backends/DX12/Export/ShaderExportStreamState.h>
 
-enum class ReconstructionFlag {
-    /// Reconstruct the bound pipeline and binding information
-    Pipeline = BIT(0),
+class CommandListRenderPassScope {
+public:
+    CommandListRenderPassScope(ID3D12GraphicsCommandList4* commandList, ShaderExportRenderPassState* streamState) : commandList(commandList), streamState(streamState) {
+        // Temporarily end render pass
+        if (streamState->insideRenderPass) {
+            commandList->EndRenderPass();
+        }
+    }
 
-    /// Reconstruct previous push constant data
-    RootConstant = BIT(1),
+    ~CommandListRenderPassScope() {
+        // Reconstruct render pass if needed
+        if (streamState->insideRenderPass) {
+            commandList->BeginRenderPass(
+                streamState->renderTargetCount,
+                streamState->renderTargets,
+                streamState->depthStencil.cpuDescriptor.ptr != 0 ? &streamState->depthStencil : nullptr,
+                streamState->flags
+            );
+        }
+    }
 
-    /// Reconstruct render pass data
-    RenderPass = BIT(2)
+private:
+    ID3D12GraphicsCommandList4* commandList;
+    ShaderExportRenderPassState* streamState;
 };
-
-BIT_SET(ReconstructionFlag);
