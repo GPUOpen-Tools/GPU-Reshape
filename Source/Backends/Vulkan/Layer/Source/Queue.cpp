@@ -267,6 +267,128 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     return VK_SUCCESS;
 }
 
+VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit2(VkQueue queue, uint32_t submitCount, const VkSubmitInfo2 *pSubmits, VkFence userFence) {
+    DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(queue));
+
+    // Get the state
+    QueueState* queueState = table->states_queue.Get(queue);
+
+    // Check all in-flight streams
+    table->exportStreamer->Process(queueState->exportState);
+
+    // Acquire fence
+    FenceState* fenceState = AcquireOrCreateFence(table, queueState, userFence);
+
+    // Create streamer allocation
+    ShaderExportStreamSegment* segment = table->exportStreamer->AllocateSegment();
+
+    // Inform the controller of the segmentation point
+    segment->versionSegPoint = table->versioningController->BranchOnSegmentationPoint();
+
+    // Unwrapped submits
+    TrivialStackVector<VkSubmitInfo2, 32u> vkSubmits;
+    
+    // Record the streaming pre patching
+    VkCommandBuffer prePatchCommandBuffer = table->exportStreamer->RecordPreCommandBuffer(queueState->exportState, segment, &queueState->prmtState);
+
+    // Fill streaming submit info
+    VkCommandBufferSubmitInfo pretPatchCommandSubmit{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
+    pretPatchCommandSubmit.commandBuffer = prePatchCommandBuffer;
+    
+    // Fill patch submission info
+    VkSubmitInfo2& prePatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
+    prePatchInfo.commandBufferInfoCount = 1;
+    prePatchInfo.pCommandBufferInfos    = &pretPatchCommandSubmit;
+    
+    // Number of command buffers
+    uint32_t commandBufferCount = 0;
+    for (uint32_t i = 0; i < submitCount; i++) {
+        commandBufferCount += pSubmits[i].commandBufferInfoCount;
+    }
+
+    // Unwrapped command buffers
+    auto* vkCommandSubmitInfos = ALLOCA_ARRAY(VkCommandBufferSubmitInfo, commandBufferCount);
+
+    // Unwrap all internal states
+    for (uint32_t i = 0; i < submitCount; i++) {
+        // Unwrap the command buffers
+        for (uint32_t bufferIndex = 0; bufferIndex < pSubmits[i].commandBufferInfoCount; bufferIndex++) {
+            CommandBufferObject* unwrapped = reinterpret_cast<CommandBufferObject*>(pSubmits[i].pCommandBufferInfos[bufferIndex].commandBuffer);
+
+            // Create streamer allocation association
+            table->exportStreamer->MapSegment(unwrapped->streamState, segment);
+
+            // Store unwrapped
+            VkCommandBufferSubmitInfo& commandInfo = vkCommandSubmitInfos[bufferIndex] = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
+            commandInfo = pSubmits[i].pCommandBufferInfos[bufferIndex];
+            commandInfo.commandBuffer = unwrapped->object;
+        }
+
+        // Destination
+        VkSubmitInfo2& submit = vkSubmits.Add();
+
+        // Copy non wrapped info
+        submit.pNext                = pSubmits[i].pNext;
+        submit.sType                = pSubmits[i].sType;
+
+        // Type dependent
+        submit.flags                    = pSubmits[i].flags;
+        submit.waitSemaphoreInfoCount   = pSubmits[i].waitSemaphoreInfoCount;
+        submit.pWaitSemaphoreInfos      = pSubmits[i].pWaitSemaphoreInfos;
+        submit.commandBufferInfoCount   = pSubmits[i].commandBufferInfoCount;
+        submit.pCommandBufferInfos      = vkCommandSubmitInfos;
+        submit.signalSemaphoreInfoCount = pSubmits[i].signalSemaphoreInfoCount;
+        submit.pSignalSemaphoreInfos    = pSubmits[i].pSignalSemaphoreInfos;
+
+        // Advance buffers
+        vkCommandSubmitInfos += submit.commandBufferInfoCount;
+    }
+
+    // Record the streaming patching
+    VkCommandBuffer postPatchCommandBuffer = table->exportStreamer->RecordPostCommandBuffer(queueState->exportState, segment);
+
+    // Fill streaming submit info
+    VkCommandBufferSubmitInfo postPatchCommandSubmit{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
+    postPatchCommandSubmit.commandBuffer = postPatchCommandBuffer;
+
+    // Fill patch submission info
+    VkSubmitInfo2& postPatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
+    postPatchInfo.commandBufferInfoCount = 1;
+    postPatchInfo.pCommandBufferInfos    = &postPatchCommandSubmit;
+
+    // Serialize queue access
+    {
+        std::lock_guard guard(queueState->mutex);
+
+        // Select next
+        PFN_vkQueueSubmit2 next = table->next_vkQueueSubmit2 ? table->next_vkQueueSubmit2 : table->next_vkQueueSubmit2KHR;
+
+        // Pass down callchain
+        VkResult result = next(queue, static_cast<uint32_t>(vkSubmits.Size()), vkSubmits.Data(), fenceState->object);
+        if (result != VK_SUCCESS) {
+            return result;
+        }
+    }
+
+    // Unwrap once again for proxies
+    for (uint32_t i = 0; i < submitCount; i++) {
+        for (uint32_t bufferIndex = 0; bufferIndex < pSubmits[i].commandBufferInfoCount; bufferIndex++) {
+            auto *unwrapped = reinterpret_cast<CommandBufferObject *>(pSubmits[i].pCommandBufferInfos[bufferIndex].commandBuffer);
+
+            // Invoke all proxies
+            for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+                proxyTable.submit.TryInvoke(unwrapped->userContext.handle);
+            }
+        }
+    }
+
+    // Notify streamer of submission, enqueue increments reference count
+    table->exportStreamer->Enqueue(queueState->exportState, segment, fenceState);
+
+    // OK
+    return VK_SUCCESS;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueWaitIdle(VkQueue queue) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(queue));
 

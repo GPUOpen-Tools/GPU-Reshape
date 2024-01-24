@@ -61,6 +61,8 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkFreeCommandBuffers = reinterpret_cast<PFN_vkFreeCommandBuffers>(getDeviceProcAddr(object, "vkFreeCommandBuffers"));
     next_vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool>(getDeviceProcAddr(object, "vkDestroyCommandPool"));
     next_vkQueueSubmit = reinterpret_cast<PFN_vkQueueSubmit>(getDeviceProcAddr(object, "vkQueueSubmit"));
+    next_vkQueueSubmit2 = reinterpret_cast<PFN_vkQueueSubmit2>(getDeviceProcAddr(object, "vkQueueSubmit2"));
+    next_vkQueueSubmit2KHR = reinterpret_cast<PFN_vkQueueSubmit2KHR>(getDeviceProcAddr(object, "vkQueueSubmit2KHR"));
     next_vkQueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(getDeviceProcAddr(object, "vkQueuePresentKHR"));
     next_vkCreateShaderModule = reinterpret_cast<PFN_vkCreateShaderModule>(getDeviceProcAddr(object, "vkCreateShaderModule"));
     next_vkDestroyShaderModule = reinterpret_cast<PFN_vkDestroyShaderModule>(getDeviceProcAddr(object, "vkDestroyShaderModule"));
@@ -176,6 +178,12 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkQueueSubmit"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueueSubmit);
+
+    if (!std::strcmp(name, "vkQueueSubmit2"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueueSubmit2);
+
+    if (!std::strcmp(name, "vkQueueSubmit2KHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueueSubmit2);
 
     if (!std::strcmp(name, "vkQueuePresentKHR"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkQueuePresentKHR);
