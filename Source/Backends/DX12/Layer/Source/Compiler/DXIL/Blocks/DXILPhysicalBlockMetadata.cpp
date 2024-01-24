@@ -355,7 +355,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                     // Parse tags
                     for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
-                        switch (static_cast<DXILSRVTag>(GetOperandU32Constant(metadataBlock, resource.Op32(kv + 0)))) {
+                        switch (static_cast<DXILSRVTag>(GetOperandU32Constant(metadataBlock, extendedRecord.Op32(kv + 0)))) {
                             case DXILSRVTag::ElementType: {
                                 // Get type
                                 auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op32(kv + 1));
@@ -458,7 +458,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                     // Parse tags
                     for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
-                        switch (static_cast<DXILUAVTag>(GetOperandU32Constant(metadataBlock, resource.Op32(kv + 0)))) {
+                        switch (static_cast<DXILUAVTag>(GetOperandU32Constant(metadataBlock, extendedRecord.Op32(kv + 0)))) {
                             case DXILUAVTag::ElementType: {
                                 // Get type
                                 auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op32(kv + 1));
