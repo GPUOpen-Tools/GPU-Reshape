@@ -454,7 +454,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                     // Get extended record
                     const LLVMRecord &extendedRecord = block->records[extendedMetadata.source];
-                    ASSERT(extendedRecord.opCount == 2 || extendedRecord.opCount == 4, "Expected 2 or 4 operands for extended metadata");
+                    ASSERT(extendedRecord.opCount % 2 == 0, "Expected an even number of operands for extended metadata");
 
                     // Parse tags
                     for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
