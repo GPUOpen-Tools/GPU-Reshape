@@ -454,11 +454,15 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
 
                     // Get extended record
                     const LLVMRecord &extendedRecord = block->records[extendedMetadata.source];
-                    ASSERT(extendedRecord.opCount == 2, "Expected 2 operands for extended metadata");
+                    ASSERT(extendedRecord.opCount == 2 || extendedRecord.opCount == 4, "Expected 2 or 4 operands for extended metadata");
 
                     // Parse tags
                     for (uint32_t kv = 0; kv < extendedRecord.opCount; kv += 2) {
                         switch (static_cast<DXILUAVTag>(GetOperandU32Constant(metadataBlock, extendedRecord.Op32(kv + 0)))) {
+                            default: {
+                                // Ignored
+                                break;
+                            }
                             case DXILUAVTag::ElementType: {
                                 // Get type
                                 auto componentType = GetOperandU32Constant<ComponentType>(metadataBlock, extendedRecord.Op32(kv + 1));
@@ -466,9 +470,6 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                                 // Get type and format
                                 elementType = GetComponentType(componentType);
                                 format = GetComponentFormat(componentType);
-                                break;
-                            }
-                            case DXILUAVTag::ByteStride: {
                                 break;
                             }
                         }
