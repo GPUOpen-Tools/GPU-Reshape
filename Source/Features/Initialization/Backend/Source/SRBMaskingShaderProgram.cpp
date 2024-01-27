@@ -69,7 +69,7 @@ void SRBMaskingShaderProgram::Inject(IL::Program &program) {
     IL::ID bufferID = emitter.Load(initializationMaskBufferDataID);
 
     // Get current mask
-    IL::ID srbMask = emitter.Extract(emitter.LoadBuffer(bufferID, puidEventDataID), 0u);
+    IL::ID srbMask = emitter.Extract(emitter.LoadBuffer(bufferID, puidEventDataID), program.GetConstants().UInt(0)->id);
 
     // Bit-Or with desired mask
     emitter.StoreBuffer(bufferID, puidEventDataID, emitter.BitOr(srbMask, maskEventDataID));

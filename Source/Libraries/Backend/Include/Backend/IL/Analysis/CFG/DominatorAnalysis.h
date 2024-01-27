@@ -30,20 +30,20 @@
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/Instruction.h>
 #include <Backend/IL/BasicBlockList.h>
-#include <Backend/IL/CFG/BasicBlockTraversal.h>
+#include <Backend/IL/Analysis/CFG/BasicBlockTraversal.h>
 
 // Std
 #include <vector>
 #include <unordered_map>
 
 namespace IL {
-    class DominatorTree {
+    class DominatorAnalysis {
     public:
         using BlockView = std::vector<BasicBlock*>;
 
         /// Constructor
         /// \param basicBlocks all basic blocks
-        DominatorTree(BasicBlockList& basicBlocks) : basicBlocks(basicBlocks) {
+        DominatorAnalysis(BasicBlockList& basicBlocks) : basicBlocks(basicBlocks) {
 
         }
 
@@ -144,21 +144,21 @@ namespace IL {
         /// Get the immediate dominator of a basic block
         /// \param bb basic block
         /// \return immediate dominator
-        BasicBlock* GetImmediateDominator(BasicBlock* bb) const {
+        BasicBlock* GetImmediateDominator(const BasicBlock* bb) const {
             return blocks.at(bb->GetID()).immediateDominator;
         }
 
         /// Get the predecessors of a basic block
         /// \param bb basic block
         /// \return predecessors
-        const BlockView& GetPredecessors(BasicBlock* bb) const {
+        const BlockView& GetPredecessors(const BasicBlock* bb) const {
             return blocks.at(bb->GetID()).predecessors;
         }
 
         /// Get the successprs of a basic block
         /// \param bb basic block
         /// \return successors
-        const BlockView& GetSuccessors(BasicBlock* bb) const {
+        const BlockView& GetSuccessors(const BasicBlock* bb) const {
             return blocks.at(bb->GetID()).successors;
         }
 

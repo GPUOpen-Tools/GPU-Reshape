@@ -67,6 +67,7 @@ namespace IL {
             program->identifierMap.SetBound(identifierMap.GetMaxID());
             typeMap.CopyTo(program->typeMap);
             constants.CopyTo(program->constants);
+            variables.CopyTo(program->variables);
 
             // Copy immutable
             program->capabilityTable = capabilityTable;

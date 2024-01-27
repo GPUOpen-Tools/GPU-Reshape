@@ -136,7 +136,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
             case SpvOpTypeArray: {
                 Backend::IL::ArrayType type;
                 type.elementType = typeMap.GetTypeFromId(ctx++);
-                type.count = ctx++;
+                type.count = static_cast<uint32_t>(program.GetConstants().GetConstant(ctx++)->As<IL::IntConstant>()->value);
 
                 typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
@@ -377,7 +377,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 auto storageClass = static_cast<SpvStorageClass>(ctx++);
 
                 // Add variable
-                program.GetVariableList().Add(Backend::IL::Variable {
+                program.GetVariableList().Add(new (allocators) Backend::IL::Variable {
                     .id = ctx.GetResult(),
                     .addressSpace = Translate(storageClass),
                     .type = typeMap.GetTypeFromId(ctx.GetResultType())
@@ -596,6 +596,10 @@ void SpvPhysicalBlockTypeConstantVariable::Compile(SpvIdMap &idMap) {
 void SpvPhysicalBlockTypeConstantVariable::CompileConstants() {
     // Ensure all IL constants are mapped
     for (const Backend::IL::Constant* constant : program.GetConstants()) {
+        if (constant->IsSymbolic()) {
+            continue;
+        }
+
         constantMap.EnsureConstant(constant);
     }
 }

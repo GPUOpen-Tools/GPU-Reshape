@@ -43,36 +43,56 @@ void IL::PrettyPrint(const Program &program, IL::PrettyPrintContext out) {
     PrettyPrint(program.GetConstants(), out);
     out.Line() << "\n";
 
+    // Print all variables
+    PrettyPrint(&program, program.GetVariableList(), out);
+    out.Line() << "\n";
+
     // Print all functions
     for (const IL::Function *fn: program.GetFunctionList()) {
         if (*program.GetFunctionList().begin() != fn) {
             out.Line() << "\n";
         }
         
-        PrettyPrint(*fn, out);
+        PrettyPrint(&program, *fn, out);
     }
 }
 
-void IL::PrettyPrint(const Function &function, IL::PrettyPrintContext out) {
+void IL::PrettyPrint(const Program* program, const VariableList& variables, IL::PrettyPrintContext out) {
+    out.stream << "Variables\n";
+    out.TabInline();
+
+    for (const Backend::IL::Variable* variable : variables) {
+        out.Line() << "%" << variable->id << " = global ";
+        PrettyPrint(variable->type, out);
+
+        if (variable->initializer) {
+            out.stream << " initializer:%" << variable->initializer->id;
+        }
+        
+        out.stream << "\n";
+    }
+}
+
+void IL::PrettyPrint(const Program *program, const Function &function, IL::PrettyPrintContext out) {
     out.Line() << "%" << function.GetID() << " = Function\n";
 
     // Print all basic blocks
     for (const IL::BasicBlock *bb: function.GetBasicBlocks()) {
-        PrettyPrint(*bb, out.Tab());
+        PrettyPrint(program, *bb, out.Tab());
     }
 }
 
-void IL::PrettyPrint(const BasicBlock &basicBlock, IL::PrettyPrintContext out) {
+void IL::PrettyPrint(const Program *program, const BasicBlock &basicBlock, IL::PrettyPrintContext out) {
     out.Line() << "%" << basicBlock.GetID() << " = BasicBlock\n";
 
     // Print all instructions
     for (const IL::Instruction *instr: basicBlock) {
-        PrettyPrint(instr, out.Tab());
+        PrettyPrint(program, instr, out.Tab());
     }
 }
 
 
-void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
+void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::PrettyPrintContext out) {
     std::ostream &line = out.Line();
 
     if (instr->result != IL::InvalidID) {
@@ -93,6 +113,10 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
                 line << "Unexposed '" << unexposed->symbol << "'";
             } else {
                 line << "Unexposed op:" << unexposed->backendOpCode;
+            }
+
+            for (uint32_t i = 0; i < unexposed->operandCount; i++) {
+                line << " %" << unexposed->operands[i];
             }
             break;
         }
@@ -397,7 +421,11 @@ void IL::PrettyPrint(const Instruction *instr, IL::PrettyPrintContext out) {
         }
         case OpCode::Alloca: {
             auto _alloca = instr->As<IL::AllocaInstruction>();
-            line << "Alloca %" << _alloca->type;
+            line << "Alloca ";
+
+            if (program) {
+                PrettyPrint(program->GetTypeMap().GetType(_alloca->result)->As<Backend::IL::PointerType>()->pointee, out);
+            }
             break;
         }
         case OpCode::StoreTexture: {
@@ -890,51 +918,93 @@ void IL::PrettyPrint(const Backend::IL::ConstantMap &map, PrettyPrintContext out
     for (Backend::IL::Constant *constant: map) {
         std::ostream &line = out.Line();
 
-        line << "%" << constant->id << " = type:%" << constant->type->id << " ";
-
-        switch (constant->kind) {
-            default: {
-                line << "Unexposed";
-                break;
-            }
-            case Backend::IL::ConstantKind::Bool: {
-                auto _bool = constant->As<Backend::IL::BoolConstant>();
-                line << "Bool ";
-                if (_bool->value) {
-                    line << "true";
-                } else {
-                    line << "false";
-                }
-                break;
-            }
-            case Backend::IL::ConstantKind::Int: {
-                auto _int = constant->As<Backend::IL::IntConstant>();
-
-                if (_int->type->As<Backend::IL::IntType>()->signedness) {
-                    line << "Int";
-                } else {
-                    line << "UInt";
-                }
-
-                line << " " << _int->value;
-                break;
-            }
-            case Backend::IL::ConstantKind::FP: {
-                auto fp = constant->As<Backend::IL::FPConstant>();
-                line << "FP";
-                line << " " << fp->value;
-                break;
-            }
-            case Backend::IL::ConstantKind::Undef: {
-                PrettyPrint(constant->type, out);
-                line << " Undef";
-                break;
-            }
+        if (!constant) {
+            line << "null\n";
+            continue;
         }
 
+        if (constant->IsSymbolic()) {
+            continue;
+        }
+
+        line << "%" << constant->id << " = type:%" << constant->type->id << " ";
+        PrettyPrint(constant, out);
         line << "\n";
     }
 }
+
+void IL::PrettyPrint(const IL::Constant* constant, PrettyPrintContext out) {
+    switch (constant->kind) {
+        default: {
+            out.stream << "Unexposed";
+            break;
+        }
+        case Backend::IL::ConstantKind::Bool: {
+            auto _bool = constant->As<Backend::IL::BoolConstant>();
+            out.stream << "Bool ";
+            if (_bool->value) {
+                out.stream << "true";
+            } else {
+                out.stream << "false";
+            }
+            break;
+        }
+        case Backend::IL::ConstantKind::Int: {
+            auto _int = constant->As<Backend::IL::IntConstant>();
+
+            if (_int->type->As<Backend::IL::IntType>()->signedness) {
+                out.stream << "Int";
+            } else {
+                out.stream << "UInt";
+            }
+
+            out.stream << " " << _int->value;
+            break;
+        }
+        case Backend::IL::ConstantKind::FP: {
+            auto fp = constant->As<Backend::IL::FPConstant>();
+            out.stream << "FP";
+            out.stream << " " << fp->value;
+            break;
+        }
+        case Backend::IL::ConstantKind::Array: {
+            auto array = constant->As<Backend::IL::ArrayConstant>();
+            out.stream << "Array [";
+
+            for (size_t i = 0; i < array->elements.size(); i++) {
+                if (i != 0) {
+                    out.stream << ", ";
+                }
+
+                out.stream << "%" << array->elements[i]->id;
+            }
+            
+            out.stream << "]";
+            break;
+        }
+        case Backend::IL::ConstantKind::Struct: {
+            auto _struct = constant->As<Backend::IL::StructConstant>();
+            out.stream << "Struct {";
+
+            for (size_t i = 0; i < _struct->members.size(); i++) {
+                if (i != 0) {
+                    out.stream << ", ";
+                }
+
+                out.stream << "%" << _struct->members[i]->id;
+            }
+            
+            out.stream << "}";
+            break;
+        }
+        case Backend::IL::ConstantKind::Undef: {
+            PrettyPrint(constant->type, out);
+            out.stream << " Undef";
+            break;
+        }
+    }
+}
+
 
 static void PrettyPrintBlockDotGraphSuccessor(const IL::BasicBlockList &basicBlocks, const IL::BasicBlock *block, IL::ID successor, IL::PrettyPrintContext &out) {
     IL::BasicBlock *successorBlock = basicBlocks.GetBlock(successor);
@@ -1372,6 +1442,23 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintConte
             out.Line() << "\"Value\": " << fp->value << ",";
             break;
         }
+        case Backend::IL::ConstantKind::Array: {
+            auto str = constant->As<Backend::IL::ArrayConstant>();
+            
+            out.Line() << "\"Elements\": ";
+            out.Line() << "[";
+            
+            for (size_t i = 0; i < str->elements.size(); i++) {         
+                if (i != str->elements.size() - 1) {
+                    out.Line() << "\t" << str->elements[i]->id << ",";
+                } else {
+                    out.Line() << "\t" << str->elements[i]->id;
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
         case Backend::IL::ConstantKind::Struct: {
             auto str = constant->As<Backend::IL::StructConstant>();
             
@@ -1755,7 +1842,7 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
         }
         case IL::OpCode::Alloca: {
             auto _alloca = instr->As<IL::AllocaInstruction>();
-            out.Line() << "\"Type\": " << _alloca->type << ",";
+            out.Line() << "\"Type\": " << program.GetTypeMap().GetType(_alloca->result)->id << ",";
             break;
         }
         case IL::OpCode::StoreTexture: {
@@ -1924,10 +2011,10 @@ void PrettyPrintJson(const Backend::IL::Program& program, const Backend::IL::Fun
 
     const IL::VariableList& variables = function->GetParameters();
     
-    for (const Backend::IL::Variable& variable : variables) {
-        out.Line() << "\t" << variable.id;
+    for (const Backend::IL::Variable* variable : variables) {
+        out.Line() << "\t" << variable->id;
         
-        if (&variable != &*--variables.end()) {
+        if (variable != *--variables.end()) {
             out.stream << ",";
         }
     }
@@ -2011,12 +2098,12 @@ void IL::PrettyPrintProgramJson(const Program& program, PrettyPrintContext out) 
 
         PrettyPrintContext ctx = out.Tab();
 
-        for (const Backend::IL::Variable& variable : program.GetVariableList()) {
+        for (const Backend::IL::Variable* variable : program.GetVariableList()) {
             ctx.Line() << "{";
-            PrettyPrintJson(&variable, ctx.Tab());
+            PrettyPrintJson(variable, ctx.Tab());
             ctx.Line() << "}";
 
-            if (&variable != &*--program.GetVariableList().end()) {
+            if (variable != *--program.GetVariableList().end()) {
                 ctx.stream << ",";
             }
         }

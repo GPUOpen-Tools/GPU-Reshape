@@ -340,6 +340,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         instr.source = IL::Source::Code(recordIdx);
                         instr.backendOpCode = record.id;
                         instr.symbol = "LLVMCastOp";
+                        instr.traits.foldableWithImmediates = true;
                         basicBlock->Append(instr);
                         break;
                     }
@@ -427,7 +428,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
                 instr.composite = compositeValue;
-                instr.index = indexValue;
+                instr.index = program.GetConstants().UInt(indexValue)->id;
                 basicBlock->Append(instr);
                 break;
             }
@@ -462,7 +463,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
                 instr.composite = compositeValue;
-                instr.index = index;
+                instr.index = program.GetConstants().UInt(index)->id;
 
                 basicBlock->Append(instr);
                 break;
@@ -594,6 +595,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.source = IL::Source::Code(recordIdx);
                 instr.backendOpCode = record.id;
                 instr.symbol = "LLVMShuffle";
+                instr.traits.foldableWithImmediates = true;
                 basicBlock->Append(instr);
                 break;
             }
@@ -626,6 +628,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                         instr.source = IL::Source::Code(recordIdx);
                         instr.backendOpCode = record.id;
                         instr.symbol = "LLVMCmpOp";
+                        instr.traits.foldableWithImmediates = true;
                         basicBlock->Append(instr);
                         break;
                     }
@@ -927,7 +930,6 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 instr.opCode = IL::OpCode::Alloca;
                 instr.result = result;
                 instr.source = IL::Source::Code(recordIdx);
-                instr.type = type->id;
                 basicBlock->Append(instr);
                 break;
             }
@@ -1039,8 +1041,11 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                     program.GetTypeMap().SetType(linear, callDecl->type->parameterTypes[i]);
                 }
 
+                // General traits in case the instruction is not exposed
+                IL::UnexposedInstructionTraits traits{};
+
                 // Try intrinsic
-                if (!TryParseIntrinsic(basicBlock, recordIdx, reader, anchor, called, result, callDecl)) {
+                if (!TryParseIntrinsic(basicBlock, recordIdx, reader, anchor, called, result, traits)) {
                     // Unknown, emit as unexposed
                     IL::UnexposedInstruction instr{};
                     instr.opCode = IL::OpCode::Unexposed;
@@ -1048,6 +1053,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                     instr.source = IL::Source::Code(recordIdx);
                     instr.backendOpCode = record.id;
                     instr.symbol = table.symbol.GetValueAllocation(called);
+                    instr.traits = traits;
                     basicBlock->Append(instr);
                 }
                 break;
@@ -1090,7 +1096,7 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 // Compose message
                 std::stringstream stream;
                 stream << "Instruction with unexposed results are invalid\n\t";
-                IL::PrettyPrint(instr, stream);
+                IL::PrettyPrint(&program, instr, stream);
 
                 // Panic!
                 ASSERT(false, stream.str().c_str());
@@ -1306,7 +1312,58 @@ DXCodeOffsetTraceback DXILPhysicalBlockFunction::GetCodeOffsetTraceback(uint32_t
     return sourceTraceback.at(codeOffset);
 }
 
-bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration) {
+static void PopulateUnexposedInstructionTraits(DXILOpcodes opCode, IL::UnexposedInstructionTraits& traits) {
+    switch (opCode) {
+        default:
+            break;
+        case DXILOpcodes::FAbs_:
+        case DXILOpcodes::Saturate_:
+        case DXILOpcodes::Cos_:
+        case DXILOpcodes::Sin_:
+        case DXILOpcodes::Tan_:
+        case DXILOpcodes::Acos_:
+        case DXILOpcodes::Asin_:
+        case DXILOpcodes::Atan_:
+        case DXILOpcodes::Hcos_:
+        case DXILOpcodes::Hsin_:
+        case DXILOpcodes::Htan_:
+        case DXILOpcodes::Exp_:
+        case DXILOpcodes::Frc_:
+        case DXILOpcodes::Log_:
+        case DXILOpcodes::Sqrt_:
+        case DXILOpcodes::Rsqrt_:
+        case DXILOpcodes::Round_ne_:
+        case DXILOpcodes::Round_ni_:
+        case DXILOpcodes::Round_pi_:
+        case DXILOpcodes::Round_z_:
+        case DXILOpcodes::FMax_:
+        case DXILOpcodes::FMin_:
+        case DXILOpcodes::FMad_:
+        case DXILOpcodes::Fma_:
+        case DXILOpcodes::Dot2_:
+        case DXILOpcodes::Dot3_:
+        case DXILOpcodes::Dot4_:
+        case DXILOpcodes::Bfrev_:
+        case DXILOpcodes::Countbits_:
+        case DXILOpcodes::FirstbitLo_:
+        case DXILOpcodes::FirstbitHi_:
+        case DXILOpcodes::FirstbitSHi_:
+        case DXILOpcodes::IMin_:
+        case DXILOpcodes::IMax_:
+        case DXILOpcodes::UMin_:
+        case DXILOpcodes::UMax_:
+        case DXILOpcodes::IMad_:
+        case DXILOpcodes::UMad_:
+        case DXILOpcodes::Ubfe_:
+        case DXILOpcodes::Ibfe_:
+        case DXILOpcodes::Bfi_: {
+            traits.foldableWithImmediates = true;
+            break;
+        }
+    }
+}
+
+bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, IL::UnexposedInstructionTraits& traits) {
     LLVMRecordStringView view = table.symbol.GetValueString(called);
 
     // Get type map
@@ -1321,6 +1378,13 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
     // Check hash
     switch (view.GetHash()) {
         default: {
+            // If a reserved operation, populate the traits
+            if (view.StartsWith("dx.op.")) {
+                uint32_t rel = reader.GetMappedRelative(anchor);
+                auto opCode = static_cast<DXILOpcodes>(program.GetConstants().GetConstant<IL::IntConstant>(rel)->value);
+                PopulateUnexposedInstructionTraits(opCode, traits);
+            }
+
             // Not an intrinsic
             return false;
         }
@@ -3923,8 +3987,12 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                 case IL::OpCode::Extract: {
                     auto _instr = instr->As<IL::ExtractInstruction>();
 
+                    // DX12 backend only supports static extraction, for now
+                    const IL::Constant* index = program.GetConstants().GetConstant(_instr->index);
+                    ASSERT(index, "Dynamic extraction not supported");
+
                     // Source data may be SVOX
-                    SVOXElement element = ExtractSVOXElement(block, _instr->composite, _instr->index);
+                    SVOXElement element = ExtractSVOXElement(block, _instr->composite, static_cast<uint32_t>(index->As<IL::IntConstant>()->value));
 
                     // Point to the extracted element
                     table.idRemapper.SetUserRedirect(instr->result, element.value);

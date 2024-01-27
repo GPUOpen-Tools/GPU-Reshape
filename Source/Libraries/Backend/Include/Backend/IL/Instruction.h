@@ -96,12 +96,24 @@ namespace IL {
         Source source;
     };
 
+    struct UnexposedInstructionTraits {
+        /// This instruction may be folded with immediate constants
+        /// Although the exact nature of the folding remains unexposed
+        uint32_t foldableWithImmediates : 1;
+    };
+
     struct UnexposedInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Unexposed;
 
         uint32_t backendOpCode;
 
         const char* symbol;
+
+        ID* operands;
+
+        uint32_t operandCount;
+
+        UnexposedInstructionTraits traits;
     };
 
     struct LiteralInstruction : public Instruction {
@@ -406,7 +418,7 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::Extract;
 
         ID composite;
-        uint32_t index;
+        ID index;
     };
 
     struct InsertInstruction : public Instruction {
@@ -593,8 +605,6 @@ namespace IL {
 
     struct AllocaInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Alloca;
-
-        ID type;
     };
 
     struct AnyInstruction : public Instruction {

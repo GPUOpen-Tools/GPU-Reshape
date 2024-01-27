@@ -149,6 +149,8 @@ private:
                 return CompileConstant(static_cast<const Backend::IL::NullConstant*>(constant));
             case Backend::IL::ConstantKind::Struct:
                 return CompileConstant(static_cast<const Backend::IL::StructConstant*>(constant));
+            case Backend::IL::ConstantKind::Array:
+                return CompileConstant(static_cast<const Backend::IL::ArrayConstant*>(constant));
         }
     }
 
@@ -203,6 +205,19 @@ private:
 
         for (uint32_t i = 0; i < record.opCount; i++) {
             record.ops[i] = CompileConstant(constant->members[i]);
+        }
+        
+        return Emit(constant, record);
+    }
+
+    /// Compile a given constant
+    uint64_t CompileConstant(const Backend::IL::ArrayConstant* constant) {
+        LLVMRecord record(LLVMConstantRecord::Aggregate);
+        record.opCount = static_cast<uint32_t>(constant->elements.size());
+        record.ops = recordAllocator.AllocateArray<uint64_t>(record.opCount);
+
+        for (uint32_t i = 0; i < record.opCount; i++) {
+            record.ops[i] = CompileConstant(constant->elements[i]);
         }
         
         return Emit(constant, record);

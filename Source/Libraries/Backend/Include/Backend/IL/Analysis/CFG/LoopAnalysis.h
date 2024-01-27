@@ -28,17 +28,17 @@
 
 // Backend
 #include "Common/Containers/TrivialStackVector.h"
-#include <Backend/IL/CFG/DominatorTree.h>
-#include <Backend/IL/CFG/Loop.h>
+#include <Backend/IL/Analysis/CFG/DominatorAnalysis.h>
+#include <Backend/IL/Analysis/CFG/Loop.h>
 
 namespace IL {
-    class LoopTree {
+    class LoopAnalysis {
     public:
         using LoopView = std::vector<Loop>;
 
         /// Constructor
-        /// \param dominatorTree domination tree from which to construct loop information
-        LoopTree(const DominatorTree &dominatorTree) : dominatorTree(dominatorTree) {
+        /// \param dominatorAnalysis domination tree from which to construct loop information
+        LoopAnalysis(const DominatorAnalysis &dominatorAnalysis) : dominatorAnalysis(dominatorAnalysis) {
 
         }
 
@@ -48,12 +48,12 @@ namespace IL {
             std::vector<BasicBlock *> backEdgeBlocks;
 
             // Visit all blocks in post-order
-            for (BasicBlock *header: dominatorTree.GetPostOrderTraversal().GetView()) {
+            for (BasicBlock *header: dominatorAnalysis.GetPostOrderTraversal().GetView()) {
                 backEdgeBlocks.clear();
 
                 // If the header dominates the predecessor, this is a back-edge
-                for (BasicBlock *predecessor: dominatorTree.GetPredecessors(header)) {
-                    if (dominatorTree.Dominates(header, predecessor)) {
+                for (BasicBlock *predecessor: dominatorAnalysis.GetPredecessors(header)) {
+                    if (dominatorAnalysis.Dominates(header, predecessor)) {
                         backEdgeBlocks.push_back(predecessor);
                     }
                 }
@@ -109,7 +109,7 @@ namespace IL {
                 loop.blocks.Add(bb);
 
                 // Visit all predecessors
-                for (BasicBlock* predecessor : dominatorTree.GetPredecessors(bb)) {
+                for (BasicBlock* predecessor : dominatorAnalysis.GetPredecessors(bb)) {
                     // Back at header?
                     if (!AcquireVisitation(predecessor)) {
                         continue;
@@ -126,7 +126,7 @@ namespace IL {
         void MapExitBlocks(Loop& loop) {
             // If a given successor of a known-mapped block is *not* known, this is an exit block
             for (BasicBlock* bb : loop.blocks) {
-                for (BasicBlock* successor : dominatorTree.GetSuccessors(bb)) {
+                for (BasicBlock* successor : dominatorAnalysis.GetSuccessors(bb)) {
                     if (!IsAcquired(successor)) {
                         loop.exitBlocks.Add(successor);
                     }
@@ -141,7 +141,7 @@ namespace IL {
 
             // Determine the effective bound
             uint32_t bound = 0;
-            for (BasicBlock* bb : dominatorTree.GetBasicBlocks()) {
+            for (BasicBlock* bb : dominatorAnalysis.GetBasicBlocks()) {
                 bound = std::max(bound, bb->GetID() + 1u);
             }
 
@@ -185,6 +185,6 @@ namespace IL {
         std::vector<uint32_t> visitedStates;
 
         /// Domination tree
-        const DominatorTree& dominatorTree;
+        const DominatorAnalysis& dominatorAnalysis;
     };
 }

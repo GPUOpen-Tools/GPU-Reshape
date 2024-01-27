@@ -75,6 +75,14 @@ namespace Studio.Models.IL
         public double Value;
     }
 
+    public class ArrayConstant : Constant
+    {
+        /// <summary>
+        /// All constant elements
+        /// </summary>
+        public Constant[] Elements;
+    }
+
     public class StructConstant : Constant
     {
         /// <summary>

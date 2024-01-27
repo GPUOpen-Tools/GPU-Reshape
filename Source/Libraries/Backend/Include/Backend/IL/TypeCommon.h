@@ -90,4 +90,26 @@ namespace Backend::IL {
     inline const bool IsComponentType(const Type* type) {
         return IsComponentType(type, T::kKind);
     }
+
+    inline const Type* GetValueType(const Type* type) {
+        switch (type->kind) {
+            default:
+                return type;
+            case TypeKind::Array:
+                return type->As<ArrayType>()->elementType;
+            case TypeKind::Pointer:
+                return type->As<PointerType>()->pointee;
+        }
+    }
+
+    inline const bool IsResourceType(const Type* type) {
+        switch (type->kind) {
+            default:
+                return false;
+            case TypeKind::Texture:
+                return true;
+            case TypeKind::Buffer:
+                return true;
+        }
+    }
 }

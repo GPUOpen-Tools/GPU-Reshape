@@ -51,6 +51,7 @@ bool Generators::Spv(const GeneratorInfo &info, TemplateEngine &templateEngine) 
 
     // Streams
     std::stringstream classStream;
+    std::stringstream operandStream;
 
     // Add case for all instructions of interest
     for (auto &&instruction: info.spvJson["instructions"]) {
@@ -72,8 +73,51 @@ bool Generators::Spv(const GeneratorInfo &info, TemplateEngine &templateEngine) 
         classStream << "\t\t\treturn SpvPhysicalBlockType::" << classMappings.at(_class) << ";\n";
     }
 
+    // Cleanup last coverage
+    coverage.clear();
+
+    // Add case for all instructions of interest
+    for (auto &&instruction: info.spvJson["instructions"]) {
+        std::string _class = instruction["class"];
+
+        // If already covered, ignore
+        if (coverage.count(instruction["opcode"])) {
+            continue;
+        }
+
+        // Mapped
+        coverage.insert(static_cast<uint32_t>(instruction["opcode"]));
+
+        // Get name
+        std::string opName = instruction["opname"].get<std::string>();
+
+        // Ignore instruction coding
+        uint32_t offset = 1;
+
+        // No operands? Skip
+        if (!instruction.contains("operands")) {
+            continue;
+        }
+
+        // Open case
+        operandStream << "\t\tcase Spv" << opName << ":\n";
+
+        // Visit all id references that are bounded
+        for (auto &&operand: instruction["operands"]) {
+            if (operand["kind"] == "IdRef" && !operand.contains("quantifier")) {
+                operandStream << "\t\t\tfunctor(words[" << (offset) << "]);\n";
+            }
+
+            offset++;
+        }
+
+        // Close case
+        operandStream << "\t\t\tbreak;\n";
+    }
+
     // Replace
     templateEngine.Substitute("$CLASSES", classStream.str().c_str());
+    templateEngine.Substitute("$OPERANDS", operandStream.str().c_str());
 
     // OK
     return true;

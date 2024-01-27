@@ -36,6 +36,7 @@ namespace Studio.Models.IL
         Bool,
         Int,
         FP,
+        Array,
         Struct,
         Null,
         Unexposed

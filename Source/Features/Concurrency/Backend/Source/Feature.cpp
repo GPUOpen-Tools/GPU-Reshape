@@ -177,7 +177,7 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         } else {
             // Read the current lock at PUID
             // ! Multiple consumers
-            previousLock = pre.Extract(pre.LoadBuffer(bufferValue, puid), 0);
+            previousLock = pre.Extract(pre.LoadBuffer(bufferValue, puid), program.GetConstants().UInt(0)->id);
         }
 
         // If either unacquired or by the current event

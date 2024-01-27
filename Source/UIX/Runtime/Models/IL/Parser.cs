@@ -402,6 +402,20 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case ConstantKind.Array:
+                {
+                    ArrayConstant _array = new();
+
+                    _array.Elements = new Constant[node.Elements.Count];
+
+                    for (int i = 0; i < _array.Elements.Length; i++)
+                    {
+                        _array.Elements[i] = (Constant)program.Lookup[(uint)node.Elements[i]];
+                    }
+
+                    constant = _array;
+                    break;
+                }
                 case ConstantKind.Struct:
                 {
                     StructConstant _struct = new();

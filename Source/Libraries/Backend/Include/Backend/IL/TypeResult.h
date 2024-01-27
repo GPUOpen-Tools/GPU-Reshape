@@ -399,8 +399,11 @@ namespace Backend::IL {
                 return type->As<Backend::IL::PointerType>()->pointee;
             case Backend::IL::TypeKind::Array:
                 return type->As<Backend::IL::ArrayType>()->elementType;
-            case Backend::IL::TypeKind::Struct:
-                return type->As<Backend::IL::StructType>()->memberTypes[instr->index];
+            case Backend::IL::TypeKind::Struct: {
+                const Constant* index = program.GetConstants().GetConstant(instr->index);
+                ASSERT(index, "Dynamic structured extraction not supported");
+                return type->As<Backend::IL::StructType>()->memberTypes[index->As<IntConstant>()->value];
+            }
         }
     }
 }

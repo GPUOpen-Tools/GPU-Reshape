@@ -51,6 +51,10 @@ public:
     /// \param record source record
     void ParseAlias(struct LLVMRecord& record);
 
+    /// Resolve all global variables
+    /// Maps optional forward constants
+    void ResolveGlobals();
+
 public:
     /// Compile a constant block
     /// \param block block
@@ -80,4 +84,8 @@ public:
 public:
     /// Underlying constants
     DXILConstantMap constantMap;
+
+private:
+    /// All pending resolves
+    Vector<std::pair<Backend::IL::Variable*, IL::ID>> initializerResolves;
 };

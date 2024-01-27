@@ -371,7 +371,7 @@ namespace IL {
         /// \param composite the base composite
         /// \param index the index
         /// \return instruction reference
-        BasicBlock::TypedIterator <ExtractInstruction> Extract(ID composite, uint32_t index) {
+        BasicBlock::TypedIterator <ExtractInstruction> Extract(ID composite, ID index) {
             ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
 
             ExtractInstruction instr{};
@@ -1007,15 +1007,12 @@ namespace IL {
         /// Alloca a varaible
         /// \param type the varaible type
         /// \return instruction reference
-        BasicBlock::TypedIterator <AllocaInstruction> Alloca(ID type) {
-            ASSERT(IsMapped(type), "Unmapped identifier");
-
+        BasicBlock::TypedIterator <AllocaInstruction> Alloca(const Backend::IL::Type* type) {
             AllocaInstruction instr{};
             instr.opCode = OpCode::Alloca;
             instr.source = Source::Invalid();
             instr.result = map->AllocID();
-            instr.type = type;
-            return Op(instr);
+            return Op(instr, type);
         }
 
         /// Is this emitter good?

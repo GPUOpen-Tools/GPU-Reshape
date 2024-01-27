@@ -430,7 +430,8 @@ namespace Runtime.ViewModels.IL
                 {
                     var typed = (ExtractInstruction)instruction;
                     AssembleInlineOperand(typed.Composite, builder);
-                    builder.AppendFormat(" {0}", typed.Index);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Index, builder);
                     break;
                 }
                 case OpCode.Insert:
@@ -772,6 +773,24 @@ namespace Runtime.ViewModels.IL
                 {
                     var typed = (FPConstant)constant;
                     builder.Append(typed.Value);
+                    break;
+                }
+                case ConstantKind.Array:
+                {
+                    var typed = (ArrayConstant)constant;
+                    builder.Append("[ ");
+
+                    for (int i = 0; i < typed.Elements.Length; i++)
+                    {
+                        if (i != 0)
+                        {
+                            builder.Append(", ");
+                        }
+                        
+                        AssembleInlineConstant(typed.Elements[i], builder, false);
+                    }
+                    
+                    builder.Append(" ]");
                     break;
                 }
                 case ConstantKind.Struct:
