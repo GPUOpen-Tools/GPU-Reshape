@@ -345,6 +345,7 @@ void FeatureHook_vkCmdBeginRenderPass::operator()(CommandBufferObject *object, C
         AttachmentInfo& attachmentInfo = attachments[i];
         attachmentInfo.resource.token = GetResourceToken(state);
         attachmentInfo.resource.textureDescriptor = descriptors + i;
+        attachmentInfo.resolveResource = nullptr;
 
         // Translate action
         switch (description.loadOp) {
@@ -398,10 +399,12 @@ void FeatureHook_vkCmdEndRenderPass::operator()(CommandBufferObject *object, Com
     hook.Invoke(context);
 }
 
-void FeatureHook_vkCmdBeginRenderingKHR::operator()(CommandBufferObject *object, CommandContext *context, const VkRenderingInfo *pRenderingInfo) const {
+void FeatureHook_vkCmdBeginRendering::operator()(CommandBufferObject *object, CommandContext *context, const VkRenderingInfo *pRenderingInfo) const {
     // Local data
-    TextureDescriptor* descriptors = ALLOCA_ARRAY(TextureDescriptor, pRenderingInfo->colorAttachmentCount);
-    AttachmentInfo*    attachments = ALLOCA_ARRAY(AttachmentInfo, pRenderingInfo->colorAttachmentCount);
+    TextureDescriptor* descriptors  = ALLOCA_ARRAY(TextureDescriptor, pRenderingInfo->colorAttachmentCount);
+    TextureDescriptor* resolveDescriptors = ALLOCA_ARRAY(TextureDescriptor, pRenderingInfo->colorAttachmentCount);
+    AttachmentInfo*    attachments  = ALLOCA_ARRAY(AttachmentInfo, pRenderingInfo->colorAttachmentCount);
+    ResourceInfo*      resolveInfos = ALLOCA_ARRAY(ResourceInfo, pRenderingInfo->colorAttachmentCount);
     
     // Translate render targets
     for (uint32_t i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
@@ -420,6 +423,26 @@ void FeatureHook_vkCmdBeginRenderingKHR::operator()(CommandBufferObject *object,
         AttachmentInfo& attachmentInfo = attachments[i];
         attachmentInfo.resource.token = GetResourceToken(state);
         attachmentInfo.resource.textureDescriptor = descriptors + i;
+
+        // Has resolve target?
+        if (description.resolveImageView) {
+            // Respective frame buffer view
+            ImageViewState* resolveState = object->table->states_imageView.Get(description.resolveImageView);
+
+            // Setup descriptor
+            resolveDescriptors[i] = TextureDescriptor{
+                .region = TextureRegion { },
+                .uid = 0u
+            };
+
+            // Setup attachment resource
+            ResourceInfo& resolve = resolveInfos[i];
+            resolve.token = GetResourceToken(resolveState);
+            resolve.textureDescriptor = resolveDescriptors + i;
+            attachmentInfo.resolveResource = resolveInfos + i;
+        } else {
+            attachmentInfo.resolveResource = nullptr;
+        }
 
         // Translate action
         switch (description.loadOp) {
@@ -464,7 +487,9 @@ void FeatureHook_vkCmdBeginRenderingKHR::operator()(CommandBufferObject *object,
 
     // Optional depth data
     TextureDescriptor depthDescriptor;
+    TextureDescriptor depthResolveDescriptor;
     AttachmentInfo    depthInfo;
+    ResourceInfo      depthResolveInfo;
     
     if (pRenderingInfo->pDepthAttachment) {
         // Respective frame buffer view
@@ -475,6 +500,25 @@ void FeatureHook_vkCmdBeginRenderingKHR::operator()(CommandBufferObject *object,
             .region = TextureRegion { },
             .uid = 0u
         };
+
+        // Has resolve target?
+        if (pRenderingInfo->pDepthAttachment->resolveImageView) {
+            // Respective frame buffer view
+            ImageViewState* resolveState = object->table->states_imageView.Get(pRenderingInfo->pDepthAttachment->resolveImageView);
+
+            // Setup descriptor
+            depthResolveDescriptor = TextureDescriptor{
+                .region = TextureRegion { },
+                .uid = 0u
+            };
+
+            // Setup attachment resource
+            depthResolveInfo.token = GetResourceToken(resolveState);
+            depthResolveInfo.textureDescriptor = &depthResolveDescriptor;
+            depthInfo.resolveResource = &depthResolveInfo;
+        } else {
+            depthInfo.resolveResource = nullptr;
+        }
 
         // Translate action
         switch (pRenderingInfo->pDepthAttachment->loadOp) {
@@ -524,6 +568,6 @@ void FeatureHook_vkCmdBeginRenderingKHR::operator()(CommandBufferObject *object,
     );
 }
 
-void FeatureHook_vkCmdEndRenderingKHR::operator()(CommandBufferObject *object, CommandContext *context) const {
+void FeatureHook_vkCmdEndRendering::operator()(CommandBufferObject *object, CommandContext *context) const {
     hook.Invoke(context);
 }
