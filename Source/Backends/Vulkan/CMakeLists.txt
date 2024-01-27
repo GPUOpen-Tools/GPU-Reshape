@@ -85,7 +85,9 @@ set(
     vkCmdResolveImage
     vkCmdBeginRenderPass
     vkCmdEndRenderPass
+    vkCmdBeginRendering
     vkCmdBeginRenderingKHR
+    vkCmdEndRendering
     vkCmdEndRenderingKHR
 )
 

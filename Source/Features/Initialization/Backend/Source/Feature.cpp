@@ -309,6 +309,11 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
             info.storeAction == AttachmentAction::Resolve) {
             MaskResourceSRB(context, info.resource.token.puid, ~0u);
         }
+
+        // Always mark resolve targets as initialized
+        if (info.resolveResource) {
+            MaskResourceSRB(context, info.resolveResource->token.puid, ~0u);
+        }
     }
 
     // Has depth?
@@ -319,6 +324,11 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
             passInfo.depthAttachment->storeAction == AttachmentAction::Resolve) {
             MaskResourceSRB(context, passInfo.depthAttachment->resource.token.puid, ~0u);
         }   
+
+        // Always mark resolve targets as initialized
+        if (passInfo.depthAttachment->resolveResource) {
+            MaskResourceSRB(context, passInfo.depthAttachment->resolveResource->token.puid, ~0u);
+        }
     }
 }
 
