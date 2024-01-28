@@ -112,7 +112,16 @@ namespace Studio.Models.IL
             for (int i = 0; i < program.Constants.Length; i++)
             {
                 program.Constants[i] = ParseConstant(node.Constants[i], program);
-                program.Lookup.Add(program.Constants[i].ID, program.Constants[i]);
+
+                // Symbolic referencing is handled separately
+                if (program.Constants[i].ID >= 0)
+                {
+                    program.Lookup.Add((uint)program.Constants[i].ID, program.Constants[i]);
+                }
+                else
+                {
+                    program.SymbolicLookup.Add((uint)-program.Constants[i].ID, program.Constants[i]);
+                }
             }
 
             // Parse all variables
@@ -356,6 +365,21 @@ namespace Studio.Models.IL
         }
 
         /// <summary>
+        /// Get a constant that may be symbolic
+        /// </summary>
+        private Constant GetConstantFromSigned(int signed, Program program)
+        {
+            if (signed >= 0)
+            {
+                return (Constant)program.Lookup[(uint)signed];
+            }
+            else
+            {
+                return (Constant)program.SymbolicLookup[(uint)-signed];
+            }
+        }
+
+        /// <summary>
         /// Parse a constant
         /// </summary>
         private Constant ParseConstant(dynamic node, Program program)
@@ -410,7 +434,7 @@ namespace Studio.Models.IL
 
                     for (int i = 0; i < _array.Elements.Length; i++)
                     {
-                        _array.Elements[i] = (Constant)program.Lookup[(uint)node.Elements[i]];
+                        _array.Elements[i] = GetConstantFromSigned((int)node.Elements[i], program);
                     }
 
                     constant = _array;
@@ -424,7 +448,7 @@ namespace Studio.Models.IL
 
                     for (int i = 0; i < _struct.Members.Length; i++)
                     {
-                        _struct.Members[i] = (Constant)program.Lookup[(uint)node.Members[i]];
+                        _struct.Members[i] = GetConstantFromSigned((int)node.Members[i], program);
                     }
 
                     constant = _struct;

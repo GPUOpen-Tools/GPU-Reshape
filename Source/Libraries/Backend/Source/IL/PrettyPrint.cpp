@@ -1423,7 +1423,30 @@ void PrettyPrintJson(const Backend::IL::Type *type, IL::PrettyPrintContext out) 
     out.Line() << "\"Kind\": " << static_cast<uint32_t>(type->kind);
 }
 
-void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintContext out) {
+struct SymbolicContext {
+    /// Symbolic constants mappings
+    std::unordered_map<const IL::Constant*, int32_t> mappings;
+};
+
+/// Get or allocate a constant id
+static int32_t GetConstantId(const Backend::IL::Constant *constant, SymbolicContext& context) {
+    // Non-symbolic just use their id
+    if (!constant->IsSymbolic()) {
+        return constant->id;
+    }
+
+    // Already allocated?
+    auto it = context.mappings.find(constant);
+    if (it != context.mappings.end()) {
+        return it->second;
+    }
+
+    // Symbolics are represented with negative values
+    const int32_t id = -static_cast<int32_t>(context.mappings.size());
+    return context.mappings[constant] = id;
+}
+
+void PrettyPrintJson(const Backend::IL::Constant *constant, SymbolicContext& context, IL::PrettyPrintContext out) {
     switch (constant->kind) {
         default:
             break;
@@ -1448,11 +1471,11 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintConte
             out.Line() << "\"Elements\": ";
             out.Line() << "[";
             
-            for (size_t i = 0; i < str->elements.size(); i++) {         
+            for (size_t i = 0; i < str->elements.size(); i++) {
                 if (i != str->elements.size() - 1) {
-                    out.Line() << "\t" << str->elements[i]->id << ",";
+                    out.Line() << "\t" << GetConstantId(str->elements[i], context) << ",";
                 } else {
-                    out.Line() << "\t" << str->elements[i]->id;
+                    out.Line() << "\t" << GetConstantId(str->elements[i], context);
                 }
             }
 
@@ -1465,11 +1488,11 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintConte
             out.Line() << "\"Members\": ";
             out.Line() << "[";
             
-            for (size_t i = 0; i < str->members.size(); i++) {         
+            for (size_t i = 0; i < str->members.size(); i++) {
                 if (i != str->members.size() - 1) {
-                    out.Line() << "\t" << str->members[i]->id << ",";
+                    out.Line() << "\t" << GetConstantId(str->members[i], context) << ",";
                 } else {
-                    out.Line() << "\t" << str->members[i]->id;
+                    out.Line() << "\t" << GetConstantId(str->members[i], context);
                 }
             }
 
@@ -1477,8 +1500,8 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, IL::PrettyPrintConte
             break;
         }
     }
-    
-    out.Line() << "\"ID\": " << constant->id << ",";
+
+    out.Line() << "\"ID\": " << GetConstantId(constant, context) << ",";
     out.Line() << "\"Kind\": " << static_cast<uint32_t>(constant->kind) << ",";
     out.Line() << "\"Type\": " << constant->type->id;
 }
@@ -2078,9 +2101,11 @@ void IL::PrettyPrintProgramJson(const Program& program, PrettyPrintContext out) 
 
         PrettyPrintContext ctx = out.Tab();
 
+        SymbolicContext symbolicCtx;
+
         for (const Backend::IL::Constant* constant : program.GetConstants()) {
             ctx.Line() << "{";
-            PrettyPrintJson(constant, ctx.Tab());
+            PrettyPrintJson(constant, symbolicCtx, ctx.Tab());
             ctx.Line() << "}";
 
             if (constant != *--program.GetConstants().end()) {

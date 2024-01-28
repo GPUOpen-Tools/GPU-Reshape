@@ -33,7 +33,7 @@ namespace Studio.Models.IL
         /// <summary>
         /// Identifier of this constant
         /// </summary>
-        public uint ID;
+        public int ID;
 
         /// <summary>
         /// Kind of this constant
