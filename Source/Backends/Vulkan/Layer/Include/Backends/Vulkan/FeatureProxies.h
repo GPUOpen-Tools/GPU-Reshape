@@ -70,8 +70,16 @@ struct FeatureHook_vkCmdCopyBufferToImage : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandBufferObject *object, CommandContext *context, VkBuffer srcBuffer, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkBufferImageCopy* pRegions) const;
 };
 
+struct FeatureHook_vkCmdCopyBufferToImage2 : TFeatureHook<Hooks::CopyResource> {
+    void operator()(CommandBufferObject *object, CommandContext *context, const VkCopyBufferToImageInfo2* pCopyBufferToImageInfo) const;
+};
+
 struct FeatureHook_vkCmdCopyImageToBuffer : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandBufferObject *object, CommandContext *context, VkImage srcImage, VkImageLayout srcImageLayout, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferImageCopy* pRegions) const;
+};
+
+struct FeatureHook_vkCmdCopyImageToBuffer2 : TFeatureHook<Hooks::CopyResource> {
+    void operator()(CommandBufferObject *object, CommandContext *context, const VkCopyImageToBufferInfo2* pCopyImageToBufferInfo) const;
 };
 
 struct FeatureHook_vkCmdUpdateBuffer : TFeatureHook<Hooks::WriteResource> {

@@ -73,12 +73,16 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyBuffer[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyImage[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyImageToBuffer[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyImageToBuffer2[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyBufferToImage[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyBufferToImage2[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdBlitImage[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImage |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer2 |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage2 |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBlitImage |= (1ull << i);
         }
         
@@ -125,7 +129,9 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBufferToImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBufferToImage2 = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage2 & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImageToBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImageToBuffer2 = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer2 & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBlitImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBlitImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdUpdateBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdUpdateBuffer & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdFillBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdFillBuffer & featureSet;

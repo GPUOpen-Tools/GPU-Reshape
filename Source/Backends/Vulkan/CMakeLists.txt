@@ -76,7 +76,9 @@ set(
     vkCmdCopyImage
     vkCmdBlitImage
     vkCmdCopyBufferToImage
+    vkCmdCopyBufferToImage2
     vkCmdCopyImageToBuffer
+    vkCmdCopyImageToBuffer2
     vkCmdUpdateBuffer
     vkCmdFillBuffer
     vkCmdClearColorImage
