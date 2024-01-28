@@ -188,6 +188,35 @@ void FeatureHook_vkCmdCopyBufferToImage::operator()(CommandBufferObject *object,
     }
 }
 
+void FeatureHook_vkCmdCopyBufferToImage2::operator()(CommandBufferObject *object, CommandContext *context, const VkCopyBufferToImageInfo2* pCopyBufferToImageInfo) const {
+    // Get states
+    BufferState* srcBufferState = object->table->states_buffer.Get(pCopyBufferToImageInfo->srcBuffer);
+    ImageState*  dstImageState  = object->table->states_image.Get(pCopyBufferToImageInfo->dstImage);
+
+    // Invoke hook per region
+    for (uint32_t i = 0; i < pCopyBufferToImageInfo->regionCount; i++) {
+        // Setup source descriptor
+        BufferDescriptor srcDescriptor{
+            .offset = pCopyBufferToImageInfo->pRegions[i].bufferOffset,
+            .width = 0u,
+            .uid = srcBufferState->uid
+        };
+
+        // Setup destination descriptor
+        TextureDescriptor dstDescriptor{
+            .region = {},
+            .uid = dstImageState->uid
+        };
+
+        // Invoke hook
+        hook.Invoke(
+            context,
+            ResourceInfo::Buffer(GetResourceToken(srcBufferState), &srcDescriptor),
+            ResourceInfo::Texture(GetResourceToken(dstImageState), &dstDescriptor)
+        );
+    }
+}
+
 void FeatureHook_vkCmdCopyImageToBuffer::operator()(CommandBufferObject *object, CommandContext *context, VkImage srcImage, VkImageLayout srcImageLayout, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferImageCopy *pRegions) const {
     // Get states
     ImageState*  srcImageState  = object->table->states_image.Get(srcImage);
@@ -204,6 +233,35 @@ void FeatureHook_vkCmdCopyImageToBuffer::operator()(CommandBufferObject *object,
         // Setup destination descriptor
         BufferDescriptor dstDescriptor{
             .offset = pRegions[i].bufferOffset,
+            .width = 0u,
+            .uid = dstBufferState->uid
+        };
+
+        // Invoke hook
+        hook.Invoke(
+            context,
+            ResourceInfo::Texture(GetResourceToken(srcImageState), &srcDescriptor),
+            ResourceInfo::Buffer(GetResourceToken(dstBufferState), &dstDescriptor)
+        );
+    }
+}
+
+void FeatureHook_vkCmdCopyImageToBuffer2::operator()(CommandBufferObject *object, CommandContext *context, const VkCopyImageToBufferInfo2* pCopyImageToBufferInfo) const {
+    // Get states
+    ImageState*  srcImageState  = object->table->states_image.Get(pCopyImageToBufferInfo->srcImage);
+    BufferState* dstBufferState = object->table->states_buffer.Get(pCopyImageToBufferInfo->dstBuffer);
+
+    // Invoke hook per region
+    for (uint32_t i = 0; i < pCopyImageToBufferInfo->regionCount; i++) {
+        // Setup source descriptor
+        TextureDescriptor srcDescriptor{
+            .region = {},
+            .uid = srcImageState->uid
+        };
+
+        // Setup destination descriptor
+        BufferDescriptor dstDescriptor{
+            .offset = pCopyImageToBufferInfo->pRegions[i].bufferOffset,
             .width = 0u,
             .uid = dstBufferState->uid
         };
