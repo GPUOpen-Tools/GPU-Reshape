@@ -117,9 +117,6 @@ static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *com
 void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
     UserCommandState state;
 
-    // Is this a compute command list?
-    const bool isCompute = commandList->GetType() == D3D12_COMMAND_LIST_TYPE_COMPUTE;
-    
     // Handle all commands
     for (const Command &command: buffer) {
         switch (static_cast<CommandType>(command.commandType)) {
