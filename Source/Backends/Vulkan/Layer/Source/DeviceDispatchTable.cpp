@@ -68,6 +68,7 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkDestroyShaderModule = reinterpret_cast<PFN_vkDestroyShaderModule>(getDeviceProcAddr(object, "vkDestroyShaderModule"));
     next_vkCreateGraphicsPipelines = reinterpret_cast<PFN_vkCreateGraphicsPipelines>(getDeviceProcAddr(object, "vkCreateGraphicsPipelines"));
     next_vkCreateComputePipelines = reinterpret_cast<PFN_vkCreateComputePipelines>(getDeviceProcAddr(object, "vkCreateComputePipelines"));
+    next_vkCreateRayTracingPipelinesKHR = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(getDeviceProcAddr(object, "vkCreateRayTracingPipelinesKHR"));
     next_vkDestroyPipeline = reinterpret_cast<PFN_vkDestroyPipeline>(getDeviceProcAddr(object, "vkDestroyPipeline"));
     next_vkGetFenceStatus = reinterpret_cast<PFN_vkGetFenceStatus>(getDeviceProcAddr(object, "vkGetFenceStatus"));
     next_vkWaitForFences = reinterpret_cast<PFN_vkWaitForFences>(getDeviceProcAddr(object, "vkWaitForFences"));
@@ -148,6 +149,9 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkCreateComputePipelines"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateComputePipelines);
+
+    if (!std::strcmp(name, "vkCreateRayTracingPipelinesKHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkCreateRayTracingPipelinesKHR);
 
     if (!std::strcmp(name, "vkDestroyPipeline"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroyPipeline);
