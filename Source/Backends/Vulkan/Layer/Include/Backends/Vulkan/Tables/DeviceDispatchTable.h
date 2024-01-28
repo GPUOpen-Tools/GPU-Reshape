@@ -210,6 +210,7 @@ struct DeviceDispatchTable {
     PFN_vkDestroyShaderModule             next_vkDestroyShaderModule;
     PFN_vkCreateGraphicsPipelines         next_vkCreateGraphicsPipelines;
     PFN_vkCreateComputePipelines          next_vkCreateComputePipelines;
+    PFN_vkCreateRayTracingPipelinesKHR    next_vkCreateRayTracingPipelinesKHR;
     PFN_vkDestroyPipeline                 next_vkDestroyPipeline;
     PFN_vkGetFenceStatus                  next_vkGetFenceStatus;
     PFN_vkWaitForFences                   next_vkWaitForFences;

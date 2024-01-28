@@ -29,5 +29,6 @@
 enum class PipelineType {
     Graphics,
     Compute,
+    Raytracing,
     Count
 };
