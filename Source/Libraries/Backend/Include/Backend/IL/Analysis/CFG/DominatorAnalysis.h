@@ -123,7 +123,7 @@ namespace IL {
         /// \param first domainating block
         /// \param second block being dominated
         /// \return true if first dominates second
-        bool Dominates(BasicBlock* first, BasicBlock* second) const {
+        bool Dominates(const BasicBlock* first, const BasicBlock* second) const {
             BasicBlock* entryPoint = basicBlocks.GetEntryPoint();
             if (first == entryPoint) {
                 return true;

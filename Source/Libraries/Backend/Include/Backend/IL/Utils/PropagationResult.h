@@ -12,6 +12,9 @@ namespace Backend::IL {
         Mapped,
 
         /// Propagation is known varying
-        Varying
+        Varying,
+
+        /// Propagation has produced multiple values
+        Overdefined
     };
 }

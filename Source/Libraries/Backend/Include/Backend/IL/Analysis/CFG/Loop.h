@@ -34,6 +34,18 @@ namespace IL {
     struct BasicBlock;
 
     struct Loop {
+        /// Check if a block is a back edge
+        bool IsBackEdge(const BasicBlock* block) const {
+            for (const BasicBlock* backEdge : backEdgeBlocks) {
+                if (backEdge == block) {
+                    return true;
+                }
+            }
+
+            // Not found
+            return false;
+        }
+
         /// Header of the natural loop
         BasicBlock* header{nullptr};
 

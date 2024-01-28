@@ -42,16 +42,16 @@ namespace Backend::IL {
 
         /// Compute propagation across a set of basic blocks
         /// \param basicBlocks all basic blocks
-        /// \param functor propagation visitor
+        /// \param context propagation context
         template<typename F>
-        void Compute(const BasicBlockList& basicBlocks, F&& functor) {
+        void Compute(const BasicBlockList& basicBlocks, F& context) {
             WorkItem work;
 
             // Seed to entry point
             SeedCFGEdge(work, nullptr, basicBlocks.GetEntryPoint(), PropagationResult::Mapped);
 
             // Propagate all values
-            Propagate(work, functor);
+            Propagate(work, context);
         }
 
         /// Check if an edge is marked as executable
@@ -130,9 +130,9 @@ namespace Backend::IL {
     private:
         /// Propagate all work in a work item
         /// \param work work item
-        /// \param functor propagation visitor
+        /// \param context propagation context
         template<typename F>
-        void Propagate(WorkItem& work, F&& functor) {
+        void Propagate(WorkItem& work, F& context) {
             for (;;) {
                 bool any = false;
 
@@ -140,9 +140,9 @@ namespace Backend::IL {
                 if (!work.cfgWorkStack.empty()) {
                     // Special case, if the CFG item is a loop header, spawn a separate work item
                     if (auto loopItem = loopHeaders.find(work.cfgWorkStack.front().to); loopItem != loopHeaders.end()) {
-                        PropagateLoopHeader(work, functor, loopItem->second);
+                        PropagateLoopHeader(work, context, loopItem->second);
                     } else {
-                        PropagateCFG(work, functor);
+                        PropagateCFG(work, context);
                     }
 
                     any = true;
@@ -150,7 +150,7 @@ namespace Backend::IL {
 
                 // Work through pending SSAs
                 if (!work.ssaWorkStack.empty()) {
-                    PropagateSSA(work, functor);
+                    PropagateSSA(work, context);
                     any = true;
                 }
 
@@ -163,10 +163,10 @@ namespace Backend::IL {
 
         /// Propagate all constants in a loop complex
         /// \param outerWork the outer work stack, front most item must be loop header
-        /// \param functor propagation visitor
+        /// \param context propagation context
         /// \param headerItem found header item to execute
         template<typename F>
-        void PropagateLoopHeader(WorkItem& outerWork, F&& functor, LoopHeaderItem& headerItem) {
+        void PropagateLoopHeader(WorkItem& outerWork, F& context, LoopHeaderItem& headerItem) {
             Edge edge = outerWork.cfgWorkStack.front();
             outerWork.cfgWorkStack.pop();
 
@@ -188,7 +188,7 @@ namespace Backend::IL {
                 // Evaluate header manually,
                 // ensures that the loop guard doesn't catch the header
                 loopWork.cfgWorkStack.push(incomingEdge);
-                PropagateCFG(loopWork, functor);
+                PropagateCFG(loopWork, context);
 
                 // If the incoming is not that of the outer work item, remove it as executed
                 // This is to satisfy Phi constraints.
@@ -197,8 +197,11 @@ namespace Backend::IL {
                 }
 
                 // Run propagation for this iteration
-                Propagate(loopWork, functor);
+                Propagate(loopWork, context);
                 loopItem.iterationCount++;
+
+                // Propagate all side effects caused by the loop
+                context.PropagateLoopEffects(headerItem.definition);
 
                 // If any exit edges have been met, terminate execution entirely
                 // This is a surprisingly complicated topic, and something I've been thinking about for a while
@@ -262,6 +265,7 @@ namespace Backend::IL {
                     for (const Instruction* instr : *block) {
                         ssaLattice.erase(instr);
                         ssaExclusion.erase(instr);
+                        context.ClearInstruction(instr);
                     }
                 }
             }
@@ -269,9 +273,9 @@ namespace Backend::IL {
 
         /// Propagate a CFG item
         /// \param work item to propagate
-        /// \param functor propagation visitor
+        /// \param context propagation context
         template<typename F>
-        void PropagateCFG(WorkItem& work, F&& functor) {
+        void PropagateCFG(WorkItem& work, F& context) {
             Edge edge = work.cfgWorkStack.front();
             work.cfgWorkStack.pop();
 
@@ -283,7 +287,7 @@ namespace Backend::IL {
                         break;
                     }
                     case OpCode::Phi: {
-                        PropagateSSA(work, edge, instr, functor);
+                        PropagateSSA(work, edge, instr, context);
                         break;
                     }
                 }
@@ -300,7 +304,7 @@ namespace Backend::IL {
                     continue;
                 }
 
-                PropagateSSA(work, edge, instr, functor);
+                PropagateSSA(work, edge, instr, context);
             }
 
             // Mark the block as executed
@@ -309,20 +313,20 @@ namespace Backend::IL {
 
         /// Propagate an SSA item
         /// \param work item to propagate
-        /// \param functor propagation visitor
+        /// \param context propagation context
         template<typename F>
-        void PropagateSSA(WorkItem& work, F&& functor) {
+        void PropagateSSA(WorkItem& work, F& context) {
             SSAItem item = work.ssaWorkStack.front();
             work.ssaWorkStack.pop();
 
-            PropagateSSA(work, item.edge, item.instr, functor);
+            PropagateSSA(work, item.edge, item.instr, context);
         }
 
         /// Propagate an SSA item
         /// \param work item to propagate
-        /// \param functor propagation visitor
+        /// \param context propagation context
         template<typename F>
-        void PropagateSSA(WorkItem& work, const Edge& edge, const Instruction* instr, F&& functor) {
+        void PropagateSSA(WorkItem& work, const Edge& edge, const Instruction* instr, F& context) {
             // Instructions may be marked for exclusion
             if (ssaExclusion.contains(instr)) {
                 return;
@@ -336,7 +340,7 @@ namespace Backend::IL {
 
             // Invoke visitor
             const BasicBlock* conditionalBlock = nullptr;
-            PropagationResult propagationResult = functor(edge.to, instr, &conditionalBlock);
+            PropagationResult propagationResult = context.PropagateInstruction(edge.to, instr, &conditionalBlock);
 
             // Cleanup of hack above
             workContext = nullptr;
@@ -351,7 +355,8 @@ namespace Backend::IL {
                     ASSERT(false, "Invalid result");
                     return;
                 }
-                case PropagationResult::Ignore: {
+                case PropagationResult::Ignore:
+                case PropagationResult::Overdefined: {
                     PropagateNonVaryingOperands(work, edge.to, instr);
                     break;
                 }

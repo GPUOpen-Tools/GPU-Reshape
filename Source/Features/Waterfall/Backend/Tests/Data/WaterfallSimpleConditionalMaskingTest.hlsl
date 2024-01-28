@@ -45,5 +45,16 @@ void main(uint dtid : SV_DispatchThreadID) {
     // Simple check, dynamic indexing
     //! MESSAGE WaterfallingCondition[1]
     bufferRW[dtid + 2] = fetch[dtid % 4];
+
+	// Make dynamic index
+	int index = 0;
+	if (bufferRW[512].x > 0.5f) {
+		index = 2;
+	}
+
+    // Simple check, dynamic indexing from memory
+    //! MESSAGE WaterfallingCondition[1]
+    bufferRW[dtid + 2] = fetch[index];
+
 }
 

@@ -48,7 +48,10 @@ namespace IL {
             loopAnalysis(loopAnalysis),
             users(program),
             propagationEngine(program, dominatorAnalysis, loopAnalysis, users) {
-            /* poof */
+            for (const Loop& loop : loopAnalysis.GetView()) {
+                LoopInfo& info = loopLookup[loop.header];
+                info.definition = &loop;
+            }
         }
 
         ~ConstantAnalysis() {
@@ -106,9 +109,7 @@ namespace IL {
             users.Compute();
 
             // Compute propagation
-            propagationEngine.Compute(basicBlocks, [&](const BasicBlock* block, const Instruction* instr, const BasicBlock** branchBlock) {
-                return PropagateInstruction(block, instr, branchBlock);
-            });
+            propagationEngine.Compute(basicBlocks, *this);
 
             // Finally, composite all memory ranges back into the typical constant layout
             CompositePropagatedMemoryRanges();
@@ -130,6 +131,7 @@ namespace IL {
                     return PropagateResultInstruction(block, instr, branchBlock);
                 }
                 case OpCode::AddressChain: {
+                    // Chains themselves, i.e. the memory addresses, are never known
                     return MarkAsVarying(instr->result);
                 }
                 case OpCode::Load: {
@@ -153,6 +155,36 @@ namespace IL {
             }
         }
 
+        /// Propagate all side effects of a loop
+        /// \param loop given loop definition
+        void PropagateLoopEffects(const Loop* loop) {
+            LoopInfo& loopInfo = loopLookup[loop->header];
+
+            // Propgate all body blocks (includes edges)
+            for (BasicBlock* block : loop->blocks) {
+                for (const Instruction* instr : *block) {
+                    if (!instr->Is<StoreInstruction>()) {
+                        continue;
+                    }
+
+                    // Store may not have been resolved
+                    auto it = ssaMemoryLookup.find(instr);
+                    if (it == ssaMemoryLookup.end()) {
+                        continue;
+                    }
+
+                    // Store resolved memory
+                    loopInfo.memoryLookup[it->second.memory] = it->second;
+                }
+            }
+        }
+
+        /// Clear an instruction and intermediate data
+        /// \param instr instruction to clear
+        void ClearInstruction(const Instruction* instr) {
+            ssaMemoryLookup.erase(instr);
+        }
+
         /// Mark an identifier as varying
         /// \param id given identifier
         /// \return propagation result
@@ -173,6 +205,15 @@ namespace IL {
             return value.lattice = Backend::IL::PropagationResult::Mapped;
         }
 
+        /// Mark an identifier as overdefined
+        /// \param id given identifier
+        /// \return propagation result
+        Backend::IL::PropagationResult MarkAsOverdefined(ID id) {
+            PropagatedValue& value = propagationValues[id];
+            value.constant = nullptr;
+            return value.lattice = Backend::IL::PropagationResult::Overdefined;
+        }
+
         /// Check if an identifier is a constant
         bool IsConstant(ID id) {
             return propagationValues.at(id).lattice == Backend::IL::PropagationResult::Mapped;
@@ -190,6 +231,11 @@ namespace IL {
             // Note that we are checking for a lack of mapping, not the propagation result
             // It may not have been propagated at all
             return propagationValues.at(id).lattice != Backend::IL::PropagationResult::Mapped;
+        }
+
+        /// Check if an identifier is overdefined (i.e., has multiple compile time values)
+        bool IsOverdefined(ID id) {
+            return propagationValues.at(id).lattice == Backend::IL::PropagationResult::Overdefined;
         }
 
     private:
@@ -233,7 +279,13 @@ namespace IL {
 
             // Try to associate memory
             PropagatedMemory* memory = FindPropagatedMemory(chain, range);
-            if (!memory || memory->lattice != Backend::IL::PropagationResult::Mapped) {
+            if (!memory) {
+                return Backend::IL::PropagationResult::Ignore;
+            }
+
+            // Find the reaching store
+            ReachingStoreResult version = FindReachingStoreDefinition(block, instr, memory);
+            if (!version.version) {
                 return Backend::IL::PropagationResult::Ignore;
             }
 
@@ -275,8 +327,14 @@ namespace IL {
             memory->lattice = Backend::IL::PropagationResult::Mapped;
             memory->value = storeValue.constant;
 
+            // Set SSA lookup
+            ssaMemoryLookup[instr] = PropagatedMemorySSAVersion {
+                .memory = memory,
+                .value = storeValue.constant
+            };
+
             // Inform the propagator that this has been mapped, without assigning a value to it
-            return Backend::IL::PropagationResult::Mapped;
+            return memory->lattice;
         }
 
         /// Propagation case handler
@@ -296,6 +354,7 @@ namespace IL {
                     default:
                         break;
                     case Backend::IL::PropagationResult::Varying:
+                    case Backend::IL::PropagationResult::Overdefined:
                         return MarkAsVarying(instr->result);
                     case Backend::IL::PropagationResult::None:
                         continue;
@@ -330,6 +389,7 @@ namespace IL {
                 default:
                     break;
                 case Backend::IL::PropagationResult::Varying:
+                case Backend::IL::PropagationResult::Overdefined:
                 case Backend::IL::PropagationResult::None:
                     return Backend::IL::PropagationResult::Varying;
             }
@@ -358,6 +418,7 @@ namespace IL {
                 default:
                     break;
                 case Backend::IL::PropagationResult::Varying:
+                case Backend::IL::PropagationResult::Overdefined:
                 case Backend::IL::PropagationResult::None:
                     return Backend::IL::PropagationResult::Varying;
             }
@@ -390,20 +451,23 @@ namespace IL {
             }
 
             // Operand info
-            bool anyUnmapped  = false;
-            bool anyVarying   = false;
-            bool anyUnexposed = false;
+            bool anyUnmapped    = false;
+            bool anyVarying     = false;
+            bool anyOverdefined = false;
+            bool anyUnexposed   = false;
 
             // Gather all operands
             Backend::IL::VisitOperands(instr, [&](ID id) {
                 const PropagatedValue& value = propagationValues[id];
-                anyVarying   |= value.lattice == Backend::IL::PropagationResult::Varying;
-                anyUnmapped  |= value.lattice == Backend::IL::PropagationResult::None || (value.constant && value.constant->Is<UndefConstant>());
-                anyUnexposed |= value.constant && value.constant->Is<UnexposedConstant>();
+                anyVarying     |= value.lattice == Backend::IL::PropagationResult::Varying;
+                anyOverdefined |= value.lattice == Backend::IL::PropagationResult::Overdefined;
+                anyUnmapped    |= value.lattice == Backend::IL::PropagationResult::None || (value.constant && value.constant->Is<UndefConstant>());
+                anyUnexposed   |= value.constant && value.constant->Is<UnexposedConstant>();
             });
 
             // If any operands are varying, this instruction will be too
-            if (anyVarying) {
+            // Special case for overdefined values, we don't inherit those
+            if (anyVarying || anyOverdefined) {
                 return MarkAsVarying(instr->result);
             }
 
@@ -434,6 +498,28 @@ namespace IL {
 
             // Successfully folded!
             return MarkAsMapped(instr->result, constant);
+        }
+
+    private:
+        /// Does the lattice have any data?
+        bool IsStatefulLattice(Backend::IL::PropagationResult lattice) {
+            return static_cast<uint32_t>(lattice) > static_cast<uint32_t>(Backend::IL::PropagationResult::Ignore);
+        }
+
+        /// Join two memory lattices
+        Backend::IL::PropagationResult JoinMemoryLattice(Backend::IL::PropagationResult before, Backend::IL::PropagationResult after) {
+            // If there's no state, just assign it
+            if (!IsStatefulLattice(before)) {
+                return after;
+            }
+
+            // If there's two states, it's overdefined
+            if (IsStatefulLattice(after)) {
+                return Backend::IL::PropagationResult::Overdefined;
+            }
+
+            // No state in either, just presume ok
+            return after;
         }
 
     private:
@@ -480,6 +566,14 @@ namespace IL {
             /// Reference used for the memory location
             MemoryAddressChain addressChain;
 
+            /// The assigned constant to the reference address
+            const Constant* value{nullptr};
+        };
+
+        struct PropagatedMemorySSAVersion {
+            /// The memory target
+            PropagatedMemory* memory{nullptr};
+            
             /// The assigned constant to the reference address
             const Constant* value{nullptr};
         };
@@ -903,6 +997,161 @@ namespace IL {
         }
 
     private:
+        /// TODO: Reduce allocations
+
+        struct LoopInfo {
+            /// Outer definition
+            const Loop* definition{nullptr};
+
+            /// All merged side effects of an iteration
+            std::unordered_map<const PropagatedMemory*, PropagatedMemorySSAVersion> memoryLookup;
+        };
+
+        struct ReachingStoreResult {
+            /// Result of the store search
+            /// May be overdefined on ambiguous searches
+            Backend::IL::PropagationResult result{Backend::IL::PropagationResult::None};
+
+            /// Found version
+            PropagatedMemorySSAVersion* version{nullptr};
+        };
+        
+        struct ReachingStoreCache {
+            /// All memoized blocks
+            std::map<const BasicBlock*, ReachingStoreResult> blockMemoization;
+        };
+
+        /// Find the reaching, i.e., dominating, store definition with a matching memory tree
+        /// \param block block to search
+        /// \param instr optional, top most instruction, iteration stops when met
+        /// \param memory memory leaf to search for, matches by address
+        /// \return searech result
+        ReachingStoreResult FindReachingStoreDefinition(const BasicBlock* block, const Instruction* instr, const PropagatedMemory* memory) {
+            ReachingStoreCache cache;
+            return FindReachingStoreDefinition(block, instr, memory, cache);
+        }
+
+        /// Find the reaching, i.e., dominating, store definition with a matching memory tree
+        ReachingStoreResult FindReachingStoreDefinition(const BasicBlock* block, const Instruction* instr, const PropagatedMemory* memory, ReachingStoreCache& cache) {
+            // Check memoization
+            if (auto it = cache.blockMemoization.find(block); it != cache.blockMemoization.end()) {
+                return it->second;
+            }
+
+            // Search new path
+            ReachingStoreResult result = FindReachingStoreDefinitionInner(block, instr, memory, cache);
+
+            // OK
+            cache.blockMemoization[block] = result;
+            return result;
+        }
+
+        /// Find the reaching, i.e., dominating, store definition with a matching memory tree
+        ReachingStoreResult FindReachingStoreDefinitionInner(const BasicBlock* block, const Instruction* instr, const PropagatedMemory* memory, ReachingStoreCache& cache) {
+            ReachingStoreResult result;
+
+            // Search forward in the current block
+            for (const Instruction* blockInstr : *block) {
+                if (blockInstr == instr) {
+                    break;
+                }
+
+                // Only interested in stores
+                if (!blockInstr->Is<StoreInstruction>()) {
+                    continue;
+                }
+
+                // Matching memory tree?
+                auto it = ssaMemoryLookup.find(blockInstr);
+                if (it == ssaMemoryLookup.end() || it->second.memory != memory) {
+                    continue;
+                }
+
+                // Assign, do not terminate as the memory pattern by assigned again
+                result.result = Backend::IL::PropagationResult::Mapped;
+                result.version = &it->second;
+                break;
+            }
+
+            // Found?
+            if (result.version) {
+                return result;
+            }
+
+            const Loop* loopDefinition{nullptr};
+
+            // Before checking the predecessor trees, check if this is a look header,
+            // and if the loop header has a collapsed set of memory ranges
+            if (auto loopIt = loopLookup.find(block); loopIt != loopLookup.end()) {
+                LoopInfo& info = loopIt->second;
+                loopDefinition = info.definition;
+
+                // Check if the memory pattern exists
+                // Note that address checks on the loop memory ranges is fine, as it should be unique anyway
+                if (auto memoryIt = info.memoryLookup.find(memory); memoryIt != info.memoryLookup.end()) {
+                    result.result = Backend::IL::PropagationResult::Mapped;
+                    result.version = &memoryIt->second;
+                    return result;
+                }
+            }
+
+            // None found, check predecessors
+            const DominatorAnalysis::BlockView& predecessors = dominatorAnalysis.GetPredecessors(block);
+            if (predecessors.empty()) {
+                return {};
+            }
+
+            // If a single predecessor, search directly
+            if (predecessors.size() == 1) {
+                // Ignore back edges
+                if (loopDefinition && loopDefinition->IsBackEdge(predecessors[0])) {
+                    return {};
+                }
+
+                return FindReachingStoreDefinition(predecessors[0], nullptr, memory, cache);
+            }
+
+            // Search all predecessors for candidates
+            for (const BasicBlock* predecessor : predecessors) {
+                // Ignore back edges
+                if (loopDefinition && loopDefinition->IsBackEdge(predecessor)) {
+                    continue;
+                }
+
+                // If the edge is not executable, we can ignore any contribution
+                if (!propagationEngine.IsEdgeExecutable(predecessor, block)) {
+                    continue;
+                }
+
+                ReachingStoreResult store = FindReachingStoreDefinition(predecessor, nullptr, memory, cache);
+                if (store.result == Backend::IL::PropagationResult::Overdefined) {
+                    return store;
+                }
+
+                // Nothing found at all?
+                // Path itself was not of interest, just continue
+                if (!store.version) {
+                    continue;
+                }
+
+                // If there's already a candidate, and it didn't resolve to the same one we cannot safely proceed
+                // Mark it as overdefined and let the caller handle it
+                if (result.version && result.version != store.version) {
+                    result.result = Backend::IL::PropagationResult::Overdefined;
+                    result.version = nullptr;
+                    return result;
+                }
+
+                // Mark candidate
+                result.result = Backend::IL::PropagationResult::Mapped;
+                result.version = store.version;
+            }
+
+            // OK
+            return result;
+        }
+
+    private:
         /// Outer program
         Program& program;
 
@@ -921,6 +1170,13 @@ namespace IL {
 
         /// Underlying propagation engine
         Backend::IL::PropagationEngine propagationEngine;
+
+    private:
+        /// Memory lookup for SSA instructions
+        std::unordered_map<const Instruction*, PropagatedMemorySSAVersion> ssaMemoryLookup;
+
+        /// Look lookup
+        std::unordered_map<const BasicBlock*, LoopInfo> loopLookup;
 
     private:
         /// Block allocator for constants, constants never need to be freed
