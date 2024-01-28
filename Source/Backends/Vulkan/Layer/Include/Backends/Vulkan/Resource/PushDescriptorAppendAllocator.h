@@ -228,6 +228,23 @@ private:
         PhysicalResourceSegmentID segmentId{kInvalidPRSID};
     };
 
+    /// Get the number of descriptors for a mapping set
+    size_t GetDescriptorCount(const DescriptorLayoutPhysicalMapping& physicalMappings) {
+        size_t count = 0;
+        
+        // Accumulate offsets
+        for (uint32_t bindingIdx = 0; bindingIdx < physicalMappings.bindings.size(); bindingIdx++) {
+            const BindingPhysicalMapping& mapping = physicalMappings.bindings[bindingIdx];
+
+            // Update count
+            ASSERT(!(mapping.flags & VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT), "Variable counts not supported with push descriptors");
+            count += mapping.bindingCount;
+        }
+
+        // OK
+        return count;
+    }
+
     /// Get the entry for a specific set
     SetEntry& GetEntryFor(PipelineLayoutState* layoutState, uint32_t set, VkCommandBuffer commandBuffer) {
         // Ensure sufficient space
@@ -244,7 +261,7 @@ private:
         // Is the set out of date?
         if (IsSegmentOutOfDate(layoutState, set)) {
             // Set was out of date, allocate a new segment
-            PhysicalResourceSegmentID nextSegmentID = table->prmTable->Allocate(static_cast<uint32_t>(physicalMapping.bindings.size()));
+            PhysicalResourceSegmentID nextSegmentID = table->prmTable->Allocate(static_cast<uint32_t>(GetDescriptorCount(physicalMapping)));
 
             // If this segment is pending a roll, reconstruct the previous descriptor data
             if (setEntries[set].pendingRoll) {
