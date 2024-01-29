@@ -86,7 +86,7 @@ void VersioningController::OnMessage(const GetVersionSummarizationMessage& messa
     // Dynamic resource stream
     MessageStreamView<ResourceVersionMessage> resourceView(resourceStream);
 
-    // Get linear view
+    // Get linear view, view serializes debug states
     auto&& linearResources = device->states_Resources.GetLinear();
 
     // Push response
@@ -95,17 +95,18 @@ void VersioningController::OnMessage(const GetVersionSummarizationMessage& messa
 
     // Send resource versions
     for (ResourceState* state : linearResources) {
-        CommitResourceVersion(resourceView, state);
+        // DebugName is serialized from the above view
+        CommitResourceVersion(resourceView, state, state->debugName);
     }
 }
 
-void VersioningController::CreateOrRecommitResource(ResourceState *state) {
+void VersioningController::CreateOrRecommitResource(ResourceState *state, const char* debugName) {
     std::lock_guard guard(mutex);
     pendingCommit = true;
 
     // Immediately commit
     MessageStreamView<ResourceVersionMessage> resourceView(resourceStream);
-    CommitResourceVersion(resourceView, state);
+    CommitResourceVersion(resourceView, state, debugName);
 }
 
 void VersioningController::DestroyResource(ResourceState *state) {
@@ -170,19 +171,19 @@ void VersioningController::CollapseOnFork(VersionSegmentationPoint versionSegPoi
     branch->head = versionSegPoint.id;
 }
 
-void VersioningController::CommitResourceVersion(MessageStreamView<ResourceVersionMessage> &view, ResourceState *state) {
+void VersioningController::CommitResourceVersion(MessageStreamView<ResourceVersionMessage> &view, ResourceState *state, const char* debugName) {
     const char* formatStr = GetFormatString(state->desc.Format);
 
     // Allocate version
     auto&& version = view.Add(ResourceVersionMessage::AllocationInfo {
-        .nameLength = state->debugName ? std::strlen(state->debugName) : 0u,
+        .nameLength = debugName ? std::strlen(debugName) : 0u,
         .formatLength =  std::strlen(formatStr)
     });
 
     // Fill info
     version->puid = state->virtualMapping.puid;
     version->version = head;
-    version->name.Set(state->debugName ? state->debugName : "");
+    version->name.Set(debugName ? debugName : "");
     version->width = static_cast<uint32_t>(state->desc.Width);
     version->height = static_cast<uint32_t>(state->desc.Height);
     version->depth = static_cast<uint32_t>(state->desc.DepthOrArraySize);
