@@ -78,6 +78,42 @@ namespace Runtime.ViewModels.IL
         }
 
         /// <summary>
+        /// Assemble a single instruction
+        /// </summary>
+        /// <returns>assembled textual form</returns>
+        public string AssembleInstruction(Instruction instr)
+        {
+            // Cleanup
+            _lineOffset = 0;
+            _assembledMappings.Clear();
+            
+            // Assemble into builder
+            StringBuilder builder = new();
+            AssembleInstruction(instr, builder);
+            
+            // To string
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// Assemble an inline operand
+        /// </summary>
+        /// <returns>assembled textual form</returns>
+        public string AssembleInlineOperand(uint operand)
+        {
+            // Cleanup
+            _lineOffset = 0;
+            _assembledMappings.Clear();
+            
+            // Assemble into builder
+            StringBuilder builder = new();
+            AssembleInlineOperand(operand, builder);
+            
+            // To string
+            return builder.ToString();
+        }
+
+        /// <summary>
         /// Get an associated mapping
         /// </summary>
         public AssembledMapping GetMapping(uint basicBlockId, uint instructionIndex)
@@ -175,6 +211,9 @@ namespace Runtime.ViewModels.IL
                     Line = _lineOffset
                 });
 
+                // Indentation
+                builder.Append('\t');
+                
                 AssembleInstruction(block.Instructions[i], builder);
                 NewLine(builder);
             }
@@ -193,9 +232,6 @@ namespace Runtime.ViewModels.IL
         /// </summary>
         private void AssembleInstruction(Instruction instruction, StringBuilder builder)
         {
-            // Indentation
-            builder.Append('\t');
-            
             // Has result?
             if (instruction.ID != uint.MaxValue)
             {
