@@ -129,6 +129,13 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 Backend::IL::PointerType type;
                 type.addressSpace = Translate(static_cast<SpvStorageClass>(ctx++));
                 type.pointee = typeMap.GetTypeFromId(ctx++);
+
+                // Validate the (potential) forward declaration matches the actual declaration
+                if (const Backend::IL::Type* declared = typeMap.GetTypeFromId(ctx.GetResult())) {
+                    const auto* declaredPtr = declared->Cast<Backend::IL::PointerType>();
+                    ASSERT(declaredPtr && declaredPtr->addressSpace == type.addressSpace, "Misformed forward declaration");
+                }
+                
                 typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
@@ -261,13 +268,22 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 typeMap.AddType(ctx.GetResult(), anchor, _struct);
                 break;
             }
+            
+            case SpvOpTypeForwardPointer: {
+                SpvId forwardId = ctx++;
+                
+                typeMap.AddType(forwardId, anchor, Backend::IL::PointerType {
+                    .pointee = nullptr,
+                    .addressSpace = Translate(static_cast<SpvStorageClass>(ctx++))
+                });
+                break;
+            }
 
             case SpvOpTypeEvent:
             case SpvOpTypeDeviceEvent:
             case SpvOpTypeReserveId:
             case SpvOpTypeQueue:
             case SpvOpTypePipe:
-            case SpvOpTypeForwardPointer:
             case SpvOpTypeOpaque: {
                 typeMap.AddType(ctx.GetResult(), anchor, Backend::IL::UnexposedType{});
                 break;

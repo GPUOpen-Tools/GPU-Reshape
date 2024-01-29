@@ -578,8 +578,8 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdWaitEvents2(CommandBufferObject* commandBuf
     }
 
     // Local barriers
-    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier2, bufferBarrierCount);
-    auto* bufferMemoryBarriers = ALLOCA_ARRAY(VkBufferMemoryBarrier2, imageBarrierCount);
+    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier2,  imageBarrierCount);
+    auto* bufferMemoryBarriers = ALLOCA_ARRAY(VkBufferMemoryBarrier2, bufferBarrierCount);
 
     // Copy dependencies
     auto* dependencies = ALLOCA_ARRAY(VkDependencyInfo, eventCount);
