@@ -211,6 +211,8 @@
         "CopyBufferRegion",
         "CopyTextureRegion",
         "ResourceBarrier",
+        "BeginRenderPass",
+        "EndRenderPass",
         "DrawInstanced",
         "DrawIndexedInstanced",
         "Dispatch",
