@@ -130,3 +130,7 @@ struct ComputePipelineState : public PipelineState {
     /// Recreation info
     VkComputePipelineCreateInfoDeepCopy createInfoDeepCopy;
 };
+
+struct RaytracingPipelineState : public PipelineState {
+    /// Placeholder
+};
