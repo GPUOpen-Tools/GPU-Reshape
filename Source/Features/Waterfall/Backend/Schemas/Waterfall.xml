@@ -29,6 +29,6 @@
 
 <schema>
     <shader-export name="WaterfallingCondition">
-        <field name="pad" type="uint32" bits="1"/>
+        <field name="varyingOperandIndex" type="uint32" bits="8"/>
     </shader-export>
 </schema>

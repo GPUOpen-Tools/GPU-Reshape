@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using GRS.Features.ResourceBounds.UIX.Workspace.Objects;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
@@ -120,12 +121,19 @@ namespace GRS.Features.Waterfall.UIX.Workspace
                     // Get from key
                     var message = lookup[kv.Key];
 
+                    // Create details
+                    var detailViewModel = new ScalarizationDetailViewModel()
+                    {
+                        VaryingOperandIndex = message.varyingOperandIndex
+                    };
+                    
                     // Create object
                     var validationObject = new ValidationObject()
                     {
                         Content = $"Addressing requires scalarization",
                         Count = kv.Value,
-                        Severity = ValidationSeverity.Warning
+                        Severity = ValidationSeverity.Warning,
+                        DetailViewModel = detailViewModel
                     };
 
                     // Shader view model injection
@@ -138,6 +146,10 @@ namespace GRS.Features.Waterfall.UIX.Workspace
                             // Get the respective shader
                             ShaderViewModel shaderViewModel = shaderCollectionViewModel.GetOrAddShader(x.Location.SGUID);
 
+                            // Populate details
+                            detailViewModel.Segment = x;
+                            detailViewModel.Object = shaderViewModel;
+                            
                             // Append validation object to target shader
                             shaderViewModel.ValidationObjects.Add(validationObject);
                         }

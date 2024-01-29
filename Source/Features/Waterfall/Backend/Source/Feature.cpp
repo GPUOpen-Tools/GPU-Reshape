@@ -131,6 +131,9 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     IL::ConstantAnalysis constantAnalysis(program, dominatorAnalysis, loopAnalysis);
     constantAnalysis.Compute(context.function.GetBasicBlocks());
 
+    // Outgoing message attributes
+    uint32_t varyingOperandIndex = 0;
+
     // FAS based checks?
     if (isFASIndirection) {
         // Addressing vector values can always be compiled to a set of conditional masks
@@ -163,7 +166,10 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         // Check if any part of the chain is varying
         for (uint32_t i = 0; i < instr->chains.count; i++) {
             const IL::AddressChain& chain = instr->chains[i];
-            anyChainVarying |= constantAnalysis.IsVarying(chain.index);
+            if (constantAnalysis.IsVarying(chain.index)) {
+                anyChainVarying     = true;
+                varyingOperandIndex = i;
+            }
         }
 
         // If none is varying, this can be collapsed
@@ -199,7 +205,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     // Export waterfalling condition
     WaterfallingConditionMessage::ShaderExport msg;
     msg.sguid = emitter.UInt32(sguid);
-    msg.pad = emitter.UInt32(0);
+    msg.varyingOperandIndex = emitter.UInt32(varyingOperandIndex);
     emitter.Export(exportID, msg);
 
     return emitter.GetIterator();
@@ -238,7 +244,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, I
     // Export waterfalling condition
     WaterfallingConditionMessage::ShaderExport msg;
     msg.sguid = emitter.UInt32(sguid);
-    msg.pad = emitter.UInt32(0);
+    msg.varyingOperandIndex = emitter.UInt32(0);
     emitter.Export(exportID, msg);
 
     return emitter.GetIterator();

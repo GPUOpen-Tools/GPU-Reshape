@@ -27,6 +27,7 @@
 using System;
 using Avalonia;
 using DynamicData;
+using GRS.Features.ResourceBounds.UIX.Workspace.Objects;
 using GRS.Features.Waterfall.UIX.Contexts;
 using GRS.Features.Waterfall.UIX.Workspace;
 using Studio.Plugin;
@@ -73,6 +74,9 @@ namespace GRS.Features.Waterfall.UIX
             
             // Ignore the All Waterfall configuration
             workspaceService?.GetConfiguration<IAllConfigurationViewModel>()?.IgnoredFeatures.Add("Waterfall");
+            
+            // Add derived types
+            AvaloniaLocator.Current.GetService<ILocatorService>()?.AddDerived(typeof(ScalarizationDetailViewModel), typeof(ScalarizationDetailView));
 
             // OK
             return true;
