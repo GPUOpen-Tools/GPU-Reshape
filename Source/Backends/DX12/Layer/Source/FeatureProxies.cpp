@@ -478,6 +478,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         info.resource.textureDescriptor = descriptors + i;
         info.loadAction = AttachmentAction::Load;
         info.storeAction = AttachmentAction::Store;
+        info.resolveResource = nullptr;
     }
 
     // Render pass info
@@ -503,6 +504,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         depthInfo.resource.textureDescriptor = &depthDescriptor;
         depthInfo.loadAction = AttachmentAction::Load;
         depthInfo.storeAction = AttachmentAction::Store;
+        depthInfo.resolveResource = nullptr;
         passInfo.depthAttachment = &depthInfo;
     }
 
