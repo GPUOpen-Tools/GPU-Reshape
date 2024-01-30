@@ -560,7 +560,7 @@ void DXILDebugModule::ParseContents(LLVMBlock* block, uint32_t fileMdId) {
         }
 
         // Deduce length
-        size_t fragmentLength = lastSourceEnd - lastSourceOffset;
+        size_t fragmentLength = lastSourceEnd >= lastSourceOffset ? lastSourceEnd - lastSourceOffset : 0ull;
 
         // Copy contents
         size_t contentOffset = fragment->contents.length();
