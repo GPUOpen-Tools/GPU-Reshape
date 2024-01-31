@@ -81,22 +81,25 @@ void SpvPhysicalBlockAnnotation::Parse() {
                 decoration.decorated = true;
 
                 // Allocate if needed
-                if (member >= decoration.value.memberDecorations.size()) {
-                    decoration.value.memberDecorations.resize(member + 1);
+                if (member >= decoration.value.members.size()) {
+                    decoration.value.members.resize(member + 1);
                 }
 
-                // Get decoration for member
-                SpvValueDecoration& valueDecoration = decoration.value.memberDecorations[member];
+                // Append decoration
+                SpvMemberDecoration& memberDecoration = decoration.value.members[member];
 
-                // Handle decoration
-                switch (static_cast<SpvDecoration>(ctx++)) {
-                    default:
-                        break;
-                    case SpvDecorationOffset: {
-                        valueDecoration.blockOffset = ctx++;
-                        break;
-                    }
+                // Parse pair
+                SpvDecorationPair kv;
+                kv.kind = static_cast<SpvDecoration>(ctx++);
+                kv.wordCount = ctx.PendingWords();
+
+                // Copy payload data
+                if (kv.wordCount) {
+                    kv.words = table.recordAllocator.AllocateArray<uint32_t>(kv.wordCount);
+                    std::memcpy(kv.words, ctx.GetInstructionCode(), sizeof(uint32_t) * kv.wordCount);
                 }
+                
+                memberDecoration.decorations.push_back(kv);
                 break;
             }
         }

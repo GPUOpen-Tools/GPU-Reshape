@@ -26,9 +26,28 @@
 
 #pragma once
 
+// Layer
+#include <Backends/Vulkan/Compiler/Spv.h>
+
 // Std
 #include <cstdint>
 #include <vector>
+
+struct SpvDecorationPair {
+    /// Type of decoration
+    SpvDecoration kind{SpvDecorationMax};
+
+    /// Decoration payload words
+    uint32_t* words{nullptr};
+
+    /// Number of variable words in payload
+    uint32_t wordCount{0};
+};
+
+struct SpvMemberDecoration {
+    /// All decorations for this member
+    std::vector<SpvDecorationPair> decorations;
+};
 
 struct SpvValueDecoration {
     /// Bound descriptor set
@@ -40,6 +59,6 @@ struct SpvValueDecoration {
     /// Offset within a block
     uint32_t blockOffset{UINT32_MAX};
 
-    /// All member decorations
-    std::vector<SpvValueDecoration> memberDecorations;
+    /// Decorations for composite members
+    std::vector<SpvMemberDecoration> members;
 };
