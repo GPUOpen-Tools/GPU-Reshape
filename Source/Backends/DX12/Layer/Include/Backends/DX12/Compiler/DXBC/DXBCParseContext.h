@@ -98,6 +98,11 @@ struct DXBCParseContext {
         return ptr - start;
     }
 
+    /// Set current offset
+    void SetOffset(size_t offset) {
+        ptr = start + offset;
+    }
+
     const uint8_t *start;
     const uint8_t *ptr;
     const uint8_t *end;
