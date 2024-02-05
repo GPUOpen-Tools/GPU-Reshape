@@ -47,6 +47,7 @@
 DXBCPhysicalBlockDebug::DXBCPhysicalBlockDebug(const Allocators &allocators, IL::Program &program, DXBCPhysicalBlockTable &table) :
     DXBCPhysicalBlockSection(allocators, program, table),
     pdbScanner(allocators),
+    pdbShaderSourceInfo(pdbScanner),
     pdbContainerContents(allocators) {
 
 }
@@ -83,7 +84,7 @@ bool DXBCPhysicalBlockDebug::Parse(const DXParseJob& job) {
     // Unfortunately basing the main program off the ILDB is more trouble than it's worth,
     // as stripping the debug data after recompilation is quite troublesome.
     if (ildbBlock) {
-        auto* dxilDebugModule = new(allocators, kAllocModuleDXILDebug) DXILDebugModule(allocators.Tag(kAllocModuleDXILDebug));
+        auto* dxilDebugModule = new(allocators, kAllocModuleDXILDebug) DXILDebugModule(allocators.Tag(kAllocModuleDXILDebug), pdbShaderSourceInfo);
 
         // Attempt to parse the module
         if (!dxilDebugModule->Parse(ildbBlock->ptr, ildbBlock->length)) {
@@ -147,6 +148,9 @@ DXBCPhysicalBlock * DXBCPhysicalBlockDebug::TryParsePDB(const std::string_view &
         return nullptr;
     }
 
+    // Parse optional source info
+    pdbShaderSourceInfo.Parse();
+    
     // Finally, fetch the embedded ILDB block
     return pdbScanner.GetPhysicalBlock(DXBCPhysicalBlockType::ILDB);
 }

@@ -28,6 +28,7 @@
 
 // Layer
 #include "DXBCPhysicalBlockSection.h"
+#include "DXBCPhysicalBlockShaderSourceInfo.h"
 
 // Std
 #include <string_view>
@@ -51,6 +52,9 @@ private:
 private:
     /// Scanner for external pdbs
     DXBCPhysicalBlockScan pdbScanner;
+
+    /// Optional, source info block for external pdbs
+    DXBCPhysicalBlockShaderSourceInfo pdbShaderSourceInfo;
 
     /// Tie lifetime of external pdb to this block
     Vector<uint8_t> pdbContainerContents;
