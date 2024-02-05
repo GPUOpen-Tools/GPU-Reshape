@@ -945,6 +945,110 @@ AGSReturnCode HookAMDAGSSetMarker(AGSContext* context, ID3D12GraphicsCommandList
     return D3D12GPUOpenFunctionTableNext.next_AMDAGSSetMarker(context, Next(commandList), data);
 }
 
+static ID3D12GraphicsCommandList* RecordExecutePreCommandList(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment) {
+    ShaderExportStreamSegmentUserContext& context = segment->userBeginContext;
+
+    // Record the streaming pre patching
+    ID3D12GraphicsCommandList* patchList = device.state->exportStreamer->RecordPreCommandList(table.state, segment);
+
+    // Reset context
+    context.commandContext.eventStack.Flush();
+    context.commandContext.eventStack.SetRemapping(device.state->eventRemappingTable);
+    context.commandContext.handle = reinterpret_cast<CommandContextHandle>(patchList);
+    context.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(table.state->object);
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
+        proxyTable.submitBatchBegin.TryInvoke(&context.commandContext);
+    }
+
+    // Any commands?
+    if (context.commandContext.buffer.Count()) {
+        // Lazy allocate streaming state
+        if (!context.streamState) {
+            context.streamState = device.state->exportStreamer->AllocateStreamState();
+        }
+        
+        // Open the streamer state
+        device.state->exportStreamer->BeginCommandList(context.streamState, patchList);
+        {
+            // Commit all commands
+            CommitCommands(
+                device.state,
+                patchList,
+                context.commandContext.buffer,
+                context.streamState
+            );
+        
+            // Close the streamer state
+            device.state->exportStreamer->CloseCommandList(context.streamState);
+        }
+        
+        // Clear all commands
+        context.commandContext.buffer.Clear();
+    }
+
+    // Done
+    HRESULT hr = patchList->Close();
+    if (FAILED(hr)) {
+        return nullptr;
+    }
+    
+    return patchList;
+}
+
+static ID3D12GraphicsCommandList* RecordExecutePostCommandList(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment) {
+    ShaderExportStreamSegmentUserContext& context = segment->userEndContext;
+
+    // Record the streaming pre patching
+    ID3D12GraphicsCommandList* patchList = device.state->exportStreamer->RecordPostCommandList(table.state, segment);
+
+    // Reset context
+    context.commandContext.eventStack.Flush();
+    context.commandContext.eventStack.SetRemapping(device.state->eventRemappingTable);
+    context.commandContext.handle = reinterpret_cast<CommandContextHandle>(patchList);
+    context.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(table.state->object);
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
+        proxyTable.submitBatchEnd.TryInvoke(&context.commandContext);
+    }
+
+    // Any commands?
+    if (context.commandContext.buffer.Count()) {
+        // Lazy allocate streaming state
+        if (!context.streamState) {
+            context.streamState = device.state->exportStreamer->AllocateStreamState();
+        }
+        
+        // Open the streamer state
+        device.state->exportStreamer->BeginCommandList(context.streamState, patchList);
+        {
+            // Commit all commands
+            CommitCommands(
+                device.state,
+                patchList,
+                context.commandContext.buffer,
+                context.streamState
+            );
+        
+            // Close the streamer state
+            device.state->exportStreamer->CloseCommandList(context.streamState);
+        }
+        
+        // Clear all commands
+        context.commandContext.buffer.Clear();
+    }
+
+    // Done
+    HRESULT hr = patchList->Close();
+    if (FAILED(hr)) {
+        return nullptr;
+    }
+
+    return patchList;
+}
+
 void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT count, ID3D12CommandList *const *lists) {
     auto table = GetTable(queue);
 
@@ -983,10 +1087,10 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     }
 
     // Record the streaming pre patching
-    unwrapped[0] = device.state->exportStreamer->RecordPreCommandList(table.state, segment);
+    unwrapped[0] = RecordExecutePreCommandList(table, device, segment);
 
     // Record the streaming post patching
-    unwrapped.Add(device.state->exportStreamer->RecordPostCommandList(table.state, segment));
+    unwrapped.Add(RecordExecutePostCommandList(table, device, segment));
 
     // Pass down callchain
     table.bottom->next_ExecuteCommandLists(table.next, static_cast<uint32_t>(unwrapped.Size()), unwrapped.Data());

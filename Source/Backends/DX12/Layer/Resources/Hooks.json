@@ -265,6 +265,7 @@
       "state": "ResourceState",
       "hooks": [
         "Map",
+        "Unmap",
         "GetDevice",
         "SetName"
       ]

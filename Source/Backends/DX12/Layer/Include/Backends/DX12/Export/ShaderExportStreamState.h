@@ -37,6 +37,7 @@
 
 // Backend
 #include <Backend/CommandContextHandle.h>
+#include <Backend/CommandContext.h>
 
 // Common
 #include <Common/Containers/BucketPoolAllocator.h>
@@ -214,6 +215,14 @@ struct ShaderExportStreamState {
     CommandContextHandle commandContextHandle{kInvalidCommandContextHandle};
 };
 
+struct ShaderExportStreamSegmentUserContext {
+    /// Segment context
+    CommandContext commandContext;
+
+    /// Streaming state
+    ShaderExportStreamState* streamState{nullptr};
+};
+
 /// Single stream segment, i.e. submission
 struct ShaderExportStreamSegment {
     ShaderExportStreamSegment(const Allocators& allocators) :
@@ -254,6 +263,10 @@ struct ShaderExportStreamSegment {
 
     /// Combined context handles
     Vector<CommandContextHandle> commandContextHandles;
+
+    /// Optional contexts for user command buffers
+    ShaderExportStreamSegmentUserContext userBeginContext;
+    ShaderExportStreamSegmentUserContext userEndContext;
 
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{UINT64_MAX};

@@ -67,7 +67,7 @@ struct CommandBuilder {
     /// \param length length of data to stage
     /// \param data data to stage
     /// \param flags optional flags
-    void StageBuffer(ShaderDataID id, size_t offset, size_t length, void* data, StageBufferFlagSet flags = StageBufferFlag::None) {
+    void StageBuffer(ShaderDataID id, size_t offset, size_t length, const void* data, StageBufferFlagSet flags = StageBufferFlag::None) {
         ASSERT(length < (1u << 16u) - sizeof(StageBufferCommand), "Inline staging buffer exceeds max size");
 
         StageBufferCommand command;

@@ -50,6 +50,8 @@ namespace Hooks {
     using Dispatch = Delegate<void(CommandContext* context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ)>;
 
     /// Resource
+    using MapResource = Delegate<void(const ResourceInfo& source)>;
+    using UnmapResource = Delegate<void(const ResourceInfo& source)>;
     using CopyResource = Delegate<void(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest)>;
     using ResolveResource = Delegate<void(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest)>;
     using ClearResource = Delegate<void(CommandContext* context, const ResourceInfo& resource)>;
@@ -60,8 +62,10 @@ namespace Hooks {
     using EndRenderPass = Delegate<void(CommandContext* context)>;
 
     /// Submission
-    using Open = Delegate<void(CommandContext* context)>;
+    using Open = Delegate<void(CommandContext *context)>;
     using Close = Delegate<void(CommandContextHandle contextHandle)>;
+    using SubmitBatchBegin = Delegate<void(CommandContext *context)>;
+    using SubmitBatchEnd = Delegate<void(CommandContext *context)>;
     using Submit = Delegate<void(CommandContextHandle contextHandle)>;
     using Join = Delegate<void(CommandContextHandle contextHandle)>;
 }
@@ -75,6 +79,8 @@ public:
     Hooks::Dispatch dispatch;
 
     /// Resource
+    Hooks::MapResource mapResource;
+    Hooks::UnmapResource unmapResource;
     Hooks::CopyResource copyResource;
     Hooks::ResolveResource resolveResource;
     Hooks::ClearResource clearResource;
@@ -87,6 +93,8 @@ public:
     /// Submission
     Hooks::Open open;
     Hooks::Close close;
+    Hooks::SubmitBatchBegin submitBatchBegin;
+    Hooks::SubmitBatchEnd submitBatchEnd;
     Hooks::Submit submit;
     Hooks::Join join;
 };

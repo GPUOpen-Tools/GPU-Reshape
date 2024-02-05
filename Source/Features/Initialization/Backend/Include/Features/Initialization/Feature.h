@@ -81,11 +81,14 @@ public:
 
 private:
     /// Hooks
+    void OnMapResource(const ResourceInfo& source);
     void OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest);
     void OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest);
     void OnClearResource(CommandContext* context, const ResourceInfo& buffer);
     void OnWriteResource(CommandContext* context, const ResourceInfo& buffer);
     void OnBeginRenderPass(CommandContext* context, const RenderPassInfo& passInfo);
+    void OnSubmitBatchBegin(CommandContext* context);
+    void OnJoin(CommandContextHandle contextHandle);
 
 private:
     /// Mark a resource SRB
@@ -114,6 +117,27 @@ private:
     /// Shared stream
     MessageStream stream;
 
+private:
+    struct CommandContextInfo {
+        /// The next committed base upon join
+        uint64_t committedInitializationHead = 0ull;
+    };
+
+    struct InitialiationTag {
+        uint64_t puid{0};
+        uint32_t srb{0};
+    };
+
+    /// Context lookup
+    std::map<CommandContextHandle, CommandContextInfo> commandContexts;
+
+    /// Current initialization queue, base indicated by commit
+    std::vector<InitialiationTag> pendingInitializationQueue;
+
+    /// The current committed base
+    /// All pending initializations use this value as the base commit id
+    uint64_t committedInitializationBase = 0ull;
+    
 private:
     /// Shared lock
     std::mutex mutex;
