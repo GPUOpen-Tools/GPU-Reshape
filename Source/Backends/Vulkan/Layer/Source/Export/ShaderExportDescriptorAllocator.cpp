@@ -198,7 +198,7 @@ void ShaderExportDescriptorAllocator::CreateDummyBuffer() {
     // Dummy buffer info
     VkBufferCreateInfo bufferInfo{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     bufferInfo.size = sizeof(ShaderExportCounter);
 
     // Attempt to create the buffer
@@ -380,43 +380,37 @@ void ShaderExportDescriptorAllocator::UpdateImmutable(const ShaderExportSegmentD
 
     // Chunk info
     VkDescriptorBufferInfo chunkBufferInfo;
-    chunkBufferInfo.buffer = descriptorChunk;
+    chunkBufferInfo.buffer = descriptorChunk ? descriptorChunk : dummyBuffer;
     chunkBufferInfo.offset = 0;
     chunkBufferInfo.range = VK_WHOLE_SIZE;
 
-    // Has descriptor data?
-    if (descriptorChunk) {
-        // Write descriptor
-        VkWriteDescriptorSet& descriptorWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
+    // Write descriptor
+    VkWriteDescriptorSet& descriptorChunkWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
 #if PRMT_METHOD == PRMT_METHOD_UB_PC
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorChunkWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 #else // PRMT_METHOD == PRMT_METHOD_UB_PC
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 #endif // PRMT_METHOD == PRMT_METHOD_UB_PC
-        descriptorWrite.descriptorCount = 1u;
-        descriptorWrite.pBufferInfo = &chunkBufferInfo;
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.dstSet = info.set;
-        descriptorWrite.dstBinding = bindingInfo.descriptorDataDescriptorOffset;
-    }
+    descriptorChunkWrite.descriptorCount = 1u;
+    descriptorChunkWrite.pBufferInfo = &chunkBufferInfo;
+    descriptorChunkWrite.dstArrayElement = 0;
+    descriptorChunkWrite.dstSet = info.set;
+    descriptorChunkWrite.dstBinding = bindingInfo.descriptorDataDescriptorOffset;
 
     // Constants info
     VkDescriptorBufferInfo constantsInfo;
-    constantsInfo.buffer = constantsChunk;
+    constantsInfo.buffer = constantsChunk ? constantsChunk : dummyBuffer;
     constantsInfo.offset = 0;
     constantsInfo.range = VK_WHOLE_SIZE;
 
-    // Has constant data?
-    if (constantsChunk) {
-        // Write descriptor
-        VkWriteDescriptorSet& descriptorWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite.descriptorCount = 1u;
-        descriptorWrite.pBufferInfo = &constantsInfo;
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.dstSet = info.set;
-        descriptorWrite.dstBinding = bindingInfo.shaderDataConstantsDescriptorOffset;
-    }
+    // Write descriptor
+    VkWriteDescriptorSet& constantChunkWrite = descriptorWrites.Add({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
+    constantChunkWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    constantChunkWrite.descriptorCount = 1u;
+    constantChunkWrite.pBufferInfo = &constantsInfo;
+    constantChunkWrite.dstArrayElement = 0;
+    constantChunkWrite.dstSet = info.set;
+    constantChunkWrite.dstBinding = bindingInfo.shaderDataConstantsDescriptorOffset;
 
     // Update the descriptor set
     table->next_vkUpdateDescriptorSets(table->object, static_cast<uint32_t>(descriptorWrites.Size()), descriptorWrites.Data(), 0, nullptr);

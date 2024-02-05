@@ -561,12 +561,17 @@ IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJo
 
     // Migrate previous decorations if present
     if (sourceDecoration) {
-        for (uint32_t i = 0; i < sourceDecoration->memberDecorations.size(); i++) {
-            SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpMemberDecorate, 5);
-            pcBlockMember[1] = pcBlockTypeId;
-            pcBlockMember[2] = i;
-            pcBlockMember[3] = SpvDecorationOffset;
-            pcBlockMember[4] = sourceDecoration->memberDecorations[i].blockOffset;
+        for (uint32_t i = 0; i < sourceDecoration->members.size(); i++) {
+            const SpvMemberDecoration& member = sourceDecoration->members[i];
+
+            // Emit all original pairs
+            for (const SpvDecorationPair& pair : member.decorations) {
+                SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpMemberDecorate, 4 + pair.wordCount);
+                pcBlockMember[1] = pcBlockTypeId;
+                pcBlockMember[2] = i;
+                pcBlockMember[3] = pair.kind;
+                std::memcpy(&pcBlockMember[4], pair.words, sizeof(uint32_t) * pair.wordCount);
+            }
         }
     }
 
