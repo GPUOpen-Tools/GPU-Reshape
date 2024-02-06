@@ -48,6 +48,7 @@ VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkAllocateMemory(VkDevice device, const VkMe
     auto state = new(table->allocators) DeviceMemoryState;
     state->object = *pMemory;
     state->table = table;
+    state->length = pAllocateInfo->allocationSize;
 
     // Store lookup
     table->states_deviceMemory.Add(*pMemory, state);
@@ -113,6 +114,11 @@ VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkMapMemory(VkDevice device, VkDeviceMemory 
 
     // Get states
     DeviceMemoryState* memoryState = table->states_deviceMemory.Get(memory);
+
+    // Work on the actual length by capacity
+    if (size == VK_WHOLE_SIZE) {
+        size = memoryState->length - offset;
+    }
 
     // Serial!
     std::lock_guard guard(memoryState->lock);

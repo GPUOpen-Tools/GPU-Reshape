@@ -46,6 +46,9 @@ struct DeviceMemoryState {
     /// Complete range for tracking
     DeviceMemoryRange range;
 
+    /// Length of this memory
+    size_t length{UINT64_MAX};
+
     /// Currently mapped offset
     uint64_t mappedOffset{UINT64_MAX};
 
