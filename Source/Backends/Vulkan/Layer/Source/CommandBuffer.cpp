@@ -232,7 +232,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkBeginCommandBuffer(CommandBufferObject *co
     commandBuffer->userContext.eventStack.Flush();
     commandBuffer->userContext.eventStack.SetRemapping(commandBuffer->table->eventRemappingTable);
     commandBuffer->userContext.buffer.Clear();
-    commandBuffer->userContext.handle = reinterpret_cast<CommandContextHandle>(commandBuffer);
+    commandBuffer->userContext.handle = reinterpret_cast<CommandContextHandle>(commandBuffer->object);
 
     // Set stream context handle
     commandBuffer->streamState->commandContextHandle = commandBuffer->userContext.handle;

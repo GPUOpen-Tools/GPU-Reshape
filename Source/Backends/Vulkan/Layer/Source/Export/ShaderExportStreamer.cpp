@@ -858,9 +858,6 @@ VkCommandBuffer ShaderExportStreamer::RecordPreCommandBuffer(ShaderExportQueueSt
     // Update all PRM data
     segment->prmtPersistentVersion = table->prmTable->GetPersistentVersion(segment->prePatchCommandBuffer, prmtState);
 
-    // Done
-    table->next_vkEndCommandBuffer(segment->prePatchCommandBuffer);
-
     // OK
     return segment->prePatchCommandBuffer;
 }
@@ -928,9 +925,6 @@ VkCommandBuffer ShaderExportStreamer::RecordPostCommandBuffer(ShaderExportQueueS
             0, nullptr
     );
     
-    // Done
-    table->next_vkEndCommandBuffer(segment->postPatchCommandBuffer);
-
     // OK
     return segment->postPatchCommandBuffer;
 }
