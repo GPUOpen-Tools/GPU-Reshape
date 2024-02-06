@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -27,53 +27,65 @@
 #pragma once
 
 // Layer
+#include <Backends/Vulkan/States/DeviceMemoryRange.h>
 #include <Backends/Vulkan/Vulkan.h>
-#include <Backends/Vulkan/Resource/VirtualResourceMapping.h>
-#include <Backends/Vulkan/States/DeviceMemoryTag.h>
 
 // Common
-#include "Common/Containers/ReferenceObject.h"
+#include <Common/Allocator/BTree.h>
 
 // Std
 #include <cstdint>
 #include <vector>
 
 // Forward declarations
-struct DeviceDispatchTable;
+struct BufferState;
+struct ImageState;
 
-struct BufferState {
-    /// Backwards reference
-    DeviceDispatchTable* table;
-
-    /// User buffer
-    VkBuffer object{VK_NULL_HANDLE};
-
-    /// Allocated mapping
-    VirtualResourceMapping virtualMapping;
-
-    /// Creation info
-    VkBufferCreateInfo createInfo;
-
-    /// Bound memory tag
-    DeviceMemoryTag memoryTag;
-
-    /// Optional debug name
-    char* debugName{nullptr};
-
-    /// Unique identifier, unique for the type
-    uint64_t uid;
+enum class DeviceMemoryResourceType {
+    None,
+    Buffer,
+    Image
 };
 
-struct BufferViewState {
-    /// Backwards reference
-    BufferState* parent;
+struct DeviceMemoryResource {
+    /// Type of the resource
+    DeviceMemoryResourceType type{DeviceMemoryResourceType::None};
 
-    /// User buffer
-    VkBufferView object{VK_NULL_HANDLE};
+    /// Resource payload
+    union {
+        void* opaque{nullptr};
+        BufferState* buffer;
+        ImageState* image;
+    };
 
-    /// Allocated mapping
-    VirtualResourceMapping virtualMapping;
+    static DeviceMemoryResource Buffer(BufferState* state) {
+        DeviceMemoryResource resource;
+        resource.type = DeviceMemoryResourceType::Buffer;
+        resource.buffer = state;
+        return resource;
+    }
 
-    /// Unique identifier, unique for the type
-    uint64_t uid;
+    static DeviceMemoryResource Image(ImageState* state) {
+        DeviceMemoryResource resource;
+        resource.type = DeviceMemoryResourceType::Image;
+        resource.image = state;
+        return resource;
+    }
+};
+
+struct DeviceMemoryEntry {
+    /// Base offset for allocated range
+    uint64_t baseOffset = 0ull;
+    
+    /// All resources for this entry
+    std::vector<DeviceMemoryResource> resources;
+};
+
+struct DeviceMemoryRange {
+    DeviceMemoryRange() : entries(Allocators{}) {
+        
+    }
+    
+    /// All virtual addresses tracked
+    BTreeMap<uint64_t, DeviceMemoryEntry> entries;
 };

@@ -74,6 +74,7 @@ struct RenderPassState;
 struct FrameBufferState;
 struct FenceState;
 struct QueueState;
+struct DeviceMemoryState;
 class IFeature;
 class IBridge;
 class InstrumentationController;
@@ -160,6 +161,7 @@ struct DeviceDispatchTable {
     TrackedObject<VkFence, FenceState>                                       states_fence;
     TrackedObject<VkQueue, QueueState>                                       states_queue;
     TrackedObject<VkPipeline, PipelineState>                                 states_pipeline;
+    TrackedObject<VkDeviceMemory, DeviceMemoryState>                         states_deviceMemory;
 
     /// Dependency objects
     DependentObject<ShaderModuleState, PipelineState> dependencies_shaderModulesPipelines;

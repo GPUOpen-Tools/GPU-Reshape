@@ -28,51 +28,36 @@
 
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
-#include <Backends/Vulkan/Resource/VirtualResourceMapping.h>
-#include <Backends/Vulkan/States/DeviceMemoryTag.h>
-
-// Common
-#include "Common/Containers/ReferenceObject.h"
+#include <Backends/Vulkan/States/DeviceMemoryRange.h>
 
 // Std
-#include <cstdint>
-#include <vector>
+#include <mutex>
 
 // Forward declarations
 struct DeviceDispatchTable;
 
-struct BufferState {
+struct DeviceMemoryState {
     /// Backwards reference
     DeviceDispatchTable* table;
 
-    /// User buffer
-    VkBuffer object{VK_NULL_HANDLE};
+    /// User memory
+    VkDeviceMemory object{VK_NULL_HANDLE};
 
-    /// Allocated mapping
-    VirtualResourceMapping virtualMapping;
+    /// Complete range for tracking
+    DeviceMemoryRange range;
 
-    /// Creation info
-    VkBufferCreateInfo createInfo;
+    /// Currently mapped offset
+    uint64_t mappedOffset{UINT64_MAX};
 
-    /// Bound memory tag
-    DeviceMemoryTag memoryTag;
+    /// Currently mapped length
+    uint64_t mappedLength{UINT64_MAX};
 
-    /// Optional debug name
-    char* debugName{nullptr};
+    /// Currently mapped memory
+    void* mappedMemory{nullptr};
 
-    /// Unique identifier, unique for the type
-    uint64_t uid;
-};
-
-struct BufferViewState {
-    /// Backwards reference
-    BufferState* parent;
-
-    /// User buffer
-    VkBufferView object{VK_NULL_HANDLE};
-
-    /// Allocated mapping
-    VirtualResourceMapping virtualMapping;
+    /// Shared lock for this memory allocation
+    /// Number of allocations are low enough so that this is not that costly
+    std::mutex lock;
 
     /// Unique identifier, unique for the type
     uint64_t uid;

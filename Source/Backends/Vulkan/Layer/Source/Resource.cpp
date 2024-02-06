@@ -31,6 +31,7 @@
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/States/SamplerState.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
+#include <Backends/Vulkan/Memory.h>
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
@@ -206,6 +207,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyBuffer(VkDevice device, VkBuffer buffer
     // Inform controller
     table->versioningController->DestroyBuffer(state);
 
+    // Has bound memory?
+    if (state->memoryTag.owner) {
+        FreeMemoryTag(state->memoryTag);
+    }
+
     // Remove the state
     table->states_buffer.Remove(buffer);
 
@@ -244,6 +250,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyImage(VkDevice device, VkImage image, c
 
     // Inform controller
     table->versioningController->DestroyImage(state);
+
+    // Has bound memory?
+    if (state->memoryTag.owner) {
+        FreeMemoryTag(state->memoryTag);
+    }
 
     // Remove the state
     table->states_image.Remove(image);
