@@ -99,7 +99,7 @@ bool LoopFeature::Install() {
 FeatureHookTable LoopFeature::GetHookTable() {
     FeatureHookTable table{};
     table.open = BindDelegate(this, LoopFeature::OnOpen);
-    table.submit = BindDelegate(this, LoopFeature::OnSubmit);
+    table.postSubmit = BindDelegate(this, LoopFeature::OnPostSubmit);
     table.join = BindDelegate(this, LoopFeature::OnJoin);
     return table;
 }
@@ -340,16 +340,18 @@ void LoopFeature::OnOpen(CommandContext *context) {
     builder.SetDescriptorData(terminationAllocationID, state.terminationID);
 }
 
-void LoopFeature::OnSubmit(CommandContextHandle contextHandle) {
+void LoopFeature::OnPostSubmit(const CommandContextHandle* contextHandles, uint32_t count) {
     std::lock_guard guard(mutex);
+    
+    for (uint32_t i = 0; i < count; i++) {
+        // Validation
+        ASSERT(contextStates.contains(contextHandles[i]), "Desynchronized command context states");
 
-    // Validation
-    ASSERT(contextStates.contains(contextHandle), "Desynchronized command context states");
-
-    // Mark as pending and record time
-    CommandContextState &state = contextStates[contextHandle];
-    state.submissionStamp = std::chrono::high_resolution_clock::now();
-    state.pending = true;
+        // Mark as pending and record time
+        CommandContextState &state = contextStates[contextHandles[i]];
+        state.submissionStamp = std::chrono::high_resolution_clock::now();
+        state.pending = true;
+    }
 }
 
 void LoopFeature::OnJoin(CommandContextHandle contextHandle) {

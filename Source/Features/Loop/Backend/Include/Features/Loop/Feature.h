@@ -88,7 +88,7 @@ public:
 private:
     /// Feature hooks
     void OnOpen(CommandContext *context);
-    void OnSubmit(CommandContextHandle contextHandle);
+    void OnPostSubmit(const CommandContextHandle* contextHandles, uint32_t count);
     void OnJoin(CommandContextHandle contextHandle);
 
 private:

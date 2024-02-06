@@ -55,6 +55,7 @@
 
 // Backend
 #include <Backend/IShaderExportHost.h>
+#include <Backend/FeatureHookTable.h>
 
 // Message
 #include <Message/IMessageStorage.h>

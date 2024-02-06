@@ -134,7 +134,7 @@ FeatureHookTable InitializationFeature::GetHookTable() {
     table.clearResource = BindDelegate(this, InitializationFeature::OnClearResource);
     table.writeResource = BindDelegate(this, InitializationFeature::OnWriteResource);
     table.beginRenderPass = BindDelegate(this, InitializationFeature::OnBeginRenderPass);
-    table.submitBatchBegin = BindDelegate(this, InitializationFeature::OnSubmitBatchBegin);
+    table.preSubmit = BindDelegate(this, InitializationFeature::OnSubmitBatchBegin);
     table.join = BindDelegate(this, InitializationFeature::OnJoin);
     return table;
 }
@@ -345,15 +345,21 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
     }
 }
 
-void InitializationFeature::OnSubmitBatchBegin(CommandContext *context) {
+void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& hookContexts, const CommandContextHandle *contexts, uint32_t contextCount) {
     std::lock_guard guard(mutex);
+
+    // Not interested in empty submissions
+    if (!contextCount) {
+        return;
+    }
     
     // Set commit base
-    CommandContextInfo& info = commandContexts[context->handle];
+    // Note: We track on the first context, once the first context has completed, all the rest have
+    CommandContextInfo& info = commandContexts[contexts[0]];
     info.committedInitializationHead = committedInitializationBase;
 
     // Create builder
-    CommandBuilder builder(context->buffer);
+    CommandBuilder builder(hookContexts.preContext->buffer);
 
     // Initialize all PUIDs
     for (const InitialiationTag& tag : pendingInitializationQueue) {
@@ -374,21 +380,25 @@ void InitializationFeature::OnSubmitBatchBegin(CommandContext *context) {
 
 void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
     std::lock_guard guard(mutex);
-    
-    // Set commit base
-    CommandContextInfo& info = commandContexts[contextHandle];
 
+    // If untracked, ignore
+    auto it = commandContexts.find(contextHandle);
+    if (it == commandContexts.end()) {
+        return;
+    }
+    
     // If the head is less than the current base, it's already been shaved off
-    if (info.committedInitializationHead <= committedInitializationBase) {
+    if (it->second.committedInitializationHead <= committedInitializationBase) {
         return;
     }
 
     // Shave off all known committed initialization events
-    const size_t shaveCount = info.committedInitializationHead - committedInitializationBase;
+    const size_t shaveCount = it->second.committedInitializationHead - committedInitializationBase;
     pendingInitializationQueue.erase(pendingInitializationQueue.begin(), pendingInitializationQueue.begin() + shaveCount);
 
     // Set new base
-    committedInitializationBase = info.committedInitializationHead;
+    committedInitializationBase = it->second.committedInitializationHead;
+    commandContexts.erase(contextHandle);
 }
 
 FeatureInfo InitializationFeature::GetInfo() {

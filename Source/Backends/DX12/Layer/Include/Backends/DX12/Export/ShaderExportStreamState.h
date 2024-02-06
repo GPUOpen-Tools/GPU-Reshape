@@ -265,8 +265,8 @@ struct ShaderExportStreamSegment {
     Vector<CommandContextHandle> commandContextHandles;
 
     /// Optional contexts for user command buffers
-    ShaderExportStreamSegmentUserContext userBeginContext;
-    ShaderExportStreamSegmentUserContext userEndContext;
+    ShaderExportStreamSegmentUserContext userPreContext;
+    ShaderExportStreamSegmentUserContext userPostContext;
 
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{UINT64_MAX};

@@ -351,7 +351,7 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
     // Cleanup user context
     state->userContext.eventStack.Flush();
     state->userContext.eventStack.SetRemapping(device->eventRemappingTable);
-    state->userContext.handle = reinterpret_cast<CommandContextHandle>(state);
+    state->userContext.handle = reinterpret_cast<CommandContextHandle>(state->object);
 
     // Set stream context handle
     state->streamState->commandContextHandle = state->userContext.handle;
@@ -945,22 +945,38 @@ AGSReturnCode HookAMDAGSSetMarker(AGSContext* context, ID3D12GraphicsCommandList
     return D3D12GPUOpenFunctionTableNext.next_AMDAGSSetMarker(context, Next(commandList), data);
 }
 
-static ID3D12GraphicsCommandList* RecordExecutePreCommandList(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment) {
-    ShaderExportStreamSegmentUserContext& context = segment->userBeginContext;
+static void InvokePreSubmitBatchHook(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment, ID3D12CommandList** commandLists, uint32_t commandListCount) {
+    ShaderExportStreamSegmentUserContext& preContext = segment->userPreContext;
+    ShaderExportStreamSegmentUserContext& postContext = segment->userPostContext;
+    
+    // Reset pre-context
+    preContext.commandContext.eventStack.Flush();
+    preContext.commandContext.eventStack.SetRemapping(device.state->eventRemappingTable);
+    preContext.commandContext.handle = reinterpret_cast<CommandContextHandle>(&segment->userPreContext);
+    preContext.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(table.state->object);
+    
+    // Reset post-context
+    postContext.commandContext.eventStack.Flush();
+    postContext.commandContext.eventStack.SetRemapping(device.state->eventRemappingTable);
+    postContext.commandContext.handle = reinterpret_cast<CommandContextHandle>(&segment->userPostContext);
+    postContext.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(table.state->object);
 
-    // Record the streaming pre patching
-    ID3D12GraphicsCommandList* patchList = device.state->exportStreamer->RecordPreCommandList(table.state, segment);
-
-    // Reset context
-    context.commandContext.eventStack.Flush();
-    context.commandContext.eventStack.SetRemapping(device.state->eventRemappingTable);
-    context.commandContext.handle = reinterpret_cast<CommandContextHandle>(patchList);
-    context.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(table.state->object);
+    // Setup hook contexts
+    SubmitBatchHookContexts hookContexts;
+    hookContexts.preContext = &preContext.commandContext;
+    hookContexts.postContext = &postContext.commandContext;
     
     // Invoke proxies for all handles
     for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
-        proxyTable.submitBatchBegin.TryInvoke(&context.commandContext);
+        proxyTable.preSubmit.TryInvoke(hookContexts, reinterpret_cast<const CommandContextHandle*>(commandLists), commandListCount);
     }
+}
+
+static ID3D12GraphicsCommandList* RecordExecutePreCommandList(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment) {
+    ShaderExportStreamSegmentUserContext& context = segment->userPreContext;
+
+    // Record the streaming pre patching
+    ID3D12GraphicsCommandList* patchList = device.state->exportStreamer->RecordPreCommandList(table.state, segment);
 
     // Any commands?
     if (context.commandContext.buffer.Count()) {
@@ -998,21 +1014,10 @@ static ID3D12GraphicsCommandList* RecordExecutePreCommandList(const CommandQueue
 }
 
 static ID3D12GraphicsCommandList* RecordExecutePostCommandList(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment) {
-    ShaderExportStreamSegmentUserContext& context = segment->userEndContext;
+    ShaderExportStreamSegmentUserContext& context = segment->userPostContext;
 
     // Record the streaming pre patching
     ID3D12GraphicsCommandList* patchList = device.state->exportStreamer->RecordPostCommandList(table.state, segment);
-
-    // Reset context
-    context.commandContext.eventStack.Flush();
-    context.commandContext.eventStack.SetRemapping(device.state->eventRemappingTable);
-    context.commandContext.handle = reinterpret_cast<CommandContextHandle>(patchList);
-    context.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(table.state->object);
-    
-    // Invoke proxies for all handles
-    for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
-        proxyTable.submitBatchEnd.TryInvoke(&context.commandContext);
-    }
 
     // Any commands?
     if (context.commandContext.buffer.Count()) {
@@ -1086,6 +1091,9 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
         unwrapped.Add(listTable.next);
     }
 
+    // Run the submission hook
+    InvokePreSubmitBatchHook(table, device, segment, unwrapped.Data() + 1, count);
+
     // Record the streaming pre patching
     unwrapped[0] = RecordExecutePreCommandList(table, device, segment);
 
@@ -1095,14 +1103,9 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     // Pass down callchain
     table.bottom->next_ExecuteCommandLists(table.next, static_cast<uint32_t>(unwrapped.Size()), unwrapped.Data());
 
-    // Process all again for proxies
-    for (uint32_t i = 0; i < count; i++) {
-        auto listTable = GetTable(lists[i]);
-
-        // Invoke all proxies
-        for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
-            proxyTable.submit.TryInvoke(listTable.state->userContext.handle);
-        }
+    // Run post submission for all proxies
+    for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
+        proxyTable.postSubmit.TryInvoke(reinterpret_cast<const CommandContextHandle*>(unwrapped.Data() + 1), count);
     }
 
     // Notify streamer of submission

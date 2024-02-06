@@ -87,7 +87,7 @@ private:
     void OnClearResource(CommandContext* context, const ResourceInfo& buffer);
     void OnWriteResource(CommandContext* context, const ResourceInfo& buffer);
     void OnBeginRenderPass(CommandContext* context, const RenderPassInfo& passInfo);
-    void OnSubmitBatchBegin(CommandContext* context);
+    void OnSubmitBatchBegin(const SubmitBatchHookContexts& hookContexts, const CommandContextHandle *contexts, uint32_t contextCount);
     void OnJoin(CommandContextHandle contextHandle);
 
 private:
