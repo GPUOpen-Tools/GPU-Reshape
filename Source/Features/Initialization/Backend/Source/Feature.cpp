@@ -356,7 +356,7 @@ void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& ho
     // Set commit base
     // Note: We track on the first context, once the first context has completed, all the rest have
     CommandContextInfo& info = commandContexts[contexts[0]];
-    info.committedInitializationHead = committedInitializationBase;
+    info.committedInitializationHead = committedInitializationBase + pendingInitializationQueue.size();
 
     // Create builder
     CommandBuilder builder(hookContexts.preContext->buffer);
