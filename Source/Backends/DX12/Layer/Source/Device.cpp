@@ -52,6 +52,7 @@
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 #include <Backends/DX12/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/DX12/Scheduler/Scheduler.h>
+#include <Backends/DX12/QueueSegmentAllocator.h>
 #include <Backends/DX12/WRL.h>
 #include <Backends/DX12/Layer.h>
 
@@ -323,6 +324,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Install the streamer
         state->exportStreamer = state->registry.AddNew<ShaderExportStreamer>(state);
         ENSURE(state->exportStreamer->Install(), "Failed to install shader export streamer");
+
+        // Install the queue segment allocator
+        state->queueSegmentAllocator = state->registry.AddNew<QueueSegmentAllocator>(state);
 
         // Query and apply environment
         ApplyStartupEnvironment(state);

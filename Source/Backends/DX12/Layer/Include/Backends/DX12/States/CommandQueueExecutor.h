@@ -26,65 +26,16 @@
 
 #pragma once
 
-// Layer
-#include <Backends/DX12/Detour.Gen.h>
-#include <Backends/DX12/States/ImmediateCommandList.h>
-#include <Backends/DX12/States/CommandQueueExecutor.h>
-
-// Common
-#include <Common/Allocators.h>
-#include <Common/Allocator/Vector.h>
+// Backend
+#include <Backend/CommandContext.h>
 
 // Std
-#include <vector>
 #include <mutex>
 
-// Forward declarations
-struct ShaderExportQueueState;
-struct IncrementalFence;
-
-struct __declspec(uuid("0808310A-9E0B-41B6-81E5-4840CDF1EDAA")) CommandQueueState {
-    CommandQueueState(const Allocators& allocators) : commandLists(allocators) {
-        
-    }
-    
-    ~CommandQueueState();
-
-    /// Pop a new command list
-    /// \return nullptr if failed
-    ImmediateCommandList PopCommandList();
-
-    /// Push a completed command list
-    /// \param list must be created from this queue
-    void PushCommandList(const ImmediateCommandList& list);
-
-    /// Parent state
-    ID3D12Device* parent{nullptr};
-
-    /// Owning allocator
-    Allocators allocators;
-
-    /// Object
-    ID3D12CommandQueue* object{nullptr};
-
-    /// Creation description
-    D3D12_COMMAND_QUEUE_DESC desc;
-
-    /// Queue export state
-    ShaderExportQueueState* exportState{nullptr};
-
-    /// On demand command lists
-    Vector<ImmediateCommandList> commandLists;
-
-    /// Shared executor
-    CommandQueueExecutor executor;
-
-    /// Shared fence
-    IncrementalFence* sharedFence{nullptr};
-
+struct CommandQueueExecutor {
     /// Shared lock
     std::mutex mutex;
 
-    /// Unique ID
-    uint64_t uid{0};
+    /// Shared context
+    CommandContext context;
 };

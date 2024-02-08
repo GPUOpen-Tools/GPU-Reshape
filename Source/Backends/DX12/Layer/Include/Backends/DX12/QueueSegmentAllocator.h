@@ -22,69 +22,69 @@
 // PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
 // FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, 
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-// 
+//
 
 #pragma once
 
 // Layer
-#include <Backends/DX12/Detour.Gen.h>
+#include <Backends/DX12/IncrementalFence.h>
 #include <Backends/DX12/States/ImmediateCommandList.h>
-#include <Backends/DX12/States/CommandQueueExecutor.h>
 
 // Common
-#include <Common/Allocators.h>
-#include <Common/Allocator/Vector.h>
+#include <Common/IComponent.h>
 
 // Std
 #include <vector>
 #include <mutex>
 
 // Forward declarations
-struct ShaderExportQueueState;
-struct IncrementalFence;
+struct DeviceState;
+struct CommandQueueState;
+struct ShaderExportStreamState;
+class ShaderExportStreamer;
+class CommandContext;
 
-struct __declspec(uuid("0808310A-9E0B-41B6-81E5-4840CDF1EDAA")) CommandQueueState {
-    CommandQueueState(const Allocators& allocators) : commandLists(allocators) {
-        
-    }
-    
-    ~CommandQueueState();
+struct QueueSegment {
+    /// Immediate list allocated
+    ImmediateCommandList immediate;
 
-    /// Pop a new command list
-    /// \return nullptr if failed
-    ImmediateCommandList PopCommandList();
+    /// Owning queue this segment was submitted on
+    CommandQueueState* queue{nullptr};
 
-    /// Push a completed command list
-    /// \param list must be created from this queue
-    void PushCommandList(const ImmediateCommandList& list);
+    /// Unique streaming state allocated
+    ShaderExportStreamState* streamState{nullptr};
 
-    /// Parent state
-    ID3D12Device* parent{nullptr};
+    /// Commit allocated after submission
+    uint64_t commitHead{0};
+};
 
-    /// Owning allocator
-    Allocators allocators;
+class QueueSegmentAllocator : public TComponent<QueueSegmentAllocator> {
+public:
+    COMPONENT(QueueSegmentAllocator);
 
-    /// Object
-    ID3D12CommandQueue* object{nullptr};
+    /// Constructor
+    QueueSegmentAllocator(DeviceState* device);
 
-    /// Creation description
-    D3D12_COMMAND_QUEUE_DESC desc;
+    /// Execute an immediate context
+    /// \param queue queue to execute on
+    /// \param context context commands to interpret
+    void ExecuteImmediate(CommandQueueState* queue, const CommandContext& context);
 
-    /// Queue export state
-    ShaderExportQueueState* exportState{nullptr};
+    /// Pop a new segment
+    /// \param queue submission queue 
+    /// \return segment
+    QueueSegment PopSegment(CommandQueueState* queue);
 
-    /// On demand command lists
-    Vector<ImmediateCommandList> commandLists;
+    /// Push a segment for tracking
+    void PushSegment(const QueueSegment& segment);
 
-    /// Shared executor
-    CommandQueueExecutor executor;
-
-    /// Shared fence
-    IncrementalFence* sharedFence{nullptr};
-
+private:
     /// Shared lock
     std::mutex mutex;
 
-    /// Unique ID
-    uint64_t uid{0};
+    /// Owning device
+    DeviceState* device;
+
+    /// All pending segments
+    std::vector<QueueSegment> pendingSegments;
 };

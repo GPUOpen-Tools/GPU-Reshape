@@ -175,6 +175,7 @@
         "Signal",
         "Wait",
         "GetDevice",
+        "CopyTileMappings",
         "GetDesc"
       ]
     },

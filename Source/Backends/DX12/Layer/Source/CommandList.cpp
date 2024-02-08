@@ -38,6 +38,7 @@
 #include <Backends/DX12/Controllers/VersioningController.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
+#include <Backends/DX12/QueueSegmentAllocator.h>
 #include <Backend/IFeature.h>
 #include <Backends/DX12/IncrementalFence.h>
 
@@ -134,6 +135,10 @@ static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue*
     state->parent = device;
     state->desc = *desc;
     state->object = commandQueue;
+    
+    // Setup shared context
+    state->executor.context.eventStack.SetRemapping(table.state->eventRemappingTable);
+    state->executor.context.handle = reinterpret_cast<CommandContextHandle>(commandQueue);
 
     // Keep reference
     device->AddRef();
@@ -265,6 +270,21 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
     return S_OK;
 }
 
+static void FlushCommandQueueContext(DeviceState* device, CommandQueueState* queue) {
+    std::lock_guard guard(queue->executor.mutex);
+    
+    if (!queue->executor.context.buffer.Count()) {
+        return;
+    }
+    
+    // Execute context immediately
+    device->queueSegmentAllocator->ExecuteImmediate(queue, queue->executor.context);
+    
+    // Cleanup
+    queue->executor.context.buffer.Clear();
+    queue->executor.context.eventStack.Flush();
+}
+
 HRESULT WINAPI HookID3D12CommandSignatureGetDevice(ID3D12CommandSignature* _this, const IID &riid, void **ppDevice) {
     auto table = GetTable(_this);
 
@@ -275,6 +295,9 @@ HRESULT WINAPI HookID3D12CommandSignatureGetDevice(ID3D12CommandSignature* _this
 HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
     auto table = GetTable(queue);
 
+    // Flush any pending work
+    FlushCommandQueueContext(GetState(table.state->parent), table.state);
+
     // Pass down callchain
     return table.bottom->next_Signal(table.next, Next(pFence), Value);
 }
@@ -282,8 +305,35 @@ HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* queue, ID3D12Fen
 HRESULT WINAPI HookID3D12CommandQueueWait(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
     auto table = GetTable(queue);
 
+    // Flush any pending work
+    FlushCommandQueueContext(GetState(table.state->parent), table.state);
+
     // Pass down callchain
     return table.bottom->next_Wait(table.next, Next(pFence), Value);
+}
+
+void WINAPI HookID3D12CommandQueueCopyTileMappings(ID3D12CommandQueue* queue, ID3D12Resource* pDstResource, const D3D12_TILED_RESOURCE_COORDINATE* pDstRegionStartCoordinate, ID3D12Resource* pSrcResource, const D3D12_TILED_RESOURCE_COORDINATE* pSrcRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pRegionSize, D3D12_TILE_MAPPING_FLAGS Flags) {
+    auto table = GetTable(queue);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Get resources
+    auto srcTable = GetTable(pSrcResource);
+    auto dstTable = GetTable(pDstResource);
+
+    // Pass down callchain
+    table.bottom->next_CopyTileMappings(table.next, dstTable.next, pDstRegionStartCoordinate, srcTable.next, pSrcRegionStartCoordinate, pRegionSize, Flags);
+
+    // Create infos
+    ResourceInfo srcInfo = GetResourceInfoFor(srcTable.state);
+    ResourceInfo dstInfo = GetResourceInfoFor(dstTable.state);
+
+    // Invoke proxies
+    std::lock_guard guard(table.state->executor.mutex);
+    for (const FeatureHookTable &feature: device.state->featureHookTables) {
+        feature.copyResource.TryInvoke(&table.state->executor.context, srcInfo, dstInfo);
+    }
 }
 
 HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMAND_LIST_TYPE type, const IID &riid, void **pCommandAllocator) {
@@ -1060,6 +1110,9 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     // Get device
     auto device = GetTable(table.state->parent);
 
+    // Flush any pending work
+    FlushCommandQueueContext(GetState(table.state->parent), table.state);
+
     // Process any remaining work on the queue
     device.state->exportStreamer->Process(table.state);
 
@@ -1170,6 +1223,7 @@ CommandListState::~CommandListState() {
 }
 
 ImmediateCommandList CommandQueueState::PopCommandList() {
+    std::lock_guard guard(mutex);
     ImmediateCommandList list;
 
     // Get device
@@ -1212,6 +1266,8 @@ ImmediateCommandList CommandQueueState::PopCommandList() {
 }
 
 void CommandQueueState::PushCommandList(const ImmediateCommandList& list) {
+    std::lock_guard guard(mutex);
+    
     HRESULT hr = list.allocator->Reset();
     ASSERT(SUCCEEDED(hr), "Pushing in-flight immediate command list");
 

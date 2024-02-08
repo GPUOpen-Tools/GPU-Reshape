@@ -34,7 +34,7 @@
 #include <Backend/Command/ResourceInfo.h>
 #include <Backend/IL/ResourceTokenType.h>
 
-static ResourceInfo GetResourceInfoFor(ResourceState* state) {
+ResourceInfo GetResourceInfoFor(ResourceState* state) {
     ResourceToken token {
         .puid = state->virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
