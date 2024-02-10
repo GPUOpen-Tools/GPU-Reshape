@@ -99,7 +99,7 @@ namespace Studio.Models.IL
             for (int i = 0; i < program.Types.Length; i++)
             {
                 program.Types[i] = ParseType(node.Types[i], program);
-                program.Lookup.Add(program.Types[i].ID, program.Types[i]);
+                program.Lookup[program.Types[i].ID] = program.Types[i];
             }
 
             // Parse all type references
@@ -315,7 +315,16 @@ namespace Studio.Models.IL
                 case TypeKind.Pointer:
                 {
                     var typed = (PointerType)type;
-                    typed.Pointee = (Type)program.Lookup[(uint)node.Pointee];
+
+                    // May be a forward reference
+                    if (node.Pointee != uint.MaxValue)
+                    {
+                        typed.Pointee = (Type)program.Lookup[(uint)node.Pointee];
+                    }
+                    else
+                    {
+                        typed.Pointee = null;
+                    }
                     break;
                 }
                 case TypeKind.Array:

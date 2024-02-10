@@ -70,7 +70,8 @@ public:
 public:
     /// Create or commit a resource for versioning
     /// \param state resource state
-    void CreateOrRecommitResource(ResourceState* state);
+    /// \param debugName thread safe name
+    void CreateOrRecommitResource(ResourceState* state, const char* debugName);
 
     /// Destroy a resource versioning
     /// \param state resource state
@@ -88,7 +89,8 @@ protected:
     /// Commit a resource version
     /// \param view destination view
     /// \param state state to commit
-    void CommitResourceVersion(MessageStreamView<ResourceVersionMessage>& view, ResourceState* state);
+    /// \param debugName thread safe name
+    void CommitResourceVersion(MessageStreamView<ResourceVersionMessage>& view, ResourceState* state, const char* debugName);
 
 protected:
     /// Message handlers

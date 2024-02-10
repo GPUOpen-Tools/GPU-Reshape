@@ -332,6 +332,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
         AttachmentInfo& info = attachments[i];
         info.resource.token = token;
         info.resource.textureDescriptor = descriptors + i;
+        info.resolveResource = nullptr;
 
         // Translate action
         switch (pRenderTargets[i].BeginningAccess.Type) {
@@ -431,6 +432,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
         // Set resource info
         depthInfo.resource.token = token;
         depthInfo.resource.textureDescriptor = &depthDescriptor;
+        depthInfo.resolveResource = nullptr;
         passInfo.depthAttachment = &depthInfo;
     }
 
@@ -476,6 +478,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         info.resource.textureDescriptor = descriptors + i;
         info.loadAction = AttachmentAction::Load;
         info.storeAction = AttachmentAction::Store;
+        info.resolveResource = nullptr;
     }
 
     // Render pass info
@@ -501,6 +504,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         depthInfo.resource.textureDescriptor = &depthDescriptor;
         depthInfo.loadAction = AttachmentAction::Load;
         depthInfo.storeAction = AttachmentAction::Store;
+        depthInfo.resolveResource = nullptr;
         passInfo.depthAttachment = &depthInfo;
     }
 

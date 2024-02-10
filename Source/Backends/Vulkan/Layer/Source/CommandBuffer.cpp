@@ -73,12 +73,16 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyBuffer[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyImage[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyImageToBuffer[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyImageToBuffer2[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyBufferToImage[i] = hookTable.copyResource;
+            table->commandBufferDispatchTable.featureHooks_vkCmdCopyBufferToImage2[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdBlitImage[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImage |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer2 |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage |= (1ull << i);
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage2 |= (1ull << i);
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBlitImage |= (1ull << i);
         }
         
@@ -99,6 +103,8 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
         if (hookTable.beginRenderPass.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderPass[i] = hookTable.beginRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdBeginRendering[i] = hookTable.beginRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRendering |= (1ull << i);
             table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderingKHR[i] = hookTable.beginRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderingKHR |= (1ull << i);
         }
@@ -106,6 +112,8 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
         if (hookTable.endRenderPass.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdEndRenderPass[i] = hookTable.endRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderPass |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdEndRendering[i] = hookTable.endRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRendering |= (1ull << i);
             table->commandBufferDispatchTable.featureHooks_vkCmdEndRenderingKHR[i] = hookTable.endRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderingKHR |= (1ull << i);
         }
@@ -121,7 +129,9 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBuffer & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBufferToImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyBufferToImage2 = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyBufferToImage2 & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImageToBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdCopyImageToBuffer2 = table->commandBufferDispatchTable.featureBitSetMask_vkCmdCopyImageToBuffer2 & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBlitImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBlitImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdUpdateBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdUpdateBuffer & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdFillBuffer = table->commandBufferDispatchTable.featureBitSetMask_vkCmdFillBuffer & featureSet;
@@ -131,7 +141,9 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdResolveImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdResolveImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderPass & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRendering = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRendering & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderingKHR & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdEndRendering = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRendering & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderingKHR & featureSet;
 }
 
@@ -578,8 +590,8 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdWaitEvents2(CommandBufferObject* commandBuf
     }
 
     // Local barriers
-    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier2, bufferBarrierCount);
-    auto* bufferMemoryBarriers = ALLOCA_ARRAY(VkBufferMemoryBarrier2, imageBarrierCount);
+    auto* imageMemoryBarriers  = ALLOCA_ARRAY(VkImageMemoryBarrier2,  imageBarrierCount);
+    auto* bufferMemoryBarriers = ALLOCA_ARRAY(VkBufferMemoryBarrier2, bufferBarrierCount);
 
     // Copy dependencies
     auto* dependencies = ALLOCA_ARRAY(VkDependencyInfo, eventCount);

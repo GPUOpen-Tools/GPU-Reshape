@@ -561,6 +561,9 @@ void ShaderExportStreamer::BindShaderExport(ShaderExportStreamState *state, Pipe
         case PipelineType::Compute:
             vkBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
             break;
+        case PipelineType::Raytracing:
+            vkBindPoint = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
+            break;
     }
 
 #if PRMT_METHOD == PRMT_METHOD_UB_PC

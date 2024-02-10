@@ -108,15 +108,34 @@ static void ReconstructPipelineState(DeviceState *device, ID3D12GraphicsCommandL
     }
 }
 
+static void ReconstructRenderPassState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState& state) {
+    static_cast<ID3D12GraphicsCommandList4*>(commandList)->BeginRenderPass(
+        streamState->renderPass.renderTargetCount,
+        streamState->renderPass.renderTargets,
+        streamState->renderPass.depthStencil.cpuDescriptor.ptr != 0 ? &streamState->renderPass.depthStencil : nullptr,
+        streamState->renderPass.flags
+    );
+}
+
 static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState &state) {
     if (state.reconstructionFlags & ReconstructionFlag::Pipeline) {
         ReconstructPipelineState(device, commandList, streamState, state);
+    }
+
+    if (state.reconstructionFlags & ReconstructionFlag::RenderPass) {
+        ReconstructRenderPassState(device, commandList, streamState, state);
     }
 }
 
 void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
     UserCommandState state;
 
+    // Always end the current render pass if any commands
+    if (buffer.Count() && streamState->renderPass.insideRenderPass) {
+        static_cast<ID3D12GraphicsCommandList4*>(commandList)->EndRenderPass();
+        state.reconstructionFlags |= ReconstructionFlag::RenderPass;
+    }
+    
     // Handle all commands
     for (const Command &command: buffer) {
         switch (static_cast<CommandType>(command.commandType)) {

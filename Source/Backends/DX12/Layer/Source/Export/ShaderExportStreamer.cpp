@@ -244,6 +244,9 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
     state->isInstrumented = false;
     state->pending = true;
 
+    // Reset render pass state
+    state->renderPass.insideRenderPass = false;
+
     // Uses descriptors?
     if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY) {
         // Set initial heap

@@ -234,8 +234,8 @@ void PhysicalResourceMappingTable::CopyMappings(PhysicalResourceSegmentID source
 
     // Copy range
     std::memcpy(
-        persistentVersion->virtualMappings + sourceSegment.offset,
         persistentVersion->virtualMappings + destSegment.offset,
+        persistentVersion->virtualMappings + sourceSegment.offset,
         sourceSegment.length
     );
     

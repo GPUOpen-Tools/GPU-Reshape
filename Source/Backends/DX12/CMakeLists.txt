@@ -355,6 +355,7 @@ add_library(
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockOutputSignature.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockFeatureInfo.cpp
     Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockDebug.cpp
+    Layer/Source/Compiler/DXBC/Blocks/DXBCPhysicalBlockShaderSourceInfo.cpp
     Layer/Source/Compiler/DXBC/DXBCSigner.cpp
     Layer/Source/Compiler/DXBC/DXBCConverter.cpp
     Layer/Source/Compiler/DXIL/DXILModule.cpp

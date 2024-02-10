@@ -750,7 +750,16 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
         }
         case Backend::IL::TypeKind::Pointer: {
             auto ptr = type->As<Backend::IL::PointerType>();
-            line << "Pointer pointee:%" << ptr->pointee->id << " space:";
+            line << "Pointer pointee:"; 
+            
+            if (ptr->pointee) {
+                line << "%" << ptr->pointee->id;
+            } else {
+                line << "forward";
+            }
+
+            line << " space:";
+            
             switch (ptr->addressSpace) {
                 case Backend::IL::AddressSpace::Constant:
                     line << "Constant";
@@ -1342,7 +1351,15 @@ void PrettyPrintJson(const Backend::IL::Type *type, IL::PrettyPrintContext out) 
         case Backend::IL::TypeKind::Pointer: {
             auto ptr = type->As<Backend::IL::PointerType>();
             out.Line() << "\"AddressSpace\": " << static_cast<uint32_t>(ptr->addressSpace) << ",";
-            out.Line() << "\"Pointee\": " << ptr->pointee->id << ",";
+            out.Line() << "\"Pointee\": ";
+
+            if (ptr->pointee) {
+                out.stream << ptr->pointee->id;
+            } else {
+                out.stream << IL::InvalidID;
+            }
+            
+            out.stream << ",";
             break;
         }
         case Backend::IL::TypeKind::Array: {

@@ -255,6 +255,8 @@ inline VkPipelineBindPoint Translate(PipelineType type) {
             return VK_PIPELINE_BIND_POINT_GRAPHICS;
         case PipelineType::Compute:
             return VK_PIPELINE_BIND_POINT_COMPUTE;
+        case PipelineType::Raytracing:
+            return VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
     }
 }
 
@@ -267,6 +269,8 @@ inline PipelineType Translate(VkPipelineBindPoint type) {
             return PipelineType::Graphics;
         case VK_PIPELINE_BIND_POINT_COMPUTE:
             return PipelineType::Compute;
+        case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR:
+            return PipelineType::Raytracing;
     }
 }
 

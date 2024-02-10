@@ -649,6 +649,40 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
     table.bottom->next_ResourceBarrier(table.next, NumBarriers, barriers);
 }
 
+void WINAPI HookID3D12CommandListBeginRenderPass(ID3D12CommandList* list, UINT NumRenderTargets, const D3D12_RENDER_PASS_RENDER_TARGET_DESC* pRenderTargets, const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* pDepthStencil, D3D12_RENDER_PASS_FLAGS Flags) {
+    auto table = GetTable(list);
+
+    // Copy all state data
+    ShaderExportRenderPassState& renderPassState = table.state->streamState->renderPass;
+    renderPassState.insideRenderPass = true;
+    renderPassState.renderTargetCount = NumRenderTargets;
+    renderPassState.flags = Flags;
+
+    // Copy render targets
+    ASSERT(NumRenderTargets <= D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT, "Exceeding max number of render targets");
+    std::memcpy(renderPassState.renderTargets, pRenderTargets, sizeof(D3D12_RENDER_PASS_RENDER_TARGET_DESC) * NumRenderTargets);
+
+    // Depth is optional
+    if (pDepthStencil) {
+        renderPassState.depthStencil = *pDepthStencil;
+    } else {
+        renderPassState.depthStencil.cpuDescriptor.ptr = 0ull;
+    }
+
+    // Pass down callchain
+    table.next->BeginRenderPass(NumRenderTargets, pRenderTargets, pDepthStencil, Flags);
+}
+
+void WINAPI HookID3D12CommandListEndRenderPass(ID3D12CommandList* list) {
+    auto table = GetTable(list);
+
+    // Mark as outside
+    table.state->streamState->renderPass.insideRenderPass = false;
+    
+    // Pass down callchain
+    table.next->EndRenderPass();
+}
+
 static void CommitGraphics(DeviceState* device, CommandListState* list) {
     // Commit all commands prior to binding
     CommitCommands(list);

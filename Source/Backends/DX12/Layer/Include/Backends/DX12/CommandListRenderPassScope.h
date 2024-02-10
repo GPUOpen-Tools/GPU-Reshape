@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,35 +26,31 @@
 
 #pragma once
 
-// Std
-#include <cstdint>
+// Layer
+#include <Backends/DX12/Export/ShaderExportStreamState.h>
 
-enum class DXBCPhysicalBlockType : uint32_t {
-    /// SM4-5
-    Interface = 'EFCI',
-    Input = 'NGSI',
-    Output5 = '5GSO',
-    Output = 'NGSO',
-    Patch = 'GSCP',
-    Resource = 'FEDR',
-    ShaderDebug0 = 'BGDS',
-    FeatureInfo = '0IFS',
-    Shader4 = 'RDHS',
-    Shader5 = 'XEHS',
-    ShaderHash = 'HSAH',
-    ShaderDebug1 = 'BDPS',
-    Statistics = 'TATS',
-    PipelineStateValidation = '0VSP',
-    RootSignature = '0STR',
-    ShaderSourceInfo = 'ICRS',
+class CommandListRenderPassScope {
+public:
+    CommandListRenderPassScope(ID3D12GraphicsCommandList4* commandList, ShaderExportRenderPassState* streamState) : commandList(commandList), streamState(streamState) {
+        // Temporarily end render pass
+        if (streamState->insideRenderPass) {
+            commandList->EndRenderPass();
+        }
+    }
 
-    /// SM6
-    ILDB = 'BDLI',
-    ILDN = 'NDLI',
-    DXIL = 'LIXD',
-    InputSignature = '1GSI',
-    OutputSignature = '1GSO',
+    ~CommandListRenderPassScope() {
+        // Reconstruct render pass if needed
+        if (streamState->insideRenderPass) {
+            commandList->BeginRenderPass(
+                streamState->renderTargetCount,
+                streamState->renderTargets,
+                streamState->depthStencil.cpuDescriptor.ptr != 0 ? &streamState->depthStencil : nullptr,
+                streamState->flags
+            );
+        }
+    }
 
-    /// Unknown block
-    Unexposed = ~0u
+private:
+    ID3D12GraphicsCommandList4* commandList;
+    ShaderExportRenderPassState* streamState;
 };

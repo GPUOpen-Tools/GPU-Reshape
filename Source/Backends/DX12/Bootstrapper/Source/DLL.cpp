@@ -768,6 +768,9 @@ struct _PROC_THREAD_ATTRIBUTE_LIST {
 bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
     // Do not bootstrap if the service isn't running
     if (!IsServiceActive()) {
+#if ENABLE_LOGGING
+        LogContext{} << "ShouldBootstrapProcess, process rejected due inactive service\n";
+#endif // ENABLE_LOGGING
         return false;
     }
 
@@ -781,6 +784,9 @@ bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
             
             // Do not bootstrap AppContainer processes
             if (entry.Attribute == PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES) {
+#if ENABLE_LOGGING
+                LogContext{} << "ShouldBootstrapProcess, process rejected due to AppContainer usage\n";
+#endif // ENABLE_LOGGING
                 return false;
             }
 
@@ -794,6 +800,9 @@ bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
                     // - Microsoft sign checks will cause the image to be rejected
                     if ((policyPayloads[0] & PROCESS_CREATION_MITIGATION_POLICY_IMAGE_LOAD_NO_REMOTE_ALWAYS_ON) ||
                         (policyPayloads[0] & PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON)) {
+#if ENABLE_LOGGING
+                        LogContext{} << "ShouldBootstrapProcess, process rejected due to mitigation policy\n";
+#endif // ENABLE_LOGGING
                         return false;
                     }
                 }

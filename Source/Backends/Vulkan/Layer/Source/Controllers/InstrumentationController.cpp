@@ -776,6 +776,11 @@ void InstrumentationController::CommitShaders(DispatcherBucket* bucket, void *da
                 continue;
             }
 
+            // Raytracing is pass-through for now
+            if (dependentObject->type == PipelineType::Raytracing) {
+                continue;
+            }
+
             // Number of slots used by the pipeline
             uint32_t pipelineLayoutUserSlots = dependentObject->layout->boundUserDescriptorStates;
 
@@ -923,6 +928,11 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
             }
         }
 
+        // Raytracing is pass-through for now
+        if (state->type == PipelineType::Raytracing) {
+            superFeatureBitSet = 0x0;
+        }
+
         // No features?
         if (!superFeatureBitSet) {
             // Set the hot swapped object to native
@@ -932,7 +942,11 @@ void InstrumentationController::CommitPipelines(DispatcherBucket* bucket, void *
 
         // Not of interest?
         if (isSkipped) {
-            destroy(job.shaderModuleInstrumentationKeys, allocators);
+            // May be empty
+            if (!state->shaderModules.empty()) {
+                destroy(job.shaderModuleInstrumentationKeys, allocators);
+            }
+            
             continue;
         }
 

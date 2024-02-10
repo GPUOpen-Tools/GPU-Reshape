@@ -938,7 +938,17 @@ namespace Runtime.ViewModels.IL
                 case TypeKind.Pointer:
                 {
                     var pointerType = (PointerType)type;
-                    AssembleInlineType(pointerType.Pointee, builder, shortType);
+
+                    // May be a forward reference
+                    if (pointerType.Pointee != null)
+                    {
+                        AssembleInlineType(pointerType.Pointee, builder, shortType);
+                    }
+                    else
+                    {
+                        builder.Append("forward");
+                    }
+                    
                     builder.Append('*');
 
                     if (pointerType.AddressSpace != AddressSpace.Function)

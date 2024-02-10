@@ -147,6 +147,23 @@ struct ShaderExportStreamBindState {
 #endif // NDEBUG
 };
 
+struct ShaderExportRenderPassState {
+    /// Number of render passes bound
+    uint32_t renderTargetCount{0};
+
+    /// All render pass data
+    D3D12_RENDER_PASS_RENDER_TARGET_DESC renderTargets[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT];
+
+    /// Optional depth stencil data
+    D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depthStencil;
+
+    /// All flags
+    D3D12_RENDER_PASS_FLAGS flags;
+    
+    /// Are we inside a render pass
+    bool insideRenderPass{false};
+};
+
 /// Single stream state
 struct ShaderExportStreamState {
     ShaderExportStreamState(const Allocators& allocators) : segmentDescriptors(allocators), referencedHeaps(allocators) {
@@ -168,6 +185,9 @@ struct ShaderExportStreamState {
 
     /// Bind states
     ShaderExportStreamBindState bindStates[static_cast<uint32_t>(PipelineType::Count)];
+
+    /// Graphics render pass
+    ShaderExportRenderPassState renderPass;
 
     /// Currently bound pipeline
     const PipelineState* pipeline{nullptr};

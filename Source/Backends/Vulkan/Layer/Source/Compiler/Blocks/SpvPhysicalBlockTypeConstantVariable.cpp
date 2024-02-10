@@ -129,6 +129,13 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 Backend::IL::PointerType type;
                 type.addressSpace = Translate(static_cast<SpvStorageClass>(ctx++));
                 type.pointee = typeMap.GetTypeFromId(ctx++);
+
+                // Validate the (potential) forward declaration matches the actual declaration
+                if (const Backend::IL::Type* declared = typeMap.GetTypeFromId(ctx.GetResult())) {
+                    const auto* declaredPtr = declared->Cast<Backend::IL::PointerType>();
+                    ASSERT(declaredPtr && declaredPtr->addressSpace == type.addressSpace, "Misformed forward declaration");
+                }
+                
                 typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
             }
@@ -261,13 +268,22 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 typeMap.AddType(ctx.GetResult(), anchor, _struct);
                 break;
             }
+            
+            case SpvOpTypeForwardPointer: {
+                SpvId forwardId = ctx++;
+                
+                typeMap.AddType(forwardId, anchor, Backend::IL::PointerType {
+                    .pointee = nullptr,
+                    .addressSpace = Translate(static_cast<SpvStorageClass>(ctx++))
+                });
+                break;
+            }
 
             case SpvOpTypeEvent:
             case SpvOpTypeDeviceEvent:
             case SpvOpTypeReserveId:
             case SpvOpTypeQueue:
             case SpvOpTypePipe:
-            case SpvOpTypeForwardPointer:
             case SpvOpTypeOpaque: {
                 typeMap.AddType(ctx.GetResult(), anchor, Backend::IL::UnexposedType{});
                 break;
@@ -545,12 +561,17 @@ IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJo
 
     // Migrate previous decorations if present
     if (sourceDecoration) {
-        for (uint32_t i = 0; i < sourceDecoration->memberDecorations.size(); i++) {
-            SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpMemberDecorate, 5);
-            pcBlockMember[1] = pcBlockTypeId;
-            pcBlockMember[2] = i;
-            pcBlockMember[3] = SpvDecorationOffset;
-            pcBlockMember[4] = sourceDecoration->memberDecorations[i].blockOffset;
+        for (uint32_t i = 0; i < sourceDecoration->members.size(); i++) {
+            const SpvMemberDecoration& member = sourceDecoration->members[i];
+
+            // Emit all original pairs
+            for (const SpvDecorationPair& pair : member.decorations) {
+                SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpMemberDecorate, 4 + pair.wordCount);
+                pcBlockMember[1] = pcBlockTypeId;
+                pcBlockMember[2] = i;
+                pcBlockMember[3] = pair.kind;
+                std::memcpy(&pcBlockMember[4], pair.words, sizeof(uint32_t) * pair.wordCount);
+            }
         }
     }
 

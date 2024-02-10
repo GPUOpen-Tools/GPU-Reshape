@@ -91,6 +91,8 @@ static DXBCPhysicalBlockType FilterChunkType(uint32_t type) {
             return DXBCPhysicalBlockType::InputSignature;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::OutputSignature):
             return DXBCPhysicalBlockType::OutputSignature;
+        case static_cast<uint32_t>(DXBCPhysicalBlockType::ShaderSourceInfo):
+            return DXBCPhysicalBlockType::ShaderSourceInfo;
         case static_cast<uint32_t>(DXBCPhysicalBlockType::Unexposed):
             return DXBCPhysicalBlockType::Unexposed;
     }

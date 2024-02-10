@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,35 +26,43 @@
 
 #pragma once
 
-// Std
-#include <cstdint>
+// Layer
+#include <Backends/DX12/Compiler/DXBC/DXBCPhysicalBlockScan.h>
 
-enum class DXBCPhysicalBlockType : uint32_t {
-    /// SM4-5
-    Interface = 'EFCI',
-    Input = 'NGSI',
-    Output5 = '5GSO',
-    Output = 'NGSO',
-    Patch = 'GSCP',
-    Resource = 'FEDR',
-    ShaderDebug0 = 'BGDS',
-    FeatureInfo = '0IFS',
-    Shader4 = 'RDHS',
-    Shader5 = 'XEHS',
-    ShaderHash = 'HSAH',
-    ShaderDebug1 = 'BDPS',
-    Statistics = 'TATS',
-    PipelineStateValidation = '0VSP',
-    RootSignature = '0STR',
-    ShaderSourceInfo = 'ICRS',
+/// Shader source block
+struct DXBCPhysicalBlockShaderSourceInfo {
+    DXBCPhysicalBlockShaderSourceInfo(DXBCPhysicalBlockScan& scan);
 
-    /// SM6
-    ILDB = 'BDLI',
-    ILDN = 'NDLI',
-    DXIL = 'LIXD',
-    InputSignature = '1GSI',
-    OutputSignature = '1GSO',
+    /// Parse source info
+    void Parse();
 
-    /// Unknown block
-    Unexposed = ~0u
+public:
+    struct SourceArg {
+        /// Name of the argument
+        std::string_view name;
+
+        /// Optional, assigned value of the argument
+        std::string_view value;
+    };
+
+    struct SourceFile {
+        /// Path of the file
+        std::string_view filename;
+
+        /// Contents of the file
+        std::string_view contents;
+    };
+
+    /// All compilation arguments
+    std::vector<SourceArg> sourceArgs;
+
+    /// All source files
+    std::vector<SourceFile> sourceFiles;
+
+private:
+    /// Optional, storage for zlib decompression
+    std::vector<uint8_t> decompressionBlob;
+
+    /// PDB block scanner
+    DXBCPhysicalBlockScan& scan;
 };

@@ -91,7 +91,7 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     }
 
     // Inform controller
-    table.state->versioningController->CreateOrRecommitResource(state);
+    table.state->versioningController->CreateOrRecommitResource(state, nullptr);
 
     // Create detours
     return CreateDetour(state->allocators, resource, state);
@@ -499,12 +499,26 @@ HRESULT WINAPI HookID3D12ResourceSetName(ID3D12Resource* _this, LPCWSTR name) {
     ENSURE(SUCCEEDED(wcstombs_s(&length, nullptr, 0u, name, 0u)), "Failed to determine length");
 
     // Copy string
-    table.state->debugName = new (table.state->allocators) char[length];
-    ENSURE(SUCCEEDED(wcstombs_s(&length, table.state->debugName, length, name, length)), "Failed to convert string");
+    char* debugName = new (table.state->allocators) char[length];
+    ENSURE(SUCCEEDED(wcstombs_s(&length, debugName, length, name, length)), "Failed to convert string");
 
     // Inform controller of the change
-    deviceTable.state->versioningController->CreateOrRecommitResource(table.state);
+    deviceTable.state->versioningController->CreateOrRecommitResource(table.state, debugName);
 
+    // Serialize all naming assignment
+    // Could alternatively serialize per-object, however, that's a lot of synchronization primitives
+    {
+        std::lock_guard guard(deviceTable.state->states_Resources.GetLock());
+
+        // Release previous name
+        if (table.state->debugName) {
+            destroy(table.state->debugName, table.state->allocators);
+        }
+
+        // Assign new name
+        table.state->debugName = debugName;
+    }
+    
     // Pass to device query
     return table.state->parent->SetName(name);
 }
@@ -568,6 +582,11 @@ ResourceState::~ResourceState() {
     if (!object) {
         parent->Release();
         return;
+    }
+
+    // Release name
+    if (debugName) {
+        destroy(debugName, allocators);
     }
 
     // Remove mapping

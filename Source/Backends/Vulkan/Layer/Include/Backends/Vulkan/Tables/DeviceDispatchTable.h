@@ -203,11 +203,14 @@ struct DeviceDispatchTable {
     PFN_vkFreeCommandBuffers              next_vkFreeCommandBuffers;
     PFN_vkDestroyCommandPool              next_vkDestroyCommandPool;
     PFN_vkQueueSubmit                     next_vkQueueSubmit;
+    PFN_vkQueueSubmit2                    next_vkQueueSubmit2;
+    PFN_vkQueueSubmit2KHR                 next_vkQueueSubmit2KHR;
     PFN_vkQueuePresentKHR                 next_vkQueuePresentKHR;
     PFN_vkCreateShaderModule              next_vkCreateShaderModule;
     PFN_vkDestroyShaderModule             next_vkDestroyShaderModule;
     PFN_vkCreateGraphicsPipelines         next_vkCreateGraphicsPipelines;
     PFN_vkCreateComputePipelines          next_vkCreateComputePipelines;
+    PFN_vkCreateRayTracingPipelinesKHR    next_vkCreateRayTracingPipelinesKHR;
     PFN_vkDestroyPipeline                 next_vkDestroyPipeline;
     PFN_vkGetFenceStatus                  next_vkGetFenceStatus;
     PFN_vkWaitForFences                   next_vkWaitForFences;
