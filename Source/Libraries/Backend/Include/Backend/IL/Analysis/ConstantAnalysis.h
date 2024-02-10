@@ -1118,6 +1118,11 @@ namespace IL {
                     continue;
                 }
 
+                // Ignore blocks branching to itself
+                if (predecessor == block) {
+                    continue;
+                }
+
                 // If the edge is not executable, we can ignore any contribution
                 if (!propagationEngine.IsEdgeExecutable(predecessor, block)) {
                     continue;
