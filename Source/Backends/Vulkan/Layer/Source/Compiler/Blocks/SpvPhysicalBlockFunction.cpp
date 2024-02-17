@@ -1734,6 +1734,17 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 spv[4] = extract->index;
                 break;
             }
+            case IL::OpCode::Return: {
+                auto *_return = instr.As<IL::ReturnInstruction>();
+
+                if (_return->value != IL::InvalidID) {
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpReturnValue, 2, _return->source);
+                    spv[1] = idMap.Get(_return->value);
+                } else {
+                    stream.TemplateOrAllocate(SpvOpReturn, 1, _return->source);
+                }
+                break;
+            }
             case IL::OpCode::LoadBuffer: {
                 auto *loadBuffer = instr.As<IL::LoadBufferInstruction>();
 
