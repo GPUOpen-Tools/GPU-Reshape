@@ -138,15 +138,15 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
 
     // Single file compile debugging
 #if SHADER_COMPILER_DEBUG_FILE
-    constexpr const char* kPath = "C:\\AMD\\GPUOpen-Tools\\gpu-validation\\Bin\\Clang\\Debug\\Intermediate\\Debug\\Cauldron v1.4\\SampleVK v1.4.1\\Vulkan\\{0C9E10E4-945A-4C72-AC8E-E436B28EEB75}.source.spirv";
+    constexpr const char* kPath = "";
 
     // Stream in the debug binary
     std::ifstream stream(kPath, std::ios::in | std::ios::binary);
     std::vector<uint8_t> debugBinary((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
 
     // Hack the code
-    job.state->createInfoDeepCopy.createInfo.pCode = reinterpret_cast<const uint32_t*>(debugBinary.data());
-    job.state->createInfoDeepCopy.createInfo.codeSize = debugBinary.size();
+    job.info.state->createInfoDeepCopy.createInfo.pCode = reinterpret_cast<const uint32_t*>(debugBinary.data());
+    job.info.state->createInfoDeepCopy.createInfo.codeSize = debugBinary.size();
 #endif
 
     // Diagnostic scope
