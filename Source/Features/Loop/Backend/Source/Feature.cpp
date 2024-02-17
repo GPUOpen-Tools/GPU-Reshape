@@ -318,7 +318,7 @@ uint32_t LoopFeature::AllocateTerminationIDNoLock() {
     uint32_t id = submissionAllocationCounter++;
 
     // Cycle back if needed
-    if (submissionAllocationCounter == kMaxTrackedSubmissions) {
+    if (submissionAllocationCounter == kMaxTrackedSubmissions - 1u) {
         submissionAllocationCounter = 0;
     }
 
@@ -338,6 +338,10 @@ void LoopFeature::OnOpen(CommandContext *context) {
     // Update the descriptor data
     CommandBuilder builder(context->buffer);
     builder.SetDescriptorData(terminationAllocationID, state.terminationID);
+
+    // Stage cleared value
+    uint32_t noSignalValue = 0u;
+    builder.StageBuffer(terminationBufferID, sizeof(uint32_t) * state.terminationID, sizeof(uint32_t), &noSignalValue);
 }
 
 void LoopFeature::OnSubmit(CommandContextHandle contextHandle) {
