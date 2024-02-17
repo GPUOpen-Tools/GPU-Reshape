@@ -446,7 +446,8 @@ namespace IL {
             data(allocators.Tag("BasicBlock"_AllocTag)),
             relocationTable(allocators.Tag("BasicBlock"_AllocTag)),
             relocationAllocator(allocators) {
-
+            // Register the block
+            map.AddBasicBlock(this, id);
         }
 
         /// Allow move
@@ -459,6 +460,12 @@ namespace IL {
         BasicBlock& operator=(const BasicBlock& other) = delete;
         BasicBlock& operator=(BasicBlock&& other) = delete;
 
+        /// Destructor
+        ~BasicBlock() {
+            // Unregister the block
+            map.RemoveBasicBlock(id);
+        }
+        
         /// Copy this basic block
         /// \param map the new identifier map
         /// \return the new basic block
@@ -724,7 +731,9 @@ namespace IL {
 
         /// Set the source span
         void SetID(IL::ID value) {
+            map.RemoveBasicBlock(id);
             id = value;
+            map.AddBasicBlock(this, id);
         }
 
         /// Immortalize this basic block
