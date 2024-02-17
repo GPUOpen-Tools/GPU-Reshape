@@ -160,6 +160,22 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 case IL::OpCode::Branch: {
                     auto* instr = it->As<IL::BranchInstruction>();
                     entryBlock = basicBlocks.GetBlock(instr->branch);
+                    
+                    // If the body is the continue block, we effectively need another block. Selection merges
+                    // within a loop construct must merge to another block inside said construct, continue blocks
+                    // are not part of this construct.
+                    if (entryBlock->GetID() == controlFlow._continue) {
+                        selectionMerge = context.function.GetBasicBlocks().AllocBlock();
+
+                        // Branch to the real continue block
+                        IL::Emitter<>(program, *selectionMerge).Branch(postEntry);
+
+                        // Replace the original loop branch, re-route the continue block
+                        IL::Emitter<IL::Op::Replace>(program, it).Branch(
+                            basicBlocks.GetBlock(instr->branch),
+                            IL::ControlFlow::Loop(basicBlocks.GetBlock(controlFlow.merge), postEntry)
+                        );
+                    }
                     break;
                 }
                 case IL::OpCode::BranchConditional: {
@@ -187,7 +203,7 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 }
             }
 
-            // Split just prior to loop entry
+            // Split from the beginning, handles phi splitting
             entryBlock->Split(postEntry, entryBlock->begin());
 
             // Emit into pre-guard
@@ -216,29 +232,17 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 msg.padding = term.UInt32(0);
                 term.Export(exportID, msg);
 
+                // Expected function type
+                const Backend::IL::Type *returnType = context.function.GetFunctionType()->returnType;
+
+                // If there's something to return, assume null
+                IL::ID returnValue = IL::InvalidID;
+                if (!returnType->Is<Backend::IL::VoidType>()) {
+                    returnValue = program.GetConstants().FindConstantOrAdd(returnType, IL::NullConstant {})->id;
+                }
+                
                 // Branch to the merge block
-                term.Branch(mergeBlock);
-            }
-
-            // Short out merge phis
-            for (auto phiIt = mergeBlock->begin(); phiIt != mergeBlock->end() && phiIt->Is<IL::PhiInstruction>();) {
-                auto phiInstr = phiIt->As<IL::PhiInstruction>();
-
-                // Number of phi values
-                const uint32_t valueCount = phiInstr->values.count;
-
-                // Copy known values
-                auto* values = ALLOCA_ARRAY(IL::PhiValue, valueCount + 1u);
-                std::memcpy(values, &phiInstr->values[0], sizeof(IL::PhiValue) * valueCount);
-
-                // Create new incoming phi block value, default to null
-                values[valueCount] = IL::PhiValue {
-                    .value = program.GetConstants().FindConstantOrAdd(program.GetTypeMap().GetType(phiInstr->result), IL::NullConstant {})->id,
-                    .branch = terminationBlock->GetID()
-                };
-
-                // Replace the phi instruction
-                phiIt = std::next(IL::Emitter<IL::Op::Replace>(program, phiIt).Phi(phiInstr->result, valueCount + 1u, values));
+                term.Return(returnValue);
             }
 
             // Iterate next on this instruction
