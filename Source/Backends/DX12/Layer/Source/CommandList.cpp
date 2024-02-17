@@ -38,6 +38,7 @@
 #include <Backends/DX12/Controllers/VersioningController.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
+#include <Backends/DX12/QueueSegmentAllocator.h>
 #include <Backend/IFeature.h>
 #include <Backends/DX12/IncrementalFence.h>
 
@@ -134,6 +135,10 @@ static HRESULT CreateCommandQueueState(ID3D12Device *device, ID3D12CommandQueue*
     state->parent = device;
     state->desc = *desc;
     state->object = commandQueue;
+    
+    // Setup shared context
+    state->executor.context.eventStack.SetRemapping(table.state->eventRemappingTable);
+    state->executor.context.handle = reinterpret_cast<CommandContextHandle>(commandQueue);
 
     // Keep reference
     device->AddRef();
@@ -265,6 +270,21 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
     return S_OK;
 }
 
+static void FlushCommandQueueContext(DeviceState* device, CommandQueueState* queue) {
+    std::lock_guard guard(queue->executor.mutex);
+    
+    if (!queue->executor.context.buffer.Count()) {
+        return;
+    }
+    
+    // Execute context immediately
+    device->queueSegmentAllocator->ExecuteImmediate(queue, queue->executor.context);
+    
+    // Cleanup
+    queue->executor.context.buffer.Clear();
+    queue->executor.context.eventStack.Flush();
+}
+
 HRESULT WINAPI HookID3D12CommandSignatureGetDevice(ID3D12CommandSignature* _this, const IID &riid, void **ppDevice) {
     auto table = GetTable(_this);
 
@@ -275,6 +295,9 @@ HRESULT WINAPI HookID3D12CommandSignatureGetDevice(ID3D12CommandSignature* _this
 HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
     auto table = GetTable(queue);
 
+    // Flush any pending work
+    FlushCommandQueueContext(GetState(table.state->parent), table.state);
+
     // Pass down callchain
     return table.bottom->next_Signal(table.next, Next(pFence), Value);
 }
@@ -282,8 +305,35 @@ HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* queue, ID3D12Fen
 HRESULT WINAPI HookID3D12CommandQueueWait(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
     auto table = GetTable(queue);
 
+    // Flush any pending work
+    FlushCommandQueueContext(GetState(table.state->parent), table.state);
+
     // Pass down callchain
     return table.bottom->next_Wait(table.next, Next(pFence), Value);
+}
+
+void WINAPI HookID3D12CommandQueueCopyTileMappings(ID3D12CommandQueue* queue, ID3D12Resource* pDstResource, const D3D12_TILED_RESOURCE_COORDINATE* pDstRegionStartCoordinate, ID3D12Resource* pSrcResource, const D3D12_TILED_RESOURCE_COORDINATE* pSrcRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pRegionSize, D3D12_TILE_MAPPING_FLAGS Flags) {
+    auto table = GetTable(queue);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Get resources
+    auto srcTable = GetTable(pSrcResource);
+    auto dstTable = GetTable(pDstResource);
+
+    // Pass down callchain
+    table.bottom->next_CopyTileMappings(table.next, dstTable.next, pDstRegionStartCoordinate, srcTable.next, pSrcRegionStartCoordinate, pRegionSize, Flags);
+
+    // Create infos
+    ResourceInfo srcInfo = GetResourceInfoFor(srcTable.state);
+    ResourceInfo dstInfo = GetResourceInfoFor(dstTable.state);
+
+    // Invoke proxies
+    std::lock_guard guard(table.state->executor.mutex);
+    for (const FeatureHookTable &feature: device.state->featureHookTables) {
+        feature.copyResource.TryInvoke(&table.state->executor.context, srcInfo, dstInfo);
+    }
 }
 
 HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMAND_LIST_TYPE type, const IID &riid, void **pCommandAllocator) {
@@ -351,7 +401,7 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
     // Cleanup user context
     state->userContext.eventStack.Flush();
     state->userContext.eventStack.SetRemapping(device->eventRemappingTable);
-    state->userContext.handle = reinterpret_cast<CommandContextHandle>(state);
+    state->userContext.handle = reinterpret_cast<CommandContextHandle>(state->object);
 
     // Set stream context handle
     state->streamState->commandContextHandle = state->userContext.handle;
@@ -945,11 +995,123 @@ AGSReturnCode HookAMDAGSSetMarker(AGSContext* context, ID3D12GraphicsCommandList
     return D3D12GPUOpenFunctionTableNext.next_AMDAGSSetMarker(context, Next(commandList), data);
 }
 
+static void InvokePreSubmitBatchHook(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment, ID3D12CommandList** commandLists, uint32_t commandListCount) {
+    ShaderExportStreamSegmentUserContext& preContext = segment->userPreContext;
+    ShaderExportStreamSegmentUserContext& postContext = segment->userPostContext;
+    
+    // Reset pre-context
+    preContext.commandContext.eventStack.Flush();
+    preContext.commandContext.eventStack.SetRemapping(device.state->eventRemappingTable);
+    preContext.commandContext.handle = reinterpret_cast<CommandContextHandle>(&segment->userPreContext);
+    preContext.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(table.state->object);
+    
+    // Reset post-context
+    postContext.commandContext.eventStack.Flush();
+    postContext.commandContext.eventStack.SetRemapping(device.state->eventRemappingTable);
+    postContext.commandContext.handle = reinterpret_cast<CommandContextHandle>(&segment->userPostContext);
+    postContext.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(table.state->object);
+
+    // Setup hook contexts
+    SubmitBatchHookContexts hookContexts;
+    hookContexts.preContext = &preContext.commandContext;
+    hookContexts.postContext = &postContext.commandContext;
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
+        proxyTable.preSubmit.TryInvoke(hookContexts, reinterpret_cast<const CommandContextHandle*>(commandLists), commandListCount);
+    }
+}
+
+static ID3D12GraphicsCommandList* RecordExecutePreCommandList(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment) {
+    ShaderExportStreamSegmentUserContext& context = segment->userPreContext;
+
+    // Record the streaming pre patching
+    ID3D12GraphicsCommandList* patchList = device.state->exportStreamer->RecordPreCommandList(table.state, segment);
+
+    // Any commands?
+    if (context.commandContext.buffer.Count()) {
+        // Lazy allocate streaming state
+        if (!context.streamState) {
+            context.streamState = device.state->exportStreamer->AllocateStreamState();
+        }
+        
+        // Open the streamer state
+        device.state->exportStreamer->BeginCommandList(context.streamState, patchList);
+        {
+            // Commit all commands
+            CommitCommands(
+                device.state,
+                patchList,
+                context.commandContext.buffer,
+                context.streamState
+            );
+        
+            // Close the streamer state
+            device.state->exportStreamer->CloseCommandList(context.streamState);
+        }
+        
+        // Clear all commands
+        context.commandContext.buffer.Clear();
+    }
+
+    // Done
+    HRESULT hr = patchList->Close();
+    if (FAILED(hr)) {
+        return nullptr;
+    }
+    
+    return patchList;
+}
+
+static ID3D12GraphicsCommandList* RecordExecutePostCommandList(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment) {
+    ShaderExportStreamSegmentUserContext& context = segment->userPostContext;
+
+    // Record the streaming pre patching
+    ID3D12GraphicsCommandList* patchList = device.state->exportStreamer->RecordPostCommandList(table.state, segment);
+
+    // Any commands?
+    if (context.commandContext.buffer.Count()) {
+        // Lazy allocate streaming state
+        if (!context.streamState) {
+            context.streamState = device.state->exportStreamer->AllocateStreamState();
+        }
+        
+        // Open the streamer state
+        device.state->exportStreamer->BeginCommandList(context.streamState, patchList);
+        {
+            // Commit all commands
+            CommitCommands(
+                device.state,
+                patchList,
+                context.commandContext.buffer,
+                context.streamState
+            );
+        
+            // Close the streamer state
+            device.state->exportStreamer->CloseCommandList(context.streamState);
+        }
+        
+        // Clear all commands
+        context.commandContext.buffer.Clear();
+    }
+
+    // Done
+    HRESULT hr = patchList->Close();
+    if (FAILED(hr)) {
+        return nullptr;
+    }
+
+    return patchList;
+}
+
 void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT count, ID3D12CommandList *const *lists) {
     auto table = GetTable(queue);
 
     // Get device
     auto device = GetTable(table.state->parent);
+
+    // Flush any pending work
+    FlushCommandQueueContext(GetState(table.state->parent), table.state);
 
     // Process any remaining work on the queue
     device.state->exportStreamer->Process(table.state);
@@ -982,23 +1144,21 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
         unwrapped.Add(listTable.next);
     }
 
+    // Run the submission hook
+    InvokePreSubmitBatchHook(table, device, segment, unwrapped.Data() + 1, count);
+
     // Record the streaming pre patching
-    unwrapped[0] = device.state->exportStreamer->RecordPreCommandList(table.state, segment);
+    unwrapped[0] = RecordExecutePreCommandList(table, device, segment);
 
     // Record the streaming post patching
-    unwrapped.Add(device.state->exportStreamer->RecordPostCommandList(table.state, segment));
+    unwrapped.Add(RecordExecutePostCommandList(table, device, segment));
 
     // Pass down callchain
     table.bottom->next_ExecuteCommandLists(table.next, static_cast<uint32_t>(unwrapped.Size()), unwrapped.Data());
 
-    // Process all again for proxies
-    for (uint32_t i = 0; i < count; i++) {
-        auto listTable = GetTable(lists[i]);
-
-        // Invoke all proxies
-        for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
-            proxyTable.submit.TryInvoke(listTable.state->userContext.handle);
-        }
+    // Run post submission for all proxies
+    for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
+        proxyTable.postSubmit.TryInvoke(reinterpret_cast<const CommandContextHandle*>(unwrapped.Data() + 1), count);
     }
 
     // Notify streamer of submission
@@ -1063,6 +1223,7 @@ CommandListState::~CommandListState() {
 }
 
 ImmediateCommandList CommandQueueState::PopCommandList() {
+    std::lock_guard guard(mutex);
     ImmediateCommandList list;
 
     // Get device
@@ -1105,6 +1266,8 @@ ImmediateCommandList CommandQueueState::PopCommandList() {
 }
 
 void CommandQueueState::PushCommandList(const ImmediateCommandList& list) {
+    std::lock_guard guard(mutex);
+    
     HRESULT hr = list.allocator->Reset();
     ASSERT(SUCCEEDED(hr), "Pushing in-flight immediate command list");
 

@@ -337,6 +337,7 @@ add_library(
     Layer/Source/SwapChain.cpp
     Layer/Source/MemoryHeap.cpp
     Layer/Source/QueryHeap.cpp
+    Layer/Source/QueueSegmentAllocator.cpp
     Layer/Source/DLL.cpp
     Layer/Source/Layer.cpp
     Layer/Source/Compiler/ShaderCompiler.cpp

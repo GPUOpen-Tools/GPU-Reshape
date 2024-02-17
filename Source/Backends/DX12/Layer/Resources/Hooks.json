@@ -175,6 +175,7 @@
         "Signal",
         "Wait",
         "GetDevice",
+        "CopyTileMappings",
         "GetDesc"
       ]
     },
@@ -265,6 +266,7 @@
       "state": "ResourceState",
       "hooks": [
         "Map",
+        "Unmap",
         "GetDevice",
         "SetName"
       ]

@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -29,10 +29,17 @@
 // Std
 #include <cstdint>
 
-/// User context handles
-using CommandContextHandle = uint64_t;
-using CommandQueueHandle = uint64_t;
+// Forward declarations
+struct DeviceMemoryState;
 
-/// Invalid handles
-static constexpr CommandContextHandle kInvalidCommandContextHandle = ~0ull;
-static constexpr CommandQueueHandle kInvalidCommandQueueHandle = ~0ull;
+struct DeviceMemoryTag {
+    /// Offset bound to the tag
+    /// In the future this might include a slot-array index, however, let's keep it simple until we need to complicate it
+    uint64_t baseOffset = UINT64_MAX;
+
+    /// Opaque identifier
+    void* opaque{nullptr};
+
+    /// Owning memory state
+    DeviceMemoryState* owner{nullptr};
+};

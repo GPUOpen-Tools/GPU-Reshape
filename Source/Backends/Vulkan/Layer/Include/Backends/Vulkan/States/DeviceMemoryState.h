@@ -26,13 +26,42 @@
 
 #pragma once
 
+// Layer
+#include <Backends/Vulkan/Vulkan.h>
+#include <Backends/Vulkan/States/DeviceMemoryRange.h>
+
 // Std
-#include <cstdint>
+#include <mutex>
 
-/// User context handles
-using CommandContextHandle = uint64_t;
-using CommandQueueHandle = uint64_t;
+// Forward declarations
+struct DeviceDispatchTable;
 
-/// Invalid handles
-static constexpr CommandContextHandle kInvalidCommandContextHandle = ~0ull;
-static constexpr CommandQueueHandle kInvalidCommandQueueHandle = ~0ull;
+struct DeviceMemoryState {
+    /// Backwards reference
+    DeviceDispatchTable* table;
+
+    /// User memory
+    VkDeviceMemory object{VK_NULL_HANDLE};
+
+    /// Complete range for tracking
+    DeviceMemoryRange range;
+
+    /// Length of this memory
+    size_t length{UINT64_MAX};
+
+    /// Currently mapped offset
+    uint64_t mappedOffset{UINT64_MAX};
+
+    /// Currently mapped length
+    uint64_t mappedLength{UINT64_MAX};
+
+    /// Currently mapped memory
+    void* mappedMemory{nullptr};
+
+    /// Shared lock for this memory allocation
+    /// Number of allocations are low enough so that this is not that costly
+    std::mutex lock;
+
+    /// Unique identifier, unique for the type
+    uint64_t uid;
+};

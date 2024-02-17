@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -27,64 +27,65 @@
 #pragma once
 
 // Layer
-#include <Backends/DX12/Detour.Gen.h>
-#include <Backends/DX12/States/ImmediateCommandList.h>
-#include <Backends/DX12/States/CommandQueueExecutor.h>
+#include <Backends/Vulkan/States/DeviceMemoryRange.h>
+#include <Backends/Vulkan/Vulkan.h>
 
 // Common
-#include <Common/Allocators.h>
-#include <Common/Allocator/Vector.h>
+#include <Common/Allocator/BTree.h>
 
 // Std
+#include <cstdint>
 #include <vector>
-#include <mutex>
 
 // Forward declarations
-struct ShaderExportQueueState;
-struct IncrementalFence;
+struct BufferState;
+struct ImageState;
 
-struct __declspec(uuid("0808310A-9E0B-41B6-81E5-4840CDF1EDAA")) CommandQueueState {
-    CommandQueueState(const Allocators& allocators) : commandLists(allocators) {
+enum class DeviceMemoryResourceType {
+    None,
+    Buffer,
+    Image
+};
+
+struct DeviceMemoryResource {
+    /// Type of the resource
+    DeviceMemoryResourceType type{DeviceMemoryResourceType::None};
+
+    /// Resource payload
+    union {
+        void* opaque{nullptr};
+        BufferState* buffer;
+        ImageState* image;
+    };
+
+    static DeviceMemoryResource Buffer(BufferState* state) {
+        DeviceMemoryResource resource;
+        resource.type = DeviceMemoryResourceType::Buffer;
+        resource.buffer = state;
+        return resource;
+    }
+
+    static DeviceMemoryResource Image(ImageState* state) {
+        DeviceMemoryResource resource;
+        resource.type = DeviceMemoryResourceType::Image;
+        resource.image = state;
+        return resource;
+    }
+};
+
+struct DeviceMemoryEntry {
+    /// Base offset for allocated range
+    uint64_t baseOffset = 0ull;
+    
+    /// All resources for this entry
+    std::vector<DeviceMemoryResource> resources;
+};
+
+struct DeviceMemoryRange {
+    DeviceMemoryRange() : entries(Allocators{}) {
         
     }
     
-    ~CommandQueueState();
-
-    /// Pop a new command list
-    /// \return nullptr if failed
-    ImmediateCommandList PopCommandList();
-
-    /// Push a completed command list
-    /// \param list must be created from this queue
-    void PushCommandList(const ImmediateCommandList& list);
-
-    /// Parent state
-    ID3D12Device* parent{nullptr};
-
-    /// Owning allocator
-    Allocators allocators;
-
-    /// Object
-    ID3D12CommandQueue* object{nullptr};
-
-    /// Creation description
-    D3D12_COMMAND_QUEUE_DESC desc;
-
-    /// Queue export state
-    ShaderExportQueueState* exportState{nullptr};
-
-    /// On demand command lists
-    Vector<ImmediateCommandList> commandLists;
-
-    /// Shared executor
-    CommandQueueExecutor executor;
-
-    /// Shared fence
-    IncrementalFence* sharedFence{nullptr};
-
-    /// Shared lock
-    std::mutex mutex;
-
-    /// Unique ID
-    uint64_t uid{0};
+    /// All virtual addresses tracked
+    BTreeMap<uint64_t, DeviceMemoryEntry> entries;
 };

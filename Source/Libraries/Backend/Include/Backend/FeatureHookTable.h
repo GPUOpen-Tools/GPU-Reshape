@@ -42,6 +42,14 @@ struct TextureDescriptor;
 struct ResourceInfo;
 struct RenderPassInfo;
 
+struct SubmitBatchHookContexts {
+    /// Commands injected prior all command contexts
+    CommandContext* preContext{nullptr};
+
+    /// Commands injected after all command contexts
+    CommandContext* postContext{nullptr};
+};
+
 // Hook types
 namespace Hooks {
     /// Invocations
@@ -50,6 +58,8 @@ namespace Hooks {
     using Dispatch = Delegate<void(CommandContext* context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ)>;
 
     /// Resource
+    using MapResource = Delegate<void(const ResourceInfo& source)>;
+    using UnmapResource = Delegate<void(const ResourceInfo& source)>;
     using CopyResource = Delegate<void(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest)>;
     using ResolveResource = Delegate<void(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest)>;
     using ClearResource = Delegate<void(CommandContext* context, const ResourceInfo& resource)>;
@@ -60,9 +70,10 @@ namespace Hooks {
     using EndRenderPass = Delegate<void(CommandContext* context)>;
 
     /// Submission
-    using Open = Delegate<void(CommandContext* context)>;
+    using Open = Delegate<void(CommandContext *context)>;
     using Close = Delegate<void(CommandContextHandle contextHandle)>;
-    using Submit = Delegate<void(CommandContextHandle contextHandle)>;
+    using PreSubmit = Delegate<void(const SubmitBatchHookContexts& hookContexts, const CommandContextHandle *contexts, uint32_t contextCount)>;
+    using PostSubmit = Delegate<void(const CommandContextHandle *contexts, uint32_t contextCount)>;
     using Join = Delegate<void(CommandContextHandle contextHandle)>;
 }
 
@@ -75,6 +86,8 @@ public:
     Hooks::Dispatch dispatch;
 
     /// Resource
+    Hooks::MapResource mapResource;
+    Hooks::UnmapResource unmapResource;
     Hooks::CopyResource copyResource;
     Hooks::ResolveResource resolveResource;
     Hooks::ClearResource clearResource;
@@ -87,6 +100,7 @@ public:
     /// Submission
     Hooks::Open open;
     Hooks::Close close;
-    Hooks::Submit submit;
+    Hooks::PreSubmit preSubmit;
+    Hooks::PostSubmit postSubmit;
     Hooks::Join join;
 };

@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -28,52 +28,20 @@
 
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
-#include <Backends/Vulkan/Resource/VirtualResourceMapping.h>
-#include <Backends/Vulkan/States/DeviceMemoryTag.h>
-
-// Common
-#include "Common/Containers/ReferenceObject.h"
-
-// Std
-#include <cstdint>
-#include <vector>
 
 // Forward declarations
-struct DeviceDispatchTable;
+struct DeviceMemoryTag;
 
-struct BufferState {
-    /// Backwards reference
-    DeviceDispatchTable* table;
+/// Free a memory tag from its owner
+/// \param tag tag to be freed
+void FreeMemoryTag(const DeviceMemoryTag& tag);
 
-    /// User buffer
-    VkBuffer object{VK_NULL_HANDLE};
-
-    /// Allocated mapping
-    VirtualResourceMapping virtualMapping;
-
-    /// Creation info
-    VkBufferCreateInfo createInfo;
-
-    /// Bound memory tag
-    DeviceMemoryTag memoryTag;
-
-    /// Optional debug name
-    char* debugName{nullptr};
-
-    /// Unique identifier, unique for the type
-    uint64_t uid;
-};
-
-struct BufferViewState {
-    /// Backwards reference
-    BufferState* parent;
-
-    /// User buffer
-    VkBufferView object{VK_NULL_HANDLE};
-
-    /// Allocated mapping
-    VirtualResourceMapping virtualMapping;
-
-    /// Unique identifier, unique for the type
-    uint64_t uid;
-};
+/// Hooks
+VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkAllocateMemory(VkDevice device, const VkMemoryAllocateInfo* pAllocateInfo, const VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory);
+VKAPI_ATTR void     VKAPI_ATTR Hook_vkFreeMemory(VkDevice device, VkDeviceMemory memory, const VkAllocationCallbacks* pAllocator);
+VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkMapMemory(VkDevice device, VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData);
+VKAPI_ATTR void     VKAPI_ATTR Hook_vkUnmapMemory(VkDevice device, VkDeviceMemory memory);
+VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkBindBufferMemory(VkDevice device, VkBuffer buffer, VkDeviceMemory memory, VkDeviceSize memoryOffset);
+VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkBindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize memoryOffset);
+VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkBindBufferMemory2KHR(VkDevice device, uint32_t bindInfoCount, const VkBindBufferMemoryInfo* pBindInfos);
+VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkBindImageMemory2KHR(VkDevice device, uint32_t bindInfoCount, const VkBindImageMemoryInfo* pBindInfos);

@@ -128,11 +128,14 @@ bool InitializationFeature::PostInstall() {
 
 FeatureHookTable InitializationFeature::GetHookTable() {
     FeatureHookTable table{};
+    table.mapResource = BindDelegate(this, InitializationFeature::OnMapResource);
     table.copyResource = BindDelegate(this, InitializationFeature::OnCopyResource);
     table.resolveResource = BindDelegate(this, InitializationFeature::OnResolveResource);
     table.clearResource = BindDelegate(this, InitializationFeature::OnClearResource);
     table.writeResource = BindDelegate(this, InitializationFeature::OnWriteResource);
     table.beginRenderPass = BindDelegate(this, InitializationFeature::OnBeginRenderPass);
+    table.preSubmit = BindDelegate(this, InitializationFeature::OnSubmitBatchBegin);
+    table.join = BindDelegate(this, InitializationFeature::OnJoin);
     return table;
 }
 
@@ -282,6 +285,16 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
     });
 }
 
+void InitializationFeature::OnMapResource(const ResourceInfo &source) {
+    std::lock_guard guard(mutex);
+
+    // Mark for host initialization
+    pendingInitializationQueue.push_back(InitialiationTag {
+        .puid = source.token.puid,
+        .srb = ~0u
+    });
+}
+
 void InitializationFeature::OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
     MaskResourceSRB(context, dest.token.puid, ~0u);
 }
@@ -330,6 +343,62 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
             MaskResourceSRB(context, passInfo.depthAttachment->resolveResource->token.puid, ~0u);
         }
     }
+}
+
+void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& hookContexts, const CommandContextHandle *contexts, uint32_t contextCount) {
+    std::lock_guard guard(mutex);
+
+    // Not interested in empty submissions
+    if (!contextCount) {
+        return;
+    }
+    
+    // Set commit base
+    // Note: We track on the first context, once the first context has completed, all the rest have
+    CommandContextInfo& info = commandContexts[contexts[0]];
+    info.committedInitializationHead = committedInitializationBase + pendingInitializationQueue.size();
+
+    // Create builder
+    CommandBuilder builder(hookContexts.preContext->buffer);
+
+    // Initialize all PUIDs
+    for (const InitialiationTag& tag : pendingInitializationQueue) {
+        uint32_t& initializedSRB = puidSRBInitializationMap[tag.puid];
+
+        // May already be initialized
+        if ((initializedSRB & tag.srb) == tag.srb) {
+            continue;
+        }
+
+        // Mark host side initialization
+        initializedSRB |= tag.srb;
+
+        // Mark device side initialization
+        builder.StageBuffer(initializationMaskBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.srb);
+    }
+}
+
+void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
+    std::lock_guard guard(mutex);
+
+    // If untracked, ignore
+    auto it = commandContexts.find(contextHandle);
+    if (it == commandContexts.end()) {
+        return;
+    }
+    
+    // If the head is less than the current base, it's already been shaved off
+    if (it->second.committedInitializationHead <= committedInitializationBase) {
+        return;
+    }
+
+    // Shave off all known committed initialization events
+    const size_t shaveCount = it->second.committedInitializationHead - committedInitializationBase;
+    pendingInitializationQueue.erase(pendingInitializationQueue.begin(), pendingInitializationQueue.begin() + shaveCount);
+
+    // Set new base
+    committedInitializationBase = it->second.committedInitializationHead;
+    commandContexts.erase(contextHandle);
 }
 
 FeatureInfo InitializationFeature::GetInfo() {

@@ -55,6 +55,7 @@
 
 // Backend
 #include <Backend/IShaderExportHost.h>
+#include <Backend/FeatureHookTable.h>
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -1273,12 +1274,6 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPreCommandList(CommandQue
         }
     }
 
-    // Done
-    HRESULT hr = patchList->Close();
-    if (FAILED(hr)) {
-        return nullptr;
-    }
-
     // OK
     return patchList;
 }
@@ -1332,12 +1327,6 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPostCommandList(CommandQu
         0u,
         nullptr
     );
-
-    // Done
-    HRESULT hr = patchList->Close();
-    if (FAILED(hr)) {
-        return nullptr;
-    }
 
     // OK
     return patchList;

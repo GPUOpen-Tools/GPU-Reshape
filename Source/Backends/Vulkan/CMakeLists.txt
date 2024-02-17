@@ -259,6 +259,7 @@ add_library(
     Layer/Source/Resource/PhysicalResourceMappingTable.cpp
     Layer/Source/Resource/PhysicalResourceMappingTablePersistentVersion.cpp
     Layer/Source/Resource.cpp
+    Layer/Source/Memory.cpp
     Layer/Source/ShaderProgram/ShaderProgramHost.cpp
     Layer/Source/Command/UserCommandBuffer.cpp
     Layer/Source/Debug.cpp
