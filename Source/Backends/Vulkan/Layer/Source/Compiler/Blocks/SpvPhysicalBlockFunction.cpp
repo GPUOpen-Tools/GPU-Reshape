@@ -37,6 +37,7 @@
 // Common
 #include <Common/Alloca.h>
 #include <Common/Containers/TrivialStackVector.h>
+#include <Common/Sink.h>
 
 void SpvPhysicalBlockFunction::Parse() {
     block = table.scan.GetPhysicalBlock(SpvPhysicalBlockType::Function);
@@ -2149,109 +2150,82 @@ void SpvPhysicalBlockFunction::PostPatchLoopSelectionMerge(const IL::OpaqueInstr
     }
 }
 
+static void ReplicateNonPhiInstructionStream(IL::BasicBlock* source, IL::BasicBlock* dest) {
+    // TODO: Replication of non-exposed streams!
+    GRS_SINK(source, dest);
+}
+
 void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
-#if 1
-    // Allow instrumentation after the loop continue block
+    // We must allow for the instrumentation of loop continue blocks, however,
+    // structured control flow puts a very strict set of requirements on this.
+    // The cleanest way forward is to proxy each loop continue predecessor,
+    // duplicate the instruction stream, and phi merge the results.
+    // So.
+    //   A ---v
+    //   B -> Continue
+    //   C ---^
+    // Becomes
+    //   A -> PA ---v
+    //   B -> PB -> Continue
+    //   C -> PC ---^
+    // With Continue being marked as no instrumentation.
+    
     for (const LoopContinueBlock& block : loopContinueBlocks) {
-        IL::BasicBlock* continueBlock = fn->GetBasicBlocks().GetBlock(block.block);
+        IL::BasicBlock* continueBlock = program.GetIdentifierMap().GetBasicBlock(block.block);
 
-        // Allocate post block
-        IL::BasicBlock* postMergeBlock = fn->GetBasicBlocks().AllocBlock();
-
-        // Final split point
-        IL::BasicBlock::Iterator splitPoint = continueBlock->begin();
-
-        // Do not split any phi operations
-        while (splitPoint != continueBlock->end() && splitPoint->Is<IL::PhiInstruction>()) {
-            splitPoint++;
-        }
-
-        // Move all instructions to post merge
-        continueBlock->Split(postMergeBlock, splitPoint);
-
-        // Never instrument the source loop block
+        // Never instrument the actual continue block
         continueBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
 
-        // Branch back to the loop header
-        IL::Emitter<> emitter(program, *continueBlock);
-        emitter.Branch(postMergeBlock);
-    }
+        // Keep a local copy
+        IL::IdentifierMap::BlockUserList list = program.GetIdentifierMap().GetBlockUsers(block.block);
+        
+        // Find all predecessors
+        for (IL::OpaqueInstructionRef opaque : list) {
+            IL::BasicBlock* predecessorBlock = opaque.basicBlock;
 
-    // Empty out
-    loopContinueBlocks.clear();
-#else // 1
-    for (const LoopContinueBlock& block : loopContinueBlocks) {
-        IL::ID bridgeBlockId = program.GetIdentifierMap().AllocID();
-
-        // All removed users
-        TrivialStackVector<IL::OpaqueInstructionRef, 128> removed(allocators);
-
-        // Change all users
-        for (const IL::OpaqueInstructionRef& ref : program.GetIdentifierMap().GetBlockUsers(block.block)) {
-            IL::Instruction* instruction = ref.basicBlock->GetRelocationInstruction(ref.relocationOffset);
-
-            // Attempt to patch the instruction
-            if (!PostPatchLoopContinueInstruction(instruction, block.block, bridgeBlockId)) {
+            // Ignore non branch instructions (phi)
+            auto ref = IL::InstructionRef<>(opaque).Cast<IL::BranchInstruction>();
+            if (!ref) {
                 continue;
             }
 
-            // If the user is the merge block of a selection construct, we must redirect the CF merge block to the bridge block
-            PostPatchLoopSelectionMerge(ref, bridgeBlockId);
+            // Validation
+            ASSERT(opaque.basicBlock->GetTerminator()->As<IL::BranchInstruction>()->branch == block.block, "Unexpected branching");
 
-            // Add new block user
-            program.GetIdentifierMap().AddBlockUser(bridgeBlockId, ref);
+            // Replicate the instruction stream
+            IL::BasicBlock* proxyBlock = fn->GetBasicBlocks().AllocBlock();
+            ReplicateNonPhiInstructionStream(continueBlock, proxyBlock);
 
-            // Mark user instruction as dirty
-            instruction->source = instruction->source.Modify();
+            // Predecessor (A, B, C) -> Proxy
+            IL::Emitter<IL::Op::Replace>(program, *predecessorBlock, predecessorBlock->GetTerminator()).Branch(proxyBlock);
 
-            // Mark the branch block as dirty to ensure recompilation
-            ref.basicBlock->MarkAsDirty();
+            // Proxy -> Continue
+            IL::Emitter<>(program, *proxyBlock).Branch(continueBlock);
 
-            // Latent removal
-            removed.Add(ref);
+            // Redirect the existing continue Phis to the proxy
+            for (auto it = continueBlock->begin(); it != continueBlock->end(); it++) {
+                auto* instr = it.GetMutable()->Cast<IL::PhiInstruction>();
+                if (!instr) {
+                    continue;
+                }
+
+                // Check all values
+                for (uint32_t i = 0; i < instr->values.count; i++) {
+                    IL::PhiValue& value = instr->values[i];
+                    
+                    if (value.branch == predecessorBlock->GetID()) {
+                        value.branch = proxyBlock->GetID();
+                    }
+                }
+
+                // Make sure it's recompiled
+                instr->source = instr->source.Modify();
+            }
         }
 
-        // Remove references
-        for (const IL::OpaqueInstructionRef& ref : removed) {
-            program.GetIdentifierMap().RemoveBlockUser(block.block, ref);
-        }
-
-        // All blocks
-        IL::BasicBlockList& basicBlocks = fn->GetBasicBlocks();
-
-        // Get the original continue block and rename it
-        IL::BasicBlock* originalContinueBlock = basicBlocks.GetBlock(block.block);
-        basicBlocks.RenameBlock(originalContinueBlock, bridgeBlockId);
-
-        // Allocate continue proxy block, use the same id
-        IL::BasicBlock* postContinueBlock = fn->GetBasicBlocks().AllocBlock(block.block);
-
-        // Modify original block
-        {
-            // Get the terminator
-            auto it = originalContinueBlock->GetTerminator();
-            ASSERT(it->Is<IL::BranchInstruction>(), "Unexpected terminator");
-            ASSERT(it->As<IL::BranchInstruction>()->branch == block.instruction.basicBlock->GetID(), "Unexpected loop terminator block");
-
-            // Remove the original branch instruction (back to the header)
-            originalContinueBlock->Remove(it);
-
-            // Branch to the post block
-            IL::Emitter<> emitter(program, *originalContinueBlock);
-            emitter.Branch(postContinueBlock);
-        }
-
-        // Modify post block
-        {
-            // Never instrument this block
-            postContinueBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
-
-            // Branch back to the loop header
-            IL::Emitter<> emitter(program, *postContinueBlock);
-            emitter.Branch(block.instruction.basicBlock);
-        }
+        // Re-emit entire block
+        continueBlock->MarkAsDirty();
     }
-#endif // 1
 
     // Empty out
     loopContinueBlocks.clear();
