@@ -209,7 +209,11 @@ namespace Backend::IL {
             }
             case OpCode::Div: {
                 auto _instr = instr->As<DivInstruction>();
-                return FoldNumericConstants(program, std::make_tuple(map(_instr->lhs), map(_instr->rhs)), [](auto lhs, auto rhs) {
+                return FoldNumericConstants(program, std::make_tuple(map(_instr->lhs), map(_instr->rhs)), [](auto lhs, auto rhs) -> decltype(lhs) {
+                    if (rhs == 0) {
+                        return 0;
+                    }
+                    
                     if constexpr(!std::is_same_v<decltype(lhs), bool>) {
                         return lhs / rhs;
                     } else {
@@ -225,7 +229,11 @@ namespace Backend::IL {
             }
             case OpCode::Rem: {
                 auto _instr = instr->As<RemInstruction>();
-                return FoldNumericConstants(program, std::make_tuple(map(_instr->lhs), map(_instr->rhs)), [](auto lhs, auto rhs) {
+                return FoldNumericConstants(program, std::make_tuple(map(_instr->lhs), map(_instr->rhs)), [](auto lhs, auto rhs) -> decltype(lhs) {
+                    if (rhs == 0) {
+                        return 0;
+                    }
+                    
                     if constexpr(std::is_floating_point_v<decltype(lhs)>) {
                         return std::fmod(lhs, rhs);
                     } else if constexpr(!std::is_same_v<decltype(lhs), bool>) {
