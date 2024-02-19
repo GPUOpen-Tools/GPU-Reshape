@@ -35,23 +35,19 @@
 #include <Backend/IL/Analysis/UserAnalysis.h>
 #include <Backend/IL/Analysis/CFG/DominatorAnalysis.h>
 #include <Backend/IL/Analysis/CFG/LoopAnalysis.h>
+#include <Backend/IL/Analysis/IAnalysis.h>
 
 namespace IL {
-    class ConstantAnalysis {
+    class ConstantAnalysis : public IFunctionAnalysis {
     public:
+        COMPONENT(ConstantAnalysis);
+        
         /// Constructor
-        /// \param dominatorAnalysis block and instruction dominance
-        /// \param loopAnalysis computed loop constructs
-        ConstantAnalysis(Program& program, const DominatorAnalysis &dominatorAnalysis, const LoopAnalysis& loopAnalysis) :
-            program(program),
-            dominatorAnalysis(dominatorAnalysis),
-            loopAnalysis(loopAnalysis),
-            users(program),
-            propagationEngine(program, dominatorAnalysis, loopAnalysis, users) {
-            for (const Loop& loop : loopAnalysis.GetView()) {
-                LoopInfo& info = loopLookup[loop.header];
-                info.definition = &loop;
-            }
+        /// \param program program to inject constants to
+        /// \param function function to compute constant analysis for
+        ConstantAnalysis(Program& program, Function& function) :
+            program(program), function(function),
+            propagationEngine(program, function) {
         }
 
         ~ConstantAnalysis() {
@@ -63,11 +59,31 @@ namespace IL {
             }
         }
 
-        /// Compute constant propagation of a block list
-        /// \param basicBlocks all basic blocks
-        void Compute(const BasicBlockList& basicBlocks) {
+        /// Compute constant propagation of a function
+        bool Compute() {
             propagationValues.resize(program.GetIdentifierMap().GetMaxID());
 
+            // Compute instruction user analysis to ssa-edges
+            if (users = program.GetAnalysisMap().FindPassOrCompute<UserAnalysis>(program); !users) {
+                return false;
+            }
+
+            // Compute dominator analysis for propagation
+            if (dominatorAnalysis = function.GetAnalysisMap().FindPassOrCompute<DominatorAnalysis>(function); !dominatorAnalysis) {
+                return false;
+            }
+
+            // Compute loop analysis for simulation
+            if (loopAnalysis = function.GetAnalysisMap().FindPassOrCompute<LoopAnalysis>(function); !loopAnalysis) {
+                return false;
+            }
+            
+            // Setup loop headers
+            for (const Loop& loop : loopAnalysis->GetView()) {
+                LoopInfo& info = loopLookup[loop.header];
+                info.definition = &loop;
+            }
+            
             // Set program wide constants
             for (const Constant* constant : program.GetConstants()) {
                 if (constant->IsSymbolic()) {
@@ -105,14 +121,14 @@ namespace IL {
                 propagationValues[variable->id] = value;
             }
 
-            // Compute all users
-            users.Compute();
-
             // Compute propagation
-            propagationEngine.Compute(basicBlocks, *this);
+            propagationEngine.Compute(*this);
 
             // Finally, composite all memory ranges back into the typical constant layout
             CompositePropagatedMemoryRanges();
+
+            // OK
+            return true;
         }
 
         /// Propagate an instruction and its side effects
@@ -1096,7 +1112,7 @@ namespace IL {
             }
 
             // None found, check predecessors
-            const DominatorAnalysis::BlockView& predecessors = dominatorAnalysis.GetPredecessors(block);
+            const DominatorAnalysis::BlockView& predecessors = dominatorAnalysis->GetPredecessors(block);
             if (predecessors.empty()) {
                 return {};
             }
@@ -1160,14 +1176,17 @@ namespace IL {
         /// Outer program
         Program& program;
 
+        /// Source function
+        Function& function;
+
         /// Domination tree
-        const DominatorAnalysis& dominatorAnalysis;
+        ComRef<DominatorAnalysis> dominatorAnalysis;
 
         /// Loop tree
-        const LoopAnalysis& loopAnalysis;
+        ComRef<LoopAnalysis> loopAnalysis;
 
         /// All users
-        UserAnalysis users;
+        ComRef<UserAnalysis> users;
 
     private:
         /// All propagated values (result wise lookup)

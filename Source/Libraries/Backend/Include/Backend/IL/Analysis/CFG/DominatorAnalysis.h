@@ -31,31 +31,34 @@
 #include <Backend/IL/Instruction.h>
 #include <Backend/IL/BasicBlockList.h>
 #include <Backend/IL/Analysis/CFG/BasicBlockTraversal.h>
+#include <Backend/IL/Analysis/IAnalysis.h>
 
 // Std
 #include <vector>
 #include <unordered_map>
 
 namespace IL {
-    class DominatorAnalysis {
+    class DominatorAnalysis : public IFunctionAnalysis {
     public:
+        COMPONENT(DominatorAnalysis);
+        
         using BlockView = std::vector<BasicBlock*>;
 
         /// Constructor
-        /// \param basicBlocks all basic blocks
-        DominatorAnalysis(BasicBlockList& basicBlocks) : basicBlocks(basicBlocks) {
+        /// \param function the function to compute dominance analysis for
+        DominatorAnalysis(Function& function) : function(function) {
 
         }
 
         /// Compute the dominator tree
-        void Compute() {
+        bool Compute() {
             /** Loosely based on on https://www.cs.rice.edu/~keith/Embed/dom.pdf */
 
             // Initialize all blocks
             InitializeBlocks();
 
             // Get entry point
-            IL::BasicBlock* entryPoint = basicBlocks.GetEntryPoint();
+            IL::BasicBlock* entryPoint = function.GetBasicBlocks().GetEntryPoint();
 
             // Mark the immediate entry point dominator
             GetBlock(entryPoint).immediateDominator = entryPoint;
@@ -117,6 +120,9 @@ namespace IL {
                     break;
                 }
             }
+
+            // OK
+            return true;
         }
 
         /// Determine if a basic block dominates another
@@ -124,7 +130,7 @@ namespace IL {
         /// \param second block being dominated
         /// \return true if first dominates second
         bool Dominates(const BasicBlock* first, const BasicBlock* second) const {
-            BasicBlock* entryPoint = basicBlocks.GetEntryPoint();
+            BasicBlock* entryPoint = function.GetBasicBlocks().GetEntryPoint();
             if (first == entryPoint) {
                 return true;
             }
@@ -176,9 +182,9 @@ namespace IL {
             return it != blocks.end() ? it->second.basicBlock : nullptr;
         }
         
-        /// Get all basic blocks
-        BasicBlockList& GetBasicBlocks() const {
-            return basicBlocks;
+        /// Get the function
+        Function& GetFunction() const {
+            return function;
         }
 
     private:
@@ -210,7 +216,7 @@ namespace IL {
             blocks.clear();
 
             // Reset block states
-            for (BasicBlock* bb : basicBlocks) {
+            for (BasicBlock* bb : function.GetBasicBlocks()) {
                 Block& block = blocks[bb->GetID()];
                 block.basicBlock = bb;
                 block.immediateDominator = nullptr;
@@ -221,6 +227,8 @@ namespace IL {
 
         /// Map out all blocks
         void MapBlocks() {
+            BasicBlockList& basicBlocks = function.GetBasicBlocks();
+            
             // Perform post-order traversal
             poTraversal.PostOrder(basicBlocks);
 
@@ -281,8 +289,8 @@ namespace IL {
         std::unordered_map<IL::ID, Block> blocks;
 
     private:
-        /// Source basic blocks
-        BasicBlockList& basicBlocks;
+        /// Source function
+        Function& function;
 
         /// Post-order traversal
         BasicBlockTraversal poTraversal;

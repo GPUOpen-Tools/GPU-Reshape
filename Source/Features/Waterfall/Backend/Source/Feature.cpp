@@ -76,6 +76,13 @@ void WaterfallFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
+void WaterfallFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
+    // Compute constant analysis for all functions
+    for (IL::Function *function: program.GetFunctionList()) {
+        function->GetAnalysisMap().FindPassOrCompute<IL::ConstantAnalysis>(program, *function);
+    }
+}
+
 void WaterfallFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
     [[maybe_unused]]
@@ -117,19 +124,8 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         return it;
     }
 
-    // TODO: Move analysis outside!
-
-    // Computer all dominators
-    IL::DominatorAnalysis dominatorAnalysis(context.function.GetBasicBlocks());
-    dominatorAnalysis.Compute();
-
-    // Compute all loops
-    IL::LoopAnalysis loopAnalysis(dominatorAnalysis);
-    loopAnalysis.Compute();
-
-    // Compute all constants
-    IL::ConstantAnalysis constantAnalysis(program, dominatorAnalysis, loopAnalysis);
-    constantAnalysis.Compute(context.function.GetBasicBlocks());
+    // Get the pre-injection analysis
+    ComRef constantAnalysis = context.function.GetAnalysisMap().FindPass<IL::ConstantAnalysis>();
 
     // Outgoing message attributes
     uint32_t varyingOperandIndex = 0;
@@ -156,7 +152,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
 
         // If the base composite is constant, this will never waterfall
         // The resulting data is either inlined or moved to memory
-        if (constantAnalysis.IsConstant(instr->composite)) {
+        if (constantAnalysis->IsConstant(instr->composite)) {
             return it;
         }
 
@@ -166,7 +162,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         // Check if any part of the chain is varying
         for (uint32_t i = 0; i < instr->chains.count; i++) {
             const IL::AddressChain& chain = instr->chains[i];
-            if (constantAnalysis.IsVarying(chain.index)) {
+            if (constantAnalysis->IsVarying(chain.index)) {
                 anyChainVarying     = true;
                 varyingOperandIndex = i;
             }
@@ -214,22 +210,11 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
 IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, IL::VisitContext &context, IL::BasicBlock::Iterator it) {
     auto* instr = it->As<IL::ExtractInstruction>();
 
-    // TODO: Move analysis outside!
+    // Get the pre-injection analysis
+    ComRef constantAnalysis = context.function.GetAnalysisMap().FindPass<IL::ConstantAnalysis>();
     
-    // Computer all dominators
-    IL::DominatorAnalysis dominatorAnalysis(context.function.GetBasicBlocks());
-    dominatorAnalysis.Compute();
-
-    // Compute all loops
-    IL::LoopAnalysis loopAnalysis(dominatorAnalysis);
-    loopAnalysis.Compute();
-
-    // Compute all constants
-    IL::ConstantAnalysis constantAnalysis(program, dominatorAnalysis, loopAnalysis);
-    constantAnalysis.Compute(context.function.GetBasicBlocks());
-
     // If either the composite or index is constant, no conditional masking will take place
-    if (constantAnalysis.IsConstant(instr->composite) || constantAnalysis.IsConstant(instr->index)) {
+    if (constantAnalysis->IsConstant(instr->composite) || constantAnalysis->IsConstant(instr->index)) {
         return it;
     }
 

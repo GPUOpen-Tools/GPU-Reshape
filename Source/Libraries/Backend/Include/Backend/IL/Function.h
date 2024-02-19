@@ -30,12 +30,13 @@
 #include <vector>
 
 // Backend
-#include "BasicBlock.h"
-#include "IdentifierMap.h"
-#include "FunctionFlag.h"
-#include "BasicBlockList.h"
-#include "VariableList.h"
-#include "Type.h"
+#include <Backend/IL/BasicBlock.h>
+#include <Backend/IL/IdentifierMap.h>
+#include <Backend/IL/FunctionFlag.h>
+#include <Backend/IL/BasicBlockList.h>
+#include <Backend/IL/VariableList.h>
+#include <Backend/IL/Type.h>
+#include <Backend/IL/Analysis/AnalysisMap.h>
 
 // Std
 #include <list>
@@ -127,6 +128,11 @@ namespace IL {
             return parameters;
         }
 
+        /// Get the analysis map
+        AnalysisMap<IFunctionAnalysis> &GetAnalysisMap() {
+            return analysisMap;
+        }
+
         /// Get the id of this function
         ID GetID() const {
             return id;
@@ -179,6 +185,9 @@ namespace IL {
 
         /// All parameters
         VariableList parameters;
+
+        /// All analysis passes
+        AnalysisMap<IFunctionAnalysis> analysisMap;
 
         /// Function type
         const Backend::IL::FunctionType* functionType{nullptr};

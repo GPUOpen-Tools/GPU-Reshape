@@ -23,12 +23,31 @@ namespace Backend::IL {
          *  https://www.researchgate.net/publication/221477318_Enabling_Sparse_Constant_Propagation_of_Array_Elements_via_Array_SSA_Form
          **/
 
-        PropagationEngine(Program& program, const DominatorAnalysis &dominatorAnalysis, const LoopAnalysis& loopAnalysis, const UserAnalysis& userAnalysis) :
-            program(program),
-            dominatorAnalysis(dominatorAnalysis),
-            loopAnalysis(loopAnalysis),
-            userAnalysis(userAnalysis) {
-            for (const Loop& loop : loopAnalysis.GetView()) {
+        PropagationEngine(Program& program, Function& function) :
+            program(program), function(function) {
+        }
+
+        /// Compute propagation across the function
+        /// \param context propagation context
+        template<typename F>
+        bool Compute(F& context) {
+            // Compute instruction user analysis to ssa-edges
+            if (userAnalysis = program.GetAnalysisMap().FindPassOrCompute<UserAnalysis>(program); !userAnalysis) {
+                return false;
+            }
+
+            // Compute dominator analysis for propagation
+            if (dominatorAnalysis = function.GetAnalysisMap().FindPassOrCompute<DominatorAnalysis>(function); !dominatorAnalysis) {
+                return false;
+            }
+
+            // Compute loop analysis for simulation
+            if (loopAnalysis = function.GetAnalysisMap().FindPassOrCompute<LoopAnalysis>(function); !loopAnalysis) {
+                return false;
+            }
+            
+            // Initialize loop headers
+            for (const Loop& loop : loopAnalysis->GetView()) {
 #ifdef _MSC_VER // Compiler bug workaround
                 LoopHeaderItem& item = loopHeaders[loop.header];
                 item.definition = &loop;
@@ -38,20 +57,16 @@ namespace Backend::IL {
                 };
 #endif // _MSC_VER
             }
-        }
-
-        /// Compute propagation across a set of basic blocks
-        /// \param basicBlocks all basic blocks
-        /// \param context propagation context
-        template<typename F>
-        void Compute(const BasicBlockList& basicBlocks, F& context) {
-            WorkItem work;
 
             // Seed to entry point
-            SeedCFGEdge(work, nullptr, basicBlocks.GetEntryPoint(), PropagationResult::Mapped);
+            WorkItem work;
+            SeedCFGEdge(work, nullptr, function.GetBasicBlocks().GetEntryPoint(), PropagationResult::Mapped);
 
             // Propagate all values
             Propagate(work, context);
+
+            // OK
+            return true;
         }
 
         /// Check if an edge is marked as executable
@@ -103,6 +118,9 @@ namespace Backend::IL {
 
             /// All escaping paths
             std::vector<Edge> latchAndExitEdges;
+
+            /// All executed edges
+            std::vector<Edge> edges;
 
             /// Current number of iterations
             uint32_t iterationCount{0};
@@ -184,6 +202,12 @@ namespace Backend::IL {
                 // Setup work item
                 WorkItem loopWork;
                 loopWork.loop = &loopItem;
+
+                // If the incoming is not that of the outer work item, mark it as executed
+                // This is to satisfy Phi constraints.
+                if (incomingEdge != edge) {
+                    cfgExecutableEdges.insert(incomingEdge);
+                }
 
                 // Evaluate header manually,
                 // ensures that the loop guard doesn't catch the header
@@ -268,6 +292,13 @@ namespace Backend::IL {
                         context.ClearInstruction(instr);
                     }
                 }
+
+                // Remove all executed edges
+                for (const Edge& edge_ : loopItem.edges) {
+                    cfgExecutableEdges.erase(edge_);
+                }
+                
+                loopItem.edges.clear();
             }
         }
 
@@ -383,7 +414,7 @@ namespace Backend::IL {
 
                     // Varying terminators add all the successors to the work list
                     if (IsTerminator(instr)) {
-                        for (const BasicBlock* successor : dominatorAnalysis.GetSuccessors(edge.to)) {
+                        for (const BasicBlock* successor : dominatorAnalysis->GetSuccessors(edge.to)) {
                             SeedCFGEdge(work, edge.to, successor, PropagationResult::Varying);
                         }
                     }
@@ -476,7 +507,7 @@ namespace Backend::IL {
             }
 
             // Seed from all users
-            for (ConstInstructionRef<> ref : userAnalysis.GetUsers(instr->result)) {
+            for (ConstInstructionRef<> ref : userAnalysis->GetUsers(instr->result)) {
                 const Instruction* userInstr = ref.Get();
                 if (!userInstr) {
                     continue;
@@ -527,6 +558,9 @@ namespace Backend::IL {
             if (work.loop) {
                 bool isLatchOrExit = false;
 
+                // Keep track of edge
+                work.loop->edges.push_back(edge);
+
                 // If branching back to the header, terminate
                 isLatchOrExit |= to == work.loop->header->definition->header;
 
@@ -550,16 +584,20 @@ namespace Backend::IL {
         }
 
     private:
+        /// Outer program
         Program& program;
 
+        /// Source function
+        Function& function;
+
         /// Dominator analysis
-        const DominatorAnalysis &dominatorAnalysis;
+        ComRef<DominatorAnalysis> dominatorAnalysis;
 
         /// Loop analysis
-        const LoopAnalysis& loopAnalysis;
+        ComRef<LoopAnalysis> loopAnalysis;
 
         /// User analysis
-        const UserAnalysis& userAnalysis;
+        ComRef<UserAnalysis> userAnalysis;
 
         /// Current work context, this is a hack
         WorkItem* workContext{nullptr};

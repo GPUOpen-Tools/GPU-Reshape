@@ -28,14 +28,17 @@
 
 // Backend
 #include <Backend/IL/InstructionCommon.h>
+#include <Backend/IL/Analysis/IAnalysis.h>
 
 // Std
 #include <vector>
 #include <span>
 
 namespace IL {
-    class UserAnalysis {
+    class UserAnalysis : public IProgramAnalysis {
     public:
+        COMPONENT(UserAnalysis);
+        
         /// Users are represented as instruction references, as users may include instructions without a result
         using UserView = std::span<const ConstInstructionRef<>>;
 
@@ -43,7 +46,7 @@ namespace IL {
             /* poof */
         }
 
-        void Compute() {
+        bool Compute() {
             // Allocate all views
             views.resize(program.GetIdentifierMap().GetMaxID(), {nullptr, 0});
 
@@ -99,6 +102,9 @@ namespace IL {
                 ASSERT(view.head == view.size, "Invalid head to size");
             }
 #endif // NDEBUG
+
+            // OK
+            return true;
         }
 
         /// Get all users for an id

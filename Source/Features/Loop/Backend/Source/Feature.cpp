@@ -247,16 +247,11 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
     } else {
         // The program does not have structured control flow, therefore we need to perform cfg loop analysis, and pray.
         for (IL::Function *fn: program.GetFunctionList()) {
-            // Computer all dominators
-            IL::DominatorAnalysis dominatorAnalysis(fn->GetBasicBlocks());
-            dominatorAnalysis.Compute();
-
-            // Compute all loops
-            IL::LoopAnalysis loopAnalysis(dominatorAnalysis);
-            loopAnalysis.Compute();
+            // Compute loop analysis
+            ComRef loopAnalysis = fn->GetAnalysisMap().FindPassOrCompute<IL::LoopAnalysis>(*fn);
 
             // Instrument each loop
-            for (const IL::Loop& loop : loopAnalysis.GetView()) {
+            for (const IL::Loop& loop : loopAnalysis->GetView()) {
                 // Ignore flagged blocks
                 if (loop.header->HasFlag(BasicBlockFlag::NoInstrumentation)) {
                    continue;

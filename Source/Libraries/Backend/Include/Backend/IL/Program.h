@@ -27,13 +27,14 @@
 #pragma once
 
 // Backend
-#include "Function.h"
-#include "IdentifierMap.h"
-#include "TypeMap.h"
-#include "ConstantMap.h"
-#include "FunctionList.h"
-#include "ShaderDataMap.h"
-#include "CapabilityTable.h"
+#include <Backend/IL/Function.h>
+#include <Backend/IL/IdentifierMap.h>
+#include <Backend/IL/TypeMap.h>
+#include <Backend/IL/ConstantMap.h>
+#include <Backend/IL/FunctionList.h>
+#include <Backend/IL/ShaderDataMap.h>
+#include <Backend/IL/CapabilityTable.h>
+#include <Backend/IL/Analysis/AnalysisMap.h>
 
 // Std
 #include <list>
@@ -171,6 +172,11 @@ namespace IL {
             return capabilityTable;
         }
 
+        /// Get the analysis map
+        AnalysisMap<IProgramAnalysis> &GetAnalysisMap() {
+            return analysisMap;
+        }
+
     private:
         Allocators allocators;
 
@@ -194,6 +200,9 @@ namespace IL {
 
         /// The capability table
         CapabilityTable capabilityTable;
+
+        /// All analysis passes
+        AnalysisMap<IProgramAnalysis> analysisMap;
 
         /// Function entry point
         IL::ID entryPoint{IL::InvalidID};

@@ -32,28 +32,35 @@
 #include <Backend/IL/Analysis/CFG/Loop.h>
 
 namespace IL {
-    class LoopAnalysis {
+    class LoopAnalysis : public IFunctionAnalysis {
     public:
+        COMPONENT(LoopAnalysis);
+        
         using LoopView = std::vector<Loop>;
 
         /// Constructor
-        /// \param dominatorAnalysis domination tree from which to construct loop information
-        LoopAnalysis(const DominatorAnalysis &dominatorAnalysis) : dominatorAnalysis(dominatorAnalysis) {
+        /// \param function the function to perform the loop analysis
+        LoopAnalysis(Function& function) : function(function) {
 
         }
 
         /// Compute the loop view
-        void Compute() {
+        bool Compute() {
+            // Compute dominance analysis
+            if (dominatorAnalysis = function.GetAnalysisMap().FindPassOrCompute<DominatorAnalysis>(function); !dominatorAnalysis) {
+                return false;
+            }
+            
             // Current back-edge stack
             std::vector<BasicBlock *> backEdgeBlocks;
 
             // Visit all blocks in post-order
-            for (BasicBlock *header: dominatorAnalysis.GetPostOrderTraversal().GetView()) {
+            for (BasicBlock *header: dominatorAnalysis->GetPostOrderTraversal().GetView()) {
                 backEdgeBlocks.clear();
 
                 // If the header dominates the predecessor, this is a back-edge
-                for (BasicBlock *predecessor: dominatorAnalysis.GetPredecessors(header)) {
-                    if (dominatorAnalysis.Dominates(header, predecessor)) {
+                for (BasicBlock *predecessor: dominatorAnalysis->GetPredecessors(header)) {
+                    if (dominatorAnalysis->Dominates(header, predecessor)) {
                         backEdgeBlocks.push_back(predecessor);
                     }
                 }
@@ -75,6 +82,9 @@ namespace IL {
                 // Map out all exits
                 MapExitBlocks(loop);
             }
+
+            // OK
+            return true;
         }
 
         /// Get the loop view
@@ -109,7 +119,7 @@ namespace IL {
                 loop.blocks.Add(bb);
 
                 // Visit all predecessors
-                for (BasicBlock* predecessor : dominatorAnalysis.GetPredecessors(bb)) {
+                for (BasicBlock* predecessor : dominatorAnalysis->GetPredecessors(bb)) {
                     // Back at header?
                     if (!AcquireVisitation(predecessor)) {
                         continue;
@@ -126,7 +136,7 @@ namespace IL {
         void MapExitBlocks(Loop& loop) {
             // If a given successor of a known-mapped block is *not* known, this is an exit block
             for (BasicBlock* bb : loop.blocks) {
-                for (BasicBlock* successor : dominatorAnalysis.GetSuccessors(bb)) {
+                for (BasicBlock* successor : dominatorAnalysis->GetSuccessors(bb)) {
                     if (!IsAcquired(successor)) {
                         loop.exitBlocks.Add(successor);
                     }
@@ -141,7 +151,7 @@ namespace IL {
 
             // Determine the effective bound
             uint32_t bound = 0;
-            for (BasicBlock* bb : dominatorAnalysis.GetBasicBlocks()) {
+            for (BasicBlock* bb : dominatorAnalysis->GetFunction().GetBasicBlocks()) {
                 bound = std::max(bound, bb->GetID() + 1u);
             }
 
@@ -178,6 +188,9 @@ namespace IL {
         }
 
     private:
+        /// Source function
+        Function& function;
+        
         /// All loops
         LoopView loops;
 
@@ -185,6 +198,6 @@ namespace IL {
         std::vector<uint32_t> visitedStates;
 
         /// Domination tree
-        const DominatorAnalysis& dominatorAnalysis;
+        ComRef<DominatorAnalysis> dominatorAnalysis;
     };
 }

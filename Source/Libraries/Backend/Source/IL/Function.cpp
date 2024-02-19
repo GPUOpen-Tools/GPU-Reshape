@@ -53,7 +53,7 @@ bool IL::Function::ReorderByDominantBlocks(bool hasControlFlow) {
     IL::BasicBlock* entryPoint = basicBlocks.GetEntryPoint();
 
     // Construct dominance tree from current basic blocks
-    DominatorAnalysis dominatorAnalysis(GetBasicBlocks());
+    DominatorAnalysis dominatorAnalysis(*this);
     dominatorAnalysis.Compute();
 
     // Block acquisition lookup
