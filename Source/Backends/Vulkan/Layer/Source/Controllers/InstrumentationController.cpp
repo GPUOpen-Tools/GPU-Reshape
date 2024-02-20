@@ -1,4 +1,4 @@
-// 
+//
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -717,6 +717,11 @@ void InstrumentationController::CommitInstrumentation() {
 
 void InstrumentationController::Commit() {
     uint32_t count = GetJobCount();
+
+    // Commit all feature messages
+    for (const ComRef<IFeature>& feature : table->features) {
+        feature->CollectMessages(table->bridge->GetOutput());
+    }
 
     // Serial
     std::lock_guard guard(mutex);

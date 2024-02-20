@@ -730,6 +730,11 @@ void InstrumentationController::CommitInstrumentation() {
 void InstrumentationController::Commit() {
     uint32_t count = GetJobCount();
 
+    // Commit all feature messages
+    for (const ComRef<IFeature>& feature : device->features) {
+        feature->CollectMessages(device->bridge->GetOutput());
+    }
+
     // Serial
     std::lock_guard guard(mutex);
     

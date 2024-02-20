@@ -73,6 +73,7 @@ void WaterfallFeature::CollectExports(const MessageStream &exports) {
 }
 
 void WaterfallFeature::CollectMessages(IMessageStorage *storage) {
+    std::lock_guard guard(mutex);
     storage->AddStreamAndSwap(stream);
 }
 
@@ -173,6 +174,16 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         if (!anyChainVarying) {
             return it;
         }
+
+        // Serial
+        {
+            std::lock_guard guard(mutex);
+
+            // Export compile time message
+            auto* message = MessageStreamView<WaterfallingConditionMessage>(stream).Add();
+            message->sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
+            message->varyingOperandIndex = varyingOperandIndex;
+        }
     } else {
         // Resource addressing is concerned with divergence
         // This is incomplete
@@ -192,9 +203,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         return it;
     }
 
-    // Bind the current sguid
-    ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
-
+#if 0
     // Insert just prior to the address chain
     IL::Emitter<> emitter(context.program, context.basicBlock, it);
 
@@ -205,6 +214,9 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     emitter.Export(exportID, msg);
 
     return emitter.GetIterator();
+#endif
+
+    return it;
 }
 
 IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, IL::VisitContext &context, IL::BasicBlock::Iterator it) {
@@ -223,16 +235,17 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, I
     // Bind the current sguid
     ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
 
-    // Insert just prior to the extract
-    IL::Emitter<> emitter(context.program, context.basicBlock, it);
+    // Serial
+    {
+        std::lock_guard guard(mutex);
 
-    // Export waterfalling condition
-    WaterfallingConditionMessage::ShaderExport msg;
-    msg.sguid = emitter.UInt32(sguid);
-    msg.varyingOperandIndex = emitter.UInt32(0);
-    emitter.Export(exportID, msg);
+        // Export compile time message
+        auto* message = MessageStreamView<WaterfallingConditionMessage>(stream).Add();
+        message->sguid = sguid;
+        message->varyingOperandIndex = 0;
+    }
 
-    return emitter.GetIterator();
+    return it;
 }
 
 FeatureInfo WaterfallFeature::GetInfo() {

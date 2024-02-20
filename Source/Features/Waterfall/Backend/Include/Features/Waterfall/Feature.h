@@ -38,6 +38,9 @@
 // Message
 #include <Message/MessageStream.h>
 
+// Std
+#include <mutex>
+
 namespace IL {
     struct VisitContext;
 }
@@ -90,4 +93,7 @@ private:
 
     /// Shared stream
     MessageStream stream;
+
+    /// Shared lock
+    std::mutex mutex;
 };
