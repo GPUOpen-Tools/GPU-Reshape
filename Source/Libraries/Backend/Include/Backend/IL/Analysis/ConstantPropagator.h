@@ -38,19 +38,20 @@
 #include <Backend/IL/Analysis/IAnalysis.h>
 
 namespace IL {
-    class ConstantAnalysis : public IFunctionAnalysis {
+    class ConstantPropagator {
     public:
-        COMPONENT(ConstantAnalysis);
+        COMPONENT(ConstantPropagator);
         
         /// Constructor
         /// \param program program to inject constants to
         /// \param function function to compute constant analysis for
-        ConstantAnalysis(Program& program, Function& function) :
+        /// \param propagationEngine shared propagation engine
+        ConstantPropagator(Program& program, Function& function, Backend::IL::PropagationEngine& propagationEngine) :
             program(program), function(function),
-            propagationEngine(program, function) {
+            propagationEngine(propagationEngine) {
         }
 
-        ~ConstantAnalysis() {
+        ~ConstantPropagator() {
             // Cleanup
             for (PropagatedValue& value : propagationValues) {
                 if (value.memory) {
@@ -60,7 +61,7 @@ namespace IL {
         }
 
         /// Compute constant propagation of a function
-        bool Compute() {
+        bool Install() {
             propagationValues.resize(program.GetIdentifierMap().GetMaxID());
 
             // Compute instruction user analysis to ssa-edges
@@ -121,14 +122,13 @@ namespace IL {
                 propagationValues[variable->id] = value;
             }
 
-            // Compute propagation
-            propagationEngine.Compute(*this);
-
-            // Finally, composite all memory ranges back into the typical constant layout
-            CompositePropagatedMemoryRanges();
-
             // OK
             return true;
+        }
+
+        void CompositeRanges() {
+            // Finally, composite all memory ranges back into the typical constant layout
+            CompositePropagatedMemoryRanges();
         }
 
         /// Propagate an instruction and its side effects
@@ -231,26 +231,26 @@ namespace IL {
         }
 
         /// Check if an identifier is a constant
-        bool IsConstant(ID id) {
+        bool IsConstant(ID id) const {
             return propagationValues.at(id).lattice == Backend::IL::PropagationResult::Mapped;
         }
 
         /// Check if an identifier is a partial constant
         /// Composite types may be partially mapped, such as arrays ([1, 2, -, 4], but 3 not mapped)
-        bool IsPartialConstant(ID id) {
+        bool IsPartialConstant(ID id) const {
             const PropagatedValue& value = propagationValues.at(id);
             return value.constant && value.lattice == Backend::IL::PropagationResult::Varying;
         }
 
         /// Check if an identifier is presumed varying (i.e., not constant)
-        bool IsVarying(ID id) {
+        bool IsVarying(ID id) const {
             // Note that we are checking for a lack of mapping, not the propagation result
             // It may not have been propagated at all
             return propagationValues.at(id).lattice != Backend::IL::PropagationResult::Mapped;
         }
 
         /// Check if an identifier is overdefined (i.e., has multiple compile time values)
-        bool IsOverdefined(ID id) {
+        bool IsOverdefined(ID id) const {
             return propagationValues.at(id).lattice == Backend::IL::PropagationResult::Overdefined;
         }
 
@@ -1193,7 +1193,7 @@ namespace IL {
         std::vector<PropagatedValue> propagationValues;
 
         /// Underlying propagation engine
-        Backend::IL::PropagationEngine propagationEngine;
+        Backend::IL::PropagationEngine& propagationEngine;
 
     private:
         /// Memory lookup for SSA instructions

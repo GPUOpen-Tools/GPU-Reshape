@@ -25,14 +25,15 @@
 // 
 
 // Feature
-#include <Features/Waterfall//Feature.h>
+#include <Features/Waterfall/Feature.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
-#include <Backend/IL/Analysis/ConstantAnalysis.h>
+#include <Backend/IL/Analysis/SimulationAnalysis.h>
+#include <Backend/IL/Analysis/DivergencePropagator.h>
 
 // Generated schema
 #include <Schemas/Features/Waterfall.h>
@@ -80,7 +81,11 @@ void WaterfallFeature::CollectMessages(IMessageStorage *storage) {
 void WaterfallFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Compute constant analysis for all functions
     for (IL::Function *function: program.GetFunctionList()) {
-        function->GetAnalysisMap().FindPassOrCompute<IL::ConstantAnalysis>(program, *function);
+        // Create a simulation analysis pass with divergence analysis
+        if (auto&& analysis = function->GetAnalysisMap().FindPassOrAdd<IL::SimulationAnalysis>(program, *function)) {
+            analysis->AddPropagator<IL::DivergencePropagator>(program, *function);
+            analysis->Compute();
+        }
     }
 }
 
@@ -126,7 +131,13 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     }
 
     // Get the pre-injection analysis
-    ComRef constantAnalysis = context.function.GetAnalysisMap().FindPass<IL::ConstantAnalysis>();
+    ComRef simulationAnalysis = context.function.GetAnalysisMap().FindPass<IL::SimulationAnalysis>();
+
+    // Get the constant analysis
+    const IL::ConstantPropagator& constantPropagator = simulationAnalysis->GetConstantPropagator();
+
+    // Get the divergence propagator
+    ComRef divergencePropagator = simulationAnalysis->FindPropagator<IL::DivergencePropagator>();
 
     // Outgoing message attributes
     uint32_t varyingOperandIndex = 0;
@@ -153,25 +164,36 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
 
         // If the base composite is constant, this will never waterfall
         // The resulting data is either inlined or moved to memory
-        if (constantAnalysis->IsConstant(instr->composite)) {
+        if (constantPropagator.IsConstant(instr->composite)) {
             return it;
         }
 
         // If the composite is not constant, we check each access chain
         bool anyChainVarying = false;
+        bool anyChainDivergent = false;
 
-        // Check if any part of the chain is varying
+        // Check if any part of the chain is varying or divergent
         for (uint32_t i = 0; i < instr->chains.count; i++) {
             const IL::AddressChain& chain = instr->chains[i];
-            if (constantAnalysis->IsVarying(chain.index)) {
+
+            if (constantPropagator.IsVarying(chain.index)) {
                 anyChainVarying     = true;
                 varyingOperandIndex = i;
+            }
+
+            if (divergencePropagator->GetDivergence(chain.index) == IL::WorkGroupDivergence::Divergent) {
+                anyChainDivergent = true;
             }
         }
 
         // If none is varying, this can be collapsed
         // TODO: Check for partial constants!
         if (!anyChainVarying) {
+            return it;
+        }
+
+        // If none is divergent, it can go through the M0 register with dynamic addressing
+        if (!anyChainDivergent) {
             return it;
         }
 
@@ -223,10 +245,13 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, I
     auto* instr = it->As<IL::ExtractInstruction>();
 
     // Get the pre-injection analysis
-    ComRef constantAnalysis = context.function.GetAnalysisMap().FindPass<IL::ConstantAnalysis>();
-    
+    ComRef simulationAnalysis = context.function.GetAnalysisMap().FindPass<IL::SimulationAnalysis>();
+
+    // Get the consatnt analysis
+    const IL::ConstantPropagator& constantPropagator = simulationAnalysis->GetConstantPropagator();
+
     // If either the composite or index is constant, no conditional masking will take place
-    if (constantAnalysis->IsConstant(instr->composite) || constantAnalysis->IsConstant(instr->index)) {
+    if (constantPropagator.IsConstant(instr->composite) || constantPropagator.IsConstant(instr->index)) {
         return it;
     }
 

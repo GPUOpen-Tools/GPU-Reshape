@@ -44,6 +44,25 @@ namespace IL {
 
         }
 
+        /// Find a pass or construct it if it doesn't exist
+        /// \param args all construction arguments
+        /// \return nullptr if failed to create
+        template<typename U, typename... AX>
+        ComRef<U> FindPassOrAdd(AX&&... args) {
+            static_assert(std::is_base_of_v<T, U>, "Invalid analysis target");
+
+            // Already exists?
+            if (ComRef<U> analysis = registry.Get<U>()) {
+                return std::move(analysis);
+            }
+
+            // Create a new one
+            ComRef<U> analysis = registry.AddNew<U>(std::forward<AX>(args)...);
+
+            // OK
+            return analysis;
+        }
+
         /// Find a pass or construct and compute it if it doesn't exist
         /// \param args all construction arguments
         /// \return nullptr if failed to create

@@ -29,40 +29,36 @@
 
 //! SCHEMA "Schemas/Features/Waterfall.h"
 
-//! RESOURCE CBuffer
+//! RESOURCE CBuffer data:0
 [[vk::binding(0)]] cbuffer ConstantBuffer : register(b0, space0) {
-    float gScalarData;
+    uint gScalarIndex;
+    uint gScalarArray[10];
 }
 
 //! RESOURCE RWBuffer<R32Float> size:64
-[[vk::binding(1)]] RWBuffer<float> bufferRW[] : register(u1, space0);
+[[vk::binding(1)]] RWBuffer<float> bufferRW : register(u1, space0);
 
 [numthreads(1, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
-    int phi = 0;
+    float varyingArray[10];
 
-    if (gScalarData) {
-        // Force phi instead of select, give it something more expensive to compute
-        phi = gScalarData * 33.0f + 0.2f;
-    } else {
-        phi = 2;
+    // Populate varying array
+    for (int i = 0; i < 10; i++) {
+        varyingArray[i] = i * dtid;
     }
 
-    // Phi instructions are not divergent in and of themselves, only if the CF is divergent
-    // In this case, the condition is scalar, therefore convergent
-    bufferRW[phi][0] = gScalarData;
+    // Divergence values
+    uint uniformValue   = gScalarArray[gScalarIndex];
+    uint divergentValue = bufferRW[dtid];
 
-    if (bufferRW[0][0]) {
-        // Force phi instead of select, give it something more expensive to compute
-        phi = gScalarData * 33.0f + 0.2f;
-    } else {
-        phi = 1;
-    }
+    // Simple check, uniform indexing into constant array
+    bufferRW[dtid * 10 + 0] = varyingArray[uniformValue];
 
-    // In this case, the condition is a memory read, therefore divergent
+    // Simple check, validate divergent values
     //! MESSAGE WaterfallingCondition[1]
-    bufferRW[phi][0] = gScalarData;
+    bufferRW[dtid * 10 + 1] = varyingArray[divergentValue];
 
-    // Validate annotated divergent indexing is checked for
-    bufferRW[NonUniformResourceIndex(phi)][0] = gScalarData;
+    // Simple check, validate scalarization of divergent values works
+    bufferRW[dtid * 10 + 2] = varyingArray[WaveReadLaneFirst(divergentValue)];
+
 }
