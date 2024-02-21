@@ -1041,20 +1041,18 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                     program.GetTypeMap().SetType(linear, callDecl->type->parameterTypes[i]);
                 }
 
-                // General traits in case the instruction is not exposed
-                IL::UnexposedInstructionTraits traits{};
+                // General unexposed in case the instruction is unknown
+                IL::UnexposedInstruction unexposed{};
 
                 // Try intrinsic
-                if (!TryParseIntrinsic(basicBlock, recordIdx, reader, anchor, called, result, traits)) {
+                if (!TryParseIntrinsic(basicBlock, recordIdx, reader, anchor, called, result, unexposed)) {
                     // Unknown, emit as unexposed
-                    IL::UnexposedInstruction instr{};
-                    instr.opCode = IL::OpCode::Unexposed;
-                    instr.result = result;
-                    instr.source = IL::Source::Code(recordIdx);
-                    instr.backendOpCode = record.id;
-                    instr.symbol = table.symbol.GetValueAllocation(called);
-                    instr.traits = traits;
-                    basicBlock->Append(instr);
+                    unexposed.opCode = IL::OpCode::Unexposed;
+                    unexposed.result = result;
+                    unexposed.source = IL::Source::Code(recordIdx);
+                    unexposed.backendOpCode = record.id;
+                    unexposed.symbol = table.symbol.GetValueAllocation(called);
+                    basicBlock->Append(unexposed);
                 }
                 break;
             }
@@ -1363,7 +1361,7 @@ static void PopulateUnexposedInstructionTraits(DXILOpcodes opCode, IL::Unexposed
     }
 }
 
-bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, IL::UnexposedInstructionTraits& traits) {
+bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, IL::UnexposedInstruction& unexposed) {
     LLVMRecordStringView view = table.symbol.GetValueString(called);
 
     // Get type map
@@ -1380,9 +1378,17 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
         default: {
             // If a reserved operation, populate the traits
             if (view.StartsWith("dx.op.")) {
-                uint32_t rel = reader.GetMappedRelative(anchor);
-                auto opCode = static_cast<DXILOpcodes>(program.GetConstants().GetConstant<IL::IntConstant>(rel)->value);
-                PopulateUnexposedInstructionTraits(opCode, traits);
+                auto opCode = static_cast<DXILOpcodes>(program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value);
+                PopulateUnexposedInstructionTraits(opCode, unexposed.traits);
+
+                // Allocate operands
+                unexposed.operandCount = reader.Remaining();
+                unexposed.operands = table.recordAllocator.AllocateArray<IL::ID>(unexposed.operandCount);
+
+                // Read operands
+                for (uint32_t i = 0; i < unexposed.operandCount; i++) {
+                    unexposed.operands[i] = reader.GetMappedRelative(anchor);
+                }
             }
 
             // Not an intrinsic
