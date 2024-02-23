@@ -98,6 +98,19 @@ namespace Studio.Models.IL
         public uint Value;
     }
     
+    public class WaveReadInstruction : Instruction
+    {
+        /// <summary>
+        /// Value to read
+        /// </summary>
+        public uint Value;
+        
+        /// <summary>
+        /// Lane to read from
+        /// </summary>
+        public uint Lane;
+    }
+    
     public class StoreInstruction : Instruction
     {
         /// <summary>

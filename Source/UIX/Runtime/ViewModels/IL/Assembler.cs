@@ -285,6 +285,35 @@ namespace Runtime.ViewModels.IL
                     AssembleInlineOperand(typed.Value, builder);
                     break;
                 }
+                case OpCode.WaveAnyTrue:
+                case OpCode.WaveAllTrue:
+                case OpCode.WaveBallot:
+                case OpCode.WaveReadFirst:
+                case OpCode.WaveAllEqual:
+                case OpCode.WaveBitAnd:
+                case OpCode.WaveBitOr:
+                case OpCode.WaveBitXOr:
+                case OpCode.WaveCountBits:
+                case OpCode.WaveMax:
+                case OpCode.WaveMin:
+                case OpCode.WaveProduct:
+                case OpCode.WaveSum:
+                case OpCode.WavePrefixCountBits:
+                case OpCode.WavePrefixProduct:
+                case OpCode.WavePrefixSum:
+                {
+                    var typed = (UnaryInstruction)instruction;
+                    AssembleInlineOperand(typed.Value, builder);
+                    break;
+                }
+                case OpCode.WaveRead:
+                {
+                    var typed = (WaveReadInstruction)instruction;
+                    AssembleInlineOperand(typed.Value, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Lane, builder);
+                    break;
+                }
                 case OpCode.Add:
                 case OpCode.Sub:
                 case OpCode.Div:

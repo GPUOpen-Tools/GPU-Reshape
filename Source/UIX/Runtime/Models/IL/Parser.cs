@@ -606,7 +606,6 @@ namespace Studio.Models.IL
                 case OpCode.WaveAnyTrue:
                 case OpCode.WaveAllTrue:
                 case OpCode.WaveBallot:
-                case OpCode.WaveRead:
                 case OpCode.WaveReadFirst:
                 case OpCode.WaveAllEqual:
                 case OpCode.WaveBitAnd:
@@ -624,6 +623,15 @@ namespace Studio.Models.IL
                     instruction = new UnaryInstruction()
                     {
                         Value = node.Value
+                    };
+                    break;
+                }
+                case OpCode.WaveRead:
+                {
+                    instruction = new WaveReadInstruction()
+                    {
+                        Value = node.Value,
+                        Lane = node.Lane
                     };
                     break;
                 }
