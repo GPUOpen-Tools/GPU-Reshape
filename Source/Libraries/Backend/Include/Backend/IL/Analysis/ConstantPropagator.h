@@ -209,6 +209,14 @@ namespace IL {
             return value.lattice = Backend::IL::PropagationResult::Varying;
         }
 
+        /// Mark an identifier as ignored
+        /// \param id given identifier
+        /// \return propagation result
+        Backend::IL::PropagationResult MarkAsIgnored(ID id) {
+            PropagatedValue& value = propagationValues[id];
+            return value.lattice = Backend::IL::PropagationResult::Ignore;
+        }
+
         /// Mark an identifier as mapped
         /// \param id given identifier
         /// \param constant constant to be mapped
@@ -463,7 +471,7 @@ namespace IL {
         Backend::IL::PropagationResult PropagateResultInstruction(const BasicBlock* block, const Instruction* instr, const BasicBlock** branchBlock) {
             // Check if the instruction can be folded at all
             if (!Backend::IL::CanFoldWithImmediates(instr)) {
-                return Backend::IL::PropagationResult::Varying;
+                return MarkAsVarying(instr->result);
             }
 
             // Operand info
@@ -489,7 +497,7 @@ namespace IL {
 
             // If any operands are unmapped, skip it
             if (anyUnmapped) {
-                return Backend::IL::PropagationResult::Ignore;
+                return MarkAsIgnored(instr->result);
             }
 
             // Special exception, if any of the operands are unexposed, treat it as mapped
@@ -509,7 +517,7 @@ namespace IL {
 
             // If the folding failed at this point, it'll never fold
             if (!constant) {
-                return Backend::IL::PropagationResult::Varying;
+                return MarkAsVarying(instr->result);
             }
 
             // Successfully folded!
