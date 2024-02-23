@@ -39,8 +39,14 @@
 
 [numthreads(1, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
-    int phi = 0;
+    float varyingArray[10];
 
+    // Populate varying array
+    for (int i = 0; i < 10; i++) {
+        varyingArray[i] = bufferRW[0][i * dtid];
+    }
+    
+    int phi = 0;
     if (gScalarData) {
         // Force phi instead of select, give it something more expensive to compute
         phi = gScalarData * 33.0f + 0.2f;
@@ -50,7 +56,12 @@ void main(uint dtid : SV_DispatchThreadID) {
 
     // Phi instructions are not divergent in and of themselves, only if the CF is divergent
     // In this case, the condition is scalar, therefore convergent
+
+    // Uniform resource indexing
     bufferRW[phi][0] = gScalarData;
+
+    // Uniform VGPR indexing
+    bufferRW[dtid * 10 + 0][0] = varyingArray[phi];
 
     if (bufferRW[0][0]) {
         // Force phi instead of select, give it something more expensive to compute
@@ -62,6 +73,10 @@ void main(uint dtid : SV_DispatchThreadID) {
     // In this case, the condition is a memory read, therefore divergent
     //! MESSAGE WaterfallingCondition[1]
     bufferRW[phi][0] = gScalarData;
+
+    // Same applies to VGPR indexing
+    //! MESSAGE WaterfallingCondition[1]
+    bufferRW[dtid * 10 + 0][0] = varyingArray[phi];
 
     // Validate annotated divergent indexing is checked for
     bufferRW[NonUniformResourceIndex(phi)][0] = gScalarData;
