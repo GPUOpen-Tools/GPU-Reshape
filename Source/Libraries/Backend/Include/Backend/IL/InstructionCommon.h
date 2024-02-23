@@ -447,6 +447,92 @@ namespace Backend::IL {
                 functor(typed->resource);
                 break;
             }
+            case ::IL::OpCode::WaveAnyTrue: {
+                auto typed = instr->As<::IL::WaveAnyTrueInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveAllTrue: {
+                auto typed = instr->As<::IL::WaveAllTrueInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveBallot: {
+                auto typed = instr->As<::IL::WaveBallotInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveRead: {
+                auto typed = instr->As<::IL::WaveReadInstruction>();
+                functor(typed->value);
+                functor(typed->lane);
+                break;
+            }
+            case ::IL::OpCode::WaveReadFirst: {
+                auto typed = instr->As<::IL::WaveReadFirstInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveAllEqual: {
+                auto typed = instr->As<::IL::WaveAllEqualInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveBitAnd: {
+                auto typed = instr->As<::IL::WaveBitAndInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveBitOr: {
+                auto typed = instr->As<::IL::WaveBitOrInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveBitXOr: {
+                auto typed = instr->As<::IL::WaveBitXOrInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveCountBits: {
+                auto typed = instr->As<::IL::WaveCountBitsInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveMax: {
+                auto typed = instr->As<::IL::WaveMaxInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveMin: {
+                auto typed = instr->As<::IL::WaveMinInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveProduct: {
+                auto typed = instr->As<::IL::WaveProductInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WaveSum: {
+                auto typed = instr->As<::IL::WaveSumInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WavePrefixCountBits: {
+                auto typed = instr->As<::IL::WavePrefixCountBitsInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WavePrefixProduct: {
+                auto typed = instr->As<::IL::WavePrefixProductInstruction>();
+                functor(typed->value);
+                break;
+            }
+            case ::IL::OpCode::WavePrefixSum: {
+                auto typed = instr->As<::IL::WavePrefixSumInstruction>();
+                functor(typed->value);
+                break;
+            }
         }
     }
 }

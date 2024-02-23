@@ -35,6 +35,7 @@
 #include <Backend/IL/ID.h>
 
 // Common
+#include <Common/Sink.h>
 #include <Common/Alloca.h>
 #include <Common/Containers/TrivialStackVector.h>
 
@@ -819,10 +820,211 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpVectorExtractDynamic: {
                 IL::ExtractInstruction instr{};
                 instr.opCode = IL::OpCode::Extract;
-                instr.result = IL::InvalidID;
+                instr.result = ctx.GetResult();
                 instr.source = source;
                 instr.composite = ctx++;
                 instr.index = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBroadcastFirst: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveReadFirstInstruction instr{};
+                instr.opCode = IL::OpCode::WaveReadFirst;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformAny: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveAnyTrueInstruction instr{};
+                instr.opCode = IL::OpCode::WaveAnyTrue;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformAll: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveAllTrueInstruction instr{};
+                instr.opCode = IL::OpCode::WaveAllTrue;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBallot: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveBallotInstruction instr{};
+                instr.opCode = IL::OpCode::WaveBallot;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBroadcast:
+            case SpvOpGroupNonUniformShuffle: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveReadInstruction instr{};
+                instr.opCode = IL::OpCode::WaveRead;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                instr.lane = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformAllEqual: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveAllEqualInstruction instr{};
+                instr.opCode = IL::OpCode::WaveAllEqual;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBitwiseAnd:
+            case SpvOpGroupNonUniformLogicalAnd: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveBitAndInstruction instr{};
+                instr.opCode = IL::OpCode::WaveBitAnd;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBitwiseOr:
+            case SpvOpGroupNonUniformLogicalOr: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveBitOrInstruction instr{};
+                instr.opCode = IL::OpCode::WaveBitOr;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBitwiseXor:
+            case SpvOpGroupNonUniformLogicalXor: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveBitXOrInstruction instr{};
+                instr.opCode = IL::OpCode::WaveBitXOr;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBallotBitCount: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveCountBitsInstruction instr{};
+                instr.opCode = IL::OpCode::WaveCountBits;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformFMax:
+            case SpvOpGroupNonUniformSMax:
+            case SpvOpGroupNonUniformUMax: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveMaxInstruction instr{};
+                instr.opCode = IL::OpCode::WaveMax;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformFMin:
+            case SpvOpGroupNonUniformSMin:
+            case SpvOpGroupNonUniformUMin: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveMinInstruction instr{};
+                instr.opCode = IL::OpCode::WaveMin;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformFMul:
+            case SpvOpGroupNonUniformIMul: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveProductInstruction instr{};
+                instr.opCode = IL::OpCode::WaveProduct;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformFAdd:
+            case SpvOpGroupNonUniformIAdd: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveSumInstruction instr{};
+                instr.opCode = IL::OpCode::WaveSum;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
                 basicBlock->Append(instr);
                 break;
             }

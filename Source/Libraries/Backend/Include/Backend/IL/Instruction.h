@@ -582,6 +582,109 @@ namespace IL {
         ID value;
     };
 
+    struct WaveAnyTrueInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveAnyTrue;
+
+        ID value;
+    };
+
+    struct WaveAllTrueInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveAllTrue;
+
+        ID value;
+    };
+
+    struct WaveBallotInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBallot;
+
+        ID value;
+    };
+
+    struct WaveReadInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveRead;
+
+        ID value;
+        ID lane;
+    };
+
+    struct WaveReadFirstInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveReadFirst;
+
+        ID value;
+    };
+
+    struct WaveAllEqualInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveAllEqual;
+
+        ID value;
+    };
+
+    struct WaveBitAndInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBitAnd;
+
+        ID value;
+    };
+
+    struct WaveBitOrInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBitOr;
+
+        ID value;
+    };
+
+    struct WaveBitXOrInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBitXOr;
+
+        ID value;
+    };
+
+    struct WaveCountBitsInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveCountBits;
+
+        ID value;
+    };
+
+    struct WaveMaxInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveMax;
+
+        ID value;
+    };
+
+    struct WaveMinInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveMin;
+
+        ID value;
+    };
+
+    struct WaveProductInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveProduct;
+
+        ID value;
+    };
+
+    struct WaveSumInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveSum;
+
+        ID value;
+    };
+
+    struct WavePrefixCountBitsInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WavePrefixCountBits;
+
+        ID value;
+    };
+
+    struct WavePrefixProductInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WavePrefixProduct;
+
+        ID value;
+    };
+
+    struct WavePrefixSumInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WavePrefixSum;
+
+        ID value;
+    };
+
     struct ExportInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Export;
 
@@ -743,6 +846,40 @@ namespace IL {
                 return sizeof(AtomicExchangeInstruction);
             case OpCode::AtomicCompareExchange:
                 return sizeof(AtomicCompareExchangeInstruction);
+            case OpCode::WaveAnyTrue:
+                return sizeof(WaveAnyTrueInstruction);
+            case OpCode::WaveAllTrue:
+                return sizeof(WaveAllTrueInstruction);
+            case OpCode::WaveBallot:
+                return sizeof(WaveBallotInstruction);
+            case OpCode::WaveRead:
+                return sizeof(WaveReadInstruction);
+            case OpCode::WaveReadFirst:
+                return sizeof(WaveReadFirstInstruction);
+            case OpCode::WaveAllEqual:
+                return sizeof(WaveAllEqualInstruction);
+            case OpCode::WaveBitAnd:
+                return sizeof(WaveBitAndInstruction);
+            case OpCode::WaveBitOr:
+                return sizeof(WaveBitOrInstruction);
+            case OpCode::WaveBitXOr:
+                return sizeof(WaveBitXOrInstruction);
+            case OpCode::WaveCountBits:
+                return sizeof(WaveCountBitsInstruction);
+            case OpCode::WaveMax:
+                return sizeof(WaveMaxInstruction);
+            case OpCode::WaveMin:
+                return sizeof(WaveMinInstruction);
+            case OpCode::WaveProduct:
+                return sizeof(WaveProductInstruction);
+            case OpCode::WaveSum:
+                return sizeof(WaveSumInstruction);
+            case OpCode::WavePrefixCountBits:
+                return sizeof(WavePrefixCountBitsInstruction);
+            case OpCode::WavePrefixProduct:
+                return sizeof(WavePrefixProductInstruction);
+            case OpCode::WavePrefixSum:
+                return sizeof(WavePrefixSumInstruction);
         }
     }
 }

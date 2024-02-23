@@ -603,6 +603,23 @@ namespace Studio.Models.IL
                 case OpCode.Trunc:
                 case OpCode.IsInf:
                 case OpCode.IsNaN:
+                case OpCode.WaveAnyTrue:
+                case OpCode.WaveAllTrue:
+                case OpCode.WaveBallot:
+                case OpCode.WaveRead:
+                case OpCode.WaveReadFirst:
+                case OpCode.WaveAllEqual:
+                case OpCode.WaveBitAnd:
+                case OpCode.WaveBitOr:
+                case OpCode.WaveBitXOr:
+                case OpCode.WaveCountBits:
+                case OpCode.WaveMax:
+                case OpCode.WaveMin:
+                case OpCode.WaveProduct:
+                case OpCode.WaveSum:
+                case OpCode.WavePrefixCountBits:
+                case OpCode.WavePrefixProduct:
+                case OpCode.WavePrefixSum:
                 {
                     instruction = new UnaryInstruction()
                     {

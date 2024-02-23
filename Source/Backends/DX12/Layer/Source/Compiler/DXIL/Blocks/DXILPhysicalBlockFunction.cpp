@@ -1373,22 +1373,27 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
     static_assert(static_cast<uint32_t>(IL::ComponentMask::Z) == BIT(2), "Unexpected color mask");
     static_assert(static_cast<uint32_t>(IL::ComponentMask::W) == BIT(3), "Unexpected color mask");
 
-    // Check hash
-    switch (view.GetHash()) {
+    // If not an intrinsic, not interested
+    if (!view.StartsWith("dx.op.")) {
+        return false;
+    }
+
+    // Get op code
+    auto opCode = static_cast<DXILOpcodes>(program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value);
+
+    // Parse as intrinsic
+    switch (opCode) {
         default: {
             // If a reserved operation, populate the traits
-            if (view.StartsWith("dx.op.")) {
-                auto opCode = static_cast<DXILOpcodes>(program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value);
-                PopulateUnexposedInstructionTraits(opCode, unexposed.traits);
+            PopulateUnexposedInstructionTraits(opCode, unexposed.traits);
 
-                // Allocate operands
-                unexposed.operandCount = reader.Remaining();
-                unexposed.operands = table.recordAllocator.AllocateArray<IL::ID>(unexposed.operandCount);
+            // Allocate operands
+            unexposed.operandCount = reader.Remaining();
+            unexposed.operands = table.recordAllocator.AllocateArray<IL::ID>(unexposed.operandCount);
 
-                // Read operands
-                for (uint32_t i = 0; i < unexposed.operandCount; i++) {
-                    unexposed.operands[i] = reader.GetMappedRelative(anchor);
-                }
+            // Read operands
+            for (uint32_t i = 0; i < unexposed.operandCount; i++) {
+                unexposed.operands[i] = reader.GetMappedRelative(anchor);
             }
 
             // Not an intrinsic
@@ -1405,14 +1410,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *       i1)                   ; non-uniform resource index: false or true
          */
 
-        case GRS_CRC32("dx.op.createHandle"): {
-            if (view != "dx.op.createHandle") {
-                return false;
-            }
-
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::CreateHandle: {
             // Resource class
             auto _class = static_cast<DXILShaderResourceClass>(program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value);
 
@@ -1432,7 +1430,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             ilTypeMap.SetType(result, type);
 
             // Unused
-            GRS_SINK(opCode, rangeIndex, isNonUniform);
+            GRS_SINK(rangeIndex, isNonUniform);
 
             // Keep the original record
             IL::UnexposedInstruction instr{};
@@ -1445,14 +1443,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
         }
 
         /** SM6.6 binding */
-        case GRS_CRC32("dx.op.createHandleFromBinding"): {
-            if (view != "dx.op.createHandleFromBinding") {
-                return false;
-            }
-
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::CreateHandleFromBinding: {
             // Get binding
             auto bindings = program.GetConstants().GetConstant(reader.GetMappedRelative(anchor));
 
@@ -1497,7 +1488,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             auto isNonUniform = program.GetConstants().GetConstant<IL::BoolConstant>(reader.GetMappedRelative(anchor))->value;
 
             // Ignore
-            GRS_SINK(opCode, rangeIndex, isNonUniform);
+            GRS_SINK(rangeIndex, isNonUniform);
 
             // Keep the original record
             IL::UnexposedInstruction instr{};
@@ -1520,21 +1511,11 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *       float)                          ; value to store
          */
 
-        case GRS_CRC32("dx.op.storeOutput.f32"): {
-            if (view != "dx.op.storeOutput.f32") {
-                return false;
-            }
-
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::StoreOutput_: {
             uint32_t outputID = reader.GetMappedRelative(anchor);
             uint32_t row = reader.GetMappedRelative(anchor);
             uint32_t column = reader.GetMappedRelative(anchor);
             uint32_t value = reader.GetMappedRelative(anchor);
-
-            // Unused
-            GRS_SINK(opCode);
 
             // Emit
             IL::StoreOutputInstruction instr{};
@@ -1559,22 +1540,14 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *       i32,                  ; coordinate c0
          */
 
-        case GRS_CRC32("dx.op.bufferLoad.f32"):
-        case GRS_CRC32("dx.op.bufferLoad.i32"): {
-            if (!view.StartsWith("dx.op.bufferLoad.")) {
-                return false;
-            }
-
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::BufferLoad: {
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t coordinate = reader.GetMappedRelative(anchor);
             uint32_t offset = reader.GetMappedRelative(anchor);
 
             // Unused
-            GRS_SINK(opCode, offset);
+            GRS_SINK(offset);
 
             // Emit as load
             IL::LoadBufferInstruction instr{};
@@ -1603,15 +1576,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *       i8)                   ; write mask
          */
 
-        case GRS_CRC32("dx.op.bufferStore.f32"):
-        case GRS_CRC32("dx.op.bufferStore.i32"): {
-            if (!view.StartsWith("dx.op.bufferStore.")) {
-                return false;
-            }
-
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::BufferStore: {
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t coordinate = reader.GetMappedRelative(anchor);
@@ -1625,7 +1590,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
 
             // Unused
-            GRS_SINK(opCode, offset);
+            GRS_SINK(offset);
 
             // Get type
             const auto* bufferType = ilTypeMap.GetType(resource)->As<Backend::IL::BufferType>();
@@ -1664,17 +1629,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
              *      i32)                  ; offset o2
              */
 
-        case GRS_CRC32("dx.op.textureLoad.f32"):
-        case GRS_CRC32("dx.op.textureLoad.f16"):
-        case GRS_CRC32("dx.op.textureLoad.i32"):
-        case GRS_CRC32("dx.op.textureLoad.i16"): {
-            if (!view.StartsWith("dx.op.textureLoad.")) {
-                return false;
-            }
-
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::TextureLoad: {
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t mip = reader.GetMappedRelative(anchor);
@@ -1684,9 +1639,6 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t ox = reader.GetMappedRelative(anchor);
             uint32_t oy = reader.GetMappedRelative(anchor);
             uint32_t oz = reader.GetMappedRelative(anchor);
-
-            // Unused
-            GRS_SINK(opCode);
 
             // Get type
             const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
@@ -1725,21 +1677,11 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
          *      i32,                      ; offset o1
          *      i32,                      ; offset o2
          */
-        case GRS_CRC32("dx.op.sample.f32"):
-        case GRS_CRC32("dx.op.sample.f16"):
-        case GRS_CRC32("dx.op.sampleBias.f32"):
-        case GRS_CRC32("dx.op.sampleBias.f16"):
-        case GRS_CRC32("dx.op.sampleLevel.f32"):
-        case GRS_CRC32("dx.op.sampleLevel.f16"):
-        case GRS_CRC32("dx.op.sampleGrad.f32"):
-        case GRS_CRC32("dx.op.sampleGrad.f16"): {
-            if (!view.StartsWith("dx.op.sample")) {
-                return false;
-            }
 
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::Sample:
+        case DXILOpcodes::SampleBias:
+        case DXILOpcodes::SampleLevel:
+        case DXILOpcodes::SampleGrad: {
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t sampler = reader.GetMappedRelative(anchor);
@@ -1778,7 +1720,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             instr.offset = svoxOffset;
 
             // Handle additional operands
-            switch (static_cast<DXILOpcodes>(opCode)) {
+            switch (opCode) {
                 default:
                     ASSERT(false, "Unexpected sampling opcode");
                     break;
@@ -1863,17 +1805,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
              *       i8)                   ; write mask
              */
 
-        case GRS_CRC32("dx.op.textureStore.f32"):
-        case GRS_CRC32("dx.op.textureStore.f16"):
-        case GRS_CRC32("dx.op.textureStore.i32"):
-        case GRS_CRC32("dx.op.textureStore.i16"): {
-            if (!view.StartsWith("dx.op.textureStore.")) {
-                return false;
-            }
-
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::TextureStore: {
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t cx = reader.GetMappedRelative(anchor);
@@ -1886,9 +1818,6 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
 
             // Get mask
             uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
-            // Unused
-            GRS_SINK(opCode);
 
             // Get type
             const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
@@ -1914,20 +1843,13 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             return true;
         }
 
-        case GRS_CRC32("dx.op.isSpecialFloat.f32"):
-        case GRS_CRC32("dx.op.isSpecialFloat.f16"): {
-            if (!view.StartsWith("dx.op.isSpecialFloat.")) {
-                return false;
-            }
-
-            // Get special kind
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::IsNaN_:
+        case DXILOpcodes::IsInf_: {
             // Get operands
             uint32_t value = reader.GetMappedRelative(anchor);
 
             // Handle op
-            switch (static_cast<DXILOpcodes>(opCode)) {
+            switch (opCode) {
                 default: {
                     // Unexposed
                     return false;
@@ -1955,21 +1877,215 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             }
         }
 
-        /** SM6.6 annotation */
-        case GRS_CRC32("dx.op.annotateHandle"): {
-            if (!view.StartsWith("dx.op.annotateHandle")) {
-                return false;
+        case DXILOpcodes::WaveReadLaneFirst: {
+            IL::WaveReadFirstInstruction instr{};
+            instr.opCode = IL::OpCode::WaveReadFirst;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.value = reader.GetMappedRelative(anchor);
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        case DXILOpcodes::WaveAnyTrue: {
+            IL::WaveAnyTrueInstruction instr{};
+            instr.opCode = IL::OpCode::WaveAnyTrue;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.value = reader.GetMappedRelative(anchor);
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        case DXILOpcodes::WaveAllTrue: {
+            IL::WaveAllTrueInstruction instr{};
+            instr.opCode = IL::OpCode::WaveAllTrue;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.value = reader.GetMappedRelative(anchor);
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        case DXILOpcodes::WaveActiveBallot: {
+            IL::WaveBallotInstruction instr{};
+            instr.opCode = IL::OpCode::WaveBallot;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.value = reader.GetMappedRelative(anchor);
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        case DXILOpcodes::WaveReadLaneAt: {
+            IL::WaveReadInstruction instr{};
+            instr.opCode = IL::OpCode::WaveRead;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.value = reader.GetMappedRelative(anchor);
+            instr.lane = reader.GetMappedRelative(anchor);
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        case DXILOpcodes::WaveActiveAllEqual: {
+            IL::WaveAllEqualInstruction instr{};
+            instr.opCode = IL::OpCode::WaveAllEqual;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.value = reader.GetMappedRelative(anchor);
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        case DXILOpcodes::WaveActiveBit: {
+            IL::ID value = reader.GetMappedRelative(anchor);
+
+            uint64_t op = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+            switch (op) {
+                default: {
+                    ASSERT(false, "Unexpected op");
+                    break;
+                }
+                case 0: {
+                    IL::WaveBitAndInstruction instr{};
+                    instr.result = result;
+                    instr.source = IL::Source::Code(recordIdx);
+                    instr.value = value;
+                    instr.opCode = IL::OpCode::WaveBitAnd;
+                    basicBlock->Append(instr);
+                    break;
+                }
+                case 1: {
+                    IL::WaveBitOrInstruction instr{};
+                    instr.result = result;
+                    instr.source = IL::Source::Code(recordIdx);
+                    instr.value = value;
+                    instr.opCode = IL::OpCode::WaveBitOr;
+                    basicBlock->Append(instr);
+                    break;
+                }
+                case 2: {
+                    IL::WaveBitXOrInstruction instr{};
+                    instr.result = result;
+                    instr.source = IL::Source::Code(recordIdx);
+                    instr.value = value;
+                    instr.opCode = IL::OpCode::WaveBitXOr;
+                    basicBlock->Append(instr);
+                    break;
+                }
             }
+            return true;
+        }
 
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+        case DXILOpcodes::WaveAllBitCount: {
+            IL::WaveCountBitsInstruction instr{};
+            instr.opCode = IL::OpCode::WaveCountBits;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.value = reader.GetMappedRelative(anchor);
+            basicBlock->Append(instr);
+            return true;
+        }
 
+        case DXILOpcodes::WaveActiveOp: {
+            IL::ID value = reader.GetMappedRelative(anchor);
+
+            uint64_t op = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+            switch (op) {
+                default: {
+                    ASSERT(false, "Unexpected op");
+                    break;
+                }
+                case 0: {
+                    IL::WaveSumInstruction instr{};
+                    instr.result = result;
+                    instr.source = IL::Source::Code(recordIdx);
+                    instr.value = value;
+                    instr.opCode = IL::OpCode::WaveSum;
+                    basicBlock->Append(instr);
+                    break;
+                }
+                case 1: {
+                    IL::WaveProductInstruction instr{};
+                    instr.result = result;
+                    instr.source = IL::Source::Code(recordIdx);
+                    instr.value = value;
+                    instr.opCode = IL::OpCode::WaveProduct;
+                    basicBlock->Append(instr);
+                    break;
+                }
+                case 2: {
+                    IL::WaveMinInstruction instr{};
+                    instr.result = result;
+                    instr.source = IL::Source::Code(recordIdx);
+                    instr.value = value;
+                    instr.opCode = IL::OpCode::WaveMin;
+                    basicBlock->Append(instr);
+                    break;
+                }
+                case 3: {
+                    IL::WaveMaxInstruction instr{};
+                    instr.result = result;
+                    instr.source = IL::Source::Code(recordIdx);
+                    instr.value = value;
+                    instr.opCode = IL::OpCode::WaveMax;
+                    basicBlock->Append(instr);
+                    break;
+                }
+            }
+            return true;
+        }
+
+        case DXILOpcodes::WavePrefixBitCount: {
+            IL::WavePrefixCountBitsInstruction instr{};
+            instr.opCode = IL::OpCode::WavePrefixCountBits;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.value = reader.GetMappedRelative(anchor);
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        case DXILOpcodes::WavePrefixOp: {
+            IL::ID value = reader.GetMappedRelative(anchor);
+
+            uint64_t op = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+            switch (op) {
+                default: {
+                    ASSERT(false, "Unexpected op");
+                    break;
+                }
+                case 0: {
+                    IL::WavePrefixSumInstruction instr{};
+                    instr.result = result;
+                    instr.source = IL::Source::Code(recordIdx);
+                    instr.value = value;
+                    instr.opCode = IL::OpCode::WavePrefixSum;
+                    basicBlock->Append(instr);
+                    break;
+                }
+                case 1: {
+                    IL::WavePrefixProductInstruction instr{};
+                    instr.result = result;
+                    instr.source = IL::Source::Code(recordIdx);
+                    instr.value = value;
+                    instr.opCode = IL::OpCode::WavePrefixProduct;
+                    basicBlock->Append(instr);
+                    break;
+                }
+            }
+            return true;
+        }
+
+        /** SM6.6 annotation */
+        case DXILOpcodes::AnnotateHandle: {
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t properties = reader.GetMappedRelative(anchor);
 
             // Unused
-            GRS_SINK(opCode, resource);
+            GRS_SINK(resource);
 
             // Get the annotation constant
             auto constant = program.GetConstants().GetConstant(properties);
@@ -2008,21 +2124,14 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             return true;
         }
 
-        case GRS_CRC32("dx.op.createHandleFromHeap"): {
-            if (!view.StartsWith("dx.op.createHandleFromHeap")) {
-                return false;
-            }
-
-            // Get op-code
-            uint64_t opCode = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
+        case DXILOpcodes::CreateHandleFromHeap: {
             // Get operands, ignore offset for now
             uint32_t index = reader.GetMappedRelative(anchor);
             uint32_t sampler = reader.GetMappedRelative(anchor);
             uint32_t nonUniform = reader.GetMappedRelative(anchor);
 
             // Unused
-            GRS_SINK(opCode, index, sampler, nonUniform);
+            GRS_SINK(index, sampler, nonUniform);
             
             // Emit as unexposed
             IL::UnexposedInstruction instr{};

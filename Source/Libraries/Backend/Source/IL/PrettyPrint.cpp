@@ -542,6 +542,91 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             line << "AtomicCompareExchange address:%" << atomic->address << " value:%" << atomic->value << " comparator:%" << atomic->comparator;
             break;
         }
+        case OpCode::WaveAnyTrue: {
+            auto atomic = instr->As<IL::WaveAnyTrueInstruction>();
+            line << "WaveAnyTrue value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveAllTrue: {
+            auto atomic = instr->As<IL::WaveAllTrueInstruction>();
+            line << "WaveAllTrue value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveBallot: {
+            auto atomic = instr->As<IL::WaveBallotInstruction>();
+            line << "WaveBallot value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveRead: {
+            auto atomic = instr->As<IL::WaveReadInstruction>();
+            line << "WaveRead value:%" << atomic->value << " lane:%" << atomic->lane;
+            break;
+        }
+        case OpCode::WaveReadFirst: {
+            auto atomic = instr->As<IL::WaveReadFirstInstruction>();
+            line << "WaveReadFirst value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveAllEqual: {
+            auto atomic = instr->As<IL::WaveAllEqualInstruction>();
+            line << "WaveAllEqual value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveBitAnd: {
+            auto atomic = instr->As<IL::WaveBitAndInstruction>();
+            line << "WaveBitAnd value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveBitOr: {
+            auto atomic = instr->As<IL::WaveBitOrInstruction>();
+            line << "WaveBitOr value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveBitXOr: {
+            auto atomic = instr->As<IL::WaveBitXOrInstruction>();
+            line << "WaveBitXOr value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveCountBits: {
+            auto atomic = instr->As<IL::WaveCountBitsInstruction>();
+            line << "WaveCountBits value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveMax: {
+            auto atomic = instr->As<IL::WaveMaxInstruction>();
+            line << "WaveMax value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveMin: {
+            auto atomic = instr->As<IL::WaveMinInstruction>();
+            line << "WaveMin value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveProduct: {
+            auto atomic = instr->As<IL::WaveProductInstruction>();
+            line << "WaveProduct value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WaveSum: {
+            auto atomic = instr->As<IL::WaveSumInstruction>();
+            line << "WaveSum value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WavePrefixCountBits: {
+            auto atomic = instr->As<IL::WavePrefixCountBitsInstruction>();
+            line << "WavePrefixCountBits value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WavePrefixProduct: {
+            auto atomic = instr->As<IL::WavePrefixProductInstruction>();
+            line << "WavePrefixProduct value:%" << atomic->value;
+            break;
+        }
+        case OpCode::WavePrefixSum: {
+            auto atomic = instr->As<IL::WavePrefixSumInstruction>();
+            line << "WavePrefixSum value:%" << atomic->value;
+            break;
+        }
     }
 
     if (instr->source.IsValid()) {
@@ -2010,6 +2095,92 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"Address\": " << atomic->address << ",";
             out.Line() << "\"Value\": " << atomic->value << ",";
             out.Line() << "\"Comparator\": " << atomic->comparator << ",";
+            break;
+        }
+        case IL::OpCode::WaveAnyTrue: {
+            auto atomic = instr->As<IL::WaveAnyTrueInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveAllTrue: {
+            auto atomic = instr->As<IL::WaveAllTrueInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveBallot: {
+            auto atomic = instr->As<IL::WaveBallotInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveRead: {
+            auto atomic = instr->As<IL::WaveReadInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            out.Line() << "\"Lane\": " << atomic->lane << ",";
+            break;
+        }
+        case IL::OpCode::WaveReadFirst: {
+            auto atomic = instr->As<IL::WaveReadFirstInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveAllEqual: {
+            auto atomic = instr->As<IL::WaveAllEqualInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveBitAnd: {
+            auto atomic = instr->As<IL::WaveBitAndInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveBitOr: {
+            auto atomic = instr->As<IL::WaveBitOrInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveBitXOr: {
+            auto atomic = instr->As<IL::WaveBitXOrInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveCountBits: {
+            auto atomic = instr->As<IL::WaveCountBitsInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveMax: {
+            auto atomic = instr->As<IL::WaveMaxInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveMin: {
+            auto atomic = instr->As<IL::WaveMinInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveProduct: {
+            auto atomic = instr->As<IL::WaveProductInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WaveSum: {
+            auto atomic = instr->As<IL::WaveSumInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WavePrefixCountBits: {
+            auto atomic = instr->As<IL::WavePrefixCountBitsInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WavePrefixProduct: {
+            auto atomic = instr->As<IL::WavePrefixProductInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
+            break;
+        }
+        case IL::OpCode::WavePrefixSum: {
+            auto atomic = instr->As<IL::WavePrefixSumInstruction>();
+            out.Line() << "\"Value\": " << atomic->value << ",";
             break;
         }
     }
