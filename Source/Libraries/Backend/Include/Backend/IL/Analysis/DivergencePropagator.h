@@ -52,6 +52,21 @@ namespace IL {
         bool Install() override {
             divergenceValues.resize(program.GetIdentifierMap().GetMaxID(), WorkGroupDivergence::Unknown);
 
+            // Compute dominator analysis for propagation
+            if (dominatorAnalysis = function.GetAnalysisMap().FindPassOrCompute<DominatorAnalysis>(function); !dominatorAnalysis) {
+                return false;
+            }
+
+            // Compute loop analysis for simulation
+            if (loopAnalysis = function.GetAnalysisMap().FindPassOrCompute<LoopAnalysis>(function); !loopAnalysis) {
+                return false;
+            }
+
+            // Map loop views
+            for (const Loop& loop : loopAnalysis->GetView()) {
+                loopLookup[loop.header] = &loop;
+            }
+            
             // Mark constants as uniform
             for (const Constant *constant: program.GetConstants()) {
                 if (constant->IsSymbolic()) {
@@ -80,7 +95,7 @@ namespace IL {
         }
 
         /// Propagate an instruction
-        void PropagateInstruction(Backend::IL::PropagationResult, const BasicBlock*, const Instruction* instr, const BasicBlock*) override {
+        void PropagateInstruction(Backend::IL::PropagationResult, const BasicBlock* block, const Instruction* instr, const BasicBlock*) override {
             switch (instr->opCode) {
                 default: {
                     // Result-less instructions are ignored
@@ -102,7 +117,7 @@ namespace IL {
                     return PropagateStoreInstruction(instr->As<StoreInstruction>());
                 }
                 case OpCode::Phi: {
-                    return PropagatePhiInstruction(instr->As<PhiInstruction>());
+                    return PropagatePhiInstruction(block, instr->As<PhiInstruction>());
                 }
             }
 
@@ -128,8 +143,34 @@ namespace IL {
             divergenceValues[instr->address] = divergenceValues[instr->value];
         }
 
-        void PropagatePhiInstruction(const PhiInstruction *instr) {
-            // TODO: Phi divergence analysis
+        void PropagatePhiInstruction(const BasicBlock* block, const PhiInstruction *instr) {
+            const Loop* loop{nullptr};
+
+            // Check if this block is a loop header
+            if (auto it = loopLookup.find(block); it != loopLookup.end()) {
+                loop = it->second;
+            }
+            
+            TrivialStackVector<BasicBlock*, 8> sharedAncestors;
+            IntersectAllDominationPaths(loop, instr, sharedAncestors);
+
+            // Check divergence on all ancestors
+            for (BasicBlock* sharedAncestor : sharedAncestors) {
+                auto terminator = sharedAncestor->GetTerminator()->Cast<BranchConditionalInstruction>();
+                if (!terminator) {
+                    ASSERT(false, "Dominator ancestor terminator must be a conditional branch");
+                    continue;
+                }
+
+                // If the branch condition is divergent, the phi is source of divergence
+                if (divergenceValues[terminator->cond] == WorkGroupDivergence::Divergent) {
+                    divergenceValues[instr->result] = WorkGroupDivergence::Divergent;
+                    return;
+                }
+            } 
+
+            // All paths are uniform
+            divergenceValues[instr->result] = WorkGroupDivergence::Uniform;
         }
 
         /// Get the divergence of an instruction
@@ -229,6 +270,100 @@ namespace IL {
         }
 
     private:
+        struct BlockRange {
+            size_t begin{0};
+            size_t end{0};
+        };
+
+        /// Get the immediate domination path of a black
+        /// \param block source block
+        /// \param out destination path
+        template<size_t C>
+        void GetDominationPath(BasicBlock* block, TrivialStackVector<BasicBlock*, C>& out) {
+            BasicBlock* entryPoint = dominatorAnalysis->GetFunction().GetBasicBlocks().GetEntryPoint();
+            
+            while (block) {
+                out.Add(block);
+
+                // Entry point idom is itself
+                if (block == entryPoint) {
+                    return;
+                }
+
+                // Append by idom
+                block = dominatorAnalysis->GetImmediateDominator(block);
+            }
+        }
+
+        /// Intersect two domination paths
+        /// \return common ancestor
+        IL::BasicBlock* IntersectDominationPath(const std::span<BasicBlock*>& first, const std::span<BasicBlock*>& second) {
+            for (BasicBlock* target : first) {
+                // This could be faster, however, it's also not terribly bad on moderately complex programs
+                for (BasicBlock* test : second) {
+                    if (test == target) {
+                        return test;
+                    }
+                }
+            }
+
+            // None found
+            return nullptr;
+        }
+
+        /// Intersect all intersection blocks of a phi instruction
+        /// \param loop optional, loop information
+        /// \param instr source instruction
+        /// \param sharedAncestors all shared, unique, ancestors
+        template<size_t C>
+        void IntersectAllDominationPaths(const Loop* loop, const PhiInstruction* instr, TrivialStackVector<BasicBlock*, C>& sharedAncestors) {
+            TrivialStackVector<BasicBlock*, 128> dominationBlocks;
+            TrivialStackVector<BlockRange, 32>   dominationRanges;
+
+            // Populate all paths
+            for (uint32_t i = 0; i < instr->values.count; i++) {
+                size_t begin = dominationBlocks.Size();
+
+                // If the branch is a back edge, ignore it
+                // This is not analyzed by this propagator
+                if (loop && loop->IsBackEdge(program.GetIdentifierMap().GetBasicBlock(instr->values[i].branch))) {
+                    continue;
+                }
+
+                // Populate domination for this branch
+                GetDominationPath(program.GetIdentifierMap().GetBasicBlock(instr->values[i].branch), dominationBlocks);
+                dominationRanges.Add(BlockRange{ begin, dominationBlocks.Size() });
+            }
+
+            // Intersect all paths
+            for (size_t i = 0; i < dominationRanges.Size(); i++) {
+                for (size_t j = i + 1; j < dominationRanges.Size(); j++) {
+                    const BlockRange& firstRange  = dominationRanges[i];
+                    const BlockRange& secondRange = dominationRanges[j];
+
+                    // Find the shared ancestor, must exist
+                    BasicBlock* ancestor = IntersectDominationPath(
+                        std::span(dominationBlocks.Data() + firstRange.begin, firstRange.end - firstRange.begin),
+                        std::span(dominationBlocks.Data() + secondRange.begin, secondRange.end - secondRange.begin)
+                    );
+
+                    // Ignore already visited
+                    if (ancestor->HasFlag(BasicBlockFlag::Visited)) {
+                        continue;
+                    }
+
+                    sharedAncestors.Add(ancestor);
+                    ancestor->AddFlag(BasicBlockFlag::Visited);
+                }
+            }
+
+            // Cleanup
+            for (BasicBlock *ancestor : sharedAncestors) {
+                ancestor->RemoveFlag(BasicBlockFlag::Visited);
+            }
+        }
+
+    private:
         /// Outer program
         Program& program;
 
@@ -240,5 +375,15 @@ namespace IL {
 
         /// Constant analysis
         ComRef<ConstantPropagator> ConstantPropagator;
+
+        /// Domination tree
+        ComRef<DominatorAnalysis> dominatorAnalysis;
+
+        /// Loop tree
+        ComRef<LoopAnalysis> loopAnalysis;
+
+    private:
+        /// Look lookup
+        std::unordered_map<const BasicBlock*, const Loop*> loopLookup;
     };
 }
