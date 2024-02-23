@@ -102,6 +102,18 @@ namespace Backend::IL {
         }
     }
 
+    inline const Type* GetTerminalValueType(const Type* type) {
+        for (;;) {
+            const Type* next = GetValueType(type);
+            
+            if (next == type) {
+                return type;
+            }
+
+            type = next;
+        }
+    }
+
     inline const bool IsResourceType(const Type* type) {
         switch (type->kind) {
             default:

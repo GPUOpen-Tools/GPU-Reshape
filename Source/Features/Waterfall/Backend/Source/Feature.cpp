@@ -120,7 +120,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     const bool isFASIndirection = compositeType->addressSpace == Backend::IL::AddressSpace::Function;
 
     // Get the composite value type
-    const Backend::IL::Type* compositeValueType = Backend::IL::GetValueType(program.GetTypeMap().GetType(instr->composite));
+    const Backend::IL::Type* compositeValueType = Backend::IL::GetTerminalValueType(program.GetTypeMap().GetType(instr->composite));
 
     // Addressing into a resource?
     const bool isResourceAddressing = Backend::IL::IsResourceType(compositeValueType);
@@ -207,22 +207,28 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
             message->varyingOperandIndex = varyingOperandIndex;
         }
     } else {
-        // Resource addressing is concerned with divergence
-        // This is incomplete
-#if 0
-        bool anyChainNonUniform = false;
+        bool anyChainDivergent = false;
 
+        // Resource addressing is concerned with divergence
         for (uint32_t i = 0; i < instr->chains.count; i++) {
             const IL::AddressChain& chain = instr->chains[i];
-            anyChainNonUniform |= divergenceAnalysis.GetDivergence(chain.index) == IL::WorkGroupDivergence::Divergent;
+            anyChainDivergent |= divergencePropagator->GetDivergence(chain.index) == IL::WorkGroupDivergence::Divergent;
         }
 
-        if (!anyChainNonUniform) {
+        // If none are divergent, just fine
+        if (!anyChainDivergent) {
             return it;
         }
-#endif // 0
         
-        return it;
+        // Serial
+        {
+            std::lock_guard guard(mutex);
+
+            // Export compile time message
+            auto* message = MessageStreamView<WaterfallingConditionMessage>(stream).Add();
+            message->sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
+            message->varyingOperandIndex = varyingOperandIndex;
+        }
     }
 
 #if 0
