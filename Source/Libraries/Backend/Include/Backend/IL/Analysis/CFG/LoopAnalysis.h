@@ -59,8 +59,9 @@ namespace IL {
                 backEdgeBlocks.clear();
 
                 // If the header dominates the predecessor, this is a back-edge
+                // Additionally, loop headers may conditionally branch to themselves
                 for (BasicBlock *predecessor: dominatorAnalysis->GetPredecessors(header)) {
-                    if (dominatorAnalysis->Dominates(header, predecessor)) {
+                    if (dominatorAnalysis->Dominates(header, predecessor) || predecessor == header) {
                         backEdgeBlocks.push_back(predecessor);
                     }
                 }
