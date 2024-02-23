@@ -140,6 +140,23 @@ namespace Backend::IL {
             case OpCode::LoadTexture:
             case OpCode::StoreBuffer:
             case OpCode::LoadBuffer:
+            case OpCode::WaveAnyTrue:
+            case OpCode::WaveAllTrue:
+            case OpCode::WaveBallot:
+            case OpCode::WaveRead:
+            case OpCode::WaveReadFirst:
+            case OpCode::WaveAllEqual:
+            case OpCode::WaveBitAnd:
+            case OpCode::WaveBitOr:
+            case OpCode::WaveBitXOr:
+            case OpCode::WaveCountBits:
+            case OpCode::WaveMax:
+            case OpCode::WaveMin:
+            case OpCode::WaveProduct:
+            case OpCode::WaveSum:
+            case OpCode::WavePrefixCountBits:
+            case OpCode::WavePrefixProduct:
+            case OpCode::WavePrefixSum:
             case OpCode::ResourceToken:
             case OpCode::ResourceSize:
             case OpCode::Export:

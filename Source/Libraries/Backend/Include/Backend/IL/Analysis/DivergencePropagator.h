@@ -128,7 +128,7 @@ namespace IL {
             divergenceValues[instr->address] = divergenceValues[instr->value];
         }
 
-        void PropagatePhiInstruction(const PhiInstruction * instr) {
+        void PropagatePhiInstruction(const PhiInstruction *instr) {
             // TODO: Phi divergence analysis
         }
 
@@ -136,6 +136,11 @@ namespace IL {
         /// \param instr propagated instruction
         /// \return resulting divergence
         WorkGroupDivergence GetInstructionDivergence(const Instruction* instr) {
+            // Instructions may converge divergent values
+            if (IsConveringInstruction(instr)) {
+                return WorkGroupDivergence::Uniform;
+            }
+
             // Determine the base divergence, that is, the divergence of the instruction type itself
             WorkGroupDivergence baseDivergence = GetBaseDivergence(instr);
 
@@ -166,6 +171,20 @@ namespace IL {
 
             // Assume uniform
             return WorkGroupDivergence::Uniform;
+        }
+
+        /// Check if an instruction is converging
+        /// \param instr instruction to query
+        /// \return convergence
+        bool IsConveringInstruction(const Instruction * instr) {
+            switch (instr->opCode) {
+                default: {
+                    return false;
+                }
+                case OpCode::WaveReadFirst: {
+                    return true;
+                }
+            }
         }
 
         /// Get the base divergence of an instruction
