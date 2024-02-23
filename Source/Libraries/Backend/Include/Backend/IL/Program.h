@@ -34,6 +34,7 @@
 #include <Backend/IL/FunctionList.h>
 #include <Backend/IL/ShaderDataMap.h>
 #include <Backend/IL/CapabilityTable.h>
+#include <Backend/IL/MetadataMap.h>
 #include <Backend/IL/Analysis/AnalysisMap.h>
 
 // Std
@@ -49,6 +50,7 @@ namespace IL {
             constants(allocators, identifierMap, typeMap, capabilityTable),
             typeMap(allocators, identifierMap, capabilityTable),
             shaderDataMap(identifierMap, typeMap),
+            metadataMap(allocators),
             shaderGUID(shaderGUID) {
             /* */
         }
@@ -69,6 +71,7 @@ namespace IL {
             typeMap.CopyTo(program->typeMap);
             constants.CopyTo(program->constants);
             variables.CopyTo(program->variables);
+            metadataMap.CopyTo(program->metadataMap);
 
             // Copy immutable
             program->capabilityTable = capabilityTable;
@@ -132,6 +135,11 @@ namespace IL {
             return capabilityTable;
         }
 
+        /// Get the metadata map
+        MetadataMap& GetMetadataMap() {
+            return metadataMap;
+        }
+
         /// Get the global constants
         Backend::IL::ConstantMap &GetConstants() {
             return constants;
@@ -172,6 +180,11 @@ namespace IL {
             return capabilityTable;
         }
 
+        /// Get the metadata map
+        const MetadataMap& GetMetadataMap() const {
+            return metadataMap;
+        }
+
         /// Get the analysis map
         AnalysisMap<IProgramAnalysis> &GetAnalysisMap() {
             return analysisMap;
@@ -200,6 +213,9 @@ namespace IL {
 
         /// The capability table
         CapabilityTable capabilityTable;
+
+        /// The metadata map
+        MetadataMap metadataMap;
 
         /// All analysis passes
         AnalysisMap<IProgramAnalysis> analysisMap;

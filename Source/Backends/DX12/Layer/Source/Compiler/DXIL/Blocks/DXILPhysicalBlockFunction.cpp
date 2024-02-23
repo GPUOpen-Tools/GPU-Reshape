@@ -1430,7 +1430,12 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             ilTypeMap.SetType(result, type);
 
             // Unused
-            GRS_SINK(rangeIndex, isNonUniform);
+            GRS_SINK(rangeIndex);
+
+            // If non uniform, add the metadata
+            if (isNonUniform) {
+                program.GetMetadataMap().AddMetadata(result, IL::MetadataType::DivergentResourceIndex);
+            }
 
             // Keep the original record
             IL::UnexposedInstruction instr{};
