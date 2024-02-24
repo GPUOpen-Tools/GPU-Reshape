@@ -238,6 +238,12 @@ namespace IL {
                     return WorkGroupDivergence::Uniform;
                 }
 
+                /** Assume divergence by backend traits */
+                case OpCode::Unexposed: {
+                    auto typed = instr->As<UnexposedInstruction>();
+                    return AsDivergence(typed->traits.divergent);
+                }
+
                 /** Load operations to external memory are always divergent */
                 case OpCode::Load: {
                     auto* type = program.GetTypeMap().GetType(instr->As<LoadInstruction>()->address)->As<Backend::IL::PointerType>();

@@ -102,6 +102,9 @@ namespace IL {
         /// This instruction may be folded with immediate constants
         /// Although the exact nature of the folding remains unexposed
         uint32_t foldableWithImmediates : 1;
+
+        /// This instruction is divergent within the executing group
+        uint32_t divergent : 1;
     };
 
     struct UnexposedInstruction : public Instruction {

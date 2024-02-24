@@ -1358,6 +1358,30 @@ static void PopulateUnexposedInstructionTraits(DXILOpcodes opCode, IL::Unexposed
             traits.foldableWithImmediates = true;
             break;
         }
+        case DXILOpcodes::AtomicBinOp:
+        case DXILOpcodes::AtomicCompareExchange:
+        case DXILOpcodes::LoadInput_:
+        case DXILOpcodes::BufferUpdateCounter:
+        case DXILOpcodes::CycleCounterLegacy:
+        case DXILOpcodes::DomainLocation:
+        case DXILOpcodes::Coverage:
+        case DXILOpcodes::EvalCentroid:
+        case DXILOpcodes::EvalSampleIndex:
+        case DXILOpcodes::EvalSnapped:
+        case DXILOpcodes::FlattenedThreadIdInGroup:
+        case DXILOpcodes::GSInstanceID:
+        case DXILOpcodes::InnerCoverage:
+        case DXILOpcodes::LoadOutputControlPoint:
+        case DXILOpcodes::LoadPatchConstant:
+        case DXILOpcodes::OutputControlPointID:
+        case DXILOpcodes::PrimitiveID:
+        case DXILOpcodes::RenderTargetGetSampleCount:
+        case DXILOpcodes::RenderTargetGetSamplePosition:
+        case DXILOpcodes::ThreadId:
+        case DXILOpcodes::ThreadIdInGroup: {
+            traits.divergent = true;
+            break;
+        }
     }
 }
 

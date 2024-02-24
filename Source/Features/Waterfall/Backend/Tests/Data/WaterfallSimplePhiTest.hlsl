@@ -64,7 +64,7 @@ void main(uint dtid : SV_DispatchThreadID) {
     bufferRW[phi][0] = gScalarData;
 
     // Uniform VGPR indexing
-    bufferRW[dtid * 10 + 0][0] = varyingArray[phi];
+    bufferRW[phi][dtid * 10 + 0] = varyingArray[phi];
 
     if (bufferRW[0][0]) {
         // Force phi instead of select, give it something more expensive to compute
@@ -79,7 +79,7 @@ void main(uint dtid : SV_DispatchThreadID) {
 
     // Same applies to VGPR indexing
     //! MESSAGE WaterfallingCondition[1]
-    bufferRW[dtid * 10 + 0][0] = varyingArray[phi];
+    bufferRW[0][dtid * 10 + 1] = varyingArray[phi];
 
     // Validate annotated divergent indexing is checked for
     bufferRWNU[NonUniformResourceIndex(phi)][0] = gScalarData;
