@@ -551,7 +551,7 @@ namespace IL {
             return after;
         }
 
-    private:
+    public:
         enum class MemoryAddressType {
             None,
             Varying,
@@ -651,7 +651,7 @@ namespace IL {
         }
 
         /// Check if an address chain base offset is non-zero
-        bool IsBaseOffsetNonConstantZero(ID id) {
+        bool IsBaseOffsetNonConstantZero(ID id) const {
             const Constant* constant = program.GetConstants().GetConstant(id);
             if (!constant) {
                 return true;
@@ -670,7 +670,7 @@ namespace IL {
         /// \param id id to populate from
         /// \param chain output chain
         /// \return base composite or indirection
-        ID PopulateAccessChain(ID id, IDStack& chain) {
+        ID PopulateAccessChain(ID id, IDStack& chain) const {
             // All address chains must start with the base offset, which is typically zero.
             // However, some languages allow for base offsets before dereferencing the composite address.
             // This is not supported by constant analysis.
@@ -790,7 +790,7 @@ namespace IL {
         }
 
         /// Get an address node for an identifier
-        MemoryAddressNode GetMemoryAddressNode(ID id) {
+        MemoryAddressNode GetMemoryAddressNode(ID id) const {
             MemoryAddressNode node;
 
             // Constant?

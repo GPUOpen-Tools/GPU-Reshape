@@ -54,7 +54,7 @@ namespace IL {
 
             // Notify propagators
             for (const ComRef<ISimulationPropagator>& propagator : propagators) {
-                if (!propagator->Install()) {
+                if (!propagator->Install(&propagationEngine)) {
                     return false;
                 }
             }

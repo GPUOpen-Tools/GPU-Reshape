@@ -1134,7 +1134,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                     instr.operandCount = 0;
 
                     // Count number operands
-                    VisitSpvOperands(ctx->GetOp(), ctx->Ptr(), [&](SpvId) {
+                    VisitSpvOperands(ctx->GetOp(), ctx->Ptr(), ctx->GetWordCount(), [&](SpvId) {
                         instr.operandCount++;
                     });
 
@@ -1143,7 +1143,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
 
                     // Fill each operand
                     uint32_t operandOffset = 0;
-                    VisitSpvOperands(ctx->GetOp(), ctx->Ptr(), [&](SpvId id) {
+                    VisitSpvOperands(ctx->GetOp(), ctx->Ptr(), ctx->GetWordCount(), [&](SpvId id) {
                         instr.operands[operandOffset++] = id;
                     });
 

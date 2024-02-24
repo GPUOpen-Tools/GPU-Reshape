@@ -49,7 +49,7 @@ $CLASSES
 }
 
 template<typename F>
-inline void VisitSpvOperands(SpvOp op, const SpvId* words, F&& functor) {
+inline void VisitSpvOperands(SpvOp op, const SpvId* words, uint32_t wordCount, F&& functor) {
     switch (op) {
         default:
             break;

@@ -83,7 +83,7 @@ void WaterfallFeature::PreInject(IL::Program &program, const MessageStreamView<>
     for (IL::Function *function: program.GetFunctionList()) {
         // Create a simulation analysis pass with divergence analysis
         if (auto&& analysis = function->GetAnalysisMap().FindPassOrAdd<IL::SimulationAnalysis>(program, *function)) {
-            analysis->AddPropagator<IL::DivergencePropagator>(program, *function);
+            analysis->AddPropagator<IL::DivergencePropagator>(analysis->GetConstantPropagator(), program, *function);
             analysis->Compute();
         }
     }

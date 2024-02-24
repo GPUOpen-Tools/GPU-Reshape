@@ -37,6 +37,10 @@ enum class BasicBlockFlag : uint32_t {
 
     /// Block has been visited
     Visited = BIT(2),
+
+    /// Set of mutable flags, these flags may be changed on immutable blocks
+    /// There are no semantic implications
+    NonSemanticMask = Visited
 };
 
 BIT_SET(BasicBlockFlag);

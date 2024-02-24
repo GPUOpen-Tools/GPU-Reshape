@@ -307,9 +307,19 @@ public:
         return symbolicTextureBindings;
     }
     
+    /// Get the symbolic sampler bindings, always valid
+    IL::ID GetSymbolicSamplerBindings() const {
+        return symbolicSamplerBindings;
+    }
+    
     /// Get the symbolic buffer bindings, always valid
     IL::ID GetSymbolicBufferBindings() const {
         return symbolicBufferBindings;
+    }
+    
+    /// Get the symbolic buffer bindings, always valid
+    IL::ID GetSymbolicCBufferBindings() const {
+        return symbolicCBufferBindings;
     }
 
 private:
@@ -331,7 +341,9 @@ private:
 private:
     /// Symbolic bindings
     IL::ID symbolicTextureBindings = IL::InvalidID;
+    IL::ID symbolicSamplerBindings = IL::InvalidID;
     IL::ID symbolicBufferBindings  = IL::InvalidID;
+    IL::ID symbolicCBufferBindings = IL::InvalidID;
 
 private:
     /// Create all symbolic bindings

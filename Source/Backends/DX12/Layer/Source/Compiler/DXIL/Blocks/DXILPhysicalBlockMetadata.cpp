@@ -603,10 +603,18 @@ const Backend::IL::Type *DXILPhysicalBlockMetadata::GetHandleType(DXILShaderReso
 }
 
 IL::ID DXILPhysicalBlockMetadata::GetTypeSymbolicBindingGroup(const Backend::IL::Type *type) {
-    if (type->Is<Backend::IL::TextureType>()) {
-        return symbolicTextureBindings;
-    } else {
-        return symbolicBufferBindings;
+    switch (type->kind) {
+        default:
+            ASSERT(false, "Invalid handle type");
+        return IL::InvalidID;
+        case Backend::IL::TypeKind::Texture:
+            return symbolicTextureBindings;
+        case Backend::IL::TypeKind::Sampler:
+            return symbolicSamplerBindings;
+        case Backend::IL::TypeKind::Buffer:
+            return symbolicBufferBindings;
+        case Backend::IL::TypeKind::CBuffer:
+            return symbolicCBufferBindings;
     }
 }
 
@@ -1799,7 +1807,9 @@ void DXILPhysicalBlockMetadata::CreateSymbolicBindings() {
 
     // Allocate counters, no actual backing
     symbolicTextureBindings = program.GetIdentifierMap().AllocID();
+    symbolicSamplerBindings = program.GetIdentifierMap().AllocID();
     symbolicBufferBindings = program.GetIdentifierMap().AllocID();
+    symbolicCBufferBindings = program.GetIdentifierMap().AllocID();
 
     // Binding groups are currently represented as incomplete resource types
     // This will suffice for now, until a more complete representation is needed in the future
@@ -1808,7 +1818,16 @@ void DXILPhysicalBlockMetadata::CreateSymbolicBindings() {
     typeMap.SetType(symbolicTextureBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
         .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
             .elementType = typeMap.FindTypeOrAdd(Backend::IL::TextureType { }),
-            .count = UINT32_MAX
+            .count = UINT32_MAX - 1
+        }),
+        .addressSpace = Backend::IL::AddressSpace::Resource
+    }));
+
+    // General array of incomplete samplers
+    typeMap.SetType(symbolicSamplerBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(Backend::IL::SamplerType { }),
+            .count = UINT32_MAX - 1
         }),
         .addressSpace = Backend::IL::AddressSpace::Resource
     }));
@@ -1817,9 +1836,18 @@ void DXILPhysicalBlockMetadata::CreateSymbolicBindings() {
     typeMap.SetType(symbolicBufferBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
         .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
             .elementType = typeMap.FindTypeOrAdd(Backend::IL::BufferType { }),
-            .count = UINT32_MAX
+            .count = UINT32_MAX - 1
         }),
         .addressSpace = Backend::IL::AddressSpace::Resource
+    }));
+
+    // General array of incomplete cbuffers
+    typeMap.SetType(symbolicCBufferBindings, typeMap.FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = typeMap.FindTypeOrAdd(Backend::IL::ArrayType {
+            .elementType = typeMap.FindTypeOrAdd(Backend::IL::CBufferType { }),
+            .count = UINT32_MAX - 1
+        }),
+        .addressSpace = Backend::IL::AddressSpace::Constant
     }));
 }
 

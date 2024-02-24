@@ -62,6 +62,7 @@ Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleT
 Project_AddBackendTest(GeneratedTest "-O3" Waterfall Tests/Data/WaterfallSimplePhiTest.hlsl)
 Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleConstantTest.hlsl)
 Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleDivergenceTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Waterfall Tests/Data/WaterfallSimpleDivergenceReachingStoreTest.hlsl)
 Project_AddBackendTest(GeneratedTest "-O3" Waterfall Tests/Data/WaterfallSimpleConditionalMaskingTest.hlsl)
 
 Project_AddTest(

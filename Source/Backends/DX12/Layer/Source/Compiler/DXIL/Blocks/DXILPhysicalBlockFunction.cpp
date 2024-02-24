@@ -1468,7 +1468,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             // Set type to Handle*
             ilTypeMap.SetType(chainAddr, ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
                 .pointee = type,
-                .addressSpace = Backend::IL::AddressSpace::Resource
+                .addressSpace = ilTypeMap.GetType(bindingGroup)->As<Backend::IL::PointerType>()->addressSpace
             }));
             
             // Expose actual handle as a load

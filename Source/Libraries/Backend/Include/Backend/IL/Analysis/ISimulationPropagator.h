@@ -26,10 +26,15 @@
 
 #pragma once
 
+// Backend
 #include <Backend/IL/Utils/PropagationResult.h>
 
 // Common
 #include <Common/IComponent.h>
+
+namespace Backend::IL {
+    class PropagationEngine;
+}
 
 namespace IL {
     // Forward declarations
@@ -40,8 +45,9 @@ namespace IL {
     class ISimulationPropagator : public IComponent {
     public:
         /// Install this propagator
+        /// \param engine the propagation engine
         /// \return success state
-        virtual bool Install() = 0;
+        virtual bool Install(Backend::IL::PropagationEngine* engine) = 0;
 
         /// Propgate an instruction
         /// \param result propagator engine result
