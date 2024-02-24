@@ -381,6 +381,7 @@ namespace IL {
                     case Backend::IL::PropagationResult::Overdefined:
                         return MarkAsVarying(instr->result);
                     case Backend::IL::PropagationResult::None:
+                    case Backend::IL::PropagationResult::Ignore:
                         continue;
                 }
 
@@ -414,6 +415,7 @@ namespace IL {
                     break;
                 case Backend::IL::PropagationResult::Varying:
                 case Backend::IL::PropagationResult::Overdefined:
+                case Backend::IL::PropagationResult::Ignore:
                 case Backend::IL::PropagationResult::None:
                     return Backend::IL::PropagationResult::Varying;
             }
@@ -443,6 +445,7 @@ namespace IL {
                     break;
                 case Backend::IL::PropagationResult::Varying:
                 case Backend::IL::PropagationResult::Overdefined:
+                case Backend::IL::PropagationResult::Ignore:
                 case Backend::IL::PropagationResult::None:
                     return Backend::IL::PropagationResult::Varying;
             }
