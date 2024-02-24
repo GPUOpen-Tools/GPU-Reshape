@@ -209,6 +209,11 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     } else {
         bool anyChainDivergent = false;
 
+        // If this chain is annotated as divergent, do not check anything
+        if (program.GetMetadataMap().HasMetadata(instr->result, IL::MetadataType::DivergentResourceIndex)) {
+            return it;
+        }
+
         // Resource addressing is concerned with divergence
         for (uint32_t i = 0; i < instr->chains.count; i++) {
             const IL::AddressChain& chain = instr->chains[i];

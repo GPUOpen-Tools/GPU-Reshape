@@ -1426,24 +1426,45 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             // Get the actual handle type
             auto type = table.metadata.GetHandleType(_class, handleId);
 
-            // Set as pointee type
-            ilTypeMap.SetType(result, type);
+            // Unexposed remote address
+            IL::ID bindingGroup = table.metadata.GetTypeSymbolicBindingGroup(type);
+            IL::ID chainAddr = program.GetIdentifierMap().AllocID();
+            
+            // Represent indexing through a symbolic address chain instruction
+            auto *chain = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(2u));
+            chain->opCode = IL::OpCode::AddressChain;
+            chain->result = chainAddr;
+            chain->source = IL::Source::Symbolic(recordIdx);
+            chain->composite = bindingGroup;
+            chain->chains.count = 2;
+            chain->chains[0].index = program.GetConstants().UInt(0)->id;
+            chain->chains[1].index = rangeIndex;
+            basicBlock->Append(chain);
 
-            // Unused
-            GRS_SINK(rangeIndex);
+            // Set type to Handle*
+            ilTypeMap.SetType(chainAddr, ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType {
+                .pointee = type,
+                .addressSpace = Backend::IL::AddressSpace::Resource
+            }));
+            
+            // Expose actual handle as a load
+            IL::LoadInstruction load{};
+            load.opCode = IL::OpCode::Load;
+            load.result = result;
+            load.source = IL::Source::Code(recordIdx);
+            load.address = chainAddr;
+            basicBlock->Append(load);
+
+            // Set type to Handle
+            ilTypeMap.SetType(result, type);
 
             // If non uniform, add the metadata
             if (isNonUniform) {
-                program.GetMetadataMap().AddMetadata(result, IL::MetadataType::DivergentResourceIndex);
+                IL::MetadataMap& metadata = program.GetMetadataMap();
+                metadata.AddMetadata(chainAddr, IL::MetadataType::DivergentResourceIndex);
+                metadata.AddMetadata(result, IL::MetadataType::DivergentResourceIndex);
             }
-
-            // Keep the original record
-            IL::UnexposedInstruction instr{};
-            instr.opCode = IL::OpCode::Unexposed;
-            instr.result = result;
-            instr.source = IL::Source::Code(recordIdx);
-            instr.symbol = "dx.op.createHandle";
-            basicBlock->Append(instr);
+            
             return true;
         }
 
@@ -2577,6 +2598,11 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
         // Compile all instructions
         for (const IL::Instruction *instr: *bb) {
             LLVMRecord record;
+
+            // If symbolic, nothing to do
+            if (instr->source.symbolic) {
+                continue;
+            }
 
             // If it's valid, copy record
             if (instr->source.IsValid()) {

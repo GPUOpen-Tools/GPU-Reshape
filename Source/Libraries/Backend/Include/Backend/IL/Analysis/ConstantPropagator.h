@@ -485,7 +485,9 @@ namespace IL {
                 const PropagatedValue& value = propagationValues[id];
                 anyVarying     |= value.lattice == Backend::IL::PropagationResult::Varying;
                 anyOverdefined |= value.lattice == Backend::IL::PropagationResult::Overdefined;
-                anyUnmapped    |= value.lattice == Backend::IL::PropagationResult::None || (value.constant && value.constant->Is<UndefConstant>());
+                anyUnmapped    |= value.lattice == Backend::IL::PropagationResult::None ||
+                                  value.lattice == Backend::IL::PropagationResult::Ignore ||
+                                  (value.constant && value.constant->Is<UndefConstant>());
                 anyUnexposed   |= value.constant && value.constant->Is<UnexposedConstant>();
             });
 

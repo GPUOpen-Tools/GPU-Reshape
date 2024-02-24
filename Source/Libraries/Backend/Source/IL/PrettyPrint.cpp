@@ -633,6 +633,10 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
         line << " [" << instr->source.codeOffset << "]";
     }
 
+    if (instr->source.symbolic) {
+        line << " [sym]";
+    }
+
     line << "\n";
 }
 

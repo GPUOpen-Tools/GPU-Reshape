@@ -88,7 +88,9 @@ namespace IL {
         /// Is this instruction part of the original source code?
         /// \return true if user instruction
         bool IsUserInstruction() const {
-            return source.IsValid();
+            // Symbolic instructions may not be part of the original code, however,
+            // they contribute to the abstracted structure.
+            return source.IsValid() || source.symbolic;
         }
 
         OpCode opCode;

@@ -35,7 +35,10 @@
 }
 
 //! RESOURCE RWBuffer<R32Float> size:64
-[[vk::binding(1)]] RWBuffer<float> bufferRW[] : register(u1, space0);
+[[vk::binding(1)]] RWBuffer<float> bufferRW[1] : register(u1, space0);
+
+//! RESOURCE RWBuffer<R32Float> size:64
+[[vk::binding(2)]] RWBuffer<float> bufferRWNU[1] : register(u2, space0);
 
 [numthreads(1, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
@@ -79,5 +82,5 @@ void main(uint dtid : SV_DispatchThreadID) {
     bufferRW[dtid * 10 + 0][0] = varyingArray[phi];
 
     // Validate annotated divergent indexing is checked for
-    bufferRW[NonUniformResourceIndex(phi)][0] = gScalarData;
+    bufferRWNU[NonUniformResourceIndex(phi)][0] = gScalarData;
 }
