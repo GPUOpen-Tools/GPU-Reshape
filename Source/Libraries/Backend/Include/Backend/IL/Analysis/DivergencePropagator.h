@@ -192,6 +192,12 @@ namespace IL {
                 MarkAsDivergent(instr->result);
                 return;
             }
+            
+            // Addresses themselves are never marked as divergent, unless they are variables, i.e. globals and parameters
+            if (IsDivergent(instr->address)) {
+                MarkAsDivergent(instr->result);
+                return;
+            }
 
             // Assume uniform!
             MarkAsUniform(instr->result);
