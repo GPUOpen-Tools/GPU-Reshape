@@ -877,6 +877,9 @@ void IL::PrettyPrint(const Backend::IL::Type *type, PrettyPrintContext out) {
                 case Backend::IL::AddressSpace::Output:
                     line << "Output";
                     break;
+                case Backend::IL::AddressSpace::Input:
+                    line << "Input";
+                    break;
             }
             break;
         }

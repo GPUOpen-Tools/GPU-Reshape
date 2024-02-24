@@ -76,13 +76,15 @@ namespace IL {
                 divergenceValues.at(constant->id) = WorkGroupDivergence::Uniform;
             }
 
-            // Mark all constant initialized global variable as uniform
+            // Conditionally mark variables as divergent
             for (const Backend::IL::Variable *variable: program.GetVariableList()) {
-                if (!variable->initializer) {
+                if (variable->initializer) {
+                    divergenceValues.at(variable->id) = WorkGroupDivergence::Uniform;
                     continue;
                 }
 
-                divergenceValues.at(variable->id) = WorkGroupDivergence::Uniform;
+                // Otherwise, assume from AS
+                divergenceValues.at(variable->id) = GetGlobalAddressSpaceDivergence(variable->addressSpace);
             }
 
             // Mark all function inputs as divergent
@@ -270,6 +272,31 @@ namespace IL {
                 case OpCode::SampleTexture:
                 case OpCode::LoadTexture:
                 case OpCode::LoadBuffer: {
+                    return WorkGroupDivergence::Divergent;
+                }
+            }
+        }
+
+        /// Get the divergence of a global address space
+        WorkGroupDivergence GetGlobalAddressSpaceDivergence(Backend::IL::AddressSpace space) {
+            switch (space) {
+                default: {
+                    ASSERT(false, "Not a global address space");
+                    return WorkGroupDivergence::Uniform;
+                }
+                
+                case Backend::IL::AddressSpace::Constant:
+                case Backend::IL::AddressSpace::RootConstant: {
+                    return WorkGroupDivergence::Uniform;
+                }
+                
+                case Backend::IL::AddressSpace::Texture:
+                case Backend::IL::AddressSpace::Buffer:
+                case Backend::IL::AddressSpace::Resource:
+                case Backend::IL::AddressSpace::GroupShared:
+                case Backend::IL::AddressSpace::Input:
+                case Backend::IL::AddressSpace::Output:
+                case Backend::IL::AddressSpace::Unexposed: {
                     return WorkGroupDivergence::Divergent;
                 }
             }

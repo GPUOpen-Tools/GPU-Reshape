@@ -35,6 +35,7 @@ namespace Backend::IL {
         Resource,
         GroupShared,
         RootConstant,
+        Input,
         Output,
         Unexposed
     };
