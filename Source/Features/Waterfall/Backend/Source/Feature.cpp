@@ -258,11 +258,19 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, I
     // Get the pre-injection analysis
     ComRef simulationAnalysis = context.function.GetAnalysisMap().FindPass<IL::SimulationAnalysis>();
 
-    // Get the consatnt analysis
+    // Get the constant analysis
     const IL::ConstantPropagator& constantPropagator = simulationAnalysis->GetConstantPropagator();
+
+    // Get the divergence propagator
+    ComRef divergencePropagator = simulationAnalysis->FindPropagator<IL::DivergencePropagator>();
 
     // If either the composite or index is constant, no conditional masking will take place
     if (constantPropagator.IsConstant(instr->composite) || constantPropagator.IsConstant(instr->index)) {
+        return it;
+    }
+
+    // If the index is not divergent, it can go through the M0 register with dynamic addressing
+    if (divergencePropagator->GetDivergence(instr->index) != IL::WorkGroupDivergence::Divergent) {
         return it;
     }
 
