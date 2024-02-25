@@ -129,7 +129,7 @@ namespace Studio.Models.IL
         /// <summary>
         /// Number of elements
         /// </summary>
-        public int Count;
+        public uint Count;
     }
     
     public class TextureType : Type

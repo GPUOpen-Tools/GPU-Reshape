@@ -336,13 +336,21 @@ namespace Studio.Models.IL
                 case TypeKind.Texture:
                 {
                     var typed = (TextureType)type;
-                    typed.SampledType = (Type)program.Lookup[(uint)node.SampledType];
+
+                    if (node.SampledType != null)
+                    {
+                        typed.SampledType = (Type)program.Lookup[(uint)node.SampledType];
+                    }
                     break;
                 }
                 case TypeKind.Buffer:
                 {
                     var typed = (BufferType)type;
-                    typed.ElementType = (Type)program.Lookup[(uint)node.ElementType];
+                    
+                    if (node.ElementType != null)
+                    {
+                        typed.ElementType = (Type)program.Lookup[(uint)node.ElementType];
+                    }
                     break;
                 }
                 case TypeKind.Function:
