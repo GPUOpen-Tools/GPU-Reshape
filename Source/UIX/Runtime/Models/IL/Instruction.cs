@@ -282,6 +282,19 @@ namespace Studio.Models.IL
         public uint? Value;
     }
     
+    public class CallInstruction : Instruction
+    {
+        /// <summary>
+        /// Target function
+        /// </summary>
+        public uint Target;
+
+        /// <summary>
+        /// All arguments
+        /// </summary>
+        public uint[] Arguments;
+    }
+    
     public class AddressChainInstruction : Instruction
     {
         /// <summary>

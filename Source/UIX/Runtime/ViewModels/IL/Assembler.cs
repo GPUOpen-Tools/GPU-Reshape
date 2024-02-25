@@ -438,6 +438,26 @@ namespace Runtime.ViewModels.IL
                     }
                     break;
                 }
+                case OpCode.Call:
+                {
+                    var typed = (CallInstruction)instruction;
+                    
+                    AssembleInlineOperand(typed.Target, builder);
+                    builder.Append("(");
+                    
+                    for (int i = 0; i < typed.Arguments.Length; i++)
+                    {
+                        if (i != 0)
+                        {
+                            builder.Append(", ");
+                        }
+                        
+                        builder.AppendFormat("%{0}", typed.Arguments[i]);
+                    }
+                    
+                    builder.Append(" )");
+                    break;
+                }
                 case OpCode.AtomicOr:
                 case OpCode.AtomicXOr:
                 case OpCode.AtomicAnd:
@@ -763,6 +783,13 @@ namespace Runtime.ViewModels.IL
                 AssembleInlineVariable(variable, builder);
                 return;
             }
+
+            // Function?
+            if (value is Function function)
+            {
+                AssembleInlineFunction(function, builder);
+                return;
+            }
         }
 
         /// <summary>
@@ -779,6 +806,14 @@ namespace Runtime.ViewModels.IL
         private void AssembleInlineVariable(Variable variable, StringBuilder builder)
         {
             builder.AppendFormat("{0}* %{1}", variable.AddressSpace, variable.ID);
+        }
+
+        /// <summary>
+        /// Assemble an inline function
+        /// </summary>
+        private void AssembleInlineFunction(Function function, StringBuilder builder)
+        {
+            builder.AppendFormat("func %{0}", function.ID);
         }
 
         /// <summary>

@@ -58,6 +58,7 @@ namespace Studio.Models.IL
         Switch,
         Phi,
         Return,
+        Call,
         AtomicOr,
         AtomicXOr,
         AtomicAnd,

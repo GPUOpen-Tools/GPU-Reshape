@@ -776,6 +776,22 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.Call:
+                {
+                    CallInstruction call = new()
+                    {
+                        Target = node.Target
+                    };
+                    
+                    call.Arguments = new uint[node.Arguments.Count];
+                    for (int i = 0; i < call.Arguments.Length; i++)
+                    {
+                        call.Arguments[i] = node.Arguments[i];
+                    }
+                    
+                    instruction = call;
+                    break;
+                }
                 case OpCode.AtomicOr:
                 case OpCode.AtomicXOr:
                 case OpCode.AtomicAnd:
