@@ -226,6 +226,14 @@ namespace Backend::IL {
                 }
                 break;
             }
+            case ::IL::OpCode::Call: {
+                auto typed = instr->As<::IL::CallInstruction>();
+                functor(typed->target);
+                for (uint32_t i = 0; i < typed->arguments.count; i++) {
+                    functor(typed->arguments[i]);
+                }
+                break;
+            }
             case ::IL::OpCode::AtomicOr: {
                 auto typed = instr->As<::IL::AtomicOrInstruction>();
                 functor(typed->address);

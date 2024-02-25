@@ -234,6 +234,7 @@ inline Backend::IL::AddressSpace Translate(SpvStorageClass space) {
         default:
             return Backend::IL::AddressSpace::Unexposed;
         case SpvStorageClassFunction:
+        case SpvStorageClassPrivate:
             return Backend::IL::AddressSpace::Function;
         case SpvStorageClassImage:
             return Backend::IL::AddressSpace::Texture;

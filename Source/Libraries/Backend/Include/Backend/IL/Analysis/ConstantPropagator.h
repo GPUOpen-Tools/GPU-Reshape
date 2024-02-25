@@ -35,11 +35,13 @@
 #include <Backend/IL/Analysis/UserAnalysis.h>
 #include <Backend/IL/Analysis/CFG/DominatorAnalysis.h>
 #include <Backend/IL/Analysis/CFG/LoopAnalysis.h>
-#include <Backend/IL/Analysis/IAnalysis.h>
+#include <Backend/IL/Analysis/ConstantPropagatorMemory.h>
 
 namespace IL {
     class ConstantPropagator {
     public:
+        using Memory = ConstantPropagatorMemory;
+        
         COMPONENT(ConstantPropagator);
         
         /// Constructor
@@ -51,19 +53,8 @@ namespace IL {
             propagationEngine(propagationEngine) {
         }
 
-        ~ConstantPropagator() {
-            // Cleanup
-            for (PropagatedValue& value : propagationValues) {
-                if (value.memory) {
-                    delete value.memory;
-                }
-            }
-        }
-
         /// Compute constant propagation of a function
         bool Install() {
-            propagationValues.resize(program.GetIdentifierMap().GetMaxID());
-
             // Compute instruction user analysis to ssa-edges
             if (users = program.GetAnalysisMap().FindPassOrCompute<UserAnalysis>(program); !users) {
                 return false;
@@ -81,54 +72,27 @@ namespace IL {
             
             // Setup loop headers
             for (const Loop& loop : loopAnalysis->GetView()) {
-                LoopInfo& info = loopLookup[loop.header];
-                info.definition = &loop;
+                BlockInfo& info = blockLookup[loop.header];
+                info.loop = &loop;
             }
             
-            // Set program wide constants
-            for (const Constant* constant : program.GetConstants()) {
-                if (constant->IsSymbolic()) {
-                    continue;
-                }
-
-                propagationValues[constant->id] = PropagatedValue {
-                    .lattice = Backend::IL::PropagationResult::Mapped,
-                    .constant = constant
-                };
-            }
-
-            // Set global variable constants
-            for (const Backend::IL::Variable* variable : program.GetVariableList()) {
-                if (!variable->initializer) {
-                    continue;
-                }
-
-                PropagatedValue value {
-                    .lattice = Backend::IL::PropagationResult::Mapped,
-                    .constant = nullptr
-                };
-
-                // Global variables require a fully visible memory tree
-                switch (variable->initializer->type->kind) {
-                    default:
-                        value.constant = variable->initializer;
-                        break;
-                    case Backend::IL::TypeKind::Struct:
-                    case Backend::IL::TypeKind::Array:
-                        CreateMemoryTreeFromImmediate(&GetMemoryRange(value)->tree, variable->initializer);
-                        break;
-                }
-
-                propagationValues[variable->id] = value;
-            }
-
             // OK
             return true;
         }
 
-        void CompositeRanges() {
-            // Finally, composite all memory ranges back into the typical constant layout
-            CompositePropagatedMemoryRanges();
+        /// Set the memory to be used, may be shared
+        void SetMemory(Memory* externalMemory) {
+            memory = externalMemory;
+        }
+
+        /// Set the memory to be used, may be shared
+        Memory* GetMemory() const {
+            return memory;
+        }
+
+        /// Get the local ssa memory
+        const Memory::LocalSSAMemory& GetLocalSSAMemory() const {
+            return ssaMemory;
         }
 
         /// Propagate an instruction and its side effects
@@ -147,8 +111,7 @@ namespace IL {
                     return PropagateResultInstruction(block, instr, branchBlock);
                 }
                 case OpCode::AddressChain: {
-                    // Chains themselves, i.e. the memory addresses, are never known
-                    return MarkAsVarying(instr->result);
+                    return PropagateAddressChainInstruction(block, instr->As<AddressChainInstruction>(), branchBlock);
                 }
                 case OpCode::Load: {
                     return PropagateLoadInstruction(block, instr->As<LoadInstruction>(), branchBlock);
@@ -174,7 +137,7 @@ namespace IL {
         /// Propagate all side effects of a loop
         /// \param loop given loop definition
         void PropagateLoopEffects(const Loop* loop) {
-            LoopInfo& loopInfo = loopLookup[loop->header];
+            BlockInfo& blockInfo = blockLookup[loop->header];
 
             // Propgate all body blocks (includes edges)
             for (BasicBlock* block : loop->blocks) {
@@ -184,28 +147,55 @@ namespace IL {
                     }
 
                     // Store may not have been resolved
-                    auto it = ssaMemoryLookup.find(instr);
-                    if (it == ssaMemoryLookup.end()) {
+                    auto it = ssaMemory.lookup.find(instr);
+                    if (it == ssaMemory.lookup.end()) {
                         continue;
                     }
 
                     // Store resolved memory
-                    loopInfo.memoryLookup[it->second.memory] = it->second;
+                    blockInfo.memoryLookup[it->second.memory] = it->second;
                 }
+            }
+        }
+
+        /// Propagate state from a remote propagator
+        /// \param remote propagator to fetch state from
+        /// \param block source block, state from all predecessors are propagated
+        void PropagateGlobalState(const ConstantPropagator& remote, const BasicBlock* block) {
+            ComRef<DominatorAnalysis> remoteDominatorAnalysis;
+
+            // Get the dominator tree of the remote function
+            if (remoteDominatorAnalysis = remote.function.GetAnalysisMap().FindPassOrCompute<DominatorAnalysis>( remote.function); !remoteDominatorAnalysis) {
+                return;
+            }
+
+            // Propagate all constants to local
+            PropagateGlobalStateInner(remote, remoteDominatorAnalysis, block);
+            
+            // Cleanup
+            for (BasicBlock* block : remote.function.GetBasicBlocks()) {
+                block->RemoveFlag(BasicBlockFlag::Visited);
             }
         }
 
         /// Clear an instruction and intermediate data
         /// \param instr instruction to clear
         void ClearInstruction(const Instruction* instr) {
-            ssaMemoryLookup.erase(instr);
+            ssaMemory.lookup.erase(instr);
+        }
+
+        /// Simulate a static store operation
+        /// \param target destination memory to be written
+        /// \param source source memory to transfer
+        void StoreStatic(ID target, ID source) {
+            memory->propagationValues[target] = memory->propagationValues[source];
         }
 
         /// Mark an identifier as varying
         /// \param id given identifier
         /// \return propagation result
         Backend::IL::PropagationResult MarkAsVarying(ID id) {
-            PropagatedValue& value = propagationValues[id];
+            Memory::PropagatedValue& value = memory->propagationValues[id];
             return value.lattice = Backend::IL::PropagationResult::Varying;
         }
 
@@ -213,7 +203,7 @@ namespace IL {
         /// \param id given identifier
         /// \return propagation result
         Backend::IL::PropagationResult MarkAsIgnored(ID id) {
-            PropagatedValue& value = propagationValues[id];
+            Memory::PropagatedValue& value = memory->propagationValues[id];
             return value.lattice = Backend::IL::PropagationResult::Ignore;
         }
 
@@ -224,7 +214,7 @@ namespace IL {
         Backend::IL::PropagationResult MarkAsMapped(ID id, const Constant* constant) {
             ASSERT(constant != nullptr, "Invalid mapping");
 
-            PropagatedValue& value = propagationValues[id];
+            Memory::PropagatedValue& value = memory->propagationValues[id];
             value.constant = constant;
             return value.lattice = Backend::IL::PropagationResult::Mapped;
         }
@@ -233,20 +223,20 @@ namespace IL {
         /// \param id given identifier
         /// \return propagation result
         Backend::IL::PropagationResult MarkAsOverdefined(ID id) {
-            PropagatedValue& value = propagationValues[id];
+            Memory::PropagatedValue& value = memory->propagationValues[id];
             value.constant = nullptr;
             return value.lattice = Backend::IL::PropagationResult::Overdefined;
         }
 
         /// Check if an identifier is a constant
         bool IsConstant(ID id) const {
-            return propagationValues.at(id).lattice == Backend::IL::PropagationResult::Mapped;
+            return memory->propagationValues.at(id).lattice == Backend::IL::PropagationResult::Mapped;
         }
 
         /// Check if an identifier is a partial constant
         /// Composite types may be partially mapped, such as arrays ([1, 2, -, 4], but 3 not mapped)
         bool IsPartialConstant(ID id) const {
-            const PropagatedValue& value = propagationValues.at(id);
+            const Memory::PropagatedValue& value = memory->propagationValues.at(id);
             return value.constant && value.lattice == Backend::IL::PropagationResult::Varying;
         }
 
@@ -254,67 +244,105 @@ namespace IL {
         bool IsVarying(ID id) const {
             // Note that we are checking for a lack of mapping, not the propagation result
             // It may not have been propagated at all
-            return propagationValues.at(id).lattice != Backend::IL::PropagationResult::Mapped;
+            return memory->propagationValues.at(id).lattice != Backend::IL::PropagationResult::Mapped;
         }
 
         /// Check if an identifier is overdefined (i.e., has multiple compile time values)
         bool IsOverdefined(ID id) const {
-            return propagationValues.at(id).lattice == Backend::IL::PropagationResult::Overdefined;
+            return memory->propagationValues.at(id).lattice == Backend::IL::PropagationResult::Overdefined;
+        }
+
+    public:
+        /// Load a constant from an address
+        /// \param block block requesting the load
+        /// \param instr instruction requesting the load, affects general memory visibility
+        /// \param address the specific address requested
+        /// \return nullptr, if not found or unreachable
+        const Constant* LoadAddress(const BasicBlock* block, const Instruction* instr, ID address) {
+            // Get the access chain
+            Memory::IDStack chain;
+            ID base = memory->PopulateAccessChain(address, chain);
+
+            // Check the chain
+            if (base == InvalidID) {
+                return nullptr;
+            }
+
+            // If a value is constant at this point it's either non-composite, or
+            // is a global value which may be composite. Global composites are unwrapped
+            // via the memory tree for later composition.
+            Memory::PropagatedValue& value = memory->propagationValues[base];
+            if (value.constant) {
+                // Try to traverse
+                const Constant* constant = memory->TraverseImmediateConstant(value.constant, chain);
+                if (!constant) {
+                    return nullptr;
+                }
+
+                // OK
+                return constant;
+            }
+
+            // Get the range associated with the value
+            // We are not checking for the lattice here, as memory ranges can differ
+            Memory::PropagatedMemoryRange* range = memory->GetMemoryRange(value);
+
+            // Try to associate memory
+            Memory::PropagatedMemoryTraversal traversal = memory->FindPropagatedMemory(chain, range);
+            if (!traversal.match) {
+                // If addressing into a constant of unknown origins, treat it as mapped but unexposed
+                if (traversal.partialMatch && traversal.partialMatch->value) {
+                    return program.GetConstants().AddSymbolicConstant(
+                        program.GetTypeMap().GetType(address)->As<Backend::IL::PointerType>()->pointee,
+                        UnexposedConstant{}
+                    );
+                }
+            
+                return nullptr;
+            }
+
+            // Find the reaching store
+            ReachingStoreResult version = FindReachingStoreDefinition(block, instr, traversal.match);
+            if (!version.version) {
+                return nullptr;
+            }
+
+            // OK!
+            return traversal.match->value;
         }
 
     private:
         /// Propagation case handler
+        Backend::IL::PropagationResult PropagateAddressChainInstruction(const BasicBlock* block, const AddressChainInstruction* instr, const BasicBlock** branchBlock) {
+            // Address chains "keep" the value around,
+            // it's incredibly useful for features to be aware of what the chain saw during propagation,
+            // the address or contents may change after this instruction.
+            return PropagateAddressValueInstruction(block, instr, instr->composite, branchBlock);
+        }
+        
+        /// Propagation case handler
         Backend::IL::PropagationResult PropagateLoadInstruction(const BasicBlock* block, const LoadInstruction* instr, const BasicBlock** branchBlock) {
+            return PropagateAddressValueInstruction(block, instr, instr->address, branchBlock);
+        }
+        
+        /// Propagation case handler
+        Backend::IL::PropagationResult PropagateAddressValueInstruction(const BasicBlock* block, const Instruction* instr, ID address, const BasicBlock** branchBlock) {
             // Get the pointer type
-            const auto* type = program.GetTypeMap().GetType(instr->address)->As<Backend::IL::PointerType>();
+            const auto* type = program.GetTypeMap().GetType(address)->As<Backend::IL::PointerType>();
 
             // If an external address space, don't try to assume the value
             if (type->addressSpace != Backend::IL::AddressSpace::Function) {
                 return MarkAsVarying(instr->result);
             }
 
-            // Get the access chain
-            IDStack chain;
-            ID base = PopulateAccessChain(instr->address, chain);
-
-            // Check the chain
-            if (base == InvalidID) {
-                return Backend::IL::PropagationResult::Varying;
-            }
-
-            // If a value is constant at this point it's either non-composite, or
-            // is a global value which may be composite. Global composites are unwrapped
-            // via the memory tree for later composition.
-            PropagatedValue& value = propagationValues[base];
-            if (value.constant) {
-                // Try to traverse
-                const Constant* constant = TraverseImmediateConstant(value.constant, chain);
-                if (!constant) {
-                    return MarkAsVarying(instr->result);
-                }
-
-                // OK
-                return MarkAsMapped(instr->result, constant);
-            }
-
-            // Get the range associated with the value
-            // We are not checking for the lattice here, as memory ranges can differ
-            PropagatedMemoryRange* range = GetMemoryRange(value);
-
-            // Try to associate memory
-            PropagatedMemory* memory = FindPropagatedMemory(chain, range);
-            if (!memory) {
-                return Backend::IL::PropagationResult::Ignore;
-            }
-
-            // Find the reaching store
-            ReachingStoreResult version = FindReachingStoreDefinition(block, instr, memory);
-            if (!version.version) {
-                return Backend::IL::PropagationResult::Ignore;
+            // Try to load from address
+            const Constant* constant = LoadAddress(block, instr, address);
+            if (!constant) {
+                return MarkAsVarying(instr->result);
             }
 
             // OK!
-            return MarkAsMapped(instr->result, memory->value);
+            return MarkAsMapped(instr->result, constant);
         }
 
         /// Propagation case handler
@@ -328,14 +356,14 @@ namespace IL {
             }
 
             // Value must be constant
-            const PropagatedValue& storeValue = propagationValues[instr->value];
+            const Memory::PropagatedValue& storeValue = memory->propagationValues[instr->value];
             if (storeValue.lattice != Backend::IL::PropagationResult::Mapped) {
                 return Backend::IL::PropagationResult::Ignore;
             }
 
             // Get the access chain
-            IDStack chain;
-            ID base = PopulateAccessChain(instr->address, chain);
+            Memory::IDStack chain;
+            ID base = memory->PopulateAccessChain(instr->address, chain);
 
             // Check the chain
             if (base == InvalidID) {
@@ -344,21 +372,21 @@ namespace IL {
 
             // Get the range associated with the value
             // We are not checking for the lattice here, as memory ranges can differ
-            PropagatedMemoryRange* range = GetMemoryRange(propagationValues[base]);
+            Memory::PropagatedMemoryRange* range = memory->GetMemoryRange(memory->propagationValues[base]);
 
             // Write memory instance
-            PropagatedMemory* memory = FindOrCreatePropagatedMemory(chain, range);
-            memory->lattice = Backend::IL::PropagationResult::Mapped;
-            memory->value = storeValue.constant;
+            Memory::PropagatedMemory* propagatedMemory = memory->FindOrCreatePropagatedMemory(chain, range);
+            propagatedMemory->lattice = Backend::IL::PropagationResult::Mapped;
+            propagatedMemory->value = storeValue.constant;
 
             // Set SSA lookup
-            ssaMemoryLookup[instr] = PropagatedMemorySSAVersion {
-                .memory = memory,
+            ssaMemory.lookup[instr] = Memory::PropagatedMemorySSAVersion {
+                .memory = propagatedMemory,
                 .value = storeValue.constant
             };
 
             // Inform the propagator that this has been mapped, without assigning a value to it
-            return memory->lattice;
+            return propagatedMemory->lattice;
         }
 
         /// Propagation case handler
@@ -373,7 +401,7 @@ namespace IL {
                 }
 
                 // todo: why return?
-                const PropagatedValue& value = propagationValues[phiValue.value];
+                const Memory::PropagatedValue& value = memory->propagationValues[phiValue.value];
                 switch (value.lattice) {
                     default:
                         break;
@@ -409,7 +437,7 @@ namespace IL {
 
         /// Propagation case handler
         Backend::IL::PropagationResult PropagateBranchConditionalInstruction(const BasicBlock* block, const BranchConditionalInstruction* instr, const BasicBlock** branchBlock) {
-            const PropagatedValue& value = propagationValues[instr->cond];
+            const Memory::PropagatedValue& value = memory->propagationValues[instr->cond];
             switch (value.lattice) {
                 default:
                     break;
@@ -439,7 +467,7 @@ namespace IL {
 
         /// Propagation case handler
         Backend::IL::PropagationResult PropagateSwitchInstruction(const BasicBlock* block, const SwitchInstruction* instr, const BasicBlock** branchBlock) {
-            const PropagatedValue& value = propagationValues[instr->value];
+            const Memory::PropagatedValue& value = memory->propagationValues[instr->value];
             switch (value.lattice) {
                 default:
                     break;
@@ -485,7 +513,7 @@ namespace IL {
 
             // Gather all operands
             Backend::IL::VisitOperands(instr, [&](ID id) {
-                const PropagatedValue& value = propagationValues[id];
+                const Memory::PropagatedValue& value = memory->propagationValues[id];
                 anyVarying     |= value.lattice == Backend::IL::PropagationResult::Varying;
                 anyOverdefined |= value.lattice == Backend::IL::PropagationResult::Overdefined;
                 anyUnmapped    |= value.lattice == Backend::IL::PropagationResult::None ||
@@ -515,7 +543,7 @@ namespace IL {
 
             // Try to fold the instruction
             const Constant* constant = Backend::IL::FoldConstantInstruction(program, instr, [&](IL::ID id) {
-                const PropagatedValue& value = propagationValues[id];
+                const Memory::PropagatedValue& value = memory->propagationValues[id];
                 ASSERT(value.lattice == Backend::IL::PropagationResult::Mapped, "Mapping invalid constant");
                 return value.constant;
             });
@@ -551,489 +579,15 @@ namespace IL {
             return after;
         }
 
-    public:
-        enum class MemoryAddressType {
-            None,
-            Varying,
-            Constant
-        };
-
-        struct MemoryAddressNode {
-            bool operator==(const MemoryAddressNode& rhs) const {
-                switch (type) {
-                    case MemoryAddressType::None:
-                        return type == rhs.type;
-                    case MemoryAddressType::Varying:
-                        return type == rhs.type && varying == rhs.varying;
-                    case MemoryAddressType::Constant:
-                        return type == rhs.type && constant == rhs.constant;
-                }
-
-                return false;
-            }
-
-            MemoryAddressType type{MemoryAddressType::None};
-
-            union {
-                IL::ID varying;
-                const IL::Constant* constant;
-            };
-        };
-
-        struct MemoryAddressChain {
-            /// All nodes
-            MemoryAddressNode* nodes{nullptr};
-
-            /// Number of nodes
-            uint32_t count{0};
-        };
-
-        struct PropagatedMemory {
-            /// Memory lattice value
-            Backend::IL::PropagationResult lattice{Backend::IL::PropagationResult::None};
-
-            /// Reference used for the memory location
-            MemoryAddressChain addressChain;
-
-            /// The assigned constant to the reference address
-            const Constant* value{nullptr};
-        };
-
-        struct PropagatedMemorySSAVersion {
-            /// The memory target
-            PropagatedMemory* memory{nullptr};
-            
-            /// The assigned constant to the reference address
-            const Constant* value{nullptr};
-        };
-
-        struct MemoryAccessTreeNode {
-            /// Memory associated with this node, may be null
-            PropagatedMemory* memory{nullptr};
-
-            /// All tree-wise children to this node
-            std::vector<std::pair<MemoryAddressNode, MemoryAccessTreeNode*>> children;
-        };
-
-        struct PropagatedMemoryRange {
-            /// All lattice values, linearly laid out
-            std::vector<PropagatedMemory*> values;
-
-            /// Tree layout
-            MemoryAccessTreeNode tree;
-        };
-
-        struct PropagatedValue {
-            /// Current lattice value
-            Backend::IL::PropagationResult lattice{Backend::IL::PropagationResult::None};
-
-            /// Optional, memory range on indirections
-            /// Not that each reference may have a different lattice value
-            PropagatedMemoryRange* memory{nullptr};
-
-            /// Optional, assigned constant on mapped lattices
-            const Constant* constant{nullptr};
-        };
-
-        /// Helper, identifier stack for searches
-        using IDStack = TrivialStackVector<ID, 32>;
-
-        /// Helper, node stack for searches
-        using MemoryAddressNodeStack = TrivialStackVector<MemoryAddressNode, 32>;
-
-        /// Get the memory range for a value
-        PropagatedMemoryRange* GetMemoryRange(PropagatedValue& value) {
-            if (!value.memory) {
-                value.memory = new PropagatedMemoryRange();
-            }
-
-            return value.memory;
-        }
-
-        /// Check if an address chain base offset is non-zero
-        bool IsBaseOffsetNonConstantZero(ID id) const {
-            const Constant* constant = program.GetConstants().GetConstant(id);
-            if (!constant) {
-                return true;
-            }
-
-            // Must be constant
-            auto _int = constant->As<IntConstant>();
-            if (!_int) {
-                return false;
-            }
-
-            return _int->value != 0;
-        }
-
-        /// Get the access chain from an identifier
-        /// \param id id to populate from
-        /// \param chain output chain
-        /// \return base composite or indirection
-        ID PopulateAccessChain(ID id, IDStack& chain) const {
-            // All address chains must start with the base offset, which is typically zero.
-            // However, some languages allow for base offsets before dereferencing the composite address.
-            // This is not supported by constant analysis.
-            bool hasBaseCompositeOffset = false;
-
-            // Walk reverse address back (index -> ... -> allocation)
-            Backend::IL::VisitGlobalAddressChainReverse(program, id, [&](ID id, bool isCompositeBase) {
-                if (isCompositeBase) {
-                    hasBaseCompositeOffset |= IsBaseOffsetNonConstantZero(id);
-                    return;
-                }
-
-                chain.Add(id);
-            });
-
-            // Nothing?
-            if (!chain.Size() || hasBaseCompositeOffset) {
-                return InvalidID;
-            }
-
-            // Don't report the base address
-            ID base = chain.PopBack();
-
-            // Reverse in-place
-            std::ranges::reverse(chain);
-
-            return base;
-        }
-
-        /// Find the propagated memory
-        PropagatedMemory* FindPropagatedMemory(const IDStack& chain, PropagatedMemoryRange* range) {
-            MemoryAddressNodeStack ignore;
-            return FindPropagatedMemory(chain, range, ignore);
-        }
-
-        /// Find the propagated memory
-        PropagatedMemory* FindPropagatedMemory(const IDStack& chain, PropagatedMemoryRange* range, MemoryAddressNodeStack& workingNodes) {
-            workingNodes.Resize(chain.Size());
-
-            // Fill working nodes
-            for (uint32_t i = 0; i < chain.Size(); i++) {
-                workingNodes[i] = GetMemoryAddressNode(chain[i]);
-            }
-
-            // Root tree
-            MemoryAccessTreeNode* treeNode = &range->tree;
-
-            for (uint32_t i = 0; i < workingNodes.Size(); i++) {
-                MemoryAccessTreeNode* nextTree = nullptr;
-
-                // Try to find node
-                for (auto && tag : treeNode->children) {
-                    if (tag.first == workingNodes[i]) {
-                        nextTree = tag.second;
-                        break;
-                    }
-                }
-
-                if (!nextTree) {
-                    return nullptr;
-                }
-
-                treeNode = nextTree;
-            }
-
-            // OK
-            return treeNode->memory;
-        }
-
-        /// Find or create a propagated memory chain
-        PropagatedMemory* FindOrCreatePropagatedMemory(const IDStack& chain, PropagatedMemoryRange* range) {
-            TrivialStackVector<MemoryAddressNode, 32> workingNodes;
-
-            // First, try to find it
-            if (PropagatedMemory* memory = FindPropagatedMemory(chain, range, workingNodes)) {
-                return memory;
-            }
-
-            // Nothing found, create the memory
-            PropagatedMemory* memory = range->values.emplace_back(blockAllocator.Allocate<PropagatedMemory>());
-            memory->addressChain.count = static_cast<uint32_t>(chain.Size());
-            memory->addressChain.nodes = blockAllocator.AllocateArray<MemoryAddressNode>(memory->addressChain.count);
-
-            // Root tree
-            MemoryAccessTreeNode* treeNode = &range->tree;
-
-            // Copy nodes
-            for (uint32_t i = 0; i < static_cast<uint32_t>(chain.Size()); i++) {
-                memory->addressChain.nodes[i] = workingNodes[i];
-
-                MemoryAccessTreeNode* nextTree = nullptr;
-
-                // Find next link
-                for (auto && tag : treeNode->children) {
-                    if (tag.first == workingNodes[i]) {
-                        nextTree = tag.second;
-                        break;
-                    }
-                }
-
-                // Create if not found
-                if (!nextTree) {
-                    nextTree = treeNode->children.emplace_back(
-                        workingNodes[i],
-                        new MemoryAccessTreeNode()
-                    ).second;
-                }
-
-                treeNode = nextTree;
-            }
-
-            // Set node memory
-            treeNode->memory = memory;
-
-            // OK!
-            return memory;
-        }
-
-        /// Get an address node for an identifier
-        MemoryAddressNode GetMemoryAddressNode(ID id) const {
-            MemoryAddressNode node;
-
-            // Constant?
-            const PropagatedValue& value = propagationValues.at(id);
-
-            // Set payload
-            if (value.lattice == Backend::IL::PropagationResult::Mapped) {
-                node.type = MemoryAddressType::Constant;
-                node.constant = value.constant;
-            } else {
-                node.type = MemoryAddressType::Varying;
-                node.varying = id;
-            }
-
-            // OK
-            return node;
-        }
-
-    private:
-        /// Composite all active memory ranges
-        void CompositePropagatedMemoryRanges() {
-            for (size_t i = 0; i < propagationValues.size(); i++) {
-                PropagatedValue& value = propagationValues[i];
-
-                // Nothing to composite to?
-                if (!value.memory) {
-                    continue;
-                }
-
-                CompositePropagatedMemoryRange(value, static_cast<ID>(i));
-            }
-        }
-
-        /// Find the base memory node
-        MemoryAccessTreeNode* FindBaseMemoryNode(MemoryAccessTreeNode* node) {
-            for (auto && tag : node->children) {
-                if (tag.first.type != MemoryAddressType::Constant) {
-                    continue;
-                }
-
-                // Check for base offset
-                auto _int = tag.first.constant->Cast<IntConstant>();
-                if (!_int || _int->value != 0) {
-                    continue;
-                }
-
-                return tag.second;
-            }
-
-            return nullptr;
-        }
-
-        /// Composite a known propagated memory range
-        void CompositePropagatedMemoryRange(PropagatedValue& value, ID id) {
-            ASSERT(!value.constant, "Memory range value with a pre-assigned constant");
-
-            // Get type of constant
-            const Backend::IL::Type* type = program.GetTypeMap().GetType(id);
-            if (!type) {
-                ASSERT(false, "Failed to map constant to pointer kind");
-                return;
-            }
-
-            // Must be pointer type
-            const auto* ptrType = type->Cast<Backend::IL::PointerType>();
-            if (!ptrType) {
-                ASSERT(false, "Non-indirect memory propagation range");
-                return;
-            }
-
-            // Assume the lattice is mapped
-            Backend::IL::PropagationResult lattice = Backend::IL::PropagationResult::Mapped;
-
-            // Construct the constant
-            const Constant* constant = CompositeConstant(ptrType->pointee, &value.memory->tree, lattice);
-            if (constant == nullptr) {
-                return;
-            }
-
-            // Confident about the values mapping
-            value.lattice = lattice;
-            value.constant = constant;
-        }
-
-        /// Composite a memory node to a constant
-        const Constant* CompositeConstant(const Backend::IL::Type* type, MemoryAccessTreeNode* node, Backend::IL::PropagationResult& lattice) {
-            switch (type->kind) {
-                default: {
-                    return nullptr;
-                }
-                case Backend::IL::TypeKind::Int:
-                case Backend::IL::TypeKind::FP:
-                case Backend::IL::TypeKind::Bool:
-                    return CompositePrimitiveConstant(type, node, lattice);
-                case Backend::IL::TypeKind::Array:
-                    return CompositeConstant(type->As<Backend::IL::ArrayType>(), node, lattice);
-            }
-        }
-
-        /// Composite a memory node to a constant
-        const Constant* CompositePrimitiveConstant(const Backend::IL::Type* type, MemoryAccessTreeNode* node, Backend::IL::PropagationResult& lattice) {
-            if (!node->memory) {
-                return nullptr;
-            }
-
-            if (node->memory->lattice != Backend::IL::PropagationResult::Mapped) {
-                lattice = Backend::IL::PropagationResult::Varying;
-            }
-
-            return node->memory->value;
-        }
-
-        /// Composite a memory node to a constant
-        const Constant* CompositeConstant(const Backend::IL::ArrayType* type, MemoryAccessTreeNode* node, Backend::IL::PropagationResult& lattice) {
-            ArrayConstant array;
-            array.elements.resize(type->count);
-
-            // Handle all mapped elements
-            for (auto&& tag : node->children) {
-                if (tag.first.type != MemoryAddressType::Constant) {
-                    continue;
-                }
-
-                const auto* offset = tag.first.constant->As<IntConstant>();
-
-                // Try to construct element
-                array.elements.at(offset->value) = CompositeConstant(type->elementType, tag.second, lattice);
-            }
-
-            bool isSymbolic = false;
-
-            // Check for partial constants
-            for (const Constant* element : array.elements) {
-                if (!element) {
-                    lattice = Backend::IL::PropagationResult::Varying;
-                }
-
-                isSymbolic |= !element || element->IsSymbolic();
-            }
-
-            // If varying, create as a symbolic constant
-            if (isSymbolic) {
-                return program.GetConstants().AddSymbolicConstant(type, array);
-            } else {
-                return program.GetConstants().FindConstantOrAdd(type, array);
-            }
-        }
-
-        /// Traverse an immediate constant from an id stack
-        const Constant* TraverseImmediateConstant(const Constant* composite, const IDStack& stack) {
-            for (size_t i = 0; i < stack.Size(); i++) {
-                const PropagatedValue& value = propagationValues.at(stack[i]);
-
-                // Unmapped?
-                if (value.lattice != Backend::IL::PropagationResult::Mapped) {
-                    return nullptr;
-                }
-
-                // Must be integer
-                auto index = composite->Cast<IntConstant>();
-                if (!index) {
-                    return nullptr;
-                }
-
-                switch (composite->kind) {
-                    default: {
-                        // Unknown traversal
-                        return nullptr;
-                    }
-                    case Backend::IL::ConstantKind::Array: {
-                        auto array = value.constant->As<ArrayConstant>();
-                        return array->elements.at(index->value);
-                    }
-                    case Backend::IL::ConstantKind::Struct: {
-                        auto _struct = value.constant->As<StructConstant>();
-                        return _struct->members.at(index->value);
-                    }
-                }
-            }
-
-            // OK
-            return composite;
-        }
-
-        /// Create a memory tree from an immediate constant
-        /// Useful for constant injection prior to propagation
-        void CreateMemoryTreeFromImmediate(MemoryAccessTreeNode* node, const Constant* constant) {
-            switch (constant->kind) {
-                default: {
-                    node->memory = new PropagatedMemory {
-                        .lattice = Backend::IL::PropagationResult::Mapped,
-                        .value = constant
-                    };
-                    break;
-                }
-                case Backend::IL::ConstantKind::Array: {
-                    auto array = constant->As<ArrayConstant>();
-
-                    for (uint32_t i = 0; i < array->elements.size(); i++) {
-                        MemoryAddressNode addressNode {
-                            .type = MemoryAddressType::Constant,
-                            .constant = program.GetConstants().FindConstantOrAdd(
-                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true}),
-                                Backend::IL::IntConstant{.value = i}
-                            )
-                        };
-
-                        auto&& tag = node->children.emplace_back(addressNode, new MemoryAccessTreeNode { });
-
-                        CreateMemoryTreeFromImmediate(tag.second, array->elements[i]);
-                    }
-                    break;
-                }
-                case Backend::IL::ConstantKind::Struct: {
-                    auto _struct = constant->As<StructConstant>();
-
-                    for (uint32_t i = 0; i < _struct->members.size(); i++) {
-                        MemoryAddressNode addressNode {
-                            .type = MemoryAddressType::Constant,
-                            .constant = program.GetConstants().FindConstantOrAdd(
-                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true}),
-                                Backend::IL::IntConstant{.value = i}
-                            )
-                        };
-
-                        auto&& tag = node->children.emplace_back(addressNode, new MemoryAccessTreeNode { });
-
-                        CreateMemoryTreeFromImmediate(tag.second, _struct->members[i]);
-                    }
-                    break;
-                }
-            }
-        }
-
     private:
         /// TODO: Reduce allocations
 
-        struct LoopInfo {
-            /// Outer definition
-            const Loop* definition{nullptr};
-
+        struct BlockInfo {
+            /// Optional, outer loop definition
+            const Loop* loop{nullptr};
+            
             /// All merged side effects of an iteration
-            std::unordered_map<const PropagatedMemory*, PropagatedMemorySSAVersion> memoryLookup;
+            std::unordered_map<const Memory::PropagatedMemory*, Memory::PropagatedMemorySSAVersion> memoryLookup;
         };
 
         struct ReachingStoreResult {
@@ -1042,7 +596,7 @@ namespace IL {
             Backend::IL::PropagationResult result{Backend::IL::PropagationResult::None};
 
             /// Found version
-            PropagatedMemorySSAVersion* version{nullptr};
+            Memory::PropagatedMemorySSAVersion* version{nullptr};
         };
         
         struct ReachingStoreCache {
@@ -1055,13 +609,13 @@ namespace IL {
         /// \param instr optional, top most instruction, iteration stops when met
         /// \param memory memory leaf to search for, matches by address
         /// \return searech result
-        ReachingStoreResult FindReachingStoreDefinition(const BasicBlock* block, const Instruction* instr, const PropagatedMemory* memory) {
+        ReachingStoreResult FindReachingStoreDefinition(const BasicBlock* block, const Instruction* instr, const Memory::PropagatedMemory* memory) {
             ReachingStoreCache cache;
             return FindReachingStoreDefinition(block, instr, memory, cache);
         }
 
         /// Find the reaching, i.e., dominating, store definition with a matching memory tree
-        ReachingStoreResult FindReachingStoreDefinition(const BasicBlock* block, const Instruction* instr, const PropagatedMemory* memory, ReachingStoreCache& cache) {
+        ReachingStoreResult FindReachingStoreDefinition(const BasicBlock* block, const Instruction* instr, const Memory::PropagatedMemory* memory, ReachingStoreCache& cache) {
             // Check memoization
             if (auto it = cache.blockMemoization.find(block); it != cache.blockMemoization.end()) {
                 return it->second;
@@ -1076,7 +630,7 @@ namespace IL {
         }
 
         /// Find the reaching, i.e., dominating, store definition with a matching memory tree
-        ReachingStoreResult FindReachingStoreDefinitionInner(const BasicBlock* block, const Instruction* instr, const PropagatedMemory* memory, ReachingStoreCache& cache) {
+        ReachingStoreResult FindReachingStoreDefinitionInner(const BasicBlock* block, const Instruction* instr, const Memory::PropagatedMemory* memory, ReachingStoreCache& cache) {
             ReachingStoreResult result;
 
             // Search forward in the current block
@@ -1091,8 +645,8 @@ namespace IL {
                 }
 
                 // Matching memory tree?
-                auto it = ssaMemoryLookup.find(blockInstr);
-                if (it == ssaMemoryLookup.end() || it->second.memory != memory) {
+                auto it = ssaMemory.lookup.find(blockInstr);
+                if (it == ssaMemory.lookup.end() || it->second.memory != memory) {
                     continue;
                 }
 
@@ -1111,9 +665,9 @@ namespace IL {
 
             // Before checking the predecessor trees, check if this is a look header,
             // and if the loop header has a collapsed set of memory ranges
-            if (auto loopIt = loopLookup.find(block); loopIt != loopLookup.end()) {
-                LoopInfo& info = loopIt->second;
-                loopDefinition = info.definition;
+            if (auto loopIt = blockLookup.find(block); loopIt != blockLookup.end()) {
+                BlockInfo& info = loopIt->second;
+                loopDefinition = info.loop;
 
                 // Check if the memory pattern exists
                 // Note that address checks on the loop memory ranges is fine, as it should be unique anyway
@@ -1185,6 +739,53 @@ namespace IL {
             return result;
         }
 
+        /// Propagate all global state from a remote propagator
+        void PropagateGlobalStateInner(const ConstantPropagator& remote, const ComRef<DominatorAnalysis>& remoteDominatorAnalysis, const BasicBlock* block) {
+            if (block->HasFlag(BasicBlockFlag::Visited)) {
+                return;
+            }
+
+            // Mark as visited
+            block->AddNonSemanticFlag(BasicBlockFlag::Visited);
+
+            // Remote memory to propagate
+            const Memory::LocalSSAMemory& remoteLocal = remote.GetLocalSSAMemory();
+
+            // Collapse all global state to the entry point block (reachable by everything)
+            BlockInfo& entryBlockInfo = blockLookup[*function.GetBasicBlocks().begin()];
+            
+            // Search forward in the current block
+            for (const Instruction* blockInstr : *block) {
+                if (!blockInstr->Is<StoreInstruction>()) {
+                    continue;
+                }
+
+                // Matching memory tree?
+                auto it = remoteLocal.lookup.find(blockInstr);
+                if (it == remoteLocal.lookup.end()) {
+                    continue;
+                }
+
+                if (!entryBlockInfo.memoryLookup.contains(it->second.memory)) {
+                    entryBlockInfo.memoryLookup[it->second.memory] = it->second;
+                }
+            }
+
+            // Inherit all previously collapsed memory
+            if (auto blockInfo = blockLookup.find(block); blockInfo != blockLookup.end()) {
+                for (auto&& kv : blockInfo->second.memoryLookup) {
+                    if (!entryBlockInfo.memoryLookup.contains(kv.first)) {
+                        entryBlockInfo.memoryLookup[kv.first] = kv.second;
+                    }
+                }
+            }
+
+            // Search all predecessors for candidates
+            for (const BasicBlock* predecessor : remoteDominatorAnalysis->GetPredecessors(block)) {
+                PropagateGlobalStateInner(remote, remoteDominatorAnalysis, predecessor);
+            }
+        }
+
     private:
         /// Outer program
         Program& program;
@@ -1202,21 +803,17 @@ namespace IL {
         ComRef<UserAnalysis> users;
 
     private:
-        /// All propagated values (result wise lookup)
-        std::vector<PropagatedValue> propagationValues;
-
         /// Underlying propagation engine
         Backend::IL::PropagationEngine& propagationEngine;
 
-    private:
-        /// Memory lookup for SSA instructions
-        std::unordered_map<const Instruction*, PropagatedMemorySSAVersion> ssaMemoryLookup;
+        /// Shared memory
+        ConstantPropagatorMemory* memory{nullptr};
 
+    private:
         /// Look lookup
-        std::unordered_map<const BasicBlock*, LoopInfo> loopLookup;
+        std::unordered_map<const BasicBlock*, BlockInfo> blockLookup;
 
-    private:
-        /// Block allocator for constants, constants never need to be freed
-        LinearBlockAllocator<1024> blockAllocator;
+        /// All local memory
+        Memory::LocalSSAMemory ssaMemory;
     };
 }

@@ -71,6 +71,9 @@ namespace IL {
         Phi,
         Return,
 
+        /// Procedure
+        Call,
+
         /// Atomic
         AtomicOr,
         AtomicXOr,

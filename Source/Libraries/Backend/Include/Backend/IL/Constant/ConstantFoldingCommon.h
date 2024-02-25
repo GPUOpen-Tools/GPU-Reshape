@@ -33,6 +33,9 @@ namespace Backend::IL {
             case ::IL::OpCode::Phi:
             case ::IL::OpCode::Select:
 
+            /** Interprocedurals are not "immediate" folds, I wish... */
+            case ::IL::OpCode::Call:
+
             /** Memory operations cannot be folded with immediates */
             case ::IL::OpCode::Load:
             case ::IL::OpCode::Store:

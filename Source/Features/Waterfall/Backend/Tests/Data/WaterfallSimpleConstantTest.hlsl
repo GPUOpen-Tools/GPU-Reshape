@@ -39,7 +39,7 @@ static const float3 globalConstant[] = {
 	float3(0, 0, 1)
 };
 
-[numthreads(1, 1, 1)]
+[numthreads(8, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
     float constantA = fmod(3.0f, 2.0f) + cos(1);
     float constantB = constantA + 3.0f;

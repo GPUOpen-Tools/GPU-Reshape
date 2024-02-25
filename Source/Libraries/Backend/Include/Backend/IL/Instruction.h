@@ -530,6 +530,27 @@ namespace IL {
         ID value;
     };
 
+    struct CallInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Call;
+
+        /// Get size of this instruction
+        /// \param argumentCount number of arguments
+        /// \return byte size
+        static uint64_t GetSize(uint32_t argumentCount) {
+            return sizeof(CallInstruction) + InlineArray<ID>::ElementSize(argumentCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(CallInstruction) + arguments.ElementSize();
+        }
+
+        ID target;
+
+        InlineArray<ID> arguments;
+    };
+
     struct AtomicOrInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::AtomicOr;
 
@@ -815,6 +836,8 @@ namespace IL {
                 return sizeof(TruncInstruction);
             case OpCode::Return:
                 return sizeof(ReturnInstruction);
+            case OpCode::Call:
+                return static_cast<const CallInstruction*>(instruction)->GetSize();
             case OpCode::FloatToInt:
                 return sizeof(FloatToIntInstruction);
             case OpCode::IntToFloat:

@@ -817,6 +817,24 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 break;
             }
 
+            case SpvOpFunctionCall: {
+                IL::ID target = ctx++;
+                
+                auto *instr = ALLOCA_SIZE(IL::CallInstruction, IL::CallInstruction::GetSize(ctx.PendingWords()));
+                instr->opCode = IL::OpCode::Call;
+                instr->result = ctx.GetResult();
+                instr->source = source;
+                instr->target = target;
+                instr->arguments.count = ctx.PendingWords();
+
+                for (uint32_t i = 0; ctx.HasPendingWords(); i++) {
+                    instr->arguments[i] = ctx++;
+                }
+                
+                basicBlock->Append(instr);
+                break;
+            }
+
             case SpvOpVectorExtractDynamic: {
                 IL::ExtractInstruction instr{};
                 instr.opCode = IL::OpCode::Extract;

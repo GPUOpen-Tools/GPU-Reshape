@@ -126,6 +126,7 @@ namespace Backend::IL {
             case OpCode::Switch:
             case OpCode::Phi:
             case OpCode::Return:
+            case OpCode::Call:
             case OpCode::AtomicOr:
             case OpCode::AtomicXOr:
             case OpCode::AtomicAnd:

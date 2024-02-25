@@ -136,6 +136,11 @@ namespace IL {
         void PropagateLoopEffects(const Loop* loop) override {
             /** poof */
         }
+        
+        /// Simulate a static store operation
+        void StoreStatic(ID target, ID source) {
+            
+        }
 
     private:
         void PropagateResultInstruction(const Instruction *instr) {
@@ -516,7 +521,7 @@ namespace IL {
     private:
         struct MemoryTreeNode {
             /// All memory patterns
-            std::vector<std::pair<ConstantPropagator::MemoryAddressNode, MemoryTreeNode*>> children;
+            std::vector<std::pair<ConstantPropagatorMemory::MemoryAddressNode, MemoryTreeNode*>> children;
         };
 
         struct DivergenceState {
@@ -559,8 +564,8 @@ namespace IL {
             ID base;
             
             // Get the access chain
-            ConstantPropagator::IDStack chain;
-            base = constantPropagator.PopulateAccessChain(address, chain);
+            ConstantPropagatorMemory::IDStack chain;
+            base = constantPropagator.GetMemory()->PopulateAccessChain(address, chain);
 
             // Check the chain
             if (base == InvalidID) {
@@ -580,7 +585,7 @@ namespace IL {
                 MemoryTreeNode* next = nullptr;
 
                 // Get address node from constant propagator
-                const ConstantPropagator::MemoryAddressNode& addressNode = constantPropagator.GetMemoryAddressNode(chain[i]);
+                const ConstantPropagatorMemory::MemoryAddressNode& addressNode = constantPropagator.GetMemory()->GetMemoryAddressNode(chain[i]);
 
                 // Try to find matching memory child
                 for (auto&& kv : out.node->children) {
@@ -607,8 +612,8 @@ namespace IL {
             // Chain divergence checks is independent of actual chains
             // If a single node is divergent, the entire thing is, regardless if it's mapped or not
             for (uint32_t i = 0; i < chain.Size(); i++) {
-                const ConstantPropagator::MemoryAddressNode& addressNode = constantPropagator.GetMemoryAddressNode(chain[i]);
-                if (addressNode.type == ConstantPropagator::MemoryAddressType::Varying && IsDivergent(addressNode.varying)) {
+                const ConstantPropagatorMemory::MemoryAddressNode& addressNode = constantPropagator.GetMemory()->GetMemoryAddressNode(chain[i]);
+                if (addressNode.type == ConstantPropagatorMemory::MemoryAddressType::Varying && IsDivergent(addressNode.varying)) {
                     out.divergence = WorkGroupDivergence::Divergent;
                 }
             }

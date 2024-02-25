@@ -42,13 +42,13 @@ namespace IL {
         SimulationAnalysis(Program& program, Function& function) :
             program(program), function(function),
             propagationEngine(program, function),
-            ConstantPropagator(program, function, propagationEngine) {
+            constantPropagator(program, function, propagationEngine) {
         }
 
         /// Compute constant propagation of a function
         bool Compute() override {
             // Setup constant analysis
-            if (!ConstantPropagator.Install()) {
+            if (!constantPropagator.Install()) {
                 return false;
             }
 
@@ -62,17 +62,20 @@ namespace IL {
             // Compute propagation
             propagationEngine.Compute(*this);
 
-            // Composite all memory ranges
-            ConstantPropagator.CompositeRanges();
-
             // OK
             return true;
         }
 
         /// Get the underlying constant propagator
         /// This is guaranteed to exist for any simulator
+        ConstantPropagator& GetConstantPropagator() {
+            return constantPropagator;
+        }
+
+        /// Get the underlying constant propagator
+        /// This is guaranteed to exist for any simulator
         const ConstantPropagator& GetConstantPropagator() const {
-            return ConstantPropagator;
+            return constantPropagator;
         }
 
         /// Find a propagator or construct it if it doesn't exist
@@ -122,7 +125,12 @@ namespace IL {
     public:
         /// Propagate an instruction
         Backend::IL::PropagationResult PropagateInstruction(const BasicBlock* block, const Instruction* instr, const BasicBlock** branchBlock) {
-            Backend::IL::PropagationResult result = ConstantPropagator.PropagateInstruction(block, instr, branchBlock);
+            // Interproceduralism is handled by the simulator, not constant propagator
+            if (auto call = instr->Cast<CallInstruction>()) {
+                SimulateProcedure(block, call);
+            }
+            
+            Backend::IL::PropagationResult result = constantPropagator.PropagateInstruction(block, instr, branchBlock);
 
             // Notify propagators
             for (const ComRef<ISimulationPropagator>& propagator : propagators) {
@@ -135,7 +143,7 @@ namespace IL {
 
         /// Propagate all loop side effects
         void PropagateLoopEffects(const Loop* loop) {
-            ConstantPropagator.PropagateLoopEffects(loop);
+            constantPropagator.PropagateLoopEffects(loop);
 
             // Notify propagators
             for (const ComRef<ISimulationPropagator>& propagator : propagators) {
@@ -145,7 +153,54 @@ namespace IL {
 
         /// Clear an instruction
         void ClearInstruction(const Instruction* instr) {
-            ConstantPropagator.ClearInstruction(instr);
+            constantPropagator.ClearInstruction(instr);
+        }
+        
+    private:
+        /// Simulate a procedure call
+        /// \param block source block
+        /// \param call source instruction
+        void SimulateProcedure(const BasicBlock* block, const CallInstruction* call) {
+            Function* target = program.GetFunctionList().GetFunction(call->target);
+            if (!target) {
+                ASSERT(false, "Invalid target");
+                return;
+            }
+
+            // Use nested simulation passes
+            ComRef analysis = target->GetAnalysisMap().FindPass<SimulationAnalysis>();
+            if (!analysis) {
+                ASSERT(false, "Failed to set up simulation for procedure");
+                return;
+            }
+
+            // Propagate all state from the block to this propagator
+            analysis->GetConstantPropagator().PropagateGlobalState(constantPropagator, block);
+
+            // TODO: Erase previous state
+            auto parameterIt = target->GetParameters().begin();
+
+            // Assign all parameters
+            for (uint32_t i = 0; i < call->arguments.count; i++) {
+                const Backend::IL::Variable *parameter = *parameterIt;
+
+                // Inform constant propagator of static store
+                constantPropagator.StoreStatic(parameter->id, call->arguments[i]);
+
+                // Notify propagators of static store
+                for (const ComRef<ISimulationPropagator>& propagator : propagators) {
+                    propagator->StoreStatic(parameter->id, call->arguments[i]);
+                }
+
+                // Advance parameter
+                ASSERT(parameterIt < target->GetParameters().end(), "Out of bounds iterator");
+                ++parameterIt;
+            }
+
+            // Try to simulate it
+            if (!analysis->Compute()) {
+                return;
+            }
         }
 
     private:
@@ -159,7 +214,7 @@ namespace IL {
         Backend::IL::PropagationEngine propagationEngine;
 
         /// Constant analysis
-        ConstantPropagator ConstantPropagator;
+        ConstantPropagator constantPropagator;
 
         /// All user added propagators
         std::vector<ComRef<ISimulationPropagator>> propagators;

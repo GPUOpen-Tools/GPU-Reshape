@@ -482,6 +482,22 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             }
             break;
         }
+        case OpCode::Call: {
+            auto call = instr->As<IL::CallInstruction>();
+
+            line << "Call %" << call->target << " (";
+
+            for (uint32_t i = 0; i < call->arguments.count; i++) {
+                if (i != 0) {
+                    line << ", ";
+                }
+
+                line << "%" << call->arguments[i];
+            }
+            
+            line << ")";
+            break;
+        }
         case OpCode::BitXOr: {
             auto _xor = instr->As<IL::BitXOrInstruction>();
             line << "XOr %" << _xor->lhs << " %" << _xor->rhs;
@@ -2032,6 +2048,23 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             if (ret->value != IL::InvalidID) {
                 out.Line() << "\"Value\": " << ret->value << ",";
             }
+            break;
+        }
+        case IL::OpCode::Call: {
+            auto call = instr->As<IL::CallInstruction>();
+
+            out.Line() << "\"Target\": " << call->target << ",";
+            out.Line() << "\"Arguments\": [";
+
+            for (uint32_t i = 0; i < call->arguments.count; i++) {
+                out.Line() << call->arguments[i];
+                
+                if (i != call->arguments.count - 1) {
+                    out.stream << ",";
+                }
+            }
+            
+            out.Line() << "],";
             break;
         }
         case IL::OpCode::BitXOr: {

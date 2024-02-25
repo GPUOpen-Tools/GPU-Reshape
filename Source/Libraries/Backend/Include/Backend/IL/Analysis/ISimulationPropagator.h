@@ -59,5 +59,10 @@ namespace IL {
         /// Propagate all side effects of a loop
         /// \param loop given loop
         virtual void PropagateLoopEffects(const Loop* loop) = 0;
+
+        /// Simulate a static store operation
+        /// \param target destination memory to be written
+        /// \param source source memory to transfer
+        virtual void StoreStatic(ID target, ID source) = 0;
     };
 }

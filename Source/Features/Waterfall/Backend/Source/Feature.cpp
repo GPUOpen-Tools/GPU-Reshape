@@ -34,6 +34,7 @@
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/Analysis/SimulationAnalysis.h>
 #include <Backend/IL/Analysis/DivergencePropagator.h>
+#include <Backend/IL/Analysis/InterproceduralSimulationAnalysis.h>
 
 // Generated schema
 #include <Schemas/Features/Waterfall.h>
@@ -79,14 +80,15 @@ void WaterfallFeature::CollectMessages(IMessageStorage *storage) {
 }
 
 void WaterfallFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
-    // Compute constant analysis for all functions
+    // Set up function simulators with divergence analysis
     for (IL::Function *function: program.GetFunctionList()) {
-        // Create a simulation analysis pass with divergence analysis
         if (auto&& analysis = function->GetAnalysisMap().FindPassOrAdd<IL::SimulationAnalysis>(program, *function)) {
             analysis->AddPropagator<IL::DivergencePropagator>(analysis->GetConstantPropagator(), program, *function);
-            analysis->Compute();
         }
     }
+    
+    // Compute interprocedural analysis
+    program.GetAnalysisMap().FindPassOrCompute<IL::InterproceduralSimulationAnalysis>(program);
 }
 
 void WaterfallFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
