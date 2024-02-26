@@ -457,6 +457,20 @@ namespace Studio.Models.IL
                     constant = _array;
                     break;
                 }
+                case ConstantKind.Vector:
+                {
+                    VectorConstant vector = new();
+
+                    vector.Elements = new Constant[node.Elements.Count];
+
+                    for (int i = 0; i < vector.Elements.Length; i++)
+                    {
+                        vector.Elements[i] = GetConstantFromSigned((int)node.Elements[i], program);
+                    }
+
+                    constant = vector;
+                    break;
+                }
                 case ConstantKind.Struct:
                 {
                     StructConstant _struct = new();

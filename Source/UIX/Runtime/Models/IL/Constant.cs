@@ -83,6 +83,14 @@ namespace Studio.Models.IL
         public Constant[] Elements;
     }
 
+    public class VectorConstant : Constant
+    {
+        /// <summary>
+        /// All constant elements
+        /// </summary>
+        public Constant[] Elements;
+    }
+
     public class StructConstant : Constant
     {
         /// <summary>

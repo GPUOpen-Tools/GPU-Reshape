@@ -93,9 +93,11 @@ namespace IL {
                 SetDivergence(variable->id, GetGlobalAddressSpaceDivergence(variable->addressSpace));
             }
 
-            // Mark all function inputs as divergent
-            for (const Backend::IL::Variable *variable: function.GetParameters()) {
-                MarkAsDivergent(variable->id);
+            // Mark all program inputs as divergent, interprocedural call arguments are handled separately
+            if (program.GetEntryPoint() == &function) {
+                for (const Backend::IL::Variable *variable: function.GetParameters()) {
+                    MarkAsDivergent(variable->id);
+                }
             }
 
             // OK

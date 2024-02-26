@@ -61,4 +61,10 @@ void main(uint dtid : SV_DispatchThreadID) {
     // Simple check, validate scalarization of divergent values works
     bufferRW[dtid * 10 + 2] = varyingArray[WaveReadLaneFirst(divergentValue)];
 
+    for (uint i = 0; i < gScalarIndex; i++) {
+        uint uniformValue = gScalarArray[i];
+
+        // Validate that uniform reads in loops are validated correctly
+        bufferRW[dtid * 10 + 3 + i] = varyingArray[uniformValue];
+    }
 }

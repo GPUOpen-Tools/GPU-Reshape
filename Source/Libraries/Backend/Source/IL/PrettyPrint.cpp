@@ -1114,6 +1114,21 @@ void IL::PrettyPrint(const IL::Constant* constant, PrettyPrintContext out) {
             out.stream << "}";
             break;
         }
+        case Backend::IL::ConstantKind::Vector: {
+            auto _struct = constant->As<Backend::IL::VectorConstant>();
+            out.stream << "Vector [";
+
+            for (size_t i = 0; i < _struct->elements.size(); i++) {
+                if (i != 0) {
+                    out.stream << ", ";
+                }
+
+                out.stream << "%" << _struct->elements[i]->id;
+            }
+            
+            out.stream << "]";
+            break;
+        }
         case Backend::IL::ConstantKind::Undef: {
             PrettyPrint(constant->type, out);
             out.stream << " Undef";
@@ -1618,6 +1633,23 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, SymbolicContext& con
                     out.Line() << "\t" << GetConstantId(str->members[i], context) << ",";
                 } else {
                     out.Line() << "\t" << GetConstantId(str->members[i], context);
+                }
+            }
+
+            out.Line() << "],";
+            break;
+        }
+        case Backend::IL::ConstantKind::Vector: {
+            auto vec = constant->As<Backend::IL::VectorConstant>();
+            
+            out.Line() << "\"Elements\": ";
+            out.Line() << "[";
+            
+            for (size_t i = 0; i < vec->elements.size(); i++) {
+                if (i != vec->elements.size() - 1) {
+                    out.Line() << "\t" << GetConstantId(vec->elements[i], context) << ",";
+                } else {
+                    out.Line() << "\t" << GetConstantId(vec->elements[i], context);
                 }
             }
 

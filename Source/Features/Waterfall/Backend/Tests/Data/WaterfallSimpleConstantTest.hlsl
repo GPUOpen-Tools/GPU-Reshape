@@ -81,8 +81,14 @@ void main(uint dtid : SV_DispatchThreadID) {
     bufferRW[dtid * 50 + 9] = varyingArray[varyingC];
 
 	// Simple check, static indexing into global constant array
-	bufferRW[dtid * 50 + 10] = globalConstant[constantB % 3].x;
+    bufferRW[dtid * 50 + 10] = globalConstant[constantB % 3].x;
 
-	// Simple check, dynamic indexing into global constant array
-	bufferRW[dtid * 50 + 11] = globalConstant[dtid % 2].x;
+    // Simple check, dynamic indexing into global constant array
+    bufferRW[dtid * 50 + 11] = globalConstant[dtid % 2].x;
+
+    // Copy global array to local, validate that the memory tree is reconstructed properly
+    float3 localConstant[3] = globalConstant;
+
+    // Simple check, dynamic indexing into global constant array
+    bufferRW[dtid * 50 + 11] = localConstant[dtid % 2].x;
 }

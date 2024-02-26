@@ -72,6 +72,7 @@ namespace IL {
                         break;
                     case Backend::IL::TypeKind::Struct:
                     case Backend::IL::TypeKind::Array:
+                    case Backend::IL::TypeKind::Vector:
                         CreateMemoryTreeFromImmediate(&GetMemoryRange(value)->tree, variable->initializer);
                         break;
                 }
@@ -441,6 +442,8 @@ namespace IL {
                     return CompositePrimitiveConstant(type, node, lattice);
                 case Backend::IL::TypeKind::Array:
                     return CompositeConstant(type->As<Backend::IL::ArrayType>(), node, lattice);
+                case Backend::IL::TypeKind::Vector:
+                    return CompositeConstant(type->As<Backend::IL::VectorType>(), node, lattice);
             }
         }
 
@@ -468,10 +471,44 @@ namespace IL {
                     continue;
                 }
 
+                // Try to construct element
                 const auto* offset = tag.first.constant->As<IntConstant>();
+                array.elements.at(offset->value) = CompositeConstant(type->elementType, tag.second, lattice);
+            }
+
+            bool isSymbolic = false;
+
+            // Check for partial constants
+            for (const Constant* element : array.elements) {
+                if (!element) {
+                    lattice = Backend::IL::PropagationResult::Varying;
+                }
+
+                isSymbolic |= !element || element->IsSymbolic();
+            }
+
+            // If varying, create as a symbolic constant
+            if (isSymbolic) {
+                return program.GetConstants().AddSymbolicConstant(type, array);
+            } else {
+                return program.GetConstants().FindConstantOrAdd(type, array);
+            }
+        }
+
+        /// Composite a memory node to a constant
+        const Constant* CompositeConstant(const Backend::IL::VectorType* type, MemoryAccessTreeNode* node, Backend::IL::PropagationResult& lattice) {
+            VectorConstant array;
+            array.elements.resize(type->dimension);
+
+            // Handle all mapped elements
+            for (auto&& tag : node->children) {
+                if (tag.first.type != MemoryAddressType::Constant) {
+                    continue;
+                }
 
                 // Try to construct element
-                array.elements.at(offset->value) = CompositeConstant(type->elementType, tag.second, lattice);
+                const auto* offset = tag.first.constant->As<IntConstant>();
+                array.elements.at(offset->value) = CompositeConstant(type->containedType, tag.second, lattice);
             }
 
             bool isSymbolic = false;
@@ -521,6 +558,10 @@ namespace IL {
                     case Backend::IL::ConstantKind::Struct: {
                         auto _struct = value.constant->As<StructConstant>();
                         return _struct->members.at(index->value);
+                    }
+                    case Backend::IL::ConstantKind::Vector: {
+                        auto _struct = value.constant->As<VectorConstant>();
+                        return _struct->elements.at(index->value);
                     }
                 }
             }
@@ -573,6 +614,24 @@ namespace IL {
                         auto&& tag = node->children.emplace_back(addressNode, new MemoryAccessTreeNode { });
 
                         CreateMemoryTreeFromImmediate(tag.second, _struct->members[i]);
+                    }
+                    break;
+                }
+                case Backend::IL::ConstantKind::Vector: {
+                    auto _struct = constant->As<VectorConstant>();
+
+                    for (uint32_t i = 0; i < _struct->elements.size(); i++) {
+                        MemoryAddressNode addressNode {
+                            .type = MemoryAddressType::Constant,
+                            .constant = program.GetConstants().FindConstantOrAdd(
+                                program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = true}),
+                                Backend::IL::IntConstant{.value = i}
+                            )
+                        };
+
+                        auto&& tag = node->children.emplace_back(addressNode, new MemoryAccessTreeNode { });
+
+                        CreateMemoryTreeFromImmediate(tag.second, _struct->elements[i]);
                     }
                     break;
                 }

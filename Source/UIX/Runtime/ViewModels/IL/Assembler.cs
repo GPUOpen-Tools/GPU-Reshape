@@ -893,6 +893,24 @@ namespace Runtime.ViewModels.IL
                     builder.Append(" ]");
                     break;
                 }
+                case ConstantKind.Vector:
+                {
+                    var typed = (VectorConstant)constant;
+                    builder.Append("< ");
+
+                    for (int i = 0; i < typed.Elements.Length; i++)
+                    {
+                        if (i != 0)
+                        {
+                            builder.Append(", ");
+                        }
+                        
+                        AssembleInlineConstant(typed.Elements[i], builder, false);
+                    }
+                    
+                    builder.Append(" >");
+                    break;
+                }
                 case ConstantKind.Struct:
                 {
                     var typed = (StructConstant)constant;

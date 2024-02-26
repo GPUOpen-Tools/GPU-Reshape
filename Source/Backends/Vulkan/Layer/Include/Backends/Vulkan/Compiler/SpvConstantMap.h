@@ -144,6 +144,9 @@ private:
             case Backend::IL::ConstantKind::Struct:
                 CompileConstant(constant->As<IL::StructConstant>());
                 break;
+            case Backend::IL::ConstantKind::Vector:
+                CompileConstant(constant->As<IL::VectorConstant>());
+                break;
             case Backend::IL::ConstantKind::Array:
                 CompileConstant(constant->As<IL::ArrayConstant>());
                 break;
@@ -204,6 +207,17 @@ private:
 
         for (size_t i = 0; i < constant->members.size(); i++) {
             spvOffset[3 + static_cast<uint32_t>(i)] = constant->members[i]->id;
+        }
+    }
+
+    /// Compile a given constant
+    void CompileConstant(const Backend::IL::VectorConstant *constant) {
+        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->elements.size()));
+        spvOffset[1] = typeMap.GetSpvTypeId(constant->type);
+        spvOffset[2] = constant->id;
+
+        for (size_t i = 0; i < constant->elements.size(); i++) {
+            spvOffset[3 + static_cast<uint32_t>(i)] = constant->elements[i]->id;
         }
     }
 
