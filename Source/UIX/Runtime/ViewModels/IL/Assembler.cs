@@ -1085,7 +1085,7 @@ namespace Runtime.ViewModels.IL
                 }
                 case TypeKind.CBuffer:
                 {
-                    var samplerType = (SamplerType)type;
+                    var cbufferType = (CBufferType)type;
                     builder.Append("CBuffer");
                     break;
                 }
