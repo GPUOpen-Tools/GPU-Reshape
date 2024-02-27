@@ -380,7 +380,15 @@ namespace IL {
             propagatedMemory->memory->value = storeValue.constant;
 
             // Instantiate a new memory tree in place
-            memory->CreateMemoryTree(propagatedMemory, storeValue.constant);
+            switch (storeValue.constant->type->kind) {
+                default:
+                    break;
+                case Backend::IL::TypeKind::Struct:
+                case Backend::IL::TypeKind::Array:
+                case Backend::IL::TypeKind::Vector:
+                    memory->CreateMemoryTree(propagatedMemory, storeValue.constant);
+                    break;
+            }
 
             // Set SSA lookup
             ssaMemory.lookup[instr] = Memory::PropagatedMemorySSAVersion {

@@ -62,10 +62,19 @@ namespace IL {
 
                 PropagatedValue value {
                     .lattice = Backend::IL::PropagationResult::Mapped,
-                    .constant = variable->initializer
+                    .constant = nullptr
                 };
 
-                CreateMemoryTree(&GetMemoryRange(value)->tree, variable->initializer);
+                switch (variable->initializer->type->kind) {
+                    default:
+                        value.constant = variable->initializer;
+                        break;
+                    case Backend::IL::TypeKind::Struct:
+                    case Backend::IL::TypeKind::Array:
+                    case Backend::IL::TypeKind::Vector:
+                        CreateMemoryTree(&GetMemoryRange(value)->tree, variable->initializer);
+                        break;
+                }
 
                 propagationValues[variable->id] = value;
             }
