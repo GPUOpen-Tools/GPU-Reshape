@@ -47,6 +47,25 @@ namespace IL {
 
         /// Compute constant propagation of a function
         bool Compute() override {
+            // Install if needed
+            if (!Install()) {
+                return false;
+            }
+
+            // Compute propagation
+            propagationEngine.Compute(*this);
+
+            // OK
+            return true;
+        }
+
+        /// Compute constant propagation of a function
+        bool Install() {
+            // If already installed, it's ok
+            if (installed) {
+                return true;
+            }
+            
             // Setup constant analysis
             if (!constantPropagator.Install()) {
                 return false;
@@ -59,10 +78,8 @@ namespace IL {
                 }
             }
 
-            // Compute propagation
-            propagationEngine.Compute(*this);
-
             // OK
+            installed = true;
             return true;
         }
 
@@ -76,6 +93,11 @@ namespace IL {
         /// This is guaranteed to exist for any simulator
         const ConstantPropagator& GetConstantPropagator() const {
             return constantPropagator;
+        }
+
+        /// Get all propagators
+        const std::vector<ComRef<ISimulationPropagator>>& GetPropagators() const {
+            return propagators;
         }
 
         /// Find a propagator or construct it if it doesn't exist
@@ -110,10 +132,24 @@ namespace IL {
         /// Find an existing propagator
         /// \return nullptr if not found
         template<typename U>
-        ComRef<U> FindPropagator() {
+        ComRef<U> FindPropagator() const {
             static_assert(std::is_base_of_v<ISimulationPropagator, U>, "Invalid propagator target");
             for (const ComRef<ISimulationPropagator>& propagator : propagators) {
                 if (propagator->componentId == U::kID) {
+                    return propagator;
+                }
+            }
+
+            // Not found
+            return nullptr;
+        }
+
+        /// Find an existing propagator
+        /// \param id the component id to lookup
+        /// \return nullptr if not found
+        ComRef<ISimulationPropagator> FindPropagator(ComponentID id) const {
+            for (const ComRef<ISimulationPropagator>& propagator : propagators) {
+                if (propagator->componentId == id) {
                     return propagator;
                 }
             }
@@ -174,9 +210,17 @@ namespace IL {
                 return;
             }
 
+            // Ensure it's always installed
+            analysis->Install();
+
             // Propagate all state from the block to this propagator
             analysis->GetConstantPropagator().PropagateGlobalState(constantPropagator, block);
 
+            // Notify propagators of static store
+            for (const ComRef<ISimulationPropagator>& propagator : analysis->propagators) {
+                propagator->PropagateMemoryState(FindPropagator(propagator->componentId).GetUnsafe(), block);
+            }
+            
             // TODO: Erase previous state
             auto parameterIt = target->GetParameters().begin();
 
@@ -188,8 +232,8 @@ namespace IL {
                 constantPropagator.StoreStatic(parameter->id, call->arguments[i]);
 
                 // Notify propagators of static store
-                for (const ComRef<ISimulationPropagator>& propagator : propagators) {
-                    propagator->StoreStatic(parameter->id, call->arguments[i]);
+                for (const ComRef<ISimulationPropagator>& propagator : analysis->propagators) {
+                    propagator->StoreStatic(FindPropagator(propagator->componentId).GetUnsafe(), parameter->id, call->arguments[i]);
                 }
 
                 // Advance parameter
@@ -218,5 +262,8 @@ namespace IL {
 
         /// All user added propagators
         std::vector<ComRef<ISimulationPropagator>> propagators;
+
+        /// Has this analysis been installed?
+        bool installed = false;
     };
 }

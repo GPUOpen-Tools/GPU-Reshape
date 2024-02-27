@@ -291,7 +291,7 @@ namespace IL {
             Memory::PropagatedMemoryTraversal traversal = memory->FindPropagatedMemory(chain, range);
             if (!traversal.match) {
                 // If addressing into a constant of unknown origins, treat it as mapped but unexposed
-                if (traversal.partialMatch && traversal.partialMatch->value) {
+                if (traversal.partialMatch && traversal.partialMatch->memory->value) {
                     return program.GetConstants().AddSymbolicConstant(
                         program.GetTypeMap().GetType(address)->As<Backend::IL::PointerType>()->pointee,
                         UnexposedConstant{}
@@ -302,13 +302,13 @@ namespace IL {
             }
 
             // Find the reaching store
-            ReachingStoreResult version = FindReachingStoreDefinition(block, instr, traversal.match);
+            ReachingStoreResult version = FindReachingStoreDefinition(block, instr, traversal.match->memory);
             if (!version.version) {
                 return nullptr;
             }
 
             // OK!
-            return traversal.match->value;
+            return traversal.match->memory->value;
         }
 
     private:
@@ -375,18 +375,21 @@ namespace IL {
             Memory::PropagatedMemoryRange* range = memory->GetMemoryRange(memory->propagationValues[base]);
 
             // Write memory instance
-            Memory::PropagatedMemory* propagatedMemory = memory->FindOrCreatePropagatedMemory(chain, range);
-            propagatedMemory->lattice = Backend::IL::PropagationResult::Mapped;
-            propagatedMemory->value = storeValue.constant;
+            Memory::MemoryAccessTreeNode* propagatedMemory = memory->FindOrCreatePropagatedMemory(chain, range);
+            propagatedMemory->memory->lattice = Backend::IL::PropagationResult::Mapped;
+            propagatedMemory->memory->value = storeValue.constant;
+
+            // Instantiate a new memory tree in place
+            memory->CreateMemoryTree(propagatedMemory, storeValue.constant);
 
             // Set SSA lookup
             ssaMemory.lookup[instr] = Memory::PropagatedMemorySSAVersion {
-                .memory = propagatedMemory,
+                .memory = propagatedMemory->memory,
                 .value = storeValue.constant
             };
 
             // Inform the propagator that this has been mapped, without assigning a value to it
-            return propagatedMemory->lattice;
+            return propagatedMemory->memory->lattice;
         }
 
         /// Propagation case handler

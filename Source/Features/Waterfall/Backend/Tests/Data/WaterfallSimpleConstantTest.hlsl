@@ -77,6 +77,7 @@ void main(uint dtid : SV_DispatchThreadID) {
     // Simple check, varying indexing into varying array
     //! MESSAGE WaterfallingCondition[1]
     bufferRW[dtid * 50 + 8] = varyingArray[dtid % 10];
+
     //! MESSAGE WaterfallingCondition[1]
     bufferRW[dtid * 50 + 9] = varyingArray[varyingC];
 

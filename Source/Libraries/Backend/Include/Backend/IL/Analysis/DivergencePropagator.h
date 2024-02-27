@@ -30,10 +30,11 @@
 #include <Backend/IL/Analysis/ISimulationPropagator.h>
 #include <Backend/IL/Analysis/ConstantPropagator.h>
 #include <Backend/IL/Analysis/WorkGroupDivergence.h>
+#include <Backend/IL/Analysis/PropagatorMemoryState.h>
 #include <Backend/IL/Utils/PropagationEngine.h>
 
 namespace IL {
-    class DivergencePropagator : public ISimulationPropagator {
+    class DivergencePropagator final : public ISimulationPropagator {
     public:
         COMPONENT(DivergencePropagator);
 
@@ -46,17 +47,13 @@ namespace IL {
 
         /// Get the divergence of a value
         WorkGroupDivergence GetDivergence(ID id) const {
-            return divergenceValues.at(id).divergence;
+            return memory->divergenceValues.at(id).divergence;
         }
 
     public:
         /// Install this propagator
         bool Install(Backend::IL::PropagationEngine* engine) override {
             propagationEngine = engine;
-            
-            divergenceValues.resize(program.GetIdentifierMap().GetMaxID(), DivergenceState {
-                .divergence = WorkGroupDivergence::Unknown
-            });
 
             // Compute dominator analysis for propagation
             if (dominatorAnalysis = function.GetAnalysisMap().FindPassOrCompute<DominatorAnalysis>(function); !dominatorAnalysis) {
@@ -70,34 +67,7 @@ namespace IL {
 
             // Map loop views
             for (const Loop& loop : loopAnalysis->GetView()) {
-                loopLookup[loop.header] = &loop;
-            }
-            
-            // Mark constants as uniform
-            for (const Constant *constant: program.GetConstants()) {
-                if (constant->IsSymbolic()) {
-                    continue;
-                }
-
-                MarkAsUniform(constant->id);
-            }
-
-            // Conditionally mark variables as divergent
-            for (const Backend::IL::Variable *variable: program.GetVariableList()) {
-                if (variable->initializer) {
-                    MarkAsUniform(variable->id);
-                    continue;
-                }
-
-                // Otherwise, assume from AS
-                SetDivergence(variable->id, GetGlobalAddressSpaceDivergence(variable->addressSpace));
-            }
-
-            // Mark all program inputs as divergent, interprocedural call arguments are handled separately
-            if (program.GetEntryPoint() == &function) {
-                for (const Backend::IL::Variable *variable: function.GetParameters()) {
-                    MarkAsDivergent(variable->id);
-                }
+                blockLookup[loop.header].loop = &loop;
             }
 
             // OK
@@ -138,10 +108,85 @@ namespace IL {
         void PropagateLoopEffects(const Loop* loop) override {
             /** poof */
         }
+
+        /// Simulate a static store operation
+        void PropagateMemoryState(ISimulationPropagator* propagator, const BasicBlock* block) {
+            auto* remote = static_cast<DivergencePropagator*>(propagator);
+            
+            // Get the dominator tree of the remote function
+            ComRef<DominatorAnalysis> remoteDominatorAnalysis;
+            if (remoteDominatorAnalysis = remote->function.GetAnalysisMap().FindPassOrCompute<DominatorAnalysis>( remote->function); !remoteDominatorAnalysis) {
+                return;
+            }
+
+            // Propagate all constants to local
+            PropagateGlobalStateInner(remote, remoteDominatorAnalysis, block);
+            
+            // Cleanup
+            for (BasicBlock* block : remote->function.GetBasicBlocks()) {
+                block->RemoveFlag(BasicBlockFlag::Visited);
+            }
+        }
         
         /// Simulate a static store operation
-        void StoreStatic(ID target, ID source) {
+        void StoreStatic(ISimulationPropagator* propagator, ID target, ID source) {
+            auto* remote = static_cast<DivergencePropagator*>(propagator);
+
+            // Inherit divergence state
+            memory->divergenceValues[target].divergence = remote->memory->divergenceValues[source].divergence;
+
+            // TODO: This is incorrect, currently the base address is done on the id, and not the actual memory address.
+            // However, it'll suffice for now.
+            ssaAlias[target] = source;
+        }
+
+        /// Create a  new memory state
+        ComRef<PropagatorMemoryState> CreateMemoryState() {
+            memory = registry->New<MemoryState>();
+
+            // Default initialize all divergence states
+            memory->divergenceValues.resize(program.GetIdentifierMap().GetMaxID(), DivergenceState {
+                .divergence = WorkGroupDivergence::Unknown
+            });
             
+            // Mark constants as uniform
+            for (const Constant *constant: program.GetConstants()) {
+                if (constant->IsSymbolic()) {
+                    continue;
+                }
+
+                MarkAsUniform(constant->id);
+            }
+
+            // Conditionally mark variables as divergent
+            for (const Backend::IL::Variable *variable: program.GetVariableList()) {
+                if (variable->initializer) {
+                    MarkAsUniform(variable->id);
+                    continue;
+                }
+
+                // Otherwise, assume from AS
+                SetDivergence(variable->id, GetGlobalAddressSpaceDivergence(variable->addressSpace));
+            }
+
+            // Mark all program inputs as divergent, interprocedural call arguments are handled separately
+            if (program.GetEntryPoint() == &function) {
+                for (const Backend::IL::Variable *variable: function.GetParameters()) {
+                    MarkAsDivergent(variable->id);
+                }
+            }
+
+            return memory;
+        }
+
+        /// Get the current memory state
+        ComRef<PropagatorMemoryState> GetMemoryState() {
+            return memory;
+        }
+
+        /// Set the current memory state
+        void SetMemoryState(const ComRef<PropagatorMemoryState>& state) {
+            memory = state;
         }
 
     private:
@@ -245,6 +290,50 @@ namespace IL {
             SetDivergence(instr->result, GetBlockIntersectionDivergence(block, phiBlocks));
         }
 
+        /// Propagate all global state from a remote propagator
+        void PropagateGlobalStateInner(const DivergencePropagator* remote, const ComRef<DominatorAnalysis>& remoteDominatorAnalysis, const BasicBlock* block) {
+            if (block->HasFlag(BasicBlockFlag::Visited)) {
+                return;
+            }
+
+            // Mark as visited
+            block->AddNonSemanticFlag(BasicBlockFlag::Visited);
+
+            // Collapse all global state to the entry point block (reachable by everything)
+            BlockInfo& entryBlockInfo = blockLookup[*function.GetBasicBlocks().begin()];
+            
+            // Search forward in the current block
+            for (const Instruction* blockInstr : *block) {
+                if (!blockInstr->Is<StoreInstruction>()) {
+                    continue;
+                }
+
+                // Matching memory tree?
+                auto it = remote->ssaDivergenceLookup.find(blockInstr);
+                if (it == remote->ssaDivergenceLookup.end()) {
+                    continue;
+                }
+
+                if (!entryBlockInfo.memoryLookup.contains(it->second.memory)) {
+                    entryBlockInfo.memoryLookup[it->second.memory] = it->second;
+                }
+            }
+
+            // Inherit all previously collapsed memory
+            if (auto blockInfo = blockLookup.find(block); blockInfo != blockLookup.end()) {
+                for (auto&& kv : blockInfo->second.memoryLookup) {
+                    if (!entryBlockInfo.memoryLookup.contains(kv.first)) {
+                        entryBlockInfo.memoryLookup[kv.first] = kv.second;
+                    }
+                }
+            }
+
+            // Search all predecessors for candidates
+            for (const BasicBlock* predecessor : remoteDominatorAnalysis->GetPredecessors(block)) {
+                PropagateGlobalStateInner(remote, remoteDominatorAnalysis, predecessor);
+            }
+        }
+
         /// Get the divergence of an instruction
         /// \param instr propagated instruction
         /// \return resulting divergence
@@ -268,8 +357,8 @@ namespace IL {
 
             // Collect operand attributes
             Backend::IL::VisitOperands(instr, [&](IL::ID id) {
-                isAnyUnknown |= divergenceValues[id].divergence == WorkGroupDivergence::Unknown;
-                isAnyDivergent |= divergenceValues[id].divergence == WorkGroupDivergence::Divergent;
+                isAnyUnknown |= memory->divergenceValues[id].divergence == WorkGroupDivergence::Unknown;
+                isAnyDivergent |= memory->divergenceValues[id].divergence == WorkGroupDivergence::Divergent;
             });
 
             // If any are divergent, presume divergent
@@ -382,8 +471,8 @@ namespace IL {
             const Loop* loop{nullptr};
 
             // Check if this block is a loop header
-            if (auto it = loopLookup.find(block); it != loopLookup.end()) {
-                loop = it->second;
+            if (auto it = blockLookup.find(block); it != blockLookup.end()) {
+                loop = it->second.loop;
             }
             
             TrivialStackVector<const BasicBlock*, 8> sharedAncestors;
@@ -574,8 +663,13 @@ namespace IL {
                 return {};
             }
 
+            // Canonicalize the address
+            if (auto it = ssaAlias.find(base); it != ssaAlias.end()) {
+                base = it->second;
+            }
+
             // Get state
-            DivergenceState& state = divergenceValues[base];
+            DivergenceState& state = memory->divergenceValues[base];
 
             // Traversal state
             MemoryTreeTraversal out;
@@ -626,22 +720,22 @@ namespace IL {
 
         /// Check if a value is divergent
         bool IsDivergent(ID id) {
-            return divergenceValues.at(id).divergence == WorkGroupDivergence::Divergent;
+            return memory->divergenceValues.at(id).divergence == WorkGroupDivergence::Divergent;
         }
 
         /// Mark a value as divergent
         void MarkAsDivergent(ID id) {
-            divergenceValues.at(id).divergence = WorkGroupDivergence::Divergent;
+            memory->divergenceValues.at(id).divergence = WorkGroupDivergence::Divergent;
         }
 
         /// Mark a value as uniform
         void MarkAsUniform(ID id) {
-            divergenceValues.at(id).divergence = WorkGroupDivergence::Uniform;
+            memory->divergenceValues.at(id).divergence = WorkGroupDivergence::Uniform;
         }
 
         /// Set the divergence of a value
         void SetDivergence(ID id, WorkGroupDivergence divergence) {
-            divergenceValues.at(id).divergence = divergence;
+            memory->divergenceValues.at(id).divergence = divergence;
         }
         
         /// Find the reaching, i.e., dominating, store definition with a matching memory tree
@@ -708,8 +802,18 @@ namespace IL {
 
             const Loop* loopDefinition{nullptr};
 
-            if (auto loopIt = loopLookup.find(block); loopIt != loopLookup.end()) {
-                loopDefinition = loopIt->second;
+            if (auto blockIt = blockLookup.find(block); blockIt != blockLookup.end()) {
+                BlockInfo& info = blockIt->second;
+                loopDefinition = info.loop;
+
+                // Check if the memory address has been collapsed
+                if (auto ssaIt = info.memoryLookup.find(memory); ssaIt != info.memoryLookup.end()) {
+                    stores.Add(ReachingCandidate {
+                        .stored = ssaIt->second,
+                        .block = block
+                    });
+                    return;
+                }
             }
 
             // None found, check predecessors
@@ -751,6 +855,15 @@ namespace IL {
         }
 
     private:
+        class MemoryState : public PropagatorMemoryState {
+        public:
+            COMPONENT(DivergenceMemoryState);
+            
+            /// All propagated divergences (result wise lookup)
+            std::vector<DivergenceState> divergenceValues;
+        };
+
+    private:
         /// Outer constant propagator
         const ConstantPropagator& constantPropagator;
         
@@ -763,8 +876,8 @@ namespace IL {
         /// Installed engine
         Backend::IL::PropagationEngine* propagationEngine{nullptr};
 
-        /// All propagated divergences (result wise lookup)
-        std::vector<DivergenceState> divergenceValues;
+        /// Assigned memory
+        ComRef<MemoryState> memory{nullptr};
 
         /// Constant analysis
         ComRef<ConstantPropagator> ConstantPropagator;
@@ -779,8 +892,19 @@ namespace IL {
         /// Divergence lookup for SSA instructions
         std::unordered_map<const Instruction*, StoredDivergence> ssaDivergenceLookup;
 
+        /// All memory aliases
+        std::unordered_map<ID, ID> ssaAlias;
+
     private:
+        struct BlockInfo {
+            /// Optional, outer loop definition
+            const Loop* loop{nullptr};
+            
+            /// All merged side effects of an iteration
+            std::unordered_map<const MemoryTreeNode*, StoredDivergence> memoryLookup;
+        };
+        
         /// Loop lookup
-        std::unordered_map<const BasicBlock*, const Loop*> loopLookup;
+        std::unordered_map<const BasicBlock*, BlockInfo> blockLookup;
     };
 }

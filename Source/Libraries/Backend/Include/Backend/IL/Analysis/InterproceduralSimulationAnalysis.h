@@ -56,6 +56,15 @@ namespace IL {
                     return false;
                 }
 
+                // Share all relevant memory states
+                for (const ComRef<ISimulationPropagator>& propagator : analysis->GetPropagators()) {
+                    if (auto it = memoryLookup.find(propagator->componentId); it != memoryLookup.end()) {
+                        propagator->SetMemoryState(it->second);
+                    } else {
+                        memoryLookup[propagator->componentId] = propagator->CreateMemoryState();
+                    }
+                }
+
                 // Set the shared memory
                 analysis->GetConstantPropagator().SetMemory(&constantMemory);
             }
@@ -90,5 +99,8 @@ namespace IL {
 
         /// Shared constant memory
         ConstantPropagatorMemory constantMemory;
+
+        /// Cached memory states
+        std::unordered_map<ComponentID, ComRef<PropagatorMemoryState>> memoryLookup;
     };
 }

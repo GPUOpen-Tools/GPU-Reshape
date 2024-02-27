@@ -62,20 +62,10 @@ namespace IL {
 
                 PropagatedValue value {
                     .lattice = Backend::IL::PropagationResult::Mapped,
-                    .constant = nullptr
+                    .constant = variable->initializer
                 };
 
-                // Global variables require a fully visible memory tree
-                switch (variable->initializer->type->kind) {
-                    default:
-                        value.constant = variable->initializer;
-                        break;
-                    case Backend::IL::TypeKind::Struct:
-                    case Backend::IL::TypeKind::Array:
-                    case Backend::IL::TypeKind::Vector:
-                        CreateMemoryTreeFromImmediate(&GetMemoryRange(value)->tree, variable->initializer);
-                        break;
-                }
+                CreateMemoryTree(&GetMemoryRange(value)->tree, variable->initializer);
 
                 propagationValues[variable->id] = value;
             }
@@ -172,10 +162,10 @@ namespace IL {
 
         struct PropagatedMemoryTraversal {
             // Full match, may be null
-            PropagatedMemory* match{nullptr};
+            MemoryAccessTreeNode* match{nullptr};
 
             // Partial match on misses
-            PropagatedMemory* partialMatch{nullptr};
+            MemoryAccessTreeNode* partialMatch{nullptr};
         };
 
         struct LocalSSAMemory {
@@ -280,25 +270,45 @@ namespace IL {
                 }
 
                 if (!nextTree) {
-                    out.partialMatch = treeNode->memory;
+                    if (treeNode->memory) {
+                        out.partialMatch = treeNode;
+                    }
                     return out;
                 }
 
                 treeNode = nextTree;
             }
 
+            if (treeNode->memory) {
+                out.match = treeNode;
+            }
+            
             // OK
-            out.match = treeNode->memory;
             return out;
         }
 
+        /// Create a memory tree
+        /// \param node target node to create from
+        /// \param constant constant to propagate at target
+        void CreateMemoryTree(MemoryAccessTreeNode* node, const Constant* constant) {
+            switch (constant->type->kind) {
+                default:
+                    break;
+                case Backend::IL::TypeKind::Struct:
+                case Backend::IL::TypeKind::Array:
+                case Backend::IL::TypeKind::Vector:
+                    CreateMemoryTreeFromImmediate(node, constant);
+                    break;
+            }
+        }
+
         /// Find or create a propagated memory chain
-        PropagatedMemory* FindOrCreatePropagatedMemory(const IDStack& chain, PropagatedMemoryRange* range) {
+        MemoryAccessTreeNode* FindOrCreatePropagatedMemory(const IDStack& chain, PropagatedMemoryRange* range) {
             TrivialStackVector<MemoryAddressNode, 32> workingNodes;
 
             // First, try to find it
-            if (PropagatedMemory* memory = FindPropagatedMemory(chain, range, workingNodes).match) {
-                return memory;
+            if (PropagatedMemoryTraversal traversal = FindPropagatedMemory(chain, range, workingNodes); traversal.match) {
+                return traversal.match;
             }
 
             // Nothing found, create the memory
@@ -338,7 +348,7 @@ namespace IL {
             treeNode->memory = memory;
 
             // OK!
-            return memory;
+            return treeNode;
         }
 
         /// Get an address node for an identifier

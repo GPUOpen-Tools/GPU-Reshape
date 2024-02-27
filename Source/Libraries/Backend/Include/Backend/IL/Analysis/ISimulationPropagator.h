@@ -38,6 +38,7 @@ namespace Backend::IL {
 
 namespace IL {
     // Forward declarations
+    class PropagatorMemoryState;
     struct BasicBlock;
     struct Instruction;
     struct Loop;
@@ -60,9 +61,27 @@ namespace IL {
         /// \param loop given loop
         virtual void PropagateLoopEffects(const Loop* loop) = 0;
 
+        /// Propagate all memory state from a given block (to all its predecessors)
+        /// \param remote remote propagator to traverse
+        /// \param block block to start from
+        virtual void PropagateMemoryState(ISimulationPropagator* remote, const BasicBlock* block) = 0;
+
+        /// Create a new memory state
+        /// \return memory state, may be shared
+        virtual ComRef<PropagatorMemoryState> CreateMemoryState() = 0;
+
+        /// Get the currently assigned memory state
+        /// \return may be nullptr
+        virtual ComRef<PropagatorMemoryState> GetMemoryState() = 0;
+
+        /// Set the memory state
+        /// \param state state to be assigned
+        virtual void SetMemoryState(const ComRef<PropagatorMemoryState>& state) = 0;
+
         /// Simulate a static store operation
+        /// \param target remote the propagator to inherit from
         /// \param target destination memory to be written
         /// \param source source memory to transfer
-        virtual void StoreStatic(ID target, ID source) = 0;
+        virtual void StoreStatic(ISimulationPropagator* remote, ID target, ID source) = 0;
     };
 }
