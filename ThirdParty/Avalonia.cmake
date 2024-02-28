@@ -26,10 +26,11 @@
 
 
 # UI Framework
+# TODO: We're currently pulling from nuget, consider removing
 ExternalProject_Add(
     Avalonia
     GIT_REPOSITORY https://github.com/AvaloniaUI/Avalonia
-    # GIT_TAG 0.10.14 -- Not tag locked yet
+    GIT_TAG 11.0.9
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Avalonia
     USES_TERMINAL_INSTALL 0
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}
