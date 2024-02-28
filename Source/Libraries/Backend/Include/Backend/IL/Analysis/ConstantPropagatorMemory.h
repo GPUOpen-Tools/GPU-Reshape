@@ -415,8 +415,6 @@ namespace IL {
 
         /// Composite a known propagated memory range
         void CompositePropagatedMemoryRange(PropagatedValue& value, ID id) {
-            ASSERT(!value.constant, "Memory range value with a pre-assigned constant");
-
             // Get type of constant
             const Backend::IL::Type* type = program.GetTypeMap().GetType(id);
             if (!type) {

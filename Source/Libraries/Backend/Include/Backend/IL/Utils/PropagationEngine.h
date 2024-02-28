@@ -116,6 +116,10 @@ namespace Backend::IL {
             /// Has any exit edges been hit?
             bool anyExitEdges{false};
 
+            /// Has this loop been bypassed entirely?
+            /// i.e. Branched to the exit node of an outer loop
+            bool loopBypass{false};
+
             /// All escaping paths
             std::vector<Edge> latchAndExitEdges;
 
@@ -143,6 +147,9 @@ namespace Backend::IL {
 
             /// Optional, current loop being executed
             LoopItem* loop{nullptr};
+
+            /// Optional, parent work item
+            WorkItem* parent{nullptr};
         };
 
     private:
@@ -202,6 +209,7 @@ namespace Backend::IL {
                 // Setup work item
                 WorkItem loopWork;
                 loopWork.loop = &loopItem;
+                loopWork.parent = &outerWork;
 
                 // If the incoming is not that of the outer work item, mark it as executed
                 // This is to satisfy Phi constraints.
@@ -265,7 +273,7 @@ namespace Backend::IL {
                 // Stop propagation?
                 if (terminationOrVarying) {
                     // If there's no known exits, add them all (could have been varying)
-                    if (!knownExitEdge) {
+                    if (!knownExitEdge && !loopWork.loop->loopBypass) {
                         for (const BasicBlock* exit : loopItem.header->definition->exitBlocks) {
                             outerWork.cfgWorkStack.push(Edge {
                                 .from = loopItem.header->definition->header,
@@ -548,39 +556,60 @@ namespace Backend::IL {
             };
 
             if (cfgExecutableEdges.contains(edge)) {
-                // TODO: This needs guarding, but validate
-                //return;
+                return;
             }
 
             cfgExecutableEdges.insert(edge);
 
             // Active loops require special consideration
-            if (work.loop) {
-                bool isLatchOrExit = false;
-
-                // Keep track of edge
-                work.loop->edges.push_back(edge);
-
-                // If branching back to the header, terminate
-                isLatchOrExit |= to == work.loop->header->definition->header;
-
-                // If branching to an exit, terminate
-                for (BasicBlock *exit : work.loop->header->definition->exitBlocks) {
-                    if (to == exit) {
-                        work.loop->anyExitEdges = true;
-                        isLatchOrExit = true;
-                    }
-                }
-
-                // If terminating, record what terminated
-                if (isLatchOrExit) {
-                    work.loop->latchAndExitEdges.emplace_back(edge);
-                    return;
-                }
+            if (work.loop && TraverseLoopLatchAndExits(work, edge)) {
+                return;
             }
 
             // Add to work stack
             work.cfgWorkStack.push(edge);
+        }
+
+        /// Traverse all nested loops and their latches / exits
+        /// \param work the outer work item
+        /// \param edge the outgoing edge
+        /// \return true if a latch or exit was reached
+        bool TraverseLoopLatchAndExits(WorkItem& work, const Edge& edge) {
+            bool isLatchOrExit = false;
+
+            // Keep track of edge
+            work.loop->edges.push_back(edge);
+
+            // If branching back to the header, terminate
+            isLatchOrExit |= edge.to == work.loop->header->definition->header;
+
+            // If branching to an exit, terminate
+            for (BasicBlock *exit : work.loop->header->definition->exitBlocks) {
+                if (edge.to == exit) {
+                    work.loop->anyExitEdges = true;
+                    isLatchOrExit = true;
+                }
+            }
+
+            // If terminating, record what terminated
+            if (isLatchOrExit) {
+                work.loop->latchAndExitEdges.emplace_back(edge);
+                return true;
+            }
+
+            // If there's a parent loop definition, check that.
+            if (work.parent && work.parent->loop) {
+                // Loops may branch to outer loop exit blocks.
+                // If this is the case, we're terminating all upward instances. 
+                if (TraverseLoopLatchAndExits(*work.parent, edge)) {
+                    work.loop->anyExitEdges = true;
+                    work.loop->loopBypass = true;
+                    return true;
+                }
+            }
+
+            // Continue executing
+            return false;
         }
 
     private:
