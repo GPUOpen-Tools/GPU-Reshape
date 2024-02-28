@@ -49,7 +49,7 @@ namespace Backend::IL {
                 default: {
                     // Unknown addressing, report it to avoid partial-but-similar cases
                     functor(address, false);
-                    break;
+                    return;
                 }
                 case OpCode::AddressChain: {
                     auto _instr = instr->As<AddressChainInstruction>();
