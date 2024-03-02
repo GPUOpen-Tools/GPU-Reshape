@@ -185,7 +185,7 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// Get the owning workspace
         /// </summary>
         /// <returns></returns>
-        public IPropertyViewModel? GetWorkspace()
+        public IPropertyViewModel? GetWorkspaceCollection()
         {
             return Parent?.GetRoot();
         }

@@ -241,7 +241,7 @@ namespace GRS.Features.Descriptor.UIX.Workspace
         {
             // Get feature in parent
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Descriptor");
 

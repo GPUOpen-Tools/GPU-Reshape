@@ -392,7 +392,7 @@ namespace Studio.ViewModels
                 
                 // Configure and register workspace
                 provider?.Install(workspace);
-                provider?.Add(workspace);
+                provider?.Add(workspace, true);
             });
         }
 

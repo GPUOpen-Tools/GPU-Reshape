@@ -27,11 +27,9 @@
 using System;
 using System.Windows.Input;
 using DynamicData;
-using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
-using Studio.Extensions;
-using Studio.Models.Workspace.Objects;
+using Runtime.ViewModels.Traits;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Services;
@@ -40,7 +38,7 @@ using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel, IInstrumentableObject, IClosableObject, IDescriptorObject
+    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel, IWorkspaceAdapter, IInstrumentableObject, IClosableObject, IDescriptorObject
     {
         /// <summary>
         /// Name of this property
@@ -90,6 +88,11 @@ namespace Studio.ViewModels.Workspace.Properties
                 OnConnectionChanged();
             }
         }
+        
+        /// <summary>
+        /// The represented workspace
+        /// </summary>
+        public IWorkspaceViewModel? WorkspaceViewModel { get; set; }
 
         /// <summary>
         /// Get the targetable instrumentation property
@@ -230,9 +233,17 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Get the workspace
         /// </summary>
         /// <returns></returns>
-        public IPropertyViewModel GetWorkspace()
+        public IPropertyViewModel GetWorkspaceCollection()
         {
             return this;
+        }
+
+        /// <summary>
+        /// Get the workspace represented by this adapter
+        /// </summary>
+        public IWorkspaceViewModel GetWorkspace()
+        {
+            return WorkspaceViewModel!;
         }
 
         /// <summary>

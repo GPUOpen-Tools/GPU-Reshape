@@ -40,6 +40,7 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Environment;
 using Studio.Models.Workspace;
 using Studio.Services;
 using Studio.Services.Suspension;
@@ -77,7 +78,7 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
-        /// Current connection string
+        /// Application working directory
         /// </summary>
         [DataMember]
         public string WorkingDirectoryPath
@@ -87,13 +88,43 @@ namespace Studio.ViewModels
         }
 
         /// <summary>
-        /// Current connection string
+        /// Application launch arguments
         /// </summary>
         [DataMember]
         public string Arguments
         {
             get => _arguments;
             set => this.RaiseAndSetIfChanged(ref _arguments, value);
+        }
+
+        /// <summary>
+        /// Application environment strings
+        /// </summary>
+        [DataMember]
+        public string Environment
+        {
+            get => _environment;
+            set => this.RaiseAndSetIfChanged(ref _environment, value);
+        }
+
+        /// <summary>
+        /// Should the configuration safe guard?
+        /// </summary>
+        [DataMember]
+        public bool CaptureChildProcesses
+        {
+            get => _captureChildProcesses;
+            set => this.RaiseAndSetIfChanged(ref _captureChildProcesses, value);
+        }
+
+        /// <summary>
+        /// Should the configuration safe guard?
+        /// </summary>
+        [DataMember]
+        public bool AttachAllDevices
+        {
+            get => _attachAllDevices;
+            set => this.RaiseAndSetIfChanged(ref _attachAllDevices, value);
         }
 
         /// <summary>
@@ -429,6 +460,11 @@ namespace Studio.ViewModels
             processInfo.workingDirectoryPath = _workingDirectoryPath;
             processInfo.arguments = _arguments;
             processInfo.reservedToken = _pendingReservedToken;
+            processInfo.captureChildProcesses = _captureChildProcesses;
+            processInfo.attachAllDevices = _attachAllDevices;
+
+            // Parse environment
+            processInfo.environment = new(EnvironmentParser.Parse(_environment).Select(kv => Tuple.Create(kv.Key, kv.Value)));
 
             // If no working directory has been specified, default to the executable
             if (string.IsNullOrWhiteSpace(processInfo.workingDirectoryPath))
@@ -473,6 +509,12 @@ namespace Studio.ViewModels
         /// </summary>
         private void OnRemoteConnected()
         {
+            if (AttachAllDevices)
+            {
+                Dispatcher.UIThread.InvokeAsync(CreateProcessWorkspace);
+                return;
+            }
+            
             // Register handler
             _connectionViewModel.Bridge?.Register(this);
 
@@ -497,6 +539,36 @@ namespace Studio.ViewModels
                 // Must call start manually (a little vague)
                 _timer.Start();
             });
+        }
+
+        /// <summary>
+        /// Create a process workspace
+        /// </summary>
+        private async void CreateProcessWorkspace()
+        {
+            // Get provider
+            var provider = App.Locator.GetService<IWorkspaceService>();
+
+            // Create process workspace
+            var workspace = new ProcessWorkspaceViewModel(_pendingReservedToken)
+            {
+                Connection = _connectionViewModel
+            };
+
+            // Assume application info from paths
+            _connectionViewModel.Application = new ApplicationInfoViewModel()
+            {
+                Guid = Guid.NewGuid(),
+                Process = Path.GetFileName(_applicationPath),
+                DecorationMode = ApplicationDecorationMode.ProcessOnly
+            };
+
+            // Configure and register workspace
+            provider?.Install(workspace);
+            provider?.Add(workspace, false);
+
+            // Handle as accepted
+            await AcceptLaunch.Handle(Unit.Default);
         }
 
         /// <summary>
@@ -579,7 +651,7 @@ namespace Studio.ViewModels
                 
                 // Configure and register workspace
                 provider?.Install(workspace);
-                provider?.Add(workspace);
+                provider?.Add(workspace, true);
             });
         }
 
@@ -611,6 +683,12 @@ namespace Studio.ViewModels
         /// <param name="discovery">message</param>
         private void Handle(HostDiscoveryMessage discovery)
         {
+            // Ignore if unassigned?
+            if (string.IsNullOrEmpty(_pendingReservedToken))
+            {
+                return;
+            }
+            
             // Assigned to reserved application
             ApplicationInfoViewModel? applicationInfo = null;
 
@@ -624,7 +702,7 @@ namespace Studio.ViewModels
                         var info = message.Get<HostServerInfoMessage>();
                         
                         // Matched against pending?
-                        if (info.guid.String.Equals(_pendingReservedToken, StringComparison.InvariantCultureIgnoreCase))
+                        if (info.reservedGuid.String.Equals(_pendingReservedToken, StringComparison.InvariantCultureIgnoreCase))
                         {
                             applicationInfo = new ApplicationInfoViewModel
                             {
@@ -693,6 +771,11 @@ namespace Studio.ViewModels
         private string _arguments = string.Empty;
 
         /// <summary>
+        /// Internal environment
+        /// </summary>
+        private string _environment = string.Empty;
+
+        /// <summary>
         /// Pending token for discovery matching
         /// </summary>
         private string _pendingReservedToken;
@@ -726,6 +809,16 @@ namespace Studio.ViewModels
         /// Internal configuration description state
         /// </summary>
         private string _selectedConfigurationDescription;
+        
+        /// <summary>
+        /// Internal capture child processes state
+        /// </summary>
+        private bool _captureChildProcesses;
+        
+        /// <summary>
+        /// Internal attach all devices state
+        /// </summary>
+        private bool _attachAllDevices;
         
         /// <summary>
         /// Internal safe guard state

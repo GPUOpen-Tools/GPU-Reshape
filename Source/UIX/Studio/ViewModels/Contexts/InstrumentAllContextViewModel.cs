@@ -101,10 +101,10 @@ namespace Studio.ViewModels.Contexts
             }
             
             // Some features may have user input, wait until everything is done
-            using var scope = new BusScope(instrumentable.GetWorkspace()?.GetService<IBusPropertyService>(), BusMode.RecordAndCommit);
+            using var scope = new BusScope(instrumentable.GetWorkspaceCollection()?.GetService<IBusPropertyService>(), BusMode.RecordAndCommit);
 
             // Create all instrumentation properties
-            foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspace()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
+            foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspaceCollection()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
             {
                 // Ignored?
                 if (IgnoredFeatures.Items.Contains(service.Name))

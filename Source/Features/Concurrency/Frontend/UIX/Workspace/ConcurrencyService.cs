@@ -218,7 +218,7 @@ namespace GRS.Features.Concurrency.UIX.Workspace
         {
             // Find feature data
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Concurrency");
 

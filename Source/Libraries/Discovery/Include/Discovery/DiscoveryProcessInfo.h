@@ -29,6 +29,9 @@
 // Common
 #include <Common/GlobalUID.h>
 
+// Std
+#include <vector>
+
 struct DiscoveryProcessInfo {
     /// Path of the application
     const char* applicationPath{nullptr};
@@ -39,6 +42,15 @@ struct DiscoveryProcessInfo {
     /// All command line arguments given to the application
     const char* arguments{nullptr};
 
+    /// Optional, all environment key value pairs
+    std::vector<std::pair<const char*, const char*>> environment;
+
     /// Optional, reserved token
     GlobalUID reservedToken{};
+
+    /// Should all child processes be captured?
+    bool captureChildProcesses = true;
+
+    /// Should all devices be attached?
+    bool attachAllDevices = false;
 };

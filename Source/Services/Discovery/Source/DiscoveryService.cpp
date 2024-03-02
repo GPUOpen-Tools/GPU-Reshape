@@ -204,6 +204,21 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
         bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kReservedEnvironmentTokenKey, info.reservedToken.ToString());
     }
 
+    // Write optional environment pairs
+    for (auto && kv : info.environment) {
+        bootstrappingEnvironment.environmentKeys.emplace_back(kv.first, kv.second);
+    }
+
+    // All processes?
+    if (info.captureChildProcesses) {
+        bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kCaptureChildProcessesKey, "");
+    }
+
+    // All devices?
+    if (info.attachAllDevices) {
+        bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kAttachAllDevicesKey, "");
+    }
+
     // Disable service traps, must always bootstrap regardless of discoverability
     bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kNoServiceTrapKey, "");
     

@@ -40,7 +40,16 @@ namespace Discovery::CLR {
         /// All command line arguments given to the application
         String^ arguments = "";
 
+        /// All environment key value pairs
+        Collections::Generic::List<Tuple<String^, String^>^>^ environment;
+
         /// Optional, reserved token
         String^ reservedToken = "";
+
+        /// Should all child processes be captured?
+        bool captureChildProcesses = true;
+
+        /// Should all devices be attached?
+        bool attachAllDevices = false;
     };
 }

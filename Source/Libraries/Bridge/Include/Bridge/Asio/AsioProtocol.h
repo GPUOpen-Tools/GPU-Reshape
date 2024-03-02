@@ -207,6 +207,7 @@ struct ALIGN_PACK AsioRemoteServerResolverDiscoveryRequest : public TAsioHeader<
     struct Entry {
         AsioHostClientInfo info;
         AsioHostClientToken token{};
+        AsioHostClientToken reservedToken{};
     };
 
     struct Response : public AsioHeader {

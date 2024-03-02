@@ -35,6 +35,7 @@ using Studio.Services;
 using Studio.ViewModels.Controls;
 using Studio.ViewModels.Workspace;
 using System.Reactive.Linq;
+using Runtime.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.Views.Tools
@@ -68,15 +69,29 @@ namespace Studio.Views.Tools
             if (service == null)
                 return;
 
+            // Must be item
+            if (_object is not WorkspaceTreeItemViewModel itemViewModel)
+            {
+                return;
+            }
+
             // Workspace?
-            if (_object is WorkspaceTreeItemViewModel { OwningContext: IWorkspaceViewModel workspaceViewModel })
+            if (itemViewModel.OwningContext is IWorkspaceViewModel workspaceViewModel)
             {
                 service.SelectedWorkspace = workspaceViewModel;
                 service.SelectedProperty = workspaceViewModel.PropertyCollection;
             }
+            
+            // Workspace adapter? i.e. Nested workspaces
+            if (itemViewModel.OwningContext is IWorkspaceAdapter workspaceAdapter)
+            {
+                IWorkspaceViewModel adapterWorkspace = workspaceAdapter.GetWorkspace();
+                service.SelectedWorkspace = adapterWorkspace;
+                service.SelectedProperty = adapterWorkspace.PropertyCollection;
+            }
 
             // Property?
-            if (_object is WorkspaceTreeItemViewModel { OwningContext: IPropertyViewModel propertyViewModel })
+            if (itemViewModel.OwningContext is IPropertyViewModel propertyViewModel)
             {
                 service.SelectedProperty = propertyViewModel;
             }

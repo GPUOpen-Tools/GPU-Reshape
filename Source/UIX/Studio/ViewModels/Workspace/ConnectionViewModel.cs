@@ -37,11 +37,12 @@ using Avalonia.Threading;
 using Bridge.CLR;
 using Message.CLR;
 using ReactiveUI;
+using Runtime.ViewModels.Traits;
 using Studio.Models.Workspace;
 
 namespace Studio.ViewModels.Workspace
 {
-    public class ConnectionViewModel : ReactiveObject, IConnectionViewModel
+    public class ConnectionViewModel : ReactiveObject, IConnectionViewModel, IPoolingConnection
     {
         /// <summary>
         /// Invoked during connection
@@ -84,7 +85,7 @@ namespace Studio.ViewModels.Workspace
         /// <summary>
         /// Endpoint application info
         /// </summary>
-        public ApplicationInfoViewModel? Application { get; private set; }
+        public ApplicationInfoViewModel? Application { get; set; }
 
         public ConnectionViewModel()
         {

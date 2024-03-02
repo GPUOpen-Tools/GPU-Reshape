@@ -164,7 +164,7 @@ namespace GRS.Features.Loop.UIX.Workspace
         {
             // Find feature data
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Loop");
 

@@ -142,7 +142,7 @@ namespace Runtime.ViewModels.Objects
         /// Get the workspace
         /// </summary>
         /// <returns></returns>
-        public IPropertyViewModel? GetWorkspace()
+        public IPropertyViewModel? GetWorkspaceCollection()
         {
             return Workspace?.PropertyCollection;
         }

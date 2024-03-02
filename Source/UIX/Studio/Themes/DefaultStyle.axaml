@@ -257,4 +257,5 @@
     <!-- Custom controls -->
     <StyleInclude Source="avares://GPUReshape/Themes/Hyperlink.axaml" />
     <StyleInclude Source="avares://GPUReshape/Themes/CloseButton.axaml" />
+    <StyleInclude Source="avares://GPUReshape/Themes/InlineSectionView.axaml" />
 </Styles>

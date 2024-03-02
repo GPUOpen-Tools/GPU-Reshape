@@ -38,7 +38,7 @@ namespace Studio.ViewModels.Traits
         /// Get the owning workspace
         /// </summary>
         /// <returns>property collection</returns>
-        public IPropertyViewModel? GetWorkspace();
+        public IPropertyViewModel? GetWorkspaceCollection();
 
         /// <summary>
         /// Get the targetable instrumentation property

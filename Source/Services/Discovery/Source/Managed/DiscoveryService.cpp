@@ -104,13 +104,43 @@ bool Discovery::CLR::DiscoveryService::StartBootstrappedProcess(const DiscoveryP
     nativeEnvironment.SetSchema(schema);
     nativeEnvironment.SetData(span.Data, span.Length, environment->GetCount());
 
+    // Convert optional token
+    IntPtr hGlobalReservedToken = Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->reservedToken);
+
     // Convert to native info
     ::DiscoveryProcessInfo nativeInfo;
     nativeInfo.applicationPath = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->applicationPath).ToPointer());
     nativeInfo.workingDirectoryPath = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->workingDirectoryPath).ToPointer());
     nativeInfo.arguments = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->arguments).ToPointer());
-    nativeInfo.reservedToken = GlobalUID::FromString(static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->reservedToken).ToPointer()));
+    nativeInfo.reservedToken = GlobalUID::FromString(static_cast<char *>(hGlobalReservedToken.ToPointer()));
+    nativeInfo.captureChildProcesses = info->captureChildProcesses;
+    nativeInfo.attachAllDevices = info->attachAllDevices;
 
+    // Convert environment to native
+    for each (auto tuple in info->environment) {
+        nativeInfo.environment.emplace_back(
+            static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(tuple->Item1).ToPointer()),
+            static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(tuple->Item2).ToPointer())
+        );
+    }
+    
     // Pass down!
-    return service->StartBootstrappedProcess(nativeInfo, nativeEnvironment);
+    if (!service->StartBootstrappedProcess(nativeInfo, nativeEnvironment)) {
+        return false;
+    }
+
+    // Cleanup paths
+    Runtime::InteropServices::Marshal::FreeHGlobal(IntPtr(reinterpret_cast<int64_t>(nativeInfo.applicationPath)));
+    Runtime::InteropServices::Marshal::FreeHGlobal(IntPtr(reinterpret_cast<int64_t>(nativeInfo.workingDirectoryPath)));
+    Runtime::InteropServices::Marshal::FreeHGlobal(IntPtr(reinterpret_cast<int64_t>(nativeInfo.arguments)));
+    Runtime::InteropServices::Marshal::FreeHGlobal(hGlobalReservedToken);
+
+    // Cleanup environment
+    for (auto && kv : nativeInfo.environment) {
+        Runtime::InteropServices::Marshal::FreeHGlobal(IntPtr(reinterpret_cast<int64_t>(kv.first)));
+        Runtime::InteropServices::Marshal::FreeHGlobal(IntPtr(reinterpret_cast<int64_t>(kv.second)));
+    }
+
+    // OK
+    return true;
 }
