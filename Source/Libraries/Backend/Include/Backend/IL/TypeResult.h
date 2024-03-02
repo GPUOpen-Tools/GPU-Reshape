@@ -107,6 +107,10 @@ namespace Backend::IL {
         return program.GetTypeMap().GetType(instr->values[0].value);
     }
 
+    inline const Type* ResultOf(Program& program, const NotInstruction* instr) {
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+    }
+
     inline const Type* ResultOf(Program& program, const AndInstruction* instr) {
         return program.GetTypeMap().FindTypeOrAdd(BoolType{});
     }
@@ -148,11 +152,11 @@ namespace Backend::IL {
     }
 
     inline const Type* ResultOf(Program& program, const WaveAnyTrueInstruction* instr) {
-        return program.GetTypeMap().GetType(instr->value);
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
     }
 
     inline const Type* ResultOf(Program& program, const WaveAllTrueInstruction* instr) {
-        return program.GetTypeMap().GetType(instr->value);
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
     }
 
     inline const Type* ResultOf(Program& program, const WaveBallotInstruction* instr) {
@@ -168,7 +172,7 @@ namespace Backend::IL {
     }
 
     inline const Type* ResultOf(Program& program, const WaveAllEqualInstruction* instr) {
-        return program.GetTypeMap().GetType(instr->value);
+        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
     }
 
     inline const Type* ResultOf(Program& program, const WaveBitAndInstruction* instr) {

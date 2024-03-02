@@ -275,6 +275,11 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             line << "And %" << _and->lhs << " %" << _and->rhs;
             break;
         }
+        case OpCode::Not: {
+            auto _and = instr->As<IL::NotInstruction>();
+            line << "Not %" << _and->value;
+            break;
+        }
         case OpCode::Equal: {
             auto equal = instr->As<IL::EqualInstruction>();
             line << "Equal %" << equal->lhs << " %" << equal->rhs;

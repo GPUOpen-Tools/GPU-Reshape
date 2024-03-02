@@ -143,6 +143,11 @@ namespace Backend::IL {
                 functor(typed->rhs);
                 break;
             }
+            case ::IL::OpCode::Not: {
+                auto typed = instr->As<::IL::NotInstruction>();
+                functor(typed->value);
+                break;
+            }
             case ::IL::OpCode::Equal: {
                 auto typed = instr->As<::IL::EqualInstruction>();
                 functor(typed->lhs);

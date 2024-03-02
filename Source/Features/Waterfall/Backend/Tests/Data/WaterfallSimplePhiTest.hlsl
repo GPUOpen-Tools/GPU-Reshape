@@ -40,7 +40,10 @@
 //! RESOURCE RWBuffer<R32Float> size:64
 [[vk::binding(2)]] RWBuffer<float> bufferRWNU[1] : register(u2, space0);
 
-[numthreads(1, 1, 1)]
+//! RESOURCE RWBuffer<R32UInt> size:64 data:0,1,2,3,4,5,6,7
+[[vk::binding(3)]] RWBuffer<uint> bufferRWUI : register(u3, space0);
+
+[numthreads(8, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
     float varyingArray[10];
 
@@ -66,7 +69,7 @@ void main(uint dtid : SV_DispatchThreadID) {
     // Uniform VGPR indexing
     bufferRW[phi][dtid * 10 + 0] = varyingArray[phi];
 
-    if (bufferRW[0][0]) {
+    if (bufferRW[0][dtid]) {
         // Force phi instead of select, give it something more expensive to compute
         phi = gScalarData * 33.0f + 0.2f;
     } else {
@@ -75,12 +78,15 @@ void main(uint dtid : SV_DispatchThreadID) {
 
     // In this case, the condition is a memory read, therefore divergent
     //! MESSAGE WaterfallingCondition[1]
-    bufferRW[phi][0] = gScalarData;
+    bufferRW[0][dtid * 10 + 2] = varyingArray[phi];
 
-    // Same applies to VGPR indexing
-    //! MESSAGE WaterfallingCondition[1]
-    bufferRW[0][dtid * 10 + 1] = varyingArray[phi];
+    // Something that's obviously divergent
+    int runtimeDivergent = bufferRWUI[dtid];
+
+    // Validate blatant runtime divergence is checked for
+    //! MESSAGE WaterfallingCondition[8]
+    bufferRW[runtimeDivergent][dtid * 10 + 1] = gScalarData;
 
     // Validate annotated divergent indexing is checked for
-    bufferRWNU[NonUniformResourceIndex(phi)][0] = gScalarData;
+    bufferRWNU[NonUniformResourceIndex(runtimeDivergent)][0] = gScalarData;
 }

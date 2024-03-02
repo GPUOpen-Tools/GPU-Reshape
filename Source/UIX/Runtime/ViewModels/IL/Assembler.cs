@@ -275,6 +275,7 @@ namespace Runtime.ViewModels.IL
                     }
                     break;
                 }
+                case OpCode.Not:
                 case OpCode.Any:
                 case OpCode.All:
                 case OpCode.Trunc:

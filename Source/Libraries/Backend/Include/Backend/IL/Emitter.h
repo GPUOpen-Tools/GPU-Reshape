@@ -668,6 +668,20 @@ namespace IL {
             return Op(instr);
         }
 
+        /// Perform a logical not
+        /// \param value the value to negate
+        /// \return instruction reference
+        BasicBlock::TypedIterator <NotInstruction> Not(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            NotInstruction instr{};
+            instr.opCode = OpCode::Not;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            return Op(instr);
+        }
+
         /// Check if all components may be evaluated to true
         /// \param lhs lhs operand
         /// \param rhs rhs operand
@@ -926,6 +940,20 @@ namespace IL {
             instr.source = Source::Invalid();
             instr.result = map->AllocID();
             instr.address = address;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Perform a wave all equal
+        /// \param value value to check for equality
+        /// \return original value
+        BasicBlock::TypedIterator<WaveAllEqualInstruction> WaveAllEqual(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+            
+            WaveAllEqualInstruction instr{};
+            instr.opCode = OpCode::WaveAllEqual;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
         }

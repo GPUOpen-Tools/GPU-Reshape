@@ -277,6 +277,18 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 break;
             }
 
+            case SpvOpNot:
+            case SpvOpLogicalNot: {
+                // Append
+                IL::NotInstruction instr{};
+                instr.opCode = IL::OpCode::Not;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
             case SpvOpLogicalAnd: {
                 // Append
                 IL::AndInstruction instr{};
@@ -1601,6 +1613,31 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 spv[4] = idMap.Get(_or->rhs);
                 break;
             }
+            case IL::OpCode::Not: {
+                auto *_not = instr.As<IL::NotInstruction>();
+
+                const Backend::IL::Type* valueType = ilTypeMap.GetType(_not->value);
+
+                SpvOp op;
+                switch (valueType->kind) {
+                    default:
+                        ASSERT(false, "Invalid Not operand type");
+                        op = SpvOpNot;
+                        break;
+                    case Backend::IL::TypeKind::Bool:
+                        op = SpvOpLogicalNot;
+                        break;
+                    case Backend::IL::TypeKind::Int:
+                        op = SpvOpNot;
+                        break;
+                }
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(op, 4, _not->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = _not->result;
+                spv[3] = idMap.Get(_not->value);
+                break;
+            }
             case IL::OpCode::And: {
                 auto *_and = instr.As<IL::AndInstruction>();
 
@@ -2324,6 +2361,27 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         spv[4 + i] = idMap.Get(_instr->chains[i].index);
                     }
                 }
+                break;
+            }
+            
+            case IL::OpCode::WaveAllEqual: {
+                auto *_instr = instr.As<IL::WaveAllEqualInstruction>();
+                table.capability.Add(SpvCapabilityGroupNonUniformVote);
+                
+                // Scope constant id
+                IL::ID scopeId = table.scan.header.bound++;
+
+                // Scope value
+                SpvInstruction &spvScope = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+                spvScope[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+                spvScope[2] = scopeId;
+                spvScope[3] = SpvScopeSubgroup;
+                
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpGroupNonUniformAllEqual, 5, _instr->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = _instr->result;
+                spv[3] = scopeId;
+                spv[4] = idMap.Get(_instr->value);
                 break;
             }
         }

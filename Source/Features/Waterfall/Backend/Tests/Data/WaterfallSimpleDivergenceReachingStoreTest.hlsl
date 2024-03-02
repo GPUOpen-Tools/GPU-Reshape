@@ -43,12 +43,18 @@
 void main(uint dtid : SV_DispatchThreadID) {
     uint value = 0;
 
+    // Populate varying array
+    float varyingArray[10];
+    for (int i = 0; i < 10; i++) {
+        varyingArray[i] = bufferRW[0][i * dtid];
+    }
+    
     // Value terminator
     value = gScalarArray[bufferRW[0][0]];
 
     // Test that reads from uniform memory with divergent indices are detected
     //! MESSAGE WaterfallingCondition[1]
-    bufferRW[value][dtid * 10 + 4] = value;
+    bufferRW[0][dtid * 10 + 4] = varyingArray[value];
 
     // Value terminator
     value = 0.0f;
@@ -92,7 +98,7 @@ void main(uint dtid : SV_DispatchThreadID) {
 
     // Test that divergent stores are detected
     //! MESSAGE WaterfallingCondition[1]
-    bufferRW[value][dtid * 10 + 2] = value;
+    bufferRW[0][dtid * 10 + 2] = varyingArray[value];
 
     // Value terminator
     value = 0;
@@ -109,7 +115,7 @@ void main(uint dtid : SV_DispatchThreadID) {
 
     // Test that uniform stores but divergent values are detected
     //! MESSAGE WaterfallingCondition[1]
-    bufferRW[value][dtid * 10 + 3] = value;
+    bufferRW[0][dtid * 10 + 3] = varyingArray[value];
 
     // Value terminator
     value = 0;
@@ -122,5 +128,5 @@ void main(uint dtid : SV_DispatchThreadID) {
 
     // Test that structured addressing is successfully propagated
     //! MESSAGE WaterfallingCondition[1]
-    bufferRW[value][dtid * 10 + 4] = value;
+    bufferRW[0][dtid * 10 + 4] = varyingArray[value];
 }

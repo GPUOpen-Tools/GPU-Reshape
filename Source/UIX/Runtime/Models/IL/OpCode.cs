@@ -34,6 +34,7 @@ namespace Studio.Models.IL
         None,
         Unexposed,
         Literal,
+        Not,
         Any,
         All,
         Add,

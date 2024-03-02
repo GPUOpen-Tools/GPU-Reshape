@@ -288,6 +288,12 @@ namespace IL {
         ID rhs;
     };
 
+    struct NotInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Not;
+
+        ID value;
+    };
+
     struct EqualInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Equal;
 
@@ -822,6 +828,8 @@ namespace IL {
                 return sizeof(OrInstruction);
             case OpCode::And:
                 return sizeof(AndInstruction);
+            case OpCode::Not:
+                return sizeof(NotInstruction);
             case OpCode::LoadBuffer:
                 return sizeof(LoadBufferInstruction);
             case OpCode::ResourceSize:

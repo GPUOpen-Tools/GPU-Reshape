@@ -208,6 +208,9 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
             message->sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
             message->varyingOperandIndex = varyingOperandIndex;
         }
+
+        // No changes
+        return it;
     } else {
         bool anyChainDivergent = false;
 
@@ -226,32 +229,58 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
         if (!anyChainDivergent) {
             return it;
         }
-        
-        // Serial
+
+        // Bind the SGUID
+        ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
+
+        // Allocate resume
+        IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock();
+
+        // Split this basic block, move all instructions post and including the instrumented instruction to resume
+        // ! iterator invalidated
+        auto splitIt = context.basicBlock.Split(resumeBlock, it);
+
+        // Divergent indexing block
+        IL::Emitter<> emitter(program, *context.function.GetBasicBlocks().AllocBlock());
         {
-            std::lock_guard guard(mutex);
+            emitter.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
 
-            // Export compile time message
-            auto* message = MessageStreamView<WaterfallingConditionMessage>(stream).Add();
-            message->sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
-            message->varyingOperandIndex = varyingOperandIndex;
+            // Setup message
+            WaterfallingConditionMessage::ShaderExport msg;
+            msg.sguid = emitter.UInt32(sguid);
+            msg.varyingOperandIndex = emitter.UInt32(varyingOperandIndex);
+            emitter.Export(exportID, msg);
+
+            // Branch back
+            emitter.Branch(resumeBlock);
         }
+
+        // Perform instrumentation check
+        IL::Emitter<> pre(program, context.basicBlock);
+
+        // Get new chain instruction (moved after split)
+        auto splitInstr = splitIt->As<IL::AddressChainInstruction>();
+
+        // Validate each chain index
+        IL::ID anyRuntimeDivergent = IL::InvalidID;
+        for (uint32_t i = 0; i < splitInstr->chains.count; i++) {
+            const IL::AddressChain& chain = splitInstr->chains[i];
+
+            // Invalid if any lanes have a different values
+            IL::ID anyRuntimeChainDivergent = pre.Not(pre.WaveAllEqual(chain.index));
+
+            // Combine with last
+            if (anyRuntimeDivergent != IL::InvalidID) {
+                anyRuntimeDivergent = pre.Or(anyRuntimeDivergent, anyRuntimeChainDivergent);
+            } else {
+                anyRuntimeDivergent = anyRuntimeChainDivergent;
+            }
+        }
+        
+        // If so, branch to failure, otherwise resume
+        pre.BranchConditional(anyRuntimeDivergent, emitter.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+        return splitIt;
     }
-
-#if 0
-    // Insert just prior to the address chain
-    IL::Emitter<> emitter(context.program, context.basicBlock, it);
-
-    // Export waterfalling condition
-    WaterfallingConditionMessage::ShaderExport msg;
-    msg.sguid = emitter.UInt32(sguid);
-    msg.varyingOperandIndex = emitter.UInt32(varyingOperandIndex);
-    emitter.Export(exportID, msg);
-
-    return emitter.GetIterator();
-#endif
-
-    return it;
 }
 
 IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, IL::VisitContext &context, IL::BasicBlock::Iterator it) {

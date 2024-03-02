@@ -3102,6 +3102,53 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     break;
                 }
 
+                case IL::OpCode::Not: {
+                    auto _instr = instr->As<IL::NotInstruction>();
+
+                    // Prepare record
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+                    record.opCount = 3;
+                    
+                    // Handle as unary
+                    UnaryOpSVOX(block, instr->result, _instr->value, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value) {
+                        record.SetUser(true, ~0u, result);
+                        record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                        record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                        record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
+                            Backend::IL::BoolConstant{.value = true}
+                        )->id);
+                        record.ops[2] = static_cast<uint64_t>(LLVMBinOp::XOr);
+                        block->AddRecord(record);
+                    });
+                    break;
+                }
+
+                case IL::OpCode::WaveAllEqual: {
+                    auto _instr = instr->As<IL::WaveAllEqualInstruction>();
+                    table.metadata.AddProgramFlag(DXILProgramShaderFlag::UseWaveIntrinsics);
+
+                    // Get intrinsic
+                    const DXILFunctionDeclaration *intrinsic;
+                    switch (typeMap.GetType(_instr->value)->kind) {
+                        default:
+                            ASSERT(false, "Invalid bit width");
+                            return;
+                        case Backend::IL::TypeKind::Int:
+                            intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpWaveActiveAllEqualI32);
+                            break;
+                        case Backend::IL::TypeKind::FP:
+                            break;
+                    }
+                    
+                    
+                    uint64_t ops[2];
+                    ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::WaveActiveAllEqual))->id);
+                    ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                    block->AddRecord(CompileIntrinsicCall(_instr->result, intrinsic, 2, ops));
+                    break;
+                }
+                
                 case IL::OpCode::ResourceSize: {
                     auto _instr = instr->As<IL::ResourceSizeInstruction>();
 

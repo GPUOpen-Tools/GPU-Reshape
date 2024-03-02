@@ -38,6 +38,7 @@ namespace IL {
         Literal,
 
         /// Logical
+        Not,
         Any,
         All,
 

@@ -273,6 +273,12 @@ namespace Backend::IL {
                     return lhs || rhs;
                 });
             }
+            case OpCode::Not: {
+                auto _instr = instr->As<NotInstruction>();
+                return FoldNumericConstants(program, std::make_tuple(map(_instr->value)), [](auto value) {
+                    return !value;
+                });
+            }
             case OpCode::And: {
                 auto _instr = instr->As<AndInstruction>();
                 return FoldNumericConstants(program, std::make_tuple(map(_instr->lhs), map(_instr->rhs)), [](auto lhs, auto rhs) {
