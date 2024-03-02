@@ -355,11 +355,9 @@ namespace IL {
                 return Backend::IL::PropagationResult::Varying;
             }
 
-            // Value must be constant
+            // Get propagated value
+            // Lattice is inherited by the memory node
             const Memory::PropagatedValue& storeValue = memory->propagationValues[instr->value];
-            if (storeValue.lattice != Backend::IL::PropagationResult::Mapped) {
-                return Backend::IL::PropagationResult::Ignore;
-            }
 
             // Get the access chain
             Memory::IDStack chain;
@@ -376,18 +374,20 @@ namespace IL {
 
             // Write memory instance
             Memory::MemoryAccessTreeNode* propagatedMemory = memory->FindOrCreatePropagatedMemory(chain, range);
-            propagatedMemory->memory->lattice = Backend::IL::PropagationResult::Mapped;
+            propagatedMemory->memory->lattice = storeValue.lattice;
             propagatedMemory->memory->value = storeValue.constant;
 
             // Instantiate a new memory tree in place
-            switch (storeValue.constant->type->kind) {
-                default:
+            if (storeValue.constant) {
+                switch (storeValue.constant->type->kind) {
+                    default:
+                        break;
+                    case Backend::IL::TypeKind::Struct:
+                    case Backend::IL::TypeKind::Array:
+                    case Backend::IL::TypeKind::Vector:
+                        memory->CreateMemoryTree(propagatedMemory, storeValue.constant);
                     break;
-                case Backend::IL::TypeKind::Struct:
-                case Backend::IL::TypeKind::Array:
-                case Backend::IL::TypeKind::Vector:
-                    memory->CreateMemoryTree(propagatedMemory, storeValue.constant);
-                    break;
+                }
             }
 
             // Set SSA lookup
