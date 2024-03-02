@@ -44,15 +44,6 @@ namespace Studio.ViewModels.Workspace
         /// </summary>
         private void OnClose()
         {
-            // Close all child collections
-            foreach (var collectionViewModel in _properties.GetProperties<WorkspaceCollectionViewModel>().ToArray())
-            {
-                if (collectionViewModel is IClosableObject closable)
-                {
-                    closable.CloseCommand?.Execute(Unit.Default);
-                }
-            }
-
             // Remove from service
             App.Locator.GetService<IWorkspaceService>()?.Remove(this);
         }
@@ -86,6 +77,15 @@ namespace Studio.ViewModels.Workspace
         /// </summary>
         public void Destruct()
         {
+            // Close all child collections
+            foreach (var collectionViewModel in _properties.GetProperties<WorkspaceCollectionViewModel>().ToArray())
+            {
+                if (collectionViewModel is IClosableObject closable)
+                {
+                    closable.CloseCommand?.Execute(Unit.Default);
+                }
+            }
+            
             // Destroy all properties and services
             DestructPropertyTree(_properties);
             
