@@ -153,8 +153,8 @@ namespace Studio.Services
                 SelectedWorkspace = null;
             }
             
-            // Destroy the workspace
-            UninstallWorkspace(workspaceViewModel);
+            // Clean the workspace
+            CleanWorkspace(workspaceViewModel);
            
             // Try to remove
             return _workspaces.Remove(workspaceViewModel);
@@ -176,7 +176,10 @@ namespace Studio.Services
                 // Destruction
                 foreach (IWorkspaceViewModel workspaceViewModel in _workspaces.Items)
                 {
-                    UninstallWorkspace(workspaceViewModel);
+                    CleanWorkspace(workspaceViewModel);
+            
+                    // Destruct internal states
+                    workspaceViewModel.PropertyCollection.Destruct();
                 }
             
                 // Remove all
@@ -185,15 +188,12 @@ namespace Studio.Services
         }
 
         /// <summary>
-        /// Uninstall a workspace
+        /// Cleanup a workspace
         /// </summary>
-        private void UninstallWorkspace(IWorkspaceViewModel workspaceViewModel)
+        private void CleanWorkspace(IWorkspaceViewModel workspaceViewModel)
         {
             // Close all documents
             CloseDocumentsFor(workspaceViewModel);
-            
-            // Destruct internal states
-            workspaceViewModel.Destruct();
         }
 
         /// <summary>

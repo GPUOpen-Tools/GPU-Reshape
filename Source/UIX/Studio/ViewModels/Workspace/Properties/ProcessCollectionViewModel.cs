@@ -80,7 +80,13 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// The represented workspace
         /// </summary>
-        public IWorkspaceViewModel? WorkspaceViewModel { get; set; }
+        public IWorkspaceViewModel WorkspaceViewModel { get; set; }
+
+        public ProcessCollectionViewModel()
+        {
+            // Create commands
+            CloseCommand = ReactiveCommand.Create(OnClose);
+        }
 
         /// <summary>
         /// Invoked when a connection has changed
@@ -88,6 +94,31 @@ namespace Studio.ViewModels.Workspace.Properties
         private void OnConnectionChanged()
         {
             
+        }
+
+        /// <summary>
+        /// Invoked on close
+        /// </summary>
+        private void OnClose()
+        {
+            this.DetachFromParent(false);
+            
+            Destruct();
+        }
+
+        /// <summary>
+        /// Invoked on destruction
+        /// </summary>
+        public void Destruct()
+        {
+            // Destruct all properties
+            foreach (IPropertyViewModel propertyViewModel in Properties.Items)
+            {
+                propertyViewModel.Destruct();
+            }
+            
+            // Destruct the actual workspace
+            WorkspaceViewModel.Destruct();
         }
 
         /// <summary>
@@ -104,7 +135,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         public IWorkspaceViewModel GetWorkspace()
         {
-            return WorkspaceViewModel!;
+            return WorkspaceViewModel;
         }
 
         /// <summary>

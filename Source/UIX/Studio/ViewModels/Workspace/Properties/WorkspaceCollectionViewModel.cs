@@ -243,8 +243,7 @@ namespace Studio.ViewModels.Workspace.Properties
         {
             this.DetachFromParent(false);
             
-            // Remove from service
-            App.Locator.GetService<IWorkspaceService>()?.Remove(WorkspaceViewModel);
+            Destruct();
         }
 
         /// <summary>
@@ -252,7 +251,30 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         public void Destruct()
         {
+            // Destroy all properties and services
+            DestructPropertyTree(this);
             
+            // Destruct the actual workspace
+            WorkspaceViewModel.Destruct();
+        }
+
+        /// <summary>
+        /// Destruct a given property tree hierarchically
+        /// </summary>
+        private void DestructPropertyTree(IPropertyViewModel propertyViewModel)
+        {
+            // Children first
+            // ... I forgot the name, depth-something-something, this is the opposite of job security.
+            foreach (IPropertyViewModel child in propertyViewModel.Properties.Items)
+            {
+                DestructPropertyTree(child);
+            }
+            
+            // Destroy associated services
+            foreach (IPropertyService propertyService in propertyViewModel.Services.Items)
+            {
+                propertyService.Destruct();
+            }
         }
 
         /// <summary>
