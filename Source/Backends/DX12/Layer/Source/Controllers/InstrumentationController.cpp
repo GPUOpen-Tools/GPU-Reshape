@@ -1034,6 +1034,15 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
         // Release the batch, bucket destructed after this call
         compilationBatch = nullptr;
+
+        // Mark as done
+        compilationEvent.IncrementCounter();
+
+        // Recommit the immediate batch
+        // Previous commits may be held up since they're waiting on the current batch to complete,
+        // While we could have a separate thread to track all of this, it's better if it can be
+        // handled with the applications threading alone.
+        CommitInstrumentation();
     }
 
     // Release handles
@@ -1043,9 +1052,6 @@ void InstrumentationController::CommitTable(DispatcherBucket* bucket, void *data
 
     // Release batch
     destroy(batch, allocators);
-
-    // Mark as done
-    compilationEvent.IncrementCounter();
 }
 
 uint64_t InstrumentationController::SummarizeFeatureBitSet() {
@@ -1068,12 +1074,17 @@ uint64_t InstrumentationController::SummarizeFeatureBitSet() {
 
 void InstrumentationController::WaitForCompletion() {
     // Commit all pending instrumentation
+    uint64_t headCounter;
     {
         std::lock_guard guard(mutex);
         CommitInstrumentation();
+
+        // Only get head inside guard, otherwise there's a risk its incremented without any
+        // way to commit it in the future.
+        headCounter = compilationEvent.GetHead();
     }
 
     // Wait til head
-    compilationEvent.Wait(compilationEvent.GetHead());
+    compilationEvent.Wait(headCounter);
 }
 
