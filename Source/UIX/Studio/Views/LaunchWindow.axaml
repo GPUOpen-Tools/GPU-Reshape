@@ -106,7 +106,7 @@
                     <TextBox Text="{Binding Arguments}" />
                 </Grid>
                 
-                <controls:InlineSectionView Title="Additional Arguments" IsExpanded="True" Margin="0 10 0 0" >
+                <controls:InlineSectionView Title="Additional Arguments" IsExpanded="False" Margin="0 10 0 0" >
                     <StackPanel Orientation="Vertical">
                         <StackPanel Orientation="Horizontal">
                             <CheckBox
