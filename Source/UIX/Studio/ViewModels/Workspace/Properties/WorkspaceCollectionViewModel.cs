@@ -26,10 +26,12 @@
 
 using System;
 using System.Windows.Input;
+using Avalonia;
 using DynamicData;
 using ReactiveUI;
 using Runtime.Models.Objects;
 using Runtime.ViewModels.Traits;
+using Studio.Services;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Services;
@@ -92,7 +94,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// <summary>
         /// The represented workspace
         /// </summary>
-        public IWorkspaceViewModel? WorkspaceViewModel { get; set; }
+        public IWorkspaceViewModel WorkspaceViewModel { get; set; }
 
         /// <summary>
         /// Get the targetable instrumentation property
@@ -124,6 +126,11 @@ namespace Studio.ViewModels.Workspace.Properties
             {
                 return this.GetProperty<GlobalViewModel>()?.InstrumentationState ?? new InstrumentationState();
             }
+        }
+
+        public WorkspaceCollectionViewModel()
+        {
+            CloseCommand = ReactiveCommand.Create(OnClose);
         }
 
         /// <summary>
@@ -230,6 +237,25 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Invoked on closes
+        /// </summary>
+        public void OnClose()
+        {
+            this.DetachFromParent(false);
+            
+            // Remove from service
+            App.Locator.GetService<IWorkspaceService>()?.Remove(WorkspaceViewModel);
+        }
+
+        /// <summary>
+        /// Destruct this property
+        /// </summary>
+        public void Destruct()
+        {
+            
+        }
+
+        /// <summary>
         /// Get the workspace
         /// </summary>
         /// <returns></returns>
@@ -243,7 +269,7 @@ namespace Studio.ViewModels.Workspace.Properties
         /// </summary>
         public IWorkspaceViewModel GetWorkspace()
         {
-            return WorkspaceViewModel!;
+            return WorkspaceViewModel;
         }
 
         /// <summary>

@@ -76,16 +76,18 @@ namespace Studio.ViewModels.Workspace.Services
             // Create workspace
             var workspace = new WorkspaceViewModel()
             {
-                Connection = _connection,
-                OwningProperty = _targetViewModel
+                Connection = _connection
             };
-                                
+            
             // Configure and register workspace
             provider?.Install(workspace);
 
-            // Add to target
+            // Create the process tree
             IPropertyViewModel targetPropertyViewModel = CreateProcessTree();
+            
+            // Add to target
             targetPropertyViewModel.Properties.Add(workspace.PropertyCollection);
+            workspace.PropertyCollection.Parent = targetPropertyViewModel;
         }
 
         /// <summary>
@@ -107,7 +109,8 @@ namespace Studio.ViewModels.Workspace.Services
                     // None found, instantiate, may be detached
                     propertyNodeViewModel.Properties.Add(nextNodeViewModel = new ProcessNodeViewModel(process.Item2)
                     {
-                        PId = process.Item1
+                        PId = process.Item1,
+                        Parent = propertyNodeViewModel
                     });
                 }
 

@@ -200,12 +200,15 @@ namespace Studio.ViewModels.Workspace.Properties
         /// Detach a given property from its parent
         /// </summary>
         /// <param name="self"></param>
-        public static void DetachFromParent(this IPropertyViewModel self)
+        public static void DetachFromParent(this IPropertyViewModel self, bool destroy = true)
         {
             self.Parent?.Properties.Remove(self);
             
             // Detach internal states
-            self.Destruct();
+            if (destroy)
+            {
+                self.Destruct();
+            }
         }
     }
 }

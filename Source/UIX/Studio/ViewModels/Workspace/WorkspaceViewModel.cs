@@ -45,11 +45,6 @@ namespace Studio.ViewModels.Workspace
         public IPropertyViewModel PropertyCollection => _properties;
 
         /// <summary>
-        /// Optional, the property that owns this workspace
-        /// </summary>
-        public IPropertyViewModel? OwningProperty { get; set; }
-
-        /// <summary>
         /// Active connection
         /// </summary>
         public IConnectionViewModel? Connection
@@ -67,24 +62,6 @@ namespace Studio.ViewModels.Workspace
         {
             // The properties reference the abstract view model, not the actual top type
             _properties.WorkspaceViewModel = this;
-            
-            // Subscribe on collections behalf
-            _properties.CloseCommand = ReactiveCommand.Create(OnClose);
-        }
-
-        /// <summary>
-        /// Invoked on close
-        /// </summary>
-        private void OnClose()
-        {
-            // May be owned by another property
-            if (OwningProperty != null)
-            {
-                OwningProperty.Properties.Remove(PropertyCollection);
-            }
-            
-            // Remove from service
-            App.Locator.GetService<IWorkspaceService>()?.Remove(this);
         }
 
         /// <summary>
