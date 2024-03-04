@@ -165,7 +165,7 @@ namespace Studio.ViewModels.Workspace.Services
             }
 
             // Create entry and kick off connection
-            ChildDevicePoolingObject entry = new(TargetViewModel, applicationInfo);
+            ChildDevicePoolingObject entry = new(_connectionViewModel, TargetViewModel, applicationInfo);
 
             // Keep track of it
             lock (_devices)

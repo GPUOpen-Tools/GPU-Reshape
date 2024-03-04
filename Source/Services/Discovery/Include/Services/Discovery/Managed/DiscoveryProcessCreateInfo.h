@@ -26,10 +26,30 @@
 
 #pragma once
 
-// Std
-#include <cstdint>
+using namespace System;
 
-struct DiscoveryProcessInfo {
-    /// Assigned identifier
-    uint64_t processId{0};
-};
+namespace Discovery::CLR {
+    public ref class DiscoveryProcessCreateInfo {
+    public:
+        /// Path of the application
+        String^ applicationPath = "";
+
+        /// Working directory of the application
+        String^ workingDirectoryPath = "";
+
+        /// All command line arguments given to the application
+        String^ arguments = "";
+
+        /// All environment key value pairs
+        Collections::Generic::List<Tuple<String^, String^>^>^ environment;
+
+        /// Optional, reserved token
+        String^ reservedToken = "";
+
+        /// Should all child processes be captured?
+        bool captureChildProcesses = true;
+
+        /// Should all devices be attached?
+        bool attachAllDevices = false;
+    };
+}

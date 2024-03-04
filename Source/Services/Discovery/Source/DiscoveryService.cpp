@@ -191,7 +191,7 @@ bool DiscoveryService::UninstallConflictingInstances() {
     return !anyFailed;
 }
 
-bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info, const MessageStream &environment) {
+bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo &createInfo, const MessageStream& environment, DiscoveryProcessInfo& info) {
     DiscoveryBootstrappingEnvironment bootstrappingEnvironment;
 
     // Write the startup environment
@@ -200,22 +200,22 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
     }
 
     // Write token if valid
-    if (info.reservedToken.IsValid()) {
-        bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kReservedEnvironmentTokenKey, info.reservedToken.ToString());
+    if (createInfo.reservedToken.IsValid()) {
+        bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kReservedEnvironmentTokenKey, createInfo.reservedToken.ToString());
     }
 
     // Write optional environment pairs
-    for (auto && kv : info.environment) {
+    for (auto && kv : createInfo.environment) {
         bootstrappingEnvironment.environmentKeys.emplace_back(kv.first, kv.second);
     }
 
     // All processes?
-    if (info.captureChildProcesses) {
+    if (createInfo.captureChildProcesses) {
         bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kCaptureChildProcessesKey, "");
     }
 
     // All devices?
-    if (info.attachAllDevices) {
+    if (createInfo.attachAllDevices) {
         bootstrappingEnvironment.environmentKeys.emplace_back(Backend::kAttachAllDevicesKey, "");
     }
 
@@ -224,7 +224,7 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
     
     // Compose environment
     for (const ComRef<IDiscoveryListener>& listener : listeners) {
-        listener->SetupBootstrappingEnvironment(info, bootstrappingEnvironment);
+        listener->SetupBootstrappingEnvironment(createInfo, bootstrappingEnvironment);
     }
     
 #ifdef _WIN32
@@ -242,9 +242,9 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
     // Copy arguments
     // Note: Win32 always has the path as the first argument
     std::stringstream argumentStream;
-    argumentStream << "\"" << info.applicationPath << "\"";
+    argumentStream << "\"" << createInfo.applicationPath << "\"";
     argumentStream << " ";
-    argumentStream << info.arguments;
+    argumentStream << createInfo.arguments;
 
     // Load environment set
     EnvironmentArray environmentArray;
@@ -265,19 +265,22 @@ bool DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo &info
     
     // Attempt to create process
     if (!DetourCreateProcessWithDllsA(
-        info.applicationPath,
+        createInfo.applicationPath,
         argumentStream.str().data(),
         0x0,
         0x0,
         false,
         DETACHED_PROCESS | CREATE_SUSPENDED,
         environmentBlock.data(),
-        info.workingDirectoryPath,
+        createInfo.workingDirectoryPath,
         &startupInfo, &processInfo,
         static_cast<uint32_t>(dllKeys.size()), dllKeys.data(), nullptr
     )) {
         return false;
     }
+
+    // Set process info
+    info.processId = processInfo.dwProcessId;
 
     // Begin!
     ResumeThread(processInfo.hThread);

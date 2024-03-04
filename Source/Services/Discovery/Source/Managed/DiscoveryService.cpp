@@ -90,7 +90,7 @@ bool Discovery::CLR::DiscoveryService::UninstallConflictingInstances()
 	return service->UninstallConflictingInstances();
 }
 
-bool Discovery::CLR::DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessInfo ^ info, Message::CLR::IMessageStream ^ environment) {
+bool Discovery::CLR::DiscoveryService::StartBootstrappedProcess(const DiscoveryProcessCreateInfo^ createInfo, Message::CLR::IMessageStream^ environment, DiscoveryProcessInfo^% info) {
     // Translate schema
     MessageSchema schema;
     schema.id = environment->GetSchema().id;
@@ -105,19 +105,19 @@ bool Discovery::CLR::DiscoveryService::StartBootstrappedProcess(const DiscoveryP
     nativeEnvironment.SetData(span.Data, span.Length, environment->GetCount());
 
     // Convert optional token
-    IntPtr hGlobalReservedToken = Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->reservedToken);
+    IntPtr hGlobalReservedToken = Runtime::InteropServices::Marshal::StringToHGlobalAnsi(createInfo->reservedToken);
 
     // Convert to native info
-    ::DiscoveryProcessInfo nativeInfo;
-    nativeInfo.applicationPath = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->applicationPath).ToPointer());
-    nativeInfo.workingDirectoryPath = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->workingDirectoryPath).ToPointer());
-    nativeInfo.arguments = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(info->arguments).ToPointer());
+    ::DiscoveryProcessCreateInfo nativeInfo;
+    nativeInfo.applicationPath = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(createInfo->applicationPath).ToPointer());
+    nativeInfo.workingDirectoryPath = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(createInfo->workingDirectoryPath).ToPointer());
+    nativeInfo.arguments = static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(createInfo->arguments).ToPointer());
     nativeInfo.reservedToken = GlobalUID::FromString(static_cast<char *>(hGlobalReservedToken.ToPointer()));
-    nativeInfo.captureChildProcesses = info->captureChildProcesses;
-    nativeInfo.attachAllDevices = info->attachAllDevices;
+    nativeInfo.captureChildProcesses = createInfo->captureChildProcesses;
+    nativeInfo.attachAllDevices = createInfo->attachAllDevices;
 
     // Convert environment to native
-    for each (auto tuple in info->environment) {
+    for each (auto tuple in createInfo->environment) {
         nativeInfo.environment.emplace_back(
             static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(tuple->Item1).ToPointer()),
             static_cast<char *>(Runtime::InteropServices::Marshal::StringToHGlobalAnsi(tuple->Item2).ToPointer())
@@ -125,9 +125,13 @@ bool Discovery::CLR::DiscoveryService::StartBootstrappedProcess(const DiscoveryP
     }
     
     // Pass down!
-    if (!service->StartBootstrappedProcess(nativeInfo, nativeEnvironment)) {
+    ::DiscoveryProcessInfo nativeProcessInfo;
+    if (!service->StartBootstrappedProcess(nativeInfo, nativeEnvironment, nativeProcessInfo)) {
         return false;
     }
+
+    // Convert to managed info
+    info->processId = nativeProcessInfo.processId;
 
     // Cleanup paths
     Runtime::InteropServices::Marshal::FreeHGlobal(IntPtr(reinterpret_cast<int64_t>(nativeInfo.applicationPath)));

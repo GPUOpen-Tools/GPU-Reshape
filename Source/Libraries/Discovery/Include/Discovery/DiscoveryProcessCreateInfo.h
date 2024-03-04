@@ -26,10 +26,31 @@
 
 #pragma once
 
-// Std
-#include <cstdint>
+// Common
+#include <Common/GlobalUID.h>
 
-struct DiscoveryProcessInfo {
-    /// Assigned identifier
-    uint64_t processId{0};
+// Std
+#include <vector>
+
+struct DiscoveryProcessCreateInfo {
+    /// Path of the application
+    const char* applicationPath{nullptr};
+
+    /// Working directory of the application
+    const char* workingDirectoryPath{nullptr};
+
+    /// All command line arguments given to the application
+    const char* arguments{nullptr};
+
+    /// Optional, all environment key value pairs
+    std::vector<std::pair<const char*, const char*>> environment;
+
+    /// Optional, reserved token
+    GlobalUID reservedToken{};
+
+    /// Should all child processes be captured?
+    bool captureChildProcesses = true;
+
+    /// Should all devices be attached?
+    bool attachAllDevices = false;
 };

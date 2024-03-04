@@ -455,7 +455,7 @@ namespace Studio.ViewModels
             _pendingReservedToken = $"{{{Guid.NewGuid()}}}";
 
             // Setup process info
-            var processInfo = new DiscoveryProcessInfo();
+            var processInfo = new DiscoveryProcessCreateInfo();
             processInfo.applicationPath = _applicationPath;
             processInfo.workingDirectoryPath = _workingDirectoryPath;
             processInfo.arguments = _arguments;
@@ -495,7 +495,7 @@ namespace Studio.ViewModels
             }
             
             // Start process
-            service.StartBootstrappedProcess(processInfo, view.Storage);
+            service.StartBootstrappedProcess(processInfo, view.Storage, ref _discoveryProcessInfo);
             
             // Start connection
             _connectionViewModel.Connect("127.0.0.1", null);
@@ -559,6 +559,7 @@ namespace Studio.ViewModels
             _connectionViewModel.Application = new ApplicationInfoViewModel()
             {
                 Guid = Guid.NewGuid(),
+                Pid = _discoveryProcessInfo.processId,
                 Process = Path.GetFileName(_applicationPath),
                 DecorationMode = ApplicationDecorationMode.ProcessOnly
             };
@@ -839,5 +840,10 @@ namespace Studio.ViewModels
         /// Internal name state
         /// </summary>
         private string _selectedConfigurationName;
+
+        /// <summary>
+        /// Instantiated process info
+        /// </summary>
+        private DiscoveryProcessInfo _discoveryProcessInfo = new();
     }
 }

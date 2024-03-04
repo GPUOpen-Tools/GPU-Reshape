@@ -57,6 +57,7 @@ namespace Studio.ValueConverters
                 switch (property)
                 {
                     case ProcessCollectionViewModel:
+                    case ProcessNodeViewModel:
                         return ResourceLocator.GetIcon("AppFilled");
                     case WorkspaceCollectionViewModel:
                         return ResourceLocator.GetIcon("StreamOn");
