@@ -765,11 +765,25 @@ struct _PROC_THREAD_ATTRIBUTE_LIST {
     _PROC_THREAD_ATTRIBUTE_LIST_ATTRIBUTE Attributes[1u];
 };
 
-bool ShouldAttachChildProcesses() {
-    // May explicitly disable service traps
+bool IsBackendKeySet(const char* key) {
     size_t size;
-    if (char* key{nullptr}; _dupenv_s(&key, &size, Backend::kCaptureChildProcessesKey) == 0 && key) {
-        free(key);
+    if (char* value{nullptr}; _dupenv_s(&value, &size, key) == 0 && value) {
+        free(value);
+        return true;
+    }
+
+    // Not set
+    return false;
+}
+
+bool ShouldAttachChildProcesses() {
+    // If the service trap is disabled, we're always capturing child processes
+    if (!IsBackendKeySet(Backend::kNoServiceTrapKey)) {
+        return true;
+    }
+    
+    // May explicitly disable service traps
+    if (IsBackendKeySet(Backend::kCaptureChildProcessesKey)) {
         return true;
     }
 
