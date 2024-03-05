@@ -197,6 +197,29 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Get the first root property that is of type
+        /// </summary>
+        /// <param name="self"></param>
+        /// <returns></returns>
+        public static T? GetFirstRoot<T>(this IPropertyViewModel self) where T : class
+        {
+            IPropertyViewModel vm = self;
+
+            // Keep rolling back
+            while (vm.Parent != null)
+            {
+                if (vm.Parent is T instance)
+                {
+                    return instance;
+                }
+                
+                vm = vm.Parent;
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Detach a given property from its parent
         /// </summary>
         /// <param name="self"></param>

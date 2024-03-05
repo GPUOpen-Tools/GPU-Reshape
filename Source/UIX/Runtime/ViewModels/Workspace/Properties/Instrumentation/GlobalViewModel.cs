@@ -31,6 +31,7 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Runtime.ViewModels.Traits;
 using Studio.Extensions;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
@@ -108,7 +109,7 @@ namespace Studio.ViewModels.Workspace.Properties.Instrumentation
         /// <returns></returns>
         public IPropertyViewModel? GetWorkspaceCollection()
         {
-            return Parent?.GetRoot();
+            return Parent?.GetWorkspaceCollection();
         }
 
         /// <summary>

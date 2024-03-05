@@ -32,6 +32,7 @@ using DynamicData;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
+using Runtime.ViewModels.Traits;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
@@ -63,9 +64,9 @@ namespace Studio.ViewModels.Workspace.Services
         {
             set
             {
-                _root = value.GetRoot();
-                _shaderCollection = _root.GetProperty<IShaderCollectionViewModel>();
-                _pipelineCollection = _root.GetProperty<IPipelineCollectionViewModel>();
+                _root = value.GetWorkspaceCollection();
+                _shaderCollection = _root?.GetProperty<IShaderCollectionViewModel>();
+                _pipelineCollection = _root?.GetProperty<IPipelineCollectionViewModel>();
             }
         }
 
