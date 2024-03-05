@@ -1587,7 +1587,7 @@ static int32_t GetConstantId(const Backend::IL::Constant *constant, SymbolicCont
     }
 
     // Symbolics are represented with negative values
-    const int32_t id = -static_cast<int32_t>(context.mappings.size());
+    const int32_t id = - (1 + static_cast<int32_t>(context.mappings.size()));
     return context.mappings[constant] = id;
 }
 
