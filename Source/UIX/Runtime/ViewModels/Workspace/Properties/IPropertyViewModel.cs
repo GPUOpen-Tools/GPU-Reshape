@@ -206,13 +206,13 @@ namespace Studio.ViewModels.Workspace.Properties
             IPropertyViewModel vm = self;
 
             // Keep rolling back
-            while (vm.Parent != null)
+            while (vm != null)
             {
-                if (vm.Parent is T instance)
+                if (vm is T instance)
                 {
                     return instance;
                 }
-                
+
                 vm = vm.Parent;
             }
 
