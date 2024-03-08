@@ -145,6 +145,16 @@ namespace IL {
             return constants;
         }
 
+        /// Get the analysis map
+        AnalysisMap<IProgramAnalysis> &GetAnalysisMap() {
+            return analysisMap;
+        }
+
+        /// Get the program registry
+        Registry& GetRegistry() {
+            return registry;
+        }
+
         /// Get the identifier map
         const FunctionList &GetFunctionList() const {
             return functions;
@@ -186,8 +196,13 @@ namespace IL {
         }
 
         /// Get the analysis map
-        AnalysisMap<IProgramAnalysis> &GetAnalysisMap() {
+        const AnalysisMap<IProgramAnalysis> &GetAnalysisMap() const {
             return analysisMap;
+        }
+
+        /// Get the program registry
+        const Registry& GetRegistry() const {
+            return registry;
         }
 
     private:
@@ -225,5 +240,9 @@ namespace IL {
 
         /// Shader guid of this program
         uint64_t shaderGUID{~0ull};
+
+    private:
+        /// Internal registry
+        Registry registry;
     };
 }

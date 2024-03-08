@@ -89,6 +89,22 @@ void WaterfallFeature::PreInject(IL::Program &program, const MessageStreamView<>
     
     // Compute interprocedural analysis
     program.GetAnalysisMap().FindPassOrCompute<IL::InterproceduralSimulationAnalysis>(program);
+
+    // Create data
+    ComRef data = program.GetRegistry().AddNew<SharedData>();
+
+    // Map all instructions of interest to their source blocks
+    IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
+        switch (it->opCode) {
+            default:
+                return it;
+            case IL::OpCode::AddressChain:
+            case IL::OpCode::Extract: {
+                data->instructionSourceBlocks[it->result] = context.basicBlock.GetID();
+            }
+        }
+        return it;
+    });
 }
 
 void WaterfallFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
@@ -96,20 +112,23 @@ void WaterfallFeature::Inject(IL::Program &program, const MessageStreamView<> &s
     [[maybe_unused]]
     const auto config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
 
+    // Get data
+    ComRef data = program.GetRegistry().Get<SharedData>();
+
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
         switch (it->opCode) {
             default:
                 return it;
             case IL::OpCode::AddressChain:
-                return InjectAddressChain(program, context, it);
+                return InjectAddressChain(program, data, context, it);
             case IL::OpCode::Extract:
-                return InjectExtract(program, context, it);
+                return InjectExtract(program, data, context, it);
         }
     });
 }
 
-IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& program, IL::VisitContext &context, IL::BasicBlock::Iterator it) {
+IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& program, const ComRef<SharedData>& data, IL::VisitContext &context, IL::BasicBlock::Iterator it) {
     auto* instr = it->As<IL::AddressChainInstruction>();
 
     // Get composite type, must be pointer
@@ -143,6 +162,11 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
 
     // Outgoing message attributes
     uint32_t varyingOperandIndex = 0;
+
+    // If this block is not executable, it's either unreachable or going to be DCE'd
+    if (!simulationAnalysis->GetPropagationEngine().IsBlockExecutable(data->instructionSourceBlocks.at(it->result))) {
+        return it;
+    }
 
     // FAS based checks?
     if (isFASIndirection) {
@@ -183,7 +207,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
                 varyingOperandIndex = i;
             }
 
-            if (divergencePropagator->GetDivergence(chain.index) == IL::WorkGroupDivergence::Divergent) {
+            if (divergencePropagator->IsDivergent(chain.index)) {
                 anyChainDivergent = true;
             }
         }
@@ -283,7 +307,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectAddressChain(IL::Program& progr
     }
 }
 
-IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, IL::VisitContext &context, IL::BasicBlock::Iterator it) {
+IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, const ComRef<SharedData>& data, IL::VisitContext &context, IL::BasicBlock::Iterator it) {
     auto* instr = it->As<IL::ExtractInstruction>();
 
     // Get the pre-injection analysis

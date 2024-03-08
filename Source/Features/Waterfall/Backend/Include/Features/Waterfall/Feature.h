@@ -78,11 +78,18 @@ public:
     }
 
 private:
+    struct SharedData : public TComponent<SharedData> {
+        COMPONENT(SharedData);
+
+        /// The originating blocks of an instruction id
+        std::unordered_map<IL::ID, IL::ID> instructionSourceBlocks;
+    };
+    
     /// Inject waterfall checks to address chains
-    IL::BasicBlock::Iterator InjectAddressChain(IL::Program& program, IL::VisitContext& context, IL::BasicBlock::Iterator it);
+    IL::BasicBlock::Iterator InjectAddressChain(IL::Program& program, const ComRef<SharedData>& data, IL::VisitContext& context, IL::BasicBlock::Iterator it);
     
     /// Inject waterfall checks to composite extraction
-    IL::BasicBlock::Iterator InjectExtract(IL::Program& program, IL::VisitContext& context, IL::BasicBlock::Iterator it);
+    IL::BasicBlock::Iterator InjectExtract(IL::Program& program, const ComRef<SharedData>& data, IL::VisitContext& context, IL::BasicBlock::Iterator it);
 
 private:
     /// Shader SGUID

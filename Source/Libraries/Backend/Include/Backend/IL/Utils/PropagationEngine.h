@@ -73,7 +73,7 @@ namespace Backend::IL {
         /// \param from source basic block
         /// \param to destination basic block
         /// \return true if executable
-        bool IsEdgeExecutable(const BasicBlock* from, const BasicBlock* to) {
+        bool IsEdgeExecutable(const BasicBlock* from, const BasicBlock* to) const {
             if (!IsExecutableLoopEdge(*workContext, from, to)) {
                 return false;
             }
@@ -82,6 +82,13 @@ namespace Backend::IL {
                 .from = from,
                 .to = to
             });
+        }
+
+        /// Check if a block is executable, i.e. it has been executed at least once
+        /// \param id given block id
+        /// \return true if executable
+        bool IsBlockExecutable(ID id) const {
+            return executedBlocks.contains(id);
         }
 
     private:
@@ -203,6 +210,13 @@ namespace Backend::IL {
             loopItem.header = &headerItem;
 
             for (;;) {
+                // Remove body from the set of executed blocks
+                for (BasicBlock *block : loopItem.header->definition->blocks) {
+                    if (auto it = cfgExecutableBlocks.find(block->GetID()); it != cfgExecutableBlocks.end()) {
+                        cfgExecutableBlocks.erase(it);
+                    }
+                }
+                
                 // Has a termination condition been met?
                 bool terminationOrVarying = false;
 
@@ -289,11 +303,8 @@ namespace Backend::IL {
                 loopItem.latchAndExitEdges.clear();
                 loopItem.anyExitEdges = false;
 
-                // Remove body from the set of executed blocks
+                // Cleanup instructions
                 for (BasicBlock *block : loopItem.header->definition->blocks) {
-                    executedBlocks.erase(block);
-
-                    // Cleanup instructions
                     for (const Instruction* instr : *block) {
                         ssaLattice.erase(instr);
                         ssaExclusion.erase(instr);
@@ -333,7 +344,7 @@ namespace Backend::IL {
             }
 
             // Block are only simulated once, ssa statements have a separate work queue
-            if (executedBlocks.contains(edge.to)) {
+            if (cfgExecutableBlocks.contains(edge.to->GetID())) {
                 return;
             }
 
@@ -347,7 +358,8 @@ namespace Backend::IL {
             }
 
             // Mark the block as executed
-            executedBlocks.insert(edge.to);
+            cfgExecutableBlocks.insert(edge.to->GetID());
+            executedBlocks.insert(edge.to->GetID());
         }
 
         /// Propagate an SSA item
@@ -437,7 +449,7 @@ namespace Backend::IL {
         }
 
         /// Check if a block is an active loop back edge
-        bool IsActiveLoopBackEdge(WorkItem& work, const BasicBlock* block) {
+        bool IsActiveLoopBackEdge(WorkItem& work, const BasicBlock* block) const {
             if (!work.loop) {
                 return false;
             }
@@ -453,7 +465,7 @@ namespace Backend::IL {
         }
 
         /// Check if an edge is executable within a loop complex, useful for Phi resolving
-        bool IsExecutableLoopEdge(WorkItem& work, const BasicBlock* from, const BasicBlock* to) {
+        bool IsExecutableLoopEdge(WorkItem& work, const BasicBlock* from, const BasicBlock* to) const {
             // Only concerned with branching to loop headers
             if (!work.loop || to != work.loop->header->definition->header) {
                 return true;
@@ -522,7 +534,7 @@ namespace Backend::IL {
                 }
 
                 // If this block has not been executed, it will be later (if not, it's a dead block), do not seed
-                if (!executedBlocks.contains(ref.basicBlock)) {
+                if (!cfgExecutableBlocks.contains(ref.basicBlock->GetID())) {
                     continue;
                 }
 
@@ -632,11 +644,14 @@ namespace Backend::IL {
         WorkItem* workContext{nullptr};
 
     private:
-        /// All known executable edges
+        /// All known executable edges visible to the current control flow
         std::set<Edge> cfgExecutableEdges;
 
+        /// All known executable blocks visible to the current control flow
+        std::set<IL::ID> cfgExecutableBlocks;
+
         /// All executed blocks
-        std::set<const BasicBlock*> executedBlocks;
+        std::set<IL::ID> executedBlocks;
 
     private:
         /// All instructions excluded from propagation

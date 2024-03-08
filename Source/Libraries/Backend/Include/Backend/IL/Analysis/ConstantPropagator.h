@@ -196,6 +196,7 @@ namespace IL {
         /// \return propagation result
         Backend::IL::PropagationResult MarkAsVarying(ID id) {
             Memory::PropagatedValue& value = memory->propagationValues[id];
+            value.constant = nullptr;
             return value.lattice = Backend::IL::PropagationResult::Varying;
         }
 
@@ -204,6 +205,7 @@ namespace IL {
         /// \return propagation result
         Backend::IL::PropagationResult MarkAsIgnored(ID id) {
             Memory::PropagatedValue& value = memory->propagationValues[id];
+            value.constant = nullptr;
             return value.lattice = Backend::IL::PropagationResult::Ignore;
         }
 

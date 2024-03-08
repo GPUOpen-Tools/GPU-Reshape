@@ -50,6 +50,11 @@ namespace IL {
             return memory->divergenceValues.at(id).divergence;
         }
 
+        /// Check if a value is divergent
+        bool IsDivergent(ID id) const {
+            return memory->divergenceValues.at(id).divergence == WorkGroupDivergence::Divergent;
+        }
+
     public:
         /// Install this propagator
         bool Install(Backend::IL::PropagationEngine* engine) override {
@@ -716,11 +721,6 @@ namespace IL {
 
             // OK
             return out;
-        }
-
-        /// Check if a value is divergent
-        bool IsDivergent(ID id) {
-            return memory->divergenceValues.at(id).divergence == WorkGroupDivergence::Divergent;
         }
 
         /// Mark a value as divergent

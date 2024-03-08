@@ -95,6 +95,11 @@ namespace IL {
             return constantPropagator;
         }
 
+        /// Get the underlying propagation engine
+        const Backend::IL::PropagationEngine& GetPropagationEngine() const {
+            return propagationEngine;
+        }
+
         /// Get all propagators
         const std::vector<ComRef<ISimulationPropagator>>& GetPropagators() const {
             return propagators;
