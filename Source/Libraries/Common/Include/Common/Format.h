@@ -35,6 +35,32 @@
 /// \param message message contents
 /// \param args arguments to message contents
 template<typename... T>
-std::string Format(const char* message, T&&... args) {
-    return fmt::format(message, args...);
+inline std::string Format(const char* message, T&&... args) {
+    return fmt::format(message, std::forward<T>(args)...);
+}
+
+/// Format a message to a fixed length buffer
+///   ? See https://github.com/fmtlib/fmt/tree/8.1.1 for formatting documentation
+/// \param buffer the destination buffer
+/// \param message message contents
+/// \param args arguments to message contents
+/// \return written length
+template <size_t SIZE, typename... T>
+inline uint64_t FormatArray(char (&buffer)[SIZE], const char* message, T&&... args) {
+    return fmt::format_to_n(buffer, SIZE, message, std::forward<T>(args)...).size;
+}
+
+/// Format a message to a fixed length buffer with null termination
+///   ? See https://github.com/fmtlib/fmt/tree/8.1.1 for formatting documentation
+/// \param buffer the destination buffer
+/// \param message message contents
+/// \param args arguments to message contents
+template <size_t SIZE, typename... T>
+inline void FormatArrayTerminated(char (&buffer)[SIZE], const char* message, T&&... args) {
+    uint64_t length = FormatArray(buffer, message, std::forward<T>(args)...);
+    if (length >= SIZE) {
+        return;
+    }
+
+    buffer[length] = '\0';
 }
