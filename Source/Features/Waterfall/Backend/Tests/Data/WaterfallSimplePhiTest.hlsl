@@ -84,7 +84,7 @@ void main(uint dtid : SV_DispatchThreadID) {
     int runtimeDivergent = bufferRWUI[dtid];
 
     // Validate blatant runtime divergence is checked for
-    //! MESSAGE WaterfallingCondition[8]
+    //! MESSAGE DivergentResourceIndexing[8]
     bufferRW[runtimeDivergent][dtid * 10 + 1] = gScalarData;
 
     // Validate annotated divergent indexing is checked for

@@ -76,7 +76,11 @@ namespace GRS.Features.Waterfall.UIX
             workspaceService?.GetConfiguration<IAllConfigurationViewModel>()?.IgnoredFeatures.Add("Waterfall");
             
             // Add derived types
-            AvaloniaLocator.Current.GetService<ILocatorService>()?.AddDerived(typeof(ScalarizationDetailViewModel), typeof(ScalarizationDetailView));
+            if (AvaloniaLocator.Current.GetService<ILocatorService>() is { } locator)
+            {
+                locator.AddDerived(typeof(ScalarizationDetailViewModel), typeof(ScalarizationDetailView));
+                locator.AddDerived(typeof(DivergentResourceAddressingDetailViewModel), typeof(DivergentResourceAddressingDetailView));
+            }
 
             // OK
             return true;

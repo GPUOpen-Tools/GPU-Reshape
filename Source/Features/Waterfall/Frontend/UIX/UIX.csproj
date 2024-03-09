@@ -104,6 +104,10 @@
         <DependentUpon>ScalarizationDetailView.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Views\DivergentResourceAddressingDetailView.axaml.cs">
+        <DependentUpon>DivergentResourceAddressingDetailView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
 
 </Project>

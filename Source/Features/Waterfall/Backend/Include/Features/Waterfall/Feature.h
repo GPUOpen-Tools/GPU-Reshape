@@ -47,6 +47,7 @@ namespace IL {
 
 // Forward declarations
 class IShaderSGUIDHost;
+struct SetInstrumentationConfigMessage;
 
 class WaterfallFeature final : public IFeature, public IShaderFeature {
 public:
@@ -86,7 +87,7 @@ private:
     };
     
     /// Inject waterfall checks to address chains
-    IL::BasicBlock::Iterator InjectAddressChain(IL::Program& program, const ComRef<SharedData>& data, IL::VisitContext& context, IL::BasicBlock::Iterator it);
+    IL::BasicBlock::Iterator InjectAddressChain(IL::Program& program, const ComRef<SharedData>& data, const SetInstrumentationConfigMessage& config, IL::VisitContext& context, IL::BasicBlock::Iterator it);
     
     /// Inject waterfall checks to composite extraction
     IL::BasicBlock::Iterator InjectExtract(IL::Program& program, const ComRef<SharedData>& data, IL::VisitContext& context, IL::BasicBlock::Iterator it);
@@ -96,7 +97,7 @@ private:
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
 
     /// Export id for this feature
-    ShaderExportID exportID{};
+    ShaderExportID divergentResourceExportID{};
 
     /// Shared stream
     MessageStream stream;
