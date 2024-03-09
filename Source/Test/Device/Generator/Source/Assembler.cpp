@@ -116,7 +116,7 @@ void Assembler::AssembleConstraints() {
         // Generate messages
         for (const ProgramMessage &message: kv.second) {
             inits << "\t\t{\n";
-            inits << "\t\t\t" << assembleInfo.program << "MessageInfo& msg = messages.emplace_back();\n";
+            inits << "\t\t\t" << assembleInfo.program << kv.first << "MessageInfo& msg = messages.emplace_back();\n";
             inits << "\t\t\tmsg.line = " << message.line << ";\n";
             inits << "\t\t\tmsg.policy = \"" << message.checkGenerator.contents << "\";\n";
             inits << "\t\t\tmsg.comparator = [](uint32_t x) { return " << message.checkGenerator.contents << "; };\n";
@@ -150,9 +150,9 @@ void Assembler::AssembleConstraints() {
 
     // Generate messages
     for (auto &&kv: buckets) {
-        fields << "\tComRef<" << assembleInfo.program << "MessageConstraint> " << kv.first << "Constraint{nullptr};\n";
+        fields << "\tComRef<" << assembleInfo.program << kv.first << "MessageConstraint> " << kv.first << "Constraint{nullptr};\n";
 
-        install << "\t\t" << kv.first << "Constraint = registry->New<" << assembleInfo.program << "MessageConstraint>();\n";
+        install << "\t\t" << kv.first << "Constraint = registry->New<" << assembleInfo.program << kv.first << "MessageConstraint>();\n";
         install << "\t\t" << kv.first << "Constraint->Install();\n\n";
         install << "\t\tbridge->Register(" << kv.first << "Message::kID, " << kv.first << "Constraint);\n";
 

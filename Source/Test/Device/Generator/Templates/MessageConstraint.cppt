@@ -1,6 +1,6 @@
 
 /// Message descriptor
-struct $TEST_NAMEMessageInfo {
+struct $TEST_NAME$MESSAGE_TYPEMessageInfo {
     std::string policy;
     std::function<bool(uint32_t)> comparator;
 
@@ -10,7 +10,7 @@ $FIELDS
 };
 
 /// Listener that performs constraint validation
-class $TEST_NAMEMessageConstraint : public IComponent, public IBridgeListener {
+class $TEST_NAME$MESSAGE_TYPEMessageConstraint : public IComponent, public IBridgeListener {
 public:
     void Install() {
 $INITS
@@ -36,7 +36,7 @@ $INITS
                 uint32_t line = sguidHost->GetMapping(it->sguid).line;
 
                 // Find the respective message
-                $TEST_NAMEMessageInfo* bucket{nullptr};
+                $TEST_NAME$MESSAGE_TYPEMessageInfo* bucket{nullptr};
                 for (auto&& message : messages) {
                     if (message.line == line) {
                         bucket = &message;
@@ -62,5 +62,5 @@ $TESTS
     }
 
 private:
-    std::vector<$TEST_NAMEMessageInfo> messages;
+    std::vector<$TEST_NAME$MESSAGE_TYPEMessageInfo> messages;
 };
