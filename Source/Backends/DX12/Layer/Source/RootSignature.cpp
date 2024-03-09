@@ -138,27 +138,16 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
 void WriteRootVisibilityMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserClassType type, RootParameterVisibility visibility, uint32_t space, uint32_t offset, const RootSignatureUserMapping& value) {
     // TODO: This is a lot of indirections, perhaps a linear approach is more favorable?
 
-    // Get visibility class
+    // Get final user space
     RootSignatureVisibilityClass& visibilityClass = mapping->visibility[static_cast<uint32_t>(visibility)];
-
-    // Get user class
-    RootSignatureUserClass& userClass = visibilityClass.spaces[static_cast<uint32_t>(type)];
-
-    // Ensure user space length
-    if (userClass.spaces.size() <= space) {
-        userClass.spaces.resize(space + 1);
-    }
-
-    // Get user space
-    RootSignatureUserSpace& userSpace = userClass.spaces[space];
-
-    // Ensure mappings length
-    if (userSpace.mappings.size() <= offset) {
-        userSpace.mappings.resize(offset + 1);
-    }
+    RootSignatureUserClass&       userClass       = visibilityClass.spaces[static_cast<uint32_t>(type)];
+    RootSignatureUserSpace&       userSpace       = userClass.spaces[space];
 
     // Write mapping
     userSpace.mappings[offset] = value;
+
+    // Keep track of the bounds
+    userSpace.lastRegister = std::max(userSpace.lastRegister, offset);
 }
 
 void WriteRootMapping(RootSignaturePhysicalMapping* mapping, RootSignatureUserClassType type, D3D12_SHADER_VISIBILITY visibility, uint32_t space, uint32_t offset, const RootSignatureUserMapping& value) {

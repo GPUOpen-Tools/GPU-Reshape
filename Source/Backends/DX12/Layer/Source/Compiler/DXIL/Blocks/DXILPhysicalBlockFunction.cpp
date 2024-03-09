@@ -4974,14 +4974,18 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
     // Get user space
     const RootSignatureVisibilityClass& visibilityClass = job.instrumentationKey.physicalMapping->visibility[static_cast<uint32_t>(rootVisibility)];
     const RootSignatureUserClass&       userClass       = visibilityClass.spaces[static_cast<uint32_t>(classType)];
-    const RootSignatureUserSpace&       userSpace       = userClass.spaces[metadata.entry->bindSpace];
+    const RootSignatureUserSpace&       userSpace       = userClass.spaces.at(metadata.entry->bindSpace);
 
     // If the range index is beyond the accessible mappings, it implies arrays or similar
-    if (rangeIndex >= userSpace.mappings.size()) {
+    if (rangeIndex > userSpace.lastRegister) {
         ASSERT(out.dynamicOffset == IL::InvalidID, "Dynamic mapping with out of bounds range index");
 
-        // Effective distance, +1 due to end of mappings
-        const uint32_t distanceFromEnd = 1u + (rangeIndex - static_cast<uint32_t>(userSpace.mappings.size()));
+        // Validate that the end mapping is unbounded
+        // Array descriptor ranges should be fully visible at this point
+        ASSERT(userSpace.mappings.at(userSpace.lastRegister).isUnbounded, "Dynamic mapping from bounded range");
+
+        // Effective distance
+        const uint32_t distanceFromEnd = rangeIndex - userSpace.lastRegister;
 
         // Assign distance as the dynamic offset to validate
         out.dynamicOffset = program.GetConstants().FindConstantOrAdd(
@@ -4990,11 +4994,11 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
         )->id;
 
         // Set to last index
-        rangeIndex = static_cast<uint32_t>(userSpace.mappings.size()) - 1u;
+        rangeIndex = userSpace.lastRegister;
     }
 
     // Assign source
-    out.source = &userSpace.mappings[rangeIndex];
+    out.source = &userSpace.mappings.at(rangeIndex);
 
     // OK
     return out;

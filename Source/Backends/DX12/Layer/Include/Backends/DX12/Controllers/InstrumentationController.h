@@ -40,6 +40,7 @@
 #include <Message/MessageStream.h>
 
 // Common
+#include <Common/Allocator/Vector.h>
 #include <Common/Dispatcher/EventCounter.h>
 #include <Common/Dispatcher/RelaxedAtomic.h>
 #include <Common/ComRef.h>
