@@ -86,6 +86,8 @@ set(
     vkCmdClearAttachments
     vkCmdResolveImage
     vkCmdBeginRenderPass
+    vkCmdBeginRenderPass2
+    vkCmdBeginRenderPass2KHR
     vkCmdEndRenderPass
     vkCmdBeginRendering
     vkCmdBeginRenderingKHR

@@ -187,9 +187,14 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateFramebuffer(VkDevice device, const V
     state->table = table;
     state->object = *pFramebuffer;
 
+    // Validation
+    ASSERT(pCreateInfo->pAttachments || (pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT), "Expected valid attachments or imageless framebuffer");
+
     // Get all image views
-    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-        state->imageViews.push_back(table->states_imageView.Get(pCreateInfo->pAttachments[i]));
+    if (pCreateInfo->pAttachments) {
+        for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
+            state->imageViews.push_back(table->states_imageView.Get(pCreateInfo->pAttachments[i]));
+        }
     }
 
     // External user

@@ -114,6 +114,12 @@ struct FeatureHook_vkCmdEndRenderPass : TFeatureHook<Hooks::EndRenderPass> {
     void operator()(CommandBufferObject *object, CommandContext *context) const;
 };
 
+struct FeatureHook_vkCmdBeginRenderPass2 : TFeatureHook<Hooks::BeginRenderPass> {
+    void operator()(CommandBufferObject *object, CommandContext *context, const VkRenderPassBeginInfo* info, const VkSubpassBeginInfo* pSubpassBeginInfo) const;
+};
+
+using FeatureHook_vkCmdBeginRenderPass2KHR = FeatureHook_vkCmdBeginRenderPass2;
+
 struct FeatureHook_vkCmdBeginRendering : TFeatureHook<Hooks::BeginRenderPass> {
     void operator()(CommandBufferObject *object, CommandContext *context, const VkRenderingInfo* pRenderingInfo) const;
 };
