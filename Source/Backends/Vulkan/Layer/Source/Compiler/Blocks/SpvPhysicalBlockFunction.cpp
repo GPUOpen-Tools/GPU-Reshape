@@ -599,12 +599,13 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpVariable: {
                 const Backend::IL::Type *type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx.GetResultType());
 
-                // Variables may only appear in the first block of a function, there's no co-dependence so just insert them
-                function->GetVariables().Add(Backend::IL::Variable {
-                    .id = ctx.GetResult(),
-                    .addressSpace = Backend::IL::AddressSpace::Function,
-                    .type = type
-                });
+                // Append as top-most allocas (order does not matter)
+                IL::AllocaInstruction instr{};
+                instr.opCode = IL::OpCode::Alloca;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.type = type->id;
+                basicBlock->Append(instr);
 
                 program.GetTypeMap().SetType(ctx.GetResult(), type);
                 break;
@@ -978,6 +979,10 @@ bool SpvPhysicalBlockFunction::IsTriviallyCopyableSpecial(IL::BasicBlock *bb, co
         default: {
             return sourceRequest;
         }
+        case IL::OpCode::Alloca: {
+            // Alloca's never emitted during block writing
+            return false;
+        }
         case IL::OpCode::SampleTexture: {
             // If not source
             if (!sourceRequest) {
@@ -1053,12 +1058,27 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
 
     // First block?
     if (bb == *fn.GetBasicBlocks().begin()) {
-        // Emit all variables, order doesn't matter
-        for (const Backend::IL::Variable& variable : fn.GetVariables()) {
-            SpvInstruction& spv = stream.Allocate(SpvOpVariable, 4);
-            spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(variable.type);
-            spv[2] = variable.id;
-            spv[3] = SpvStorageClassFunction;
+        // Emit all alloca's as function scope variables
+        // Must be inserted at the start
+        for (IL::BasicBlock* basicBlock : fn.GetBasicBlocks()) {
+            for (const IL::Instruction* instr : *basicBlock) {
+                auto* _instr = instr->Cast<IL::AllocaInstruction>();
+                if (!_instr) {
+                    continue;
+                }
+
+                // If trivial, just copy it directly
+                if (instr->source.TriviallyCopyable()) {
+                    stream.Template(instr->source);
+                    continue;
+                }
+
+                // User alloca
+                SpvInstruction& spv = stream.Allocate(SpvOpVariable, 4);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().GetType(_instr->result));
+                spv[2] = _instr->result;
+                spv[3] = SpvStorageClassFunction;
+            }
         }
 
         // Has the function been modified?
@@ -1692,12 +1712,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 break;
             }
             case IL::OpCode::Alloca: {
-                auto *bsr = instr.As<IL::BitShiftRightInstruction>();
-
-                SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(SpvOpVariable, 4, bsr->source);
-                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
-                spv[2] = bsr->result;
-                spv[3] = SpvStorageClassFunction;
+                // Alloca's handled in function header
                 break;
             }
             case IL::OpCode::Load: {
