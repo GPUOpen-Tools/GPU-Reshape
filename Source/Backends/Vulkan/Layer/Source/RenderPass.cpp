@@ -60,6 +60,39 @@ static void ShallowDeepCopy(RenderPassState* state, const VkRenderPassCreateInfo
     state->deepCopy.DeepCopy(state->table->allocators, shallow);
 }
 
+template<typename T>
+static VkResult CreateReconstructionRenderPass(DeviceDispatchTable *table, const T* pCreateInfo, VkRenderPass* out) {
+    T info = *pCreateInfo;
+
+    // Types
+    using Attachment = std::remove_const_t<std::remove_pointer_t<decltype(T::pAttachments)>>;
+
+    // Copy all attachments
+    Attachment* attachments = ALLOCA_ARRAY(Attachment, info.attachmentCount);
+    std::memcpy(attachments, pCreateInfo->pAttachments, sizeof(Attachment) * info.attachmentCount);
+
+    // Patch relevant attributes
+    for (uint32_t i = 0; i < info.attachmentCount; i++) {
+        Attachment& attachment = attachments[i];
+
+        // Reconstruction passes never clear, just preserve the previous contents
+        // It may be discarded in the Store, but that shouldn't matter.
+        if (attachment.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+            attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+        }
+
+        // Just preserve the layouts from start to end
+        attachment.initialLayout = attachment.finalLayout;
+    }
+    
+    // Try to create
+    if constexpr(std::is_same_v<VkRenderPassCreateInfo2, T>) {
+        return table->next_vkCreateRenderPass2(table->object, &info, nullptr, out);
+    } else {
+        return table->next_vkCreateRenderPass(table->object, &info, nullptr, out);
+    }
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass(VkDevice device, const VkRenderPassCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkRenderPass* pRenderPass) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
@@ -80,6 +113,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass(VkDevice device, const Vk
 
     // Create a deep copy from the migrated state
     ShallowDeepCopy(state, pCreateInfo);
+
+    // Try to create reconstruction pass
+    if (result = CreateReconstructionRenderPass(table, pCreateInfo, &state->reconstructionObject); result != VK_SUCCESS) {
+        return result;
+    }
 
     // External user
     state->AddUser();
@@ -112,6 +150,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2(VkDevice device, const V
     // Create deep copy
     state->deepCopy.DeepCopy(table->allocators, *pCreateInfo);
 
+    // Try to create reconstruction pass
+    if (result = CreateReconstructionRenderPass(table, pCreateInfo, &state->reconstructionObject); result != VK_SUCCESS) {
+        return result;
+    }
+
     // External user
     state->AddUser();
 
@@ -142,6 +185,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateRenderPass2KHR(VkDevice device, cons
 
     // Create deep copy
     state->deepCopy.DeepCopy(table->allocators, *pCreateInfo);
+
+    // Try to create reconstruction pass
+    if (result = CreateReconstructionRenderPass(table, pCreateInfo, &state->reconstructionObject); result != VK_SUCCESS) {
+        return result;
+    }
 
     // External user
     state->AddUser();
@@ -225,6 +273,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyFramebuffer(VkDevice device, VkFramebuf
 RenderPassState::~RenderPassState() {
     // Remove the state
     table->states_renderPass.Remove(object, this);
+
+    // Destroy reconstruction pass
+    if (reconstructionObject) {
+        table->next_vkDestroyRenderPass(table->object, reconstructionObject, nullptr);
+    }
 
     // Pass down callchain
     table->next_vkDestroyRenderPass(table->object, object, nullptr);

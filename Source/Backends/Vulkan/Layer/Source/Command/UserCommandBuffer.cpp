@@ -28,6 +28,7 @@
 #include <Backends/Vulkan/Command/UserCommandState.h>
 #include <Backends/Vulkan/Objects/CommandBufferObject.h>
 #include <Backends/Vulkan/States/PipelineLayoutState.h>
+#include <Backends/Vulkan/States/RenderPassState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/Vulkan/ShaderProgram/ShaderProgramHost.h>
@@ -83,10 +84,14 @@ static void ReconstructPushConstantState(DeviceDispatchTable* device, VkCommandB
 }
 
 static void ReconstructRenderPassState(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, ShaderExportStreamState* streamState, const UserCommandState& state) {
+    // Use the reconstruction object instead of native
+    VkRenderPassBeginInfo beginInfo = streamState->renderPass.deepCopy.createInfo;
+    beginInfo.renderPass = device->states_renderPass.Get(beginInfo.renderPass)->reconstructionObject;
+    
     // Reconstruct render pass
     device->commandBufferDispatchTable.next_vkCmdBeginRenderPass(
         commandBuffer,
-        &streamState->renderPass.deepCopy.createInfo,
+        &beginInfo,
         streamState->renderPass.subpassContents
     );
 }
