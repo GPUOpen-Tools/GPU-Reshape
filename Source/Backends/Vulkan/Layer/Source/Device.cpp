@@ -200,9 +200,15 @@ static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceDispatchTab
 }
 
 template<typename T>
-static void EnableFeatureSet(T* features) {
+static void EnableDescriptorFeatureSet(T* features) {
     features->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
     features->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
+}
+
+template<typename T>
+static void EnableFeatureSet(T* features) {
+    features->vertexPipelineStoresAndAtomics = true;
+    features->fragmentStoresAndAtomics = true;
 }
 
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
@@ -263,19 +269,33 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->enabledExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
     // Optional feature structures
+    auto* features2        = FindStructureTypeMutableUnsafe<VkPhysicalDeviceFeatures2, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2>(table->createInfo->pNext);
     auto* features1_2      = FindStructureTypeMutableUnsafe<VkPhysicalDeviceVulkan12Features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES>(table->createInfo->pNext);
     auto* indexingFeatures = FindStructureTypeMutableUnsafe<VkPhysicalDeviceDescriptorIndexingFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES>(table->createInfo->pNext);
 
-    // Try enabling features
+    // Try enabling descriptor features
     VkPhysicalDeviceDescriptorIndexingFeatures indexingFeaturesFallback{};
     if (features1_2) {
-        EnableFeatureSet(features1_2);
+        EnableDescriptorFeatureSet(features1_2);
     } else if (indexingFeatures) {
-        EnableFeatureSet(indexingFeatures);
+        EnableDescriptorFeatureSet(indexingFeatures);
     } else {
-        EnableFeatureSet(&indexingFeaturesFallback);
+        EnableDescriptorFeatureSet(&indexingFeaturesFallback);
         indexingFeaturesFallback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
         PrependExtensionUnsafe(&table->createInfo.createInfo, &indexingFeaturesFallback);
+    }
+
+    // Try enabling base features
+    VkPhysicalDeviceFeatures featuresFallback{};
+    if (features2) {
+        EnableFeatureSet(&features2->features);
+    } else {
+        if (table->createInfo->pEnabledFeatures) {
+            featuresFallback = *table->createInfo->pEnabledFeatures;
+        }
+
+        EnableFeatureSet(&featuresFallback);
+        table->createInfo->pEnabledFeatures = &featuresFallback;
     }
 
     // Set new layers and extensions
