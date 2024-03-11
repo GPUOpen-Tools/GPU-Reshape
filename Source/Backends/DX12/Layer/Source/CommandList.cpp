@@ -824,6 +824,19 @@ void WINAPI HookID3D12CommandListDispatch(ID3D12CommandList* list, UINT ThreadGr
     table.next->Dispatch(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
 }
 
+void WINAPI HookID3D12CommandListDispatchMesh(ID3D12CommandList* list, UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ) {
+    auto table = GetTable(list);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Commit all pending graphics
+    CommitGraphics(device.state, table.state);
+
+    // Pass down callchain
+    table.next->DispatchMesh(ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+}
+
 void WINAPI HookID3D12CommandListSetComputeRoot32BitConstant(ID3D12CommandList *list, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues) {
     auto table = GetTable(list);
 

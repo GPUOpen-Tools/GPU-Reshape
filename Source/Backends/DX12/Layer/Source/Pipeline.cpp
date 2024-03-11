@@ -250,6 +250,24 @@ HRESULT HookID3D12DeviceCreatePipelineState(ID3D12Device2 *device, const D3D12_P
                         }
                         break;
                     }
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS: {
+                        auto&& as = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamASOffset);
+
+                        // Create AS state
+                        if (as.BytecodeLength) {
+                            state->as = state->shaders.emplace_back(GetOrCreateShaderState(table.state, as));
+                        }
+                        break;
+                    }
+                    case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS: {
+                        auto &&ms = reader.AlignedConsumeWithOffset<D3D12_SHADER_BYTECODE>(state->streamMSOffset);
+
+                        // Create MS state
+                        if (ms.BytecodeLength) {
+                            state->ms = state->shaders.emplace_back(GetOrCreateShaderState(table.state, ms));
+                        }
+                        break;
+                    }
                 }
 
                 // To void*

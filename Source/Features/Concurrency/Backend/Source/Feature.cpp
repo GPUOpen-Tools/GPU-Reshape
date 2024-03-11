@@ -83,6 +83,7 @@ FeatureHookTable ConcurrencyFeature::GetHookTable() {
     table.dispatch = BindDelegate(this, ConcurrencyFeature::OnDispatch);
     table.drawInstanced = BindDelegate(this, ConcurrencyFeature::OnDrawInstanced);
     table.drawIndexedInstanced = BindDelegate(this, ConcurrencyFeature::OnDrawIndexedInstanced);
+    table.dispatchMesh = BindDelegate(this, ConcurrencyFeature::OnDispatchMesh);
     return table;
 }
 
@@ -248,6 +249,11 @@ void ConcurrencyFeature::OnDrawIndexedInstanced(CommandContext *context, uint32_
 }
 
 void ConcurrencyFeature::OnDispatch(CommandContext *context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ) {
+    // Assign next event UID, small chance of collision if any event lingers past UINT32_MAX
+    context->eventStack.Set(eventID, eventCounter++);
+}
+
+void ConcurrencyFeature::OnDispatchMesh(CommandContext* context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ) {
     // Assign next event UID, small chance of collision if any event lingers past UINT32_MAX
     context->eventStack.Set(eventID, eventCounter++);
 }

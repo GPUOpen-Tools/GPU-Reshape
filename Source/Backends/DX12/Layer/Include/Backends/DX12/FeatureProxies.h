@@ -54,6 +54,12 @@ struct FeatureHook_Dispatch : TFeatureHook<Hooks::Dispatch> {
     }
 };
 
+struct FeatureHook_DispatchMesh : TFeatureHook<Hooks::DispatchMesh> {
+    void operator()(CommandListState *state, CommandContext *context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ) const {
+        hook.Invoke(context, threadGroupX, threadGroupY, threadGroupZ);
+    }
+};
+
 struct FeatureHook_CopyBufferRegion : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandListState *object, CommandContext *context, ID3D12Resource *pDstBuffer, UINT64 DstOffset, ID3D12Resource *pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes) const;
 };

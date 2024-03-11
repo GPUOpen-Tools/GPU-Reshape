@@ -56,6 +56,17 @@ bool DXBCPhysicalBlockDebug::Parse(const DXParseJob& job) {
     // Get optional ILDB block
     DXBCPhysicalBlock *ildbBlock = table.scan.GetPhysicalBlock(DXBCPhysicalBlockType::ILDB);
 
+    DXBCPhysicalBlock *hashBlock = table.scan.GetPhysicalBlock(DXBCPhysicalBlockType::ShaderHash);
+    auto hash = DXBCParseContext(hashBlock->ptr, hashBlock->length).Consume<DXILShaderHash>();
+
+    std::stringstream stream;
+    for (uint8_t byte: hash.digest.digest) {
+        stream << std::hex << static_cast<int>(byte);
+    }
+
+    std::string hashStr = stream.str();
+
+
     // If the lookup failed, check for ILDN, may be hosted externally
     if (DXBCPhysicalBlock *ildnBlock = table.scan.GetPhysicalBlock(DXBCPhysicalBlockType::ILDN); !ildbBlock && ildnBlock) {
         DXBCParseContext ctx(ildnBlock->ptr, ildnBlock->length);

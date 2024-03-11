@@ -4969,6 +4969,11 @@ DXILPhysicalBlockFunction::DynamicRootSignatureUserMapping DXILPhysicalBlockFunc
         case DXILShadingModelClass::DS:
             rootVisibility = RootParameterVisibility::Domain;
             break;
+        case DXILShadingModelClass::AS:
+            rootVisibility = RootParameterVisibility::Amplification;
+            break;
+        case DXILShadingModelClass::MS:
+            rootVisibility = RootParameterVisibility::Mesh;
     }
 
     // Get user space

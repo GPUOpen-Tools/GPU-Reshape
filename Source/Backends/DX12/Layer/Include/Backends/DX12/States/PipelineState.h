@@ -137,6 +137,7 @@ struct GraphicsPipelineState : public PipelineState {
     
     /// Creation deep copy, if invalid, present in stream blob
     D3D12GraphicsPipelineStateDescDeepCopy deepCopy;
+    
 
     /// Stage shaders
     ShaderState* vs{nullptr};
@@ -144,6 +145,8 @@ struct GraphicsPipelineState : public PipelineState {
     ShaderState* ds{nullptr};
     ShaderState* gs{nullptr};
     ShaderState* ps{nullptr};
+    ShaderState* as{nullptr};
+    ShaderState* ms{nullptr};
 
     /// Stream offsets
     uint64_t streamVSOffset{0};
@@ -151,6 +154,8 @@ struct GraphicsPipelineState : public PipelineState {
     uint64_t streamDSOffset{0};
     uint64_t streamGSOffset{0};
     uint64_t streamPSOffset{0};
+    uint64_t streamASOffset{0};
+    uint64_t streamMSOffset{0};
 };
 
 struct ComputePipelineState : public PipelineState {
