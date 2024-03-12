@@ -35,6 +35,7 @@
 #include <Backends/DX12/Compiler/DXParseJob.h>
 #include <Backends/DX12/Compiler/DXBC/MSF/MSFParseContext.h>
 #include <Backends/DX12/Controllers/PDBController.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCUtils.h>
 
 // Common
 #include <Common/FileSystem.h>
@@ -71,6 +72,26 @@ bool DXBCPhysicalBlockDebug::Parse(const DXParseJob& job) {
         // Search for possible candidates
         PDBCandidateList candidates(allocators);
         job.pdbController->GetCandidateList(path, candidates);
+
+        // Check all PDB candidates
+        for (const std::string_view& candidate : candidates) {
+            if ((ildbBlock = TryParsePDB(candidate))) {
+                break;
+            }
+        }
+    }
+
+    // At this point fall back to the hash itself, try to see if any file matches it
+    if (DXBCPhysicalBlock* hashBlock = table.scan.GetPhysicalBlock(DXBCPhysicalBlockType::ShaderHash); !ildbBlock && hashBlock) {
+        auto hash = DXBCParseContext(hashBlock->ptr, hashBlock->length).Consume<DXILShaderHash>();
+
+        // Hexify it!
+        char hashStringBuffer[kDXBCShaderDigestStringLength];
+        DXBCShaderDigestToString(hash.digest, hashStringBuffer);
+
+        // Search for possible candidates
+        PDBCandidateList candidates(allocators);
+        job.pdbController->GetCandidateList(hashStringBuffer, candidates);
 
         // Check all PDB candidates
         for (const std::string_view& candidate : candidates) {

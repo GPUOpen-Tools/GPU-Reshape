@@ -32,6 +32,9 @@
 // Forward declarations
 struct DXILDigest;
 
+/// Fixed length of a DXBC string hash
+static constexpr uint32_t kDXBCShaderDigestStringLength = 32 + 1;
+
 /// Scan for the DXBC shader digest
 /// \param byteCode shader code
 /// \param byteLength byte length of shader code
@@ -50,3 +53,8 @@ uint32_t GetOrComputeDXBCShaderHash(const void* byteCode, uint64_t byteLength);
 /// \param byteLength byte length of shader code
 /// \return true if pure DXBC
 bool IsDXBCNative(const void* byteCode, uint64_t byteLength);
+
+/// Convert a shader digest to a string
+/// \param digest given digest
+/// \param buffer output buffer
+void DXBCShaderDigestToString(const DXILDigest& digest, char buffer[kDXBCShaderDigestStringLength]);
