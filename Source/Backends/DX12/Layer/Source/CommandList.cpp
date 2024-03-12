@@ -245,8 +245,10 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *device, cons
             case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH:
                 state->activeTypes |= PipelineType::Compute;
                 break;
-            case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS:
             case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH:
+                state->activeTypes = PipelineType::Graphics;
+                break;
+            case D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS:
                 // No active types as there's no instrumentation yet
                 break;
         }
