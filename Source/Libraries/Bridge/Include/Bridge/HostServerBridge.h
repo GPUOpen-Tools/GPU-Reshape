@@ -86,4 +86,7 @@ private:
 
     /// Cache for commits
     std::vector<MessageStream> streamCache;
+
+    /// Shared lock
+    Mutex mutex;
 };

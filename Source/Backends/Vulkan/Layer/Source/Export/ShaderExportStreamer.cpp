@@ -188,6 +188,7 @@ void ShaderExportStreamer::Enqueue(ShaderExportQueueState* queue, ShaderExportSt
     segment->fenceNextCommitId = fence->GetNextCommitID();
 
     // OK
+    std::lock_guard queueGuard(table->states_queue.GetLock());
     queue->liveSegments.push_back(segment);
 }
 

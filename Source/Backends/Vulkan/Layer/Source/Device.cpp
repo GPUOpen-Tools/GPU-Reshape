@@ -199,6 +199,14 @@ static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceDispatchTab
     return info;
 }
 
+static void DeviceSyncPoint(DeviceDispatchTable *table) {
+    // Inform the streamer of the sync point
+    table->exportStreamer->Process();
+
+    // Commit bridge data
+    BridgeDeviceSyncPoint(table);
+}
+
 template<typename T>
 static void EnableDescriptorFeatureSet(T* features) {
     features->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
@@ -441,6 +449,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
         ENSURE(feature->PostInstall(), "Failed to post-install feature");
     }
 
+    // Start sync thread
+    table->syncPointActionThread.Start(std::bind(DeviceSyncPoint, table));
+
     // OK
     return VK_SUCCESS;
 }
@@ -454,6 +465,9 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
 
     // Ensure all work is done
     table->next_vkDeviceWaitIdle(device);
+
+    // Stop the sync point thread
+    table->syncPointActionThread.Stop();
 
     // Process all remaining work
     table->exportStreamer->Process();

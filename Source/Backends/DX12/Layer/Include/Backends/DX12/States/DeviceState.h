@@ -49,6 +49,7 @@
 #include <Common/Registry.h>
 #include <Common/Allocators.h>
 #include <Common/IntervalAction.h>
+#include <Common/IntervalActionThread.h>
 
 // Forward declarations
 class ShaderSet;
@@ -170,6 +171,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Environment actions
     IntervalAction environmentUpdateAction = IntervalAction::FromMS(1000);
+
+    /// Synchronization action thread
+    IntervalActionThread syncPointActionThread = IntervalActionThread::FromMS(16);
 
     /// All features
     Vector<ComRef<IFeature>> features;

@@ -42,9 +42,10 @@
 #include <Common/Registry.h>
 #include <Common/Containers/ObjectPool.h>
 #include <Common/IntervalAction.h>
+#include <Common/IntervalActionThread.h>
 
 // Generated
-#include "Backends/Vulkan/CommandBufferDispatchTable.Gen.h"
+#include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
 
 // Backend
 #include <Backend/EventDataStack.h>
@@ -303,6 +304,9 @@ struct DeviceDispatchTable {
 
     /// Environment actions
     IntervalAction environmentUpdateAction = IntervalAction::FromMS(1000);
+
+    /// Synchronization action thread
+    IntervalActionThread syncPointActionThread = IntervalActionThread::FromMS(16);
 
 private:
     /// Lookup

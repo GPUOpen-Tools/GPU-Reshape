@@ -637,9 +637,6 @@ VkResult Hook_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentI
     // Commit stream
     table->bridge->GetOutput()->AddStream(stream);
 
-    // Commit bridge data
-    BridgeDeviceSyncPoint(table);
-
     // OK
     return VK_SUCCESS;
 }
