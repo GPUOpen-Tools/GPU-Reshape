@@ -91,6 +91,7 @@ set(
     vkCmdBeginRenderingKHR
     vkCmdEndRendering
     vkCmdEndRenderingKHR
+    vkCmdDrawMeshTasksEXT
 )
 
 # White list
@@ -124,6 +125,9 @@ set(
     vkCmdSetEvent2
     vkCmdWaitEvents2
     vkCmdPipelineBarrier2
+    vkCmdDrawMeshTasksEXT
+    vkCmdDrawMeshTasksIndirectEXT
+    vkCmdDrawMeshTasksIndirectCountEXT
 )
 
 # Join lists

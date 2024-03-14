@@ -195,7 +195,9 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
         }
         
         // Allocate segment for given layout
-        state->segmentID = table->prmTable->Allocate(state->descriptorCount);
+        if (state->descriptorCount > 0) {
+            state->segmentID = table->prmTable->Allocate(state->descriptorCount);
+        }
 
         // Preallocate
         state->prmtOffsets.reserve(layout->physicalMapping.bindings.size());
