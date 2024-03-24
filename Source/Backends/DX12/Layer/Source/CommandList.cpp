@@ -26,6 +26,7 @@
 
 #include <Backends/DX12/CommandList.h>
 #include <Backends/DX12/Table.Gen.h>
+#include <Backends/DX12/RenderPass.h>
 #include <Backends/DX12/States/CommandListState.h>
 #include <Backends/DX12/States/CommandQueueState.h>
 #include <Backends/DX12/States/CommandAllocatorState.h>
@@ -722,18 +723,22 @@ void WINAPI HookID3D12CommandListBeginRenderPass(ID3D12CommandList* list, UINT N
         renderPassState.depthStencil.cpuDescriptor.ptr = 0ull;
     }
 
-    // Pass down callchain
-    table.next->BeginRenderPass(NumRenderTargets, pRenderTargets, pDepthStencil, Flags);
+    // Start the user pass
+    BeginRenderPassForUser(table.next, &renderPassState);
 }
 
 void WINAPI HookID3D12CommandListEndRenderPass(ID3D12CommandList* list) {
     auto table = GetTable(list);
 
     // Mark as outside
+    ASSERT(table.state->streamState->renderPass.insideRenderPass, "Unexpected render pass state");
     table.state->streamState->renderPass.insideRenderPass = false;
     
     // Pass down callchain
     table.next->EndRenderPass();
+
+    // Handle any pending operations
+    ResolveRenderPassForUserEnd(table.next, &table.state->streamState->renderPass);
 }
 
 static void CommitGraphics(DeviceState* device, CommandListState* list) {
