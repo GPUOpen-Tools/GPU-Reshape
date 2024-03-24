@@ -49,6 +49,7 @@
 #include <Backends/DX12/Resource/DescriptorResourceMapping.h>
 #include <Backends/DX12/Resource/DescriptorData.h>
 #include <Backends/DX12/Resource/ReservedConstantData.h>
+#include <Backends/DX12/CommandListRenderPassScope.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -363,6 +364,8 @@ void ShaderExportStreamer::UpdateReservedHeapConstantData(ShaderExportStreamStat
 }
 
 void ShaderExportStreamer::WriteReservedHeapConstantBuffer(ShaderExportStreamState *state, const uint32_t* dwords, uint32_t dwordCount, ID3D12GraphicsCommandList *commandList) {
+    CommandListRenderPassScope scope(static_cast<ID3D12GraphicsCommandList4*>(commandList), &state->renderPass);
+    
     // Expected read state
     D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 
