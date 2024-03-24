@@ -91,6 +91,11 @@ RootRegisterBindingInfo GetBindingInfo(DeviceState* state, const T& source, Root
         }
     }
 
+    // Account for static samplers in the user bound
+    for (uint32_t i = 0; i < source.NumStaticSamplers; i++) {
+        userRegisterSpaceBound = std::max(userRegisterSpaceBound, source.pStaticSamplers[i].RegisterSpace + 1);
+    }
+
     // Prepare space
     RootRegisterBindingInfo bindingInfo;
     bindingInfo.space = userRegisterSpaceBound;
