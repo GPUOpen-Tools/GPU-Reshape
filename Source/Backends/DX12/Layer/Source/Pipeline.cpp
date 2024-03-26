@@ -125,6 +125,10 @@ D3D12_PIPELINE_STATE_STREAM_DESC UnwrapPipelineStateStream(PipelineSubObjectWrit
                 writer.AppendChunk(type, reader.Skip(size), size);
                 break;
             }
+            case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO: {
+                // Ignore cached PSO data, modified root signature will cause a mismatch
+                break;
+            }
             case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE: {
                 auto rootSignature = reader.AlignedConsume<ID3D12RootSignature *>();
 
@@ -487,6 +491,9 @@ HRESULT HookID3D12DeviceCreateGraphicsPipelineState(ID3D12Device *device, const 
     // Perform deep copy
     state->deepCopy.DeepCopy(state->allocators, *desc);
 
+    // Ignore cached PSO data, modified root signature will cause a mismatch
+    state->deepCopy->CachedPSO = {};
+
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;
 
@@ -583,6 +590,9 @@ HRESULT HookID3D12DeviceCreateComputePipelineState(ID3D12Device *device, const D
 
     // Perform deep copy
     state->deepCopy.DeepCopy(state->allocators, *desc);
+
+    // Ignore cached PSO data, modified root signature will cause a mismatch
+    state->deepCopy->CachedPSO = {};
 
     // Unwrap description states
     state->deepCopy->pRootSignature = rootSignatureTable.next;

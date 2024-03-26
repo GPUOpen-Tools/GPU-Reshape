@@ -638,8 +638,8 @@ bool IsServiceActive() {
     }
 
     // May explicitly disable service traps
-    if (char* tokenKey{nullptr}; _dupenv_s(&tokenKey, &size, Backend::kNoServiceTrapKey) == 0 && tokenKey) {
-        free(tokenKey);
+    if (char* key{nullptr}; _dupenv_s(&key, &size, Backend::kNoServiceTrapKey) == 0 && key) {
+        free(key);
         return true;
     }
 
@@ -765,11 +765,45 @@ struct _PROC_THREAD_ATTRIBUTE_LIST {
     _PROC_THREAD_ATTRIBUTE_LIST_ATTRIBUTE Attributes[1u];
 };
 
+bool IsBackendKeySet(const char* key) {
+    size_t size;
+    if (char* value{nullptr}; _dupenv_s(&value, &size, key) == 0 && value) {
+        free(value);
+        return true;
+    }
+
+    // Not set
+    return false;
+}
+
+bool ShouldAttachChildProcesses() {
+    // If the service trap is disabled, we're always capturing child processes
+    if (!IsBackendKeySet(Backend::kNoServiceTrapKey)) {
+        return true;
+    }
+    
+    // May explicitly disable service traps
+    if (IsBackendKeySet(Backend::kCaptureChildProcessesKey)) {
+        return true;
+    }
+
+    // No capturing!
+    return false;
+}
+
 bool ShouldBootstrapProcess(DWORD creationFlags, void* startupInfo) {
     // Do not bootstrap if the service isn't running
     if (!IsServiceActive()) {
 #if ENABLE_LOGGING
-        LogContext{} << "ShouldBootstrapProcess, process rejected due inactive service\n";
+        LogContext{} << "ShouldBootstrapProcess, process rejected due to inactive service\n";
+#endif // ENABLE_LOGGING
+        return false;
+    }
+
+    // May be disabled user side
+    if (!ShouldAttachChildProcesses()) {
+#if ENABLE_LOGGING
+        LogContext{} << "ShouldBootstrapProcess, process rejected due to disabled child capturing\n";
 #endif // ENABLE_LOGGING
         return false;
     }

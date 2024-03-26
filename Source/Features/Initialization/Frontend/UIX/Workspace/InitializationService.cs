@@ -225,7 +225,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
         {
             // Get feature info on target
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Initialization");
 
@@ -238,7 +238,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
             // Initialization instrumentation is a fickle game, if this is not a virtual adapter, i.e. launch from, warn the user about it.
             // Ignore for replication, already done at that point.
             if (!replication &&
-                ((IInstrumentableObject)target).GetWorkspace()?.ConnectionViewModel is not IVirtualConnectionViewModel &&  
+                ((IInstrumentableObject)target).GetWorkspaceCollection()?.ConnectionViewModel is not IVirtualConnectionViewModel &&  
                 (_data != null && await _data.ConditionalWarning()))
             {
                 return null;

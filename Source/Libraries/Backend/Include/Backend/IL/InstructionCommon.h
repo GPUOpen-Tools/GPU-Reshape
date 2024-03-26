@@ -34,7 +34,7 @@ namespace Backend::IL {
     /// \param instr given instruction
     /// \param out output control flow
     /// \return true if the instruction has control flow
-    bool GetControlFlow(const ::IL::Instruction* instr, ::IL::BranchControlFlow& out) {
+    inline bool GetControlFlow(const ::IL::Instruction* instr, ::IL::BranchControlFlow& out) {
         switch (instr->opCode) {
             default: {
                 return false;

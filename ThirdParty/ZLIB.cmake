@@ -29,7 +29,7 @@
 ExternalProject_Add(
     ZLIB
     GIT_REPOSITORY https://github.com/madler/zlib
-    GIT_TAG master
+    GIT_TAG v1.3.1
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ZLIB
     USES_TERMINAL_INSTALL 0
     UPDATE_DISCONNECTED ${ThirdPartyDisconnected}

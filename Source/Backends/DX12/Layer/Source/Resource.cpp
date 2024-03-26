@@ -31,15 +31,67 @@
 #include <Backends/DX12/Controllers/VersioningController.h>
 
 // Backend
+#include <Backend/Command/ResourceInfo.h>
 #include <Backend/IL/ResourceTokenType.h>
+
+ResourceInfo GetResourceInfoFor(ResourceState* state) {
+    ResourceToken token {
+        .puid = state->virtualMapping.puid,
+        .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
+        .srb= state->virtualMapping.srb
+    };
+
+    // Construct without descriptor
+    switch (static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type)) {
+        default:
+            ASSERT(false, "Unexpected type");
+            return {};
+        case Backend::IL::ResourceTokenType::Texture:
+            return ResourceInfo::Texture(token, nullptr);
+        case Backend::IL::ResourceTokenType::Buffer:
+            return ResourceInfo::Buffer(token, nullptr);
+    }
+}
 
 HRESULT HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const D3D12_RANGE* readRange, void** blob) {
     auto table = GetTable(resource);
+
+    // Get device
+    auto deviceTable = GetTable(table.state->parent);
 
     // Pass down callchain
     HRESULT hr = table.bottom->next_Map(table.next, subresource, readRange, blob);
     if (FAILED(hr)) {
         return hr;
+    }
+
+    // Get proxy info
+    ResourceInfo proxyResourceInfo = GetResourceInfoFor(table.state);
+
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: deviceTable.state->featureHookTables) {
+        proxyTable.mapResource.TryInvoke(proxyResourceInfo);
+    }
+
+    // OK
+    return S_OK;
+}
+
+HRESULT HookID3D12ResourceUnmap(ID3D12Resource* resource, UINT subresource, const D3D12_RANGE* writtenRange) {
+    auto table = GetTable(resource);
+
+    // Get device
+    auto deviceTable = GetTable(table.state->parent);
+
+    // Pass down callchain
+    table.bottom->next_Unmap(table.next, subresource, writtenRange);
+
+    // Get proxy info
+    ResourceInfo proxyResourceInfo = GetResourceInfoFor(table.state);
+
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: deviceTable.state->featureHookTables) {
+        proxyTable.unmapResource.TryInvoke(proxyResourceInfo);
     }
 
     // OK

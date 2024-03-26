@@ -36,6 +36,7 @@
 #include <Backends/Vulkan/Resource.h>
 #include <Backends/Vulkan/Swapchain.h>
 #include <Backends/Vulkan/Debug.h>
+#include <Backends/Vulkan/Memory.h>
 
 // Std
 #include <cstring>
@@ -314,6 +315,30 @@ PFN_vkVoidFunction DeviceDispatchTable::GetHookAddress(const char *name) {
 
     if (!std::strcmp(name, "vkDestroySampler"))
         return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkDestroySampler);
+
+    if (!std::strcmp(name, "vkAllocateMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkAllocateMemory);
+
+    if (!std::strcmp(name, "vkFreeMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkFreeMemory);
+
+    if (!std::strcmp(name, "vkMapMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkMapMemory);
+
+    if (!std::strcmp(name, "vkUnmapMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkUnmapMemory);
+
+    if (!std::strcmp(name, "vkBindBufferMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindBufferMemory);
+
+    if (!std::strcmp(name, "vkBindImageMemory"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindImageMemory);
+
+    if (!std::strcmp(name, "vkBindBufferMemory2KHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindBufferMemory2KHR);
+
+    if (!std::strcmp(name, "vkBindImageMemory2KHR"))
+        return reinterpret_cast<PFN_vkVoidFunction>(&Hook_vkBindImageMemory2KHR);
 
     // Check command hooks
     if (PFN_vkVoidFunction hook = CommandBufferDispatchTable::GetHookAddress(name)) {

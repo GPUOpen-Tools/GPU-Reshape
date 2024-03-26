@@ -39,6 +39,9 @@
 // Schemas
 #include <Schemas/Versioning.h>
 
+// Common
+#include <Common/Format.h>
+
 VersioningController::VersioningController(DeviceDispatchTable *table) : table(table) {
 
 }
@@ -198,17 +201,25 @@ void VersioningController::CollapseOnFork(VersionSegmentationPoint versionSegPoi
 
 void VersioningController::CommitImageVersion(MessageStreamView<ResourceVersionMessage> &view, ImageState *state) {
     const char* formatStr = GetFormatString(state->createInfo.format);
+    const char* debugName = state->debugName;
+
+    // Fallback name
+    char debugNameBuffer[64];
+    if (!debugName) {
+        FormatArrayTerminated(debugNameBuffer, "{}", reinterpret_cast<const void *>(state->object));
+        debugName = debugNameBuffer;
+    }
 
     // Allocate version
     auto&& version = view.Add(ResourceVersionMessage::AllocationInfo {
-        .nameLength = state->debugName ? std::strlen(state->debugName) : 0u,
+        .nameLength = std::strlen(debugName),
         .formatLength =  std::strlen(formatStr)
     });
 
     // Fill info
     version->puid = state->virtualMappingTemplate.puid;
     version->version = head;
-    version->name.Set(state->debugName ? state->debugName : "");
+    version->name.Set(debugName);
     version->width = state->createInfo.extent.width;
     version->height = state->createInfo.extent.height;
     version->depth = state->createInfo.extent.depth;
@@ -216,17 +227,30 @@ void VersioningController::CommitImageVersion(MessageStreamView<ResourceVersionM
 }
 
 void VersioningController::CommitBufferVersion(MessageStreamView<ResourceVersionMessage> &view, BufferState *state) {
+    const char* formatStr = "BUFFER";
+    const char* debugName = state->debugName;
+
+    // Fallback name
+    char debugNameBuffer[64];
+    if (!debugName) {
+        FormatArrayTerminated(debugNameBuffer, "{}", reinterpret_cast<const void *>(state->object));
+        debugName = debugNameBuffer;
+    }
+
+    // Allocate version
     auto&& version = view.Add(ResourceVersionMessage::AllocationInfo {
-        .nameLength = state->debugName ? std::strlen(state->debugName) : 0u
+        .nameLength = std::strlen(debugName),
+        .formatLength =  std::strlen(formatStr)
     });
 
     // Fill info
     version->puid = state->virtualMapping.puid;
     version->version = head;
-    version->name.Set(state->debugName ? state->debugName : "");
+    version->name.Set(debugName);
     version->width = static_cast<uint32_t>(state->createInfo.size);
     version->height = 1u;
     version->depth = 1u;
+    version->format.Set(formatStr);
 }
 
 void VersioningController::Commit() {

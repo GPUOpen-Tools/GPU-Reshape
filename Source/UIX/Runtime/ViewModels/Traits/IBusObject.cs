@@ -27,6 +27,7 @@
 using System;
 using Avalonia;
 using Message.CLR;
+using Runtime.ViewModels.Traits;
 using Runtime.ViewModels.Workspace.Properties;
 using Studio.Services;
 using Studio.ViewModels.Workspace.Properties;
@@ -51,7 +52,7 @@ namespace Studio.ViewModels.Traits
         /// <param name="propertyViewModel"></param>
         public static void EnqueueBus(this IBusObject self, IPropertyViewModel propertyViewModel)
         {
-            propertyViewModel.GetRoot().GetService<IBusPropertyService>()?.Enqueue(self);
+            propertyViewModel.GetWorkspaceCollection()?.GetService<IBusPropertyService>()?.Enqueue(self);
         }
         
         /// <summary>

@@ -25,6 +25,7 @@
 // 
 
 using System;
+using System.Windows.Input;
 using Avalonia;
 using DynamicData;
 using DynamicData.Binding;
@@ -60,16 +61,8 @@ namespace Studio.ViewModels.Workspace
 
         public WorkspaceViewModel()
         {
-            // Subscribe on collections behalf
-            _properties.CloseCommand = ReactiveCommand.Create(OnClose);
-        }
-
-        /// <summary>
-        /// Invoked on close
-        /// </summary>
-        private void OnClose()
-        {
-            App.Locator.GetService<IWorkspaceService>()?.Remove(this);
+            // The properties reference the abstract view model, not the actual top type
+            _properties.WorkspaceViewModel = this;
         }
 
         /// <summary>
@@ -100,33 +93,11 @@ namespace Studio.ViewModels.Workspace
         /// </summary>
         public void Destruct()
         {
-            // Destroy all properties and services
-            DestructPropertyTree(_properties);
-            
             // Destroy the connection
             _connection?.Destruct();
-        }
-
-        /// <summary>
-        /// Destruct a given property tree hierarchically
-        /// </summary>
-        private void DestructPropertyTree(IPropertyViewModel propertyViewModel)
-        {
-            // Children first
-            // ... I forgot the name, depth-something-something, this is the opposite of job security.
-            foreach (IPropertyViewModel child in propertyViewModel.Properties.Items)
-            {
-                DestructPropertyTree(child);
-            }
             
-            // Destroy associated services
-            foreach (IPropertyService propertyService in propertyViewModel.Services.Items)
-            {
-                propertyService.Destruct();
-            }
-
-            // Finally destruct the property
-            propertyViewModel.Destruct();
+            // Remove from service
+            App.Locator.GetService<IWorkspaceService>()?.Remove(this);
         }
 
         /// <summary>

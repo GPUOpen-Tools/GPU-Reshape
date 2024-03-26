@@ -385,13 +385,21 @@ void FeatureHook_vkCmdBeginRenderPass::operator()(CommandBufferObject *object, C
     // Local data
     TextureDescriptor* descriptors = ALLOCA_ARRAY(TextureDescriptor, renderPassState->deepCopy->attachmentCount);
     AttachmentInfo*    attachments = ALLOCA_ARRAY(AttachmentInfo, renderPassState->deepCopy->attachmentCount);
+
+    // Optional infos
+    auto* attachmentBeginInfo = FindStructureTypeSafe<VkRenderPassAttachmentBeginInfo>(info, VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO);
     
     // Translate render targets
     for (uint32_t i = 0; i < renderPassState->deepCopy.createInfo.attachmentCount; i++) {
         const VkAttachmentDescription2& description = renderPassState->deepCopy.createInfo.pAttachments[i];
 
         // Respective frame buffer view
-        ImageViewState* state = frameBufferState->imageViews[i];
+        ImageViewState* state;
+        if (attachmentBeginInfo) {
+            state = object->table->states_imageView.Get(attachmentBeginInfo->pAttachments[i]);
+        } else {
+            state = frameBufferState->imageViews[i];
+        }
 
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
@@ -455,6 +463,10 @@ void FeatureHook_vkCmdBeginRenderPass::operator()(CommandBufferObject *object, C
 
 void FeatureHook_vkCmdEndRenderPass::operator()(CommandBufferObject *object, CommandContext *context) const {
     hook.Invoke(context);
+}
+
+void FeatureHook_vkCmdBeginRenderPass2::operator()(CommandBufferObject *object, CommandContext *context, const VkRenderPassBeginInfo *info, const VkSubpassBeginInfo *pSubpassBeginInfo) const {
+    FeatureHook_vkCmdBeginRenderPass{hook}(object, context, info, { });
 }
 
 void FeatureHook_vkCmdBeginRendering::operator()(CommandBufferObject *object, CommandContext *context, const VkRenderingInfo *pRenderingInfo) const {

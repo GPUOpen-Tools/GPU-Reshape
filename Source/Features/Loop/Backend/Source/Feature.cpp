@@ -99,7 +99,7 @@ bool LoopFeature::Install() {
 FeatureHookTable LoopFeature::GetHookTable() {
     FeatureHookTable table{};
     table.open = BindDelegate(this, LoopFeature::OnOpen);
-    table.submit = BindDelegate(this, LoopFeature::OnSubmit);
+    table.postSubmit = BindDelegate(this, LoopFeature::OnPostSubmit);
     table.join = BindDelegate(this, LoopFeature::OnJoin);
     return table;
 }
@@ -160,6 +160,22 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 case IL::OpCode::Branch: {
                     auto* instr = it->As<IL::BranchInstruction>();
                     entryBlock = basicBlocks.GetBlock(instr->branch);
+                    
+                    // If the body is the continue block, we effectively need another block. Selection merges
+                    // within a loop construct must merge to another block inside said construct, continue blocks
+                    // are not part of this construct.
+                    if (entryBlock->GetID() == controlFlow._continue) {
+                        selectionMerge = context.function.GetBasicBlocks().AllocBlock();
+
+                        // Branch to the real continue block
+                        IL::Emitter<>(program, *selectionMerge).Branch(postEntry);
+
+                        // Replace the original loop branch, re-route the continue block
+                        IL::Emitter<IL::Op::Replace>(program, it).Branch(
+                            basicBlocks.GetBlock(instr->branch),
+                            IL::ControlFlow::Loop(basicBlocks.GetBlock(controlFlow.merge), postEntry)
+                        );
+                    }
                     break;
                 }
                 case IL::OpCode::BranchConditional: {
@@ -187,7 +203,7 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 }
             }
 
-            // Split just prior to loop entry
+            // Split from the beginning, handles phi splitting
             entryBlock->Split(postEntry, entryBlock->begin());
 
             // Emit into pre-guard
@@ -216,29 +232,17 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
                 msg.padding = term.UInt32(0);
                 term.Export(exportID, msg);
 
+                // Expected function type
+                const Backend::IL::Type *returnType = context.function.GetFunctionType()->returnType;
+
+                // If there's something to return, assume null
+                IL::ID returnValue = IL::InvalidID;
+                if (!returnType->Is<Backend::IL::VoidType>()) {
+                    returnValue = program.GetConstants().FindConstantOrAdd(returnType, IL::NullConstant {})->id;
+                }
+                
                 // Branch to the merge block
-                term.Branch(mergeBlock);
-            }
-
-            // Short out merge phis
-            for (auto phiIt = mergeBlock->begin(); phiIt != mergeBlock->end() && phiIt->Is<IL::PhiInstruction>();) {
-                auto phiInstr = phiIt->As<IL::PhiInstruction>();
-
-                // Number of phi values
-                const uint32_t valueCount = phiInstr->values.count;
-
-                // Copy known values
-                auto* values = ALLOCA_ARRAY(IL::PhiValue, valueCount + 1u);
-                std::memcpy(values, &phiInstr->values[0], sizeof(IL::PhiValue) * valueCount);
-
-                // Create new incoming phi block value, default to null
-                values[valueCount] = IL::PhiValue {
-                    .value = program.GetConstants().FindConstantOrAdd(program.GetTypeMap().GetType(phiInstr->result), IL::NullConstant {})->id,
-                    .branch = terminationBlock->GetID()
-                };
-
-                // Replace the phi instruction
-                phiIt = std::next(IL::Emitter<IL::Op::Replace>(program, phiIt).Phi(phiInstr->result, valueCount + 1u, values));
+                term.Return(returnValue);
             }
 
             // Iterate next on this instruction
@@ -313,7 +317,7 @@ uint32_t LoopFeature::AllocateTerminationIDNoLock() {
     uint32_t id = submissionAllocationCounter++;
 
     // Cycle back if needed
-    if (submissionAllocationCounter == kMaxTrackedSubmissions) {
+    if (submissionAllocationCounter == kMaxTrackedSubmissions - 1u) {
         submissionAllocationCounter = 0;
     }
 
@@ -333,18 +337,24 @@ void LoopFeature::OnOpen(CommandContext *context) {
     // Update the descriptor data
     CommandBuilder builder(context->buffer);
     builder.SetDescriptorData(terminationAllocationID, state.terminationID);
+
+    // Stage cleared value
+    uint32_t noSignalValue = 0u;
+    builder.StageBuffer(terminationBufferID, sizeof(uint32_t) * state.terminationID, sizeof(uint32_t), &noSignalValue);
 }
 
-void LoopFeature::OnSubmit(CommandContextHandle contextHandle) {
+void LoopFeature::OnPostSubmit(const CommandContextHandle* contextHandles, uint32_t count) {
     std::lock_guard guard(mutex);
+    
+    for (uint32_t i = 0; i < count; i++) {
+        // Validation
+        ASSERT(contextStates.contains(contextHandles[i]), "Desynchronized command context states");
 
-    // Validation
-    ASSERT(contextStates.contains(contextHandle), "Desynchronized command context states");
-
-    // Mark as pending and record time
-    CommandContextState &state = contextStates[contextHandle];
-    state.submissionStamp = std::chrono::high_resolution_clock::now();
-    state.pending = true;
+        // Mark as pending and record time
+        CommandContextState &state = contextStates[contextHandles[i]];
+        state.submissionStamp = std::chrono::high_resolution_clock::now();
+        state.pending = true;
+    }
 }
 
 void LoopFeature::OnJoin(CommandContextHandle contextHandle) {

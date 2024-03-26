@@ -357,9 +357,6 @@ void HandlePresent(DeviceState* device, SwapChainState* swapchain) {
 
     // Commit stream
     device->bridge->GetOutput()->AddStream(stream);
-
-    // Add bridge sync
-    BridgeDeviceSyncPoint(device);
 }
 
 HRESULT WINAPI HookIDXGISwapChainPresent(IDXGISwapChain1* swapchain, UINT SyncInterval, UINT PresentFlags) {

@@ -101,3 +101,7 @@ struct FeatureHook_EndRenderPass : TFeatureHook<Hooks::EndRenderPass> {
 struct FeatureHook_OMSetRenderTargets : TFeatureHook<Hooks::BeginRenderPass> {
     void operator()(CommandListState *object, CommandContext *context, UINT NumRenderTargetDescriptors, const D3D12_CPU_DESCRIPTOR_HANDLE *pRenderTargetDescriptors, BOOL RTsSingleHandleToDescriptorRange, const D3D12_CPU_DESCRIPTOR_HANDLE *pDepthStencilDescriptor) const;
 };
+
+struct FeatureHook_CopyTiles : TFeatureHook<Hooks::CopyResource> {
+    void operator()(CommandListState *object, CommandContext *context, ID3D12Resource* pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pTileRegionSize, ID3D12Resource* pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags) const;
+};

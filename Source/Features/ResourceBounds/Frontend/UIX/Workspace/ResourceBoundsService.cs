@@ -223,7 +223,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         {
             // Get feature info on target
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Resource Bounds");
 

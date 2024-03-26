@@ -28,6 +28,13 @@
 
 // Backend
 #include <Backends/DX12/DX12.h>
+#include <Backend/Command/ResourceInfo.h>
+
+// Forward declarations
+struct ResourceState;
+
+/// Get the feature hook resource information for a state
+ResourceInfo GetResourceInfoFor(ResourceState* state);
 
 /// Hooks
 HRESULT WINAPI HookID3D12DeviceCreateCommittedResource(ID3D12Device* device, const D3D12_HEAP_PROPERTIES* heap, D3D12_HEAP_FLAGS heapFlags, const D3D12_RESOURCE_DESC* desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE* clearValue, const IID& riid, void** pResource);
@@ -43,6 +50,7 @@ HRESULT WINAPI HookID3D12DeviceCreateReservedResource2(ID3D12Device* _this, cons
 HRESULT WINAPI HookID3D12DeviceOpenSharedHandle(ID3D12Device*, HANDLE NTHandle, const IID& riid, void** ppvObj);
 HRESULT WINAPI HookID3D12DeviceOpenSharedHandleByName(ID3D12Device*, LPCWSTR Name, DWORD Access, HANDLE* pNTHandle);
 HRESULT WINAPI HookID3D12ResourceMap(ID3D12Resource* resource, UINT subresource, const D3D12_RANGE* readRange, void** blob);
+HRESULT WINAPI HookID3D12ResourceUnmap(ID3D12Resource* resource, UINT subresource, const D3D12_RANGE* writtenRange);
 HRESULT WINAPI HookID3D12ResourceGetDevice(ID3D12Resource* _this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12ResourceSetName(ID3D12Resource* _this, LPCWSTR name);
 HRESULT WINAPI HookID3D12DeviceSetResidencyPriority(ID3D12Device* _this, UINT NumObjects, ID3D12Pageable* const* ppObjects, const D3D12_RESIDENCY_PRIORITY* pPriorities);

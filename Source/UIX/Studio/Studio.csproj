@@ -197,6 +197,10 @@
         <DependentUpon>ConnectWindow.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+      <Compile Update="Themes\InlineSectionView.axaml.cs">
+        <DependentUpon>MiniSectionView.axaml</DependentUpon>
+        <SubType>Code</SubType>
+      </Compile>
     </ItemGroup>
     <ItemGroup>
       <EmbeddedResource Update="Resources\Resources.resx">

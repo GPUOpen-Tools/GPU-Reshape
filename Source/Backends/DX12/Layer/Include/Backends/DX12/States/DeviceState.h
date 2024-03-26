@@ -49,6 +49,7 @@
 #include <Common/Registry.h>
 #include <Common/Allocators.h>
 #include <Common/IntervalAction.h>
+#include <Common/IntervalActionThread.h>
 
 // Forward declarations
 class ShaderSet;
@@ -67,6 +68,7 @@ class ShaderExportHost;
 class ShaderDataHost;
 class ShaderExportStreamer;
 class ShaderSGUIDHost;
+class QueueSegmentAllocator;
 class DeviceAllocator;
 class ShaderProgramHost;
 class Scheduler;
@@ -120,7 +122,10 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
     ComRef<DeviceAllocator> deviceAllocator;
 
     /// Shared SGUID host
-    ComRef<ShaderSGUIDHost> sguidHost{nullptr};
+    ComRef<ShaderSGUIDHost> sguidHost;
+
+    /// Shared queue-wise segment allocator
+    ComRef<QueueSegmentAllocator> queueSegmentAllocator;
 
     /// Tracked objects
     TrackedObject<ShaderState> states_Shaders;
@@ -166,6 +171,9 @@ struct __declspec(uuid("548FDFD6-37E2-461C-A599-11DA5290F06E")) DeviceState {
 
     /// Environment actions
     IntervalAction environmentUpdateAction = IntervalAction::FromMS(1000);
+
+    /// Synchronization action thread
+    IntervalActionThread syncPointActionThread = IntervalActionThread::FromMS(16);
 
     /// All features
     Vector<ComRef<IFeature>> features;

@@ -29,6 +29,7 @@
 // Layer
 #include <Backends/Vulkan/Vulkan.h>
 #include <Backends/Vulkan/Resource/VirtualResourceMapping.h>
+#include <Backends/Vulkan/States/DeviceMemoryTag.h>
 
 // Std
 #include <cstdint>
@@ -51,6 +52,9 @@ struct ImageState {
 
     /// Optional, owner of this image, f.x. a swapchain
     uint64_t owningHandle{0u};
+
+    /// Bound memory tag
+    DeviceMemoryTag memoryTag;
 
     /// Optional, debug name
     char* debugName{nullptr};

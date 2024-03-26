@@ -42,9 +42,10 @@
 #include <Common/Registry.h>
 #include <Common/Containers/ObjectPool.h>
 #include <Common/IntervalAction.h>
+#include <Common/IntervalActionThread.h>
 
 // Generated
-#include "Backends/Vulkan/CommandBufferDispatchTable.Gen.h"
+#include <Backends/Vulkan/CommandBufferDispatchTable.Gen.h>
 
 // Backend
 #include <Backend/EventDataStack.h>
@@ -74,6 +75,7 @@ struct RenderPassState;
 struct FrameBufferState;
 struct FenceState;
 struct QueueState;
+struct DeviceMemoryState;
 class IFeature;
 class IBridge;
 class InstrumentationController;
@@ -160,6 +162,7 @@ struct DeviceDispatchTable {
     TrackedObject<VkFence, FenceState>                                       states_fence;
     TrackedObject<VkQueue, QueueState>                                       states_queue;
     TrackedObject<VkPipeline, PipelineState>                                 states_pipeline;
+    TrackedObject<VkDeviceMemory, DeviceMemoryState>                         states_deviceMemory;
 
     /// Dependency objects
     DependentObject<ShaderModuleState, PipelineState> dependencies_shaderModulesPipelines;
@@ -301,6 +304,9 @@ struct DeviceDispatchTable {
 
     /// Environment actions
     IntervalAction environmentUpdateAction = IntervalAction::FromMS(1000);
+
+    /// Synchronization action thread
+    IntervalActionThread syncPointActionThread = IntervalActionThread::FromMS(16);
 
 private:
     /// Lookup

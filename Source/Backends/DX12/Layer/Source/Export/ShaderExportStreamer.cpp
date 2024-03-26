@@ -49,12 +49,14 @@
 #include <Backends/DX12/Resource/DescriptorResourceMapping.h>
 #include <Backends/DX12/Resource/DescriptorData.h>
 #include <Backends/DX12/Resource/ReservedConstantData.h>
+#include <Backends/DX12/CommandListRenderPassScope.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
+#include <Backend/FeatureHookTable.h>
 
 // Message
 #include <Message/IMessageStorage.h>
@@ -223,6 +225,7 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
     segment->fenceNextCommitId = queueState->sharedFence->CommitFence();
 
     // OK
+    std::lock_guard queueGuard(device->states_Queues.GetLock());
     queueState->exportState->liveSegments.push_back(segment);
 }
 
@@ -361,6 +364,8 @@ void ShaderExportStreamer::UpdateReservedHeapConstantData(ShaderExportStreamStat
 }
 
 void ShaderExportStreamer::WriteReservedHeapConstantBuffer(ShaderExportStreamState *state, const uint32_t* dwords, uint32_t dwordCount, ID3D12GraphicsCommandList *commandList) {
+    CommandListRenderPassScope scope(static_cast<ID3D12GraphicsCommandList4*>(commandList), &state->renderPass);
+    
     // Expected read state
     D3D12_RESOURCE_STATES readState = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 
@@ -1273,12 +1278,6 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPreCommandList(CommandQue
         }
     }
 
-    // Done
-    HRESULT hr = patchList->Close();
-    if (FAILED(hr)) {
-        return nullptr;
-    }
-
     // OK
     return patchList;
 }
@@ -1332,12 +1331,6 @@ ID3D12GraphicsCommandList* ShaderExportStreamer::RecordPostCommandList(CommandQu
         0u,
         nullptr
     );
-
-    // Done
-    HRESULT hr = patchList->Close();
-    if (FAILED(hr)) {
-        return nullptr;
-    }
 
     // OK
     return patchList;

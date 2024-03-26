@@ -27,7 +27,7 @@
 #pragma once
 
 // Discovery
-#include "DiscoveryProcessInfo.h"
+#include "DiscoveryProcessCreateInfo.h"
 
 // Common
 #include <Common/IComponent.h>
@@ -58,7 +58,7 @@ public:
     /// Setup the expected bootstrapping environment
     /// \param info process information
     /// \param environment destination environment
-    virtual void SetupBootstrappingEnvironment(const DiscoveryProcessInfo& info, DiscoveryBootstrappingEnvironment& environment) = 0;
+    virtual void SetupBootstrappingEnvironment(const DiscoveryProcessCreateInfo& info, DiscoveryBootstrappingEnvironment& environment) = 0;
 
     /// Install this listener
     ///   ? Enables global hooking of respective discovery, always on for the end user

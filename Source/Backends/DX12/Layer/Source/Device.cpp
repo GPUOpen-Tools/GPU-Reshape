@@ -52,6 +52,7 @@
 #include <Backends/DX12/Symbolizer/ShaderSGUIDHost.h>
 #include <Backends/DX12/ShaderProgram/ShaderProgramHost.h>
 #include <Backends/DX12/Scheduler/Scheduler.h>
+#include <Backends/DX12/QueueSegmentAllocator.h>
 #include <Backends/DX12/WRL.h>
 #include <Backends/DX12/Layer.h>
 
@@ -73,6 +74,7 @@
 #endif // NDEBUG
 #include <Common/IComponentTemplate.h>
 #include <Common/GlobalUID.h>
+#include <Common/IntervalActionThread.h>
 
 // Detour
 #include <Detour/detours.h>
@@ -159,6 +161,14 @@ static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceState* stat
     info.deviceUID = state->uid;
     info.deviceObjects = static_cast<uint32_t>(state->states_Resources.GetCount());
     return info;
+}
+
+static void DeviceSyncPoint(DeviceState *device) {
+    // Inform the streamer of the sync point
+    device->exportStreamer->Process();
+
+    // Commit bridge data
+    BridgeDeviceSyncPoint(device);
 }
 
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
@@ -324,6 +334,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         state->exportStreamer = state->registry.AddNew<ShaderExportStreamer>(state);
         ENSURE(state->exportStreamer->Install(), "Failed to install shader export streamer");
 
+        // Install the queue segment allocator
+        state->queueSegmentAllocator = state->registry.AddNew<QueueSegmentAllocator>(state);
+
         // Query and apply environment
         ApplyStartupEnvironment(state);
 
@@ -332,6 +345,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         for (const ComRef<IFeature>& feature : state->features) {
             ENSURE(feature->PostInstall(), "Failed to post-install feature");
         }
+
+        // Start sync thread
+        state->syncPointActionThread.Start(std::bind(DeviceSyncPoint, state));
     }
 
     // Cleanup
@@ -621,6 +637,9 @@ DeviceState::~DeviceState() {
 
     // Wait for all pending instrumentation
     instrumentationController->WaitForCompletion();
+
+    // Stop the sync point thread
+    syncPointActionThread.Stop();
 
     // Process all remaining work
     exportStreamer->Process();

@@ -60,7 +60,7 @@ namespace GRS.Features.Initialization.UIX.Contexts
                 
                 // Enabled if resource bounds is available
                 _featureInfo = (_targetViewModel as IInstrumentableObject)?
-                    .GetWorkspace()?
+                    .GetWorkspaceCollection()?
                     .GetProperty<IFeatureCollectionViewModel>()?
                     .GetFeature("Initialization");
                 
@@ -116,7 +116,7 @@ namespace GRS.Features.Initialization.UIX.Contexts
             }
 
             // Initialization instrumentation is a fickle game, if this is not a virtual adapter, i.e. launch from, warn the user about it.
-            if (instrumentable.GetWorkspace()?.ConnectionViewModel is not IVirtualConnectionViewModel &&  (_data != null && await _data.ConditionalWarning()))
+            if (instrumentable.GetWorkspaceCollection()?.ConnectionViewModel is not IVirtualConnectionViewModel &&  (_data != null && await _data.ConditionalWarning()))
             {
                 return;
             }

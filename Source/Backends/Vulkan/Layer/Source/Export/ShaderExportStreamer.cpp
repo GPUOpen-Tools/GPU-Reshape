@@ -188,6 +188,7 @@ void ShaderExportStreamer::Enqueue(ShaderExportQueueState* queue, ShaderExportSt
     segment->fenceNextCommitId = fence->GetNextCommitID();
 
     // OK
+    std::lock_guard queueGuard(table->states_queue.GetLock());
     queue->liveSegments.push_back(segment);
 }
 
@@ -858,9 +859,6 @@ VkCommandBuffer ShaderExportStreamer::RecordPreCommandBuffer(ShaderExportQueueSt
     // Update all PRM data
     segment->prmtPersistentVersion = table->prmTable->GetPersistentVersion(segment->prePatchCommandBuffer, prmtState);
 
-    // Done
-    table->next_vkEndCommandBuffer(segment->prePatchCommandBuffer);
-
     // OK
     return segment->prePatchCommandBuffer;
 }
@@ -928,9 +926,6 @@ VkCommandBuffer ShaderExportStreamer::RecordPostCommandBuffer(ShaderExportQueueS
             0, nullptr
     );
     
-    // Done
-    table->next_vkEndCommandBuffer(segment->postPatchCommandBuffer);
-
     // OK
     return segment->postPatchCommandBuffer;
 }

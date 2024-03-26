@@ -747,7 +747,7 @@ namespace IL {
         /// Branch to a block
         /// \param branch the destination block
         /// \return instruction reference
-        BasicBlock::TypedIterator <BranchInstruction> Branch(BasicBlock* branch) {
+        BasicBlock::TypedIterator <BranchInstruction> Branch(BasicBlock* branch, ControlFlow controlFlow = ControlFlow::None()) {
             ASSERT(branch, "Invalid branch");
 
             BranchInstruction instr{};
@@ -755,6 +755,7 @@ namespace IL {
             instr.source = Source::Invalid();
             instr.result = IL::InvalidID;
             instr.branch = branch->GetID();
+            instr.controlFlow = controlFlow;
             return Op(instr);
         }
 

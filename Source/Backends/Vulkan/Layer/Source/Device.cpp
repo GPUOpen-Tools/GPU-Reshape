@@ -199,10 +199,24 @@ static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceDispatchTab
     return info;
 }
 
+static void DeviceSyncPoint(DeviceDispatchTable *table) {
+    // Inform the streamer of the sync point
+    table->exportStreamer->Process();
+
+    // Commit bridge data
+    BridgeDeviceSyncPoint(table);
+}
+
 template<typename T>
-static void EnableFeatureSet(T* features) {
+static void EnableDescriptorFeatureSet(T* features) {
     features->descriptorBindingStorageTexelBufferUpdateAfterBind = true;
     features->descriptorBindingUniformTexelBufferUpdateAfterBind = true;
+}
+
+template<typename T>
+static void EnableFeatureSet(T* features) {
+    features->vertexPipelineStoresAndAtomics = true;
+    features->fragmentStoresAndAtomics = true;
 }
 
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
@@ -263,19 +277,33 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
     table->enabledExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
     // Optional feature structures
+    auto* features2        = FindStructureTypeMutableUnsafe<VkPhysicalDeviceFeatures2, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2>(table->createInfo->pNext);
     auto* features1_2      = FindStructureTypeMutableUnsafe<VkPhysicalDeviceVulkan12Features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES>(table->createInfo->pNext);
     auto* indexingFeatures = FindStructureTypeMutableUnsafe<VkPhysicalDeviceDescriptorIndexingFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES>(table->createInfo->pNext);
 
-    // Try enabling features
+    // Try enabling descriptor features
     VkPhysicalDeviceDescriptorIndexingFeatures indexingFeaturesFallback{};
     if (features1_2) {
-        EnableFeatureSet(features1_2);
+        EnableDescriptorFeatureSet(features1_2);
     } else if (indexingFeatures) {
-        EnableFeatureSet(indexingFeatures);
+        EnableDescriptorFeatureSet(indexingFeatures);
     } else {
-        EnableFeatureSet(&indexingFeaturesFallback);
+        EnableDescriptorFeatureSet(&indexingFeaturesFallback);
         indexingFeaturesFallback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
         PrependExtensionUnsafe(&table->createInfo.createInfo, &indexingFeaturesFallback);
+    }
+
+    // Try enabling base features
+    VkPhysicalDeviceFeatures featuresFallback{};
+    if (features2) {
+        EnableFeatureSet(&features2->features);
+    } else {
+        if (table->createInfo->pEnabledFeatures) {
+            featuresFallback = *table->createInfo->pEnabledFeatures;
+        }
+
+        EnableFeatureSet(&featuresFallback);
+        table->createInfo->pEnabledFeatures = &featuresFallback;
     }
 
     // Set new layers and extensions
@@ -421,6 +449,9 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
         ENSURE(feature->PostInstall(), "Failed to post-install feature");
     }
 
+    // Start sync thread
+    table->syncPointActionThread.Start(std::bind(DeviceSyncPoint, table));
+
     // OK
     return VK_SUCCESS;
 }
@@ -434,6 +465,9 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
 
     // Ensure all work is done
     table->next_vkDeviceWaitIdle(device);
+
+    // Stop the sync point thread
+    table->syncPointActionThread.Stop();
 
     // Process all remaining work
     table->exportStreamer->Process();

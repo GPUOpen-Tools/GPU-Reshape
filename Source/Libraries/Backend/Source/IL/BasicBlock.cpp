@@ -25,6 +25,9 @@
 // 
 
 #include <Backend/IL/BasicBlock.h>
+#include <Backend/IL/BasicBlockCommon.h>
+#include <Backend/IL/ControlFlow.h>
+#include <Backend/IL/InstructionCommon.h>
 
 // Common
 #include <Common/Alloca.h>
@@ -100,11 +103,76 @@ void IL::BasicBlock::AddInstructionReferences(const IL::Instruction *instruction
     }
 }
 
+static bool IsAnyPhiBranchBackEdge(const IL::PhiInstruction* instr, const IL::BranchControlFlow& controlFlow) {
+    if (controlFlow._continue == IL::InvalidID) {
+        return false;
+    }
+
+    // Check if any branch matches
+    for (uint32_t i = 0; i < instr->values.count; i++) {
+        if (instr->values[i].branch == controlFlow._continue) {
+            return true;
+        }
+    }
+
+    // None found
+    return false;
+}
+
 IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const IL::BasicBlock::Iterator &splitIterator, BasicBlockSplitFlagSet splitFlags) {
     ASSERT(destBlock->IsEmpty(), "Cannot split into a filled basic block");
 
+    // The actual split iterator
+    Iterator splitIteratorPhi = splitIterator;
+
+    // Redirect backedges?
+    if (splitFlags & BasicBlockSplitFlag::RedirectLoopBackedge) {
+        // Are we splitting the terminator too?
+        if (splitIteratorPhi != end()) {
+            Iterator terminator = GetTerminator();
+
+            // Is this a loop header we're splitting?
+            BranchControlFlow controlFlow;
+            if (Backend::IL::GetControlFlow(terminator.Get(), controlFlow) && controlFlow._continue != InvalidID) {
+                BasicBlock* continueBlock = map.GetBasicBlock(controlFlow._continue);
+
+                // Get the terminator in the continue block
+                auto* continueBranch = continueBlock->GetTerminator().GetMutable()->Cast<BranchInstruction>();
+                ASSERT(continueBranch, "Continue blocks must contain a single branch");
+
+                // Remap the back-edge to the new loop header
+                continueBranch->branch = destBlock->GetID();
+            }
+        }
+    }
+
+    bool hasUnresolvedBackEdgePhis = false;
+
+    // Splitting phis?
+    if (splitIteratorPhi->Is<PhiInstruction>() && splitFlags & BasicBlockSplitFlag::SplitPhiEdges) {
+        BranchControlFlow controlFlow;
+        Backend::IL::GetControlFlow(GetTerminator(), controlFlow);
+
+        // Does the phi operation reference a backedge?
+        bool hasBackEdge = IsAnyPhiBranchBackEdge(splitIterator->As<PhiInstruction>(), controlFlow);
+        hasUnresolvedBackEdgePhis = hasBackEdge;
+
+        // Validate that all phi operations have the same status
+        // We're making quite a few assumptions on this, so it must hold true
+#ifndef NDEBUG
+        for (auto it = splitIteratorPhi; it != destBlock->end() && it->Is<PhiInstruction>(); ++it) {
+            ASSERT(IsAnyPhiBranchBackEdge(it->As<PhiInstruction>(), controlFlow) == hasBackEdge, "Mismatch in back-edge status");
+        }
+#endif // !NDEBUG
+
+        // If there's no back edges, preserve the phi operations, do not split with them
+        if (!hasBackEdge) {
+            splitIteratorPhi = Backend::IL::FirstNonPhi(this, splitIteratorPhi);
+        }
+    }
+
     // Byte offset to the split point
-    uint32_t splitPointRelocationOffset = relocationTable[splitIterator.relocationIndex]->offset;
+    uint32_t splitPointRelocationOffset = relocationTable[splitIteratorPhi.relocationIndex]->offset;
 
     // Redirect all branch users if requested
     if (splitFlags & BasicBlockSplitFlag::RedirectBranchUsers) {
@@ -126,7 +194,6 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
                     if (branch->controlFlow._continue != GetID()) {
                         continue;
                     }
-
                     break;
                 }
                 case OpCode::Phi: {
@@ -179,7 +246,7 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
     }
 
     // Append all instructions after the split point to the new basic block
-    Iterator moveIterator = splitIterator;
+    Iterator moveIterator = splitIteratorPhi;
     for (; moveIterator != end(); moveIterator++) {
         destBlock->Append(moveIterator.Get());
         count--;
@@ -189,13 +256,85 @@ IL::BasicBlock::Iterator IL::BasicBlock::Split(IL::BasicBlock *destBlock, const 
     data.erase(data.begin() + splitPointRelocationOffset, data.end());
 
     // Free relocation indices
-    auto relocationIt = relocationTable.begin() + splitIterator.relocationIndex;
+    auto relocationIt = relocationTable.begin() + splitIteratorPhi.relocationIndex;
     for (auto it = relocationIt; it != relocationTable.end(); it++) {
         relocationAllocator.Free(*it);
     }
 
     // Erase relocation indices
     relocationTable.erase(relocationIt, relocationTable.end());
+
+    // Do we have back edge phi operations we need to resolve?
+    if (hasUnresolvedBackEdgePhis) {
+        BranchControlFlow controlFlow;
+        Backend::IL::GetControlFlow(destBlock->GetTerminator(), controlFlow);
+            
+        // Find all moved phi's
+        for (auto it = destBlock->begin(); it != destBlock->end() && it->Is<PhiInstruction>(); ++it) {
+            auto* instr = it.GetMutable()->As<PhiInstruction>();
+            
+            // If there's just two dependencies, it's on the immediate predecessor and the back edge
+            // No need to split the phi!
+            if (instr->values.count == 2u) {
+                // Incoming branch is now the split predecessor
+                for (uint32_t i = 0; i < 2u; i++) {
+                    PhiValue& value = instr->values[i];
+                    if (value.branch != controlFlow._continue) {
+                        value.branch = GetID();
+                    }
+                }
+                
+                continue;
+            }
+
+            // This is a complex phi that needs to be split
+            // Phi A resolves the incoming source edges
+            auto phiA = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(instr->values.count - 1));
+            phiA->opCode = OpCode::Phi;
+            phiA->source = Source::Invalid();
+            phiA->values.count = 0;
+
+            // This is not user mapped!
+            phiA->result = map.AllocID();
+
+            // Copy non-backedge values
+            PhiValue backEdgePhiValue{InvalidID, InvalidID};
+            for (uint32_t i = 0; i < instr->values.count; i++) {
+                PhiValue value = instr->values[i];
+                
+                if (value.branch == controlFlow._continue) {
+                    backEdgePhiValue = value;
+                    continue;
+                }
+                
+                phiA->values[phiA->values.count++] = value;
+            }
+
+            // Append to predecessor block
+            ASSERT(phiA->values.count == instr->values.count - 1, "Invalid phi value count");
+            Append(phiA);
+
+            // Phi B resolves the incoming back edge and immediate predecessor
+            auto phiB = ALLOCA_SIZE(IL::PhiInstruction, IL::PhiInstruction::GetSize(2u));
+            phiB->opCode = OpCode::Phi;
+            phiB->source = Source::Invalid();
+            phiB->result = instr->result;
+            phiB->values.count = 2u;
+
+            // First edge is the previous partial resolve
+            phiB->values[0] = PhiValue {
+                .value = phiA->result,
+                .branch = GetID()
+            };
+
+            // Second edge is the original backedge
+            ASSERT(backEdgePhiValue.branch != InvalidID, "Invalid backedge migration");
+            phiB->values[1] = backEdgePhiValue;
+
+            // Replace the resolved instruction
+            it = Replace(it, *phiB);
+        }
+    }
 
     // Return first iterator
     return destBlock->begin();

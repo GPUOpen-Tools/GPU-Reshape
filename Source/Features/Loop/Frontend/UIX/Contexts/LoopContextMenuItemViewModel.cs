@@ -53,7 +53,7 @@ namespace GRS.Features.Loop.UIX.Contexts
                 
                 // Enabled if resource bounds is available
                 _featureInfo = (_targetViewModel as IInstrumentableObject)?
-                    .GetWorkspace()?
+                    .GetWorkspaceCollection()?
                     .GetProperty<IFeatureCollectionViewModel>()?
                     .GetFeature("Loop");
                 

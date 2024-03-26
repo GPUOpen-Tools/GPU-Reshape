@@ -38,6 +38,9 @@
 // Schemas
 #include <Schemas/Versioning.h>
 
+// Common
+#include <Common/Format.h>
+
 VersioningController::VersioningController(DeviceState *device) : device(device) {
 
 }
@@ -174,16 +177,23 @@ void VersioningController::CollapseOnFork(VersionSegmentationPoint versionSegPoi
 void VersioningController::CommitResourceVersion(MessageStreamView<ResourceVersionMessage> &view, ResourceState *state, const char* debugName) {
     const char* formatStr = GetFormatString(state->desc.Format);
 
+    // Fallback name
+    char debugNameBuffer[64];
+    if (!debugName) {
+        FormatArrayTerminated(debugNameBuffer, "{}", reinterpret_cast<const void *>(state->object));
+        debugName = debugNameBuffer;
+    }
+    
     // Allocate version
     auto&& version = view.Add(ResourceVersionMessage::AllocationInfo {
-        .nameLength = debugName ? std::strlen(debugName) : 0u,
+        .nameLength = std::strlen(debugName),
         .formatLength =  std::strlen(formatStr)
     });
 
     // Fill info
     version->puid = state->virtualMapping.puid;
     version->version = head;
-    version->name.Set(debugName ? debugName : "");
+    version->name.Set(debugName);
     version->width = static_cast<uint32_t>(state->desc.Width);
     version->height = static_cast<uint32_t>(state->desc.Height);
     version->depth = static_cast<uint32_t>(state->desc.DepthOrArraySize);

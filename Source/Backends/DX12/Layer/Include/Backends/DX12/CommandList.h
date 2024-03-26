@@ -56,6 +56,7 @@ void WINAPI HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *, UINT
 void WINAPI HookID3D12CommandQueueGetDesc(ID3D12CommandQueue *, D3D12_COMMAND_QUEUE_DESC* out);
 HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue *_this, ID3D12Fence *pFence, UINT64 Value);
 HRESULT WINAPI HookID3D12CommandQueueWait(ID3D12CommandQueue *_this, ID3D12Fence *pFence, UINT64 Value);
+void WINAPI HookID3D12CommandQueueCopyTileMappings(ID3D12CommandQueue* _this, ID3D12Resource* pDstResource, const D3D12_TILED_RESOURCE_COORDINATE* pDstRegionStartCoordinate, ID3D12Resource* pSrcResource, const D3D12_TILED_RESOURCE_COORDINATE* pSrcRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pRegionSize, D3D12_TILE_MAPPING_FLAGS Flags);
 HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12CommandAllocator *allocator, ID3D12PipelineState *state);
 HRESULT WINAPI HookID3D12CommandListClose(ID3D12CommandList *list);
 void WINAPI HookID3D12CommandListSetPipelineState(ID3D12CommandList *list, ID3D12PipelineState *pipeline);
@@ -79,6 +80,7 @@ void WINAPI HookID3D12CommandListDrawInstanced(ID3D12CommandList *list, UINT Ver
 void WINAPI HookID3D12CommandListDrawIndexedInstanced(ID3D12CommandList *list, UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation);
 void WINAPI HookID3D12CommandListDispatch(ID3D12CommandList *list, UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ);
 void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList *list, ID3D12CommandSignature *pCommandSignature, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset, ID3D12Resource *pCountBuffer, UINT64 CountBufferOffset);
+void WINAPI HookID3D12CommandListCopyTiles(ID3D12CommandList *list, ID3D12Resource* pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pTileRegionSize, ID3D12Resource* pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags);
 void WINAPI HookID3D12CommandListSetComputeRoot32BitConstant(ID3D12CommandList *list, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues);
 void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstant(ID3D12CommandList *list, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues);
 void WINAPI HookID3D12CommandListSetComputeRoot32BitConstants(ID3D12CommandList *list, UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues);

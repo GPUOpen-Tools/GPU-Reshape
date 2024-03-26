@@ -80,7 +80,7 @@ namespace Studio.ViewModels.Workspace.Configurations
             }
             
             // Create all instrumentation properties
-            foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspace()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
+            foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspaceCollection()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
             {
                 // Ignored?
                 if (IgnoredFeatures.Items.Contains(service.Name))

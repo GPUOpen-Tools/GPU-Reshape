@@ -56,4 +56,16 @@ namespace Backend::IL {
         // Ensure the basic block is recompiled
         it.basicBlock->MarkAsDirty();
     }
+
+    /// Find the first non phi instruction
+    /// \param block given block
+    /// \param it iterator to search from
+    /// \return first non phi, may be end
+    inline BasicBlock::Iterator FirstNonPhi(BasicBlock* block, BasicBlock::Iterator it) {
+        while (it != block->end() && it->Is<PhiInstruction>()) {
+            ++it;
+        }
+
+        return it;
+    }
 }

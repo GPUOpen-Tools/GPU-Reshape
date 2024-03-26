@@ -35,6 +35,9 @@ class CommandContext {
 public:
     /// Given handle
     CommandContextHandle handle{kInvalidCommandContextHandle};
+    
+    /// Queue where this context is executed on
+    CommandQueueHandle queueHandle{kInvalidCommandQueueHandle};
 
     /// Data to be pushed for the next event
     EventDataStack eventStack;

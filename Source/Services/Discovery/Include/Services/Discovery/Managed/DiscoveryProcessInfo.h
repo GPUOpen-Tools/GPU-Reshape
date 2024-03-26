@@ -26,21 +26,13 @@
 
 #pragma once
 
-using namespace System;
+// Std
+#include <cstdint>
 
 namespace Discovery::CLR {
     public ref class DiscoveryProcessInfo {
     public:
-        /// Path of the application
-        String^ applicationPath = "";
-
-        /// Working directory of the application
-        String^ workingDirectoryPath = "";
-
-        /// All command line arguments given to the application
-        String^ arguments = "";
-
-        /// Optional, reserved token
-        String^ reservedToken = "";
+        /// Assigned identifier
+        uint64_t processId{0};
     };
 }

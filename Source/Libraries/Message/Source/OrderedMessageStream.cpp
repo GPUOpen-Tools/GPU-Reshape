@@ -81,6 +81,8 @@ void OrderedMessageStorage::ConsumeStreams(uint32_t *count, MessageStream *strea
     MutexGuard guard(mutex);
 
     if (streams) {
+        *count = std::min(*count, static_cast<uint32_t>(storage.size()));
+        
         for (uint32_t i = 0; i < *count; i++) {
             streams[i].ClearWithSchemaInvalidate();
             streams[i].Swap(storage[i]);

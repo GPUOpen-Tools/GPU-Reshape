@@ -26,12 +26,12 @@
 
 using System;
 using System.Windows.Input;
+using Avalonia;
 using DynamicData;
-using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
-using Studio.Extensions;
-using Studio.Models.Workspace.Objects;
+using Runtime.ViewModels.Traits;
+using Studio.Services;
 using Studio.ViewModels.Documents;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Services;
@@ -40,7 +40,7 @@ using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace Studio.ViewModels.Workspace.Properties
 {
-    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel, IInstrumentableObject, IClosableObject, IDescriptorObject
+    public class WorkspaceCollectionViewModel : ReactiveObject, IPropertyViewModel, IWorkspaceAdapter, IInstrumentableObject, IClosableObject, IDescriptorObject
     {
         /// <summary>
         /// Name of this property
@@ -90,6 +90,11 @@ namespace Studio.ViewModels.Workspace.Properties
                 OnConnectionChanged();
             }
         }
+        
+        /// <summary>
+        /// The represented workspace
+        /// </summary>
+        public IWorkspaceViewModel WorkspaceViewModel { get; set; }
 
         /// <summary>
         /// Get the targetable instrumentation property
@@ -121,6 +126,11 @@ namespace Studio.ViewModels.Workspace.Properties
             {
                 return this.GetProperty<GlobalViewModel>()?.InstrumentationState ?? new InstrumentationState();
             }
+        }
+
+        public WorkspaceCollectionViewModel()
+        {
+            CloseCommand = ReactiveCommand.Create(OnClose);
         }
 
         /// <summary>
@@ -227,12 +237,61 @@ namespace Studio.ViewModels.Workspace.Properties
         }
 
         /// <summary>
+        /// Invoked on closes
+        /// </summary>
+        public void OnClose()
+        {
+            this.DetachFromParent(false);
+            
+            Destruct();
+        }
+
+        /// <summary>
+        /// Destruct this property
+        /// </summary>
+        public void Destruct()
+        {
+            // Destroy all properties and services
+            DestructPropertyTree(this);
+            
+            // Destruct the actual workspace
+            WorkspaceViewModel.Destruct();
+        }
+
+        /// <summary>
+        /// Destruct a given property tree hierarchically
+        /// </summary>
+        private void DestructPropertyTree(IPropertyViewModel propertyViewModel)
+        {
+            // Children first
+            // ... I forgot the name, depth-something-something, this is the opposite of job security.
+            foreach (IPropertyViewModel child in propertyViewModel.Properties.Items)
+            {
+                DestructPropertyTree(child);
+            }
+            
+            // Destroy associated services
+            foreach (IPropertyService propertyService in propertyViewModel.Services.Items)
+            {
+                propertyService.Destruct();
+            }
+        }
+
+        /// <summary>
         /// Get the workspace
         /// </summary>
         /// <returns></returns>
-        public IPropertyViewModel GetWorkspace()
+        public IPropertyViewModel GetWorkspaceCollection()
         {
             return this;
+        }
+
+        /// <summary>
+        /// Get the workspace represented by this adapter
+        /// </summary>
+        public IWorkspaceViewModel GetWorkspace()
+        {
+            return WorkspaceViewModel;
         }
 
         /// <summary>

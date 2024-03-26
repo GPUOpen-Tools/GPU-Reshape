@@ -95,18 +95,48 @@ namespace Studio.ViewModels.Workspace
         }
 
         /// <summary>
+        /// The decorated presentation mode
+        /// </summary>
+        public ApplicationDecorationMode DecorationMode
+        {
+            get => _decorationMode; 
+            set => this.RaiseAndSetIfChanged(ref _decorationMode, value);
+        }
+
+        /// <summary>
         /// Decorated name of the info
         /// </summary>
         public string DecoratedName
         {
             get
             {
+                switch (_decorationMode)
+                {
+                    case ApplicationDecorationMode.Default:
+                        return $"{Process} - {DecoratedDeviceName}";
+                    case ApplicationDecorationMode.ProcessOnly:
+                        return Process;
+                    case ApplicationDecorationMode.DeviceOnly:
+                        return DecoratedDeviceName;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Decorated device name of the info
+        /// </summary>
+        public string DecoratedDeviceName
+        {
+            get
+            {
                 if (Name.Length > 0)
                 {
-                    return $"{Process} - {Name}";
+                    return $"{Name} {API}";
                 }
 
-                return Process;
+                return API;
             }
         }
         
@@ -139,6 +169,11 @@ namespace Studio.ViewModels.Workspace
         /// Internal Process
         /// </summary>
         private string _process = string.Empty;
+        
+        /// <summary>
+        /// Internal decoration mode
+        /// </summary>
+        private ApplicationDecorationMode _decorationMode = ApplicationDecorationMode.Default;
 
         /// <summary>
         /// Internal GUID

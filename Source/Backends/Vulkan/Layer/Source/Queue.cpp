@@ -35,6 +35,7 @@
 #include <Backends/Vulkan/Export/ShaderExportStreamer.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
+#include <Backends/Vulkan/Command/UserCommandBuffer.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -158,6 +159,107 @@ static FenceState* AcquireOrCreateFence(DeviceDispatchTable* table, QueueState* 
     return state;
 }
 
+static void InvokePreSubmitBatchHook(DeviceDispatchTable* device, QueueState* queueState, ShaderExportStreamSegment* segment, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount) {
+    ShaderExportStreamSegmentUserContext& preContext = segment->userPreContext;
+    ShaderExportStreamSegmentUserContext& postContext = segment->userPostContext;
+    
+    // Reset pre-context
+    preContext.commandContext.eventStack.Flush();
+    preContext.commandContext.eventStack.SetRemapping(device->eventRemappingTable);
+    preContext.commandContext.handle = reinterpret_cast<CommandContextHandle>(&segment->userPreContext);
+    preContext.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(queueState->object);
+    
+    // Reset post-context
+    postContext.commandContext.eventStack.Flush();
+    postContext.commandContext.eventStack.SetRemapping(device->eventRemappingTable);
+    postContext.commandContext.handle = reinterpret_cast<CommandContextHandle>(&segment->userPostContext);
+    postContext.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(queueState->object);
+
+    // Setup hook contexts
+    SubmitBatchHookContexts hookContexts;
+    hookContexts.preContext = &preContext.commandContext;
+    hookContexts.postContext = &postContext.commandContext;
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: device->featureHookTables) {
+        proxyTable.preSubmit.TryInvoke(hookContexts, reinterpret_cast<const CommandContextHandle*>(commandBuffers), commandBufferCount);
+    }
+}
+
+static VkCommandBuffer RecordExecutePreCommandBuffer(DeviceDispatchTable* device, QueueState* queueState, ShaderExportStreamSegment* segment) {
+    ShaderExportStreamSegmentUserContext& context = segment->userPreContext;
+
+    // Record the streaming pre patching
+    VkCommandBuffer patchBuffer = device->exportStreamer->RecordPreCommandBuffer(queueState->exportState, segment, &queueState->prmtState);
+
+    // Any commands?
+    if (context.commandContext.buffer.Count()) {
+        // Lazy allocate streaming state
+        if (!context.streamState) {
+            context.streamState = device->exportStreamer->AllocateStreamState();
+        }
+        
+        // Open the streamer state
+        device->exportStreamer->BeginCommandBuffer(context.streamState, patchBuffer);
+        {
+            // Commit all commands
+            CommitCommands(
+                device,
+                patchBuffer,
+                context.commandContext.buffer,
+                context.streamState
+            );
+        
+            // Close the streamer state
+            device->exportStreamer->EndCommandBuffer(context.streamState, patchBuffer);
+        }
+        
+        // Clear all commands
+        context.commandContext.buffer.Clear();
+    }
+
+    // Done
+    device->next_vkEndCommandBuffer(patchBuffer);
+    return patchBuffer;
+}
+
+static VkCommandBuffer RecordExecutePostCommandBuffer(DeviceDispatchTable* device, QueueState* queueState, ShaderExportStreamSegment* segment) {
+    ShaderExportStreamSegmentUserContext& context = segment->userPostContext;
+
+    // Record the streaming pre patching
+    VkCommandBuffer patchBuffer = device->exportStreamer->RecordPostCommandBuffer(queueState->exportState, segment);
+
+    // Any commands?
+    if (context.commandContext.buffer.Count()) {
+        // Lazy allocate streaming state
+        if (!context.streamState) {
+            context.streamState = device->exportStreamer->AllocateStreamState();
+        }
+        
+        // Open the streamer state
+        device->exportStreamer->BeginCommandBuffer(context.streamState, patchBuffer);
+        {
+            // Commit all commands
+            CommitCommands(
+                device,
+                patchBuffer,
+                context.commandContext.buffer,
+                context.streamState
+            );
+        
+            // Close the streamer state
+            device->exportStreamer->EndCommandBuffer(context.streamState, patchBuffer);
+        }
+        
+        // Clear all commands
+        context.commandContext.buffer.Clear();
+    }
+
+    // Done
+    device->next_vkEndCommandBuffer(patchBuffer);
+    return patchBuffer;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo *pSubmits, VkFence userFence) {
     DeviceDispatchTable* table = DeviceDispatchTable::Get(GetInternalTable(queue));
 
@@ -175,17 +277,6 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
 
     // Inform the controller of the segmentation point
     segment->versionSegPoint = table->versioningController->BranchOnSegmentationPoint();
-
-    // Unwrapped submits
-    TrivialStackVector<VkSubmitInfo, 32u> vkSubmits;
-    
-    // Record the streaming pre patching
-    VkCommandBuffer prePatchCommandBuffer = table->exportStreamer->RecordPreCommandBuffer(queueState->exportState, segment, &queueState->prmtState);
-
-    // Fill patch submission info
-    VkSubmitInfo& prePatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
-    prePatchInfo.commandBufferCount = 1;
-    prePatchInfo.pCommandBuffers = &prePatchCommandBuffer;
     
     // Number of command buffers
     uint32_t commandBufferCount = 0;
@@ -194,7 +285,38 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     }
 
     // Unwrapped command buffers
-    auto* vkCommandBuffers = ALLOCA_ARRAY(VkCommandBuffer, commandBufferCount);
+    auto* const vkCommandBuffers = ALLOCA_ARRAY(VkCommandBuffer, commandBufferCount);
+
+    // Current iterator
+    VkCommandBuffer* vkCommandBuffersIt = vkCommandBuffers;
+
+    // Unwrap all command buffers
+    for (uint32_t i = 0; i < submitCount; i++) {
+        for (uint32_t bufferIndex = 0; bufferIndex < pSubmits[i].commandBufferCount; bufferIndex++) {
+            auto* unwrapped = reinterpret_cast<CommandBufferObject*>(pSubmits[i].pCommandBuffers[bufferIndex]);
+            vkCommandBuffersIt[bufferIndex] = unwrapped->object;
+        }
+
+        // Advance buffer
+        vkCommandBuffersIt += pSubmits[i].commandBufferCount;
+    }
+
+    // Reset iterator
+    vkCommandBuffersIt = vkCommandBuffers;
+    
+    // Run the submission hook
+    InvokePreSubmitBatchHook(table, queueState, segment, vkCommandBuffers, commandBufferCount);
+    
+    // Unwrapped submits
+    TrivialStackVector<VkSubmitInfo, 32u> vkSubmits;
+    
+    // Record the streaming pre patching
+    VkCommandBuffer prePatchCommandBuffer = RecordExecutePreCommandBuffer(table, queueState, segment);
+
+    // Fill pre-patch submission info
+    VkSubmitInfo& prePatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
+    prePatchInfo.commandBufferCount = 1;
+    prePatchInfo.pCommandBuffers = &prePatchCommandBuffer;
 
     // Unwrap all internal states
     for (uint32_t i = 0; i < submitCount; i++) {
@@ -206,7 +328,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
             table->exportStreamer->MapSegment(unwrapped->streamState, segment);
 
             // Store
-            vkCommandBuffers[bufferIndex] = unwrapped->object;
+            ASSERT(vkCommandBuffersIt[bufferIndex] == unwrapped->object, "Mismatched state");
         }
 
         // Destination
@@ -223,16 +345,16 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
 
         // Assign unwrapped states
         submit.commandBufferCount   = pSubmits[i].commandBufferCount;
-        submit.pCommandBuffers      = vkCommandBuffers;
+        submit.pCommandBuffers      = vkCommandBuffersIt;
 
         // Advance buffers
-        vkCommandBuffers += submit.commandBufferCount;
+        vkCommandBuffersIt += submit.commandBufferCount;
     }
-
+    
     // Record the streaming patching
-    VkCommandBuffer postPatchCommandBuffer = table->exportStreamer->RecordPostCommandBuffer(queueState->exportState, segment);
+    VkCommandBuffer postPatchCommandBuffer = RecordExecutePostCommandBuffer(table, queueState, segment);
 
-    // Fill patch submission info
+    // Fill the post-patch submission info
     VkSubmitInfo& postPatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
     postPatchInfo.commandBufferCount = 1;
     postPatchInfo.pCommandBuffers = &postPatchCommandBuffer;
@@ -248,15 +370,13 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
         }
     }
 
+    // Validate
+    ASSERT(vkCommandBuffers + commandBufferCount == vkCommandBuffersIt, "Unexpected command buffer iteration");
+
     // Unwrap once again for proxies
     for (uint32_t i = 0; i < submitCount; i++) {
-        for (uint32_t bufferIndex = 0; bufferIndex < pSubmits[i].commandBufferCount; bufferIndex++) {
-            auto *unwrapped = reinterpret_cast<CommandBufferObject *>(pSubmits[i].pCommandBuffers[bufferIndex]);
-
-            // Invoke all proxies
-            for (const FeatureHookTable &proxyTable: table->featureHookTables) {
-                proxyTable.submit.TryInvoke(unwrapped->userContext.handle);
-            }
+        for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+            proxyTable.postSubmit.TryInvoke(reinterpret_cast<const CommandContextHandle*>(vkCommandBuffers), commandBufferCount);
         }
     }
 
@@ -285,13 +405,40 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit2(VkQueue queue, uint32_t submi
     // Inform the controller of the segmentation point
     segment->versionSegPoint = table->versioningController->BranchOnSegmentationPoint();
 
+    // Number of command buffers
+    uint32_t commandBufferCount = 0;
+    for (uint32_t i = 0; i < submitCount; i++) {
+        commandBufferCount += pSubmits[i].commandBufferInfoCount;
+    }
+
+    // Unwrapped command buffers
+    auto* const vkCommandBuffers = ALLOCA_ARRAY(VkCommandBuffer, commandBufferCount);
+
+    // Current iterator
+    VkCommandBuffer* vkCommandBuffersIt = vkCommandBuffers;
+
+    // Unwrap all command buffers
+    for (uint32_t i = 0; i < submitCount; i++) {
+        for (uint32_t bufferIndex = 0; bufferIndex < pSubmits[i].commandBufferInfoCount; bufferIndex++) {
+            CommandBufferObject* unwrapped = reinterpret_cast<CommandBufferObject*>(pSubmits[i].pCommandBufferInfos[bufferIndex].commandBuffer);
+            *vkCommandBuffersIt = unwrapped->object;
+            vkCommandBuffersIt++;
+        }
+    }
+
+    // Reset iterator
+    vkCommandBuffersIt = vkCommandBuffers;
+    
+    // Run the submission hook
+    InvokePreSubmitBatchHook(table, queueState, segment, vkCommandBuffers, commandBufferCount);
+    
     // Unwrapped submits
     TrivialStackVector<VkSubmitInfo2, 32u> vkSubmits;
     
     // Record the streaming pre patching
-    VkCommandBuffer prePatchCommandBuffer = table->exportStreamer->RecordPreCommandBuffer(queueState->exportState, segment, &queueState->prmtState);
+    VkCommandBuffer prePatchCommandBuffer = RecordExecutePreCommandBuffer(table, queueState, segment);
 
-    // Fill streaming submit info
+    // Fill pre-patch streaming submit info
     VkCommandBufferSubmitInfo pretPatchCommandSubmit{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
     pretPatchCommandSubmit.commandBuffer = prePatchCommandBuffer;
     
@@ -300,12 +447,6 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit2(VkQueue queue, uint32_t submi
     prePatchInfo.commandBufferInfoCount = 1;
     prePatchInfo.pCommandBufferInfos    = &pretPatchCommandSubmit;
     
-    // Number of command buffers
-    uint32_t commandBufferCount = 0;
-    for (uint32_t i = 0; i < submitCount; i++) {
-        commandBufferCount += pSubmits[i].commandBufferInfoCount;
-    }
-
     // Unwrapped command buffers
     auto* vkCommandSubmitInfos = ALLOCA_ARRAY(VkCommandBufferSubmitInfo, commandBufferCount);
 
@@ -322,6 +463,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit2(VkQueue queue, uint32_t submi
             VkCommandBufferSubmitInfo& commandInfo = vkCommandSubmitInfos[bufferIndex] = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
             commandInfo = pSubmits[i].pCommandBufferInfos[bufferIndex];
             commandInfo.commandBuffer = unwrapped->object;
+            ASSERT(vkCommandBuffersIt[bufferIndex] == unwrapped->object, "Mismatched state");
         }
 
         // Destination
@@ -342,12 +484,16 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit2(VkQueue queue, uint32_t submi
 
         // Advance buffers
         vkCommandSubmitInfos += submit.commandBufferInfoCount;
+        vkCommandBuffersIt += submit.commandBufferInfoCount;
     }
-
+    
+    // Run the submission hook
+    InvokePreSubmitBatchHook(table, queueState, segment, vkCommandBuffers, commandBufferCount);
+    
     // Record the streaming patching
-    VkCommandBuffer postPatchCommandBuffer = table->exportStreamer->RecordPostCommandBuffer(queueState->exportState, segment);
+    VkCommandBuffer postPatchCommandBuffer = RecordExecutePostCommandBuffer(table, queueState, segment);
 
-    // Fill streaming submit info
+    // Fill the post-patch streaming submit info
     VkCommandBufferSubmitInfo postPatchCommandSubmit{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
     postPatchCommandSubmit.commandBuffer = postPatchCommandBuffer;
 
@@ -370,15 +516,13 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit2(VkQueue queue, uint32_t submi
         }
     }
 
+    // Validate
+    ASSERT(vkCommandBuffers + commandBufferCount == vkCommandBuffersIt, "Unexpected command buffer iteration");
+
     // Unwrap once again for proxies
     for (uint32_t i = 0; i < submitCount; i++) {
-        for (uint32_t bufferIndex = 0; bufferIndex < pSubmits[i].commandBufferInfoCount; bufferIndex++) {
-            auto *unwrapped = reinterpret_cast<CommandBufferObject *>(pSubmits[i].pCommandBufferInfos[bufferIndex].commandBuffer);
-
-            // Invoke all proxies
-            for (const FeatureHookTable &proxyTable: table->featureHookTables) {
-                proxyTable.submit.TryInvoke(unwrapped->userContext.handle);
-            }
+        for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+            proxyTable.postSubmit.TryInvoke(reinterpret_cast<const CommandContextHandle*>(vkCommandBuffers), commandBufferCount);
         }
     }
 
@@ -492,9 +636,6 @@ VkResult Hook_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresentI
 
     // Commit stream
     table->bridge->GetOutput()->AddStream(stream);
-
-    // Commit bridge data
-    BridgeDeviceSyncPoint(table);
 
     // OK
     return VK_SUCCESS;
