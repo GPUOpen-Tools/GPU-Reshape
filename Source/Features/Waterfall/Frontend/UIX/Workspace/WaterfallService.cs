@@ -264,7 +264,7 @@ namespace GRS.Features.Waterfall.UIX.Workspace
         {
             // Find feature data
             FeatureInfo? featureInfo = (target as IInstrumentableObject)?
-                .GetWorkspace()?
+                .GetWorkspaceCollection()?
                 .GetProperty<IFeatureCollectionViewModel>()?
                 .GetFeature("Waterfall");
 

@@ -135,14 +135,14 @@ bool ApplicationPass::RunExecutable() {
     MessageStream stream;
 
     // Ignored info
-    DiscoveryProcessInfo info{};
+    DiscoveryProcessInfo processInfo{};
 
     // Try to launch as a bootstrapped process
     DiscoveryProcessCreateInfo createInfo{};
     createInfo.applicationPath = path.c_str();
     createInfo.workingDirectoryPath = workingDirectory.c_str();
     createInfo.arguments = info.arguments.c_str();
-    return discovery->StartBootstrappedProcess(createInfo, stream, info);
+    return discovery->StartBootstrappedProcess(createInfo, stream, processInfo);
 }
 
 bool ApplicationPass::RunSteam() {
