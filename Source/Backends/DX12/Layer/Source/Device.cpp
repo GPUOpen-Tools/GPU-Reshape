@@ -164,11 +164,8 @@ static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceState* stat
 }
 
 static void DeviceSyncPoint(DeviceState *device) {
-    // Inform the streamer of the sync point
-    device->exportStreamer->Process();
-
     // Commit bridge data
-    BridgeDeviceSyncPoint(device);
+    BridgeDeviceSyncPoint(device, nullptr);
 }
 
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
@@ -683,7 +680,7 @@ void GlobalDeviceDetour::Uninstall() {
     DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
 }
 
-void BridgeDeviceSyncPoint(DeviceState *device) {
+void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState) {
     // Commit all logging to bridge
     device->logBuffer.Commit(device->bridge.GetUnsafe());
     
@@ -692,6 +689,13 @@ void BridgeDeviceSyncPoint(DeviceState *device) {
     device->instrumentationController->Commit();
     device->metadataController->Commit();
     device->versioningController->Commit();
+
+    // Inform the streamer of the sync point
+    if (queueState) {
+        device->exportStreamer->Process(queueState);
+    } else {
+        device->exportStreamer->Process();
+    }
 
     // Commit bridge
     device->bridge->Commit();

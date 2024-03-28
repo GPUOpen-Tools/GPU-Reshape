@@ -200,11 +200,8 @@ static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceDispatchTab
 }
 
 static void DeviceSyncPoint(DeviceDispatchTable *table) {
-    // Inform the streamer of the sync point
-    table->exportStreamer->Process();
-
     // Commit bridge data
-    BridgeDeviceSyncPoint(table);
+    BridgeDeviceSyncPoint(table, nullptr);
 }
 
 template<typename T>
@@ -500,7 +497,7 @@ void VKAPI_PTR Hook_vkDestroyDevice(VkDevice device, const VkAllocationCallbacks
     next_vkDestroyDevice(device, pAllocator);
 }
 
-void BridgeDeviceSyncPoint(DeviceDispatchTable *table) {
+void BridgeDeviceSyncPoint(DeviceDispatchTable *table, ShaderExportQueueState* queueState) {
     // Commit all logging to bridge
     table->parent->logBuffer.Commit(table->bridge.GetUnsafe());
     
@@ -509,6 +506,13 @@ void BridgeDeviceSyncPoint(DeviceDispatchTable *table) {
     table->instrumentationController->Commit();
     table->metadataController->Commit();
     table->versioningController->Commit();
+
+    // Inform the streamer of the sync point
+    if (queueState) {
+        table->exportStreamer->Process(queueState);
+    } else {
+        table->exportStreamer->Process();
+    }
 
     // Update the environment?
     if (table->environmentUpdateAction.Step()) {

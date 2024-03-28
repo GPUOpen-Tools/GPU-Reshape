@@ -1135,12 +1135,9 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     // Flush any pending work
     FlushCommandQueueContext(GetState(table.state->parent), table.state);
 
-    // Process any remaining work on the queue
-    device.state->exportStreamer->Process(table.state);
-
     // Special case, invoke a device sync point during empty submissions
     if (count == 0) {
-        BridgeDeviceSyncPoint(device.state);
+        BridgeDeviceSyncPoint(device.state, table.state);
     }
 
     // Allocate submission segment
