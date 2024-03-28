@@ -31,6 +31,7 @@
 #include <Backends/Vulkan/Compiler/SpvJob.h>
 
 // Backend
+#include <Backend/IL/InstructionCommon.h>
 #include <Backend/IL/Emitter.h>
 #include <Backend/IL/ID.h>
 
@@ -2165,81 +2166,47 @@ void SpvPhysicalBlockFunction::PostPatchLoopSelectionMerge(const IL::OpaqueInstr
     }
 }
 
-static void ReplicateNonPhiInstructionStream(IL::BasicBlock* source, IL::BasicBlock* dest) {
-    // TODO: Replication of non-exposed streams!
-    GRS_SINK(source, dest);
-}
-
 void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
-    // We must allow for the instrumentation of loop continue blocks, however,
-    // structured control flow puts a very strict set of requirements on this.
-    // The cleanest way forward is to proxy each loop continue predecessor,
-    // duplicate the instruction stream, and phi merge the results.
+    // Structured control flow puts a strict set of requirements on branching, which
+    // unfortunately complicates instrumentation a little, as features can easily
+    // split blocks and violate the spec. So, we split continue blocks in two pieces.
+    // First is the "proxy" block that contains the actual instructions, which may be
+    // safely instrumented, and then the edge. Keeping the final edge as a no-instrument
+    // ensures that the user doesn't accidentally introduce new edges to the loop header,
+    // of which there must be one from a continue block.
+    // 
     // So.
     //   A ---v
     //   B -> Continue
     //   C ---^
+    //
     // Becomes
-    //   A -> PA ---v
-    //   B -> PB -> Continue
-    //   C -> PC ---^
-    // With Continue being marked as no instrumentation.
-    
+    //   A ---v
+    //   B -> Continue(NI) -> Proxy -> Edge(NI)
+    //   C ---^
+
     for (const LoopContinueBlock& block : loopContinueBlocks) {
         IL::BasicBlock* continueBlock = program.GetIdentifierMap().GetBasicBlock(block.block);
 
-        // Never instrument the actual continue block
+        // Additional blocks (see above)
+        IL::BasicBlock* proxyBlock = fn->GetBasicBlocks().AllocBlock();
+        IL::BasicBlock* edgeBlock  = fn->GetBasicBlocks().AllocBlock();
+
+        // Never instrument the actual continue block and its final edge (see above)
         continueBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
+        edgeBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
 
-        // Keep a local copy
-        IL::IdentifierMap::BlockUserList list = program.GetIdentifierMap().GetBlockUsers(block.block);
-        
-        // Find all predecessors
-        for (IL::OpaqueInstructionRef opaque : list) {
-            IL::BasicBlock* predecessorBlock = opaque.basicBlock;
+        // Move all contents from the source continue block to the proxy block
+        continueBlock->Split(proxyBlock, continueBlock->begin());
 
-            // Ignore non branch instructions (phi)
-            auto ref = IL::InstructionRef<>(opaque).Cast<IL::BranchInstruction>();
-            if (!ref) {
-                continue;
-            }
+        // Move the terminator to the final edge
+        proxyBlock->Split(edgeBlock, proxyBlock->GetTerminator());
 
-            // Validation
-            ASSERT(opaque.basicBlock->GetTerminator()->As<IL::BranchInstruction>()->branch == block.block, "Unexpected branching");
+        // Continue -> Proxy
+        IL::Emitter<>(program, *continueBlock).Branch(proxyBlock);
 
-            // Replicate the instruction stream
-            IL::BasicBlock* proxyBlock = fn->GetBasicBlocks().AllocBlock();
-            ReplicateNonPhiInstructionStream(continueBlock, proxyBlock);
-
-            // Predecessor (A, B, C) -> Proxy
-            IL::Emitter<IL::Op::Replace>(program, *predecessorBlock, predecessorBlock->GetTerminator()).Branch(proxyBlock);
-
-            // Proxy -> Continue
-            IL::Emitter<>(program, *proxyBlock).Branch(continueBlock);
-
-            // Redirect the existing continue Phis to the proxy
-            for (auto it = continueBlock->begin(); it != continueBlock->end(); it++) {
-                auto* instr = it.GetMutable()->Cast<IL::PhiInstruction>();
-                if (!instr) {
-                    continue;
-                }
-
-                // Check all values
-                for (uint32_t i = 0; i < instr->values.count; i++) {
-                    IL::PhiValue& value = instr->values[i];
-                    
-                    if (value.branch == predecessorBlock->GetID()) {
-                        value.branch = proxyBlock->GetID();
-                    }
-                }
-
-                // Make sure it's recompiled
-                instr->source = instr->source.Modify();
-            }
-        }
-
-        // Re-emit entire block
-        continueBlock->MarkAsDirty();
+        // Proxy -> Edge
+        IL::Emitter<>(program, *proxyBlock).Branch(edgeBlock);
     }
 
     // Empty out
