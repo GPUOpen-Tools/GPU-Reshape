@@ -119,6 +119,7 @@ protected:
     void CommitShaders(DispatcherBucket* bucket, void *data);
     void CommitPipelines(DispatcherBucket* bucket, void *data);
     void CommitTable(DispatcherBucket* bucket, void *data);
+    void CommitFeatureMessages();
 
     /// Message handler
     void OnMessage(const ConstMessageStreamView<>::ConstIterator &it);

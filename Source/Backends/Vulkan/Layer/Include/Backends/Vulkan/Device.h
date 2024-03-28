@@ -30,10 +30,12 @@
 
 // Forward declarations
 struct DeviceDispatchTable;
+struct ShaderExportQueueState;
 
 /// Invoke a bridge sync point
 /// \param table instance table
-void BridgeDeviceSyncPoint(DeviceDispatchTable* table);
+/// \param queueState optional, streaming queue to check
+void BridgeDeviceSyncPoint(DeviceDispatchTable* table, ShaderExportQueueState* queueState);
 
 /// Hooks
 VkResult VKAPI_PTR Hook_vkEnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice, uint32_t *pPropertyCount, VkLayerProperties *pProperties);

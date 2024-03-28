@@ -32,6 +32,7 @@
 
 // Forward declarations
 struct DeviceState;
+struct CommandQueueState;
 
 struct GlobalDeviceDetour {
 public:
@@ -49,4 +50,5 @@ DX12_C_LINKAGE AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const A
 
 /// Commit all bridge activity on a device
 /// \param device device to be committed
-void BridgeDeviceSyncPoint(DeviceState *device);
+/// \param queueState optional, streaming queue to check
+void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState);

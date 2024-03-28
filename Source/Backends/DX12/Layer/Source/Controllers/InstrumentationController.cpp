@@ -727,13 +727,22 @@ void InstrumentationController::CommitInstrumentation() {
     hasPendingBucket = false;
 }
 
-void InstrumentationController::Commit() {
-    uint32_t count = GetJobCount();
-
+void InstrumentationController::CommitFeatureMessages() {
+    // Always commit the sguid host before,
+    // since this may be collected during instrumentation
+    device->sguidHost->Commit(device->bridge.GetUnsafe());
+    
     // Commit all feature messages
     for (const ComRef<IFeature>& feature : device->features) {
         feature->CollectMessages(device->bridge->GetOutput());
     }
+}
+
+void InstrumentationController::Commit() {
+    uint32_t count = GetJobCount();
+
+    // Commit all collected feature messages
+    CommitFeatureMessages();
 
     // Serial
     std::lock_guard guard(mutex);
