@@ -1143,6 +1143,9 @@ void ShaderExportStreamer::FreeConstantAllocator(ShaderExportConstantAllocator& 
 
     // Add to free pool
     freeConstantAllocators.push_back(allocator);
+
+    // Erase local state
+    allocator.staging.clear();
 }
 
 void ShaderExportStreamer::FreeDescriptorDataSegment(const DescriptorDataSegment &dataSegment) {
