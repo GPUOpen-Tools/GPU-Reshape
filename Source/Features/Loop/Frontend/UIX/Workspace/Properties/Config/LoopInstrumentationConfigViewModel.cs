@@ -24,6 +24,7 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System.ComponentModel;
 using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
@@ -43,6 +44,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// Enables loop iteration limits
         /// </summary>
         [PropertyField]
+        [Description("Limits the maximum number of loops iterations in a shader")]
         public bool UseIterationLimits
         {
             get => _useIterationLimits;
@@ -57,6 +59,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// If iteration limits are enabled, the maximum number of iterations
         /// </summary>
         [PropertyField]
+        [Description("The maximum number of loop iterations in a shader")]
         public uint IterationLimit
         {
             get => _iterationLimit;
@@ -71,6 +74,7 @@ namespace Studio.ViewModels.Workspace.Properties.Config
         /// The periodic interval for atomic checks
         /// </summary>
         [PropertyField]
+        [Description("The periodic iteration interval at which (atomic) termination signals are checked")]
         public uint AtomicIterationInterval
         {
             get => _atomicIterationInterval;

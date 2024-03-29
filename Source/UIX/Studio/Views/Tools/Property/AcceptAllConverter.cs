@@ -27,27 +27,74 @@
 using System;
 using System.ComponentModel;
 using System.Globalization;
-using AvaloniaEdit;
 
 namespace Studio.Views.Tools.Property
 {
     public class AcceptAllConverter : TypeConverter
     {
         /// <summary>
+        /// Target property info
+        /// </summary>
+        public Type TargetType;
+        
+        /// <summary>
         /// Gets a value indicating whether this converter can convert an object in the
         /// given source type to the native type of the converter.
         /// </summary>
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
         {
-            return true;
+            if (sourceType == TargetType)
+            {
+                return true;
+            }
+
+            return TypeDescriptor.GetConverter(TargetType).CanConvertFrom(sourceType);
         }
 
         /// <summary>
         /// Gets a value indicating whether the given value object is valid for this type.
         /// </summary>
-        public override bool IsValid(ITypeDescriptorContext context, object value)
+        public override bool IsValid(ITypeDescriptorContext context, object? value)
         {
-            return true;
+            if (value == null)
+            {
+                return false;
+            }
+            
+            // If target type, just accept it
+            if (value.GetType() == TargetType)
+            {
+                return true;
+            }
+            
+            return TypeDescriptor.GetConverter(TargetType).IsValid(value);
+        }
+
+        /// <summary>
+        /// Try to convert from a given object
+        /// </summary>
+        public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object? value)
+        {
+            if (value == null)
+            {
+                return false;
+            }
+            
+            // If target type, just accept it
+            if (value.GetType() == TargetType)
+            {
+                return value;
+            }
+
+            // Catch any formatting issues
+            try
+            {
+                return TypeDescriptor.GetConverter(TargetType).ConvertFrom(value)!;
+            }
+            catch
+            {
+                return null!;
+            }
         }
 
         /// <summary>
