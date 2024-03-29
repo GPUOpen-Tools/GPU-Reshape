@@ -3699,19 +3699,47 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     break;
                 }
 
+                case IL::OpCode::Alloca: {
+                    auto _instr = instr->As<IL::AllocaInstruction>();
+                    
+                    const auto* pointerType = typeMap.GetType(_instr->result)->As<Backend::IL::PointerType>();
+                    
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstAlloca);
+                    record.opCount = 4u;
+                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+                    record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(pointerType));
+                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{})));
+                    record.ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(Backend::IL::GetPODNonAlignedTypeByteSize(pointerType->pointee))->id);
+                    record.ops[3] = LLVMBitStreamWriter::EncodeSigned(4);
+                    block->AddRecord(record);
+                    break;
+                }
+
                 case IL::OpCode::Load: {
                     auto _instr = instr->As<IL::LoadInstruction>();
 
                     // Get type
                     const auto* pointerType = typeMap.GetType(_instr->address)->As<Backend::IL::PointerType>();
 
-                    switch (pointerType->pointee->kind) {
+                    switch (pointerType->addressSpace) {
                         default: {
                             ASSERT(false, "Not implemented");
                             break;
                         }
-                        case Backend::IL::TypeKind::Buffer:
-                        case Backend::IL::TypeKind::Texture: {
+                        case Backend::IL::AddressSpace::Function: {
+                            record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstLoad);
+                            record.opCount = 4u;
+                            record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->address);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(pointerType->pointee));
+                            record.ops[2] = LLVMBitStreamWriter::EncodeSigned(4);
+                            record.ops[3] = false;
+                            block->AddRecord(record);
+                            break;
+                        }
+                        case Backend::IL::AddressSpace::Resource: {
+                            ASSERT(pointerType->pointee->kind == Backend::IL::TypeKind::Buffer || pointerType->pointee->kind == Backend::IL::TypeKind::Texture, "Unexpected resource load");
+                            
                             // The IL abstraction exposes resource handles as "pointers" for inclusive conformity,
                             // however, DXIL handles have no such concept. Just "assume" they were loaded, and let
                             // the succeeding instruction deal with the assumption.
@@ -3719,6 +3747,25 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             break;
                         }
                     }
+
+                    break;
+                }
+
+                case IL::OpCode::Store: {
+                    auto _instr = instr->As<IL::StoreInstruction>();
+
+                    // Validate address space
+                    const auto* pointerType = typeMap.GetType(_instr->address)->As<Backend::IL::PointerType>();
+                    ASSERT(pointerType->addressSpace == Backend::IL::AddressSpace::Function, "Non function space stores not supported");
+
+                    record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstStore);
+                    record.opCount = 4u;
+                    record.ops = table.recordAllocator.AllocateArray<uint64_t>(record.opCount);
+                    record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->address);
+                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
+                    record.ops[2] = LLVMBitStreamWriter::EncodeSigned(4);
+                    record.ops[3] = false;
+                    block->AddRecord(record);
 
                     break;
                 }
@@ -4439,7 +4486,7 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstLoad: {
-                    writer.RemapRelativeValue(anchor);
+                writer.RemapRelativeValue(anchor);
                 break;
             }
 
