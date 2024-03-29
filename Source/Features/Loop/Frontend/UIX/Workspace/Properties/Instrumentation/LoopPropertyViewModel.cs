@@ -91,6 +91,12 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation
         /// <param name="state"></param>
         public void Commit(InstrumentationState state)
         {
+            // Commit all child properties
+            foreach (IInstrumentationProperty instrumentationProperty in this.GetProperties<IInstrumentationProperty>())
+            {
+                instrumentationProperty.Commit(state);
+            }
+            
             state.FeatureBitMask |= FeatureInfo.FeatureBit;
         }
     }
