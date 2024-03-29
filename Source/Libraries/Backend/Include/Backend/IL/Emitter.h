@@ -420,6 +420,22 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
+        BasicBlock::TypedIterator <RemInstruction> Rem(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            RemInstruction instr{};
+            instr.opCode = OpCode::Rem;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Binary add two values
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
         BasicBlock::TypedIterator <AddInstruction> Add(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
@@ -1041,7 +1057,11 @@ namespace IL {
             instr.opCode = OpCode::Alloca;
             instr.source = Source::Invalid();
             instr.result = map->AllocID();
-            return Op(instr, type);
+
+            return Op(instr, program->GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+                .pointee = type,
+                .addressSpace = Backend::IL::AddressSpace::Function
+            }));
         }
 
         /// Is this emitter good?
