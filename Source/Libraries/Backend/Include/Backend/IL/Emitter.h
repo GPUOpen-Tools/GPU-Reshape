@@ -1025,8 +1025,6 @@ namespace IL {
         /// \param type the varaible type
         /// \return instruction reference
         BasicBlock::TypedIterator <AllocaInstruction> Alloca(const Backend::IL::Type* type) {
-            ASSERT(IsMapped(type), "Unmapped identifier");
-
             AllocaInstruction instr{};
             instr.opCode = OpCode::Alloca;
             instr.source = Source::Invalid();

@@ -82,6 +82,7 @@ namespace Backend::IL {
             auto &constantPtr = sortMap[constant.SortKey(type)];
             if (!constantPtr) {
                 constantPtr = AllocateConstant<T>(identifierMap.AllocID(), type, constant);
+                idMap[constantPtr->id] = constantPtr;
             }
 
             return constantPtr;
@@ -155,6 +156,56 @@ namespace Backend::IL {
         Container::const_reverse_iterator rbegin() const { return constants.rbegin(); }
         Container::const_iterator end() const { return constants.end(); }
         Container::const_reverse_iterator rend() const { return constants.rend(); }
+
+    public:
+        /** Helpers for common constant types */
+        
+        /// Get signed integer constant, helper
+        /// \param value given value
+        /// \param bitWidth bit width
+        /// \return allocated constant
+        const IntConstant* Int(int64_t value, uint8_t bitWidth = 32) {
+            return FindConstantOrAdd(
+                typeMap.FindTypeOrAdd(IntType {
+                    .bitWidth = bitWidth,
+                    .signedness = true
+                }),
+                IntConstant {
+                    .value = value
+                }
+            );
+        }
+        
+        /// Get unsigned integer constant, helper
+        /// \param value given value
+        /// \param bitWidth bit width
+        /// \return allocated constant
+        const IntConstant* UInt(uint64_t value, uint8_t bitWidth = 32) {
+            return FindConstantOrAdd(
+                typeMap.FindTypeOrAdd(IntType {
+                    .bitWidth = bitWidth,
+                    .signedness = false
+                }),
+                IntConstant {
+                    .value = static_cast<int64_t>(value)
+                }
+            );
+        }
+        
+        /// Get floating point constant, helper
+        /// \param value given value
+        /// \param bitWidth bit width
+        /// \return allocated constant
+        const FPConstant* FP(double value, uint8_t bitWidth = 32) {
+            return FindConstantOrAdd(
+                typeMap.FindTypeOrAdd(FPType {
+                    .bitWidth = bitWidth
+                }),
+                FPConstant {
+                    .value = value
+                }
+            );
+        }
 
     private:
         /// Allocate a new constant
