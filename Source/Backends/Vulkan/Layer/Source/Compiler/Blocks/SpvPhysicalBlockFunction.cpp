@@ -1535,6 +1535,18 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 spv[3] = idMap.Get(storeTexture->texel);
                 break;
             }
+            case IL::OpCode::Rem: {
+                auto *add = instr.As<IL::RemInstruction>();
+
+                SpvOp op = resultType->kind == Backend::IL::TypeKind::FP ? SpvOpFRem : SpvOpSRem;
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = add->result;
+                spv[3] = idMap.Get(add->lhs);
+                spv[4] = idMap.Get(add->rhs);
+                break;
+            }
             case IL::OpCode::Add: {
                 auto *add = instr.As<IL::AddInstruction>();
 
