@@ -24,12 +24,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using System.Windows.Input;
+using DynamicData;
 using ReactiveUI;
 using Runtime.Models.Objects;
 using Studio.Models.Workspace;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
+using Studio.ViewModels.Workspace.Properties.Config;
 
 namespace GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation
 {
@@ -51,6 +54,27 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation
         public LoopPropertyViewModel() : base("Loop", PropertyVisibility.WorkspaceTool)
         {
             CloseCommand = ReactiveCommand.Create(OnClose);
+
+            // Bind connection
+            this.WhenAnyValue(x => x.ConnectionViewModel).Subscribe(_ => CreateProperties());
+        }
+
+        /// <summary>
+        /// Create all properties
+        /// </summary>
+        private void CreateProperties()
+        {
+            Properties.Clear();
+                
+            // Standard range
+            Properties.AddRange(new IPropertyViewModel[]
+            {
+                new LoopInstrumentationConfigViewModel()
+                {
+                    Parent = this,
+                    ConnectionViewModel = ConnectionViewModel
+                }
+            });
         }
 
         /// <summary>
