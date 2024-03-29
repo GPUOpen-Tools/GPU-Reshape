@@ -50,7 +50,7 @@ namespace Studio.Views.Tools.Property
                 // Only pool property fields
                 foreach (PropertyInfo propertyInfo in propertyViewModel.GetType().GetProperties().Where(p => p.IsDefined(typeof(PropertyField), false)))
                 {
-                    descriptors.Add(new PropertyCollectionGridDescriptor(propertyViewModel, propertyInfo));
+                    descriptors.Add(new PropertyCollectionGridDescriptor(propertyViewModel, propertyInfo, propertyInfo.GetCustomAttribute<PropertyField>()!));
                 }
             }
             
