@@ -67,6 +67,10 @@ namespace Backend::IL {
         return addr->As<PointerType>()->pointee;
     }
 
+    inline const Type* ResultOf(Program& program, const RemInstruction* instr) {
+        return program.GetTypeMap().GetType(instr->lhs);
+    }
+
     inline const Type* ResultOf(Program& program, const AddInstruction* instr) {
         return program.GetTypeMap().GetType(instr->lhs);
     }

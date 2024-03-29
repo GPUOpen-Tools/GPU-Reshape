@@ -420,6 +420,22 @@ namespace IL {
         /// \param lhs lhs operand
         /// \param rhs rhs operand
         /// \return instruction reference
+        BasicBlock::TypedIterator <RemInstruction> Rem(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            RemInstruction instr{};
+            instr.opCode = OpCode::Rem;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Binary add two values
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
         BasicBlock::TypedIterator <AddInstruction> Add(ID lhs, ID rhs) {
             ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
 
@@ -1008,15 +1024,18 @@ namespace IL {
         /// Alloca a varaible
         /// \param type the varaible type
         /// \return instruction reference
-        BasicBlock::TypedIterator <AllocaInstruction> Alloca(ID type) {
+        BasicBlock::TypedIterator <AllocaInstruction> Alloca(const Backend::IL::Type* type) {
             ASSERT(IsMapped(type), "Unmapped identifier");
 
             AllocaInstruction instr{};
             instr.opCode = OpCode::Alloca;
             instr.source = Source::Invalid();
             instr.result = map->AllocID();
-            instr.type = type;
-            return Op(instr);
+
+            return Op(instr, program->GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+                .pointee = type,
+                .addressSpace = Backend::IL::AddressSpace::Function
+            }));
         }
 
         /// Is this emitter good?
