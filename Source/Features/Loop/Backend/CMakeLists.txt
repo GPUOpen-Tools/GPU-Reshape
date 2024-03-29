@@ -34,6 +34,7 @@ add_library(
     GRS.Features.Loop.Backend SHARED
     Source/Feature.cpp
     Source/Plugin.cpp
+    Source/SignalShaderProgram.cpp
 
     # Generated
     ${GeneratedCPP}
