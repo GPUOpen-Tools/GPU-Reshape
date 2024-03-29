@@ -44,6 +44,7 @@
 
 // Generated schema
 #include <Schemas/Features/Loop.h>
+#include <Schemas/Features/LoopConfig.h>
 #include <Schemas/Instrumentation.h>
 
 // Message

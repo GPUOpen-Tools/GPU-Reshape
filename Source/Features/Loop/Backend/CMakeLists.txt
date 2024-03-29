@@ -26,8 +26,9 @@
 
 # Loop feature library
 
-# Generate the schema
+# Generate the schemas
 Project_AddShaderSchema(Generated Schemas/Loop.xml Include/Schemas/Features)
+Project_AddSchema(Generated Schemas/LoopConfig.xml Include/Schemas/Features)
 
 # Create feature
 add_library(
