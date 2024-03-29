@@ -29,12 +29,14 @@ using Avalonia;
 using DynamicData;
 using GRS.Features.Loop.UIX.Contexts;
 using GRS.Features.Loop.UIX.Workspace;
+using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Configurations;
+using UIX.Resources;
 
 namespace GRS.Features.Loop.UIX
 {
@@ -73,6 +75,15 @@ namespace GRS.Features.Loop.UIX
             
             // Ignore the All loop configuration
             workspaceService?.GetConfiguration<IAllConfigurationViewModel>()?.IgnoredFeatures.Add("Loop");
+            
+            // Add workspace configuration
+            workspaceService?.Configurations.Add(new BaseConfigurationViewModel<LoopPropertyViewModel>()
+            {
+                Name = Resources.Workspace_Configuration_Loop_Name,
+                Description = Resources.Workspace_Configuration_Loop_Description,
+                Flags = WorkspaceConfigurationFlag.None,
+                FeatureName = "Loop"
+            });
 
             // OK
             return true;

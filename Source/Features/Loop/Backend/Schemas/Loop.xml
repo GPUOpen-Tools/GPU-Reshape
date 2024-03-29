@@ -31,4 +31,10 @@
     <shader-export name="LoopTermination">
         <field name="padding" type="uint32" bits="16"/>
     </shader-export>
+
+    <message name="SetLoopInstrumentationConfig">
+        <field name="useIterationLimits" type="bool"/>
+        <field name="iterationLimit" type="uint32"/>
+        <field name="atomicIterationInterval" type="uint32"/>
+    </message>
 </schema>
