@@ -1824,6 +1824,11 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"RHS\": " << _and->rhs << ",";
             break;
         }
+        case IL::OpCode::Not: {
+            auto _not = instr->As<IL::NotInstruction>();
+            out.Line() << "\"Value\": " << _not->value << ",";
+            break;
+        }
         case IL::OpCode::Equal: {
             auto equal = instr->As<IL::EqualInstruction>();
             out.Line() << "\"LHS\": " << equal->lhs << ",";
