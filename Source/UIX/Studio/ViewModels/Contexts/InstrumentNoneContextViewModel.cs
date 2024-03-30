@@ -90,9 +90,12 @@ namespace Studio.ViewModels.Contexts
             }
 
             // Close all instrumentation properties
-            while (propertyViewModel.GetProperty<IInstrumentationProperty>() is { } instrumentationProperty)
+            foreach (var instrumentationProperty in propertyViewModel.GetProperties<IInstrumentationProperty>())
             {
-                (instrumentationProperty as IClosableObject)?.CloseCommand?.Execute(Unit.Default);
+                if (instrumentationProperty is IClosableObject closable)
+                {
+                    closable.CloseCommand?.Execute(Unit.Default);
+                }
             }
         }
 
