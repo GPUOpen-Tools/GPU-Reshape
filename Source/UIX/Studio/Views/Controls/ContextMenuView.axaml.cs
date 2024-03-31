@@ -42,9 +42,6 @@ namespace Studio.Views.Controls
         public ContextMenuView()
         {
             InitializeComponent();
-
-            // Set context
-            DataContext = App.Locator.GetService<IContextMenuService>()?.ViewModel;
         }
 
         static ContextMenuView()
@@ -85,7 +82,7 @@ namespace Studio.Views.Controls
                 control.ContextMenu.PlacementTarget = control;
 
                 // Get service
-                if (App.Locator.GetService<IContextMenuService>()?.ViewModel is { } contextMenuItemViewModel)
+                if (App.Locator.GetService<IContextMenuService>() is { } service)
                 {
                     // Determine appropriate view model
                     object? dataViewModel;
@@ -103,12 +100,31 @@ namespace Studio.Views.Controls
                     {
                         dataViewModel = containedViewModel.ViewModel;
                     }
+                    
+                    // Dynamically populated items
+                    List<IContextMenuItemViewModel> items = new();
 
-                    // Set on context menu
-                    contextMenuItemViewModel.TargetViewModel = dataViewModel;
+                    // Install all service models
+                    if (dataViewModel != null)
+                    {
+                        foreach (IContextViewModel serviceViewModel in service.ViewModels)
+                        {
+                            serviceViewModel.Install(items, dataViewModel);
+                        }
+                    }
+                    
+                    // Setup all items
+                    foreach (IContextMenuItemViewModel contextMenuItemViewModel in items)
+                    {
+                        // Set on context menu
+                        contextMenuItemViewModel.TargetViewModel = dataViewModel;
 
-                    // Set on children
-                    SetViewModels(contextMenuItemViewModel.Items, dataViewModel);
+                        // Set on children
+                        SetViewModels(contextMenuItemViewModel.Items, dataViewModel);
+                    }
+
+                    // Assign to control
+                    control.ContextMenu.Items = items;
                 }
 
                 // Cleanup

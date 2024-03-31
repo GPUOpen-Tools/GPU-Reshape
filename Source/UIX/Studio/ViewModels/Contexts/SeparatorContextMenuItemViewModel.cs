@@ -24,21 +24,13 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using Studio.ViewModels.Contexts;
-
-namespace Studio.Services
+namespace Studio.ViewModels.Contexts
 {
-    public interface IContextMenuService
+    public class SeparatorContextMenuItemViewModel : ContextMenuItemViewModel
     {
-        /// <summary>
-        /// Target view model of the context
-        /// </summary>
-        public object? TargetViewModel { get; set; }
-        
-        /// <summary>
-        /// All context view models
-        /// </summary>
-        public ObservableCollection<IContextViewModel> ViewModels { get; }
+        public SeparatorContextMenuItemViewModel()
+        {
+            Header = "-";
+        }
     }
 }

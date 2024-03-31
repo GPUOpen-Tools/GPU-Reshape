@@ -57,15 +57,6 @@ namespace GRS.Features.Waterfall.UIX
         /// <returns></returns>
         public bool Install()
         {
-            // Get instrument context
-            var instrumentContextViewModel = AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel.GetItem<IInstrumentContextViewModel>();
-            
-            // Add to context menus
-            instrumentContextViewModel?.GetOrAddCategory("AMD").Items.Add(new WaterfallContextMenuItemViewModel());
-            
-            // Ignore the All Waterfall context
-            instrumentContextViewModel?.GetItem<IInstrumentAllContextViewModel>()?.IgnoredFeatures.Add("Waterfall");
-            
             // Get workspace service
             var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
             

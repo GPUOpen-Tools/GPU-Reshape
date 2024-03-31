@@ -25,6 +25,8 @@
 // 
 
 using System.Threading.Tasks;
+using Studio.Models.Instrumentation;
+using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Workspace
@@ -35,13 +37,30 @@ namespace Studio.ViewModels.Workspace
         /// Name of this feature
         /// </summary>
         public string Name { get; }
+        
+        /// <summary>
+        /// Descriptive category assigned to this feature
+        /// </summary>
+        public string Category { get; }
+
+        /// <summary>
+        /// All flags of this feature
+        /// </summary>
+        public InstrumentationFlag Flags { get; }
+
+        /// <summary>
+        /// Check if instrumentation may be applied to a given target
+        /// </summary>
+        /// <param name="instrumentable"></param>
+        /// <returns>false if not valid</returns>
+        public bool IsInstrumentationValidFor(IInstrumentableObject instrumentable);
 
         /// <summary>
         /// Create an instrumentation property for a given target
         /// </summary>
         /// <param name="target"></param>
         /// <param name="replication"></param>
-        /// <returns></returns>
+        /// <returns>async task</returns>
         public Task<IPropertyViewModel?> CreateInstrumentationObjectProperty(IPropertyViewModel target, bool replication);
     }
 }

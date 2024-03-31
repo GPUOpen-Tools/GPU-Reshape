@@ -34,6 +34,7 @@ using Message.CLR;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
@@ -49,6 +50,16 @@ namespace GRS.Features.Waterfall.UIX.Workspace
         /// Feature name
         /// </summary>
         public string Name => "Waterfall";
+
+        /// <summary>
+        /// Feature category
+        /// </summary>
+        public string Category => "AMD";
+
+        /// <summary>
+        /// Feature flags
+        /// </summary>
+        public InstrumentationFlag Flags => InstrumentationFlag.Experimental;
 
         /// <summary>
         /// Assigned workspace
@@ -252,6 +263,17 @@ namespace GRS.Features.Waterfall.UIX.Workspace
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
                 }
             }
+        }
+
+        /// <summary>
+        /// Check if a target may be instrumented
+        /// </summary>
+        public bool IsInstrumentationValidFor(IInstrumentableObject instrumentable)
+        {
+            return instrumentable
+                .GetWorkspaceCollection()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .HasFeature("Waterfall") ?? false;
         }
 
         /// <summary>

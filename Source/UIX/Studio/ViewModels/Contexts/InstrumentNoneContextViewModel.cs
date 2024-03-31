@@ -35,7 +35,7 @@ using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
-    public class InstrumentNoneContextViewModel : ReactiveObject, IInstrumentContextViewModel
+    public class InstrumentNoneContextViewModel : ReactiveObject, IContextMenuItemViewModel
     {
         /// <summary>
         /// Target view model of the context
