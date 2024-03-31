@@ -259,6 +259,12 @@ namespace Backend::IL {
                     terminationOrVarying = true;
                 }
 
+                // Loop iteration limit
+                // TODO: Expose this when needed
+                if (loopItem.iterationCount >= 128) {
+                    terminationOrVarying = true;
+                }
+
                 // Loops may have multiple edges active, re-iteration
                 // is dependent on that there's a single mapped, i.e. non varying,
                 // edge to the header again.
