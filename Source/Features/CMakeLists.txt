@@ -35,11 +35,7 @@ add_subdirectory(Concurrency)
 add_subdirectory(Descriptor)
 add_subdirectory(Initialization)
 add_subdirectory(Loop)
-
-# Experimental plugins
-if (${ENABLE_EXPERIMENTAL})
-    add_subdirectory(Waterfall)
-endif()
+add_subdirectory(Waterfall)
 
 # Proxy object
 add_custom_target(Features)
