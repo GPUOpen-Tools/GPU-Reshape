@@ -24,92 +24,45 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using System.IO.Pipelines;
-using System.Reactive;
-using System.Windows.Input;
+using System.Collections.Generic;
 using Avalonia;
-using DynamicData;
-using Message.CLR;
 using ReactiveUI;
-using Runtime.Models.Objects;
-using Studio.Models.Workspace.Objects;
 using Studio.Services;
-using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
-using Studio.ViewModels.Workspace.Properties.Instrumentation;
 
 namespace Studio.ViewModels.Contexts
 {
     public class InstrumentPipelineFilterContextViewModel : ReactiveObject, IInstrumentContextViewModel
     {
         /// <summary>
-        /// Target view model of the context
+        /// Install a context against a target view model
         /// </summary>
-        public object? TargetViewModel
+        /// <param name="itemViewModels">destination items list</param>
+        /// <param name="targetViewModel">the target to install for</param>
+        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object targetViewModel)
         {
-            get => _targetViewModel;
-            set
+            if (targetViewModel is not IPipelineCollectionViewModel collection)
             {
-                this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsVisible = _targetViewModel is IPipelineCollectionViewModel;
+                return;
             }
-        }
-
-        /// <summary>
-        /// Display header of this context model
-        /// </summary>
-        public string Header { get; set; } = "Pipeline Filter";
-        
-        /// <summary>
-        /// All items within this context model
-        /// </summary>
-        public ObservableCollection<IContextMenuItemViewModel> Items { get; } = new();
-
-        /// <summary>
-        /// Target command
-        /// </summary>
-        public ICommand Command { get; }
-
-        /// <summary>
-        /// Is this context enabled?
-        /// </summary>
-        public bool IsVisible
-        {
-            get => _isEnabled;
-            set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
-        }
-
-        public InstrumentPipelineFilterContextViewModel()
-        {
-            Command = ReactiveCommand.Create(OnInvoked);
+            
+            itemViewModels.Add(new ContextMenuItemViewModel()
+            {
+                Header = "Pipeline Filter",
+                Command = ReactiveCommand.Create(() => OnInvoked(collection))
+            });
         }
 
         /// <summary>
         /// Command implementation
         /// </summary>
-        private void OnInvoked()
+        private void OnInvoked(IPipelineCollectionViewModel collection)
         {
-            if (_targetViewModel is not IPipelineCollectionViewModel collection)
-            {
-                return;
-            }
-
             // Open window
             App.Locator.GetService<IWindowService>()?.OpenFor(new PipelineFilterViewModel()
             {
                 PipelineCollectionViewModel = collection
             });
         }
-
-        /// <summary>
-        /// Internal enabled state
-        /// </summary>
-        private bool _isEnabled = false;
-
-        /// <summary>
-        /// Internal target view model
-        /// </summary>
-        private object? _targetViewModel;
     }
 }

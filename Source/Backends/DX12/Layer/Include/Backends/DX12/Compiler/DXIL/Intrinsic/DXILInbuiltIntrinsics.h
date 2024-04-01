@@ -60,9 +60,19 @@ namespace Intrinsics {
             DXILIntrinsicTypeSpec::I32 // 0-based row index (row = 16-byte DXBC register)
         }
     };
+    
+    static DXILIntrinsicSpec DxOpWaveActiveAllEqualI32 {
+        .uid = 3,
+        .name = "dx.op.waveActiveAllEqual.i32",
+        .returnType = DXILIntrinsicTypeSpec::I1,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::I32, // value
+        }
+    };
 
     static DXILIntrinsicSpec DxOpCreateHandleFromBinding {
-        .uid = 3,
+        .uid = 4,
         .name = "dx.op.createHandleFromBinding",
         .returnType = DXILIntrinsicTypeSpec::Handle,
         .parameterTypes = {
@@ -74,7 +84,7 @@ namespace Intrinsics {
     };
 
     static DXILIntrinsicSpec DxOpAnnotateHandle {
-        .uid = 4,
+        .uid = 5,
         .name = "dx.op.annotateHandle",
         .returnType = DXILIntrinsicTypeSpec::Handle,
         .parameterTypes = {
@@ -84,5 +94,5 @@ namespace Intrinsics {
         }
     };
 
-    static uint32_t kInbuiltCount = 5;
+    static uint32_t kInbuiltCount = 6;
 }

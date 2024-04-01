@@ -35,8 +35,8 @@
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/InstructionCommon.h>
 #include <Backend/CommandContext.h>
-#include <Backend/IL/CFG/DominatorTree.h>
-#include <Backend/IL/CFG/LoopTree.h>
+#include <Backend/IL/Analysis/CFG/DominatorAnalysis.h>
+#include <Backend/IL/Analysis/CFG/LoopAnalysis.h>
 #include <Backend/ShaderData/ShaderDataDescriptorInfo.h>
 #include <Backend/Command/CommandBuilder.h>
 #include <Backend/Scheduler/IScheduler.h>
@@ -332,16 +332,11 @@ void LoopFeature::Inject(IL::Program &program, const MessageStreamView<> &specia
     } else {
         // The program does not have structured control flow, therefore we need to perform cfg loop analysis, and pray.
         for (IL::Function *fn: program.GetFunctionList()) {
-            // Computer all dominators
-            IL::DominatorTree dominatorTree(fn->GetBasicBlocks());
-            dominatorTree.Compute();
-
-            // Compute all loops
-            IL::LoopTree loopTree(dominatorTree);
-            loopTree.Compute();
+            // Compute loop analysis
+            ComRef loopAnalysis = fn->GetAnalysisMap().FindPassOrCompute<IL::LoopAnalysis>(*fn);
 
             // Instrument each loop
-            for (const IL::Loop& loop : loopTree.GetView()) {
+            for (const IL::Loop& loop : loopAnalysis->GetView()) {
                 // Ignore flagged blocks
                 if (loop.header->HasFlag(BasicBlockFlag::NoInstrumentation)) {
                    continue;

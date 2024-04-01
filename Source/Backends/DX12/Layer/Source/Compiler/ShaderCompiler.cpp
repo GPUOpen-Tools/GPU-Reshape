@@ -187,6 +187,16 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
         shaderDataMap.Add(info);
     }
 
+    // Pre-injection
+    for (size_t i = 0; i < shaderFeatures.size(); i++) {
+        if (!(job.instrumentationKey.featureBitSet & (1ull << i))) {
+            continue;
+        }
+
+        // Pre-inject marked shader feature
+        shaderFeatures[i]->PreInject(*module->GetProgram(), *job.dependentSpecialization);
+    }
+
     // Pass through all features
     for (size_t i = 0; i < shaderFeatures.size(); i++) {
         if (!(job.instrumentationKey.featureBitSet & (1ull << i))) {

@@ -143,6 +143,15 @@ private:
             case Backend::IL::ConstantKind::Null:
                 CompileConstant(constant->As<IL::NullConstant>(), typeId);
                 break;
+            case Backend::IL::ConstantKind::Struct:
+                CompileConstant(constant->As<IL::StructConstant>(), typeId);
+                break;
+            case Backend::IL::ConstantKind::Vector:
+                CompileConstant(constant->As<IL::VectorConstant>(), typeId);
+                break;
+            case Backend::IL::ConstantKind::Array:
+                CompileConstant(constant->As<IL::ArrayConstant>(), typeId);
+                break;
         }
     }
 
@@ -190,6 +199,39 @@ private:
         SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantNull, 3);
         spvOffset[1] = typeId;
         spvOffset[2] = constant->id;
+    }
+
+    /// Compile a given constant
+    void CompileConstant(const Backend::IL::StructConstant *constant, SpvId typeId) {
+        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->members.size()));
+        spvOffset[1] = typeId;
+        spvOffset[2] = constant->id;
+
+        for (size_t i = 0; i < constant->members.size(); i++) {
+            spvOffset[3 + static_cast<uint32_t>(i)] = constant->members[i]->id;
+        }
+    }
+
+    /// Compile a given constant
+    void CompileConstant(const Backend::IL::VectorConstant *constant, SpvId typeId) {
+        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->elements.size()));
+        spvOffset[1] = typeId;
+        spvOffset[2] = constant->id;
+
+        for (size_t i = 0; i < constant->elements.size(); i++) {
+            spvOffset[3 + static_cast<uint32_t>(i)] = constant->elements[i]->id;
+        }
+    }
+
+    /// Compile a given constant
+    void CompileConstant(const Backend::IL::ArrayConstant *constant, SpvId typeId) {
+        SpvInstruction &spvOffset = declarationStream->Allocate(SpvOpConstantComposite, 3 + static_cast<uint32_t>(constant->elements.size()));
+        spvOffset[1] = typeId;
+        spvOffset[2] = constant->id;
+
+        for (size_t i = 0; i < constant->elements.size(); i++) {
+            spvOffset[3 + static_cast<uint32_t>(i)] = constant->elements[i]->id;
+        }
     }
 
 private:

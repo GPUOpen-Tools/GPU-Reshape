@@ -371,7 +371,7 @@ namespace IL {
         /// \param composite the base composite
         /// \param index the index
         /// \return instruction reference
-        BasicBlock::TypedIterator <ExtractInstruction> Extract(ID composite, uint32_t index) {
+        BasicBlock::TypedIterator <ExtractInstruction> Extract(ID composite, ID index) {
             ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
 
             ExtractInstruction instr{};
@@ -684,6 +684,20 @@ namespace IL {
             return Op(instr);
         }
 
+        /// Perform a logical not
+        /// \param value the value to negate
+        /// \return instruction reference
+        BasicBlock::TypedIterator <NotInstruction> Not(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            NotInstruction instr{};
+            instr.opCode = OpCode::Not;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            return Op(instr);
+        }
+
         /// Check if all components may be evaluated to true
         /// \param lhs lhs operand
         /// \param rhs rhs operand
@@ -943,6 +957,20 @@ namespace IL {
             instr.source = Source::Invalid();
             instr.result = map->AllocID();
             instr.address = address;
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Perform a wave all equal
+        /// \param value value to check for equality
+        /// \return original value
+        BasicBlock::TypedIterator<WaveAllEqualInstruction> WaveAllEqual(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+            
+            WaveAllEqualInstruction instr{};
+            instr.opCode = OpCode::WaveAllEqual;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
         }

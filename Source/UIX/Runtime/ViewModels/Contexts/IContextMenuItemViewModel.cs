@@ -77,5 +77,24 @@ namespace Studio.ViewModels.Contexts
 
             return default;
         }
+        
+        public static IContextMenuItemViewModel GetOrAddCategory(this IContextMenuItemViewModel self, string name)
+        {
+            foreach (IContextMenuItemViewModel contextMenuItemViewModel in self.Items)
+            {
+                if (contextMenuItemViewModel.Header == name)
+                {
+                    return contextMenuItemViewModel;
+                }
+            }
+
+            var item = new CategoryContextMenuItemViewModel()
+            {
+                Header = name
+            };
+            
+            self.Items.Add(item);
+            return item;
+        }
     }
 }

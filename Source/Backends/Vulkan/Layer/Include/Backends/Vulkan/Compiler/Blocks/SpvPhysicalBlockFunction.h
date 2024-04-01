@@ -192,4 +192,8 @@ private:
 
     /// All continue blocks
     std::vector<LoopContinueBlock> loopContinueBlocks;
+
+private:
+    /// General operator allocator
+    LinearBlockAllocator<4096> operandAllocator;
 };

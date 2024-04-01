@@ -33,7 +33,7 @@ namespace Studio.Models.IL
         /// <summary>
         /// Identifier of this constant
         /// </summary>
-        public uint ID;
+        public int ID;
 
         /// <summary>
         /// Kind of this constant
@@ -73,6 +73,22 @@ namespace Studio.Models.IL
         /// Floating point value
         /// </summary>
         public double Value;
+    }
+
+    public class ArrayConstant : Constant
+    {
+        /// <summary>
+        /// All constant elements
+        /// </summary>
+        public Constant[] Elements;
+    }
+
+    public class VectorConstant : Constant
+    {
+        /// <summary>
+        /// All constant elements
+        /// </summary>
+        public Constant[] Elements;
     }
 
     public class StructConstant : Constant

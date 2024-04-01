@@ -295,7 +295,7 @@ namespace Studio.ViewModels
             // Try getting configuration from suspension
             if (!string.IsNullOrEmpty(SelectedConfigurationName))
             {
-                SelectedConfiguration = Configurations.First(x => x.Name == SelectedConfigurationName);
+                SelectedConfiguration = Configurations.FirstOrDefault(x => x.Name == SelectedConfigurationName);
             }
             
             // Default selection

@@ -156,6 +156,9 @@ bool DXILPhysicalBlockTable::Parse(const void *byteCode, uint64_t byteLength) {
         }
     }
 
+    // Resolve all global initializers (out of order)
+    global.ResolveGlobals();
+
     // Move all constant blocks to global
     function.MigrateConstantBlocks();
 

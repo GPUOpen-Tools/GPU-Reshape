@@ -38,6 +38,7 @@ namespace IL {
         Literal,
 
         /// Logical
+        Not,
         Any,
         All,
 
@@ -71,6 +72,9 @@ namespace IL {
         Phi,
         Return,
 
+        /// Procedure
+        Call,
+
         /// Atomic
         AtomicOr,
         AtomicXOr,
@@ -80,6 +84,25 @@ namespace IL {
         AtomicMax,
         AtomicExchange,
         AtomicCompareExchange,
+
+        /// Full wave intrinsics
+        WaveAnyTrue,
+        WaveAllTrue,
+        WaveBallot,
+        WaveRead,
+        WaveReadFirst,
+        WaveAllEqual,
+        WaveBitAnd,
+        WaveBitOr,
+        WaveBitXOr,
+        WaveCountBits,
+        WaveMax,
+        WaveMin,
+        WaveProduct,
+        WaveSum,
+        WavePrefixCountBits,
+        WavePrefixProduct,
+        WavePrefixSum,
 
         /// Bit manipulation
         BitOr,

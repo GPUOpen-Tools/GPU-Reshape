@@ -27,13 +27,15 @@
 #pragma once
 
 // Backend
-#include "Function.h"
-#include "IdentifierMap.h"
-#include "TypeMap.h"
-#include "ConstantMap.h"
-#include "FunctionList.h"
-#include "ShaderDataMap.h"
-#include "CapabilityTable.h"
+#include <Backend/IL/Function.h>
+#include <Backend/IL/IdentifierMap.h>
+#include <Backend/IL/TypeMap.h>
+#include <Backend/IL/ConstantMap.h>
+#include <Backend/IL/FunctionList.h>
+#include <Backend/IL/ShaderDataMap.h>
+#include <Backend/IL/CapabilityTable.h>
+#include <Backend/IL/MetadataMap.h>
+#include <Backend/IL/Analysis/AnalysisMap.h>
 
 // Std
 #include <list>
@@ -48,6 +50,7 @@ namespace IL {
             constants(allocators, identifierMap, typeMap, capabilityTable),
             typeMap(allocators, identifierMap, capabilityTable),
             shaderDataMap(identifierMap, typeMap),
+            metadataMap(allocators),
             shaderGUID(shaderGUID) {
             /* */
         }
@@ -67,6 +70,8 @@ namespace IL {
             program->identifierMap.SetBound(identifierMap.GetMaxID());
             typeMap.CopyTo(program->typeMap);
             constants.CopyTo(program->constants);
+            variables.CopyTo(program->variables);
+            metadataMap.CopyTo(program->metadataMap);
 
             // Copy immutable
             program->capabilityTable = capabilityTable;
@@ -130,9 +135,24 @@ namespace IL {
             return capabilityTable;
         }
 
+        /// Get the metadata map
+        MetadataMap& GetMetadataMap() {
+            return metadataMap;
+        }
+
         /// Get the global constants
         Backend::IL::ConstantMap &GetConstants() {
             return constants;
+        }
+
+        /// Get the analysis map
+        AnalysisMap<IProgramAnalysis> &GetAnalysisMap() {
+            return analysisMap;
+        }
+
+        /// Get the program registry
+        Registry& GetRegistry() {
+            return registry;
         }
 
         /// Get the identifier map
@@ -170,6 +190,21 @@ namespace IL {
             return capabilityTable;
         }
 
+        /// Get the metadata map
+        const MetadataMap& GetMetadataMap() const {
+            return metadataMap;
+        }
+
+        /// Get the analysis map
+        const AnalysisMap<IProgramAnalysis> &GetAnalysisMap() const {
+            return analysisMap;
+        }
+
+        /// Get the program registry
+        const Registry& GetRegistry() const {
+            return registry;
+        }
+
     private:
         Allocators allocators;
 
@@ -194,10 +229,20 @@ namespace IL {
         /// The capability table
         CapabilityTable capabilityTable;
 
+        /// The metadata map
+        MetadataMap metadataMap;
+
+        /// All analysis passes
+        AnalysisMap<IProgramAnalysis> analysisMap;
+
         /// Function entry point
         IL::ID entryPoint{IL::InvalidID};
 
         /// Shader guid of this program
         uint64_t shaderGUID{~0ull};
+
+    private:
+        /// Internal registry
+        Registry registry;
     };
 }

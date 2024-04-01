@@ -78,6 +78,42 @@ namespace Runtime.ViewModels.IL
         }
 
         /// <summary>
+        /// Assemble a single instruction
+        /// </summary>
+        /// <returns>assembled textual form</returns>
+        public string AssembleInstruction(Instruction instr)
+        {
+            // Cleanup
+            _lineOffset = 0;
+            _assembledMappings.Clear();
+            
+            // Assemble into builder
+            StringBuilder builder = new();
+            AssembleInstruction(instr, builder);
+            
+            // To string
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// Assemble an inline operand
+        /// </summary>
+        /// <returns>assembled textual form</returns>
+        public string AssembleInlineOperand(uint operand)
+        {
+            // Cleanup
+            _lineOffset = 0;
+            _assembledMappings.Clear();
+            
+            // Assemble into builder
+            StringBuilder builder = new();
+            AssembleInlineOperand(operand, builder);
+            
+            // To string
+            return builder.ToString();
+        }
+
+        /// <summary>
         /// Get an associated mapping
         /// </summary>
         public AssembledMapping GetMapping(uint basicBlockId, uint instructionIndex)
@@ -175,6 +211,9 @@ namespace Runtime.ViewModels.IL
                     Line = _lineOffset
                 });
 
+                // Indentation
+                builder.Append('\t');
+                
                 AssembleInstruction(block.Instructions[i], builder);
                 NewLine(builder);
             }
@@ -193,9 +232,6 @@ namespace Runtime.ViewModels.IL
         /// </summary>
         private void AssembleInstruction(Instruction instruction, StringBuilder builder)
         {
-            // Indentation
-            builder.Append('\t');
-            
             // Has result?
             if (instruction.ID != uint.MaxValue)
             {
@@ -239,6 +275,7 @@ namespace Runtime.ViewModels.IL
                     }
                     break;
                 }
+                case OpCode.Not:
                 case OpCode.Any:
                 case OpCode.All:
                 case OpCode.Trunc:
@@ -247,6 +284,35 @@ namespace Runtime.ViewModels.IL
                 {
                     var typed = (UnaryInstruction)instruction;
                     AssembleInlineOperand(typed.Value, builder);
+                    break;
+                }
+                case OpCode.WaveAnyTrue:
+                case OpCode.WaveAllTrue:
+                case OpCode.WaveBallot:
+                case OpCode.WaveReadFirst:
+                case OpCode.WaveAllEqual:
+                case OpCode.WaveBitAnd:
+                case OpCode.WaveBitOr:
+                case OpCode.WaveBitXOr:
+                case OpCode.WaveCountBits:
+                case OpCode.WaveMax:
+                case OpCode.WaveMin:
+                case OpCode.WaveProduct:
+                case OpCode.WaveSum:
+                case OpCode.WavePrefixCountBits:
+                case OpCode.WavePrefixProduct:
+                case OpCode.WavePrefixSum:
+                {
+                    var typed = (UnaryInstruction)instruction;
+                    AssembleInlineOperand(typed.Value, builder);
+                    break;
+                }
+                case OpCode.WaveRead:
+                {
+                    var typed = (WaveReadInstruction)instruction;
+                    AssembleInlineOperand(typed.Value, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Lane, builder);
                     break;
                 }
                 case OpCode.Add:
@@ -373,6 +439,26 @@ namespace Runtime.ViewModels.IL
                     }
                     break;
                 }
+                case OpCode.Call:
+                {
+                    var typed = (CallInstruction)instruction;
+                    
+                    AssembleInlineOperand(typed.Target, builder);
+                    builder.Append("(");
+                    
+                    for (int i = 0; i < typed.Arguments.Length; i++)
+                    {
+                        if (i != 0)
+                        {
+                            builder.Append(", ");
+                        }
+                        
+                        builder.AppendFormat("%{0}", typed.Arguments[i]);
+                    }
+                    
+                    builder.Append(" )");
+                    break;
+                }
                 case OpCode.AtomicOr:
                 case OpCode.AtomicXOr:
                 case OpCode.AtomicAnd:
@@ -430,7 +516,8 @@ namespace Runtime.ViewModels.IL
                 {
                     var typed = (ExtractInstruction)instruction;
                     AssembleInlineOperand(typed.Composite, builder);
-                    builder.AppendFormat(" {0}", typed.Index);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Index, builder);
                     break;
                 }
                 case OpCode.Insert:
@@ -697,6 +784,13 @@ namespace Runtime.ViewModels.IL
                 AssembleInlineVariable(variable, builder);
                 return;
             }
+
+            // Function?
+            if (value is Function function)
+            {
+                AssembleInlineFunction(function, builder);
+                return;
+            }
         }
 
         /// <summary>
@@ -713,6 +807,14 @@ namespace Runtime.ViewModels.IL
         private void AssembleInlineVariable(Variable variable, StringBuilder builder)
         {
             builder.AppendFormat("{0}* %{1}", variable.AddressSpace, variable.ID);
+        }
+
+        /// <summary>
+        /// Assemble an inline function
+        /// </summary>
+        private void AssembleInlineFunction(Function function, StringBuilder builder)
+        {
+            builder.AppendFormat("func %{0}", function.ID);
         }
 
         /// <summary>
@@ -772,6 +874,42 @@ namespace Runtime.ViewModels.IL
                 {
                     var typed = (FPConstant)constant;
                     builder.Append(typed.Value);
+                    break;
+                }
+                case ConstantKind.Array:
+                {
+                    var typed = (ArrayConstant)constant;
+                    builder.Append("[ ");
+
+                    for (int i = 0; i < typed.Elements.Length; i++)
+                    {
+                        if (i != 0)
+                        {
+                            builder.Append(", ");
+                        }
+                        
+                        AssembleInlineConstant(typed.Elements[i], builder, false);
+                    }
+                    
+                    builder.Append(" ]");
+                    break;
+                }
+                case ConstantKind.Vector:
+                {
+                    var typed = (VectorConstant)constant;
+                    builder.Append("< ");
+
+                    for (int i = 0; i < typed.Elements.Length; i++)
+                    {
+                        if (i != 0)
+                        {
+                            builder.Append(", ");
+                        }
+                        
+                        AssembleInlineConstant(typed.Elements[i], builder, false);
+                    }
+                    
+                    builder.Append(" >");
                     break;
                 }
                 case ConstantKind.Struct:
@@ -948,7 +1086,7 @@ namespace Runtime.ViewModels.IL
                 }
                 case TypeKind.CBuffer:
                 {
-                    var samplerType = (SamplerType)type;
+                    var cbufferType = (CBufferType)type;
                     builder.Append("CBuffer");
                     break;
                 }

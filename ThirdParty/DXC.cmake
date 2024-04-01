@@ -65,7 +65,7 @@ function(Project_AddHLSL OUT_GENERATED PROFILE ARGS HLSL HEADER VAR)
 
     # Vulkan defaults
     if ("${ARGS_VULKAN}" STREQUAL "")
-        set(ARGS_VULKAN "-Zi -Qembed_debug")
+        set(ARGS_VULKAN "-Zi -Qembed_debug -fspv-target-env=vulkan1.1")
     endif ()
 
     # Parse additional args

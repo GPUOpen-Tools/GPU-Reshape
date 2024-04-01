@@ -112,7 +112,16 @@ namespace Studio.Models.IL
             for (int i = 0; i < program.Constants.Length; i++)
             {
                 program.Constants[i] = ParseConstant(node.Constants[i], program);
-                program.Lookup.Add(program.Constants[i].ID, program.Constants[i]);
+
+                // Symbolic referencing is handled separately
+                if (program.Constants[i].ID >= 0)
+                {
+                    program.Lookup.Add((uint)program.Constants[i].ID, program.Constants[i]);
+                }
+                else
+                {
+                    program.SymbolicLookup.Add((uint)-program.Constants[i].ID, program.Constants[i]);
+                }
             }
 
             // Parse all variables
@@ -327,13 +336,21 @@ namespace Studio.Models.IL
                 case TypeKind.Texture:
                 {
                     var typed = (TextureType)type;
-                    typed.SampledType = (Type)program.Lookup[(uint)node.SampledType];
+
+                    if (node.SampledType != null)
+                    {
+                        typed.SampledType = (Type)program.Lookup[(uint)node.SampledType];
+                    }
                     break;
                 }
                 case TypeKind.Buffer:
                 {
                     var typed = (BufferType)type;
-                    typed.ElementType = (Type)program.Lookup[(uint)node.ElementType];
+                    
+                    if (node.ElementType != null)
+                    {
+                        typed.ElementType = (Type)program.Lookup[(uint)node.ElementType];
+                    }
                     break;
                 }
                 case TypeKind.Function:
@@ -361,6 +378,21 @@ namespace Studio.Models.IL
 
                     break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Get a constant that may be symbolic
+        /// </summary>
+        private Constant GetConstantFromSigned(int signed, Program program)
+        {
+            if (signed >= 0)
+            {
+                return (Constant)program.Lookup[(uint)signed];
+            }
+            else
+            {
+                return (Constant)program.SymbolicLookup[(uint)-signed];
             }
         }
 
@@ -411,6 +443,34 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case ConstantKind.Array:
+                {
+                    ArrayConstant _array = new();
+
+                    _array.Elements = new Constant[node.Elements.Count];
+
+                    for (int i = 0; i < _array.Elements.Length; i++)
+                    {
+                        _array.Elements[i] = GetConstantFromSigned((int)node.Elements[i], program);
+                    }
+
+                    constant = _array;
+                    break;
+                }
+                case ConstantKind.Vector:
+                {
+                    VectorConstant vector = new();
+
+                    vector.Elements = new Constant[node.Elements.Count];
+
+                    for (int i = 0; i < vector.Elements.Length; i++)
+                    {
+                        vector.Elements[i] = GetConstantFromSigned((int)node.Elements[i], program);
+                    }
+
+                    constant = vector;
+                    break;
+                }
                 case ConstantKind.Struct:
                 {
                     StructConstant _struct = new();
@@ -419,7 +479,7 @@ namespace Studio.Models.IL
 
                     for (int i = 0; i < _struct.Members.Length; i++)
                     {
-                        _struct.Members[i] = (Constant)program.Lookup[(uint)node.Members[i]];
+                        _struct.Members[i] = GetConstantFromSigned((int)node.Members[i], program);
                     }
 
                     constant = _struct;
@@ -560,15 +620,41 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.Not:
                 case OpCode.Any:
                 case OpCode.All:
                 case OpCode.Trunc:
                 case OpCode.IsInf:
                 case OpCode.IsNaN:
+                case OpCode.WaveAnyTrue:
+                case OpCode.WaveAllTrue:
+                case OpCode.WaveBallot:
+                case OpCode.WaveReadFirst:
+                case OpCode.WaveAllEqual:
+                case OpCode.WaveBitAnd:
+                case OpCode.WaveBitOr:
+                case OpCode.WaveBitXOr:
+                case OpCode.WaveCountBits:
+                case OpCode.WaveMax:
+                case OpCode.WaveMin:
+                case OpCode.WaveProduct:
+                case OpCode.WaveSum:
+                case OpCode.WavePrefixCountBits:
+                case OpCode.WavePrefixProduct:
+                case OpCode.WavePrefixSum:
                 {
                     instruction = new UnaryInstruction()
                     {
                         Value = node.Value
+                    };
+                    break;
+                }
+                case OpCode.WaveRead:
+                {
+                    instruction = new WaveReadInstruction()
+                    {
+                        Value = node.Value,
+                        Lane = node.Lane
                     };
                     break;
                 }
@@ -703,6 +789,22 @@ namespace Studio.Models.IL
                     {
                         Value = node.Value
                     };
+                    break;
+                }
+                case OpCode.Call:
+                {
+                    CallInstruction call = new()
+                    {
+                        Target = node.Target
+                    };
+                    
+                    call.Arguments = new uint[node.Arguments.Count];
+                    for (int i = 0; i < call.Arguments.Length; i++)
+                    {
+                        call.Arguments[i] = node.Arguments[i];
+                    }
+                    
+                    instruction = call;
                     break;
                 }
                 case OpCode.AtomicOr:

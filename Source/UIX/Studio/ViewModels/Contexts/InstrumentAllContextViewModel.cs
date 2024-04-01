@@ -34,6 +34,7 @@ using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Instrumentation;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Properties;
@@ -58,7 +59,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Display header of this context model
         /// </summary>
-        public string Header { get; set; } = "All";
+        public string Header { get; set; } = "All Standard";
         
         /// <summary>
         /// All items within this context model
@@ -69,11 +70,6 @@ namespace Studio.ViewModels.Contexts
         /// Target command
         /// </summary>
         public ICommand Command { get; }
-
-        /// <summary>
-        /// All ignored features
-        /// </summary>
-        public ISourceList<string> IgnoredFeatures { get; } = new SourceList<string>();
 
         /// <summary>
         /// Is this context enabled?
@@ -106,8 +102,8 @@ namespace Studio.ViewModels.Contexts
             // Create all instrumentation properties
             foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspaceCollection()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
             {
-                // Ignored?
-                if (IgnoredFeatures.Items.Contains(service.Name))
+                // Ignore non-standard
+                if (!service.Flags.HasFlag(InstrumentationFlag.Standard))
                 {
                     continue;
                 }

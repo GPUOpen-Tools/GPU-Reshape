@@ -24,70 +24,148 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using System.Reactive;
-using System.Windows.Input;
-using Message.CLR;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using DynamicData;
 using ReactiveUI;
+using Studio.Extensions;
+using Studio.Models.Instrumentation;
 using Studio.ViewModels.Workspace.Properties;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace;
 
 namespace Studio.ViewModels.Contexts
 {
     public class InstrumentContextViewModel : ReactiveObject, IInstrumentContextViewModel
     {
         /// <summary>
-        /// Target view model of the context
+        /// Install a context against a target view model
         /// </summary>
-        public object? TargetViewModel
+        /// <param name="itemViewModels">destination items list</param>
+        /// <param name="targetViewModel">the target to install for</param>
+        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object targetViewModel)
         {
-            get => _targetViewModel;
-            set
+            if (targetViewModel is not IInstrumentableObject instrumentableObject)
             {
-                this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsVisible = _targetViewModel is IInstrumentableObject;
+                return;
             }
+            
+            // Root item
+            ContextMenuItemViewModel item = new()
+            {
+                Header = "Instrument"
+            };
+
+            // Get all services for the given view model
+            IInstrumentationPropertyService[] services = instrumentableObject.GetWorkspaceCollection()?.GetServices<IInstrumentationPropertyService>().ToArray() 
+                                                           ?? Array.Empty<IInstrumentationPropertyService>();
+
+            // Create a separate category for all experimental features
+            if (services.Any(x => x.Flags.HasFlag(InstrumentationFlag.Experimental)))
+            {
+                item.Items.Add(new ContextMenuItemViewModel()
+                {
+                    Header = "Experimental",
+                    Items = ConsumeServiceContexts(ref services, instrumentableObject, x => x.Flags.HasFlag(InstrumentationFlag.Experimental)).ToObservableCollection()
+                });
+            }
+
+            // List all categorized features after experimental
+            item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObject, x => x.Category != string.Empty));
+            
+            // Standard instrumentation services
+            item.Items.Add(new SeparatorContextMenuItemViewModel());
+            item.Items.Add(new InstrumentAllContextViewModel());
+            item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObject, x => x.Flags.HasFlag(InstrumentationFlag.Standard)));
+            
+            // Non-Standard instrumentation services
+            item.Items.Add(new SeparatorContextMenuItemViewModel());
+            item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObject, x => true));
+            
+            // "None" instrumentation
+            item.Items.Add(new SeparatorContextMenuItemViewModel());
+            item.Items.Add(new InstrumentNoneContextViewModel());
+
+            // OK
+            itemViewModels.Add(item);
         }
 
         /// <summary>
-        /// Display header of this context model
+        /// Consume all service contexts that passes a predicate
         /// </summary>
-        public string Header { get; set; } = "Instrument";
-        
-        /// <summary>
-        /// All items within this context model
-        /// </summary>
-        public ObservableCollection<IContextMenuItemViewModel> Items { get; } = new();
-
-        /// <summary>
-        /// Target command
-        /// </summary>
-        public ICommand? Command { get; } = null;
-
-        public InstrumentContextViewModel()
+        private IContextMenuItemViewModel[] ConsumeServiceContexts(ref IInstrumentationPropertyService[] services, IInstrumentableObject instrumentableObject, Func<IInstrumentationPropertyService, bool> predecate)
         {
-            // Standard objects
-            Items.Add(new InstrumentNoneContextViewModel());
-            Items.Add(new InstrumentAllContextViewModel());
+            List<IContextMenuItemViewModel> items = new();
+            
+            // Filter source collection
+            IInstrumentationPropertyService[] serviceFilter = services.Where(predecate).ToArray();
+
+            // All temporary categories, will not persist in different consumes
+            Dictionary<string, IContextMenuItemViewModel> categories = new();
+            
+            // Filter all items
+            foreach (IInstrumentationPropertyService service in serviceFilter)
+            {
+                IContextMenuItemViewModel item = CreateContextFor(service, instrumentableObject);
+                
+                // Categorized?
+                if (service.Category != string.Empty)
+                {
+                    if (!categories.ContainsKey(service.Category))
+                    {
+                        ContextMenuItemViewModel categoryItem = new()
+                        {
+                            Header = service.Category
+                        };
+                        
+                        // Keep track of the category
+                        categories.Add(service.Category, categoryItem);
+                        items.Add(categoryItem);
+                    }
+                    
+                    categories[service.Category].Items.Add(item);
+                }
+                else
+                {
+                    items.Add(item);
+                }
+            }
+
+            // Remove consumed items from source
+            services = services.Except(serviceFilter).ToArray();
+            return items.ToArray();
         }
 
         /// <summary>
-        /// Is this context enabled?
+        /// Create a context item for a given service
         /// </summary>
-        public bool IsVisible
+        private IContextMenuItemViewModel CreateContextFor(IInstrumentationPropertyService service, IInstrumentableObject instrumentableObject)
         {
-            get => _isVisible;
-            set => this.RaiseAndSetIfChanged(ref _isVisible, value);
+            ContextMenuItemViewModel itemViewModel = new()
+            {
+                Header = service.Name,
+                IsEnabled = service.IsInstrumentationValidFor(instrumentableObject)
+            };
+
+            // Bind command to service
+            itemViewModel.Command = ReactiveCommand.Create(async () =>
+            {
+                // Try to create property
+                if (instrumentableObject.GetOrCreateInstrumentationProperty() is not { } propertyViewModel)
+                {
+                    return;
+                }
+                
+                // Install against property
+                if (await service.CreateInstrumentationObjectProperty(propertyViewModel, false) is { } instrumentationObjectProperty)
+                {
+                    propertyViewModel.Properties.Add(instrumentationObjectProperty);
+                }
+            });
+
+            // OK
+            return itemViewModel;
         }
-
-        /// <summary>
-        /// Internal enabled state
-        /// </summary>
-        private bool _isVisible = false;
-
-        /// <summary>
-        /// Internal target view model
-        /// </summary>
-        private object? _targetViewModel;
     }
 }

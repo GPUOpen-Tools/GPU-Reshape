@@ -198,9 +198,9 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     if (const Backend::IL::Type* indexType = program.GetTypeMap().GetType(_instr->index); indexType->Is<Backend::IL::VectorType>()) {
                         const uint32_t dimension = indexType->As<Backend::IL::VectorType>()->dimension;
 
-                        msg.detail.coordinate[0] = oob.Extract(_instr->index, 0);
-                        msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : zero;
-                        msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : zero;
+                        msg.detail.coordinate[0] = oob.Extract(_instr->index, program.GetConstants().UInt(0)->id);
+                        msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, program.GetConstants().UInt(1)->id) : zero;
+                        msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, program.GetConstants().UInt(2)->id) : zero;
                     } else {
                         msg.detail.coordinate[0] = _instr->index;
                         msg.detail.coordinate[1] = zero;
@@ -216,9 +216,9 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     if (const Backend::IL::Type* indexType = program.GetTypeMap().GetType(_instr->index); indexType->Is<Backend::IL::VectorType>()) {
                         const uint32_t dimension = indexType->As<Backend::IL::VectorType>()->dimension;
 
-                        msg.detail.coordinate[0] = oob.Extract(_instr->index, 0);
-                        msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, 1) : zero;
-                        msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, 2) : zero;
+                        msg.detail.coordinate[0] = oob.Extract(_instr->index, program.GetConstants().UInt(0)->id);
+                        msg.detail.coordinate[1] = dimension > 1 ? oob.Extract(_instr->index, program.GetConstants().UInt(1)->id) : zero;
+                        msg.detail.coordinate[2] = dimension > 2 ? oob.Extract(_instr->index, program.GetConstants().UInt(2)->id) : zero;
                     } else {
                         msg.detail.coordinate[0] = _instr->index;
                         msg.detail.coordinate[1] = zero;

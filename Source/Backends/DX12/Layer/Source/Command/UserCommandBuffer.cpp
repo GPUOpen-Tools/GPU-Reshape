@@ -126,9 +126,6 @@ static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *com
 void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
     UserCommandState state;
 
-    // Is this a compute command list?
-    const bool isCompute = commandList->GetType() == D3D12_COMMAND_LIST_TYPE_COMPUTE;
-
     // Always end the current render pass if any commands
     if (buffer.Count() && streamState->renderPass.insideRenderPass) {
         static_cast<ID3D12GraphicsCommandList4*>(commandList)->EndRenderPass();

@@ -24,81 +24,39 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-using System.Collections.ObjectModel;
-using System.Reactive;
-using System.Windows.Input;
-using Message.CLR;
+using System.Collections.Generic;
 using ReactiveUI;
 using Studio.ViewModels.Traits;
-using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
-    public class CloseContextViewModel : ReactiveObject, IContextMenuItemViewModel
+    public class CloseContextViewModel : ReactiveObject, IContextViewModel
     {
         /// <summary>
-        /// Target view model of the context
+        /// Install a context against a target view model
         /// </summary>
-        public object? TargetViewModel
+        /// <param name="itemViewModels">destination items list</param>
+        /// <param name="targetViewModel">the target to install for</param>
+        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object targetViewModel)
         {
-            get => _targetViewModel;
-            set
+            if (targetViewModel is not IClosableObject closable)
             {
-                this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsVisible = _targetViewModel is IClosableObject;
+                return;
             }
-        }
-
-        /// <summary>
-        /// Display header of this context model
-        /// </summary>
-        public string Header { get; set; } = "Close";
-        
-        /// <summary>
-        /// All items within this context model
-        /// </summary>
-        public ObservableCollection<IContextMenuItemViewModel> Items { get; } = new();
-
-        /// <summary>
-        /// Target command
-        /// </summary>
-        public ICommand? Command { get; } = null;
-
-        public CloseContextViewModel()
-        {
-            Command = ReactiveCommand.Create(OnInvoked);
+            
+            itemViewModels.Add(new ContextMenuItemViewModel()
+            {
+                Header = "Close",
+                Command = ReactiveCommand.Create(() => OnInvoked(closable))
+            });
         }
 
         /// <summary>
         /// Command implementation
         /// </summary>
-        private void OnInvoked()
+        private void OnInvoked(IClosableObject closable)
         {
-            if (_targetViewModel is not IClosableObject closable)
-            {
-                return;
-            }
-            
             closable.CloseCommand?.Execute(null);
         }
-
-        /// <summary>
-        /// Is this context enabled?
-        /// </summary>
-        public bool IsVisible
-        {
-            get => _isEnabled;
-            set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
-        }
-
-        /// <summary>
-        /// Internal enabled state
-        /// </summary>
-        private bool _isEnabled = false;
-
-        /// <summary>
-        /// Internal target view model
-        /// </summary>
-        private object? _targetViewModel;
     }
 }

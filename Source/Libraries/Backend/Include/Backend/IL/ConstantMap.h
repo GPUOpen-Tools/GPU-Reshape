@@ -112,6 +112,14 @@ namespace Backend::IL {
             return constantPtr;
         }
 
+        /// Add a symbolic constant to this map
+        ///   ! It must not have any semantic usage
+        /// \param constant the constant to be added
+        template<typename T>
+        const Constant* AddSymbolicConstant(const Backend::IL::Type* type, const T &constant) {
+            return AllocateConstant<T>(InvalidID, type, constant);
+        }
+
         /// Set a constant relation in this map
         /// \param id the id to be associated
         /// \param constant the resulting constant
@@ -214,7 +222,10 @@ namespace Backend::IL {
         /// \return the allocated constant
         template<typename T>
         T *AllocateConstant(ID id, const Backend::IL::Type* type, const T &decl) {
-            typeMap.SetType(id, type);
+            // Ignore types on symbolics
+            if (id != InvalidID) {
+                typeMap.SetType(id, type);
+            }
 
             auto *constant = blockAllocator.Allocate<T>(decl);
             constant->id = id;
@@ -236,6 +247,8 @@ namespace Backend::IL {
         template<> SortMap<BoolConstant>& GetSortMap<BoolConstant>() { return maps.boolMap; }
         template<> SortMap<IntConstant>& GetSortMap<IntConstant>() { return maps.intMap; }
         template<> SortMap<FPConstant>& GetSortMap<FPConstant>() { return maps.fpMap; }
+        template<> SortMap<ArrayConstant>& GetSortMap<ArrayConstant>() { return maps.arrayMap; }
+        template<> SortMap<VectorConstant>& GetSortMap<VectorConstant>() { return maps.vectorMap; }
         template<> SortMap<StructConstant>& GetSortMap<StructConstant>() { return maps.structMap; }
         template<> SortMap<UndefConstant>& GetSortMap<UndefConstant>() { return maps.undefMap; }
         template<> SortMap<NullConstant>& GetSortMap<NullConstant>() { return maps.nullMap; }
@@ -255,6 +268,8 @@ namespace Backend::IL {
             SortMap<BoolConstant> boolMap;
             SortMap<IntConstant> intMap;
             SortMap<FPConstant> fpMap;
+            SortMap<ArrayConstant> arrayMap;
+            SortMap<VectorConstant> vectorMap;
             SortMap<StructConstant> structMap;
             SortMap<UndefConstant> undefMap;
             SortMap<NullConstant> nullMap;

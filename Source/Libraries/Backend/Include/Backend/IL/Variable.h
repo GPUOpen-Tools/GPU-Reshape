@@ -30,6 +30,10 @@
 #include "ID.h"
 #include "AddressSpace.h"
 
+namespace IL {
+    struct Constant;
+}
+
 namespace Backend::IL {
     struct Type;
 
@@ -42,5 +46,8 @@ namespace Backend::IL {
 
         /// Argument type
         const Type* type{nullptr};
+
+        /// Base initialization
+        const ::IL::Constant* initializer{nullptr};
     };
 }

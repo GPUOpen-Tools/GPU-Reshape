@@ -35,6 +35,7 @@ using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Models.Instrumentation;
 using Studio.Models.Workspace;
 using Studio.Models.Workspace.Objects;
 using Studio.ViewModels.Traits;
@@ -50,6 +51,16 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
         /// Feature name
         /// </summary>
         public string Name => "Export Stability";
+        
+        /// <summary>
+        /// Feature category
+        /// </summary>
+        public string Category => string.Empty;
+
+        /// <summary>
+        /// Feature flags
+        /// </summary>
+        public InstrumentationFlag Flags => InstrumentationFlag.Standard;
         
         /// <summary>
         /// Assigned workspace
@@ -207,6 +218,17 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Check if a target may be instrumented
+        /// </summary>
+        public bool IsInstrumentationValidFor(IInstrumentableObject instrumentable)
+        {
+            return instrumentable
+                .GetWorkspaceCollection()?
+                .GetProperty<IFeatureCollectionViewModel>()?
+                .HasFeature("Export Stability") ?? false;
         }
 
         /// <summary>

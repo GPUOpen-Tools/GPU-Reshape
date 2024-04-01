@@ -28,16 +28,21 @@
 
 
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:valueConverters="clr-namespace:Studio.ValueConverters">
     <Design.PreviewWith>
         <Grid Width="200" Height="200">
             <Button Classes="Validation" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Click me!" />
         </Grid>
     </Design.PreviewWith>
     
+    <Styles.Resources>
+        <valueConverters:ValidationSeverityConverter x:Key="ValidationSeverityConverter" />
+    </Styles.Resources>
+    
     <Style Selector="Button.Validation">
-        <Setter Property="Background" Value="{DynamicResource ErrorBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}" />
+        <Setter Property="Background" Value="{Binding SelectedObject, Converter={StaticResource ValidationSeverityConverter}}" />
+        <Setter Property="BorderBrush" Value="{Binding SelectedObject, Converter={StaticResource ValidationSeverityConverter}}" />
         <Setter Property="Padding" Value="5 -2 5 0" />
         <Setter Property="CornerRadius" Value="0" />
         <Setter Property="Margin" Value="0" />
@@ -46,8 +51,8 @@
     </Style>
     
     <Style Selector="Button.Validation:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource ErrorBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}" />
+        <Setter Property="Background" Value="{Binding  SelectedObject, Converter={StaticResource ValidationSeverityConverter}}" />
+        <Setter Property="BorderBrush" Value="{Binding  SelectedObject, Converter={StaticResource ValidationSeverityConverter}}" />
         <Setter Property="Padding" Value="5 -2 5 0" />
     </Style>
 </Styles>

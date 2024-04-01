@@ -120,7 +120,11 @@ struct DXILIDMap {
 
     /// Is an ID mapped?
     bool IsMapped(uint32_t id) const {
-        return segment.allocationOffset > id;
+        if (id >= segment.map.Size()) {
+            return false;
+        }
+
+        return segment.map[id].mapped != IL::InvalidID;
     }
 
     /// Get the relative id

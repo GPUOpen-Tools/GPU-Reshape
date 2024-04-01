@@ -465,7 +465,7 @@ namespace IL {
             // Unregister the block
             map.RemoveBasicBlock(id);
         }
-        
+
         /// Copy this basic block
         /// \param map the new identifier map
         /// \return the new basic block
@@ -480,16 +480,30 @@ namespace IL {
             flags |= value;
         }
 
+        /// Add a new non-semantic flag to this block
+        /// \param value flag to be added
+        void AddNonSemanticFlag(BasicBlockFlagSet value) const {
+            ASSERT(value.value == (value.value & static_cast<uint64_t>(BasicBlockFlag::NonSemanticMask)), "Mutating semantic flag on immutable block");
+            flags |= value;
+        }
+
         /// Remove a flag from this block
         /// \param value flag to be removed
         void RemoveFlag(BasicBlockFlagSet value) {
             flags &= ~value;
         }
 
+        /// Remove a non-semantic flag from this block
+        /// \param value flag to be removed
+        void RemoveNonSemanticFlag(BasicBlockFlagSet value) const {
+            ASSERT(value.value == (value.value & static_cast<uint64_t>(BasicBlockFlag::NonSemanticMask)), "Mutating semantic flag on immutable block");
+            flags &= ~value;
+        }
+
         /// Check if this block has a flag
         /// \param value flag to be checked
         /// \return true if present
-        bool HasFlag(BasicBlockFlag value) {
+        bool HasFlag(BasicBlockFlag value) const {
             return flags & value;
         }
 
@@ -974,7 +988,7 @@ namespace IL {
         RelocationAllocator relocationAllocator;
 
         /// Block flags
-        BasicBlockFlagSet flags{0};
+        mutable BasicBlockFlagSet flags{0};
 
         /// Dirty flag
         bool dirty{true};

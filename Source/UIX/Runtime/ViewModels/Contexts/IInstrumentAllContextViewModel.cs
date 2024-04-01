@@ -30,9 +30,6 @@ namespace Studio.ViewModels.Contexts
 {
     public interface IInstrumentAllContextViewModel : IContextMenuItemViewModel
     {
-        /// <summary>
-        /// All ignored features
-        /// </summary>
-        public ISourceList<string> IgnoredFeatures { get; }
+        
     }
 }

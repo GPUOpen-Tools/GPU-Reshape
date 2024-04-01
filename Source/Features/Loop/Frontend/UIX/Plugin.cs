@@ -27,7 +27,6 @@
 using System;
 using Avalonia;
 using DynamicData;
-using GRS.Features.Loop.UIX.Contexts;
 using GRS.Features.Loop.UIX.Workspace;
 using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
@@ -58,15 +57,6 @@ namespace GRS.Features.Loop.UIX
         /// <returns></returns>
         public bool Install()
         {
-            // Get instrument context
-            var instrumentContextViewModel = AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel.GetItem<IInstrumentContextViewModel>();
-            
-            // Add to context menus
-            instrumentContextViewModel?.Items.Add(new LoopContextMenuItemViewModel());
-            
-            // Ignore the All loop context
-            instrumentContextViewModel?.GetItem<IInstrumentAllContextViewModel>()?.IgnoredFeatures.Add("Loop");
-            
             // Get workspace service
             var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
             
