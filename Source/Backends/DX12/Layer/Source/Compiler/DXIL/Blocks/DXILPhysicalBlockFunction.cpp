@@ -5557,7 +5557,6 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         }
 
         // Alloc IDs
-        uint32_t retOffset = program.GetIdentifierMap().AllocID();
         uint32_t descriptorOffset = program.GetIdentifierMap().AllocID();
 
         // Root wise offset?

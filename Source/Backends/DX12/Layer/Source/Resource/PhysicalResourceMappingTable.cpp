@@ -72,6 +72,9 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     allocation.device.resource->SetName(L"PRMTDevice");
     allocation.host.resource->SetName(L"PRMTHost");
 #endif // NDEBUG
+
+    // Number of dwords required per mapping
+    static constexpr uint32_t dwordCount = sizeof(VirtualResourceMapping) / sizeof(uint32_t);
     
     // Setup view
     view.Format = DXGI_FORMAT_R32_UINT;
@@ -79,7 +82,7 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     view.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     view.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     view.Buffer.FirstElement = 0;
-    view.Buffer.NumElements = count;
+    view.Buffer.NumElements = dwordCount * count;
     view.Buffer.StructureByteStride = 0;
 
     // Opaque host data
@@ -88,7 +91,7 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     // Map range
     D3D12_RANGE range;
     range.Begin = 0;
-    range.End = sizeof(uint32_t) * count;
+    range.End = sizeof(VirtualResourceMapping) * count;
     allocation.host.resource->Map(0, &range, &mappedOpaque);
 
     // Store host
