@@ -149,13 +149,11 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
         destroyRef(previousVersion, allocators);
     }
 
-
     // Dummy initialize all new VRMs
     for (uint32_t i = migratedCount; i < virtualMappingCount; i++) {
-         persistentVersion->virtualMappings[i] = VirtualResourceMapping{
+         persistentVersion->virtualMappings[i] = VirtualResourceMapping {
             .puid = IL::kResourceTokenPUIDInvalidUndefined,
-            .type = 0,
-            .srb = 0
+            .type = 0
         };
     }
 }
@@ -236,7 +234,7 @@ void PhysicalResourceMappingTable::CopyMappings(PhysicalResourceSegmentID source
     std::memcpy(
         persistentVersion->virtualMappings + destSegment.offset,
         persistentVersion->virtualMappings + sourceSegment.offset,
-        sourceSegment.length
+        sizeof(VirtualResourceMapping) * sourceSegment.length
     );
     
     // Advance head

@@ -39,7 +39,7 @@
 #include <Backend/CommandContext.h>
 #include <Backend/Command/BufferDescriptor.h>
 #include <Backend/Command/TextureDescriptor.h>
-#include <Backend/Command/ResourceInfo.h>
+#include <Backend/Resource/ResourceInfo.h>
 #include <Backend/Command/AttachmentInfo.h>
 #include <Backend/Command/RenderPassInfo.h>
 #include <Backend/Command/CommandBuilder.h>
@@ -207,7 +207,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             IL::ResourceTokenEmitter token(emitter, resource);
 
             // Get token details
-            IL::ID SRB = token.GetSRB();
+            IL::ID SRB = emitter.UInt32(1);
             IL::ID PUID = token.GetPUID();
 
             // Multiple events may write to the same resource, accumulate the SRB atomically
@@ -253,7 +253,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         IL::ResourceTokenEmitter token(pre, resource);
 
         // Get token details
-        IL::ID SRB = token.GetSRB();
+        IL::ID SRB = pre.UInt32(1);
         IL::ID PUID = token.GetPUID();
 
         // Get the current mask
@@ -273,7 +273,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         // Detailed instrumentation?
         if (config.detail) {
             msg.chunks |= UninitializedResourceMessage::Chunk::Detail;
-            msg.detail.token = token.GetToken();
+            msg.detail.token = token.GetPackedToken();
         }
         
         // Export the message

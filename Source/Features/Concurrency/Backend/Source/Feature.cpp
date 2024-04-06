@@ -201,7 +201,7 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         // Detailed instrumentation?
         if (config.detail) {
             msg.chunks |= ResourceRaceConditionMessage::Chunk::Detail;
-            msg.detail.token = token.GetToken();
+            msg.detail.token = token.GetPackedToken();
         }
         
         // Export the message

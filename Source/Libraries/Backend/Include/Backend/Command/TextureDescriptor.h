@@ -27,8 +27,7 @@
 #pragma once
 
 // Backend
-#include "ResourceToken.h"
-#include "TextureRegion.h"
+#include <Backend/Command/TextureRegion.h>
 
 struct TextureDescriptor {
     /// Region information

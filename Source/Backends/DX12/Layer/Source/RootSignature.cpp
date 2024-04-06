@@ -276,7 +276,16 @@ template<typename T, typename U>
 static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* state, const T* parameters, uint32_t parameterCount, const U* staticSamplers, uint32_t staticSamplerCount) {
     auto* mapping = new (state->allocators, kAllocStateRootSignature) RootSignaturePhysicalMapping;
 
+    // Sanity clear
+    std::memset(mapping->rootDWordOffsets, 0u, sizeof(mapping->rootDWordOffsets));
+
     // TODO: Could do a pre-pass
+
+    // The dword offset for immediate descriptor data
+    uint32_t rootDWordOffset = 0;
+
+    // Number of dwords per inline token metadata
+    constexpr uint32_t kTokenMetadataDWordCount = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
 
     // Create hash and mappings
     for (uint32_t i = 0; i < parameterCount; i++) {
@@ -284,6 +293,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
 
         // Hash common data
         CombineHash(mapping->signatureHash, parameter.ShaderVisibility);
+
+        // Set root offset
+        mapping->rootDWordOffsets[i] = rootDWordOffset;
 
         // Hash parameter data
         switch (parameter.ParameterType) {
@@ -329,6 +341,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                         // Create at space[base + idx]
                         RootSignatureUserMapping user;
                         user.rootParameter = i;
+                        user.dwordOffset = rootDWordOffset;
                         user.offset = descriptorOffset;
                         user.isUnbounded = true;
                         WriteRootMapping(mapping, classType, parameter.ShaderVisibility, range.RegisterSpace, range.BaseShaderRegister, user);
@@ -338,6 +351,7 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                             // Create at space[base + idx]
                             RootSignatureUserMapping user;
                             user.rootParameter = i;
+                            user.dwordOffset = rootDWordOffset;
                             user.offset = descriptorOffset + registerIdx;
                             WriteRootMapping(mapping, classType, parameter.ShaderVisibility, range.RegisterSpace, range.BaseShaderRegister + registerIdx, user);
                         }
@@ -347,6 +361,8 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                     descriptorOffset += range.NumDescriptors;
                 }
 
+                // Occupies one dword (indirection)
+                rootDWordOffset += 1u;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS: {
@@ -357,8 +373,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
+                user.dwordOffset = rootDWordOffset;
                 user.offset = 0;
                 WriteRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.ShaderVisibility, parameter.Constants.RegisterSpace, parameter.Constants.ShaderRegister, user);
+                
+                // Occupies one dword (dummy)
+                rootDWordOffset += 1u;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_CBV: {
@@ -369,8 +389,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
+                user.dwordOffset = rootDWordOffset;
                 user.offset = 0;
                 WriteRootMapping(mapping, RootSignatureUserClassType::CBV, parameter.ShaderVisibility, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister, user);
+
+                // Occupies entire metadata range, this is an inline root constant
+                rootDWordOffset += kTokenMetadataDWordCount;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_SRV: {
@@ -381,8 +405,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
+                user.dwordOffset = rootDWordOffset;
                 user.offset = 0;
                 WriteRootMapping(mapping, RootSignatureUserClassType::SRV, parameter.ShaderVisibility, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister, user);
+                
+                // Occupies entire metadata range, this is an inline root constant
+                rootDWordOffset += kTokenMetadataDWordCount;
                 break;
             }
             case D3D12_ROOT_PARAMETER_TYPE_UAV: {
@@ -393,8 +421,12 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
                 RootSignatureUserMapping user;
                 user.isRootResourceParameter = true;
                 user.rootParameter = i;
+                user.dwordOffset = rootDWordOffset;
                 user.offset = 0;
                 WriteRootMapping(mapping, RootSignatureUserClassType::UAV, parameter.ShaderVisibility, parameter.Descriptor.RegisterSpace, parameter.Descriptor.ShaderRegister, user);
+                
+                // Occupies entire metadata range, this is an inline root constant
+                rootDWordOffset += kTokenMetadataDWordCount;
                 break;
             }
         }
@@ -416,6 +448,9 @@ static RootSignaturePhysicalMapping* CreateRootPhysicalMappings(DeviceState* sta
         WriteRootMapping(mapping, RootSignatureUserClassType::Sampler, sampler.ShaderVisibility, sampler.RegisterSpace, sampler.ShaderRegister, user);
     }
 
+    // Set total number of dwords needed
+    mapping->rootDWordCount = rootDWordOffset;
+    
     // OK
     return mapping;
 }

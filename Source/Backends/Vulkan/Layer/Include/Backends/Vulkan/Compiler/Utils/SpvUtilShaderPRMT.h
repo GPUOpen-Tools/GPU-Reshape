@@ -62,8 +62,9 @@ struct SpvUtilShaderPRMT {
 
 private:
     struct SpvPRMTOffset {
-        /// Computed offset
-        IL::ID offset{IL::InvalidID};
+        /// Computed offsets
+        IL::ID metadataOffset{IL::InvalidID};
+        IL::ID descriptorOffset{IL::InvalidID};
 
         /// Parent table was not bound
         IL::ID tableNotBound{IL::InvalidID};

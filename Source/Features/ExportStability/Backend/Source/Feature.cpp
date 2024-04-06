@@ -157,7 +157,7 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
         // Detailed instrumentation?
         if (config.detail && resource != IL::InvalidID) {
             msg.chunks |= UnstableExportMessage::Chunk::Detail;
-            msg.detail.token = IL::ResourceTokenEmitter(oob, resource).GetToken();
+            msg.detail.token = IL::ResourceTokenEmitter(oob, resource).GetPackedToken();
         }
 
         // Export the message

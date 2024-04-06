@@ -36,41 +36,45 @@
 #include <Backends/Vulkan/States/FrameBufferState.h>
 #include <Backends/Vulkan/States/RenderPassState.h>
 
-#include <Backend/Command/ResourceInfo.h>
+#include <Backend/Resource/ResourceInfo.h>
 #include <Backend/Command/BufferDescriptor.h>
 #include <Backend/Command/TextureDescriptor.h>
 
 /// Get a resource token
 /// \param state object state
 /// \return given token
-static ResourceToken GetResourceToken(BufferState* state) {
+static ResourceToken GetResourceToken(const VirtualResourceMapping& virtualMapping) {
     return ResourceToken {
-        .puid = state->virtualMapping.puid,
-        .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
-        .srb= state->virtualMapping.srb
+        .puid = virtualMapping.puid,
+        .type = static_cast<Backend::IL::ResourceTokenType>(virtualMapping.type),
+        .width = virtualMapping.width,
+        .height = virtualMapping.height,
+        .depthOrSliceCount = virtualMapping.depthOrSliceCount,
+        .mipCount = virtualMapping.mipCount,
+        .baseMip = virtualMapping.baseMip,
+        .baseSlice = virtualMapping.baseSlice
     };
+}
+
+/// Get a resource token
+/// \param state object state
+/// \return given token
+static ResourceToken GetResourceToken(BufferState* state) {
+    return GetResourceToken(state->virtualMapping);
 }
 
 /// Get a resource token
 /// \param state object state
 /// \return given token
 static ResourceToken GetResourceToken(ImageState* state) {
-    return ResourceToken {
-        .puid = state->virtualMappingTemplate.puid,
-        .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMappingTemplate.type),
-        .srb= state->virtualMappingTemplate.srb
-    };
+    return GetResourceToken(state->virtualMappingTemplate);
 }
 
 /// Get a resource token
 /// \param state object state
 /// \return given token
 static ResourceToken GetResourceToken(ImageViewState* state) {
-    return ResourceToken {
-        .puid = state->virtualMapping.puid,
-        .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
-        .srb= state->virtualMapping.srb
-    };
+    return GetResourceToken(state->virtualMapping);
 }
 
 void FeatureHook_vkCmdCopyBuffer::operator()(CommandBufferObject *object, CommandContext *context, VkBuffer srcBuffer, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferCopy *pRegions) const {

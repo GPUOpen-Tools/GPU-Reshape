@@ -34,7 +34,7 @@
 // Backend
 #include <Backend/Command/BufferDescriptor.h>
 #include <Backend/Command/TextureDescriptor.h>
-#include <Backend/Command/ResourceInfo.h>
+#include <Backend/Resource/ResourceInfo.h>
 #include <Backend/Command/RenderPassInfo.h>
 #include <Backend/Command/AttachmentInfo.h>
 
@@ -46,7 +46,12 @@ static ResourceToken GetResourceToken(const T* state) {
     return ResourceToken {
         .puid = state->virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
-        .srb= state->virtualMapping.srb
+        .width = state->virtualMapping.width,
+        .height = state->virtualMapping.height,
+        .depthOrSliceCount = state->virtualMapping.depthOrSliceCount,
+        .mipCount = state->virtualMapping.mipCount,
+        .baseMip = state->virtualMapping.baseMip,
+        .baseSlice = state->virtualMapping.baseSlice
     };
 }
 
@@ -82,7 +87,12 @@ static ResourceToken GetResourceTokenFromHeapHandle(CommandListState* state, D3D
     return ResourceToken {
         .puid = virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(virtualMapping.type),
-        .srb= virtualMapping.srb
+        .width = virtualMapping.width,
+        .height = virtualMapping.height,
+        .depthOrSliceCount = virtualMapping.depthOrSliceCount,
+        .mipCount = virtualMapping.mipCount,
+        .baseMip = virtualMapping.baseMip,
+        .baseSlice = virtualMapping.baseSlice
     };
 }
 

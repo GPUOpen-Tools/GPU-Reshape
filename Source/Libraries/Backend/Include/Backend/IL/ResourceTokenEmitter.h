@@ -28,6 +28,7 @@
 
 // Backend
 #include "ID.h"
+#include "ResourceTokenMetadataField.h"
 #include "ResourceTokenPacking.h"
 
 namespace IL {
@@ -35,6 +36,9 @@ namespace IL {
     struct ResourceTokenEmitter {
         ResourceTokenEmitter(E& emitter, ::IL::ID resourceID) : emitter(emitter) {
             token = emitter.ResourceToken(resourceID);
+
+            // Default none initialized
+            std::fill_n(dwords, std::size(dwords), IL::InvalidID);
         }
 
         /// Get the resource physical UID
@@ -43,7 +47,8 @@ namespace IL {
                 return puid;
             }
 
-            return puid = emitter.BitAnd(emitter.BitShiftRight(token, emitter.UInt32(kResourceTokenPUIDShift)), emitter.UInt32(kResourceTokenPUIDMask));
+            IL::ID dword = GetFieldDWord(Backend::IL::ResourceTokenMetadataField::PackedToken);
+            return puid = emitter.BitAnd(emitter.BitShiftRight(dword, emitter.UInt32(kResourceTokenPUIDShift)), emitter.UInt32(kResourceTokenPUIDMask));
         }
 
         /// Get the resource type
@@ -52,26 +57,38 @@ namespace IL {
                 return type;
             }
 
-            return type = emitter.BitAnd(emitter.BitShiftRight(token, emitter.UInt32(kResourceTokenTypeShift)), emitter.UInt32(kResourceTokenTypeMask));
-        }
-
-        /// Get the resource sub-resource base
-        ::IL::ID GetSRB() {
-            if (srb != IL::InvalidID) {
-                return srb;
-            }
-
-            return srb = emitter.BitAnd(emitter.BitShiftRight(token, emitter.UInt32(kResourceTokenSRBShift)), emitter.UInt32(kResourceTokenSRBMask));
+            IL::ID dword = GetFieldDWord(Backend::IL::ResourceTokenMetadataField::PackedToken);
+            return type = emitter.BitAnd(emitter.BitShiftRight(dword, emitter.UInt32(kResourceTokenTypeShift)), emitter.UInt32(kResourceTokenTypeMask));
         }
 
         /// Get the token
-        ::IL::ID GetToken() const {
-            return token;
+        ::IL::ID GetPackedToken() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::PackedToken);
+        }
+
+    private:
+        /// Get a dword value
+        /// @param field field to fetch
+        /// @return dword
+        IL::ID GetFieldDWord(Backend::IL::ResourceTokenMetadataField field) {
+            uint32_t i = static_cast<uint32_t>(field);
+
+            // Cached?
+            if (dwords[i] != InvalidID) {
+                return dwords[i];
+            }
+
+            // Cache extraction
+            dwords[i] = emitter.Extract(token, emitter.GetProgram()->GetConstants().UInt(i)->id);
+            return dwords[i];
         }
 
     private:
         /// Underlying token
         ::IL::ID token;
+
+        /// Cached dwords
+        ::IL::ID dwords[static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count)];
 
         /// Cache
         ::IL::ID puid{IL::InvalidID};

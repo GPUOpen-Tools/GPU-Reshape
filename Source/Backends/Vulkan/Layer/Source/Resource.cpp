@@ -64,7 +64,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     // Create mapping template
     state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
     state->virtualMapping.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-    state->virtualMapping.srb = ~0u;
+    state->virtualMapping.width = static_cast<uint32_t>(pCreateInfo->size);
 
     // Store lookup
     table->states_buffer.Add(*pBuffer, state);
@@ -125,10 +125,16 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
     state->table = table;
     state->createInfo = *pCreateInfo;
 
+    // Validation
+    ASSERT(pCreateInfo->extent.depth == 1u || pCreateInfo->arrayLayers == 1u, "Volumetric and sliced image");
+
     // Create mapping template
     state->virtualMappingTemplate.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
     state->virtualMappingTemplate.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-    state->virtualMappingTemplate.srb = ~0u;
+    state->virtualMappingTemplate.width = pCreateInfo->extent.width;
+    state->virtualMappingTemplate.height = pCreateInfo->extent.height;
+    state->virtualMappingTemplate.depthOrSliceCount = std::max(pCreateInfo->arrayLayers, pCreateInfo->extent.depth);
+    state->virtualMappingTemplate.mipCount = pCreateInfo->mipLevels;
 
     // Store lookup
     table->states_image.Add(*pImage, state);
@@ -156,6 +162,21 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImageView(VkDevice device, const VkI
 
     // Inherit mapping
     state->virtualMapping = state->parent->virtualMappingTemplate;
+    state->virtualMapping.baseMip = pCreateInfo->subresourceRange.baseMipLevel;
+    state->virtualMapping.mipCount = pCreateInfo->subresourceRange.levelCount;
+
+    // Conditionally handle slices
+    switch (pCreateInfo->viewType) {
+        default:
+            break;
+        case VK_IMAGE_VIEW_TYPE_CUBE:
+        case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
+        case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+        case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
+            state->virtualMapping.baseSlice = pCreateInfo->subresourceRange.baseArrayLayer;
+            state->virtualMapping.depthOrSliceCount = pCreateInfo->subresourceRange.layerCount;
+            break;
+    }
 
     // Store lookup
     table->states_imageView.Add(*pView, state);
@@ -181,7 +202,6 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSampler(VkDevice device, const VkSam
     // Create mapping template
     state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
     state->virtualMapping.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-    state->virtualMapping.srb = ~0u;
 
     // Store lookup
     table->states_sampler.Add(*pSampler, state);

@@ -349,7 +349,7 @@ namespace Backend::IL {
     }
 
     inline const Type* ResultOf(Program& program, const ResourceTokenInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(IntType{ .bitWidth=32, .signedness=false });
+        return program.GetTypeMap().GetResourceToken();
     }
 
     inline const Type* ResultOf(Program& program, const ResourceSizeInstruction* instr) {

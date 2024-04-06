@@ -176,7 +176,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     /* Handled cases */
                 case IL::OpCode::StoreBuffer: {
                     auto _instr = instr->As<IL::StoreBufferInstruction>();
-                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetToken();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
                     msg.detail.coordinate[0] = _instr->index;
                     msg.detail.coordinate[1] = zero;
                     msg.detail.coordinate[2] = zero;
@@ -184,7 +184,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 }
                 case IL::OpCode::LoadBuffer: {
                     auto _instr = instr->As<IL::LoadBufferInstruction>();
-                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetToken();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
                     msg.detail.coordinate[0] = _instr->index;
                     msg.detail.coordinate[1] = zero;
                     msg.detail.coordinate[2] = zero;
@@ -192,7 +192,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 }
                 case IL::OpCode::StoreTexture: {
                     auto _instr = instr->As<IL::StoreTextureInstruction>();
-                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetToken();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetPackedToken();
 
                     // Vectorized index?
                     if (const Backend::IL::Type* indexType = program.GetTypeMap().GetType(_instr->index); indexType->Is<Backend::IL::VectorType>()) {
@@ -210,7 +210,7 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 }
                 case IL::OpCode::LoadTexture: {
                     auto _instr = instr->As<IL::LoadTextureInstruction>();
-                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetToken();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetPackedToken();
 
                     // Vectorized index?
                     if (const Backend::IL::Type* indexType = program.GetTypeMap().GetType(_instr->index); indexType->Is<Backend::IL::VectorType>()) {

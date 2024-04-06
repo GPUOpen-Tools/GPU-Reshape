@@ -344,11 +344,14 @@ void ShaderExportStreamer::InvalidateDescriptorSlots(ShaderExportStreamState* st
             continue;
         }
 
+        // Get the dword offset of this parameter
+        const uint32_t rootDWordOffset = rootSignature->physicalMapping->rootDWordOffsets[i];
+
         // Write invalidated slots
         if (rootSignature->logicalMapping.userRootHeapTypes[i] == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
-            bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
+            bindState.descriptorDataAllocator->Set(rootDWordOffset, static_cast<uint32_t>(i), kDescriptorDataSamplerInvalidOffset);
         } else if (state->resourceHeap) {
-            bindState.descriptorDataAllocator->Set(static_cast<uint32_t>(i), state->resourceHeap->GetVirtualRangeBound());
+            bindState.descriptorDataAllocator->Set(rootDWordOffset, static_cast<uint32_t>(i), state->resourceHeap->GetVirtualRangeBound());
         }
     }
 }
@@ -479,7 +482,7 @@ void ShaderExportStreamer::SetComputeRootSignature(ShaderExportStreamState *stat
 
     // Create initial descriptor segments
     if (bindState.rootSignature != rootSignature) {
-        bindState.descriptorDataAllocator->BeginSegment(rootSignature->logicalMapping.userRootCount, false);
+        bindState.descriptorDataAllocator->BeginSegment(rootSignature->physicalMapping->rootDWordCount, false);
 #ifndef NDEBUG
         bindState.bindMask = 0x0;
 #endif // NDEBUG
@@ -513,7 +516,7 @@ void ShaderExportStreamer::SetGraphicsRootSignature(ShaderExportStreamState *sta
 
     // Create initial descriptor segments
     if (bindState.rootSignature != rootSignature) {
-        bindState.descriptorDataAllocator->BeginSegment(rootSignature->logicalMapping.userRootCount, false);
+        bindState.descriptorDataAllocator->BeginSegment(rootSignature->physicalMapping->rootDWordCount, false);
 #ifndef NDEBUG
         bindState.bindMask = 0x0;
 #endif // NDEBUG
@@ -550,7 +553,7 @@ void ShaderExportStreamer::CommitCompute(ShaderExportStreamState* state, ID3D12G
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->logicalMapping.userRootCount, true);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->physicalMapping->rootDWordCount, true);
 }
 
 void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
@@ -567,7 +570,7 @@ void ShaderExportStreamer::CommitGraphics(ShaderExportStreamState* state, ID3D12
     }
 
     // Begin new segment
-    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->logicalMapping.userRootCount, true);
+    bindState.descriptorDataAllocator->BeginSegment(bindState.rootSignature->physicalMapping->rootDWordCount, true);
 }
 
 ShaderExportStreamBindState& ShaderExportStreamer::GetBindStateFromPipeline(ShaderExportStreamState *state, const PipelineState* pipeline) {
@@ -845,8 +848,11 @@ void ShaderExportStreamer::SetComputeRootDescriptorTable(ShaderExportStreamState
     uint64_t offset = baseDescriptor.ptr - heap->gpuDescriptorBase.ptr;
     ASSERT(offset % heap->stride == 0, "Mismatched heap stride");
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -880,8 +886,11 @@ void ShaderExportStreamer::SetGraphicsRootDescriptorTable(ShaderExportStreamStat
     uint64_t offset = baseDescriptor.ptr - heap->gpuDescriptorBase.ptr;
     ASSERT(offset % heap->stride == 0, "Mismatched heap stride");
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, static_cast<uint32_t>(offset / heap->stride));
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -897,9 +906,12 @@ void ShaderExportStreamer::SetComputeRootShaderResourceView(ShaderExportStreamSt
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -915,9 +927,12 @@ void ShaderExportStreamer::SetGraphicsRootShaderResourceView(ShaderExportStreamS
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -933,9 +948,12 @@ void ShaderExportStreamer::SetComputeRootUnorderedAccessView(ShaderExportStreamS
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -951,9 +969,12 @@ void ShaderExportStreamer::SetGraphicsRootUnorderedAccessView(ShaderExportStream
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -969,9 +990,12 @@ void ShaderExportStreamer::SetComputeRootConstantBufferView(ShaderExportStreamSt
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG
@@ -987,9 +1011,12 @@ void ShaderExportStreamer::SetGraphicsRootConstantBufferView(ShaderExportStreamS
     bindState.bindMask |= (1ull << rootParameterIndex);
 #endif // NDEBUG
 
+    // Get the dword offset of this parameter
+    const uint32_t rootDWordOffset = bindState.rootSignature->physicalMapping->rootDWordOffsets[rootParameterIndex];
+
     // Set the root PRMT offset
     ResourceState* resourceState = device->virtualAddressTable.Find(bufferLocation);
-    bindState.descriptorDataAllocator->Set(rootParameterIndex, resourceState ? resourceState->virtualMapping.opaque : GetUndefinedVirtualResourceMapping().opaque);
+    bindState.descriptorDataAllocator->Set(rootDWordOffset, rootParameterIndex, resourceState ? resourceState->virtualMapping : GetUndefinedVirtualResourceMapping());
 #ifndef NDEBUG
     ASSERT((bindState.descriptorDataAllocator->GetBindMask() & bindState.bindMask) == bindState.bindMask, "Lost descriptor data");
 #endif // NDEBUG

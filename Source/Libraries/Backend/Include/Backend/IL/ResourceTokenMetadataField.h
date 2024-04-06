@@ -27,47 +27,20 @@
 #pragma once
 
 // Backend
-#include <Backend/IL/ResourceTokenPacking.h>
-#include <Backend/IL/ResourceTokenMetadataField.h>
+#include "ResourceTokenPacking.h"
 
 // Std
-#include <cstdint>
+#include <bit>
 
-struct VirtualResourceMapping {
-    union {
-        struct {
-            /// Physical UID of the resource
-            uint32_t puid : IL::kResourceTokenPUIDBitCount;
-
-            /// Type identifier of this resource
-            uint32_t type : IL::kResourceTokenTypeBitCount;
-
-            /// Ignored padding
-            uint32_t pad : IL::kResourceTokenPaddingBitCount;
-        };
-
-        /// Opaque key
-        uint32_t packedToken;
+namespace Backend::IL {
+    enum class ResourceTokenMetadataField {
+        PackedToken,
+        Width,
+        Height,
+        DepthOrSliceCount,
+        MipCount,
+        BaseMip,
+        BaseSlice,
+        Count
     };
-
-    /// Width of this mapping
-    uint32_t width{1};
-    
-    /// Height of this mapping
-    uint32_t height{1};
-    
-    /// Depth or number of slices of this mapping
-    uint32_t depthOrSliceCount{1};
-
-    /// Mip count of this mapping
-    uint32_t mipCount{1};
-
-    /// Base mip of this mapping
-    uint32_t baseMip{0};
-
-    /// Base slice of this mapping
-    uint32_t baseSlice{0};
-};
-
-/// Validation
-static_assert(sizeof(VirtualResourceMapping) == sizeof(uint32_t) * static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count), "Metadata mismatch");
+}

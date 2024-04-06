@@ -27,41 +27,34 @@
 #pragma once
 
 // Backend
-#include "ResourceToken.h"
+#include <Backend/IL/ResourceTokenType.h>
 
-// Forward declarations
-struct TextureDescriptor;
-struct BufferDescriptor;
+// Std
+#include <cstdint>
 
-struct ResourceInfo {
-    /// Create a texture info
-    /// \param token given token
-    /// \param texture given texture
-    /// \return info
-    static ResourceInfo Texture(const ResourceToken& token, const TextureDescriptor* texture) {
-        return ResourceInfo {
-            .token = token,
-            .textureDescriptor = texture
-        };
-    }
+/// Unpacked token type
+struct ResourceToken {
+    /// Physical UID of the resource
+    uint64_t puid;
 
-    /// Create a buffer info
-    /// \param token given token
-    /// \param buffer given buffer
-    /// \return info
-    static ResourceInfo Buffer(const ResourceToken& token, const BufferDescriptor* buffer) {
-        return ResourceInfo {
-            .token = token,
-            .bufferDescriptor = buffer
-        };
-    }
+    /// Type of the resource
+    Backend::IL::ResourceTokenType type;
+    
+    /// Width of the resource
+    uint32_t width{1};
+    
+    /// Height of the resource
+    uint32_t height{1};
+    
+    /// Depth or the number of slices in the resource
+    uint32_t depthOrSliceCount{1};
 
-    /// PRMT token
-    ResourceToken token;
+    /// Mip count of the resource
+    uint32_t mipCount{1};
+    
+    /// Base mip level of the resource
+    uint32_t baseMip{0};
 
-    /// Descriptor data
-    union {
-        const TextureDescriptor* textureDescriptor;
-        const BufferDescriptor* bufferDescriptor;
-    };
+    /// Base slice of the resource
+    uint32_t baseSlice{0};
 };

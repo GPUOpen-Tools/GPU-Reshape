@@ -32,8 +32,8 @@
 #include <Backends/Vulkan/States/ImageState.h>
 
 // Backend
-#include <Backend/Command/ResourceToken.h>
-#include <Backend/Command/ResourceInfo.h>
+#include <Backend/Resource/ResourceInfo.h>
+#include <Backend/Resource/ResourceToken.h>
 
 VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkAllocateMemory(VkDevice device, const VkMemoryAllocateInfo* pAllocateInfo, const VkAllocationCallbacks* pAllocator, VkDeviceMemory* pMemory) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
@@ -76,7 +76,12 @@ static ResourceInfo GetResourceInfoFor(const VirtualResourceMapping& mapping) {
     ResourceToken token {
         .puid = mapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(mapping.type),
-        .srb= mapping.srb
+        .width = mapping.width,
+        .height = mapping.height,
+        .depthOrSliceCount = mapping.depthOrSliceCount,
+        .mipCount = mapping.mipCount,
+        .baseMip = mapping.baseMip,
+        .baseSlice = mapping.baseSlice
     };
 
     // Construct without descriptor

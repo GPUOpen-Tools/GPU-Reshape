@@ -179,8 +179,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_SRV_DIMENSION dimensi
         case D3D12_SRV_DIMENSION_BUFFER:{
             return VirtualResourceMapping {
                 .puid = IL::kResourceTokenPUIDReservedNullBuffer,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer),
-                .srb  = 0x1
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer)
             };
         }
         case D3D12_SRV_DIMENSION_TEXTURE1D:
@@ -194,8 +193,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_SRV_DIMENSION dimensi
         case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY: {
             return VirtualResourceMapping {
                 .puid = IL::kResourceTokenPUIDReservedNullTexture,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture),
-                .srb  = 0x1
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
             };
         }
     }
@@ -211,8 +209,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_RTV_DIMENSION dimensi
         case D3D12_RTV_DIMENSION_BUFFER:{
             return VirtualResourceMapping {
                 .puid = IL::kResourceTokenPUIDReservedNullBuffer,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer),
-                .srb  = 0x1
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer)
             };
         }
         case D3D12_RTV_DIMENSION_TEXTURE1D:
@@ -224,8 +221,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_RTV_DIMENSION dimensi
         case D3D12_RTV_DIMENSION_TEXTURE3D: {
             return VirtualResourceMapping {
                 .puid = IL::kResourceTokenPUIDReservedNullTexture,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture),
-                .srb  = 0x1
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
             };
         }
     }
@@ -241,8 +237,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_UAV_DIMENSION dimensi
         case D3D12_UAV_DIMENSION_BUFFER:{
             return VirtualResourceMapping {
                 .puid = IL::kResourceTokenPUIDReservedNullBuffer,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer),
-                .srb  = 0x1
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer)
             };
         }
         case D3D12_UAV_DIMENSION_TEXTURE1D:
@@ -254,8 +249,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_UAV_DIMENSION dimensi
         case D3D12_UAV_DIMENSION_TEXTURE3D: {
             return VirtualResourceMapping {
                 .puid = IL::kResourceTokenPUIDReservedNullTexture,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture),
-                .srb  = 0x1
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
             };
         }
     }
@@ -276,8 +270,7 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_DSV_DIMENSION dimensi
         case D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY: {
             return VirtualResourceMapping {
                 .puid = IL::kResourceTokenPUIDReservedNullTexture,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture),
-                .srb  = 0x1
+                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture)
             };
         }
     }
@@ -297,8 +290,67 @@ void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12
         
         // Null descriptors are handled separately
         if (pResource) {
-            // TODO: SRB masking
-            heap->prmTable->WriteMapping(tableOffset, resource.state, resource.state->virtualMapping);
+            VirtualResourceMapping mapping = resource.state->virtualMapping;
+
+            if (pDesc) {
+                switch (pDesc->ViewDimension) {
+                    case D3D12_SRV_DIMENSION_UNKNOWN:
+                    case D3D12_SRV_DIMENSION_BUFFER:
+                    case D3D12_SRV_DIMENSION_TEXTURE2DMS:
+                    case D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE:
+                        break;
+                    case D3D12_SRV_DIMENSION_TEXTURE1D:
+                        mapping.baseMip = pDesc->Texture1D.MostDetailedMip;
+                        mapping.mipCount = pDesc->Texture1D.MipLevels;
+                        break;
+                    case D3D12_SRV_DIMENSION_TEXTURE1DARRAY:
+                        mapping.baseMip = pDesc->Texture1DArray.MostDetailedMip;
+                        mapping.mipCount = pDesc->Texture1DArray.MipLevels;
+                        mapping.baseSlice = pDesc->Texture1DArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture1DArray.ArraySize;
+                        break;
+                    case D3D12_SRV_DIMENSION_TEXTURE2D:
+                        mapping.baseMip = pDesc->Texture2D.MostDetailedMip;
+                        mapping.mipCount = pDesc->Texture2D.MipLevels;
+                        break;
+                    case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
+                        mapping.baseMip = pDesc->Texture2DArray.MostDetailedMip;
+                        mapping.mipCount = pDesc->Texture2DArray.MipLevels;
+                        mapping.baseSlice = pDesc->Texture2DArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture2DArray.ArraySize;
+                        break;
+                    case D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY:
+                        mapping.baseSlice = pDesc->Texture2DMSArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture2DMSArray.ArraySize;
+                        break;
+                    case D3D12_SRV_DIMENSION_TEXTURE3D:
+                        mapping.baseMip = pDesc->Texture3D.MostDetailedMip;
+                        mapping.mipCount = pDesc->Texture3D.MipLevels;
+                        break;
+                    case D3D12_SRV_DIMENSION_TEXTURECUBE:
+                        mapping.baseMip = pDesc->TextureCube.MostDetailedMip;
+                        mapping.mipCount = pDesc->TextureCube.MipLevels;
+                        break;
+                    case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY:
+                        mapping.baseMip = pDesc->TextureCubeArray.MostDetailedMip;
+                        mapping.mipCount = pDesc->TextureCubeArray.MipLevels;
+                        mapping.baseSlice = pDesc->TextureCubeArray.First2DArrayFace;
+                        mapping.depthOrSliceCount = -1;
+                        break;
+                }
+
+                // Automatic mip count?
+                if (mapping.mipCount == -1) {
+                    mapping.mipCount = resource.state->desc.MipLevels - mapping.mipCount;
+                }
+
+                // Automatic slice count?
+                if (mapping.depthOrSliceCount == -1) {
+                    mapping.depthOrSliceCount = resource.state->desc.DepthOrArraySize - mapping.depthOrSliceCount;
+                }
+            }
+            
+            heap->prmTable->WriteMapping(tableOffset, resource.state, mapping);
         } else {
             heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
@@ -324,8 +376,56 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
         
         // Null descriptors are handled separately
         if (pResource) {
-            // TODO: SRB masking
-            heap->prmTable->WriteMapping(tableOffset, resource.state, resource.state->virtualMapping);
+            VirtualResourceMapping mapping = resource.state->virtualMapping;
+
+            if (pDesc) {
+                switch (pDesc->ViewDimension) {
+                    case D3D12_UAV_DIMENSION_UNKNOWN:
+                    case D3D12_UAV_DIMENSION_BUFFER:
+                    case D3D12_UAV_DIMENSION_TEXTURE2DMS:
+                        break;
+                    case D3D12_UAV_DIMENSION_TEXTURE1D:
+                        mapping.baseMip = pDesc->Texture1D.MipSlice;
+                        mapping.mipCount = -1;
+                        break;
+                    case D3D12_UAV_DIMENSION_TEXTURE1DARRAY:
+                        mapping.baseMip = pDesc->Texture1DArray.MipSlice;
+                        mapping.mipCount = -1;
+                        mapping.baseSlice = pDesc->Texture1DArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture1DArray.ArraySize;
+                        break;
+                    case D3D12_UAV_DIMENSION_TEXTURE2D:
+                        mapping.baseMip = pDesc->Texture2D.MipSlice;
+                        mapping.mipCount = -1;
+                        break;
+                    case D3D12_UAV_DIMENSION_TEXTURE2DARRAY:
+                        mapping.baseMip = pDesc->Texture2DArray.MipSlice;
+                        mapping.mipCount = -1;
+                        mapping.baseSlice = pDesc->Texture2DArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture2DArray.ArraySize;
+                        break;
+                    case D3D12_UAV_DIMENSION_TEXTURE2DMSARRAY:
+                        mapping.baseSlice = pDesc->Texture2DMSArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture2DMSArray.ArraySize;
+                        break;
+                    case D3D12_UAV_DIMENSION_TEXTURE3D:
+                        mapping.baseMip = pDesc->Texture3D.MipSlice;
+                        mapping.mipCount = -1;
+                        break;
+                }
+
+                // Automatic mip count?
+                if (mapping.mipCount == -1) {
+                    mapping.mipCount = resource.state->desc.MipLevels - mapping.mipCount;
+                }
+
+                // Automatic slice count?
+                if (mapping.depthOrSliceCount == -1) {
+                    mapping.depthOrSliceCount = resource.state->desc.DepthOrArraySize - mapping.depthOrSliceCount;
+                }
+            }
+            
+            heap->prmTable->WriteMapping(tableOffset, resource.state, mapping);
         } else {
             heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
@@ -351,8 +451,56 @@ void WINAPI HookID3D12DeviceCreateRenderTargetView(ID3D12Device* _this, ID3D12Re
 
         // Null descriptors are handled separately
         if (pResource) {
-            // TODO: SRB masking
-            heap->prmTable->WriteMapping(tableOffset, resource.state, resource.state->virtualMapping);
+            VirtualResourceMapping mapping = resource.state->virtualMapping;
+            
+            if (pDesc) {
+                switch (pDesc->ViewDimension) {
+                    case D3D12_RTV_DIMENSION_UNKNOWN:
+                    case D3D12_RTV_DIMENSION_BUFFER:
+                    case D3D12_RTV_DIMENSION_TEXTURE2DMS:
+                        break;
+                    case D3D12_RTV_DIMENSION_TEXTURE1D:
+                        mapping.baseMip = pDesc->Texture1D.MipSlice;
+                        mapping.mipCount = -1;
+                        break;
+                    case D3D12_RTV_DIMENSION_TEXTURE1DARRAY:
+                        mapping.baseMip = pDesc->Texture1DArray.MipSlice;
+                        mapping.mipCount = -1;
+                        mapping.baseSlice = pDesc->Texture1DArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture1DArray.ArraySize;
+                        break;
+                    case D3D12_RTV_DIMENSION_TEXTURE2D:
+                        mapping.baseMip = pDesc->Texture2D.MipSlice;
+                        mapping.mipCount = -1;
+                        break;
+                    case D3D12_RTV_DIMENSION_TEXTURE2DARRAY:
+                        mapping.baseMip = pDesc->Texture2DArray.MipSlice;
+                        mapping.mipCount = -1;
+                        mapping.baseSlice = pDesc->Texture2DArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture2DArray.ArraySize;
+                        break;
+                    case D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY:
+                        mapping.baseSlice = pDesc->Texture2DMSArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture2DMSArray.ArraySize;
+                        break;
+                    case D3D12_RTV_DIMENSION_TEXTURE3D:
+                        mapping.baseMip = pDesc->Texture3D.MipSlice;
+                        mapping.mipCount = -1;
+                        break;
+                }
+
+                // Automatic mip count?
+                if (mapping.mipCount == -1) {
+                    mapping.mipCount = resource.state->desc.MipLevels - mapping.mipCount;
+                }
+
+                // Automatic slice count?
+                if (mapping.depthOrSliceCount == -1) {
+                    mapping.depthOrSliceCount = resource.state->desc.DepthOrArraySize - mapping.depthOrSliceCount;
+                }
+            }
+            
+            heap->prmTable->WriteMapping(tableOffset, resource.state, mapping);
         } else {
             heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
@@ -378,8 +526,51 @@ void WINAPI HookID3D12DeviceCreateDepthStencilView(ID3D12Device* _this, ID3D12Re
 
         // Null descriptors are handled separately
         if (pResource) {
-            // TODO: SRB masking
-            heap->prmTable->WriteMapping(tableOffset, resource.state, resource.state->virtualMapping);
+            VirtualResourceMapping mapping = resource.state->virtualMapping;
+            
+            if (pDesc) {
+                switch (pDesc->ViewDimension) {
+                    case D3D12_DSV_DIMENSION_UNKNOWN:
+                    case D3D12_DSV_DIMENSION_TEXTURE2DMS:
+                        break;
+                    case D3D12_DSV_DIMENSION_TEXTURE1D:
+                        mapping.baseMip = pDesc->Texture1D.MipSlice;
+                        mapping.mipCount = -1;
+                        break;
+                    case D3D12_DSV_DIMENSION_TEXTURE1DARRAY:
+                        mapping.baseMip = pDesc->Texture1DArray.MipSlice;
+                        mapping.mipCount = -1;
+                        mapping.baseSlice = pDesc->Texture1DArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture1DArray.ArraySize;
+                        break;
+                    case D3D12_DSV_DIMENSION_TEXTURE2D:
+                        mapping.baseMip = pDesc->Texture2D.MipSlice;
+                        mapping.mipCount = -1;
+                        break;
+                    case D3D12_DSV_DIMENSION_TEXTURE2DARRAY:
+                        mapping.baseMip = pDesc->Texture2DArray.MipSlice;
+                        mapping.mipCount = -1;
+                        mapping.baseSlice = pDesc->Texture2DArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture2DArray.ArraySize;
+                        break;
+                    case D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY:
+                        mapping.baseSlice = pDesc->Texture2DMSArray.FirstArraySlice;
+                        mapping.depthOrSliceCount = pDesc->Texture2DMSArray.ArraySize;
+                        break;
+                }
+
+                // Automatic mip count?
+                if (mapping.mipCount == -1) {
+                    mapping.mipCount = resource.state->desc.MipLevels - mapping.mipCount;
+                }
+
+                // Automatic slice count?
+                if (mapping.depthOrSliceCount == -1) {
+                    mapping.depthOrSliceCount = resource.state->desc.DepthOrArraySize - mapping.depthOrSliceCount;
+                }
+            }
+            
+            heap->prmTable->WriteMapping(tableOffset, resource.state, mapping);
         } else {
             heap->prmTable->WriteMapping(tableOffset, nullptr, GetNullResourceMapping(pDesc->ViewDimension));
         }
@@ -405,8 +596,7 @@ void WINAPI HookID3D12DeviceCreateSampler(ID3D12Device* _this, const D3D12_SAMPL
         // Write mapping
         heap->prmTable->WriteMapping(tableOffset, nullptr, VirtualResourceMapping {
             .puid = 0,
-            .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler),
-            .srb  = 0x1
+            .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler)
         });
     } else {
         ASSERT(false, "Failed to associate descriptor handle to heap");
@@ -430,8 +620,7 @@ void WINAPI HookID3D12DeviceCreateSampler2(ID3D12Device* _this, const D3D12_SAMP
         // Write mapping
         heap->prmTable->WriteMapping(tableOffset, nullptr, VirtualResourceMapping {
             .puid = 0,
-            .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler),
-            .srb  = 0x1
+            .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler)
         });
     } else {
         ASSERT(false, "Failed to associate descriptor handle to heap");

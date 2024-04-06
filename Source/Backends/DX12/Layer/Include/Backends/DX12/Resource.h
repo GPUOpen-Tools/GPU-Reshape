@@ -28,7 +28,7 @@
 
 // Backend
 #include <Backends/DX12/DX12.h>
-#include <Backend/Command/ResourceInfo.h>
+#include <Backend/Resource/ResourceInfo.h>
 
 // Forward declarations
 struct ResourceState;

@@ -31,14 +31,19 @@
 #include <Backends/DX12/Controllers/VersioningController.h>
 
 // Backend
-#include <Backend/Command/ResourceInfo.h>
+#include <Backend/Resource/ResourceInfo.h>
 #include <Backend/IL/ResourceTokenType.h>
 
 ResourceInfo GetResourceInfoFor(ResourceState* state) {
     ResourceToken token {
         .puid = state->virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
-        .srb= state->virtualMapping.srb
+        .width = state->virtualMapping.width,
+        .height = state->virtualMapping.height,
+        .depthOrSliceCount = state->virtualMapping.depthOrSliceCount,
+        .mipCount = state->virtualMapping.mipCount,
+        .baseMip = state->virtualMapping.baseMip,
+        .baseSlice = state->virtualMapping.baseSlice
     };
 
     // Construct without descriptor
@@ -130,8 +135,11 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
             break;
     }
 
-    // Entire SRB is visible from the resource
-    state->virtualMapping.srb = ~0u;
+    // Resource information
+    state->virtualMapping.width = static_cast<uint32_t>(desc->Width);
+    state->virtualMapping.height = desc->Height;
+    state->virtualMapping.depthOrSliceCount = desc->DepthOrArraySize;
+    state->virtualMapping.mipCount = desc->MipLevels;
 
     // Create mapping
     switch (desc->Dimension) {

@@ -30,14 +30,17 @@
 #include <Backends/Vulkan/Resource/DescriptorData.h>
 
 // Backend
+#include <Backend/IL/ResourceTokenMetadataField.h>
 #include <Backend/IL/ResourceTokenPacking.h>
 #include <Backend/IL/ID.h>
+
+// Common
+#include <Common/Containers/TrivialStackVector.h>
 
 SpvUtilShaderPRMT::SpvUtilShaderPRMT(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
     allocators(allocators),
     program(program),
     table(table) {
-
 }
 
 void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
@@ -48,14 +51,14 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // UInt32
-    const Backend::IL::Type *intType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
+    const Backend::IL::Type *uintType = ilTypeMap.FindTypeOrAdd(Backend::IL::IntType{
         .bitWidth = 32,
         .signedness = false
     });
 
     // Buffer<uint>
     buffer32UI = ilTypeMap.FindTypeOrAdd(Backend::IL::BufferType{
-        .elementType = intType,
+        .elementType = uintType,
         .samplerMode = Backend::IL::ResourceSamplerMode::Compatible,
         .texelType = Backend::IL::Format::R32UInt
     });
@@ -63,7 +66,7 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
     // Buffer<uint>*
     buffer32UIPtr = ilTypeMap.FindTypeOrAdd(Backend::IL::PointerType{
         .pointee = buffer32UI,
-        .addressSpace = Backend::IL::AddressSpace::Resource,
+        .addressSpace = Backend::IL::AddressSpace::Resource
     });
 
     // Id allocations
@@ -98,7 +101,8 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
     SpvPRMTOffset out;
 
     // Identifiers
-    out.offset = table.scan.header.bound++;
+    out.metadataOffset = table.scan.header.bound++;
+    out.descriptorOffset = table.scan.header.bound++;
     out.tableNotBound = table.scan.header.bound++;
 
     // UInt32
@@ -113,12 +117,28 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
     // Get the descriptor fed offset into the PRM table
     IL::ID baseOffsetId = table.shaderDescriptorConstantData.GetDescriptorData(stream, valueDecoration.source.descriptorSet * kDescriptorDataDWordCount + kDescriptorDataOffsetDWord);
 
-    // Final PRM index, DescriptorSetOffset + BindingOffset
+    // PRM index, DescriptorSetOffset + BindingOffset
     SpvInstruction& spv = stream.Allocate(SpvOpIAdd, 5);
     spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    spv[2] = out.offset;
+    spv[2] = out.descriptorOffset;
     spv[3] = baseOffsetId;
     spv[4] = valueDecoration.dynamicOffset;
+    
+    // Stride id
+    IL::ID strideId = table.scan.header.bound++;
+
+    // Null value
+    SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+    spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+    spvOffset[2] = strideId;
+    spvOffset[3] = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
+    
+    // Final PRM offset, Offset * MetadataStride
+    SpvInstruction& mulSpv = stream.Allocate(SpvOpIMul, 5);
+    mulSpv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+    mulSpv[2] = out.metadataOffset;
+    mulSpv[3] = out.descriptorOffset;
+    mulSpv[4] = strideId;
 
     // Requires bounds checking?
     if (valueDecoration.checkOutOfBounds) {
@@ -162,6 +182,9 @@ SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const 
 void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID resource, IL::ID result) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
+    // Total number of dwords in the token metadata
+    static constexpr uint32_t kMetadataDWordCount = static_cast<uint32_t>(Backend::IL::ResourceTokenMetadataField::Count);
+    
     // UInt32
     Backend::IL::IntType typeInt;
     typeInt.bitWidth = 32;
@@ -176,8 +199,6 @@ void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID re
 
     // Identifiers
     uint32_t bufferId = table.scan.header.bound++;
-    uint32_t texelId = table.scan.header.bound++;
-    uint32_t oobValidationId = table.scan.header.bound++;
 
     // Get offset
     SpvPRMTOffset mappingOffset = GetResourcePRMTOffset(job, stream, resource);
@@ -186,38 +207,67 @@ void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID re
     uint32_t buffer32UIId = table.typeConstantVariable.typeMap.GetSpvTypeId(buffer32UI);
     uint32_t uintTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
     uint32_t uint4TypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(uint4Type);
+    uint32_t tokenMetadataStructId = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().GetResourceToken());
 
     // Load buffer
     SpvInstruction& spvLoad = stream.Allocate(SpvOpLoad, 4);
     spvLoad[1] = buffer32UIId;
     spvLoad[2] = bufferId;
     spvLoad[3] = prmTableId;
+    
+    // Stride id
+    IL::ID strideId = table.scan.header.bound++;
 
-    // Fetch texel
-    SpvInstruction& spvTexel = stream.Allocate(SpvOpImageFetch, 5);
-    spvTexel[1] = uint4TypeId;
-    spvTexel[2] = texelId;
-    spvTexel[3] = bufferId;
-    spvTexel[4] = mappingOffset.offset;
+    // Null value
+    SpvInstruction &spvOffset = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+    spvOffset[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+    spvOffset[2] = strideId;
+    spvOffset[3] = 1u;
+
+    // All metadata
+    TrivialStackVector<SpvId, kMetadataDWordCount> metadataMap;
+
+    // Current dword texel offset
+    IL::ID texelOffsetId = mappingOffset.metadataOffset;
+
+    // Load all dwords
+    for (uint32_t i = 0; i < kMetadataDWordCount; i++) {
+        uint32_t loadId = table.scan.header.bound++;
+        uint32_t fieldTexelId = table.scan.header.bound++;
+
+        // Increment all successive offsets
+        if (i != 0) {
+            uint32_t fieldOffset = table.scan.header.bound++;
+
+            // Offset + 1
+            SpvInstruction& spv = stream.Allocate(SpvOpIAdd, 5);
+            spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+            spv[2] = fieldOffset;
+            spv[3] = texelOffsetId;
+            spv[4] = strideId;
+            texelOffsetId = fieldOffset;
+        }
+
+        // Load the texel (4)
+        SpvInstruction& spvTexel = stream.Allocate(SpvOpImageFetch, 5);
+        spvTexel[1] = uint4TypeId;
+        spvTexel[2] = loadId;
+        spvTexel[3] = bufferId;
+        spvTexel[4] = texelOffsetId;
+
+        // Extract first value
+        SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
+        spvExtract[1] = uintTypeId;
+        spvExtract[2] = fieldTexelId;
+        spvExtract[3] = loadId;
+        spvExtract[4] = 0;
+        metadataMap.Add(fieldTexelId);
+    }
 
     // Requires out-of-bounds selection?
-    if (mappingOffset.outOfBounds == IL::InvalidID) {
-        // Fetch texel
-        SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
-        spvExtract[1] = uintTypeId;
-        spvExtract[2] = oobValidationId;
-        spvExtract[3] = texelId;
-        spvExtract[4] = 0;
-    } else {
+    if (mappingOffset.outOfBounds != IL::InvalidID) {
         uint32_t outOfBoundsConstantId = table.scan.header.bound++;
-        uint32_t extractId = table.scan.header.bound++;
-
-        // Fetch texel
-        SpvInstruction& spvExtract = stream.Allocate(SpvOpCompositeExtract, 5);
-        spvExtract[1] = uintTypeId;
-        spvExtract[2] = extractId;
-        spvExtract[3] = texelId;
-        spvExtract[4] = 0;
+        uint32_t oobValidationId = table.scan.header.bound++;
 
         // Special out-of-bounds value
         SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
@@ -231,11 +281,13 @@ void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID re
         spvSelect[2] = oobValidationId;
         spvSelect[3] = mappingOffset.outOfBounds;
         spvSelect[4] = outOfBoundsConstantId;
-        spvSelect[5] = extractId;
+        spvSelect[5] = metadataMap[0];
+        metadataMap[0] = oobValidationId;
     }
 
     // Table binding selection
     {
+        uint32_t packedTokenId = table.scan.header.bound++;
         uint32_t tableNotBoundConstantId = table.scan.header.bound++;
 
         // Special table-not-bound value
@@ -247,10 +299,24 @@ void SpvUtilShaderPRMT::GetToken(const SpvJob& job, SpvStream &stream, IL::ID re
         // Select table-not-bound value if needed
         SpvInstruction& spvSelect = stream.Allocate(SpvOpSelect, 6);
         spvSelect[1] = uintTypeId;
-        spvSelect[2] = result;
+        spvSelect[2] = packedTokenId;
         spvSelect[3] = mappingOffset.tableNotBound;
         spvSelect[4] = tableNotBoundConstantId;
-        spvSelect[5] = oobValidationId;
+        spvSelect[5] = metadataMap[0];
+        metadataMap[0] = packedTokenId;
+    }
+
+    // Validate we got the expected number of dwords
+    ASSERT(metadataMap.Size() == kMetadataDWordCount, "Metadata count mismatch");
+
+    // Create a composite representing all these dwords
+    SpvInstruction& spvConstruct = stream.Allocate(SpvOpCompositeConstruct, 3 + kMetadataDWordCount);
+    spvConstruct[1] = tokenMetadataStructId;
+    spvConstruct[2] = result;
+
+    // Fill dwords
+    for (uint32_t i = 0; i < kMetadataDWordCount; i++) {
+        spvConstruct[3 + i] = metadataMap[i];
     }
 }
 

@@ -56,7 +56,7 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Alignment = 0;
-    desc.Width = sizeof(uint32_t) * allocationCount;
+    desc.Width = sizeof(VirtualResourceMapping) * allocationCount;
     desc.Height = 1;
     desc.DepthOrArraySize = 1;
     desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
@@ -98,8 +98,7 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     for (uint32_t i = 0; i < count; i++) {
         virtualMappings[i] = VirtualResourceMapping{
             .puid = IL::kResourceTokenPUIDInvalidUndefined,
-            .type = 0,
-            .srb = 0
+            .type = 0
         };
     }
 
@@ -146,7 +145,7 @@ void PhysicalResourceMappingTable::Update(ID3D12GraphicsCommandList *list) {
     list->ResourceBarrier(2u, barriers);
 
     // Copy host data to device
-    list->CopyBufferRegion(allocation.device.resource, 0u, allocation.host.resource, 0, sizeof(uint32_t) * virtualMappingCount);
+    list->CopyBufferRegion(allocation.device.resource, 0u, allocation.host.resource, 0, sizeof(VirtualResourceMapping) * virtualMappingCount);
 
     // HOST: CopySource -> CopyDest
     hostBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;

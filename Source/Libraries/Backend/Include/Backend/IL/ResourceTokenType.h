@@ -26,13 +26,21 @@
 
 #pragma once
 
-#include <cstdint>
+// Backend
+#include "ResourceTokenPacking.h"
+
+// Std
+#include <bit>
 
 namespace Backend::IL {
     enum class ResourceTokenType {
         Texture,
         Buffer,
         CBuffer,
-        Sampler
+        Sampler,
+        Count
     };
+
+    // Validation
+    static_assert(std::bit_width(static_cast<uint32_t>(ResourceTokenType::Count)) <= ::IL::kResourceTokenTypeBitCount, "Exceeded token bit-width");
 }

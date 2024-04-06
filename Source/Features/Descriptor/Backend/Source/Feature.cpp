@@ -148,7 +148,7 @@ IL::BasicBlock::Iterator DescriptorFeature::InjectForResource(IL::Program &progr
         IL::ResourceTokenEmitter token(pre, resource);
 
         // Keep token
-        packedToken = token.GetToken();
+        packedToken = token.GetPackedToken();
 
         // Get the ids
         compileType = pre.UInt32(static_cast<uint32_t>(compileTypeLiteral));

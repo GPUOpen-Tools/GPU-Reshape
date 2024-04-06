@@ -27,19 +27,44 @@
 #pragma once
 
 // Backend
-#include <Backend/IL/ResourceTokenType.h>
+#include "ResourceToken.h"
 
-// Std
-#include <cstdint>
+// Forward declarations
+struct TextureDescriptor;
+struct BufferDescriptor;
 
-/// Unpacked token type
-struct ResourceToken {
-    /// Physical UID of the resource
-    uint64_t puid;
+struct ResourceInfo {
+    /// Create a texture info
+    /// \param token given token
+    /// \param texture given texture
+    /// \return info
+    static ResourceInfo Texture(const ResourceToken& token, const TextureDescriptor* texture) {
+        return ResourceInfo {
+            .token = token,
+            .textureDescriptor = texture
+        };
+    }
 
-    /// Type of the resource
-    Backend::IL::ResourceTokenType type;
+    /// Create a buffer info
+    /// \param token given token
+    /// \param buffer given buffer
+    /// \return info
+    static ResourceInfo Buffer(const ResourceToken& token, const BufferDescriptor* buffer) {
+        return ResourceInfo {
+            .token = token,
+            .bufferDescriptor = buffer
+        };
+    }
 
-    /// Sub-resource base
-    uint32_t srb;
+    /// PRMT token
+    ResourceToken token;
+
+    /// Is this resource volumetric? i.e. we assume depth, otherwise sliced
+    bool isVolumetric{false};
+
+    /// Descriptor data
+    union {
+        const TextureDescriptor* textureDescriptor;
+        const BufferDescriptor* bufferDescriptor;
+    };
 };

@@ -81,18 +81,40 @@ public:
 
     /// Set a root value
     /// \param offset current root offset
+    /// \param debugBindMask the binding index to be used, only for debugging
     /// \param value value at root offset
-    void Set(uint32_t offset, uint32_t value) {
+    void Set(uint32_t offset, uint32_t debugBindMask, uint32_t value) {
         if (pendingRoll) {
             RollChunk();
         }
 
 #ifndef NDEBUG
-        localSegmentBindMask |= (1ull << offset);
+        localSegmentBindMask |= (1ull << debugBindMask);
 #endif // NDEBUG
         
         ASSERT(offset < mappedSegmentLength, "Out of bounds descriptor segment offset");
         mapped[mappedOffset + offset] = value;
+    }
+
+    /// Set a root value
+    /// \param offset current root offset
+    /// \param debugBindMask the binding index to be used, only for debugging
+    /// \param value value at root offset, must be dword aligned, all dwords are inserted linearly
+    template<typename T>
+    void Set(uint32_t offset, uint32_t debugBindMask, const T& value) {
+        if (pendingRoll) {
+            RollChunk();
+        }
+
+        static_assert(sizeof(value) % sizeof(uint32_t) == 0, "Non-dword aligned value");
+        static constexpr uint32_t kDWordCount = sizeof(value) / sizeof(uint32_t);
+        
+#ifndef NDEBUG
+        localSegmentBindMask |= (1ull << debugBindMask);
+#endif // NDEBUG
+        
+        ASSERT(offset + kDWordCount <= mappedSegmentLength, "Out of bounds descriptor segment offset");
+        std::memcpy(mapped + mappedOffset + offset, &value, sizeof(value));
     }
 
     /// Manually roll the chunk

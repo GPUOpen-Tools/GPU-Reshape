@@ -55,7 +55,6 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.puid = IL::kResourceTokenPUIDReservedNullSampler;
                 mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
-                mapping.srb  = 0x1;
             }
             break;
         }
@@ -65,7 +64,6 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
                 mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-                mapping.srb  = 0x1;
             }
             break;
         }
@@ -76,7 +74,6 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.puid = IL::kResourceTokenPUIDReservedNullTexture;
                 mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-                mapping.srb  = 0x1;
             }
             break;
         }
@@ -106,7 +103,6 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.puid = IL::kResourceTokenPUIDReservedNullBuffer;
                 mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
-                mapping.srb  = 0x1;
             }
             break;
         }
@@ -138,7 +134,6 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.puid = IL::kResourceTokenPUIDReservedNullCBuffer;
                 mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::CBuffer);
-                mapping.srb  = 0x1;
             }
             break;
         }
@@ -177,7 +172,6 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.puid = IL::kResourceTokenPUIDReservedNullBuffer;
                 mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
-                mapping.srb  = 0x1;
             }
             break;
         }
@@ -190,7 +184,6 @@ static VirtualResourceMapping GetVirtualResourceMapping(DeviceDispatchTable* tab
             } else if (table->physicalDeviceRobustness2Features.nullDescriptor) {
                 mapping.puid = IL::kResourceTokenPUIDReservedNullCBuffer;
                 mapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::CBuffer);
-                mapping.srb  = 0x1;
             }
             break;
         }
