@@ -226,6 +226,8 @@ inline SpvStorageClass Translate(Backend::IL::AddressSpace space) {
             return SpvStorageClassUniform;
         case Backend::IL::AddressSpace::RootConstant:
             return SpvStorageClassPushConstant;
+        case Backend::IL::AddressSpace::Input:
+            return SpvStorageClassInput;
     }
 }
 

@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,39 +26,8 @@
 
 #pragma once
 
-// Layer
-#include <Backends/Vulkan/Compiler/Blocks/SpvPhysicalBlockSection.h>
-#include <Backends/Vulkan/Compiler/Spv.h>
-
-/// Entry point physical block
-struct SpvPhysicalBlockEntryPoint : public SpvPhysicalBlockSection {
-    using SpvPhysicalBlockSection::SpvPhysicalBlockSection;
-
-    /// Parse all instructions
-    void Parse();
-
-    /// Compile all new instructions
-    void Compile();
-
-    /// Copy to a new block
-    /// \param remote the remote table
-    /// \param out destination capability
-    void CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockEntryPoint& out);
-
-public:
-    /// Add a shadewr interface value
-    /// \param id identifier to be added to entry point interfaces
-    void AddInterface(SpvId id) {
-        interfaces.push_back(id);
-    }
-    
-private:
-    /// Assigned execution model
-    SpvExecutionModel executionModel;
-
-    /// Entrypoint name
-    std::string name;
-
-    /// All interfaces
-    std::vector<SpvId> interfaces;
-};
+namespace Backend::IL {
+    enum class KernelValue {
+        DispatchThreadID
+    };
+}

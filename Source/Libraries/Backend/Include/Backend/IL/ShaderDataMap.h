@@ -75,10 +75,21 @@ namespace IL {
                     }));
                     break;
                 case ShaderDataType::Descriptor:
-                    Add(info.id, typeMap.FindTypeOrAdd(Backend::IL::IntType {
+                    const Backend::IL::Type* uint32 = typeMap.FindTypeOrAdd(Backend::IL::IntType {
                         .bitWidth = 32,
                         .signedness = false
-                    }));
+                    });
+
+                    // If multiple dwords, exposed as aggregate
+                    if (info.descriptor.dwordCount > 1) {
+                        Backend::IL::StructType decl;
+                        for (uint32_t i = 0; i < info.descriptor.dwordCount; i++) {
+                            decl.memberTypes.push_back(uint32);
+                        }
+                        Add(info.id, typeMap.FindTypeOrAdd(decl));
+                    } else {
+                        Add(info.id, uint32);
+                    }
                     break;
             }
         }

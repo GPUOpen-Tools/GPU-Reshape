@@ -59,6 +59,9 @@ struct SpvValueDecoration {
     /// Offset within a block
     uint32_t blockOffset{UINT32_MAX};
 
+    /// All decorations for this value
+    std::vector<SpvDecorationPair> decorations;
+    
     /// Decorations for composite members
     std::vector<SpvMemberDecoration> members;
 };

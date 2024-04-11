@@ -37,14 +37,55 @@ void SpvPhysicalBlockEntryPoint::Parse() {
         switch (ctx->GetOp()) {
             default:
                 break;
-            case SpvOpEntryPoint:
-                ctx++;
-
+            case SpvOpEntryPoint: {
+                executionModel = static_cast<SpvExecutionModel>(ctx++);
                 program.SetEntryPoint(ctx++);
+
+                // Parse name
+                auto* ptr = reinterpret_cast<const char*>(ctx.GetInstructionCode());
+                size_t length = std::strlen(ptr);
+                ctx.Skip(static_cast<uint32_t>((length + 3) / 4));
+                name = ptr;
+
+                // Parse all interfaces
+                while (ctx.HasPendingWords()) {
+                    interfaces.push_back(ctx++);
+                }
                 break;
+            }
         }
 
         // Next instruction
         ctx.Next();
     }
+}
+
+void SpvPhysicalBlockEntryPoint::Compile() {
+    block->stream.Clear();
+
+    // Total number of dwords for the name
+    uint32_t nameDWordCount = static_cast<uint32_t>((name.length() + 3) / 4);
+
+    // Emit instruction
+    SpvInstruction& instr = block->stream.Allocate(SpvOpEntryPoint, static_cast<uint32_t>(3 + nameDWordCount + interfaces.size()));
+    instr[1] = static_cast<uint32_t>(executionModel);
+    instr[2] = program.GetEntryPoint()->GetID();
+    std::memset(&instr[3], 0x0, sizeof(uint32_t) * nameDWordCount);
+
+    // Write name
+    for (size_t i = 0; i < name.size(); i++) {
+        instr[static_cast<uint32_t>(3 + (i / 4))] |= name[i] << (i % 4) * 8;
+    }
+
+    // Write all interfaces
+    for (size_t i = 0; i < interfaces.size(); i++) {
+        instr[static_cast<uint32_t>(3 + nameDWordCount + i)] = interfaces[i];
+    }
+}
+
+void SpvPhysicalBlockEntryPoint::CopyTo(SpvPhysicalBlockTable &remote, SpvPhysicalBlockEntryPoint &out) {
+    out.block = remote.scan.GetPhysicalBlock(SpvPhysicalBlockType::EntryPoint);
+    out.executionModel = executionModel;
+    out.name = name;
+    out.interfaces = interfaces;
 }

@@ -298,11 +298,18 @@ ConstantShaderDataBuffer ShaderDataHost::CreateConstantDataBuffer() {
         return {};
     }
 
+    // Minimum length of constant data
+    size_t length = sizeof(uint32_t) * dwordCount;
+
+    // Align length
+    const size_t alignSub1 = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1;
+    length = (length + alignSub1) & ~alignSub1;
+
     // Mapped description
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
     desc.Alignment = 0;
-    desc.Width = std::max<uint32_t>(sizeof(uint32_t) * dwordCount, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    desc.Width = length;
     desc.Height = 1;
     desc.DepthOrArraySize = 1;
     desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;

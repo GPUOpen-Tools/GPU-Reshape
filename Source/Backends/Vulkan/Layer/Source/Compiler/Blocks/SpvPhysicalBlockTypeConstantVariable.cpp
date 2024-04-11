@@ -627,6 +627,41 @@ IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJo
     return pushConstantVariableId;
 }
 
+IL::ID SpvPhysicalBlockTypeConstantVariable::FindOrCreateInput(SpvBuiltIn builtin, const Backend::IL::Type* type) {
+    if (IL::ID value = table.annotation.GetBuiltin(builtin); value != IL::InvalidID) {
+        return value;
+    }
+
+    // Create pointer to value type
+    type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+        .pointee = type,
+        .addressSpace = Backend::IL::AddressSpace::Input
+    });
+
+    // Allocate identifiers
+    IL::ID value = table.scan.header.bound++;
+
+    // Get type identifiers
+    SpvId typeId = table.typeConstantVariable.typeMap.GetSpvTypeId(type);
+
+    // Create variable
+    SpvInstruction &spvCounterVar = table.typeConstantVariable.block->stream.Allocate(SpvOpVariable, 4);
+    spvCounterVar[1] = typeId;
+    spvCounterVar[2] = value;
+    spvCounterVar[3] = SpvStorageClassInput;
+
+    // Mark as builtin
+    SpvInstruction &pcBlockMember = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
+    pcBlockMember[1] = value;
+    pcBlockMember[2] = SpvDecorationBuiltIn;
+    pcBlockMember[3] = builtin;
+
+    // Keep record of builtin and add to entrypoint interface list
+    table.annotation.SetBuiltin(builtin, value);
+    table.entryPoint.AddInterface(value);
+    return value;
+}
+
 void SpvPhysicalBlockTypeConstantVariable::Compile(SpvIdMap &idMap) {
     // Deprecate push constant data
     if (pushConstantVariableOffset != IL::InvalidOffset) {

@@ -37,6 +37,7 @@
 #include "LiteralType.h"
 #include "ID.h"
 #include "ComponentMask.h"
+#include "KernelValue.h"
 #include "TextureSampleMode.h"
 
 namespace IL {
@@ -346,6 +347,12 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::IsNaN;
 
         ID value;
+    };
+
+    struct KernelValueInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::KernelValue;
+
+        Backend::IL::KernelValue value;
     };
 
     struct BitOrInstruction : public Instruction {
@@ -866,6 +873,8 @@ namespace IL {
                 return sizeof(IsInfInstruction);
             case OpCode::IsNaN:
                 return sizeof(IsNaNInstruction);
+            case OpCode::KernelValue:
+                return sizeof(KernelValueInstruction);
             case OpCode::AtomicOr:
                 return sizeof(AtomicOrInstruction);
             case OpCode::AtomicXOr:

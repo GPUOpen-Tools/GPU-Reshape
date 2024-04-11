@@ -28,6 +28,9 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvJob.h>
 
+// Common
+#include <Common/Containers/TrivialStackVector.h>
+
 SpvUtilShaderConstantData::SpvUtilShaderConstantData(const Allocators &allocators, IL::Program &program, SpvPhysicalBlockTable &table) :
     allocators(allocators),
     program(program),
@@ -126,11 +129,8 @@ void SpvUtilShaderConstantData::CompileRecords(const SpvJob &job) {
     spvCounterBinding[3] = job.bindingInfo.descriptorDataDescriptorOffset;
 }
 
-IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, uint32_t index) {
+IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, const Backend::IL::Type* type, uint32_t index, uint32_t dwordCount) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
-
-    // Id allocations
-    IL::ID result = table.scan.header.bound++;
 
     // UInt32
     Backend::IL::IntType typeInt;
@@ -145,13 +145,12 @@ IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, uint32_t in
     });
 
     // Constant identifiers
-    uint32_t zeroUintId = table.scan.header.bound++;
-    uint32_t rowUintId = table.scan.header.bound++;
-    uint32_t columnUintId = table.scan.header.bound++;
+    SpvId zeroUintId = table.scan.header.bound++;
 
     // SpvIds
-    uint32_t uintTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
-    uint32_t uintPtrTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(uintTypePtr);
+    SpvId uintTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(uintType);
+    SpvId uintPtrTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(uintTypePtr);
+    SpvId resultTypeId = table.typeConstantVariable.typeMap.GetSpvTypeId(type);
 
     // 0
     SpvInstruction &spvZero = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
@@ -159,37 +158,65 @@ IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, uint32_t in
     spvZero[2] = zeroUintId;
     spvZero[3] = 0;
 
-    // Row
-    SpvInstruction &spvRow = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvRow[1] = uintTypeId;
-    spvRow[2] = rowUintId;
-    spvRow[3] = index / 4;
+    // All loaded dwords
+    TrivialStackVector<SpvId, 16> dwords;
 
-    // Column
-    SpvInstruction &spvColumn = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
-    spvColumn[1] = uintTypeId;
-    spvColumn[2] = columnUintId;
-    spvColumn[3] = index % 4;
+    // Handle each dword separately
+    for (uint32_t i = 0; i < dwordCount; i++) {
+        SpvId rowUintId = table.scan.header.bound++;
+        SpvId columnUintId = table.scan.header.bound++;
+        SpvId dword = table.scan.header.bound++;
+    
+        // Row
+        SpvInstruction &spvRow = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+        spvRow[1] = uintTypeId;
+        spvRow[2] = rowUintId;
+        spvRow[3] = index / 4;
 
-    // Address identifier
-    uint32_t addressId = table.scan.header.bound++;
+        // Column
+        SpvInstruction &spvColumn = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+        spvColumn[1] = uintTypeId;
+        spvColumn[2] = columnUintId;
+        spvColumn[3] = index % 4;
 
-    // Get address to element
-    SpvInstruction& spvAddress = stream.Allocate(SpvOpAccessChain, 7);
-    spvAddress[1] = uintPtrTypeId;
-    spvAddress[2] = addressId;
-    spvAddress[3] = constantId;
-    spvAddress[4] = zeroUintId;
-    spvAddress[5] = rowUintId;
-    spvAddress[6] = columnUintId;
+        // Address identifier
+        uint32_t addressId = table.scan.header.bound++;
 
-    // Load element
-    SpvInstruction& spvLoad = stream.Allocate(SpvOpLoad, 4);
-    spvLoad[1] = uintTypeId;
-    spvLoad[2] = result;
-    spvLoad[3] = addressId;
+        // Get address to element
+        SpvInstruction& spvAddress = stream.Allocate(SpvOpAccessChain, 7);
+        spvAddress[1] = uintPtrTypeId;
+        spvAddress[2] = addressId;
+        spvAddress[3] = constantId;
+        spvAddress[4] = zeroUintId;
+        spvAddress[5] = rowUintId;
+        spvAddress[6] = columnUintId;
 
-    // OK
+        // Load element
+        SpvInstruction& spvLoad = stream.Allocate(SpvOpLoad, 4);
+        spvLoad[1] = uintTypeId;
+        spvLoad[2] = dword;
+        spvLoad[3] = addressId;
+        dwords.Add(dword);
+    }
+
+    // If a single dword, just return it directly
+    if (dwordCount == 1) {
+        ASSERT(type->Is<Backend::IL::IntType>(), "Unexpected type");
+        return dwords[0];
+    }
+    
+    IL::ID result = table.scan.header.bound++;
+    
+    // Create a composite representing all these dwords
+    SpvInstruction& spvConstruct = stream.Allocate(SpvOpCompositeConstruct, 3 + dwordCount);
+    spvConstruct[1] = resultTypeId;
+    spvConstruct[2] = result;
+
+    // Fill dwords
+    for (uint32_t i = 0; i < dwordCount; i++) {
+        spvConstruct[3 + i] = dwords[i];
+    }
+
     return result;
 }
 

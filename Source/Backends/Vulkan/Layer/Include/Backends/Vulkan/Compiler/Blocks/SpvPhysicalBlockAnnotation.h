@@ -77,6 +77,30 @@ struct SpvPhysicalBlockAnnotation : public SpvPhysicalBlockSection {
     /// Bound number of descriptor sets
     uint32_t boundDescriptorSets{0};
 
+public:
+    /// Get a builtin value of this program
+    /// \param id given id to query
+    /// \return invalid if not found
+    IL::ID GetBuiltin(SpvBuiltIn id) {
+        auto it = builtinMap.find(id);
+        if (it == builtinMap.end()) {
+            return IL::InvalidID;
+        }
+
+        return it->second;
+    }
+
+    /// Set a builtin value
+    /// \param id builtin id
+    /// \param value value to assign
+    void SetBuiltin(SpvBuiltIn id, IL::ID value) {
+        builtinMap[id] = value;
+    }
+
+private:
+    /// All builtin values
+    std::unordered_map<SpvBuiltIn, IL::ID> builtinMap;
+
 private:
     struct SpvDecorationEntry {
         /// Is this slow decorated?
