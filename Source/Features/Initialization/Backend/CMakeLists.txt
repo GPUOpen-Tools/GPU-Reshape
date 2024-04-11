@@ -33,7 +33,8 @@ Project_AddShaderSchema(Generated Schemas/Initialization.xml Include/Schemas/Fea
 add_library(
     GRS.Features.Initialization.Backend SHARED
     Source/Feature.cpp
-    Source/SRBMaskingShaderProgram.cpp
+    Source/MaskBlitShaderProgram.cpp
+    Source/MaskCopyRangeShaderProgram.cpp
     Source/Plugin.cpp
 
     # Generated

@@ -26,7 +26,8 @@
 
 // Feature
 #include <Features/Initialization/Feature.h>
-#include <Features/Initialization/SRBMaskingShaderProgram.h>
+#include <Features/Initialization/MaskBlitShaderProgram.h>
+#include <Features/Initialization/MaskCopyRangeShaderProgram.h>
 #include <Features/Descriptor/Feature.h>
 
 // Backend
@@ -37,14 +38,17 @@
 #include <Backend/IL/ResourceTokenEmitter.h>
 #include <Backend/IL/ResourceTokenType.h>
 #include <Backend/CommandContext.h>
-#include <Backend/Command/BufferDescriptor.h>
-#include <Backend/Command/TextureDescriptor.h>
 #include <Backend/Resource/ResourceInfo.h>
 #include <Backend/Command/AttachmentInfo.h>
 #include <Backend/Command/RenderPassInfo.h>
 #include <Backend/Command/CommandBuilder.h>
+#include <Backend/Resource/TexelAddressAllocator.h>
+#include <Backend/Resource/TexelAddressEmitter.h>
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
 #include <Backend/Scheduler/IScheduler.h>
+#include <Features/Initialization/BitIndexing.h>
+#include <Features/Initialization/MaskBlitParameters.h>
+#include <Features/Initialization/MaskCopyRangeParameters.h>
 
 // Generated schema
 #include <Schemas/Features/Initialization.h>
@@ -74,10 +78,16 @@ bool InitializationFeature::Install() {
     // Shader data host
     shaderDataHost = registry->Get<IShaderDataHost>();
 
-    // Allocate lock buffer
-    //   ? Each respective PUID takes one lock integer, representing the current event id
-    initializationMaskBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
+    // Allocate puid mapping buffer
+    puidMemoryBaseBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
         .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
+        .format = Backend::IL::Format::R32UInt
+    });
+
+    // Allocate texel mask buffer
+    // todo[init]: dynamically grown with syncs
+    texelMaskBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
+        .elementCount = 4'000'000,
         .format = Backend::IL::Format::R32UInt
     });
 
@@ -87,14 +97,12 @@ bool InitializationFeature::Install() {
         return false;
     }
 
-    // Create the SRB masking program
-    srbMaskingShaderProgram = registry->New<SRBMaskingShaderProgram>(initializationMaskBufferID);
-    if (!srbMaskingShaderProgram->Install()) {
+    // Create programs
+    if (!InstallProgram(programHost, Backend::IL::ResourceTokenType::Buffer, false, bufferPrograms) ||
+        !InstallProgram(programHost, Backend::IL::ResourceTokenType::Texture, false, texturePrograms) ||
+        !InstallProgram(programHost, Backend::IL::ResourceTokenType::Texture, true, volumetricTexturePrograms)) {
         return false;
     }
-
-    // Register masker
-    srbMaskingShaderProgramID = programHost->Register(srbMaskingShaderProgram);
 
     // OK
     return true;
@@ -115,8 +123,11 @@ bool InitializationFeature::PostInstall() {
     uint32_t fullSRB = ~0u;
 
     // Mark null resources as initialized
+    // todo[init]: null!
+#if 0
     builder.StageBuffer(initializationMaskBufferID, IL::kResourceTokenPUIDReservedNullBuffer * sizeof(uint32_t), sizeof(uint32_t), &fullSRB);
     builder.StageBuffer(initializationMaskBufferID, IL::kResourceTokenPUIDReservedNullTexture * sizeof(uint32_t), sizeof(uint32_t), &fullSRB);
+#endif // 0
     
     // Schedule blocking
     scheduler->Schedule(Queue::Graphics, buffer);
@@ -128,6 +139,8 @@ bool InitializationFeature::PostInstall() {
 
 FeatureHookTable InitializationFeature::GetHookTable() {
     FeatureHookTable table{};
+    table.createResource = BindDelegate(this, InitializationFeature::OnCreateResource);
+    table.destroyResource = BindDelegate(this, InitializationFeature::OnDestroyResource);
     table.mapResource = BindDelegate(this, InitializationFeature::OnMapResource);
     table.copyResource = BindDelegate(this, InitializationFeature::OnCopyResource);
     table.resolveResource = BindDelegate(this, InitializationFeature::OnResolveResource);
@@ -147,12 +160,103 @@ void InitializationFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
+IL::ID InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::Emitter<>>& token, IL::ID resource, const IL::InstructionRef<> instr) {
+    IL::Program* program = emitter.GetProgram();
+
+    // Get type
+    const Backend::IL::Type *resourceType = program->GetTypeMap().GetType(resource);
+
+    // Number of dimensions of the resource
+    uint32_t dimensions = 1;
+
+    // Is this resource volumetric in nature? Affects address computation
+    bool isVolumetric = false;
+
+    // Determine from resource type
+    if (auto texture = resourceType->Cast<Backend::IL::TextureType>()) {
+        dimensions = Backend::IL::GetDimensionSize(texture->dimension);
+        isVolumetric = texture->dimension == Backend::IL::TextureDimension::Texture3D;
+    } else if (auto buffer = resourceType->Cast<Backend::IL::BufferType>()) {
+        // Boo!
+    } else {
+        ASSERT(false, "Invalid type");
+        return IL::InvalidID;
+    }
+
+    // Defaults
+    IL::ID zero = program->GetConstants().UInt(0)->id;
+
+    // Addressing offsets
+    IL::ID x = zero;
+    IL::ID y = zero;
+    IL::ID z = zero;
+    IL::ID mip = zero;
+
+    // Get offsets from instruction
+    switch (instr->opCode) {
+        default: {
+            ASSERT(false, "Invalid instruction");
+            return IL::InvalidID;
+        }
+        case IL::OpCode::LoadBuffer: {
+            // Buffer types just return the linear index
+            return instr->As<IL::LoadBufferInstruction>()->index;
+        }
+        case IL::OpCode::StoreBuffer: {
+            // Buffer types just return the linear index
+            return instr->As<IL::StoreBufferInstruction>()->index;
+        }
+        case IL::OpCode::StoreTexture: {
+            auto _instr = instr->As<IL::StoreTextureInstruction>();
+
+            IL::ID index = _instr->index;
+            if (dimensions > 0) x = emitter.Extract(index, program->GetConstants().UInt(0)->id);
+            if (dimensions > 1) y = emitter.Extract(index, program->GetConstants().UInt(1)->id);
+            if (dimensions > 2) z = emitter.Extract(index, program->GetConstants().UInt(2)->id);
+            break;
+        }
+        case IL::OpCode::LoadTexture: {
+            auto _instr = instr->As<IL::LoadTextureInstruction>();
+
+            IL::ID index = _instr->index;
+            if (dimensions > 0) x = emitter.Extract(index, program->GetConstants().UInt(0)->id);
+            if (dimensions > 1) y = emitter.Extract(index, program->GetConstants().UInt(1)->id);
+            if (dimensions > 2) z = emitter.Extract(index, program->GetConstants().UInt(2)->id);
+
+            if (_instr->mip != IL::InvalidID) {
+                mip = _instr->mip;
+            }
+            break;
+        }
+        case IL::OpCode::SampleTexture: {
+            // todo[init]: sampled offsets!
+#if 0
+            auto _instr = instr->As<IL::SampleTextureInstruction>();
+
+            IL::ID coordinate = _instr->coordinate;
+            if (dimensions > 0) x = emitter.Mul(emitter.Extract(coordinate, program->GetConstants().UInt(0)->id);
+            if (dimensions > 1) y = emitter.Extract(coordinate, program->GetConstants().UInt(1)->id);
+            if (dimensions > 2) z = emitter.Extract(coordinate, program->GetConstants().UInt(2)->id);
+            
+            emitter.Mul(_instr->coordinate, )
+#endif
+            
+            return zero;
+        }
+    }
+
+    // Determine texel address
+    Backend::IL::TexelAddressEmitter address(emitter, token);
+    return address.LocalTexelAddress(x, y, z, mip, isVolumetric);
+}
+
 void InitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
     const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
     
     // Get the data ids
-    IL::ID initializationMaskBufferDataID = program.GetShaderDataMap().Get(initializationMaskBufferID)->id;
+    IL::ID puidMemoryBaseBufferDataID = program.GetShaderDataMap().Get(puidMemoryBaseBufferID)->id;
+    IL::ID texelMaskBufferDataID      = program.GetShaderDataMap().Get(texelMaskBufferID)->id;
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
@@ -198,35 +302,29 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             }
         }
 
+        IL::ID zero = program.GetConstants().UInt(0)->id;
+
         // Write operations just assign the new mask
         if (isWrite) {
+            IL::InstructionRef ref(it);
+            
             // Insert prior to IOI
             IL::Emitter<> emitter(program, context.basicBlock, it);
 
             // Get global id of resource
             IL::ResourceTokenEmitter token(emitter, resource);
 
+            // Get the texel address
+            IL::ID texelAddress = InjectTexelAddress(emitter, token, resource, ref);
+
             // Get token details
-            IL::ID SRB = emitter.UInt32(1);
             IL::ID PUID = token.GetPUID();
 
-            // Multiple events may write to the same resource, accumulate the SRB atomically
-            const bool UseAtomics = true;
+            // Get the base offset of the memory
+            IL::ID baseMemoryOffsetAlign32 = emitter.Extract(emitter.LoadBuffer(emitter.Load(puidMemoryBaseBufferDataID), PUID), zero);
 
-            // Atomics?
-            if (UseAtomics) {
-                // Or the destination resource
-                emitter.AtomicOr(emitter.AddressOf(initializationMaskBufferDataID, PUID), SRB);
-            } else {
-                // Load buffer pointer
-                IL::ID bufferID = emitter.Load(initializationMaskBufferDataID);
-                
-                // Get current mask
-                IL::ID srbMask = emitter.Extract(emitter.LoadBuffer(bufferID, PUID), program.GetConstants().UInt(0)->id);
-
-                // Bit-Or with resource mask
-                emitter.StoreBuffer(bufferID, PUID, emitter.BitOr(srbMask, SRB));
-            }
+            // Mark it as initialized
+            AtomicOrTexelAddress(emitter, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress);
             
             // Resume on next
             return emitter.GetIterator();
@@ -252,15 +350,20 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         // Get global id of resource
         IL::ResourceTokenEmitter token(pre, resource);
 
+        // Get the texel address
+        IL::ID texelAddress = InjectTexelAddress(pre, token, resource, IL::InstructionRef(instr));
+        
         // Get token details
-        IL::ID SRB = pre.UInt32(1);
         IL::ID PUID = token.GetPUID();
 
-        // Get the current mask
-        IL::ID currentMask = pre.Extract(pre.LoadBuffer(pre.Load(initializationMaskBufferDataID), PUID), program.GetConstants().UInt(0)->id);
+        // Get the base offset of the memory
+        IL::ID baseMemoryOffsetAlign32 = pre.Extract(pre.LoadBuffer(pre.Load(puidMemoryBaseBufferDataID), PUID), zero);
 
-        // Compare mask against token SRB
-        IL::ID cond = pre.NotEqual(pre.BitAnd(currentMask, SRB), SRB);
+        // Fetch the bit
+        IL::ID texelBit = AtomicAndTexelAddress(pre, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress);
+
+        // If the bit is not set, the texel isn't initialized
+        IL::ID cond = pre.Equal(texelBit, zero);
 
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(cond, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
@@ -285,33 +388,68 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
     });
 }
 
+void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
+    std::lock_guard guard(mutex);
+
+    // Determine number of entries needed
+    uint64_t allocationSize = addressAllocator.GetAllocationSize(source);
+
+    // Create allocation
+    Allocation& allocation = allocations[source.token.puid];
+    allocation.base = addressAllocator.Allocate(allocationSize);
+    ASSERT(allocation.base % 32 == 0, "Memory base not aligned to texel width (32)");
+
+    // Get base offset
+    uint64_t memoryBaseAlign32 = allocation.base / 32;
+    ASSERT(memoryBaseAlign32 < std::numeric_limits<uint32_t>::max(), "Memory base out of bounds");
+    allocation.baseAlign32 = static_cast<uint32_t>(memoryBaseAlign32);
+
+    // Mark for pending enqueue
+    pendingMappingQueue.push_back(MappingTag {
+        .puid = source.token.puid,
+        .memoryBaseAlign32 = allocation.baseAlign32
+    });
+}
+
+void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
+    Allocation& allocation = allocations.at(source.token.puid);
+
+    // todo[init]: free it!
+    addressAllocator.Free();
+
+    allocations.erase(source.token.puid);
+}
+
 void InitializationFeature::OnMapResource(const ResourceInfo &source) {
     std::lock_guard guard(mutex);
 
     // Mark for host initialization
     pendingInitializationQueue.push_back(InitialiationTag {
-        .puid = source.token.puid,
+        .info = source,
         .srb = ~0u
     });
 }
 
 void InitializationFeature::OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
-    MaskResourceSRB(context, dest.token.puid, ~0u);
+    CopyResourceMaskRange(context->buffer, source, dest);
 }
 
 void InitializationFeature::OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
-    MaskResourceSRB(context, dest.token.puid, ~0u);
+    // todo[init]: How can we handle resolve mapping sensibly?
+    BlitResourceMask(context->buffer, dest);
 }
 
 void InitializationFeature::OnClearResource(CommandContext* context, const ResourceInfo& resource) {
-    MaskResourceSRB(context, resource.token.puid, ~0u);
+    BlitResourceMask(context->buffer, resource);
 }
 
 void InitializationFeature::OnWriteResource(CommandContext* context, const ResourceInfo& resource) {
-    MaskResourceSRB(context, resource.token.puid, ~0u);
+    BlitResourceMask(context->buffer, resource);
 }
 
 void InitializationFeature::OnBeginRenderPass(CommandContext *context, const RenderPassInfo &passInfo) {
+    // TODO: Only blit the "active" render pass region
+    
     // Initialize all color targets
     for (uint32_t i = 0; i < passInfo.attachmentCount; i++) {
         const AttachmentInfo& info = passInfo.attachments[i];
@@ -320,12 +458,12 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
         if (info.loadAction == AttachmentAction::Clear ||
             info.storeAction == AttachmentAction::Store ||
             info.storeAction == AttachmentAction::Resolve) {
-            MaskResourceSRB(context, info.resource.token.puid, ~0u);
+            BlitResourceMask(context->buffer, info.resource);
         }
 
         // Always mark resolve targets as initialized
         if (info.resolveResource) {
-            MaskResourceSRB(context, info.resolveResource->token.puid, ~0u);
+            BlitResourceMask(context->buffer, *info.resolveResource);
         }
     }
 
@@ -335,12 +473,12 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
         if (passInfo.depthAttachment->loadAction == AttachmentAction::Clear ||
             passInfo.depthAttachment->storeAction == AttachmentAction::Store ||
             passInfo.depthAttachment->storeAction == AttachmentAction::Resolve) {
-            MaskResourceSRB(context, passInfo.depthAttachment->resource.token.puid, ~0u);
+            BlitResourceMask(context->buffer, passInfo.depthAttachment->resource);
         }   
 
         // Always mark resolve targets as initialized
         if (passInfo.depthAttachment->resolveResource) {
-            MaskResourceSRB(context, passInfo.depthAttachment->resolveResource->token.puid, ~0u);
+            BlitResourceMask(context->buffer, *passInfo.depthAttachment->resolveResource);
         }
     }
 }
@@ -361,9 +499,14 @@ void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& ho
     // Create builder
     CommandBuilder builder(hookContexts.preContext->buffer);
 
+    // Map all PUIDs
+    for (const MappingTag& tag : pendingMappingQueue) {
+        builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);
+    }
+
     // Initialize all PUIDs
     for (const InitialiationTag& tag : pendingInitializationQueue) {
-        uint32_t& initializedSRB = puidSRBInitializationMap[tag.puid];
+        uint32_t& initializedSRB = puidSRBInitializationMap[tag.info.token.puid];
 
         // May already be initialized
         if ((initializedSRB & tag.srb) == tag.srb) {
@@ -374,7 +517,7 @@ void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& ho
         initializedSRB |= tag.srb;
 
         // Mark device side initialization
-        builder.StageBuffer(initializationMaskBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.srb);
+        BlitResourceMask(hookContexts.preContext->buffer, tag.info);
     }
 }
 
@@ -401,6 +544,154 @@ void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
     commandContexts.erase(contextHandle);
 }
 
+void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const ResourceInfo &info) {
+    const ResourcePrograms& programs = GetPrograms(info.token.type, info.isVolumetric);
+    
+    // todo[init]: cpu side copy check
+    const Allocation& allocation = allocations.at(info.token.puid);
+
+    // Setup blit parameters
+    MaskBlitParameters params{};
+    params.memoryBaseElementAlign32 = allocation.baseAlign32;
+
+    // Buffers are linearly indexed
+    if (info.token.type == Backend::IL::ResourceTokenType::Buffer) {
+        params.baseX = static_cast<uint32_t>(info.bufferDescriptor.offset);
+        
+        // Blit the given range
+        CommandBuilder builder(buffer);
+        builder.SetShaderProgram(programs.maskBlitShaderProgramID);
+        builder.SetDescriptorData(programs.maskBlitShaderProgram->GetDataID(), params);
+        builder.SetDescriptorData(programs.maskBlitShaderProgram->GetDestTokenID(), info.token);
+        builder.Dispatch(static_cast<uint32_t>(info.bufferDescriptor.width), 1, 1);
+    } else {
+        // Blit each mip separately
+        for (uint32_t i = 0; i < info.textureDescriptor.region.mipCount; i++) {
+            params.mip = info.textureDescriptor.region.baseMip + i;
+
+            // Base offsets
+            params.baseX = static_cast<uint32_t>(info.textureDescriptor.region.offsetX) >> i;
+            params.baseY = static_cast<uint32_t>(info.textureDescriptor.region.offsetY) >> i;
+            params.baseZ = (static_cast<uint32_t>(info.textureDescriptor.region.offsetZ) >> i);
+
+            // If volumetric, just append the base slice
+            if (info.isVolumetric) {
+                params.baseZ += info.textureDescriptor.region.baseSlice;
+            }
+
+            // Expected dimensions
+            uint32_t mipWidth = info.textureDescriptor.region.width >> i;
+            uint32_t mipHeight = info.textureDescriptor.region.height >> i;
+            uint32_t mipDepth = info.textureDescriptor.region.depth >> i;
+        
+            // Blit the given range int he mip
+            CommandBuilder builder(buffer);
+            builder.SetShaderProgram(programs.maskBlitShaderProgramID);
+            builder.SetDescriptorData(programs.maskBlitShaderProgram->GetDataID(), params);
+            builder.SetDescriptorData(programs.maskBlitShaderProgram->GetDestTokenID(), info.token);
+            builder.Dispatch(mipWidth, mipHeight, mipDepth);
+        }
+    }
+}
+
+void InitializationFeature::CopyResourceMaskRange(CommandBuffer& buffer, const ResourceInfo &source, const ResourceInfo &dest) {
+    const ResourcePrograms& programs = GetPrograms(source.token.type, source.isVolumetric);
+    
+    // todo[init]: cpu side copy check
+    const Allocation& sourceAllocation = allocations.at(source.token.puid);
+    const Allocation& destAllocation = allocations.at(dest.token.puid);
+
+    // Setup blit parameters
+    MaskCopyRangeParameters params{};
+    params.sourceMemoryBaseElementAlign32 = sourceAllocation.baseAlign32;
+    params.destMemoryBaseElementAlign32 = destAllocation.baseAlign32;
+    
+    // Buffers are linearly indexed
+    if (source.token.type == Backend::IL::ResourceTokenType::Buffer) {
+        params.sourceBaseX = static_cast<uint32_t>(source.bufferDescriptor.offset);
+        params.destBaseX = static_cast<uint32_t>(dest.bufferDescriptor.offset);
+        
+        // Blit the given range
+        CommandBuilder builder(buffer);
+        builder.SetShaderProgram(programs.maskCopyRangeShaderProgramID);
+        builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetDataID(), params);
+        builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetSourceTokenID(), source.token);
+        builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetDestTokenID(), dest.token);
+        builder.Dispatch(static_cast<uint32_t>(source.bufferDescriptor.width), 1, 1);
+    } else {
+        // Copy each mip separately
+        for (uint32_t i = 0; i < source.textureDescriptor.region.mipCount; i++) {
+            params.sourceMip = source.textureDescriptor.region.baseMip + i;
+            params.destMip = dest.textureDescriptor.region.baseMip + i;
+
+            // Source base offsets
+            params.sourceBaseX = static_cast<uint32_t>(source.textureDescriptor.region.offsetX) >> i;
+            params.sourceBaseY = static_cast<uint32_t>(source.textureDescriptor.region.offsetY) >> i;
+            params.sourceBaseZ = (static_cast<uint32_t>(source.textureDescriptor.region.offsetZ) >> i);
+
+            // Destination base offsets
+            params.destBaseX = static_cast<uint32_t>(dest.textureDescriptor.region.offsetX) >> i;
+            params.destBaseY = static_cast<uint32_t>(dest.textureDescriptor.region.offsetY) >> i;
+            params.destBaseZ = (static_cast<uint32_t>(dest.textureDescriptor.region.offsetZ) >> i);
+
+            // If volumetric, just append the slices
+            if (source.isVolumetric) {
+                params.sourceBaseZ += source.textureDescriptor.region.baseSlice;
+            }
+            
+            if (dest.isVolumetric) {
+                params.destBaseZ += dest.textureDescriptor.region.baseSlice;
+            }
+
+            // Expected dimensions
+            uint32_t mipWidth = source.textureDescriptor.region.width >> i;
+            uint32_t mipHeight = source.textureDescriptor.region.height >> i;
+            uint32_t mipDepth = source.textureDescriptor.region.depth >> i;
+        
+            // Blit the entire range
+            CommandBuilder builder(buffer);
+            builder.SetShaderProgram(programs.maskBlitShaderProgramID);
+            builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetDataID(), params);
+            builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetSourceTokenID(), source.token);
+            builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetDestTokenID(), dest.token);
+            builder.Dispatch(mipWidth, mipHeight, mipDepth);
+        }
+    }
+}
+
+bool InitializationFeature::InstallProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType type, bool isVolumetric, ResourcePrograms &out) {
+    // Create programs
+    out.maskBlitShaderProgram = registry->New<MaskBlitShaderProgram>(texelMaskBufferID, type, isVolumetric);
+    out.maskCopyRangeShaderProgram = registry->New<MaskCopyRangeShaderProgram>(texelMaskBufferID, type, isVolumetric);
+
+    // Try to install programs
+    if (!out.maskBlitShaderProgram->Install() || !out.maskCopyRangeShaderProgram->Install()) {
+        return false;
+    }
+
+    // Register maskers
+    out.maskBlitShaderProgramID = programHost->Register(out.maskBlitShaderProgram);
+    out.maskCopyRangeShaderProgramID = programHost->Register(out.maskCopyRangeShaderProgram);
+
+    // OK
+    return true;
+}
+
+const InitializationFeature::ResourcePrograms & InitializationFeature::GetPrograms(Backend::IL::ResourceTokenType type, bool isVolumetric) {
+    switch (type) {
+        default: {
+            ASSERT(false, "Unexpected token type");
+            return bufferPrograms;
+        }
+        case Backend::IL::ResourceTokenType::Buffer: {
+            return bufferPrograms;
+        }
+        case Backend::IL::ResourceTokenType::Texture: {
+            return isVolumetric ? volumetricTexturePrograms : texturePrograms;
+        }
+    }
+}
+
 FeatureInfo InitializationFeature::GetInfo() {
     FeatureInfo info;
     info.name = "Initialization";
@@ -412,26 +703,4 @@ FeatureInfo InitializationFeature::GetInfo() {
 
     // OK
     return info;
-}
-
-void InitializationFeature::MaskResourceSRB(CommandContext *context, uint64_t puid, uint32_t srb) {
-    {
-        std::lock_guard guard(mutex);
-        uint32_t& initializedSRB = puidSRBInitializationMap[puid];
-
-        // May already be initialized
-        if ((initializedSRB & srb) == srb) {
-            return;
-        }
-
-        // Mark host side initialization
-        initializedSRB |= srb;
-    }
-
-    // Mask the entire resource as mapped
-    CommandBuilder builder(context->buffer);
-    builder.SetShaderProgram(srbMaskingShaderProgramID);
-    builder.SetEventData(srbMaskingShaderProgram->GetPUIDEventID(), static_cast<uint32_t>(puid));
-    builder.SetEventData(srbMaskingShaderProgram->GetMaskEventID(), ~0u);
-    builder.Dispatch(1, 1, 1);
 }

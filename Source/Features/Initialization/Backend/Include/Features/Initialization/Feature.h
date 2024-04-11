@@ -42,13 +42,18 @@
 #include <Message/MessageStream.h>
 
 // Std
+#include "Backend/Resource/TexelAddressAllocator.h"
+
 #include <atomic>
 #include <mutex>
 #include <unordered_map>
 
+class IShaderProgramHost;
+struct CommandBuffer;
 // Forward declarations
 class IShaderSGUIDHost;
-class SRBMaskingShaderProgram;
+class MaskBlitShaderProgram;
+class MaskCopyRangeShaderProgram;
 
 class InitializationFeature final : public IFeature, public IShaderFeature {
 public:
@@ -81,6 +86,8 @@ public:
 
 private:
     /// Hooks
+    void OnCreateResource(const ResourceInfo& source);
+    void OnDestroyResource(const ResourceInfo& source);
     void OnMapResource(const ResourceInfo& source);
     void OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest);
     void OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest);
@@ -91,11 +98,9 @@ private:
     void OnJoin(CommandContextHandle contextHandle);
 
 private:
-    /// Mark a resource SRB
-    /// \param context destination context
-    /// \param puid physical resource uid
-    /// \param srb resource mask
-    void MaskResourceSRB(CommandContext* context, uint64_t puid, uint32_t srb);
+    void BlitResourceMask(CommandBuffer& buffer, const ResourceInfo& info);
+    
+    void CopyResourceMaskRange(CommandBuffer& buffer, const ResourceInfo& source, const ResourceInfo& dest);
 
 private:
     /// Hosts
@@ -103,13 +108,8 @@ private:
     ComRef<IShaderDataHost> shaderDataHost{nullptr};
 
     /// Shader data
-    ShaderDataID initializationMaskBufferID{InvalidShaderDataID};
-
-    /// Masking program
-    ComRef<SRBMaskingShaderProgram> srbMaskingShaderProgram;
-
-    /// Allocated program ID
-    ShaderProgramID srbMaskingShaderProgramID{InvalidShaderProgramID};
+    ShaderDataID puidMemoryBaseBufferID{InvalidShaderDataID};
+    ShaderDataID texelMaskBufferID{InvalidShaderDataID};
 
     /// Export id for this feature
     ShaderExportID exportID{};
@@ -118,14 +118,48 @@ private:
     MessageStream stream;
 
 private:
+    struct ResourcePrograms {
+        /// Masking programs
+        ComRef<MaskBlitShaderProgram> maskBlitShaderProgram;
+        ComRef<MaskCopyRangeShaderProgram> maskCopyRangeShaderProgram;
+
+        /// Allocated program IDs
+        ShaderProgramID maskBlitShaderProgramID{InvalidShaderProgramID};
+        ShaderProgramID maskCopyRangeShaderProgramID{InvalidShaderProgramID};
+    };
+
+    bool InstallProgram(const ComRef<IShaderProgramHost>& programHost, Backend::IL::ResourceTokenType type, bool isVolumetric, ResourcePrograms& out);
+
+    const ResourcePrograms& GetPrograms(Backend::IL::ResourceTokenType type, bool isVolumetric);
+
+    ResourcePrograms bufferPrograms;
+    ResourcePrograms texturePrograms;
+    ResourcePrograms volumetricTexturePrograms;
+
+private:
+    struct Allocation {
+        uint64_t base{0};
+        uint32_t baseAlign32{0};
+    };
+    
+    TexelAddressAllocator addressAllocator;
+
+    std::unordered_map<uint64_t, Allocation> allocations;
+
+private:
     struct CommandContextInfo {
         /// The next committed base upon join
         uint64_t committedInitializationHead = 0ull;
     };
 
     struct InitialiationTag {
-        uint64_t puid{0};
+        ResourceInfo info;
         uint32_t srb{0};
+    };
+
+    struct MappingTag {
+        uint64_t puid{0};
+        uint32_t memoryBaseAlign32{0};
     };
 
     /// Context lookup
@@ -133,10 +167,12 @@ private:
 
     /// Current initialization queue, base indicated by commit
     std::vector<InitialiationTag> pendingInitializationQueue;
+    std::vector<MappingTag> pendingMappingQueue;
 
     /// The current committed base
     /// All pending initializations use this value as the base commit id
     uint64_t committedInitializationBase = 0ull;
+    uint64_t committedMappingBase = 0ull;
     
 private:
     /// Shared lock

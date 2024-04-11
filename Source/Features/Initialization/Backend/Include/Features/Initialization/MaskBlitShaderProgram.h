@@ -30,14 +30,15 @@
 #include <Common/ComRef.h>
 
 // Backend
+#include <Backend/IL/ResourceTokenType.h>
 #include <Backend/ShaderProgram/IShaderProgram.h>
 #include <Backend/ShaderData/ShaderData.h>
 
-class SRBMaskingShaderProgram final : public IShaderProgram {
+class MaskBlitShaderProgram final : public IShaderProgram {
 public:
     /// Constructor
     /// \param initializationMaskBufferID
-    SRBMaskingShaderProgram(ShaderDataID initializationMaskBufferID);
+    MaskBlitShaderProgram(ShaderDataID initializationMaskBufferID, Backend::IL::ResourceTokenType type, bool isVolumetric);
 
     /// Install the masking program
     /// \return
@@ -58,14 +59,14 @@ public:
         return nullptr;
     }
 
-    /// Get the mask ID
-    ShaderDataID GetMaskEventID() const {
-        return maskEventID;
+    /// Get the data ID
+    ShaderDataID GetDataID() const {
+        return dataID;
     }
 
-    /// Get the PUID ID
-    ShaderDataID GetPUIDEventID() const {
-        return puidEventID;
+    /// Get the data ID
+    ShaderDataID GetDestTokenID() const {
+        return destTokenID;
     }
 
 private:
@@ -74,6 +75,12 @@ private:
 
     /// Shader data
     ShaderDataID initializationMaskBufferID{InvalidShaderDataID};
-    ShaderDataID maskEventID{InvalidShaderDataID};
-    ShaderDataID puidEventID{InvalidShaderDataID};
+    ShaderDataID dataID{InvalidShaderDataID};
+    ShaderDataID destTokenID{InvalidShaderDataID};
+
+    /// Type being copied
+    Backend::IL::ResourceTokenType type;
+
+    /// Volumetric indexing?
+    bool isVolumetric;
 };
