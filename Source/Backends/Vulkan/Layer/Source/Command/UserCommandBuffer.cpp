@@ -182,6 +182,7 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
 
                 // Get offset
                 uint32_t dwordOffset = device->constantRemappingTable[cmd->id];
+                uint32_t length = cmd->commandSize - sizeof(SetDescriptorDataCommand);
 
                 // Shader Read -> Transfer Write
                 VkBufferMemoryBarrier barrier{};
@@ -192,7 +193,7 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                 barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                 barrier.buffer = streamState->constantShaderDataBuffer.buffer;
                 barrier.offset = sizeof(uint32_t) * dwordOffset;
-                barrier.size = sizeof(uint32_t);
+                barrier.size = length;
 
                 // Stall the pipeline
                 device->commandBufferDispatchTable.next_vkCmdPipelineBarrier(
@@ -209,8 +210,8 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                     commandBuffer,
                     streamState->constantShaderDataBuffer.buffer,
                     sizeof(uint32_t) * dwordOffset,
-                    sizeof(uint32_t),
-                    &cmd->value
+                    length,
+                    reinterpret_cast<const uint8_t*>(cmd) + sizeof(SetDescriptorDataCommand)
                 );
 
                 // Transfer Write -> Shader Read

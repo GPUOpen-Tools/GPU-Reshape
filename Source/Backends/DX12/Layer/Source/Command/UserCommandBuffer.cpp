@@ -175,7 +175,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
 
                 // Get offset
                 uint32_t dwordOffset = device->constantRemappingTable[cmd->id];
-                uint32_t dwordCount = 1u;
+                uint32_t length = cmd->commandSize - sizeof(SetDescriptorDataCommand);
 
                 // Shader Read -> Copy Dest
                 D3D12_RESOURCE_BARRIER barrier{};
@@ -186,10 +186,10 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 commandList->ResourceBarrier(1u, &barrier);
 
                 // Allocate staging data
-                ShaderExportConstantAllocation stagingAllocation = streamState->constantAllocator.Allocate(device->deviceAllocator, dwordCount * sizeof(uint32_t));
+                ShaderExportConstantAllocation stagingAllocation = streamState->constantAllocator.Allocate(device->deviceAllocator, length);
 
                 // Update data
-                std::memcpy(stagingAllocation.staging, &cmd->value, sizeof(uint32_t));
+                std::memcpy(stagingAllocation.staging, reinterpret_cast<const uint8_t*>(cmd) + sizeof(SetDescriptorDataCommand), sizeof(uint32_t));
 
                 // Copy from staging
                 commandList->CopyBufferRegion(
@@ -197,7 +197,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                     dwordOffset * sizeof(uint32_t),
                     stagingAllocation.resource,
                     stagingAllocation.offset,
-                    dwordCount * sizeof(uint32_t)
+                    length
                 );
 
                 // Copy Dest -> Shader Read
