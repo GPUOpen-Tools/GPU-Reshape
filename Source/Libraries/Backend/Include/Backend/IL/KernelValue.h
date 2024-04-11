@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,42 +26,8 @@
 
 #pragma once
 
-// Layer
-#include <Backends/Vulkan/Compiler/Spv.h>
-
-// Std
-#include <cstdint>
-#include <vector>
-
-struct SpvDecorationPair {
-    /// Type of decoration
-    SpvDecoration kind{SpvDecorationMax};
-
-    /// Decoration payload words
-    uint32_t* words{nullptr};
-
-    /// Number of variable words in payload
-    uint32_t wordCount{0};
-};
-
-struct SpvMemberDecoration {
-    /// All decorations for this member
-    std::vector<SpvDecorationPair> decorations;
-};
-
-struct SpvValueDecoration {
-    /// Bound descriptor set
-    uint32_t descriptorSet{UINT32_MAX};
-
-    /// Offset within the descriptor set
-    uint32_t descriptorOffset{UINT32_MAX};
-
-    /// Offset within a block
-    uint32_t blockOffset{UINT32_MAX};
-
-    /// All decorations for this value
-    std::vector<SpvDecorationPair> decorations;
-    
-    /// Decorations for composite members
-    std::vector<SpvMemberDecoration> members;
-};
+namespace Backend::IL {
+    enum class KernelValue {
+        DispatchThreadID
+    };
+}

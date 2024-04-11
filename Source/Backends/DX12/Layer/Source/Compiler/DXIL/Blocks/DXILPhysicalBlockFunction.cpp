@@ -3462,6 +3462,38 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     break;
                 }
 
+                case IL::OpCode::KernelValue: {
+                    auto _instr = instr->As<IL::KernelValueInstruction>();
+
+                    // Handle value
+                    switch (_instr->value) {
+                        default: {
+                            ASSERT(false, "Invalid value");
+                            break;
+                        }
+                        case Backend::IL::KernelValue::DispatchThreadID: {
+                            const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpThreadI32);
+
+                            // Get each dimension
+                            IL::ID threadIds[3];
+                            for (uint32_t i = 0; i < 3; i++) {
+                                threadIds[i] = program.GetIdentifierMap().AllocID();
+
+                                // Get thread id at axis
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::ThreadId))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(i)->id);
+                                block->AddRecord(CompileIntrinsicCall(threadIds[i], intrinsic, 2, ops));
+                            }
+
+                            // Create svox
+                            table.idRemapper.SetUserRedirect(instr->result, AllocateSVOSequential(3, threadIds[0], threadIds[1], threadIds[2]));
+                            break;
+                        }
+                    }
+                    break;
+                }
+
                 case IL::OpCode::Select: {
                     auto _instr = instr->As<IL::SelectInstruction>();
 
@@ -5068,17 +5100,38 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, st
         // Get variable
         const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
 
-        // Extract respective value
-        LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-        recordExtract.SetUser(true, ~0u, variable->id);
-        recordExtract.opCount = 2;
-        recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
-        recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyRows[dwordOffset / 4]);
-        recordExtract.ops[1] = dwordOffset % 4;
-        block->AddRecord(recordExtract);
+        // Extract all dwords
+        TrivialStackVector<IL::ID, 16> dwords;
+        for (uint32_t i = 0; i < info.descriptor.dwordCount; i++) {
+            IL::ID result;
+            if (info.descriptor.dwordCount == 1) {
+                result = variable->id;
+            } else {
+                result = program.GetIdentifierMap().AllocID();
+            }
+            
+            // Extract respective value
+            LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+            recordExtract.SetUser(true, ~0u, result);
+            recordExtract.opCount = 2;
+            recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+            recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyRows[dwordOffset / 4]);
+            recordExtract.ops[1] = dwordOffset % 4;
+            block->AddRecord(recordExtract);
+            dwords.Add(result);
 
-        // Next!
-        dwordOffset++;
+            // Next!
+            dwordOffset++;
+        }
+
+        // If multiple dwords, create aggregate
+        if (info.descriptor.dwordCount > 1) {
+            // Get pointee
+            const Backend::IL::Type *pointee = variable->type;
+
+            // Create struct from dwords
+            table.idRemapper.SetUserRedirect(variable->id, AllocateSVOStructSequential(pointee, dwords.Data(), info.descriptor.dwordCount));
+        }
     }
 
     // Validation

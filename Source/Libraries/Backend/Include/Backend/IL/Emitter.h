@@ -32,6 +32,7 @@
 #include "Program.h"
 #include "TypeResult.h"
 #include "ControlFlow.h"
+#include "Device.h"
 
 // Common
 #include <Common/Alloca.h>
@@ -95,6 +96,13 @@ namespace IL {
     template<typename OP = Op::Append>
     struct Emitter {
         using Opaque = typename OP::Opaque;
+
+        /// Generic handle type
+        template<typename>
+        using Handle = IL::ID;
+
+        /// Specify device
+        static constexpr Device kDevice = Device::kGPU;
 
         /// Default constructor
         Emitter() = default;
@@ -614,6 +622,18 @@ namespace IL {
 
             IsNaNInstruction instr{};
             instr.opCode = OpCode::IsNaN;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            return Op(instr);
+        }
+
+        /// Get a kernel provided value
+        /// \param value the value to fetch
+        /// \return instruction reference
+        BasicBlock::TypedIterator <KernelValueInstruction> KernelValue(Backend::IL::KernelValue value) {
+            KernelValueInstruction instr{};
+            instr.opCode = OpCode::KernelValue;
             instr.source = Source::Invalid();
             instr.result = map->AllocID();
             instr.value = value;

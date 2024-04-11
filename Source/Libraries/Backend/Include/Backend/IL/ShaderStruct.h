@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,42 +26,27 @@
 
 #pragma once
 
-// Layer
-#include <Backends/Vulkan/Compiler/Spv.h>
+namespace IL {
+    template<typename T>
+    struct ShaderStruct {
+        ShaderStruct(IL::ID data) : data(data) {
+        
+        }
 
-// Std
-#include <cstdint>
-#include <vector>
+        /// Get a value within the struct
+        /// Must be dword aligned
+        /// \param emitter instruction emitter to use
+        /// \return dword value
+        template<auto M, typename E>
+        IL::ID Get(E& emitter) {
+            static T dummy;
+            size_t offset = reinterpret_cast<size_t>(&(dummy.*M)) - reinterpret_cast<size_t>(&dummy);
+            ASSERT(offset % sizeof(uint32_t) == 0, "Non-dword aligned offset");
+            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(offset / sizeof(uint32_t))->id);
+        }
 
-struct SpvDecorationPair {
-    /// Type of decoration
-    SpvDecoration kind{SpvDecorationMax};
-
-    /// Decoration payload words
-    uint32_t* words{nullptr};
-
-    /// Number of variable words in payload
-    uint32_t wordCount{0};
-};
-
-struct SpvMemberDecoration {
-    /// All decorations for this member
-    std::vector<SpvDecorationPair> decorations;
-};
-
-struct SpvValueDecoration {
-    /// Bound descriptor set
-    uint32_t descriptorSet{UINT32_MAX};
-
-    /// Offset within the descriptor set
-    uint32_t descriptorOffset{UINT32_MAX};
-
-    /// Offset within a block
-    uint32_t blockOffset{UINT32_MAX};
-
-    /// All decorations for this value
-    std::vector<SpvDecorationPair> decorations;
-    
-    /// Decorations for composite members
-    std::vector<SpvMemberDecoration> members;
-};
+    private:
+        /// Underlying data
+        IL::ID data;
+    };
+}

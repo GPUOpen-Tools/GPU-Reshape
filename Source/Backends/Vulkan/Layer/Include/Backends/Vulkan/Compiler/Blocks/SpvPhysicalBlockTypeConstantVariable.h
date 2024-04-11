@@ -100,6 +100,13 @@ public:
         return pushConstantVariableId;
     }
 
+public:
+    /// Get a builtin input
+    /// \param builtin given id, created if not present
+    /// \param type expected value type
+    /// \return existing or allocated id
+    IL::ID FindOrCreateInput(SpvBuiltIn builtin, const Backend::IL::Type* type);
+
 private:
     SpvBlock recordBlock;
 

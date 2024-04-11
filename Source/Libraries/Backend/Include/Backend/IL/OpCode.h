@@ -64,6 +64,9 @@ namespace IL {
         IsInf,
         IsNaN,
 
+        /// Kernel
+        KernelValue,
+
         /// Flow control
         Select,
         Branch,

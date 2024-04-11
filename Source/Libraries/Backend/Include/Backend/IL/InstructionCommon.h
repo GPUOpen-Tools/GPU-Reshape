@@ -194,6 +194,9 @@ namespace Backend::IL {
                 functor(typed->value);
                 break;
             }
+            case ::IL::OpCode::KernelValue: {
+                break;
+            }
             case ::IL::OpCode::Select: {
                 auto typed = instr->As<::IL::SelectInstruction>();
                 functor(typed->condition);
