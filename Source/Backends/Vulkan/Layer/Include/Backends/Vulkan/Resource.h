@@ -28,6 +28,17 @@
 
 #include <Backends/Vulkan/Vulkan.h>
 
+// Backend
+#include <Backend/Resource/ResourceInfo.h>
+
+// Forward declarations
+struct VirtualResourceMapping;
+
+/// Get the resource info from a mapping
+/// \param mapping given mapping
+/// \return resource info
+ResourceInfo GetResourceInfoFor(const VirtualResourceMapping& mapping);
+
 /// Hooks
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer);
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBufferView(VkDevice device, const VkBufferViewCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBufferView* pView);

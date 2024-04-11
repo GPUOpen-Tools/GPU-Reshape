@@ -28,6 +28,7 @@
 
 // Backend
 #include "CommandContextHandle.h"
+#include "Resource/ResourceInfo.h"
 
 // Common
 #include <Common/Delegate.h>
@@ -58,6 +59,8 @@ namespace Hooks {
     using Dispatch = Delegate<void(CommandContext* context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ)>;
 
     /// Resource
+    using CreateResource = Delegate<void(const ResourceInfo& info)>;
+    using DestroyResource = Delegate<void(const ResourceInfo& info)>;
     using MapResource = Delegate<void(const ResourceInfo& source)>;
     using UnmapResource = Delegate<void(const ResourceInfo& source)>;
     using CopyResource = Delegate<void(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest)>;
@@ -86,6 +89,8 @@ public:
     Hooks::Dispatch dispatch;
 
     /// Resource
+    Hooks::CreateResource createResource;
+    Hooks::DestroyResource destroyResource;
     Hooks::MapResource mapResource;
     Hooks::UnmapResource unmapResource;
     Hooks::CopyResource copyResource;

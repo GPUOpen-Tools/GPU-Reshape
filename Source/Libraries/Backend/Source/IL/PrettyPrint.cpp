@@ -250,6 +250,11 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             line << "IsNaN %" << isNaN->value;
             break;
         }
+        case OpCode::KernelValue: {
+            auto kernel = instr->As<IL::KernelValueInstruction>();
+            line << "KernelValue " << static_cast<uint32_t>(kernel->value);
+            break;
+        }
         case OpCode::Sub: {
             auto sub = instr->As<IL::SubInstruction>();
             line << "Sub %" << sub->lhs << " %" << sub->rhs;
@@ -1792,6 +1797,11 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
         case IL::OpCode::IsNaN: {
             auto isNaN = instr->As<IL::IsNaNInstruction>();
             out.Line() << "\"Value\": " << isNaN->value << ",";
+            break;
+        }
+        case IL::OpCode::KernelValue: {
+            auto kernel = instr->As<IL::KernelValueInstruction>();
+            out.Line() << "\"Value\": " << static_cast<uint32_t>(kernel->value) << ",";
             break;
         }
         case IL::OpCode::Sub: {

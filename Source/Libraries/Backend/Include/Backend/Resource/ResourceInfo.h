@@ -28,32 +28,62 @@
 
 // Backend
 #include "ResourceToken.h"
-
-// Forward declarations
-struct TextureDescriptor;
-struct BufferDescriptor;
+#include "BufferDescriptor.h"
+#include "TextureDescriptor.h"
 
 struct ResourceInfo {
+    ResourceInfo() : token{} {
+        textureDescriptor = {};
+    }
+    
+    /// Create a texture info
+    /// \param token given token
+    /// \return info
+    static ResourceInfo Texture(const ResourceToken& token) {
+        ResourceInfo info;
+        info.token = token;
+        info.textureDescriptor = TextureDescriptor {
+            .region = {
+                .width = token.width,
+                .height = token.height,
+                .depth = token.depthOrSliceCount
+            }
+        };
+        return info;
+    }
+    
     /// Create a texture info
     /// \param token given token
     /// \param texture given texture
     /// \return info
-    static ResourceInfo Texture(const ResourceToken& token, const TextureDescriptor* texture) {
-        return ResourceInfo {
-            .token = token,
-            .textureDescriptor = texture
+    static ResourceInfo Texture(const ResourceToken& token, const TextureDescriptor& texture) {
+        ResourceInfo info;
+        info.token = token;
+        info.textureDescriptor = texture;
+        return info;
+    }
+
+    /// Create a buffer info
+    /// \param token given token
+    /// \return info
+    static ResourceInfo Buffer(const ResourceToken& token) {
+        ResourceInfo info;
+        info.token = token;
+        info.bufferDescriptor = BufferDescriptor {
+            .width = token.width
         };
+        return info;
     }
 
     /// Create a buffer info
     /// \param token given token
     /// \param buffer given buffer
     /// \return info
-    static ResourceInfo Buffer(const ResourceToken& token, const BufferDescriptor* buffer) {
-        return ResourceInfo {
-            .token = token,
-            .bufferDescriptor = buffer
-        };
+    static ResourceInfo Buffer(const ResourceToken& token, const BufferDescriptor& buffer) {
+        ResourceInfo info;
+        info.token = token;
+        info.bufferDescriptor = buffer;
+        return info;
     }
 
     /// PRMT token
@@ -64,7 +94,7 @@ struct ResourceInfo {
 
     /// Descriptor data
     union {
-        const TextureDescriptor* textureDescriptor;
-        const BufferDescriptor* bufferDescriptor;
+        TextureDescriptor textureDescriptor;
+        BufferDescriptor bufferDescriptor;
     };
 };

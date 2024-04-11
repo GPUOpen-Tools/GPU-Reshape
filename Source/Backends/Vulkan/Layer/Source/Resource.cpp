@@ -36,6 +36,30 @@
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
 
+ResourceInfo GetResourceInfoFor(const VirtualResourceMapping& mapping) {
+    ResourceToken token {
+        .puid = mapping.puid,
+        .type = static_cast<Backend::IL::ResourceTokenType>(mapping.type),
+        .width = mapping.width,
+        .height = mapping.height,
+        .depthOrSliceCount = mapping.depthOrSliceCount,
+        .mipCount = mapping.mipCount,
+        .baseMip = mapping.baseMip,
+        .baseSlice = mapping.baseSlice
+    };
+
+    // Construct without descriptor
+    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.type)) {
+        default:
+            ASSERT(false, "Unexpected type");
+        return {};
+        case Backend::IL::ResourceTokenType::Texture:
+            return ResourceInfo::Texture(token);
+        case Backend::IL::ResourceTokenType::Buffer:
+            return ResourceInfo::Buffer(token);
+    }
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
 
@@ -72,6 +96,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     // Inform controller
     table->versioningController->CreateOrRecommitBuffer(state);
 
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+        proxyTable.createResource.TryInvoke(GetResourceInfoFor(state->virtualMapping));
+    }
+    
     // OK
     return VK_SUCCESS;
 }
@@ -141,6 +170,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
 
     // Inform controller
     table->versioningController->CreateOrRecommitImage(state);
+
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+        proxyTable.createResource.TryInvoke(GetResourceInfoFor(state->virtualMappingTemplate));
+    }
 
     // OK
     return VK_SUCCESS;
@@ -220,6 +254,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyBuffer(VkDevice device, VkBuffer buffer
 
     // Get state
     BufferState* state = table->states_buffer.Get(buffer);
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+        proxyTable.destroyResource.TryInvoke(GetResourceInfoFor(state->virtualMapping));
+    }
 
     // Free memory
     destroy(state->debugName, table->allocators);
@@ -264,6 +303,11 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroyImage(VkDevice device, VkImage image, c
 
     // Get state
     ImageState* state = table->states_image.Get(image);
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+        proxyTable.destroyResource.TryInvoke(GetResourceInfoFor(state->virtualMappingTemplate));
+    }
 
     // Free memory
     destroy(state->debugName, table->allocators);

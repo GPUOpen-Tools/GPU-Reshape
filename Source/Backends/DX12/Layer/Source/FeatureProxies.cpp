@@ -32,8 +32,6 @@
 #include <Backends/DX12/Table.Gen.h>
 
 // Backend
-#include <Backend/Command/BufferDescriptor.h>
-#include <Backend/Command/TextureDescriptor.h>
 #include <Backend/Resource/ResourceInfo.h>
 #include <Backend/Command/RenderPassInfo.h>
 #include <Backend/Command/AttachmentInfo.h>
@@ -53,6 +51,34 @@ static ResourceToken GetResourceToken(const T* state) {
         .baseMip = state->virtualMapping.baseMip,
         .baseSlice = state->virtualMapping.baseSlice
     };
+}
+
+/// Subresource indexing
+struct SubresourceIndices {
+    uint32_t mipIndex{0};
+    uint32_t sliceIndex{0};
+    uint32_t planeIndex{0};
+};
+
+/// Get all indices from a subresource index
+/// \param index given index
+/// \param mipCount total number of mips
+/// \param sliceCount total number of slices
+/// \param planeCount total number of planes
+/// \return all indices
+SubresourceIndices GetSubresourceIndices(uint32_t index, uint32_t mipCount, uint32_t sliceCount, uint32_t planeCount) {
+    SubresourceIndices out;
+
+    // 3d offset
+    out.planeIndex = index / (mipCount * sliceCount);
+
+    // 2d offset
+    uint32_t offset2D = index - out.planeIndex * mipCount * sliceCount;
+    out.sliceIndex = offset2D / mipCount;
+    out.mipIndex = offset2D % mipCount;
+
+    // OK
+    return out;
 }
 
 /// Get the resource state from a heap handle
@@ -118,33 +144,59 @@ void FeatureHook_CopyBufferRegion::operator()(CommandListState *list, CommandCon
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Buffer(GetResourceToken(srcState), &srcDescriptor),
-        ResourceInfo::Buffer(GetResourceToken(dstState), &dstDescriptor)
+        ResourceInfo::Buffer(GetResourceToken(srcState), srcDescriptor),
+        ResourceInfo::Buffer(GetResourceToken(dstState), dstDescriptor)
     );
 }
 
 void FeatureHook_CopyTextureRegion::operator()(CommandListState *object, CommandContext *context, const D3D12_TEXTURE_COPY_LOCATION* pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION* pSrc, const D3D12_BOX* pSrcBox) const {
+    // TODO[init]: placed!
+    ASSERT(pDst->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, "Path not implemented");
+    ASSERT(pSrc->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, "Path not implemented");
+    
     // Get states
     ResourceState* dstState = GetState(pDst->pResource);
     ResourceState* srcState = GetState(pSrc->pResource);
 
+    // Get indices from the subresources
+    SubresourceIndices dstIndices = GetSubresourceIndices(pDst->SubresourceIndex, dstState->desc.MipLevels, dstState->desc.DepthOrArraySize, 1u);
+    SubresourceIndices srcIndices = GetSubresourceIndices(pSrc->SubresourceIndex, srcState->desc.MipLevels, srcState->desc.DepthOrArraySize, 1u);
+
     // Setup source descriptor
     TextureDescriptor srcDescriptor{
-        .region = TextureRegion { },
+        .region = TextureRegion {
+            .baseMip = srcIndices.mipIndex,
+            .baseSlice = srcIndices.sliceIndex,
+            .offsetX = pSrcBox ? pSrcBox->left : 0,
+            .offsetY = pSrcBox ? pSrcBox->top : 0,
+            .offsetZ = pSrcBox ? pSrcBox->back : 0,
+            .width = static_cast<uint32_t>(pSrcBox ? pSrcBox->right - pSrcBox->left : srcState->desc.Width),
+            .height = pSrcBox ? pSrcBox->bottom - pSrcBox->top : srcState->desc.Height,
+            .depth = pSrcBox ? pSrcBox->front - pSrcBox->back : srcState->desc.DepthOrArraySize
+        },
         .uid = 0u
     };
 
     // Setup destination descriptor
     TextureDescriptor dstDescriptor{
-        .region = TextureRegion { },
+        .region = TextureRegion {
+            .baseMip = dstIndices.mipIndex,
+            .baseSlice = dstIndices.sliceIndex,
+            .offsetX = DstX,
+            .offsetY = DstY,
+            .offsetZ = DstZ,
+            .width = srcDescriptor.region.width,
+            .height = srcDescriptor.region.height,
+            .depth = srcDescriptor.region.depth
+        },
         .uid = 0u
     };
 
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(srcState), &srcDescriptor),
-        ResourceInfo::Texture(GetResourceToken(dstState), &dstDescriptor)
+        ResourceInfo::Texture(GetResourceToken(srcState), srcDescriptor),
+        ResourceInfo::Texture(GetResourceToken(dstState), dstDescriptor)
     );
 }
 
@@ -162,21 +214,31 @@ void FeatureHook_CopyResource::operator()(CommandListState *object, CommandConte
         case Backend::IL::ResourceTokenType::Texture: {
             // Setup source descriptor
             TextureDescriptor srcDescriptor{
-                .region = TextureRegion { },
+                .region = TextureRegion {
+                    .mipCount = srcState->desc.MipLevels,
+                    .width = static_cast<uint32_t>(srcState->desc.Width),
+                    .height = srcState->desc.Height,
+                    .depth = srcState->desc.DepthOrArraySize
+                },
                 .uid = 0u
             };
 
             // Setup destination descriptor
             TextureDescriptor dstDescriptor{
-                .region = TextureRegion { },
+                .region = TextureRegion {
+                    .mipCount = srcState->desc.MipLevels,
+                    .width = static_cast<uint32_t>(dstState->desc.Width),
+                    .height = dstState->desc.Height,
+                    .depth = dstState->desc.DepthOrArraySize
+                },
                 .uid = 0u
             };
 
             // Invoke hook
             hook.Invoke(
                 context,
-                ResourceInfo::Texture(GetResourceToken(srcState), &srcDescriptor),
-                ResourceInfo::Texture(GetResourceToken(dstState), &dstDescriptor)
+                ResourceInfo::Texture(GetResourceToken(srcState), srcDescriptor),
+                ResourceInfo::Texture(GetResourceToken(dstState), dstDescriptor)
             );
             break;
         }
@@ -184,22 +246,22 @@ void FeatureHook_CopyResource::operator()(CommandListState *object, CommandConte
             // Setup source descriptor
             BufferDescriptor srcDescriptor{
                 .offset = 0u,
-                .width = ~0u,
+                .width = srcState->desc.Width,
                 .uid = 0u
             };
 
             // Setup destination descriptor
             BufferDescriptor dstDescriptor{
                 .offset = 0u,
-                .width = ~0u,
+                .width = dstState->desc.Width,
                 .uid = 0u
             };
 
             // Invoke hook
             hook.Invoke(
                 context,
-                ResourceInfo::Buffer(GetResourceToken(srcState), &srcDescriptor),
-                ResourceInfo::Buffer(GetResourceToken(dstState), &dstDescriptor)
+                ResourceInfo::Buffer(GetResourceToken(srcState), srcDescriptor),
+                ResourceInfo::Buffer(GetResourceToken(dstState), dstDescriptor)
             );
             break;
         }
@@ -211,23 +273,39 @@ void FeatureHook_ResolveSubresource::operator()(CommandListState *object, Comman
     ResourceState* dstState = GetState(pDstResource);
     ResourceState* srcState = GetState(pSrcResource);
 
+    // Get indices from the subresources
+    SubresourceIndices dstIndices = GetSubresourceIndices(DstSubresource, dstState->desc.MipLevels, dstState->desc.DepthOrArraySize, 1u);
+    SubresourceIndices srcIndices = GetSubresourceIndices(SrcSubresource, srcState->desc.MipLevels, srcState->desc.DepthOrArraySize, 1u);
+
     // Setup source descriptor
     TextureDescriptor srcDescriptor{
-        .region = TextureRegion { },
+        .region = TextureRegion {
+            .baseMip = srcIndices.mipIndex,
+            .baseSlice = srcIndices.sliceIndex,
+            .width = static_cast<uint32_t>(srcState->desc.Width),
+            .height = srcState->desc.Height,
+            .depth = srcState->desc.DepthOrArraySize
+        },
         .uid = 0u
     };
 
     // Setup destination descriptor
     TextureDescriptor dstDescriptor{
-        .region = TextureRegion { },
+        .region = TextureRegion {
+            .baseMip = dstIndices.mipIndex,
+            .baseSlice = dstIndices.sliceIndex,
+            .width = static_cast<uint32_t>(dstState->desc.Width),
+            .height = dstState->desc.Height,
+            .depth = dstState->desc.DepthOrArraySize
+        },
         .uid = 0u
     };
 
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(srcState), &srcDescriptor),
-        ResourceInfo::Texture(GetResourceToken(dstState), &dstDescriptor)
+        ResourceInfo::Texture(GetResourceToken(srcState), srcDescriptor),
+        ResourceInfo::Texture(GetResourceToken(dstState), dstDescriptor)
     );
 }
 
@@ -235,68 +313,164 @@ void FeatureHook_ClearDepthStencilView::operator()(CommandListState *object, Com
     // Get states
     ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, DepthStencilView);
 
-    // Setup source descriptor
-    TextureDescriptor descriptor{
-        .region = TextureRegion { },
-        .uid = 0u
-    };
+    // Null rects imply full resource
+    if (!pRects) {
+        NumRects = 1;
+    }
+    
+    for (uint32_t i = 0; i < NumRects; i++) {
+        D3D12_RECT rect;
 
-    // Invoke hook
-    hook.Invoke(
-        context,
-        ResourceInfo::Texture(token, &descriptor)
-    );
+        // Assume rect from resource dimensions if default
+        if (pRects) {
+            rect = pRects[i];
+        } else {
+            rect = {
+                .right = static_cast<LONG>(token.width),
+                .bottom = static_cast<LONG>(token.height)
+            };
+        }
+        
+        // Setup source descriptor
+        TextureDescriptor descriptor{
+            .region = TextureRegion {
+                .offsetX = static_cast<uint32_t>(rect.left),
+                .offsetY = static_cast<uint32_t>(rect.top),
+                .width = static_cast<uint32_t>(rect.right - rect.left),
+                .height = static_cast<uint32_t>(rect.bottom - rect.top)
+            },
+            .uid = 0u
+        };
+
+        // Invoke hook
+        hook.Invoke(
+            context,
+            ResourceInfo::Texture(token, descriptor)
+        );
+    }
 }
 
 void FeatureHook_ClearRenderTargetView::operator()(CommandListState *object, CommandContext *context, D3D12_CPU_DESCRIPTOR_HANDLE RenderTargetView, const FLOAT *ColorRGBA, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
     ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, RenderTargetView);
 
-    // Setup source descriptor
-    TextureDescriptor descriptor{
-        .region = TextureRegion { },
-        .uid = 0u
-    };
+    // Null rects imply full resource
+    if (!pRects) {
+        NumRects = 1;
+    }
+    
+    for (uint32_t i = 0; i < NumRects; i++) {
+        D3D12_RECT rect;
 
-    // Invoke hook
-    hook.Invoke(
-        context,
-        ResourceInfo::Texture(token, &descriptor)
-    );
+        // Assume rect from resource dimensions if default
+        if (pRects) {
+            rect = pRects[i];
+        } else {
+            rect = {
+                .right = static_cast<LONG>(token.width),
+                .bottom = static_cast<LONG>(token.height)
+            };
+        }
+        
+        // Setup source descriptor
+        TextureDescriptor descriptor{
+            .region = TextureRegion {
+                .offsetX = static_cast<uint32_t>(rect.left),
+                .offsetY = static_cast<uint32_t>(rect.top),
+                .width = static_cast<uint32_t>(rect.right - rect.left),
+                .height = static_cast<uint32_t>(rect.bottom - rect.top)
+            },
+            .uid = 0u
+        };
+
+        // Invoke hook
+        hook.Invoke(
+            context,
+            ResourceInfo::Texture(token, descriptor)
+        );
+    }
 }
 
 void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *object, CommandContext *context, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const UINT *Values, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
     ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
 
-    // Setup source descriptor
-    TextureDescriptor descriptor{
-        .region = TextureRegion { },
-        .uid = 0u
-    };
+    // Null rects imply full resource
+    if (!pRects) {
+        NumRects = 1;
+    }
+    
+    for (uint32_t i = 0; i < NumRects; i++) {
+        D3D12_RECT rect;
 
-    // Invoke hook
-    hook.Invoke(
-        context,
-        ResourceInfo::Texture(token, &descriptor)
-    );
+        // Assume rect from resource dimensions if default
+        if (pRects) {
+            rect = pRects[i];
+        } else {
+            rect = {
+                .right = static_cast<LONG>(token.width),
+                .bottom = static_cast<LONG>(token.height)
+            };
+        }
+        
+        // Setup source descriptor
+        TextureDescriptor descriptor{
+            .region = TextureRegion {
+                .offsetX = static_cast<uint32_t>(rect.left),
+                .offsetY = static_cast<uint32_t>(rect.top),
+                .width = static_cast<uint32_t>(rect.right - rect.left),
+                .height = static_cast<uint32_t>(rect.bottom - rect.top)
+            },
+            .uid = 0u
+        };
+
+        // Invoke hook
+        hook.Invoke(
+            context,
+            ResourceInfo::Texture(token, descriptor)
+        );
+    }
 }
 
 void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *object, CommandContext *context, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const FLOAT *Values, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
     ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
 
-    // Setup source descriptor
-    TextureDescriptor descriptor{
-        .region = TextureRegion { },
-        .uid = 0u
-    };
+    // Null rects imply full resource
+    if (!pRects) {
+        NumRects = 1;
+    }
+    
+    for (uint32_t i = 0; i < NumRects; i++) {
+        D3D12_RECT rect;
 
-    // Invoke hook
-    hook.Invoke(
-        context,
-        ResourceInfo::Texture(token, &descriptor)
-    );
+        // Assume rect from resource dimensions if default
+        if (pRects) {
+            rect = pRects[i];
+        } else {
+            rect = {
+                .right = static_cast<LONG>(token.width),
+                .bottom = static_cast<LONG>(token.height)
+            };
+        }
+        
+        // Setup source descriptor
+        TextureDescriptor descriptor{
+            .region = TextureRegion {
+                .offsetX = static_cast<uint32_t>(rect.left),
+                .offsetY = static_cast<uint32_t>(rect.top),
+                .width = static_cast<uint32_t>(rect.right - rect.left),
+                .height = static_cast<uint32_t>(rect.bottom - rect.top)
+            },
+            .uid = 0u
+        };
+
+        // Invoke hook
+        hook.Invoke(
+            context,
+            ResourceInfo::Texture(token, descriptor)
+        );
+    }
 }
 
 void FeatureHook_ResolveSubresourceRegion::operator()(CommandListState *object, CommandContext *context, ID3D12Resource *pDstResource, UINT DstSubresource, UINT DstX, UINT DstY, ID3D12Resource *pSrcResource, UINT SrcSubresource, D3D12_RECT *pSrcRect, DXGI_FORMAT Format, D3D12_RESOLVE_MODE ResolveMode) const {
@@ -304,23 +478,41 @@ void FeatureHook_ResolveSubresourceRegion::operator()(CommandListState *object, 
     ResourceState* dstState = GetState(pDstResource);
     ResourceState* srcState = GetState(pSrcResource);
 
+    // Get indices from the subresources
+    SubresourceIndices dstIndices = GetSubresourceIndices(DstSubresource, dstState->desc.MipLevels, dstState->desc.DepthOrArraySize, 1u);
+    SubresourceIndices srcIndices = GetSubresourceIndices(SrcSubresource, srcState->desc.MipLevels, srcState->desc.DepthOrArraySize, 1u);
+
     // Setup source descriptor
     TextureDescriptor srcDescriptor{
-        .region = TextureRegion { },
+        .region = TextureRegion {
+            .baseMip = srcIndices.mipIndex,
+            .baseSlice = srcIndices.sliceIndex,
+            .offsetX = static_cast<uint32_t>(pSrcRect ? pSrcRect->left : 0),
+            .offsetY = static_cast<uint32_t>(pSrcRect ? pSrcRect->top : 0),
+            .width = static_cast<uint32_t>(pSrcRect ? pSrcRect->right - pSrcRect->left : srcState->desc.Width),
+            .height = pSrcRect ? pSrcRect->bottom - pSrcRect->top : srcState->desc.Height
+        },
         .uid = 0u
     };
 
     // Setup destination descriptor
     TextureDescriptor dstDescriptor{
-        .region = TextureRegion { },
+        .region = TextureRegion {
+            .baseMip = dstIndices.mipIndex,
+            .baseSlice = dstIndices.sliceIndex,
+            .offsetX = DstX,
+            .offsetY = DstY,
+            .width = static_cast<uint32_t>(pSrcRect ? pSrcRect->right - pSrcRect->left : srcState->desc.Width),
+            .height = pSrcRect ? pSrcRect->bottom - pSrcRect->top : srcState->desc.Height,
+        },
         .uid = 0u
     };
 
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(srcState), &srcDescriptor),
-        ResourceInfo::Texture(GetResourceToken(dstState), &dstDescriptor)
+        ResourceInfo::Texture(GetResourceToken(srcState), srcDescriptor),
+        ResourceInfo::Texture(GetResourceToken(dstState), dstDescriptor)
     );
 }
 
@@ -334,14 +526,18 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
-            .region = TextureRegion { },
+            .region = TextureRegion {
+                token.width,
+                token.height,
+                token.depthOrSliceCount
+            },
             .uid = 0u
         };
 
         // Setup attachment
         AttachmentInfo& info = attachments[i];
         info.resource.token = token;
-        info.resource.textureDescriptor = descriptors + i;
+        info.resource.textureDescriptor = descriptors[i];
         info.resolveResource = nullptr;
 
         // Translate action
@@ -397,7 +593,11 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
         // Setup destination descriptor
         depthDescriptor = TextureDescriptor{
-            .region = TextureRegion { },
+            .region = TextureRegion {
+                token.width,
+                token.height,
+                token.depthOrSliceCount
+            },
             .uid = 0u
         };
 
@@ -441,7 +641,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
         // Set resource info
         depthInfo.resource.token = token;
-        depthInfo.resource.textureDescriptor = &depthDescriptor;
+        depthInfo.resource.textureDescriptor = depthDescriptor;
         depthInfo.resolveResource = nullptr;
         passInfo.depthAttachment = &depthInfo;
     }
@@ -478,14 +678,18 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
 
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
-            .region = TextureRegion { },
+            .region = TextureRegion { 
+                token.width,
+                token.height,
+                token.depthOrSliceCount
+            },
             .uid = 0u
         };
 
         // Setup attachment
         AttachmentInfo& info = attachments[i];
         info.resource.token = token;
-        info.resource.textureDescriptor = descriptors + i;
+        info.resource.textureDescriptor = descriptors[i];
         info.loadAction = AttachmentAction::Load;
         info.storeAction = AttachmentAction::Store;
         info.resolveResource = nullptr;
@@ -505,13 +709,17 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
 
         // Setup destination descriptor
         depthDescriptor = TextureDescriptor{
-            .region = TextureRegion { },
+            .region = TextureRegion { 
+                token.width,
+                token.height,
+                token.depthOrSliceCount
+            },
             .uid = 0u
         };
 
         // Setup attachment
         depthInfo.resource.token = token;
-        depthInfo.resource.textureDescriptor = &depthDescriptor;
+        depthInfo.resource.textureDescriptor = depthDescriptor;
         depthInfo.loadAction = AttachmentAction::Load;
         depthInfo.storeAction = AttachmentAction::Store;
         depthInfo.resolveResource = nullptr;

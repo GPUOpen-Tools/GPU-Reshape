@@ -54,11 +54,17 @@ struct CommandBuilder {
     /// Set descriptor data
     /// \param id event data to be mapped
     /// \param value value to be written
-    void SetDescriptorData(ShaderDataID id, uint32_t value) {
-        buffer.Add(SetDescriptorDataCommand {
-            .id = id,
-            .value = value
-        });
+    template<typename T>
+    void SetDescriptorData(ShaderDataID id, const T& value) {
+        ASSERT(sizeof(T) < (1u << 16u) - sizeof(SetDescriptorDataCommand), "Inline staging buffer exceeds max size");
+
+        SetDescriptorDataCommand command;
+        command.commandSize += sizeof(value);
+        command.id = id;
+        
+        buffer.Append(&command, sizeof(command));
+        buffer.Append(&value, sizeof(value));
+        buffer.Increment();
     }
 
     /// Stage a buffer

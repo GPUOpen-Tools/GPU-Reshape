@@ -35,7 +35,7 @@
 /// Unpacked token type
 struct ResourceToken {
     /// Physical UID of the resource
-    uint64_t puid;
+    uint32_t puid;
 
     /// Type of the resource
     Backend::IL::ResourceTokenType type;

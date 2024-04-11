@@ -52,9 +52,9 @@ ResourceInfo GetResourceInfoFor(ResourceState* state) {
             ASSERT(false, "Unexpected type");
             return {};
         case Backend::IL::ResourceTokenType::Texture:
-            return ResourceInfo::Texture(token, nullptr);
+            return ResourceInfo::Texture(token);
         case Backend::IL::ResourceTokenType::Buffer:
-            return ResourceInfo::Buffer(token, nullptr);
+            return ResourceInfo::Buffer(token);
     }
 }
 
@@ -153,6 +153,11 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     // Inform controller
     table.state->versioningController->CreateOrRecommitResource(state, nullptr);
 
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table.state->featureHookTables) {
+        proxyTable.createResource.TryInvoke(GetResourceInfoFor(state));
+    }
+    
     // Create detours
     return CreateDetour(state->allocators, resource, state);
 }
@@ -642,6 +647,11 @@ ResourceState::~ResourceState() {
     if (!object) {
         parent->Release();
         return;
+    }
+    
+    // Invoke proxies for all handles
+    for (const FeatureHookTable &proxyTable: table.state->featureHookTables) {
+        proxyTable.destroyResource.TryInvoke(GetResourceInfoFor(this));
     }
 
     // Release name

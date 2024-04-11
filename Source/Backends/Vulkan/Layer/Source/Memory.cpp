@@ -26,6 +26,7 @@
 
 // Layer
 #include <Backends/Vulkan/Memory.h>
+#include <Backends/Vulkan/Resource.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/States/DeviceMemoryState.h>
 #include <Backends/Vulkan/States/BufferState.h>
@@ -70,30 +71,6 @@ VKAPI_ATTR void VKAPI_ATTR Hook_vkFreeMemory(VkDevice device, VkDeviceMemory mem
 
     // Pass down callchain
     table->next_vkFreeMemory(device, memory, pAllocator);
-}
-
-static ResourceInfo GetResourceInfoFor(const VirtualResourceMapping& mapping) {
-    ResourceToken token {
-        .puid = mapping.puid,
-        .type = static_cast<Backend::IL::ResourceTokenType>(mapping.type),
-        .width = mapping.width,
-        .height = mapping.height,
-        .depthOrSliceCount = mapping.depthOrSliceCount,
-        .mipCount = mapping.mipCount,
-        .baseMip = mapping.baseMip,
-        .baseSlice = mapping.baseSlice
-    };
-
-    // Construct without descriptor
-    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.type)) {
-        default:
-            ASSERT(false, "Unexpected type");
-            return {};
-        case Backend::IL::ResourceTokenType::Texture:
-            return ResourceInfo::Texture(token, nullptr);
-        case Backend::IL::ResourceTokenType::Buffer:
-            return ResourceInfo::Buffer(token, nullptr);
-    }
 }
 
 static ResourceInfo GetResourceInfoFor(const DeviceMemoryResource& resource) {

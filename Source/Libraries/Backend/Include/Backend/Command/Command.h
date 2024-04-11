@@ -100,9 +100,8 @@ struct SetEventDataCommand : public TCommand<SetEventDataCommand, CommandType::S
     uint32_t value;
 };
 
-struct SetDescriptorDataCommand : public TCommand<SetEventDataCommand, CommandType::SetDescriptorData> {
+struct SetDescriptorDataCommand : public TCommand<SetDescriptorDataCommand, CommandType::SetDescriptorData> {
     ShaderDataID id;
-    uint32_t value;
 };
 
 enum class StageBufferFlag {

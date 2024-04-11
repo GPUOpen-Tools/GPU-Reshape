@@ -26,13 +26,25 @@
 
 #pragma once
 
-// Backend
-#include <Backend/Command/TextureRegion.h>
+// Std
+#include <cstdint>
 
-struct TextureDescriptor {
-    /// Region information
-    TextureRegion region;
+struct TextureRegion {
+    /// Subresource base
+    uint32_t baseMip{0};
+    uint32_t baseSlice{0};
 
-    /// Unique identifier of the resource
-    uint64_t uid;
+    /// Number of mip levels in this region
+    /// Slices are specified by depth
+    uint32_t mipCount{1};
+
+    /// Regional offsets
+    uint32_t offsetX{0};
+    uint32_t offsetY{0};
+    uint32_t offsetZ{0};
+
+    /// Regional sizes
+    uint32_t width{0};
+    uint32_t height{0};
+    uint32_t depth{0};
 };
