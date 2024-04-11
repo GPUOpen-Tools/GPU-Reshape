@@ -61,6 +61,36 @@ namespace IL {
             return type = emitter.BitAnd(emitter.BitShiftRight(dword, emitter.UInt32(kResourceTokenTypeShift)), emitter.UInt32(kResourceTokenTypeMask));
         }
 
+        /// Get the resource width
+        ::IL::ID GetWidth() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::Width);
+        }
+
+        /// Get the resource height
+        ::IL::ID GetHeight() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::Height);
+        }
+
+        /// Get the resource depth or slice count
+        ::IL::ID GetDepthOrSliceCount() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::DepthOrSliceCount);
+        }
+
+        /// Get the mip count
+        ::IL::ID GetMipCount() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::MipCount);
+        }
+
+        /// Get the mip offset
+        ::IL::ID GetBaseMip() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::BaseMip);
+        }
+
+        /// Get the slice offset
+        ::IL::ID GetBaseSlice() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::BaseSlice);
+        }
+
         /// Get the token
         ::IL::ID GetPackedToken() {
             return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::PackedToken);
