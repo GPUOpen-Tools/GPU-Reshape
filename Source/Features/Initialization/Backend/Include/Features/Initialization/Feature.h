@@ -36,24 +36,22 @@
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/VisitContext.h>
 #include <Backend/ShaderData/IShaderDataHost.h>
-#include "Backend/ShaderProgram/ShaderProgram.h"
+#include <Backend/ShaderProgram/ShaderProgram.h>
+#include <Backend/Resource/TexelAddressAllocator.h>
 
 // Message
 #include <Message/MessageStream.h>
 
 // Std
-#include "Backend/Resource/TexelAddressAllocator.h"
-
-#include <atomic>
 #include <mutex>
 #include <unordered_map>
 
-class IShaderProgramHost;
-struct CommandBuffer;
 // Forward declarations
 class IShaderSGUIDHost;
 class MaskBlitShaderProgram;
 class MaskCopyRangeShaderProgram;
+class IShaderProgramHost;
+struct CommandBuffer;
 
 class InitializationFeature final : public IFeature, public IShaderFeature {
 public:
@@ -98,8 +96,15 @@ private:
     void OnJoin(CommandContextHandle contextHandle);
 
 private:
+    /// Blit a resource mask
+    /// \param buffer destination command buffer
+    /// \param info the resource info, contains sub-regions
     void BlitResourceMask(CommandBuffer& buffer, const ResourceInfo& info);
     
+    /// Copy an existing resource mask
+    /// \param buffer destination command buffer
+    /// \param source the source resource info, contains sub-regions
+    /// \param dest the destination resource info, contains sub-regions
     void CopyResourceMaskRange(CommandBuffer& buffer, const ResourceInfo& source, const ResourceInfo& dest);
 
 private:
@@ -128,28 +133,45 @@ private:
         ShaderProgramID maskCopyRangeShaderProgramID{InvalidShaderProgramID};
     };
 
+    /// Install a given program
+    /// \param programHost target host
+    /// \param type token type to copy
+    /// \param isVolumetric volumetric texel addressing?
+    /// \param out destination program
+    /// \return success state
     bool InstallProgram(const ComRef<IShaderProgramHost>& programHost, Backend::IL::ResourceTokenType type, bool isVolumetric, ResourcePrograms& out);
 
+    /// Get a program
+    /// \param type token type to copy
+    /// \param isVolumetric volumetric texel addressing?
+    /// \return program
     const ResourcePrograms& GetPrograms(Backend::IL::ResourceTokenType type, bool isVolumetric);
 
+    /// All programs
     ResourcePrograms bufferPrograms;
     ResourcePrograms texturePrograms;
     ResourcePrograms volumetricTexturePrograms;
 
 private:
     struct Allocation {
+        /// Absolute memory offset
         uint64_t base{0};
+
+        /// Relative offset, aligned to 32
         uint32_t baseAlign32{0};
     };
-    
+
+    /// Shared texel allocator
     TexelAddressAllocator addressAllocator;
 
+    /// All allocations
     std::unordered_map<uint64_t, Allocation> allocations;
 
 private:
     struct CommandContextInfo {
-        /// The next committed base upon join
+        /// The next committed bases upon join
         uint64_t committedInitializationHead = 0ull;
+        uint64_t committedMappingHead = 0ull;
     };
 
     struct InitialiationTag {
@@ -165,11 +187,11 @@ private:
     /// Context lookup
     std::map<CommandContextHandle, CommandContextInfo> commandContexts;
 
-    /// Current initialization queue, base indicated by commit
+    /// Current queues, base indicated by commit
     std::vector<InitialiationTag> pendingInitializationQueue;
     std::vector<MappingTag> pendingMappingQueue;
 
-    /// The current committed base
+    /// The current committed bases
     /// All pending initializations use this value as the base commit id
     uint64_t committedInitializationBase = 0ull;
     uint64_t committedMappingBase = 0ull;

@@ -495,6 +495,7 @@ void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& ho
     // Note: We track on the first context, once the first context has completed, all the rest have
     CommandContextInfo& info = commandContexts[contexts[0]];
     info.committedInitializationHead = committedInitializationBase + pendingInitializationQueue.size();
+    info.committedMappingHead = committedMappingBase + pendingMappingQueue.size();
 
     // Create builder
     CommandBuilder builder(hookContexts.preContext->buffer);
@@ -531,16 +532,26 @@ void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
     }
     
     // If the head is less than the current base, it's already been shaved off
-    if (it->second.committedInitializationHead <= committedInitializationBase) {
-        return;
+    if (it->second.committedInitializationHead > committedInitializationBase) {
+        // Shave off all known committed initialization events
+        const size_t shaveCount = it->second.committedInitializationHead - committedInitializationBase;
+        pendingInitializationQueue.erase(pendingInitializationQueue.begin(), pendingInitializationQueue.begin() + shaveCount);
+
+        // Set new base
+        committedInitializationBase = it->second.committedInitializationHead;
+    }
+    
+    // If the head is less than the current base, it's already been shaved off
+    if (it->second.committedMappingHead > committedMappingBase) {
+        // Shave off all known committed initialization events
+        const size_t shaveCount = it->second.committedMappingHead - committedMappingBase;
+        pendingMappingQueue.erase(pendingMappingQueue.begin(), pendingMappingQueue.begin() + shaveCount);
+
+        // Set new base
+        committedMappingBase = it->second.committedMappingHead;
     }
 
-    // Shave off all known committed initialization events
-    const size_t shaveCount = it->second.committedInitializationHead - committedInitializationBase;
-    pendingInitializationQueue.erase(pendingInitializationQueue.begin(), pendingInitializationQueue.begin() + shaveCount);
-
-    // Set new base
-    committedInitializationBase = it->second.committedInitializationHead;
+    // Get rid of context
     commandContexts.erase(contextHandle);
 }
 

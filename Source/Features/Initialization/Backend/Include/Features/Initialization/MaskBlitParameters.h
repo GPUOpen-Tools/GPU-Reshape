@@ -30,13 +30,14 @@
 #include <cstdint>
 
 struct MaskBlitParameters {
+    /// Memory offset aligned to 32
     uint32_t memoryBaseElementAlign32{0};
-    
+
+    /// Base offsets
     uint32_t baseX{0};
-    
     uint32_t baseY{0};
-    
     uint32_t baseZ{0};
 
+    /// Destination mip
     uint32_t mip{0};
 };

@@ -30,18 +30,21 @@
 #include <cstdint>
 
 struct MaskCopyRangeParameters {
+    /// Memory offsets aligned to 32
     uint32_t sourceMemoryBaseElementAlign32{0};
-    
     uint32_t destMemoryBaseElementAlign32{0};
-    
+
+    /// Source offsets
     uint32_t sourceBaseX{0};
     uint32_t sourceBaseY{0};
     uint32_t sourceBaseZ{0};
-    
+
+    /// Destination offsets
     uint32_t destBaseX{0};
     uint32_t destBaseY{0};
     uint32_t destBaseZ{0};
 
+    /// Mip offsets
     uint32_t sourceMip{0};
     uint32_t destMip{0};
 };
