@@ -527,9 +527,9 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
             .region = TextureRegion {
-                token.width,
-                token.height,
-                token.depthOrSliceCount
+                .width  = token.width,
+                .height = token.height,
+                .depth  = token.depthOrSliceCount
             },
             .uid = 0u
         };
@@ -594,9 +594,9 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
         // Setup destination descriptor
         depthDescriptor = TextureDescriptor{
             .region = TextureRegion {
-                token.width,
-                token.height,
-                token.depthOrSliceCount
+                .width  = token.width,
+                .height = token.height,
+                .depth  = token.depthOrSliceCount
             },
             .uid = 0u
         };
@@ -679,9 +679,9 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
             .region = TextureRegion { 
-                token.width,
-                token.height,
-                token.depthOrSliceCount
+                .width  = token.width,
+                .height = token.height,
+                .depth  = token.depthOrSliceCount
             },
             .uid = 0u
         };
@@ -710,9 +710,9 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         // Setup destination descriptor
         depthDescriptor = TextureDescriptor{
             .region = TextureRegion { 
-                token.width,
-                token.height,
-                token.depthOrSliceCount
+                .width  = token.width,
+                .height = token.height,
+                .depth  = token.depthOrSliceCount
             },
             .uid = 0u
         };
