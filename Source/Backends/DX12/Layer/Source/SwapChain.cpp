@@ -65,6 +65,14 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
         bufferState->desc = bottomBuffer->GetDesc();
         bufferState->parent = state->device;
 
+        // Create mapping template
+        D3D12_RESOURCE_DESC desc = bottomBuffer->GetDesc();
+        bufferState->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+        bufferState->virtualMapping.puid = deviceTable.state->physicalResourceIdentifierMap.AllocatePUID();
+        bufferState->virtualMapping.width = static_cast<uint32_t>(desc.Width);
+        bufferState->virtualMapping.height = desc.Height;
+        bufferState->virtualMapping.depthOrSliceCount = desc.DepthOrArraySize;
+
         // Add user
         state->device->AddRef();
 
@@ -73,6 +81,11 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
 
         // Create detours
         state->buffers[i] = CreateDetour(state->allocators, bottomBuffer, bufferState);
+
+        // Invoke proxies for all handles
+        for (const FeatureHookTable &proxyTable: deviceTable.state->featureHookTables) {
+            proxyTable.createResource.TryInvoke(GetResourceInfoFor(bufferState));
+        }
     }
 }
 

@@ -29,6 +29,7 @@
 #include <Backends/Vulkan/States/SwapchainState.h>
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
+#include <Backends/Vulkan/Resource.h>
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
@@ -89,6 +90,11 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSwapchainKHR(VkDevice device, const 
 
             // Store lookup
             table->states_image.Add(imageState->object, imageState);
+
+            // Invoke proxies for all handles
+            for (const FeatureHookTable &proxyTable: table->featureHookTables) {
+                proxyTable.createResource.TryInvoke(GetResourceInfoFor(imageState->virtualMappingTemplate));
+            }
         }
 
         // Keep internal track
