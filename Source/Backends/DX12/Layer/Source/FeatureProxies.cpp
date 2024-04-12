@@ -44,7 +44,7 @@ static ResourceToken GetResourceToken(const T* state) {
     return ResourceToken {
         .puid = state->virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
-        .format = state->virtualMapping.format,
+        .format = static_cast<Backend::IL::Format>(state->virtualMapping.formatId),
         .formatSize = state->virtualMapping.formatSize,
         .width = state->virtualMapping.width,
         .height = state->virtualMapping.height,
@@ -125,7 +125,7 @@ static ResourceToken GetResourceTokenFromHeapHandle(CommandListState* state, D3D
     return ResourceToken {
         .puid = virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(virtualMapping.type),
-        .format = virtualMapping.format,
+        .format = static_cast<Backend::IL::Format>(virtualMapping.formatId),
         .formatSize = virtualMapping.formatSize,
         .width = virtualMapping.width,
         .height = virtualMapping.height,

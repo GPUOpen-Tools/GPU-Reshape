@@ -41,7 +41,7 @@ ResourceInfo GetResourceInfoFor(const VirtualResourceMapping& mapping, bool isVo
     ResourceToken token {
         .puid = mapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(mapping.type),
-        .format = mapping.format,
+        .format = static_cast<Backend::IL::Format>(mapping.formatId),
         .formatSize = mapping.formatSize,
         .width = mapping.width,
         .height = mapping.height,
@@ -99,7 +99,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     // Create mapping template
     state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
     state->virtualMapping.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-    state->virtualMapping.format = Backend::IL::Format::None;
+    state->virtualMapping.formatId = static_cast<uint32_t>(Backend::IL::Format::None);
     state->virtualMapping.formatSize = 1;
     state->virtualMapping.width = static_cast<uint32_t>(pCreateInfo->size);
 
@@ -134,7 +134,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBufferView(VkDevice device, const Vk
 
     // Inherit mapping
     state->virtualMapping = state->parent->virtualMapping;
-    state->virtualMapping.format = Translate(pCreateInfo->format);
+    state->virtualMapping.formatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
     state->virtualMapping.formatSize = GetFormatByteSize(pCreateInfo->format);
 
     // Store lookup
@@ -175,7 +175,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
     // Create mapping template
     state->virtualMappingTemplate.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
     state->virtualMappingTemplate.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-    state->virtualMappingTemplate.format = Translate(pCreateInfo->format);
+    state->virtualMappingTemplate.formatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
     state->virtualMappingTemplate.formatSize = GetFormatByteSize(pCreateInfo->format);
     state->virtualMappingTemplate.width = pCreateInfo->extent.width;
     state->virtualMappingTemplate.height = pCreateInfo->extent.height;
@@ -213,7 +213,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImageView(VkDevice device, const VkI
 
     // Inherit mapping
     state->virtualMapping = state->parent->virtualMappingTemplate;
-    state->virtualMapping.format = Translate(pCreateInfo->format);
+    state->virtualMapping.formatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
     state->virtualMapping.formatSize = GetFormatByteSize(pCreateInfo->format);
     state->virtualMapping.baseMip = pCreateInfo->subresourceRange.baseMipLevel;
     state->virtualMapping.mipCount = pCreateInfo->subresourceRange.levelCount;

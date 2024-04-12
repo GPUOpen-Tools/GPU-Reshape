@@ -45,7 +45,7 @@ static ResourceToken GetResourceToken(const VirtualResourceMapping& virtualMappi
     return ResourceToken {
         .puid = virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(virtualMapping.type),
-        .format = virtualMapping.format,
+        .format = static_cast<Backend::IL::Format>(virtualMapping.formatId),
         .formatSize = virtualMapping.formatSize,
         .width = virtualMapping.width,
         .height = virtualMapping.height,

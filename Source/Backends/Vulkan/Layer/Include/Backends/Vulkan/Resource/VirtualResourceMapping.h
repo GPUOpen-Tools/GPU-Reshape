@@ -44,18 +44,11 @@ struct VirtualResourceMapping {
     /// Ignored padding
     uint32_t pad : IL::kResourceTokenPaddingBitCount;
 
-    union {
-        // Typed format of this resource
-        Backend::IL::Format format;
-        
-        struct {
-            /// Format of the resource
-            uint32_t formatId : 16;
+    /// Format of the resource
+    uint32_t formatId : 16;
 
-            /// Size of the format
-            uint32_t formatSize : 16;
-        };
-    };
+    /// Size of the format
+    uint32_t formatSize : 16;
 
     /// Width of this mapping
     uint32_t width{1};

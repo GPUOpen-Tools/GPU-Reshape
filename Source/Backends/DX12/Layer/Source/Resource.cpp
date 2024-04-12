@@ -39,7 +39,7 @@ ResourceInfo GetResourceInfoFor(ResourceState* state) {
     ResourceToken token {
         .puid = state->virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
-        .format = state->virtualMapping.format,
+        .format = static_cast<Backend::IL::Format>(state->virtualMapping.formatId),
         .formatSize = state->virtualMapping.formatSize,
         .width = state->virtualMapping.width,
         .height = state->virtualMapping.height,
@@ -139,7 +139,7 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     }
 
     // Resource information
-    state->virtualMapping.format = Translate(desc->Format);
+    state->virtualMapping.formatId = static_cast<uint32_t>(Translate(desc->Format));
     state->virtualMapping.formatSize = GetFormatByteSize(desc->Format);
     state->virtualMapping.width = static_cast<uint32_t>(desc->Width);
     state->virtualMapping.height = desc->Height;
