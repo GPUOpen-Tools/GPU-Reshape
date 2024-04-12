@@ -1690,6 +1690,11 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t oy = reader.GetMappedRelative(anchor);
             uint32_t oz = reader.GetMappedRelative(anchor);
 
+            // Undef mips are represented as unassigned
+            if (const IL::Constant *constant = program.GetConstants().GetConstant(mip); constant && constant->Is<IL::UndefConstant>()) {
+                mip = IL::InvalidID;
+            }
+
             // Get type
             const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
 
@@ -4121,7 +4126,15 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     ops[1] = table.idRemapper.EncodeRedirectedUserOperand(_instr->texture);
 
                     // Mip
-                    ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->mip);
+                    if (_instr->mip == IL::InvalidID) {
+                        // Unassigned mips are undef values in DXIL
+                        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=false}),
+                            Backend::IL::UndefConstant{}
+                        )->id);
+                    } else {
+                        ops[2] = table.idRemapper.EncodeRedirectedUserOperand(_instr->mip);
+                    }
 
                     // Get component counts
                     uint32_t indexCount  = GetSVOXCount(_instr->index);
