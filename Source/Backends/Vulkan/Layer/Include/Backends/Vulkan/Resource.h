@@ -32,12 +32,20 @@
 #include <Backend/Resource/ResourceInfo.h>
 
 // Forward declarations
+struct ImageState;
+struct ImageViewState;
 struct VirtualResourceMapping;
 
 /// Get the resource info from a mapping
 /// \param mapping given mapping
 /// \return resource info
-ResourceInfo GetResourceInfoFor(const VirtualResourceMapping& mapping);
+ResourceInfo GetResourceInfoFor(const VirtualResourceMapping& mapping, bool isVolumetric);
+
+/// Get the resource info from a mapping
+/// \param state resource state
+/// \return resource info
+ResourceInfo GetResourceInfoFor(const ImageState* state);
+ResourceInfo GetResourceInfoFor(const ImageViewState* state);
 
 /// Hooks
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer);

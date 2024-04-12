@@ -214,6 +214,13 @@ VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(uint32_t offset)
     return virtualMappings[offset];
 }
 
+VirtualResourceMapping PhysicalResourceMappingTable::GetMapping(uint32_t offset, ResourceState **state) {
+    std::lock_guard guard(mutex);
+    ASSERT(offset < virtualMappingCount, "Out of bounds mapping");
+    *state = states[offset];
+    return virtualMappings[offset];
+}
+
 void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, ResourceState *state, const VirtualResourceMapping &mapping) {
     std::lock_guard guard(mutex);
 

@@ -28,6 +28,7 @@
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
+#include <Backend/IL/Format.h>
 
 // Std
 #include <cstdint>
@@ -39,6 +40,12 @@ struct ResourceToken {
 
     /// Type of the resource
     Backend::IL::ResourceTokenType type;
+
+    /// Format of the resource
+    Backend::IL::Format format;
+
+    /// Size of the format
+    uint32_t formatSize;
     
     /// Width of the resource
     uint32_t width{1};

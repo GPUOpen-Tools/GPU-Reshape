@@ -79,9 +79,9 @@ static ResourceInfo GetResourceInfoFor(const DeviceMemoryResource& resource) {
             ASSERT(false, "Invalid resource type");
             return {};
         case DeviceMemoryResourceType::Buffer:
-            return GetResourceInfoFor(resource.buffer->virtualMapping);
+            return GetResourceInfoFor(resource.buffer->virtualMapping, false);
         case DeviceMemoryResourceType::Image:
-            return GetResourceInfoFor(resource.image->virtualMappingTemplate);
+            return GetResourceInfoFor(resource.image);
     }
 }
 
@@ -169,7 +169,7 @@ static void EmulateBindOverMappedRange(DeviceDispatchTable* table, DeviceMemoryS
     }
 
     // Get info
-    ResourceInfo info = GetResourceInfoFor(bufferState->virtualMapping);
+    ResourceInfo info = GetResourceInfoFor(bufferState->virtualMapping, false);
 
     // Inform the features that it is mapped
     for (const FeatureHookTable &proxyTable : table->featureHookTables) {
@@ -194,7 +194,7 @@ static void EmulateBindOverMappedRange(DeviceDispatchTable* table, DeviceMemoryS
     }
 
     // Get info
-    ResourceInfo info = GetResourceInfoFor(imageState->virtualMappingTemplate);
+    ResourceInfo info = GetResourceInfoFor(imageState);
 
     // Inform the features that it is mapped
     for (const FeatureHookTable &proxyTable : table->featureHookTables) {

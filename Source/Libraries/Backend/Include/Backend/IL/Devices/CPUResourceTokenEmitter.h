@@ -46,6 +46,16 @@ namespace IL {
             return static_cast<uint32_t>(info.token.type);
         }
 
+        /// Get the resource type
+        uint32_t GetFormat() {
+            return static_cast<uint32_t>(info.token.format);
+        }
+
+        /// Get the resource type
+        uint32_t GetFormatSize() {
+            return info.token.formatSize;
+        }
+
         /// Get the resource width
         uint32_t GetWidth() {
             return info.token.width;

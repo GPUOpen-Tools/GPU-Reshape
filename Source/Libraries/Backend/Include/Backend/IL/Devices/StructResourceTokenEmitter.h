@@ -44,37 +44,47 @@ namespace IL {
         }
 
         /// Get the resource type
-        uint32_t GetType() {
+        IL::ID GetType() {
             return info.Get<&ResourceToken::type>(emitter);
         }
 
+        /// Get the resource type
+        ::IL::ID GetFormat() {
+            return info.Get<&ResourceToken::format>(emitter);
+        }
+
+        /// Get the resource type
+        ::IL::ID GetFormatSize() {
+            return info.Get<&ResourceToken::formatSize>(emitter);
+        }
+
         /// Get the resource width
-        uint32_t GetWidth() {
+        IL::ID GetWidth() {
             return info.Get<&ResourceToken::width>(emitter);
         }
 
         /// Get the resource height
-        uint32_t GetHeight() {
+        IL::ID GetHeight() {
             return info.Get<&ResourceToken::height>(emitter);
         }
 
         /// Get the resource depth or slice count
-        uint32_t GetDepthOrSliceCount() {
+        IL::ID GetDepthOrSliceCount() {
             return info.Get<&ResourceToken::depthOrSliceCount>(emitter);
         }
 
         /// Get the mip count
-        uint32_t GetMipCount() {
+        IL::ID GetMipCount() {
             return info.Get<&ResourceToken::mipCount>(emitter);
         }
 
         /// Get the mip offset
-        uint32_t GetBaseMip() {
+        IL::ID GetBaseMip() {
             return info.Get<&ResourceToken::baseMip>(emitter);
         }
 
         /// Get the slice offset
-        uint32_t GetBaseSlice() {
+        IL::ID GetBaseSlice() {
             return info.Get<&ResourceToken::baseSlice>(emitter);
         }
 

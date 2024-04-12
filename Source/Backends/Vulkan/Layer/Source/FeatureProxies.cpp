@@ -45,6 +45,8 @@ static ResourceToken GetResourceToken(const VirtualResourceMapping& virtualMappi
     return ResourceToken {
         .puid = virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(virtualMapping.type),
+        .format = virtualMapping.format,
+        .formatSize = virtualMapping.formatSize,
         .width = virtualMapping.width,
         .height = virtualMapping.height,
         .depthOrSliceCount = virtualMapping.depthOrSliceCount,
@@ -73,6 +75,16 @@ static ResourceToken GetResourceToken(ImageState* state) {
 /// \return given token
 static ResourceToken GetResourceToken(ImageViewState* state) {
     return GetResourceToken(state->virtualMapping);
+}
+
+/// Check if a state is volumetric
+static bool IsVolumetric(ImageState* state) {
+    return state->createInfo.extent.depth > 1u;
+}
+
+/// Check if a state is volumetric
+static bool IsVolumetric(ImageViewState* state) {
+    return state->parent->createInfo.extent.depth > 1u;
 }
 
 void FeatureHook_vkCmdCopyBuffer::operator()(CommandBufferObject *object, CommandContext *context, VkBuffer srcBuffer, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferCopy *pRegions) const {
@@ -147,8 +159,8 @@ void FeatureHook_vkCmdCopyImage::operator()(CommandBufferObject *object, Command
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(GetResourceToken(srcImageState), srcDescriptor),
-            ResourceInfo::Texture(GetResourceToken(dstImageState), dstDescriptor)
+            ResourceInfo::Texture(GetResourceToken(srcImageState), IsVolumetric(srcImageState), srcDescriptor),
+            ResourceInfo::Texture(GetResourceToken(dstImageState), IsVolumetric(dstImageState), dstDescriptor)
         );
     }
 }
@@ -195,8 +207,8 @@ void FeatureHook_vkCmdBlitImage::operator()(CommandBufferObject *object, Command
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(GetResourceToken(srcImageState), srcDescriptor),
-            ResourceInfo::Texture(GetResourceToken(dstImageState), dstDescriptor)
+            ResourceInfo::Texture(GetResourceToken(srcImageState), IsVolumetric(srcImageState), srcDescriptor),
+            ResourceInfo::Texture(GetResourceToken(dstImageState), IsVolumetric(dstImageState), dstDescriptor)
         );
     }
 }
@@ -238,7 +250,7 @@ void FeatureHook_vkCmdCopyBufferToImage::operator()(CommandBufferObject *object,
         hook.Invoke(
             context,
             ResourceInfo::Buffer(GetResourceToken(srcBufferState), srcDescriptor),
-            ResourceInfo::Texture(GetResourceToken(dstImageState), dstDescriptor)
+            ResourceInfo::Texture(GetResourceToken(dstImageState), IsVolumetric(dstImageState), dstDescriptor)
         );
     }
 }
@@ -280,7 +292,7 @@ void FeatureHook_vkCmdCopyBufferToImage2::operator()(CommandBufferObject *object
         hook.Invoke(
             context,
             ResourceInfo::Buffer(GetResourceToken(srcBufferState), srcDescriptor),
-            ResourceInfo::Texture(GetResourceToken(dstImageState), dstDescriptor)
+            ResourceInfo::Texture(GetResourceToken(dstImageState), IsVolumetric(dstImageState), dstDescriptor)
         );
     }
 }
@@ -321,7 +333,7 @@ void FeatureHook_vkCmdCopyImageToBuffer::operator()(CommandBufferObject *object,
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(GetResourceToken(srcImageState), srcDescriptor),
+            ResourceInfo::Texture(GetResourceToken(srcImageState), IsVolumetric(srcImageState), srcDescriptor),
             ResourceInfo::Buffer(GetResourceToken(dstBufferState), dstDescriptor)
         );
     }
@@ -363,7 +375,7 @@ void FeatureHook_vkCmdCopyImageToBuffer2::operator()(CommandBufferObject *object
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(GetResourceToken(srcImageState), srcDescriptor),
+            ResourceInfo::Texture(GetResourceToken(srcImageState), IsVolumetric(srcImageState), srcDescriptor),
             ResourceInfo::Buffer(GetResourceToken(dstBufferState), dstDescriptor)
         );
     }
@@ -427,7 +439,7 @@ void FeatureHook_vkCmdClearColorImage::operator()(CommandBufferObject *object, C
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(GetResourceToken(dstImageState), dstDescriptor)
+            ResourceInfo::Texture(GetResourceToken(dstImageState), IsVolumetric(dstImageState), dstDescriptor)
         );
     }
 }
@@ -454,7 +466,7 @@ void FeatureHook_vkCmdClearDepthStencilImage::operator()(CommandBufferObject *ob
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(GetResourceToken(dstImageState), dstDescriptor)
+            ResourceInfo::Texture(GetResourceToken(dstImageState), IsVolumetric(dstImageState), dstDescriptor)
         );
     }
 }
@@ -483,7 +495,7 @@ void FeatureHook_vkCmdClearAttachments::operator()(CommandBufferObject *object, 
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(GetResourceToken(imageViewState), dstDescriptor)
+            ResourceInfo::Texture(GetResourceToken(imageViewState), IsVolumetric(imageViewState), dstDescriptor)
         );
     }
 }
@@ -530,8 +542,8 @@ void FeatureHook_vkCmdResolveImage::operator()(CommandBufferObject *object, Comm
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(GetResourceToken(srcImageState), srcDescriptor),
-            ResourceInfo::Texture(GetResourceToken(dstImageState), dstDescriptor)
+            ResourceInfo::Texture(GetResourceToken(srcImageState), IsVolumetric(srcImageState), srcDescriptor),
+            ResourceInfo::Texture(GetResourceToken(dstImageState), IsVolumetric(dstImageState), dstDescriptor)
         );
     }
 }

@@ -38,8 +38,9 @@ struct ResourceInfo {
     
     /// Create a texture info
     /// \param token given token
+    /// \param isVolumetric true if volumetric
     /// \return info
-    static ResourceInfo Texture(const ResourceToken& token) {
+    static ResourceInfo Texture(const ResourceToken& token, bool isVolumetric) {
         ResourceInfo info;
         info.token = token;
         info.textureDescriptor = TextureDescriptor {
@@ -49,17 +50,20 @@ struct ResourceInfo {
                 .depth = token.depthOrSliceCount
             }
         };
+        info.isVolumetric = isVolumetric;
         return info;
     }
     
     /// Create a texture info
     /// \param token given token
+    /// \param isVolumetric true if volumetric
     /// \param texture given texture
     /// \return info
-    static ResourceInfo Texture(const ResourceToken& token, const TextureDescriptor& texture) {
+    static ResourceInfo Texture(const ResourceToken& token, bool isVolumetric, const TextureDescriptor& texture) {
         ResourceInfo info;
         info.token = token;
         info.textureDescriptor = texture;
+        info.isVolumetric = isVolumetric;
         return info;
     }
 

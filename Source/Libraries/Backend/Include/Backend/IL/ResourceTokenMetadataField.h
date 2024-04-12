@@ -35,6 +35,7 @@
 namespace Backend::IL {
     enum class ResourceTokenMetadataField {
         PackedToken,
+        PackedFormat,
         Width,
         Height,
         DepthOrSliceCount,

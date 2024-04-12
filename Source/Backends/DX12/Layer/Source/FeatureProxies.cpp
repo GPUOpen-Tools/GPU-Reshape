@@ -44,6 +44,8 @@ static ResourceToken GetResourceToken(const T* state) {
     return ResourceToken {
         .puid = state->virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
+        .format = state->virtualMapping.format,
+        .formatSize = state->virtualMapping.formatSize,
         .width = state->virtualMapping.width,
         .height = state->virtualMapping.height,
         .depthOrSliceCount = state->virtualMapping.depthOrSliceCount,
@@ -51,6 +53,11 @@ static ResourceToken GetResourceToken(const T* state) {
         .baseMip = state->virtualMapping.baseMip,
         .baseSlice = state->virtualMapping.baseSlice
     };
+}
+
+/// Check if a resource is volumetric
+static bool IsVolumetric(const ResourceState* state) {
+    return state->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 }
 
 /// Subresource indexing
@@ -100,19 +107,26 @@ static ResourceState* GetResourceStateFromHeapHandle(CommandListState* state, D3
 /// \param state given command list state
 /// \param handle opaque handle
 /// \return resource token
-static ResourceToken GetResourceTokenFromHeapHandle(CommandListState* state, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+static ResourceToken GetResourceTokenFromHeapHandle(CommandListState* state, D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle, ResourceState** resourceState = nullptr) {
     auto table = GetTable(state->parent);
 
     // Get heap from handle ptr
     DescriptorHeapState* heap = table.state->cpuHeapTable.Find(type, handle.ptr);
 
     // Get virtual mapping
-    VirtualResourceMapping virtualMapping = heap->GetVirtualMappingFromHeapHandle(handle);
+    VirtualResourceMapping virtualMapping;
+    if (resourceState) {
+        virtualMapping = heap->GetVirtualMappingFromHeapHandle(handle, resourceState);
+    } else {
+        virtualMapping = heap->GetVirtualMappingFromHeapHandle(handle);
+    }
 
     // To token
     return ResourceToken {
         .puid = virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(virtualMapping.type),
+        .format = virtualMapping.format,
+        .formatSize = virtualMapping.formatSize,
         .width = virtualMapping.width,
         .height = virtualMapping.height,
         .depthOrSliceCount = virtualMapping.depthOrSliceCount,
@@ -195,8 +209,8 @@ void FeatureHook_CopyTextureRegion::operator()(CommandListState *object, Command
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(srcState), srcDescriptor),
-        ResourceInfo::Texture(GetResourceToken(dstState), dstDescriptor)
+        ResourceInfo::Texture(GetResourceToken(srcState), IsVolumetric(srcState), srcDescriptor),
+        ResourceInfo::Texture(GetResourceToken(dstState), IsVolumetric(dstState), dstDescriptor)
     );
 }
 
@@ -237,8 +251,8 @@ void FeatureHook_CopyResource::operator()(CommandListState *object, CommandConte
             // Invoke hook
             hook.Invoke(
                 context,
-                ResourceInfo::Texture(GetResourceToken(srcState), srcDescriptor),
-                ResourceInfo::Texture(GetResourceToken(dstState), dstDescriptor)
+                ResourceInfo::Texture(GetResourceToken(srcState), IsVolumetric(srcState), srcDescriptor),
+                ResourceInfo::Texture(GetResourceToken(dstState), IsVolumetric(dstState), dstDescriptor)
             );
             break;
         }
@@ -304,14 +318,15 @@ void FeatureHook_ResolveSubresource::operator()(CommandListState *object, Comman
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(srcState), srcDescriptor),
-        ResourceInfo::Texture(GetResourceToken(dstState), dstDescriptor)
+        ResourceInfo::Texture(GetResourceToken(srcState), IsVolumetric(srcState), srcDescriptor),
+        ResourceInfo::Texture(GetResourceToken(dstState), IsVolumetric(dstState), dstDescriptor)
     );
 }
 
 void FeatureHook_ClearDepthStencilView::operator()(CommandListState *object, CommandContext *context, D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView, D3D12_CLEAR_FLAGS ClearFlags, FLOAT Depth, UINT8 Stencil, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, DepthStencilView);
+    ResourceState* state{nullptr};
+    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, DepthStencilView, &state);
 
     // Null rects imply full resource
     if (!pRects) {
@@ -345,14 +360,15 @@ void FeatureHook_ClearDepthStencilView::operator()(CommandListState *object, Com
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(token, descriptor)
+            ResourceInfo::Texture(token, IsVolumetric(state), descriptor)
         );
     }
 }
 
 void FeatureHook_ClearRenderTargetView::operator()(CommandListState *object, CommandContext *context, D3D12_CPU_DESCRIPTOR_HANDLE RenderTargetView, const FLOAT *ColorRGBA, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, RenderTargetView);
+    ResourceState* state{nullptr};
+    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, RenderTargetView, &state);
 
     // Null rects imply full resource
     if (!pRects) {
@@ -386,14 +402,15 @@ void FeatureHook_ClearRenderTargetView::operator()(CommandListState *object, Com
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(token, descriptor)
+            ResourceInfo::Texture(token, IsVolumetric(state), descriptor)
         );
     }
 }
 
 void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *object, CommandContext *context, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const UINT *Values, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
+    ResourceState* state{nullptr};
+    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle, &state);
 
     // Null rects imply full resource
     if (!pRects) {
@@ -427,14 +444,15 @@ void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *obje
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(token, descriptor)
+            ResourceInfo::Texture(token, IsVolumetric(state), descriptor)
         );
     }
 }
 
 void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *object, CommandContext *context, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const FLOAT *Values, UINT NumRects, const D3D12_RECT *pRects) const {
     // Get states
-    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle);
+    ResourceState* state{nullptr};
+    ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, ViewCPUHandle, &state);
 
     // Null rects imply full resource
     if (!pRects) {
@@ -468,7 +486,7 @@ void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *obj
         // Invoke hook
         hook.Invoke(
             context,
-            ResourceInfo::Texture(token, descriptor)
+            ResourceInfo::Texture(token, IsVolumetric(state), descriptor)
         );
     }
 }
@@ -511,8 +529,8 @@ void FeatureHook_ResolveSubresourceRegion::operator()(CommandListState *object, 
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(srcState), srcDescriptor),
-        ResourceInfo::Texture(GetResourceToken(dstState), dstDescriptor)
+        ResourceInfo::Texture(GetResourceToken(srcState), IsVolumetric(srcState), srcDescriptor),
+        ResourceInfo::Texture(GetResourceToken(dstState), IsVolumetric(dstState), dstDescriptor)
     );
 }
 

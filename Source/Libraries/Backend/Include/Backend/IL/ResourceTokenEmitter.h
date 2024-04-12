@@ -61,6 +61,26 @@ namespace IL {
             return type = emitter.BitAnd(emitter.BitShiftRight(dword, emitter.UInt32(kResourceTokenTypeShift)), emitter.UInt32(kResourceTokenTypeMask));
         }
 
+        /// Get the resource type
+        ::IL::ID GetFormat() {
+            if (format != IL::InvalidID) {
+                return format;
+            }
+
+            IL::ID dword = GetFieldDWord(Backend::IL::ResourceTokenMetadataField::PackedFormat);
+            return format = emitter.BitAnd(dword, emitter.UInt32(0xFFFF));
+        }
+
+        /// Get the resource type
+        ::IL::ID GetFormatSize() {
+            if (formatSize != IL::InvalidID) {
+                return formatSize;
+            }
+
+            IL::ID dword = GetFieldDWord(Backend::IL::ResourceTokenMetadataField::PackedFormat);
+            return formatSize = emitter.BitShiftRight(dword, emitter.UInt32(16));
+        }
+
         /// Get the resource width
         ::IL::ID GetWidth() {
             return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::Width);
@@ -122,6 +142,8 @@ namespace IL {
 
         /// Cache
         ::IL::ID puid{IL::InvalidID};
+        ::IL::ID format{IL::InvalidID};
+        ::IL::ID formatSize{IL::InvalidID};
         ::IL::ID type{IL::InvalidID};
         ::IL::ID srb{IL::InvalidID};
 

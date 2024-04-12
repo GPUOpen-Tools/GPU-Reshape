@@ -29,6 +29,7 @@
 #include <Backends/DX12/States/SwapChainState.h>
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/States/CommandQueueState.h>
+#include <Backends/DX12/Translation.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -69,6 +70,8 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
         D3D12_RESOURCE_DESC desc = bottomBuffer->GetDesc();
         bufferState->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
         bufferState->virtualMapping.puid = deviceTable.state->physicalResourceIdentifierMap.AllocatePUID();
+        bufferState->virtualMapping.format = Translate(desc.Format);
+        bufferState->virtualMapping.formatSize = GetFormatByteSize(desc.Format);
         bufferState->virtualMapping.width = static_cast<uint32_t>(desc.Width);
         bufferState->virtualMapping.height = desc.Height;
         bufferState->virtualMapping.depthOrSliceCount = desc.DepthOrArraySize;

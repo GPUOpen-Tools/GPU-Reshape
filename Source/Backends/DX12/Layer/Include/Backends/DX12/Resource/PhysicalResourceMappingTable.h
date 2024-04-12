@@ -90,6 +90,12 @@ public:
     /// \return mapping
     VirtualResourceMapping GetMapping(uint32_t offset);
 
+    /// Get the mapping from an offset
+    /// \param offset given offset
+    /// \param state the destination state
+    /// \return mapping
+    VirtualResourceMapping GetMapping(uint32_t offset, ResourceState** state);
+
     /// Get the underlying resource
     /// \return
     ID3D12Resource* GetResource() const {

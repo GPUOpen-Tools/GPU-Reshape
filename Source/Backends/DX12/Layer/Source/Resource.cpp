@@ -29,6 +29,7 @@
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Controllers/VersioningController.h>
+#include <Backends/DX12/Translation.h>
 
 // Backend
 #include <Backend/Resource/ResourceInfo.h>
@@ -38,6 +39,8 @@ ResourceInfo GetResourceInfoFor(ResourceState* state) {
     ResourceToken token {
         .puid = state->virtualMapping.puid,
         .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
+        .format = state->virtualMapping.format,
+        .formatSize = state->virtualMapping.formatSize,
         .width = state->virtualMapping.width,
         .height = state->virtualMapping.height,
         .depthOrSliceCount = state->virtualMapping.depthOrSliceCount,
@@ -52,7 +55,7 @@ ResourceInfo GetResourceInfoFor(ResourceState* state) {
             ASSERT(false, "Unexpected type");
             return {};
         case Backend::IL::ResourceTokenType::Texture:
-            return ResourceInfo::Texture(token);
+            return ResourceInfo::Texture(token, state->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D);
         case Backend::IL::ResourceTokenType::Buffer:
             return ResourceInfo::Buffer(token);
     }
@@ -136,6 +139,8 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     }
 
     // Resource information
+    state->virtualMapping.format = Translate(desc->Format);
+    state->virtualMapping.formatSize = GetFormatByteSize(desc->Format);
     state->virtualMapping.width = static_cast<uint32_t>(desc->Width);
     state->virtualMapping.height = desc->Height;
     state->virtualMapping.depthOrSliceCount = desc->DepthOrArraySize;

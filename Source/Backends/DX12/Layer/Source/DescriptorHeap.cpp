@@ -793,3 +793,11 @@ VirtualResourceMapping DescriptorHeapState::GetVirtualMappingFromHeapHandle(D3D1
 VirtualResourceMapping DescriptorHeapState::GetVirtualMappingFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) const {
     return prmTable->GetMapping(GetOffsetFromHeapHandle(handle));
 }
+
+VirtualResourceMapping DescriptorHeapState::GetVirtualMappingFromHeapHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle, ResourceState** state) const {
+    return prmTable->GetMapping(GetOffsetFromHeapHandle(handle), state);
+}
+
+VirtualResourceMapping DescriptorHeapState::GetVirtualMappingFromHeapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle, ResourceState** state) const {
+    return prmTable->GetMapping(GetOffsetFromHeapHandle(handle), state);
+}
