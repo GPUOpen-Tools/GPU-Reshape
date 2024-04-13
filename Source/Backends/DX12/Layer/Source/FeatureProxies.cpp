@@ -29,6 +29,7 @@
 #include <Backends/DX12/States/ResourceState.h>
 #include <Backends/DX12/Export/ShaderExportStreamState.h>
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
+#include <Backends/DX12/Translation.h>
 #include <Backends/DX12/Table.Gen.h>
 
 // Backend
@@ -73,18 +74,11 @@ struct SubresourceIndices {
 /// \param sliceCount total number of slices
 /// \param planeCount total number of planes
 /// \return all indices
-SubresourceIndices GetSubresourceIndices(uint32_t index, uint32_t mipCount, uint32_t sliceCount, uint32_t planeCount) {
+SubresourceIndices GetSubresourceIndices(uint32_t index, uint32_t mipCount, uint32_t sliceCount) {
     SubresourceIndices out;
-
-    // 3d offset
+    out.mipIndex = index % mipCount;
+    out.sliceIndex = (index / mipCount) % sliceCount;
     out.planeIndex = index / (mipCount * sliceCount);
-
-    // 2d offset
-    uint32_t offset2D = index - out.planeIndex * mipCount * sliceCount;
-    out.sliceIndex = offset2D / mipCount;
-    out.mipIndex = offset2D % mipCount;
-
-    // OK
     return out;
 }
 
@@ -163,55 +157,144 @@ void FeatureHook_CopyBufferRegion::operator()(CommandListState *list, CommandCon
     );
 }
 
+static ResourceInfo GetSourceRegionResourceInfo(ResourceState* state, const D3D12_TEXTURE_COPY_LOCATION* pLocation, const D3D12_BOX* pSrcBox, DXGI_FORMAT format) {
+    // Calculate source bounds
+    uint32_t width = static_cast<uint32_t>(pSrcBox ? pSrcBox->right - pSrcBox->left : state->desc.Width);
+    uint32_t height = pSrcBox ? pSrcBox->bottom - pSrcBox->top : state->desc.Height;
+    uint32_t depth = pSrcBox ? pSrcBox->front - pSrcBox->back : state->desc.DepthOrArraySize;
+
+    // Number of bytes for the format
+    uint32_t formatByteCount = GetFormatByteSize(format);
+
+    // Copying from buffer?
+    if (state->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+        ASSERT(pLocation->Type == D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, "Expected placed footprint for buffers");
+
+        // Source offset
+        uint64_t offset = pLocation->PlacedFootprint.Offset;
+
+        // Offset by the source box
+        if (pSrcBox) {
+            // TODO[init]: Block formats!
+            uint32_t rowCount =  pLocation->PlacedFootprint.Footprint.Height;
+            offset += pSrcBox->front * pLocation->PlacedFootprint.Footprint.RowPitch * rowCount;
+            offset += pSrcBox->top * pLocation->PlacedFootprint.Footprint.RowPitch;
+            offset += pSrcBox->left * formatByteCount;
+        }
+
+        // Create placed buffer
+        return ResourceInfo::Buffer(GetResourceToken(state), BufferDescriptor {
+            .offset = offset,
+            .width = state->desc.Width,
+            .placedDescriptor = BufferPlacedDescriptor {
+                .rowLength = pLocation->PlacedFootprint.Footprint.RowPitch / formatByteCount,
+                .imageHeight = pLocation->PlacedFootprint.Footprint.Height,
+            },
+            .uid = 0u
+        });
+    } else {
+        ASSERT(pLocation->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, "Expected sub-resource indices for textures");
+
+        // Decompose indices
+        SubresourceIndices indices = GetSubresourceIndices(pLocation->SubresourceIndex, state->desc.MipLevels, state->desc.DepthOrArraySize);
+
+        // Setup texture region
+        TextureRegion region {
+            .baseMip = indices.mipIndex,
+            .baseSlice = indices.sliceIndex,
+            .offsetX = pSrcBox ? pSrcBox->left : 0,
+            .offsetY = pSrcBox ? pSrcBox->top : 0,
+            .offsetZ = pSrcBox ? pSrcBox->back : 0,
+            .width = width,
+            .height = height,
+            .depth = depth
+        };
+
+        // Create descriptor
+        return ResourceInfo::Texture(GetResourceToken(state), IsVolumetric(state), TextureDescriptor {
+            .region = region,
+            .uid = 0u
+        });
+    }
+}
+
+static ResourceInfo GetDestRegionResourceInfo(ResourceState* state, const D3D12_TEXTURE_COPY_LOCATION* pLocation, uint32_t DstX, uint32_t DstY, uint32_t DstZ, const D3D12_BOX* pSrcBox, DXGI_FORMAT format) {
+    // Calculate source bounds
+    uint32_t width = static_cast<uint32_t>(pSrcBox ? pSrcBox->right - pSrcBox->left : state->desc.Width);
+    uint32_t height = pSrcBox ? pSrcBox->bottom - pSrcBox->top : state->desc.Height;
+    uint32_t depth = pSrcBox ? pSrcBox->front - pSrcBox->back : state->desc.DepthOrArraySize;
+
+    // Number of bytes for the format
+    uint32_t formatByteCount = GetFormatByteSize(format);
+
+    // Copying from buffer?
+    if (state->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+        ASSERT(pLocation->Type == D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, "Expected placed footprint for buffers");
+
+        // Source offset
+        uint64_t offset = pLocation->PlacedFootprint.Offset;
+
+        // TODO[init]: Block formats!
+        uint32_t rowCount =  pLocation->PlacedFootprint.Footprint.Height;
+        offset += DstZ * pLocation->PlacedFootprint.Footprint.RowPitch * rowCount;
+        offset += DstY * pLocation->PlacedFootprint.Footprint.RowPitch;
+        offset += DstX * formatByteCount;
+
+        // Create placed buffer
+        return ResourceInfo::Buffer(GetResourceToken(state), BufferDescriptor {
+            .offset = offset,
+            .width = state->desc.Width,
+            .placedDescriptor = BufferPlacedDescriptor {
+                .rowLength = pLocation->PlacedFootprint.Footprint.RowPitch / formatByteCount,
+                .imageHeight = pLocation->PlacedFootprint.Footprint.Height,
+            },
+            .uid = 0u
+        });
+    } else {
+        ASSERT(pLocation->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, "Expected sub-resource indices for textures");
+
+        // Decompose indices
+        SubresourceIndices indices = GetSubresourceIndices(pLocation->SubresourceIndex, state->desc.MipLevels, state->desc.DepthOrArraySize);
+
+        // Setup region
+        TextureRegion region {
+            .baseMip = indices.mipIndex,
+            .baseSlice = indices.sliceIndex,
+            .offsetX = DstX,
+            .offsetY = DstY,
+            .offsetZ = DstZ,
+            .width = width,
+            .height = height,
+            .depth = depth
+        };
+
+        // Create descriptor
+        return ResourceInfo::Texture(GetResourceToken(state), IsVolumetric(state), TextureDescriptor {
+            .region = region,
+            .uid = 0u
+        });
+    }
+}
+
 void FeatureHook_CopyTextureRegion::operator()(CommandListState *object, CommandContext *context, const D3D12_TEXTURE_COPY_LOCATION* pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION* pSrc, const D3D12_BOX* pSrcBox) const {
-    // TODO[init]: placed!
-    ASSERT(pDst->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, "Path not implemented");
-    ASSERT(pSrc->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, "Path not implemented");
-    
     // Get states
     ResourceState* dstState = GetState(pDst->pResource);
     ResourceState* srcState = GetState(pSrc->pResource);
 
-    // Get indices from the subresources
-    SubresourceIndices dstIndices = GetSubresourceIndices(pDst->SubresourceIndex, dstState->desc.MipLevels, dstState->desc.DepthOrArraySize, 1u);
-    SubresourceIndices srcIndices = GetSubresourceIndices(pSrc->SubresourceIndex, srcState->desc.MipLevels, srcState->desc.DepthOrArraySize, 1u);
+    // Determine the texture format
+    DXGI_FORMAT format;
+    if (srcState->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+        format = dstState->desc.Format;
+    } else {
+        format = srcState->desc.Format;
+    }
 
-    // Setup source descriptor
-    TextureDescriptor srcDescriptor{
-        .region = TextureRegion {
-            .baseMip = srcIndices.mipIndex,
-            .baseSlice = srcIndices.sliceIndex,
-            .offsetX = pSrcBox ? pSrcBox->left : 0,
-            .offsetY = pSrcBox ? pSrcBox->top : 0,
-            .offsetZ = pSrcBox ? pSrcBox->back : 0,
-            .width = static_cast<uint32_t>(pSrcBox ? pSrcBox->right - pSrcBox->left : srcState->desc.Width),
-            .height = pSrcBox ? pSrcBox->bottom - pSrcBox->top : srcState->desc.Height,
-            .depth = pSrcBox ? pSrcBox->front - pSrcBox->back : srcState->desc.DepthOrArraySize
-        },
-        .uid = 0u
-    };
-
-    // Setup destination descriptor
-    TextureDescriptor dstDescriptor{
-        .region = TextureRegion {
-            .baseMip = dstIndices.mipIndex,
-            .baseSlice = dstIndices.sliceIndex,
-            .offsetX = DstX,
-            .offsetY = DstY,
-            .offsetZ = DstZ,
-            .width = srcDescriptor.region.width,
-            .height = srcDescriptor.region.height,
-            .depth = srcDescriptor.region.depth
-        },
-        .uid = 0u
-    };
+    // Get infos
+    ResourceInfo sourceInfo = GetSourceRegionResourceInfo(srcState, pSrc, pSrcBox, format);
+    ResourceInfo destInfo = GetDestRegionResourceInfo(dstState, pDst, DstX, DstY, DstZ, pSrcBox, format);
 
     // Invoke hook
-    hook.Invoke(
-        context,
-        ResourceInfo::Texture(GetResourceToken(srcState), IsVolumetric(srcState), srcDescriptor),
-        ResourceInfo::Texture(GetResourceToken(dstState), IsVolumetric(dstState), dstDescriptor)
-    );
+    hook.Invoke(context, sourceInfo, destInfo);
 }
 
 void FeatureHook_CopyResource::operator()(CommandListState *object, CommandContext *context, ID3D12Resource *pDstResource, ID3D12Resource *pSrcResource) const {
@@ -288,8 +371,8 @@ void FeatureHook_ResolveSubresource::operator()(CommandListState *object, Comman
     ResourceState* srcState = GetState(pSrcResource);
 
     // Get indices from the subresources
-    SubresourceIndices dstIndices = GetSubresourceIndices(DstSubresource, dstState->desc.MipLevels, dstState->desc.DepthOrArraySize, 1u);
-    SubresourceIndices srcIndices = GetSubresourceIndices(SrcSubresource, srcState->desc.MipLevels, srcState->desc.DepthOrArraySize, 1u);
+    SubresourceIndices dstIndices = GetSubresourceIndices(DstSubresource, dstState->desc.MipLevels, dstState->desc.DepthOrArraySize);
+    SubresourceIndices srcIndices = GetSubresourceIndices(SrcSubresource, srcState->desc.MipLevels, srcState->desc.DepthOrArraySize);
 
     // Setup source descriptor
     TextureDescriptor srcDescriptor{
@@ -497,8 +580,8 @@ void FeatureHook_ResolveSubresourceRegion::operator()(CommandListState *object, 
     ResourceState* srcState = GetState(pSrcResource);
 
     // Get indices from the subresources
-    SubresourceIndices dstIndices = GetSubresourceIndices(DstSubresource, dstState->desc.MipLevels, dstState->desc.DepthOrArraySize, 1u);
-    SubresourceIndices srcIndices = GetSubresourceIndices(SrcSubresource, srcState->desc.MipLevels, srcState->desc.DepthOrArraySize, 1u);
+    SubresourceIndices dstIndices = GetSubresourceIndices(DstSubresource, dstState->desc.MipLevels, dstState->desc.DepthOrArraySize);
+    SubresourceIndices srcIndices = GetSubresourceIndices(SrcSubresource, srcState->desc.MipLevels, srcState->desc.DepthOrArraySize);
 
     // Setup source descriptor
     TextureDescriptor srcDescriptor{

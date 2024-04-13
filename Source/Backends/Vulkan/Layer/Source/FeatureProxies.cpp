@@ -222,12 +222,14 @@ void FeatureHook_vkCmdCopyBufferToImage::operator()(CommandBufferObject *object,
     for (uint32_t i = 0; i < regionCount; i++) {
         const VkBufferImageCopy& region = pRegions[i];
 
-        // TODO[init]: Strided copies!
-        
         // Setup source descriptor
         BufferDescriptor srcDescriptor{
             .offset = region.bufferOffset,
-            .width = 0,
+            .width = srcBufferState->virtualMapping.width,
+            .placedDescriptor = BufferPlacedDescriptor {
+                .rowLength = region.bufferRowLength,
+                .imageHeight = region.bufferImageHeight
+            },
             .uid = srcBufferState->uid
         };
 
@@ -264,12 +266,14 @@ void FeatureHook_vkCmdCopyBufferToImage2::operator()(CommandBufferObject *object
     for (uint32_t i = 0; i < pCopyBufferToImageInfo->regionCount; i++) {
         const VkBufferImageCopy2& region = pCopyBufferToImageInfo->pRegions[i];
 
-        // TODO[init]: Strided copies!
-        
         // Setup source descriptor
         BufferDescriptor srcDescriptor{
             .offset = region.bufferOffset,
-            .width = 0u,
+            .width = srcBufferState->virtualMapping.width,
+            .placedDescriptor = BufferPlacedDescriptor {
+                .rowLength = region.bufferRowLength,
+                .imageHeight = region.bufferImageHeight
+            },
             .uid = srcBufferState->uid
         };
 
@@ -306,8 +310,6 @@ void FeatureHook_vkCmdCopyImageToBuffer::operator()(CommandBufferObject *object,
     for (uint32_t i = 0; i < regionCount; i++) {
         const VkBufferImageCopy& region = pRegions[i];
 
-        // TODO[init]: Strided copies!
-        
         // Setup source descriptor
         TextureDescriptor srcDescriptor{
             .region = {
@@ -325,8 +327,12 @@ void FeatureHook_vkCmdCopyImageToBuffer::operator()(CommandBufferObject *object,
 
         // Setup destination descriptor
         BufferDescriptor dstDescriptor{
-            .offset = pRegions[i].bufferOffset,
-            .width = 0u,
+            .offset = region.bufferOffset,
+            .width = dstBufferState->virtualMapping.width,
+            .placedDescriptor = BufferPlacedDescriptor {
+                .rowLength = region.bufferRowLength,
+                .imageHeight = region.bufferImageHeight
+            },
             .uid = dstBufferState->uid
         };
 
@@ -348,8 +354,6 @@ void FeatureHook_vkCmdCopyImageToBuffer2::operator()(CommandBufferObject *object
     for (uint32_t i = 0; i < pCopyImageToBufferInfo->regionCount; i++) {
         const VkBufferImageCopy2& region = pCopyImageToBufferInfo->pRegions[i];
 
-        // TODO[init]: Strided copies!
-        
         // Setup source descriptor
         TextureDescriptor srcDescriptor{
             .region = {
@@ -368,7 +372,11 @@ void FeatureHook_vkCmdCopyImageToBuffer2::operator()(CommandBufferObject *object
         // Setup destination descriptor
         BufferDescriptor dstDescriptor{
             .offset = region.bufferOffset,
-            .width = 0u,
+            .width = dstBufferState->virtualMapping.width,
+            .placedDescriptor = BufferPlacedDescriptor {
+                .rowLength = region.bufferRowLength,
+                .imageHeight = region.bufferImageHeight
+            },
             .uid = dstBufferState->uid
         };
 

@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,23 +26,13 @@
 
 #pragma once
 
-// Backend
-#include "BufferPlacedDescriptor.h"
-
 // Std
 #include <cstdint>
-#include <optional>
 
-struct BufferDescriptor {
-    /// Offset within the resource
-    uint64_t offset;
+struct BufferPlacedDescriptor {
+    /// Byte length of one row
+    uint32_t rowLength;
 
-    /// Width of the resource
-    uint64_t width;
-
-    /// Placed descriptor for image layouts
-    std::optional<BufferPlacedDescriptor> placedDescriptor;
-
-    /// Unique identifier of the resource
-    uint64_t uid;
+    /// Number of rows
+    uint32_t imageHeight;
 };
