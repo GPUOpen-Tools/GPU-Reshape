@@ -189,7 +189,7 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                 ShaderExportConstantAllocation stagingAllocation = streamState->constantAllocator.Allocate(device->deviceAllocator, length);
 
                 // Update data
-                std::memcpy(stagingAllocation.staging, reinterpret_cast<const uint8_t*>(cmd) + sizeof(SetDescriptorDataCommand), sizeof(uint32_t));
+                std::memcpy(stagingAllocation.staging, reinterpret_cast<const uint8_t*>(cmd) + sizeof(SetDescriptorDataCommand), length);
 
                 // Copy from staging
                 commandList->CopyBufferRegion(
