@@ -62,6 +62,9 @@
 // Common
 #include <Common/Registry.h>
 
+// todo[init]: remove
+static constexpr uint32_t kTempSize = 32'000'000;
+
 bool InitializationFeature::Install() {
     // Must have the export host
     auto exportHost = registry->Get<IShaderExportHost>();
@@ -87,7 +90,7 @@ bool InitializationFeature::Install() {
     // Allocate texel mask buffer
     // todo[init]: dynamically grown with syncs
     texelMaskBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-        .elementCount = 4'000'000,
+        .elementCount = kTempSize,
         .format = Backend::IL::Format::R32UInt
     });
 
@@ -98,9 +101,7 @@ bool InitializationFeature::Install() {
     }
 
     // Create programs
-    if (!InstallProgram(programHost, Backend::IL::ResourceTokenType::Buffer, false, bufferPrograms) ||
-        !InstallProgram(programHost, Backend::IL::ResourceTokenType::Texture, false, texturePrograms) ||
-        !InstallProgram(programHost, Backend::IL::ResourceTokenType::Texture, true, volumetricTexturePrograms)) {
+    if (!CreateBlitPrograms(programHost) || !CreateCopyPrograms(programHost)) {
         return false;
     }
 
@@ -394,6 +395,11 @@ void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
     // Determine number of entries needed
     uint64_t allocationSize = addressAllocator.GetAllocationSize(source);
 
+#if 0
+    auto formatSizeMinDWord = std::max<size_t>(sizeof(uint32_t), source.token.formatSize);
+    allocationSize = (allocationSize + formatSizeMinDWord - 1) / formatSizeMinDWord;
+#endif // 0
+    
     // Create allocation
     Allocation& allocation = allocations[source.token.puid];
     allocation.base = addressAllocator.Allocate(allocationSize);
@@ -403,6 +409,9 @@ void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
     uint64_t memoryBaseAlign32 = allocation.base / 32;
     ASSERT(memoryBaseAlign32 < std::numeric_limits<uint32_t>::max(), "Memory base out of bounds");
     allocation.baseAlign32 = static_cast<uint32_t>(memoryBaseAlign32);
+
+    // todo[init]: temp
+    ASSERT(allocation.baseAlign32 + allocationSize / 32 < kTempSize, "Out of temp size");
 
     // Mark for pending enqueue
     pendingMappingQueue.push_back(MappingTag {
@@ -556,7 +565,7 @@ void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
 }
 
 void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const ResourceInfo &info) {
-    const ResourcePrograms& programs = GetPrograms(info.token.type, info.isVolumetric);
+    const ResourceProgram<MaskBlitShaderProgram>& program = blitPrograms[{info.token.type, info.isVolumetric}];
     
     // todo[init]: cpu side copy check
     const Allocation& allocation = allocations.at(info.token.puid);
@@ -567,13 +576,16 @@ void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const Resour
 
     // Buffers are linearly indexed
     if (info.token.type == Backend::IL::ResourceTokenType::Buffer) {
+        ASSERT(!info.bufferDescriptor.placedDescriptor, "Blitting with placement resource");
+
+        // Offset by descriptor
         params.baseX = static_cast<uint32_t>(info.bufferDescriptor.offset);
         
         // Blit the given range
         CommandBuilder builder(buffer);
-        builder.SetShaderProgram(programs.maskBlitShaderProgramID);
-        builder.SetDescriptorData(programs.maskBlitShaderProgram->GetDataID(), params);
-        builder.SetDescriptorData(programs.maskBlitShaderProgram->GetDestTokenID(), info.token);
+        builder.SetShaderProgram(program.id);
+        builder.SetDescriptorData(program.program->GetDataID(), params);
+        builder.SetDescriptorData(program.program->GetDestTokenID(), info.token);
         builder.Dispatch(static_cast<uint32_t>(info.bufferDescriptor.width), 1, 1);
     } else {
         // Blit each mip separately
@@ -597,16 +609,24 @@ void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const Resour
         
             // Blit the given range int he mip
             CommandBuilder builder(buffer);
-            builder.SetShaderProgram(programs.maskBlitShaderProgramID);
-            builder.SetDescriptorData(programs.maskBlitShaderProgram->GetDataID(), params);
-            builder.SetDescriptorData(programs.maskBlitShaderProgram->GetDestTokenID(), info.token);
+            builder.SetShaderProgram(program.id);
+            builder.SetDescriptorData(program.program->GetDataID(), params);
+            builder.SetDescriptorData(program.program->GetDestTokenID(), info.token);
             builder.Dispatch(mipWidth, mipHeight, mipDepth);
         }
     }
 }
 
 void InitializationFeature::CopyResourceMaskRange(CommandBuffer& buffer, const ResourceInfo &source, const ResourceInfo &dest) {
-    const ResourcePrograms& programs = GetPrograms(source.token.type, source.isVolumetric);
+    if (source.token.type == dest.token.type) {
+        CopyResourceMaskRangeSymmetric(buffer, source, dest);
+    } else {
+        CopyResourceMaskRangeAsymmetric(buffer, source, dest);
+    }
+}
+
+void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer, const ResourceInfo &source, const ResourceInfo &dest) {
+    const ResourceProgram<MaskCopyRangeShaderProgram>& program = copyPrograms[{source.token.type, dest.token.type, source.isVolumetric}];
     
     // todo[init]: cpu side copy check
     const Allocation& sourceAllocation = allocations.at(source.token.puid);
@@ -624,10 +644,10 @@ void InitializationFeature::CopyResourceMaskRange(CommandBuffer& buffer, const R
         
         // Blit the given range
         CommandBuilder builder(buffer);
-        builder.SetShaderProgram(programs.maskCopyRangeShaderProgramID);
-        builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetDataID(), params);
-        builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetSourceTokenID(), source.token);
-        builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetDestTokenID(), dest.token);
+        builder.SetShaderProgram(program.id);
+        builder.SetDescriptorData(program.program->GetDataID(), params);
+        builder.SetDescriptorData(program.program->GetSourceTokenID(), source.token);
+        builder.SetDescriptorData(program.program->GetDestTokenID(), dest.token);
         builder.Dispatch(static_cast<uint32_t>(source.bufferDescriptor.width), 1, 1);
     } else {
         // Copy each mip separately
@@ -661,46 +681,135 @@ void InitializationFeature::CopyResourceMaskRange(CommandBuffer& buffer, const R
         
             // Blit the entire range
             CommandBuilder builder(buffer);
-            builder.SetShaderProgram(programs.maskBlitShaderProgramID);
-            builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetDataID(), params);
-            builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetSourceTokenID(), source.token);
-            builder.SetDescriptorData(programs.maskCopyRangeShaderProgram->GetDestTokenID(), dest.token);
+            builder.SetShaderProgram(program.id);
+            builder.SetDescriptorData(program.program->GetDataID(), params);
+            builder.SetDescriptorData(program.program->GetSourceTokenID(), source.token);
+            builder.SetDescriptorData(program.program->GetDestTokenID(), dest.token);
             builder.Dispatch(mipWidth, mipHeight, mipDepth);
         }
     }
 }
 
-bool InitializationFeature::InstallProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType type, bool isVolumetric, ResourcePrograms &out) {
-    // Create programs
-    out.maskBlitShaderProgram = registry->New<MaskBlitShaderProgram>(texelMaskBufferID, type, isVolumetric);
-    out.maskCopyRangeShaderProgram = registry->New<MaskCopyRangeShaderProgram>(texelMaskBufferID, type, isVolumetric);
+void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffer, const ResourceInfo &source, const ResourceInfo &dest) {
+    // This is an asymmetric copy, if either is volumetric, the copy is
+    bool isVolumetric = source.isVolumetric || dest.isVolumetric;
 
-    // Try to install programs
-    if (!out.maskBlitShaderProgram->Install() || !out.maskCopyRangeShaderProgram->Install()) {
+    // Get program
+    const ResourceProgram<MaskCopyRangeShaderProgram>& program = copyPrograms[{source.token.type, dest.token.type, isVolumetric}];
+    
+    // todo[init]: cpu side copy check
+    const Allocation& sourceAllocation = allocations.at(source.token.puid);
+    const Allocation& destAllocation = allocations.at(dest.token.puid);
+
+    // Setup blit parameters
+    MaskCopyRangeParameters params{};
+    params.sourceMemoryBaseElementAlign32 = sourceAllocation.baseAlign32;
+    params.destMemoryBaseElementAlign32 = destAllocation.baseAlign32;
+    
+    // Buffer -> Texture
+    if (source.token.type == Backend::IL::ResourceTokenType::Buffer) {
+        // Source buffer offsetting
+        params.sourceBaseX = static_cast<uint32_t>(source.bufferDescriptor.offset);
+
+        // Placement data
+        params.placementRowLength = source.bufferDescriptor.placedDescriptor->rowLength;
+        params.placementImageHeight = source.bufferDescriptor.placedDescriptor->imageHeight;
+        
+        // Destination base offsets
+        params.destMip = dest.textureDescriptor.region.baseMip;
+        params.destBaseX = dest.textureDescriptor.region.offsetX;
+        params.destBaseY = dest.textureDescriptor.region.offsetY;
+        params.destBaseZ = dest.textureDescriptor.region.offsetZ;
+
+        // If volumetric, just append the slices
+        if (dest.isVolumetric) {
+            params.destBaseZ += dest.textureDescriptor.region.baseSlice;
+        }
+
+        // Blit the given range
+        CommandBuilder builder(buffer);
+        builder.SetShaderProgram(program.id);
+        builder.SetDescriptorData(program.program->GetDataID(), params);
+        builder.SetDescriptorData(program.program->GetSourceTokenID(), source.token);
+        builder.SetDescriptorData(program.program->GetDestTokenID(), dest.token);
+        builder.Dispatch(dest.textureDescriptor.region.width, dest.textureDescriptor.region.height, dest.textureDescriptor.region.depth);
+    } else {
+        // Texture -> Buffer
+
+        // Destination buffer offsetting
+        params.destBaseX = static_cast<uint32_t>(dest.bufferDescriptor.offset);
+
+        // Placement data
+        params.placementRowLength = dest.bufferDescriptor.placedDescriptor->rowLength;
+        params.placementImageHeight = dest.bufferDescriptor.placedDescriptor->imageHeight;
+        
+        // Source base offsets
+        params.sourceMip = source.textureDescriptor.region.baseMip;
+        params.sourceBaseX = source.textureDescriptor.region.offsetX;
+        params.sourceBaseY = source.textureDescriptor.region.offsetY;
+        params.sourceBaseZ = source.textureDescriptor.region.offsetZ;
+
+        // If volumetric, just append the slices
+        if (source.isVolumetric) {
+            params.sourceBaseZ += source.textureDescriptor.region.baseSlice;
+        }
+
+        // Blit the given range
+        CommandBuilder builder(buffer);
+        builder.SetShaderProgram(program.id);
+        builder.SetDescriptorData(program.program->GetDataID(), params);
+        builder.SetDescriptorData(program.program->GetSourceTokenID(), source.token);
+        builder.SetDescriptorData(program.program->GetDestTokenID(), dest.token);
+        builder.Dispatch(source.textureDescriptor.region.width, source.textureDescriptor.region.height, source.textureDescriptor.region.depth);
+    }
+}
+
+template<typename T, typename ... A>
+bool InitializationFeature::CreateProgram(const ComRef<IShaderProgramHost> &programHost, ResourceProgram<T> &out, A &&...args) {
+    out.program = registry->New<T>(args...);
+
+    // Try to install program
+    if (!out.program->Install()) {
         return false;
     }
 
     // Register maskers
-    out.maskBlitShaderProgramID = programHost->Register(out.maskBlitShaderProgram);
-    out.maskCopyRangeShaderProgramID = programHost->Register(out.maskCopyRangeShaderProgram);
-
-    // OK
+    out.id = programHost->Register(out.program);
     return true;
 }
 
-const InitializationFeature::ResourcePrograms & InitializationFeature::GetPrograms(Backend::IL::ResourceTokenType type, bool isVolumetric) {
-    switch (type) {
-        default: {
-            ASSERT(false, "Unexpected token type");
-            return bufferPrograms;
-        }
-        case Backend::IL::ResourceTokenType::Buffer: {
-            return bufferPrograms;
-        }
-        case Backend::IL::ResourceTokenType::Texture: {
-            return isVolumetric ? volumetricTexturePrograms : texturePrograms;
-        }
+bool InitializationFeature::CreateBlitProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType type, bool isVolumetric) {
+    return CreateProgram(programHost, blitPrograms[{type, isVolumetric}], texelMaskBufferID, type, isVolumetric);
+}
+
+bool InitializationFeature::CreateCopyProgram(const ComRef<IShaderProgramHost> &programHost, Backend::IL::ResourceTokenType from, Backend::IL::ResourceTokenType to, bool isVolumetric) {
+    return CreateProgram(programHost, copyPrograms[{from, to, isVolumetric}], texelMaskBufferID, from, to, isVolumetric);
+}
+
+bool InitializationFeature::CreateBlitPrograms(const ComRef<IShaderProgramHost> &programHost) {
+    return CreateBlitProgram(programHost, Backend::IL::ResourceTokenType::Buffer, false) &&
+           CreateBlitProgram(programHost, Backend::IL::ResourceTokenType::Texture, false) &&
+           CreateBlitProgram(programHost, Backend::IL::ResourceTokenType::Texture, true);
+}
+
+bool InitializationFeature::CreateCopyPrograms(const ComRef<IShaderProgramHost> &programHost) {
+    // Matching types
+    if (!CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Buffer, Backend::IL::ResourceTokenType::Buffer, false) ||
+        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Texture, Backend::IL::ResourceTokenType::Texture, false) ||
+        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Texture, Backend::IL::ResourceTokenType::Texture, true)) {
+        return false;
     }
+
+    // Placement copies
+    if (!CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Buffer, Backend::IL::ResourceTokenType::Texture, false) ||
+        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Buffer, Backend::IL::ResourceTokenType::Texture, true) ||
+        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Texture, Backend::IL::ResourceTokenType::Buffer, false) ||
+        !CreateCopyProgram(programHost, Backend::IL::ResourceTokenType::Texture, Backend::IL::ResourceTokenType::Buffer, true)) {
+        return false;
+    }
+
+    // OK
+    return true;
 }
 
 FeatureInfo InitializationFeature::GetInfo() {

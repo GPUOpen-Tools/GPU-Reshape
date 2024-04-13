@@ -39,9 +39,9 @@
 // Common
 #include <Common/Registry.h>
 
-MaskCopyRangeShaderProgram::MaskCopyRangeShaderProgram(ShaderDataID initializationMaskBufferID, Backend::IL::ResourceTokenType type, bool isVolumetric) :
+MaskCopyRangeShaderProgram::MaskCopyRangeShaderProgram(ShaderDataID initializationMaskBufferID, Backend::IL::ResourceTokenType from, Backend::IL::ResourceTokenType to, bool isVolumetric) :
     initializationMaskBufferID(initializationMaskBufferID),
-    type(type),
+    from(from), to(to),
     isVolumetric(isVolumetric)  {
 
 }
@@ -78,7 +78,8 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     IL::Emitter<> emitter(program, *basicBlock, basicBlock->GetTerminator());
 
     // Derive token information from shader data
-    IL::StructResourceTokenEmitter token(emitter, program.GetShaderDataMap().Get(destTokenID)->id);
+    IL::StructResourceTokenEmitter sourceToken(emitter, program.GetShaderDataMap().Get(sourceTokenID)->id);
+    IL::StructResourceTokenEmitter destToken(emitter, program.GetShaderDataMap().Get(destTokenID)->id);
 
     // todo[init]: guard oob dtid
 
@@ -96,31 +97,72 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     IL::ID sourceTexel;
     IL::ID destTexel;
 
-    // Buffer indexing just adds the linear offset
-    if (type == Backend::IL::ResourceTokenType::Buffer) {
-        sourceTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), dispatchXID);
-        destTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), dispatchXID);
-    } else {
-        // Texel addressing computation
-        Backend::IL::TexelAddressEmitter address(emitter, token);
-        
-        // Compute the source intra-resource offset
-        sourceTexel = address.LocalTexelAddress(
-            emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), dispatchXID),
-            emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), dispatchYID),
-            emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), dispatchZID),
-            data.Get<&MaskCopyRangeParameters::sourceMip>(emitter),
-            isVolumetric
-        );
+    // Symmetric copy?
+    if (from == to) {
+        // Buffer indexing just adds the linear offset
+        if (from == Backend::IL::ResourceTokenType::Buffer) {
+            sourceTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), dispatchXID);
+            destTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), dispatchXID);
+        } else {
+            // Compute the source intra-resource offset
+            sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken).LocalTexelAddress(
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), dispatchXID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), dispatchYID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), dispatchZID),
+                data.Get<&MaskCopyRangeParameters::sourceMip>(emitter),
+                isVolumetric
+            );
 
-        // Compute the destination intra-resource offset
-        destTexel = address.LocalTexelAddress(
-            emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), dispatchXID),
-            emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), dispatchYID),
-            emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), dispatchZID),
-            data.Get<&MaskCopyRangeParameters::destMip>(emitter),
-            isVolumetric
-        );
+            // Compute the destination intra-resource offset
+            destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken).LocalTexelAddress(
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), dispatchXID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), dispatchYID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), dispatchZID),
+                data.Get<&MaskCopyRangeParameters::destMip>(emitter),
+                isVolumetric
+            );
+        }
+    } else {
+        // Asymmetric copy, uses placement descriptors
+        // Follows 1D scheduling with the total number of texels
+
+        // Placement dimensions
+        IL::ID placementWidth  = data.Get<&MaskCopyRangeParameters::placementRowLength>(emitter);
+        IL::ID placementHeight = data.Get<&MaskCopyRangeParameters::placementImageHeight>(emitter);
+        
+        // z * w * h + y * w + x
+        IL::ID placementOffset = emitter.Mul(dispatchZID, emitter.Mul(placementWidth, placementHeight));
+        placementOffset = emitter.Add(placementOffset, emitter.Mul(dispatchYID, placementWidth));
+        placementOffset = emitter.Add(placementOffset, dispatchXID);
+        
+        // Buffer Placement -> Texture
+        if (from == Backend::IL::ResourceTokenType::Buffer) {
+            // Apply base offset to source placement
+            sourceTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), placementOffset);
+            
+            // Compute the destination intra-resource offset
+            destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken).LocalTexelAddress(
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), dispatchXID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), dispatchYID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), dispatchZID),
+                data.Get<&MaskCopyRangeParameters::destMip>(emitter),
+                isVolumetric
+            );
+        } else {
+            // Texture -> Buffer Placement
+            
+            // Compute the source intra-resource offset
+            sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken).LocalTexelAddress(
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), dispatchXID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), dispatchYID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), dispatchZID),
+                data.Get<&MaskCopyRangeParameters::sourceMip>(emitter),
+                isVolumetric
+            );
+
+            // Apply base offset to destination placement
+            destTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), placementOffset);
+        }
     }
 
     // Read the source initialization bit

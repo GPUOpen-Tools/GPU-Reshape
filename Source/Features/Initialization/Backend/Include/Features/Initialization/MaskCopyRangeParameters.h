@@ -47,4 +47,8 @@ struct MaskCopyRangeParameters {
     /// Mip offsets
     uint32_t sourceMip{0};
     uint32_t destMip{0};
+
+    /// Placement strides, only used in asymmetric copies
+    uint32_t placementRowLength{0};
+    uint32_t placementImageHeight{0};
 };

@@ -106,7 +106,19 @@ private:
     /// \param source the source resource info, contains sub-regions
     /// \param dest the destination resource info, contains sub-regions
     void CopyResourceMaskRange(CommandBuffer& buffer, const ResourceInfo& source, const ResourceInfo& dest);
-
+    
+    /// Copy an existing resource mask with symmetric token types
+    /// \param buffer destination command buffer
+    /// \param source the source resource info, contains sub-regions
+    /// \param dest the destination resource info, contains sub-regions
+    void CopyResourceMaskRangeSymmetric(CommandBuffer& buffer, const ResourceInfo& source, const ResourceInfo& dest);
+    
+    /// Copy an existing resource mask with asymmetric token types
+    /// \param buffer destination command buffer
+    /// \param source the source resource info, contains sub-regions
+    /// \param dest the destination resource info, contains sub-regions
+    void CopyResourceMaskRangeAsymmetric(CommandBuffer& buffer, const ResourceInfo& source, const ResourceInfo& dest);
+    
 private:
     /// Hosts
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
@@ -123,34 +135,55 @@ private:
     MessageStream stream;
 
 private:
-    struct ResourcePrograms {
-        /// Masking programs
-        ComRef<MaskBlitShaderProgram> maskBlitShaderProgram;
-        ComRef<MaskCopyRangeShaderProgram> maskCopyRangeShaderProgram;
+    template<typename T>
+    struct ResourceProgram {
+        /// Masking program
+        ComRef<T> program;
 
-        /// Allocated program IDs
-        ShaderProgramID maskBlitShaderProgramID{InvalidShaderProgramID};
-        ShaderProgramID maskCopyRangeShaderProgramID{InvalidShaderProgramID};
+        /// Allocated program ID
+        ShaderProgramID id{InvalidShaderProgramID};
     };
 
-    /// Install a given program
-    /// \param programHost target host
-    /// \param type token type to copy
-    /// \param isVolumetric volumetric texel addressing?
-    /// \param out destination program
-    /// \return success state
-    bool InstallProgram(const ComRef<IShaderProgramHost>& programHost, Backend::IL::ResourceTokenType type, bool isVolumetric, ResourcePrograms& out);
+    /// Create a new program
+    /// @param programHost target host
+    /// @param out destination program
+    /// @param args all creation arguments
+    /// @return success state
+    template<typename T, typename... A>
+    bool CreateProgram(const ComRef<IShaderProgramHost>& programHost, ResourceProgram<T>& out, A&&... args);
 
-    /// Get a program
-    /// \param type token type to copy
-    /// \param isVolumetric volumetric texel addressing?
-    /// \return program
-    const ResourcePrograms& GetPrograms(Backend::IL::ResourceTokenType type, bool isVolumetric);
+    /// Create a mask blitting program
+    /// @param programHost target host
+    /// @param type token type
+    /// @param isVolumetric volumetric addressing
+    /// @return success state
+    bool CreateBlitProgram(const ComRef<IShaderProgramHost>& programHost, Backend::IL::ResourceTokenType type, bool isVolumetric);
 
-    /// All programs
-    ResourcePrograms bufferPrograms;
-    ResourcePrograms texturePrograms;
-    ResourcePrograms volumetricTexturePrograms;
+    /// Create a mask blitting program
+    /// @param programHost target host
+    /// @param from the source token type
+    /// @param to the destination token type, may be asymmetric
+    /// @param isVolumetric volumetric addressing
+    /// @return success state
+    bool CreateCopyProgram(const ComRef<IShaderProgramHost>& programHost, Backend::IL::ResourceTokenType from, Backend::IL::ResourceTokenType to, bool isVolumetric);
+    
+    /// Create all blitting programs
+    /// @param programHost target host
+    /// @return success state
+    bool CreateBlitPrograms(const ComRef<IShaderProgramHost>& programHost);
+    
+    /// Create all copy programs
+    /// @param programHost target host
+    /// @return success state
+    bool CreateCopyPrograms(const ComRef<IShaderProgramHost>& programHost);
+
+    /// Map keys
+    using BlitSortKey = std::tuple<Backend::IL::ResourceTokenType, bool>;
+    using CopySortKey = std::tuple<Backend::IL::ResourceTokenType, Backend::IL::ResourceTokenType, bool>;
+
+    /// Program maps
+    std::map<BlitSortKey, ResourceProgram<MaskBlitShaderProgram>> blitPrograms;
+    std::map<CopySortKey, ResourceProgram<MaskCopyRangeShaderProgram>> copyPrograms;
 
 private:
     struct Allocation {
