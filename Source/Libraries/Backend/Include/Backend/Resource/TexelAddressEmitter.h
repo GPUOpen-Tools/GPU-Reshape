@@ -68,8 +68,8 @@ namespace Backend::IL {
                 ExtendedEmitter extended(emitter);
                 
                 // Min all coordinates against max-1
-                x = extended.Clamp(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetWidth(), emitter.UInt32(1)));
-                y = extended.Clamp(y, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetHeight(), emitter.UInt32(1)));
+                x = extended.template Clamp<UInt32>(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetWidth(), emitter.UInt32(1)));
+                y = extended.template Clamp<UInt32>(y, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetHeight(), emitter.UInt32(1)));
             }
             
             UInt32 base = MipOffset(tokenEmitter.GetWidth(), tokenEmitter.GetHeight(), mip);
@@ -92,9 +92,9 @@ namespace Backend::IL {
                 ExtendedEmitter extended(emitter);
                 
                 // Min all coordinates against max-1
-                x = extended.Clamp(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetWidth(), emitter.UInt32(1)));
-                y = extended.Clamp(y, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetHeight(), emitter.UInt32(1)));
-                z = extended.Clamp(z, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetDepthOrSliceCount(), emitter.UInt32(1)));
+                x = extended.template Clamp<UInt32>(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetWidth(), emitter.UInt32(1)));
+                y = extended.template Clamp<UInt32>(y, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetHeight(), emitter.UInt32(1)));
+                z = extended.template Clamp<UInt32>(z, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetDepthOrSliceCount(), emitter.UInt32(1)));
             }
 
             // Offset by base mip

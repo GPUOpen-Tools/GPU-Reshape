@@ -361,7 +361,8 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         IL::ID baseMemoryOffsetAlign32 = pre.Extract(pre.LoadBuffer(pre.Load(puidMemoryBaseBufferDataID), PUID), zero);
 
         // Fetch the bit
-        IL::ID texelBit = AtomicAndTexelAddress(pre, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress);
+        // todo[init]: To atomic, or not to atomic?
+        IL::ID texelBit = ReadTexelAddress(pre, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress);
 
         // If the bit is not set, the texel isn't initialized
         IL::ID cond = pre.Equal(texelBit, zero);
