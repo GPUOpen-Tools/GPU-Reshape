@@ -684,7 +684,7 @@ void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer
             // Source base offsets
             params.sourceBaseX = Cast32Checked(source.textureDescriptor.region.offsetX) >> i;
             params.sourceBaseY = Cast32Checked(source.textureDescriptor.region.offsetY) >> i;
-            params.sourceBaseZ = (Cast32Checked(source.textureDescriptor.region.offsetZ) >> i);
+            params.sourceBaseZ = Cast32Checked(source.textureDescriptor.region.offsetZ) >> i;
 
             // Destination base offsets
             params.destBaseX = Cast32Checked(dest.textureDescriptor.region.offsetX) >> i;

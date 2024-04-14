@@ -185,7 +185,7 @@ static ResourceInfo GetSourceRegionResourceInfo(ResourceState* state, const D3D1
         // Create placed buffer
         return ResourceInfo::Buffer(GetResourceToken(state), BufferDescriptor {
             .offset = offset,
-            .width = state->desc.Width,
+            .width = state->desc.Width - offset,
             .placedDescriptor = BufferPlacedDescriptor {
                 .rowLength = pLocation->PlacedFootprint.Footprint.RowPitch,
                 .imageHeight = pLocation->PlacedFootprint.Footprint.Height,
@@ -243,7 +243,7 @@ static ResourceInfo GetDestRegionResourceInfo(ResourceState* state, const D3D12_
         // Create placed buffer
         return ResourceInfo::Buffer(GetResourceToken(state), BufferDescriptor {
             .offset = offset,
-            .width = state->desc.Width,
+            .width = state->desc.Width - offset,
             .placedDescriptor = BufferPlacedDescriptor {
                 .rowLength = pLocation->PlacedFootprint.Footprint.RowPitch,
                 .imageHeight = pLocation->PlacedFootprint.Footprint.Height,
