@@ -512,23 +512,29 @@ void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *obje
                 .bottom = static_cast<LONG>(token.height)
             };
         }
-        
-        // Setup source descriptor
-        TextureDescriptor descriptor{
-            .region = TextureRegion {
-                .offsetX = static_cast<uint32_t>(rect.left),
-                .offsetY = static_cast<uint32_t>(rect.top),
-                .width = static_cast<uint32_t>(rect.right - rect.left),
-                .height = static_cast<uint32_t>(rect.bottom - rect.top)
-            },
-            .uid = 0u
-        };
+
+        // Create resource info
+        ResourceInfo info;
+        if (token.type == Backend::IL::ResourceTokenType::Buffer) {
+            info = ResourceInfo::Buffer(token, BufferDescriptor{
+                .offset = 0u,
+                .width = token.width,
+                .uid = 0u
+            });
+        } else {
+            info = ResourceInfo::Texture(token, IsVolumetric(state), TextureDescriptor{
+                .region = TextureRegion{
+                    .offsetX = static_cast<uint32_t>(rect.left),
+                    .offsetY = static_cast<uint32_t>(rect.top),
+                    .width = static_cast<uint32_t>(rect.right - rect.left),
+                    .height = static_cast<uint32_t>(rect.bottom - rect.top)
+                },
+                .uid = 0u
+            });
+        }
 
         // Invoke hook
-        hook.Invoke(
-            context,
-            ResourceInfo::Texture(token, IsVolumetric(state), descriptor)
-        );
+        hook.Invoke(context, info);
     }
 }
 
@@ -555,22 +561,28 @@ void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *obj
             };
         }
         
-        // Setup source descriptor
-        TextureDescriptor descriptor{
-            .region = TextureRegion {
-                .offsetX = static_cast<uint32_t>(rect.left),
-                .offsetY = static_cast<uint32_t>(rect.top),
-                .width = static_cast<uint32_t>(rect.right - rect.left),
-                .height = static_cast<uint32_t>(rect.bottom - rect.top)
-            },
-            .uid = 0u
-        };
+        // Create resource info
+        ResourceInfo info;
+        if (token.type == Backend::IL::ResourceTokenType::Buffer) {
+            info = ResourceInfo::Buffer(token, BufferDescriptor{
+                .offset = 0u,
+                .width = token.width,
+                .uid = 0u
+            });
+        } else {
+            info = ResourceInfo::Texture(token, IsVolumetric(state), TextureDescriptor{
+                .region = TextureRegion{
+                    .offsetX = static_cast<uint32_t>(rect.left),
+                    .offsetY = static_cast<uint32_t>(rect.top),
+                    .width = static_cast<uint32_t>(rect.right - rect.left),
+                    .height = static_cast<uint32_t>(rect.bottom - rect.top)
+                },
+                .uid = 0u
+            });
+        }
 
         // Invoke hook
-        hook.Invoke(
-            context,
-            ResourceInfo::Texture(token, IsVolumetric(state), descriptor)
-        );
+        hook.Invoke(context, info);
     }
 }
 
