@@ -148,7 +148,10 @@ namespace Studio.ViewModels.Setting
                     string appEnvPath = System.IO.Path.Combine(StartupEnvironmentPath, keyName);
                     
                     // Write startup environment file for given application
-                    File.WriteAllBytes(appEnvPath, view.Storage.Data.GetBuffer());
+                    using (var stream = new FileStream(appEnvPath, FileMode.Create, FileAccess.Write))
+                    {
+                        stream.Write(view.Storage.Data.GetBuffer(), 0, (int)view.Storage.Data.Length);
+                    }
                     
                     // Add keys
                     config.Applications.Add(applicationCandidateSettingViewModel.ApplicationName, keyName);
