@@ -54,6 +54,7 @@ namespace Studio.Models.IL
         IsInf,
         IsNaN,
         KernelValue,
+        Extended,
         Select,
         Branch,
         BranchConditional,
