@@ -3474,6 +3474,158 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     }
                     break;
                 }
+                
+                case IL::OpCode::Extended: {
+                    auto _instr = instr->As<IL::ExtendedInstruction>();
+
+                    // Target intrinsic
+                    const DXILFunctionDeclaration* intrinsic{nullptr};
+                    
+                    // The selected instruction
+                    DXILOpcodes opCode;
+
+                    // Handle value
+                    switch (_instr->extendedOp) {
+                        default: {
+                            ASSERT(false, "Invalid extended opcode");
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::Min: {
+                            auto type = GetComponentType(program.GetTypeMap().GetType(_instr->operands[0]));
+                            if (type->Is<Backend::IL::FPType>()) {
+                                intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryF32);
+                                opCode = DXILOpcodes::FMin_;
+                            } else if (type->As<Backend::IL::IntType>()->signedness) {
+                                intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryI32);
+                                opCode = DXILOpcodes::IMin_;
+                            } else {
+                                intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryI32);
+                                opCode = DXILOpcodes::UMin_;
+                            }
+
+                            BinaryOpSVOX(block, _instr->result, _instr->operands[0], _instr->operands[1], [&](const Backend::IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
+                                uint64_t ops[3];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(opCode))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(a);
+                                ops[2] = table.idRemapper.EncodeRedirectedUserOperand(b);
+                                block->AddRecord(CompileIntrinsicCall(result, intrinsic, 3, ops));
+                            });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::Max: {
+                            auto type = GetComponentType(program.GetTypeMap().GetType(_instr->operands[0]));
+                            if (type->Is<Backend::IL::FPType>()) {
+                                intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryF32);
+                                opCode = DXILOpcodes::FMax_;
+                            } else if (type->As<Backend::IL::IntType>()->signedness) {
+                                intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryI32);
+                                opCode = DXILOpcodes::IMax_;
+                            } else {
+                                intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpBinaryI32);
+                                opCode = DXILOpcodes::UMax_;
+                            }
+
+                            BinaryOpSVOX(block, _instr->result, _instr->operands[0], _instr->operands[1], [&](const Backend::IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
+                                uint64_t ops[3];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(opCode))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(a);
+                                ops[2] = table.idRemapper.EncodeRedirectedUserOperand(b);
+                                block->AddRecord(CompileIntrinsicCall(result, intrinsic, 3, ops));
+                            });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::Pow: {
+                            intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryF32);
+                            opCode = DXILOpcodes::Exp_;
+
+                            // Implement pow(a, b) as exp(log(a) * b)
+                            IL::ID logResult = program.GetIdentifierMap().AllocID();
+                            IL::ID logMulResult = program.GetIdentifierMap().AllocID();
+
+                            // log(x)
+                            UnaryOpSVOX(block, logResult, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Log_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, intrinsic, 2, ops));
+                            });
+
+                            // log(x) * b
+                            BinaryOpSVOX(block, logMulResult, logResult, _instr->operands[1], [&](const Backend::IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
+                                record.SetUser(true, ~0u, result);
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(a);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(b);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::Mul);
+                                block->AddRecord(record);
+                            });
+
+                            // exp(log(x) * b)
+                            UnaryOpSVOX(block, _instr->result, logMulResult, [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Exp_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, intrinsic, 2, ops));
+                            });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::Exp: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Exp_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryF32), 2, ops));
+                            });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::Floor: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Round_ni_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryF32), 2, ops));
+                            });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::Ceil: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Round_pi_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryF32), 2, ops));
+                            });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::Round: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Round_ne_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryF32), 2, ops));
+                            });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::Sqrt: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::Sqrt_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryF32), 2, ops));
+                            });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::Abs: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::FAbs_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryF32), 2, ops));
+                            });
+                            break;
+                        }
+                    }
+                    break;
+                }
 
                 case IL::OpCode::Select: {
                     auto _instr = instr->As<IL::SelectInstruction>();

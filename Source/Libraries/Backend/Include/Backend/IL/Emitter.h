@@ -360,7 +360,7 @@ namespace IL {
             // Fold it down
             IL::ID chains[] = {ix...};
 
-            auto instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(1));
+            auto instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(sizeof...(IX)));
             instr->opCode = OpCode::AddressChain;
             instr->source = Source::Invalid();
             instr->result = map->AllocID();
@@ -638,6 +638,30 @@ namespace IL {
             instr.result = map->AllocID();
             instr.value = value;
             return Op(instr);
+        }
+
+        /// Perform an extended operation
+        /// \param op the extended opcode
+        /// \param ix all arguments
+        /// \return instruction reference
+        template<typename... IX>
+        BasicBlock::TypedIterator <ExtendedInstruction> Extended(Backend::IL::ExtendedOp op, IX... ix) {
+            auto instr = ALLOCA_SIZE(IL::ExtendedInstruction, IL::ExtendedInstruction::GetSize(sizeof...(IX)));
+            instr->opCode = OpCode::Extended;
+            instr->source = Source::Invalid();
+            instr->result = map->AllocID();
+            instr->extendedOp = op;
+            instr->operands.count = sizeof...(IX);
+
+            // Fold it down
+            IL::ID chains[] = {ix...};
+
+            // Write all chains
+            for (uint32_t i = 0; i < instr->operands.count; i++) {
+                instr->operands[i] = chains[i];
+            }
+            
+            return Op(*instr);
         }
 
         /// Perform a bitwise or

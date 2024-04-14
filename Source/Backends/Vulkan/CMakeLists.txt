@@ -247,6 +247,7 @@ add_library(
     Layer/Source/Compiler/SpvSourceMap.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockAnnotation.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockCapability.cpp
+    Layer/Source/Compiler/Blocks/SpvPhysicalBlockExtensionImport.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockEntryPoint.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockDebugStringSource.cpp
     Layer/Source/Compiler/Blocks/SpvPhysicalBlockFunction.cpp

@@ -31,6 +31,7 @@
 #include "Blocks/SpvPhysicalBlockDebugStringSource.h"
 #include "Blocks/SpvPhysicalBlockAnnotation.h"
 #include "Blocks/SpvPhysicalBlockTypeConstantVariable.h"
+#include "Blocks/SpvPhysicalBlockExtensionImport.h"
 #include "Blocks/SpvPhysicalBlockFunction.h"
 #include "Blocks/SpvPhysicalBlockEntryPoint.h"
 #include "Utils/SpvUtilShaderExport.h"
@@ -70,6 +71,7 @@ struct SpvPhysicalBlockTable {
     SpvPhysicalBlockScan scan;
 
     /// Physical blocks
+    SpvPhysicalBlockExtensionImport extensionImport;
     SpvPhysicalBlockEntryPoint entryPoint;
     SpvPhysicalBlockCapability capability;
     SpvPhysicalBlockAnnotation annotation;

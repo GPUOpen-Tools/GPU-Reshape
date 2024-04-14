@@ -163,6 +163,7 @@ namespace Backend::IL {
             case OpCode::ResourceToken:
             case OpCode::ResourceSize:
             case OpCode::KernelValue:
+            case OpCode::Extended: // todo[init]: implement!
             case OpCode::Export:
             case OpCode::Alloca:
             case OpCode::Load:

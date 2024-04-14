@@ -67,6 +67,10 @@ namespace IL {
         /// Kernel
         KernelValue,
 
+        /// Extended instruction sets
+        /// This includes typical Min, Max, Clamp, etc.
+        Extended,
+
         /// Flow control
         Select,
         Branch,

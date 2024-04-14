@@ -26,10 +26,47 @@
 
 #pragma once
 
-// SPIRV
-#define SPV_ENABLE_UTILITY_CODE
-#include <spirv/unified1/spirv.h>
-#include <spirv/unified1/GLSL.std.450.h>
+// Layer
+#include <Backends/Vulkan/Compiler/Blocks/SpvPhysicalBlockSection.h>
+#include <Backends/Vulkan/Compiler/Spv.h>
 
-/// Invalid spirv identifier
-static constexpr SpvId InvalidSpvId = ~0u;
+// Backend
+#include <Backend/IL/Program.h>
+
+// Common
+#include <Common/ShortHashString.h>
+
+// Forward declarations
+struct SpvPhysicalBlockScan;
+struct SpvPhysicalBlock;
+struct SpvPhysicalBlockTable;
+
+/// Extension import physical block
+struct SpvPhysicalBlockExtensionImport : public SpvPhysicalBlockSection {
+    using SpvPhysicalBlockSection::SpvPhysicalBlockSection;
+
+    /// Parse all instructions
+    void Parse();
+
+    /// Add new capability
+    /// \param name target name
+    /// \return instruction set id
+    IL::ID Add(ShortHashString name);
+
+    /// Copy to a new block
+    /// \param remote the remote table
+    /// \param out destination capability
+    void CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockExtensionImport& out);
+
+private:
+    struct InstructionSet {
+        /// Given name
+        ShortHashString name;
+
+        /// Assigned id
+        IL::ID id{IL::InvalidID};
+    };
+
+    /// All instruction sets
+    std::vector<InstructionSet> sets;
+};

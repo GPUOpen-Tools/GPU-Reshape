@@ -255,6 +255,14 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             line << "KernelValue " << static_cast<uint32_t>(kernel->value);
             break;
         }
+        case OpCode::Extended: {
+            auto extended = instr->As<IL::ExtendedInstruction>();
+            line << "Extended ";
+            for (uint32_t i = 0; i < extended->operands.count; i++) {
+                line << " %" << extended->operands[i];
+            }
+            break;
+        }
         case OpCode::Sub: {
             auto sub = instr->As<IL::SubInstruction>();
             line << "Sub %" << sub->lhs << " %" << sub->rhs;
@@ -1802,6 +1810,22 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
         case IL::OpCode::KernelValue: {
             auto kernel = instr->As<IL::KernelValueInstruction>();
             out.Line() << "\"Value\": " << static_cast<uint32_t>(kernel->value) << ",";
+            break;
+        }
+        case IL::OpCode::Extended: {
+            auto extended = instr->As<IL::ExtendedInstruction>();
+            out.Line() << "\"Operands\": ";
+            out.Line() << "[";
+            
+            for (uint32_t i = 0; i < static_cast<uint32_t>(extended->operands.count); i++) {         
+                if (i != extended->operands.count - 1) {
+                    out.Line() << "\t" << extended->operands[i] << ",";
+                } else {
+                    out.Line() << "\t" << extended->operands[i];
+                }
+            }
+
+            out.Line() << "],";
             break;
         }
         case IL::OpCode::Sub: {

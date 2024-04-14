@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,10 +26,16 @@
 
 #pragma once
 
-// SPIRV
-#define SPV_ENABLE_UTILITY_CODE
-#include <spirv/unified1/spirv.h>
-#include <spirv/unified1/GLSL.std.450.h>
-
-/// Invalid spirv identifier
-static constexpr SpvId InvalidSpvId = ~0u;
+namespace Backend::IL {
+    enum class ExtendedOp {
+        Min,
+        Max,
+        Abs,
+        Floor,
+        Ceil,
+        Round,
+        Pow,
+        Exp,
+        Sqrt
+    };
+}

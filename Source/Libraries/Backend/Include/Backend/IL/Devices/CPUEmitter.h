@@ -2,6 +2,7 @@
 
 // Backend
 #include <Backend/IL/Device.h>
+#include <Backend/IL/ExtendedOp.h>
 
 // Common
 #include <Common/Assert.h>
@@ -77,6 +78,54 @@ namespace IL {
         template<typename T>
         T BitShiftRight(T lhs, T rhs) {
             return lhs >> rhs;
+        }
+
+        /// Perform an extended instruction
+        /// \param op given op code
+        /// \param a first argument
+        /// \param ix remaining arguments
+        /// \return result value
+        template<typename T, typename... IX>
+        T Extended(Backend::IL::ExtendedOp op, T a, IX... ix) {
+            // Fold it down
+            T ops[] = {a, ix...};
+
+            switch (op) {
+                default:
+                    ASSERT(false, "Invalid extended op-code");
+                    return {};
+                case Backend::IL::ExtendedOp::Min: {
+                    return std::min<T>(ops[0], ops[1]);
+                }
+                case Backend::IL::ExtendedOp::Max: {
+                    return std::max<T>(ops[0], ops[1]);
+                }
+                case Backend::IL::ExtendedOp::Abs: {
+                    if constexpr (std::is_unsigned_v<T>) {
+                        return ops[0];
+                    } else {
+                        return std::abs(ops[0]);
+                    }
+                }
+                case Backend::IL::ExtendedOp::Floor: {
+                    return static_cast<T>(std::floor(ops[0]));
+                }
+                case Backend::IL::ExtendedOp::Ceil: {
+                    return static_cast<T>(std::ceil(ops[0]));
+                }
+                case Backend::IL::ExtendedOp::Round: {
+                    return static_cast<T>(std::round(ops[0]));
+                }
+                case Backend::IL::ExtendedOp::Pow: {
+                    return static_cast<T>(std::pow(ops[0], ops[1]));
+                }
+                case Backend::IL::ExtendedOp::Exp: {
+                    return static_cast<T>(std::exp(ops[0]));
+                }
+                case Backend::IL::ExtendedOp::Sqrt: {
+                    return static_cast<T>(std::sqrt(ops[0]));
+                }
+            }
         }
 
         /// Literal emitter

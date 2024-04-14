@@ -242,6 +242,24 @@ namespace Backend::IL {
         }
     }
 
+    inline const Type* ResultOf(Program& program, const ExtendedInstruction* instr) {
+        switch (instr->extendedOp) {
+            default:
+                ASSERT(false, "Invalid extended op");
+                return nullptr;
+            case ExtendedOp::Min:
+            case ExtendedOp::Max:
+            case ExtendedOp::Abs:
+            case ExtendedOp::Floor:
+            case ExtendedOp::Ceil:
+            case ExtendedOp::Round:
+            case ExtendedOp::Pow:
+            case ExtendedOp::Exp:
+            case ExtendedOp::Sqrt:
+                return program.GetTypeMap().GetType(instr->operands[0]);
+        }
+    }
+
     inline const Type* ResultOf(Program& program, const IsInfInstruction* instr) {
         return SplatToValue(program, program.GetTypeMap().FindTypeOrAdd(BoolType{}), instr->value);
     }

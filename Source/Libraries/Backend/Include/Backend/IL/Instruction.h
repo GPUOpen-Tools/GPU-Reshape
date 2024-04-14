@@ -37,6 +37,7 @@
 #include "LiteralType.h"
 #include "ID.h"
 #include "ComponentMask.h"
+#include "ExtendedOp.h"
 #include "KernelValue.h"
 #include "TextureSampleMode.h"
 
@@ -353,6 +354,26 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::KernelValue;
 
         Backend::IL::KernelValue value;
+    };
+
+    struct ExtendedInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Extended;
+
+        /// Get size of this instruction
+        /// \param opCount number of operands
+        /// \return byte size
+        static uint64_t GetSize(uint32_t opCount) {
+            return sizeof(ExtendedInstruction) + InlineArray<ID>::ElementSize(opCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(ExtendedInstruction) + operands.ElementSize();
+        }
+        
+        Backend::IL::ExtendedOp extendedOp;
+        InlineArray<ID> operands;
     };
 
     struct BitOrInstruction : public Instruction {
@@ -875,6 +896,8 @@ namespace IL {
                 return sizeof(IsNaNInstruction);
             case OpCode::KernelValue:
                 return sizeof(KernelValueInstruction);
+            case OpCode::Extended:
+                return static_cast<const ExtendedInstruction*>(instruction)->GetSize();
             case OpCode::AtomicOr:
                 return sizeof(AtomicOrInstruction);
             case OpCode::AtomicXOr:

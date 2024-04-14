@@ -29,6 +29,7 @@
 SpvPhysicalBlockTable::SpvPhysicalBlockTable(const Allocators &allocators, IL::Program &program) :
     program(program),
     scan(program),
+    extensionImport(allocators, program, *this),
     entryPoint(allocators, program, *this),
     capability(allocators, program, *this),
     annotation(allocators, program, *this),
@@ -49,6 +50,7 @@ bool SpvPhysicalBlockTable::Parse(const uint32_t *code, uint32_t count) {
     }
 
     // Parse all blocks
+    extensionImport.Parse();
     entryPoint.Parse();
     capability.Parse();
     annotation.Parse();
@@ -99,6 +101,7 @@ void SpvPhysicalBlockTable::Stitch(SpvStream &out) {
 
 void SpvPhysicalBlockTable::CopyTo(SpvPhysicalBlockTable &out) {
     scan.CopyTo(out.scan);
+    extensionImport.CopyTo(out, out.extensionImport);
     entryPoint.CopyTo(out, out.entryPoint);
     capability.CopyTo(out, out.capability);
     annotation.CopyTo(out, out.annotation);

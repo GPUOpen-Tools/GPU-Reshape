@@ -197,6 +197,13 @@ namespace Backend::IL {
             case ::IL::OpCode::KernelValue: {
                 break;
             }
+            case ::IL::OpCode::Extended: {
+                auto typed = instr->As<::IL::ExtendedInstruction>();
+                for (uint32_t i = 0; i < typed->operands.count; i++) {
+                    functor(typed->operands[i]);
+                }
+                break;
+            }
             case ::IL::OpCode::Select: {
                 auto typed = instr->As<::IL::SelectInstruction>();
                 functor(typed->condition);

@@ -1891,6 +1891,106 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 }
                 break;
             }
+            case IL::OpCode::Extended: {
+                auto *extended = instr.As<IL::ExtendedInstruction>();
+
+                // The selected instruction
+                GLSLstd450 std450Id{};
+
+                // All operands
+                TrivialStackVector<IL::ID, 8> operands;
+
+                // Handle value
+                switch (extended->extendedOp) {
+                    default: {
+                        ASSERT(false, "Invalid extended opcode");
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::Min: {
+                        auto type = GetComponentType(program.GetTypeMap().GetType(extended->operands[0]));
+                        if (type->Is<Backend::IL::FPType>()) {
+                            std450Id = GLSLstd450FMin;
+                        } else if (type->As<Backend::IL::IntType>()->signedness) {
+                            std450Id = GLSLstd450SMin;
+                        } else {
+                            std450Id = GLSLstd450UMin;
+                        }
+
+                        operands.Add(extended->operands[0]);
+                        operands.Add(extended->operands[1]);
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::Max: {
+                        auto type = GetComponentType(program.GetTypeMap().GetType(extended->operands[0]));
+                        if (type->Is<Backend::IL::FPType>()) {
+                            std450Id = GLSLstd450FMax;
+                        } else if (type->As<Backend::IL::IntType>()->signedness) {
+                            std450Id = GLSLstd450SMax;
+                        } else {
+                            std450Id = GLSLstd450UMax;
+                        }
+
+                        operands.Add(extended->operands[0]);
+                        operands.Add(extended->operands[1]);
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::Pow: {
+                        std450Id = GLSLstd450Pow;
+                        operands.Add(extended->operands[0]);
+                        operands.Add(extended->operands[1]);
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::Exp: {
+                        std450Id = GLSLstd450Exp;
+                        operands.Add(extended->operands[0]);
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::Floor: {
+                        std450Id = GLSLstd450Floor;
+                        operands.Add(extended->operands[0]);
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::Ceil: {
+                        std450Id = GLSLstd450Ceil;
+                        operands.Add(extended->operands[0]);
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::Round: {
+                        std450Id = GLSLstd450Round;
+                        operands.Add(extended->operands[0]);
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::Sqrt: {
+                        std450Id = GLSLstd450Sqrt;
+                        operands.Add(extended->operands[0]);
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::Abs: {
+                        auto type = GetComponentType(program.GetTypeMap().GetType(extended->operands[0]));
+                        if (type->Is<Backend::IL::FPType>()) {
+                            std450Id = GLSLstd450FAbs;
+                        } else {
+                            std450Id = GLSLstd450SAbs;
+                        }
+                        
+                        operands.Add(extended->operands[0]);
+                        break;
+                    }
+                }
+
+                // Get or add the instruction set
+                static ShortHashString glsl450Name("GLSL.std.450");
+                SpvId setId = table.extensionImport.Add(glsl450Name);
+
+                // Create instruction
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpExtInst, 5 + static_cast<uint32_t>(operands.Size()), extended->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = extended->result;
+                spv[3] = setId;
+                spv[4] = std450Id;
+                std::memcpy(&spv[5], operands.Data(), sizeof(SpvId) * operands.Size());
+                break;
+            }
             case IL::OpCode::Select: {
                 auto *select = instr.As<IL::SelectInstruction>();
 

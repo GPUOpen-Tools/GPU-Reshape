@@ -104,5 +104,47 @@ namespace Intrinsics {
         }
     };
 
-    static uint32_t kInbuiltCount = 7;
+    static DXILIntrinsicSpec DxOpBinaryF32 {
+        .uid = 7,
+        .name = "dx.op.binary.f32",
+        .returnType = DXILIntrinsicTypeSpec::F32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::F32, // op0
+            DXILIntrinsicTypeSpec::F32  // op1
+        }
+    };
+
+    static DXILIntrinsicSpec DxOpBinaryI32 {
+        .uid = 8,
+        .name = "dx.op.binary.i32",
+        .returnType = DXILIntrinsicTypeSpec::I32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::I32, // op0
+            DXILIntrinsicTypeSpec::I32  // op1
+        }
+    };
+
+    static DXILIntrinsicSpec DxOpUnaryF32 {
+        .uid = 9,
+        .name = "dx.op.unary.f32",
+        .returnType = DXILIntrinsicTypeSpec::F32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::F32 // op0
+        }
+    };
+
+    static DXILIntrinsicSpec DxOpUnaryI32 {
+        .uid = 10,
+        .name = "dx.op.unary.i32",
+        .returnType = DXILIntrinsicTypeSpec::I32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::I32 // op0
+        }
+    };
+
+    static uint32_t kInbuiltCount = 11;
 }
