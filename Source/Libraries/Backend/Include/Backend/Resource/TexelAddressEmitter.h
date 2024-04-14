@@ -28,6 +28,7 @@
 
 // Backend
 #include <Backend/IL/Emitter.h>
+#include <Backend/IL/ExtendedEmitter.h>
 #include <Backend/IL/ResourceTokenEmitter.h>
 
 namespace Backend::IL {
@@ -63,6 +64,14 @@ namespace Backend::IL {
         /// \param mip destination mip
         /// \return texel offset
         UInt32 LocalTexelAddress(UInt32 x, UInt32 y, UInt32 mip) {
+            if (kGuardCoordinates) {
+                ExtendedEmitter extended(emitter);
+                
+                // Min all coordinates against max-1
+                x = extended.Clamp(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetWidth(), emitter.UInt32(1)));
+                y = extended.Clamp(y, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetHeight(), emitter.UInt32(1)));
+            }
+            
             UInt32 base = MipOffset(tokenEmitter.GetWidth(), tokenEmitter.GetHeight(), mip);
 
             // y * w + x
@@ -80,7 +89,12 @@ namespace Backend::IL {
         /// \return texel offset
         UInt32 LocalTexelAddress(UInt32 x, UInt32 y, UInt32 z, UInt32 mip, bool isVolumetric) {
             if (kGuardCoordinates) {
-                // todo[init]: min instr?
+                ExtendedEmitter extended(emitter);
+                
+                // Min all coordinates against max-1
+                x = extended.Clamp(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetWidth(), emitter.UInt32(1)));
+                y = extended.Clamp(y, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetHeight(), emitter.UInt32(1)));
+                z = extended.Clamp(z, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetDepthOrSliceCount(), emitter.UInt32(1)));
             }
 
             // Offset by base mip
