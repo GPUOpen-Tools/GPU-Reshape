@@ -27,6 +27,7 @@
 #pragma once
 
 #include "CommandBuffer.h"
+#include "CommandLimits.h"
 
 struct CommandBuilder {
     CommandBuilder(CommandBuffer& buffer) : buffer(buffer) {
@@ -92,6 +93,9 @@ struct CommandBuilder {
     /// \param groupCountY number of groups Y
     /// \param groupCountZ number of groups Z
     void Dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+        ASSERT(groupCountX <= kMaxDispatchThreadGroupPerDimension && groupCountY <= kMaxDispatchThreadGroupPerDimension && groupCountZ <= kMaxDispatchThreadGroupPerDimension,
+               "Exceeded maximum thread groups per dimension");
+        
         buffer.Add(DispatchCommand {
             .groupCountX = groupCountX,
             .groupCountY = groupCountY,

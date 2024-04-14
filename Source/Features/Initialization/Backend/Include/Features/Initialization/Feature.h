@@ -192,6 +192,9 @@ private:
 
         /// Relative offset, aligned to 32
         uint32_t baseAlign32{0};
+
+        /// Length of this allocation
+        uint64_t length{0};
     };
 
     /// Shared texel allocator

@@ -63,7 +63,7 @@
 #include <Common/Registry.h>
 
 // todo[init]: remove
-static constexpr uint32_t kTempSize = 32'000'000;
+static constexpr uint32_t kTempSize = 512'000'000;
 
 bool InitializationFeature::Install() {
     // Must have the export host
@@ -390,6 +390,12 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
     });
 }
 
+/// Cast a 64 bit value to 32 bit
+static uint32_t Cast32Checked(uint64_t value) {
+    ASSERT(value < std::numeric_limits<uint32_t>::max(), "Numeric value out of bounds");
+    return static_cast<uint32_t>(value);
+}
+
 void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
     std::lock_guard guard(mutex);
 
@@ -404,12 +410,12 @@ void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
     // Create allocation
     Allocation& allocation = allocations[source.token.puid];
     allocation.base = addressAllocator.Allocate(allocationSize);
+    allocation.length = allocationSize;
     ASSERT(allocation.base % 32 == 0, "Memory base not aligned to texel width (32)");
 
     // Get base offset
     uint64_t memoryBaseAlign32 = allocation.base / 32;
-    ASSERT(memoryBaseAlign32 < std::numeric_limits<uint32_t>::max(), "Memory base out of bounds");
-    allocation.baseAlign32 = static_cast<uint32_t>(memoryBaseAlign32);
+    allocation.baseAlign32 = Cast32Checked(memoryBaseAlign32);
 
     // todo[init]: temp
     ASSERT(allocation.baseAlign32 + allocationSize / 32 < kTempSize, "Out of temp size");
@@ -578,28 +584,38 @@ void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const Resour
     // Buffers are linearly indexed
     if (info.token.type == Backend::IL::ResourceTokenType::Buffer) {
         ASSERT(!info.bufferDescriptor.placedDescriptor, "Blitting with placement resource");
+        ASSERT(info.bufferDescriptor.width <= allocation.length, "Length of of bounds");
+        ASSERT(info.bufferDescriptor.offset + info.bufferDescriptor.width <= allocation.base + allocation.length, "End offset of of bounds");
 
         // Offset by descriptor
-        params.baseX = static_cast<uint32_t>(info.bufferDescriptor.offset);
+        params.baseX = Cast32Checked(info.bufferDescriptor.offset);
         
-        // Blit the given range
+        // Setup the command
         CommandBuilder builder(buffer);
         builder.SetShaderProgram(program.id);
-        builder.SetDescriptorData(program.program->GetDataID(), params);
         builder.SetDescriptorData(program.program->GetDestTokenID(), info.token);
-        builder.Dispatch(static_cast<uint32_t>(info.bufferDescriptor.width), 1, 1);
+
+        // Blit all the chunks
+        for (uint64_t offset = 0; offset < info.bufferDescriptor.width; offset += kMaxDispatchThreadGroupPerDimension) {
+            auto width = std::min<uint32_t>(kMaxDispatchThreadGroupPerDimension, Cast32Checked(info.bufferDescriptor.width - offset));
+            builder.SetDescriptorData(program.program->GetDataID(), params);
+            builder.Dispatch(width, 1, 1);
+
+            // Next chunk
+            params.baseX += kMaxDispatchThreadGroupPerDimension;
+        }
     } else {
         // Blit each mip separately
         for (uint32_t i = 0; i < info.textureDescriptor.region.mipCount; i++) {
             params.mip = info.textureDescriptor.region.baseMip + i;
 
             // Base offsets
-            params.baseX = static_cast<uint32_t>(info.textureDescriptor.region.offsetX) >> i;
-            params.baseY = static_cast<uint32_t>(info.textureDescriptor.region.offsetY) >> i;
-            params.baseZ = (static_cast<uint32_t>(info.textureDescriptor.region.offsetZ) >> i);
+            params.baseX = Cast32Checked(info.textureDescriptor.region.offsetX) >> i;
+            params.baseY = Cast32Checked(info.textureDescriptor.region.offsetY) >> i;
+            params.baseZ = Cast32Checked(info.textureDescriptor.region.offsetZ) >> i;
 
             // If volumetric, just append the base slice
-            if (info.isVolumetric) {
+            if (!info.isVolumetric) {
                 params.baseZ += info.textureDescriptor.region.baseSlice;
             }
 
@@ -640,16 +656,25 @@ void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer
     
     // Buffers are linearly indexed
     if (source.token.type == Backend::IL::ResourceTokenType::Buffer) {
-        params.sourceBaseX = static_cast<uint32_t>(source.bufferDescriptor.offset);
-        params.destBaseX = static_cast<uint32_t>(dest.bufferDescriptor.offset);
+        params.sourceBaseX = Cast32Checked(source.bufferDescriptor.offset);
+        params.destBaseX = Cast32Checked(dest.bufferDescriptor.offset);
         
-        // Blit the given range
+        // Setup the command
         CommandBuilder builder(buffer);
         builder.SetShaderProgram(program.id);
-        builder.SetDescriptorData(program.program->GetDataID(), params);
         builder.SetDescriptorData(program.program->GetSourceTokenID(), source.token);
         builder.SetDescriptorData(program.program->GetDestTokenID(), dest.token);
-        builder.Dispatch(static_cast<uint32_t>(source.bufferDescriptor.width), 1, 1);
+        
+        // Blit all the chunks
+        for (uint64_t offset = 0; offset < source.bufferDescriptor.width; offset += kMaxDispatchThreadGroupPerDimension) {
+            auto width = std::min<uint32_t>(kMaxDispatchThreadGroupPerDimension, Cast32Checked(source.bufferDescriptor.width - offset));
+            builder.SetDescriptorData(program.program->GetDataID(), params);
+            builder.Dispatch(width, 1, 1);
+
+            // Next chunk
+            params.sourceBaseX += kMaxDispatchThreadGroupPerDimension;
+            params.destBaseX += kMaxDispatchThreadGroupPerDimension;
+        }
     } else {
         // Copy each mip separately
         for (uint32_t i = 0; i < source.textureDescriptor.region.mipCount; i++) {
@@ -657,21 +682,21 @@ void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer
             params.destMip = dest.textureDescriptor.region.baseMip + i;
 
             // Source base offsets
-            params.sourceBaseX = static_cast<uint32_t>(source.textureDescriptor.region.offsetX) >> i;
-            params.sourceBaseY = static_cast<uint32_t>(source.textureDescriptor.region.offsetY) >> i;
-            params.sourceBaseZ = (static_cast<uint32_t>(source.textureDescriptor.region.offsetZ) >> i);
+            params.sourceBaseX = Cast32Checked(source.textureDescriptor.region.offsetX) >> i;
+            params.sourceBaseY = Cast32Checked(source.textureDescriptor.region.offsetY) >> i;
+            params.sourceBaseZ = (Cast32Checked(source.textureDescriptor.region.offsetZ) >> i);
 
             // Destination base offsets
-            params.destBaseX = static_cast<uint32_t>(dest.textureDescriptor.region.offsetX) >> i;
-            params.destBaseY = static_cast<uint32_t>(dest.textureDescriptor.region.offsetY) >> i;
-            params.destBaseZ = (static_cast<uint32_t>(dest.textureDescriptor.region.offsetZ) >> i);
+            params.destBaseX = Cast32Checked(dest.textureDescriptor.region.offsetX) >> i;
+            params.destBaseY = Cast32Checked(dest.textureDescriptor.region.offsetY) >> i;
+            params.destBaseZ = Cast32Checked(dest.textureDescriptor.region.offsetZ) >> i;
 
-            // If volumetric, just append the slices
-            if (source.isVolumetric) {
+            // If not volumetric, just append the slices
+            if (!source.isVolumetric) {
                 params.sourceBaseZ += source.textureDescriptor.region.baseSlice;
             }
             
-            if (dest.isVolumetric) {
+            if (!dest.isVolumetric) {
                 params.destBaseZ += dest.textureDescriptor.region.baseSlice;
             }
 
@@ -709,8 +734,11 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
     
     // Buffer -> Texture
     if (source.token.type == Backend::IL::ResourceTokenType::Buffer) {
+        ASSERT(source.bufferDescriptor.width <= sourceAllocation.length, "Length of of bounds");
+        ASSERT(source.bufferDescriptor.offset + source.bufferDescriptor.width <= sourceAllocation.base + sourceAllocation.length, "End offset of of bounds");
+
         // Source buffer offsetting
-        params.sourceBaseX = static_cast<uint32_t>(source.bufferDescriptor.offset);
+        params.sourceBaseX = Cast32Checked(source.bufferDescriptor.offset);
 
         // Placement data
         params.placementRowLength = source.bufferDescriptor.placedDescriptor->rowLength;
@@ -722,8 +750,8 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
         params.destBaseY = dest.textureDescriptor.region.offsetY;
         params.destBaseZ = dest.textureDescriptor.region.offsetZ;
 
-        // If volumetric, just append the slices
-        if (dest.isVolumetric) {
+        // If not volumetric, just append the slices
+        if (!dest.isVolumetric) {
             params.destBaseZ += dest.textureDescriptor.region.baseSlice;
         }
 
@@ -738,7 +766,7 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
         // Texture -> Buffer
 
         // Destination buffer offsetting
-        params.destBaseX = static_cast<uint32_t>(dest.bufferDescriptor.offset);
+        params.destBaseX = Cast32Checked(dest.bufferDescriptor.offset);
 
         // Placement data
         params.placementRowLength = dest.bufferDescriptor.placedDescriptor->rowLength;
@@ -750,8 +778,8 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
         params.sourceBaseY = source.textureDescriptor.region.offsetY;
         params.sourceBaseZ = source.textureDescriptor.region.offsetZ;
 
-        // If volumetric, just append the slices
-        if (source.isVolumetric) {
+        // If not volumetric, just append the slices
+        if (!source.isVolumetric) {
             params.sourceBaseZ += source.textureDescriptor.region.baseSlice;
         }
 
