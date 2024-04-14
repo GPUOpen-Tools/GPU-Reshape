@@ -623,7 +623,8 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
 
     // Translate render targets
     for (uint32_t i = 0; i < NumRenderTargets; i++) {
-        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, pRenderTargets[i].cpuDescriptor);
+        ResourceState* state{nullptr};
+        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, pRenderTargets[i].cpuDescriptor, &state);
 
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
@@ -639,6 +640,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
         AttachmentInfo& info = attachments[i];
         info.resource.token = token;
         info.resource.textureDescriptor = descriptors[i];
+        info.resource.isVolumetric = IsVolumetric(state);
         info.resolveResource = nullptr;
 
         // Translate action
@@ -690,7 +692,8 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
     AttachmentInfo    depthInfo;
 
     if (pDepthStencil) {
-        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, pDepthStencil->cpuDescriptor);
+        ResourceState* state{nullptr};
+        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, pDepthStencil->cpuDescriptor, &state);
 
         // Setup destination descriptor
         depthDescriptor = TextureDescriptor{
@@ -743,6 +746,7 @@ void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandCo
         // Set resource info
         depthInfo.resource.token = token;
         depthInfo.resource.textureDescriptor = depthDescriptor;
+        depthInfo.resource.isVolumetric = IsVolumetric(state);
         depthInfo.resolveResource = nullptr;
         passInfo.depthAttachment = &depthInfo;
     }
@@ -775,7 +779,8 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         }
 
         // Get state
-        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, renderTargetHandle);
+        ResourceState* state{nullptr};
+        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, renderTargetHandle, &state);
 
         // Setup descriptor
         descriptors[i] = TextureDescriptor{
@@ -791,6 +796,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         AttachmentInfo& info = attachments[i];
         info.resource.token = token;
         info.resource.textureDescriptor = descriptors[i];
+        info.resource.isVolumetric = IsVolumetric(state);
         info.loadAction = AttachmentAction::Load;
         info.storeAction = AttachmentAction::Store;
         info.resolveResource = nullptr;
@@ -806,7 +812,8 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
     AttachmentInfo    depthInfo;
 
     if (pDepthStencilDescriptor) {
-        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, *pDepthStencilDescriptor);
+        ResourceState* state{nullptr};
+        ResourceToken token = GetResourceTokenFromHeapHandle(object, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, *pDepthStencilDescriptor, &state);
 
         // Setup destination descriptor
         depthDescriptor = TextureDescriptor{
@@ -821,6 +828,7 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
         // Setup attachment
         depthInfo.resource.token = token;
         depthInfo.resource.textureDescriptor = depthDescriptor;
+        depthInfo.resource.isVolumetric = IsVolumetric(state);
         depthInfo.loadAction = AttachmentAction::Load;
         depthInfo.storeAction = AttachmentAction::Store;
         depthInfo.resolveResource = nullptr;
