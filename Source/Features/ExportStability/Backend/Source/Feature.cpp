@@ -91,6 +91,10 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
                 value = it->As<IL::StoreBufferInstruction>()->value;
                 resource = it->As<IL::StoreBufferInstruction>()->buffer;
                 break;
+            case IL::OpCode::StoreBufferRaw:
+                value = it->As<IL::StoreBufferRawInstruction>()->value;
+                resource = it->As<IL::StoreBufferRawInstruction>()->buffer;
+                break;
             case IL::OpCode::StoreTexture:
                 value = it->As<IL::StoreTextureInstruction>()->texel;
                 resource = it->As<IL::StoreTextureInstruction>()->texture;

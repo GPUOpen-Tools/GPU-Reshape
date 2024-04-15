@@ -145,6 +145,8 @@ namespace IL {
         LoadTexture,
         StoreBuffer,
         LoadBuffer,
+        StoreBufferRaw,
+        LoadBufferRaw,
 
         /// Resource queries
         ResourceToken,

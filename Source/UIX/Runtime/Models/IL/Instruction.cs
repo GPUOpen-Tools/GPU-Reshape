@@ -538,6 +538,62 @@ namespace Studio.Models.IL
         public uint ComponentMask;
     }
     
+    public class LoadBufferRawInstruction : Instruction
+    {
+        /// <summary>
+        /// Buffer to load from
+        /// </summary>
+        public uint Buffer;
+        
+        /// <summary>
+        /// Index to load from
+        /// </summary>
+        public uint Index;
+        
+        /// <summary>
+        /// Optional offset
+        /// </summary>
+        public uint? Offset;
+        
+        /// <summary>
+        /// Component write mask
+        /// </summary>
+        public uint ComponentMask;
+        
+        /// <summary>
+        /// Byte alignment
+        /// </summary>
+        public uint Alignment;
+    }
+    
+    public class StoreBufferRawInstruction : Instruction
+    {
+        /// <summary>
+        /// Buffer to store to
+        /// </summary>
+        public uint Buffer;
+        
+        /// <summary>
+        /// Index to store to
+        /// </summary>
+        public uint Index;
+        
+        /// <summary>
+        /// Value to store
+        /// </summary>
+        public uint Value;
+        
+        /// <summary>
+        /// Component write mask
+        /// </summary>
+        public uint ComponentMask;
+        
+        /// <summary>
+        /// Byte alignment
+        /// </summary>
+        public uint Alignment;
+    }
+    
     public class ResourceTokenInstruction : Instruction
     {
         /// <summary>

@@ -207,6 +207,14 @@ IL::ID InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::E
             // Buffer types just return the linear index
             return instr->As<IL::StoreBufferInstruction>()->index;
         }
+        case IL::OpCode::LoadBufferRaw: {
+            // Buffer types just return the linear index
+            return instr->As<IL::LoadBufferRawInstruction>()->index;
+        }
+        case IL::OpCode::StoreBufferRaw: {
+            // Buffer types just return the linear index
+            return instr->As<IL::StoreBufferRawInstruction>()->index;
+        }
         case IL::OpCode::StoreTexture: {
             auto _instr = instr->As<IL::StoreTextureInstruction>();
 
@@ -277,6 +285,15 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             }
             case IL::OpCode::StoreBuffer: {
                 resource = it->As<IL::StoreBufferInstruction>()->buffer;
+                isWrite = true;
+                break;
+            }
+            case IL::OpCode::LoadBufferRaw: {
+                resource = it->As<IL::LoadBufferRawInstruction>()->buffer;
+                break;
+            }
+            case IL::OpCode::StoreBufferRaw: {
+                resource = it->As<IL::StoreBufferRawInstruction>()->buffer;
                 isWrite = true;
                 break;
             }

@@ -235,6 +235,15 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             line << "StoreBuffer buffer:%" << store->buffer << " index:%" << store->index << " value:%" << store->value;
             break;
         }
+        case OpCode::StoreBufferRaw: {
+            auto store = instr->As<IL::StoreBufferRawInstruction>();
+            line << "StoreBufferRaw buffer:%" << store->buffer
+                 << " index:%" << store->index
+                 << " value:%" << store->value
+                 << " mask:" << store->mask.value
+                 << " align:" << store->alignment;
+            break;
+        }
         case OpCode::StoreOutput: {
             auto store = instr->As<IL::StoreOutputInstruction>();
             line << "StoreOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value;
@@ -464,6 +473,17 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
         case OpCode::LoadBuffer: {
             auto load = instr->As<IL::LoadBufferInstruction>();
             line << "LoadBuffer buffer:%" << load->buffer << " index:%" << load->index;
+
+            if (load->offset != InvalidID) {
+                line << " offset:%" << load->offset;
+            }
+            break;
+        }
+        case OpCode::LoadBufferRaw: {
+            auto load = instr->As<IL::LoadBufferRawInstruction>();
+            line << "LoadBufferRaw buffer:%" << load->buffer
+                 << " index:%" << load->index
+                 << " mask:" << load->mask.value << " align:" << load->alignment;;
 
             if (load->offset != InvalidID) {
                 line << " offset:%" << load->offset;
@@ -1789,6 +1809,15 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"ComponentMask\": " << store->mask.value << ",";
             break;
         }
+        case IL::OpCode::StoreBufferRaw: {
+            auto store = instr->As<IL::StoreBufferRawInstruction>();
+            out.Line() << "\"Buffer\": " << store->buffer << ",";
+            out.Line() << "\"Index\": " << store->index << ",";
+            out.Line() << "\"Value\": " << store->value << ",";
+            out.Line() << "\"ComponentMask\": " << store->mask.value << ",";
+            out.Line() << "\"Alignment\": " << store->alignment << ",";
+            break;
+        }
         case IL::OpCode::StoreOutput: {
             auto store = instr->As<IL::StoreOutputInstruction>();
             out.Line() << "\"Index\": " << store->index << ",";
@@ -2091,6 +2120,18 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             auto load = instr->As<IL::LoadBufferInstruction>();
             out.Line() << "\"Buffer\": " << load->buffer << ",";
             out.Line() << "\"Index\": " << load->index << ",";
+
+            if (load->offset != IL::InvalidID) {
+                out.Line() << "\"Offset\": " << load->offset << ",";
+            }
+            break;
+        }
+        case IL::OpCode::LoadBufferRaw: {
+            auto load = instr->As<IL::LoadBufferRawInstruction>();
+            out.Line() << "\"Buffer\": " << load->buffer << ",";
+            out.Line() << "\"Index\": " << load->index << ",";
+            out.Line() << "\"ComponentMask\": " << load->mask.value << ",";
+            out.Line() << "\"Alignment\": " << load->alignment << ",";
 
             if (load->offset != IL::InvalidID) {
                 out.Line() << "\"Offset\": " << load->offset << ",";

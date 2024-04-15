@@ -143,6 +143,8 @@ namespace Backend::IL {
             case OpCode::LoadTexture:
             case OpCode::StoreBuffer:
             case OpCode::LoadBuffer:
+            case OpCode::StoreBufferRaw:
+            case OpCode::LoadBufferRaw:
             case OpCode::WaveAnyTrue:
             case OpCode::WaveAllTrue:
             case OpCode::WaveBallot:

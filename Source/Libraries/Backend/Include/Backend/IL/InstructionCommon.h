@@ -450,8 +450,25 @@ namespace Backend::IL {
                 functor(typed->value);
                 break;
             }
+            case ::IL::OpCode::StoreBufferRaw: {
+                auto typed = instr->As<::IL::StoreBufferRawInstruction>();
+                functor(typed->buffer);
+                functor(typed->index);
+                functor(typed->value);
+                break;
+            }
             case ::IL::OpCode::LoadBuffer: {
                 auto typed = instr->As<::IL::LoadBufferInstruction>();
+                functor(typed->buffer);
+                functor(typed->index);
+
+                if (typed->offset != ::IL::InvalidID) {
+                    functor(typed->offset);
+                }
+                break;
+            }
+            case ::IL::OpCode::LoadBufferRaw: {
+                auto typed = instr->As<::IL::LoadBufferRawInstruction>();
                 functor(typed->buffer);
                 functor(typed->index);
 

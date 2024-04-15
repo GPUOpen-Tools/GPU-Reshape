@@ -237,6 +237,12 @@ void DescriptorFeature::Inject(IL::Program &program, const MessageStreamView<> &
             case IL::OpCode::StoreBuffer: {
                 return InjectForResource(program, context.function, it, it->As<IL::StoreBufferInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
             }
+            case IL::OpCode::LoadBufferRaw: {
+                return InjectForResource(program, context.function, it, it->As<IL::LoadBufferRawInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
+            }
+            case IL::OpCode::StoreBufferRaw: {
+                return InjectForResource(program, context.function, it, it->As<IL::StoreBufferRawInstruction>()->buffer, Backend::IL::ResourceTokenType::Buffer, config);
+            }
             case IL::OpCode::StoreTexture: {
                 return InjectForResource(program, context.function, it, it->As<IL::StoreTextureInstruction>()->texture, Backend::IL::ResourceTokenType::Texture, config);
             }

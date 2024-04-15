@@ -108,6 +108,8 @@ namespace Studio.Models.IL
         LoadTexture,
         StoreBuffer,
         LoadBuffer,
+        StoreBufferRaw,
+        LoadBufferRaw,
         ResourceToken,
         ResourceSize
     }

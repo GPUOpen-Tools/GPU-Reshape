@@ -24,6 +24,8 @@ namespace Backend::IL {
             case ::IL::OpCode::LoadTexture:
             case ::IL::OpCode::StoreBuffer:
             case ::IL::OpCode::LoadBuffer:
+            case ::IL::OpCode::StoreBufferRaw:
+            case ::IL::OpCode::LoadBufferRaw:
 
             /** No CFG immediates */
             case ::IL::OpCode::Branch:

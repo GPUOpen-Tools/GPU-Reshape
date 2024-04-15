@@ -121,6 +121,15 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
                 isWrite = true;
                 break;
             }
+            case IL::OpCode::LoadBufferRaw: {
+                resource = it->As<IL::LoadBufferRawInstruction>()->buffer;
+                break;
+            }
+            case IL::OpCode::StoreBufferRaw: {
+                resource = it->As<IL::StoreBufferRawInstruction>()->buffer;
+                isWrite = true;
+                break;
+            }
             case IL::OpCode::StoreTexture: {
                 resource = it->As<IL::StoreTextureInstruction>()->texture;
                 isWrite = true;

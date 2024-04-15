@@ -602,56 +602,51 @@ namespace Runtime.ViewModels.IL
                 {
                     var typed = (SampleTextureInstruction)instruction;
                     AssembleInlineOperand(typed.Texture, builder);
-                    builder.AppendFormat(" {0} ", typed.SampleMode);
+                    builder.AppendFormat(" {0}", typed.SampleMode);
 
                     if (typed.Sampler.HasValue)
                     {
-                        AssembleInlineOperand(typed.Sampler.Value, builder);
                         builder.Append(' ');
+                        AssembleInlineOperand(typed.Sampler.Value, builder);
                     }
 
+                    builder.Append(' ');
                     AssembleInlineOperand(typed.Coordinate, builder);
 
                     if (typed.Reference.HasValue)
                     {
-                        builder.Append("ref ");
+                        builder.Append(" ref ");
                         AssembleInlineOperand(typed.Reference.Value, builder);
-                        builder.Append(' ');
                     }
 
                     if (typed.Lod.HasValue)
                     {
-                        builder.Append("lod ");
+                        builder.Append(" lod ");
                         AssembleInlineOperand(typed.Lod.Value, builder);
-                        builder.Append(' ');
                     }
 
                     if (typed.Bias.HasValue)
                     {
-                        builder.Append("bias ");
+                        builder.Append(" bias ");
                         AssembleInlineOperand(typed.Bias.Value, builder);
-                        builder.Append(' ');
                     }
 
                     if (typed.Offset.HasValue)
                     {
-                        builder.Append("offset ");
+                        builder.Append(" offset ");
                         AssembleInlineOperand(typed.Offset.Value, builder);
-                        builder.Append(' ');
                     }
 
                     if (typed.DDx.HasValue)
                     {
-                        builder.Append("ddx ");
+                        builder.Append(" ddx ");
                         AssembleInlineOperand(typed.DDx.Value, builder);
-                        builder.Append(' ');
                     }
 
                     if (typed.DDy.HasValue)
                     {
-                        builder.Append("ddy ");
+                        builder.Append(" ddy ");
                         AssembleInlineOperand(typed.DDy.Value, builder);
-                        builder.Append(' ');
                     }
                     break;
                 }
@@ -672,20 +667,17 @@ namespace Runtime.ViewModels.IL
                     AssembleInlineOperand(typed.Texture, builder);
                     builder.Append(' ');
                     AssembleInlineOperand(typed.Index, builder);
-                    builder.Append(' ');
                     
                     if (typed.Offset.HasValue)
                     {
-                        builder.Append("offset ");
+                        builder.Append(" offset ");
                         AssembleInlineOperand(typed.Offset.Value, builder);
-                        builder.Append(' ');
                     }
                     
                     if (typed.Mip.HasValue)
                     {
-                        builder.Append("mip ");
+                        builder.Append(" mip ");
                         AssembleInlineOperand(typed.Mip.Value, builder);
-                        builder.Append(' ');
                     }
                     break;
                 }
@@ -706,13 +698,41 @@ namespace Runtime.ViewModels.IL
                     AssembleInlineOperand(typed.Buffer, builder);
                     builder.Append(' ');
                     AssembleInlineOperand(typed.Index, builder);
-                    builder.Append(' ');
                     
                     if (typed.Offset.HasValue)
                     {
-                        builder.Append("offset ");
+                        builder.Append(" offset ");
                         AssembleInlineOperand(typed.Offset.Value, builder);
                         builder.Append(' ');
+                    }
+                    break;
+                }
+                case OpCode.StoreBufferRaw:
+                {
+                    var typed = (StoreBufferRawInstruction)instruction;
+                    AssembleInlineOperand(typed.Buffer, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Index, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Value, builder);
+                    builder.AppendFormat(" mask {0}", typed.ComponentMask);
+                    builder.AppendFormat(" align {0}", typed.Alignment);
+                    builder.Append(' ');
+                    break;
+                }
+                case OpCode.LoadBufferRaw:
+                {
+                    var typed = (LoadBufferRawInstruction)instruction;
+                    AssembleInlineOperand(typed.Buffer, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Index, builder);
+                    builder.AppendFormat(" mask {0}", typed.ComponentMask);
+                    builder.AppendFormat(" align {0}", typed.Alignment);
+                    
+                    if (typed.Offset.HasValue)
+                    {
+                        builder.Append(" offset ");
+                        AssembleInlineOperand(typed.Offset.Value, builder);
                     }
                     break;
                 }

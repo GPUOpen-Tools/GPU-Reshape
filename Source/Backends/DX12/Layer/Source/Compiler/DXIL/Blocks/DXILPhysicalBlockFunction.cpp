@@ -1664,20 +1664,113 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             return true;
         }
 
-            /*
-             * DXIL Specification
-             *  ; overloads: SM5.1: f32|i32,  SM6.0: f16|f32|i16|i32
-             *  declare %dx.types.ResRet.f32 @dx.op.textureLoad.f32(
-             *      i32,                  ; opcode
-             *      %dx.types.Handle,     ; texture handle
-             *      i32,                  ; MIP level; sample for Texture2DMS
-             *      i32,                  ; coordinate c0
-             *      i32,                  ; coordinate c1
-             *      i32,                  ; coordinate c2
-             *      i32,                  ; offset o0
-             *      i32,                  ; offset o1
-             *      i32)                  ; offset o2
-             */
+        /*
+         * DXIL Specification
+         *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32, SM6.2: f16|f32|i16|i32
+         *   ; returns: status
+         *   declare %dx.types.ResRet.f32 @dx.op.rawBufferLoad.f32(
+         *       i32,                  ; opcode
+         *       %dx.types.Handle,     ; resource handle
+         *       i32,                  ; coordinate c0 (index)
+         *       i8,                   ; mask
+         *       i32,                  ; alignment
+         */
+
+        case DXILOpcodes::RawBufferLoad: {
+            // Get operands, ignore offset for now
+            uint32_t resource = reader.GetMappedRelative(anchor);
+            uint32_t coordinate = reader.GetMappedRelative(anchor);
+            uint32_t offset = reader.GetMappedRelative(anchor);
+            uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+            uint64_t alignment = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+            
+            // Unused
+            GRS_SINK(offset);
+
+            // Emit as load
+            IL::LoadBufferRawInstruction instr{};
+            instr.opCode = IL::OpCode::LoadBufferRaw;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.buffer = resource;
+            instr.index = coordinate;
+            instr.offset = offset;
+            instr.mask = IL::ComponentMaskSet(mask);
+            instr.alignment = static_cast<uint32_t>(alignment);
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        /*
+         * DXIL Specification
+         *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32, SM6.2: f16|f32|i16|i32
+         *   declare void @dx.op.rawBufferStore.f32(
+         *       i32,                  ; opcode
+         *       %dx.types.Handle,     ; resource handle
+         *       i32,                  ; coordinate c0 (index)
+         *       i32,                  ; coordinate c1 (elementOffset)
+         *       float,                ; value v0
+         *       float,                ; value v1
+         *       float,                ; value v2
+         *       float,                ; value v3
+         *       i8,                   ; write mask
+         *       i32)                  ; alignment
+         */
+
+        case DXILOpcodes::RawBufferStore: {
+            // Get operands, ignore offset for now
+            uint32_t resource = reader.GetMappedRelative(anchor);
+            uint32_t coordinate = reader.GetMappedRelative(anchor);
+            uint32_t offset = reader.GetMappedRelative(anchor);
+            uint32_t x = reader.GetMappedRelative(anchor);
+            uint32_t y = reader.GetMappedRelative(anchor);
+            uint32_t z = reader.GetMappedRelative(anchor);
+            uint32_t w = reader.GetMappedRelative(anchor);
+
+            // Get mask
+            uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+            uint64_t alignment = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+
+            // Unused
+            GRS_SINK(offset);
+
+            // Get type
+            const auto* bufferType = ilTypeMap.GetType(resource)->As<Backend::IL::BufferType>();
+
+            // Number of dimensions
+            uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(bufferType->texelType);
+
+            // Vectorize
+            IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, x, y, z, w);
+
+            // Emit as store
+            IL::StoreBufferRawInstruction instr{};
+            instr.opCode = IL::OpCode::StoreBufferRaw;
+            instr.result = result;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.buffer = resource;
+            instr.index = coordinate;
+            instr.value = svoxValue;
+            instr.mask = IL::ComponentMaskSet(mask);
+            instr.alignment = static_cast<uint32_t>(alignment);
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        /*
+         * DXIL Specification
+         *  ; overloads: SM5.1: f32|i32,  SM6.0: f16|f32|i16|i32
+         *  declare %dx.types.ResRet.f32 @dx.op.textureLoad.f32(
+         *      i32,                  ; opcode
+         *      %dx.types.Handle,     ; texture handle
+         *      i32,                  ; MIP level; sample for Texture2DMS
+         *      i32,                  ; coordinate c0
+         *      i32,                  ; coordinate c1
+         *      i32,                  ; coordinate c2
+         *      i32,                  ; offset o0
+         *      i32,                  ; offset o1
+         *      i32)                  ; offset o2
+         */
 
         case DXILOpcodes::TextureLoad: {
             // Get operands, ignore offset for now

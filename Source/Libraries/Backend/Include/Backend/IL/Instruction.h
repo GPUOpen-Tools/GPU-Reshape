@@ -216,6 +216,26 @@ namespace IL {
         ID offset;
     };
 
+    struct StoreBufferRawInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::StoreBufferRaw;
+
+        ID buffer;
+        ID index;
+        ID value;
+        ComponentMaskSet mask;
+        uint32_t alignment;
+    };
+
+    struct LoadBufferRawInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::LoadBufferRaw;
+
+        ID buffer;
+        ID index;
+        ID offset;
+        ComponentMaskSet mask;
+        uint32_t alignment;
+    };
+
     struct ResourceSizeInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::ResourceSize;
 
@@ -804,6 +824,8 @@ namespace IL {
                 return sizeof(LoadTextureInstruction);
             case OpCode::StoreBuffer:
                 return sizeof(StoreBufferInstruction);
+            case OpCode::StoreBufferRaw:
+                return sizeof(StoreBufferRawInstruction);
             case OpCode::Add:
                 return sizeof(AddInstruction);
             case OpCode::Literal:
@@ -860,6 +882,8 @@ namespace IL {
                 return sizeof(NotInstruction);
             case OpCode::LoadBuffer:
                 return sizeof(LoadBufferInstruction);
+            case OpCode::LoadBufferRaw:
+                return sizeof(LoadBufferRawInstruction);
             case OpCode::ResourceSize:
                 return sizeof(ResourceSizeInstruction);
             case OpCode::ResourceToken:

@@ -1008,6 +1008,30 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.StoreBufferRaw:
+                {
+                    instruction = new StoreBufferRawInstruction()
+                    {
+                        Buffer = node.Buffer,
+                        Index = node.Index,
+                        Value = node.Value,
+                        ComponentMask = node.ComponentMask,
+                        Alignment = node.Alignment
+                    };
+                    break;
+                }
+                case OpCode.LoadBufferRaw:
+                {
+                    instruction = new LoadBufferRawInstruction()
+                    {
+                        Buffer = node.Buffer,
+                        Index = node.Index,
+                        Offset = node.Offset,
+                        ComponentMask = node.ComponentMask,
+                        Alignment = node.Alignment
+                    };
+                    break;
+                }
                 case OpCode.ResourceToken:
                 {
                     instruction = new ResourceTokenInstruction()

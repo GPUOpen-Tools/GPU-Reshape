@@ -94,12 +94,14 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                 return it;
 
             /* Handled cases */
-            case IL::OpCode::StoreBuffer: {
+            case IL::OpCode::StoreBuffer:
+            case IL::OpCode::StoreBufferRaw: {
                 isWrite = true;
                 isTexture = false;
                 break;
             }
-            case IL::OpCode::LoadBuffer: {
+            case IL::OpCode::LoadBuffer:
+            case IL::OpCode::LoadBufferRaw:  {
                 isWrite = false;
                 isTexture = false;
                 break;
@@ -190,6 +192,22 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
                     msg.detail.coordinate[2] = zero;
                     break;
                 }
+                case IL::OpCode::StoreBufferRaw: {
+                    auto _instr = instr->As<IL::StoreBufferRawInstruction>();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
+                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.coordinate[1] = zero;
+                    msg.detail.coordinate[2] = zero;
+                    break;
+                }
+                case IL::OpCode::LoadBufferRaw: {
+                    auto _instr = instr->As<IL::LoadBufferRawInstruction>();
+                    msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->buffer).GetPackedToken();
+                    msg.detail.coordinate[0] = _instr->index;
+                    msg.detail.coordinate[1] = zero;
+                    msg.detail.coordinate[2] = zero;
+                    break;
+                }
                 case IL::OpCode::StoreTexture: {
                     auto _instr = instr->As<IL::StoreTextureInstruction>();
                     msg.detail.token = IL::ResourceTokenEmitter(oob, _instr->texture).GetPackedToken();
@@ -251,6 +269,16 @@ void ResourceBoundsFeature::Inject(IL::Program &program, const MessageStreamView
             }
             case IL::OpCode::LoadBuffer: {
                 auto* loadBuffer = instr->As<IL::LoadBufferInstruction>();
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(loadBuffer->index, SplatToValue(program, uint32Type, loadBuffer->index)), pre.ResourceSize(loadBuffer->buffer)));
+                break;
+            }
+            case IL::OpCode::StoreBufferRaw: {
+                auto* storeBuffer = instr->As<IL::StoreBufferRawInstruction>();
+                cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(storeBuffer->index, SplatToValue(program, uint32Type, storeBuffer->index)), pre.ResourceSize(storeBuffer->buffer)));
+                break;
+            }
+            case IL::OpCode::LoadBufferRaw: {
+                auto* loadBuffer = instr->As<IL::LoadBufferRawInstruction>();
                 cond = pre.Any(pre.GreaterThanEqual(pre.BitCast(loadBuffer->index, SplatToValue(program, uint32Type, loadBuffer->index)), pre.ResourceSize(loadBuffer->buffer)));
                 break;
             }
