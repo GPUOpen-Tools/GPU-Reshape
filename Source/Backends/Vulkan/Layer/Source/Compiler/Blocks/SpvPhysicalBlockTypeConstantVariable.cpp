@@ -143,7 +143,7 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
             case SpvOpTypeArray: {
                 Backend::IL::ArrayType type;
                 type.elementType = typeMap.GetTypeFromId(ctx++);
-                type.count = ctx++;
+                type.count = static_cast<uint32_t>(program.GetConstants().GetConstant(ctx++)->As<IL::IntConstant>()->value);
 
                 typeMap.AddType(ctx.GetResult(), anchor, type);
                 break;
@@ -389,11 +389,50 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                 break;
             }
 
+            case SpvOpConstantComposite: {
+                const Backend::IL::Type* type = typeMap.GetTypeFromId(ctx.GetResultType());
+
+                // Regardless of composite setup, it's just a set of constants
+                std::vector<const IL::Constant*> constants;
+                constants.reserve(ctx.GetWordCount() - 2);
+
+                // Fill all constants
+                while (ctx.HasPendingWords()) {
+                    constants.push_back(program.GetConstants().GetConstant(ctx++));
+                }
+
+                switch (type->kind) {
+                    default: {
+                        constantMap.AddUnsortedConstant(ctx.GetResult(), type, Backend::IL::UnexposedConstant {});
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Array: {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::ArrayType>(), Backend::IL::ArrayConstant {
+                            .elements = std::move(constants)
+                        });
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Vector: {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::VectorType>(), Backend::IL::VectorConstant {
+                            .elements = std::move(constants)
+                        });
+                        break;
+                    }
+                    case Backend::IL::TypeKind::Struct: {
+                        constantMap.AddConstant(ctx.GetResult(), type->As<Backend::IL::StructType>(), Backend::IL::StructConstant {
+                            .members = std::move(constants)
+                        });
+                        break;
+                    }
+                }
+                break;
+            }
+
             case SpvOpVariable: {
                 auto storageClass = static_cast<SpvStorageClass>(ctx++);
 
                 // Add variable
-                program.GetVariableList().Add(Backend::IL::Variable {
+                program.GetVariableList().Add(new (allocators) Backend::IL::Variable {
                     .id = ctx.GetResult(),
                     .addressSpace = Translate(storageClass),
                     .type = typeMap.GetTypeFromId(ctx.GetResultType())
@@ -617,6 +656,10 @@ void SpvPhysicalBlockTypeConstantVariable::Compile(SpvIdMap &idMap) {
 void SpvPhysicalBlockTypeConstantVariable::CompileConstants() {
     // Ensure all IL constants are mapped
     for (const Backend::IL::Constant* constant : program.GetConstants()) {
+        if (constant->IsSymbolic()) {
+            continue;
+        }
+
         constantMap.EnsureConstant(constant);
     }
 }

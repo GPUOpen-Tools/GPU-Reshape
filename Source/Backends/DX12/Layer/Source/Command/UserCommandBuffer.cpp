@@ -33,6 +33,7 @@
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Allocation/DeviceAllocator.h>
+#include <Backends/DX12/RenderPass.h>
 #include <Backends/DX12/Table.Gen.h>
 
 // Common
@@ -109,12 +110,7 @@ static void ReconstructPipelineState(DeviceState *device, ID3D12GraphicsCommandL
 }
 
 static void ReconstructRenderPassState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState& state) {
-    static_cast<ID3D12GraphicsCommandList4*>(commandList)->BeginRenderPass(
-        streamState->renderPass.renderTargetCount,
-        streamState->renderPass.renderTargets,
-        streamState->renderPass.depthStencil.cpuDescriptor.ptr != 0 ? &streamState->renderPass.depthStencil : nullptr,
-        streamState->renderPass.flags
-    );
+    BeginRenderPassForReconstruction(static_cast<ID3D12GraphicsCommandList4*>(commandList), &streamState->renderPass);
 }
 
 static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *commandList, ShaderExportStreamState* streamState, const UserCommandState &state) {
@@ -129,9 +125,6 @@ static void ReconstructState(DeviceState *device, ID3D12GraphicsCommandList *com
 
 void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList, const CommandBuffer& buffer, ShaderExportStreamState* streamState) {
     UserCommandState state;
-
-    // Is this a compute command list?
-    const bool isCompute = commandList->GetType() == D3D12_COMMAND_LIST_TYPE_COMPUTE;
 
     // Always end the current render pass if any commands
     if (buffer.Count() && streamState->renderPass.insideRenderPass) {

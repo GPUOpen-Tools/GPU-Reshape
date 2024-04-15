@@ -42,6 +42,15 @@ namespace Studio.ViewModels.Workspace.Objects
         }
 
         /// <summary>
+        /// Severity of this validation object
+        /// </summary>
+        public ValidationSeverity Severity
+        {
+            get => _severity;
+            set => this.RaiseAndSetIfChanged(ref _severity, value);
+        }
+
+        /// <summary>
         /// Shader wise segment of this object
         /// </summary>
         public ShaderSourceSegment? Segment
@@ -121,5 +130,10 @@ namespace Studio.ViewModels.Workspace.Objects
         /// Internal detail view model
         /// </summary>
         private IValidationDetailViewModel? _detailViewModel;
+
+        /// <summary>
+        /// Internal severity, assume error
+        /// </summary>
+        private ValidationSeverity _severity = ValidationSeverity.Error;
     }
 }

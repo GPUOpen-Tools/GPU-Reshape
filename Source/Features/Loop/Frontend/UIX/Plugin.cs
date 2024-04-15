@@ -27,14 +27,15 @@
 using System;
 using Avalonia;
 using DynamicData;
-using GRS.Features.Loop.UIX.Contexts;
 using GRS.Features.Loop.UIX.Workspace;
+using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
 using Studio.ViewModels.Workspace.Configurations;
+using UIX.Resources;
 
 namespace GRS.Features.Loop.UIX
 {
@@ -56,15 +57,6 @@ namespace GRS.Features.Loop.UIX
         /// <returns></returns>
         public bool Install()
         {
-            // Get instrument context
-            var instrumentContextViewModel = AvaloniaLocator.Current.GetService<IContextMenuService>()?.ViewModel.GetItem<IInstrumentContextViewModel>();
-            
-            // Add to context menus
-            instrumentContextViewModel?.Items.Add(new LoopContextMenuItemViewModel());
-            
-            // Ignore the All loop context
-            instrumentContextViewModel?.GetItem<IInstrumentAllContextViewModel>()?.IgnoredFeatures.Add("Loop");
-            
             // Get workspace service
             var workspaceService = AvaloniaLocator.Current.GetService<IWorkspaceService>();
             
@@ -73,6 +65,15 @@ namespace GRS.Features.Loop.UIX
             
             // Ignore the All loop configuration
             workspaceService?.GetConfiguration<IAllConfigurationViewModel>()?.IgnoredFeatures.Add("Loop");
+            
+            // Add workspace configuration
+            workspaceService?.Configurations.Add(new BaseConfigurationViewModel<LoopPropertyViewModel>()
+            {
+                Name = Resources.Workspace_Configuration_Loop_Name,
+                Description = Resources.Workspace_Configuration_Loop_Description,
+                Flags = WorkspaceConfigurationFlag.None,
+                FeatureName = "Loop"
+            });
 
             // OK
             return true;

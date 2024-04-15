@@ -44,7 +44,7 @@ public:
     virtual void AddStreamAndSwap(MessageStream& stream) = 0;
 
     /// Consume added streams
-    /// \param count if [streams] is nullptr, filled with the number of consumable streams
+    /// \param count always filled with the number of consumable / consumed streams
     /// \param streams if not null, filled with [count] streams
     virtual void ConsumeStreams(uint32_t* count, MessageStream* streams) = 0;
 

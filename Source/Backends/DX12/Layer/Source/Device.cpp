@@ -74,6 +74,7 @@
 #endif // NDEBUG
 #include <Common/IComponentTemplate.h>
 #include <Common/GlobalUID.h>
+#include <Common/IntervalActionThread.h>
 
 // Detour
 #include <Detour/detours.h>
@@ -160,6 +161,11 @@ static Backend::EnvironmentDeviceInfo GetEnvironmentDeviceInfo(DeviceState* stat
     info.deviceUID = state->uid;
     info.deviceObjects = static_cast<uint32_t>(state->states_Resources.GetCount());
     return info;
+}
+
+static void DeviceSyncPoint(DeviceState *device) {
+    // Commit bridge data
+    BridgeDeviceSyncPoint(device, nullptr);
 }
 
 HRESULT WINAPI D3D12CreateDeviceGPUOpen(
@@ -336,6 +342,9 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         for (const ComRef<IFeature>& feature : state->features) {
             ENSURE(feature->PostInstall(), "Failed to post-install feature");
         }
+
+        // Start sync thread
+        state->syncPointActionThread.Start(std::bind(DeviceSyncPoint, state));
     }
 
     // Cleanup
@@ -626,6 +635,9 @@ DeviceState::~DeviceState() {
     // Wait for all pending instrumentation
     instrumentationController->WaitForCompletion();
 
+    // Stop the sync point thread
+    syncPointActionThread.Stop();
+
     // Process all remaining work
     exportStreamer->Process();
 
@@ -668,7 +680,7 @@ void GlobalDeviceDetour::Uninstall() {
     DetourDetach(&reinterpret_cast<void*&>(D3D12GPUOpenFunctionTableNext.next_EnableExperimentalFeatures), reinterpret_cast<void*>(HookD3D12EnableExperimentalFeatures));
 }
 
-void BridgeDeviceSyncPoint(DeviceState *device) {
+void BridgeDeviceSyncPoint(DeviceState *device, CommandQueueState* queueState) {
     // Commit all logging to bridge
     device->logBuffer.Commit(device->bridge.GetUnsafe());
     
@@ -677,6 +689,13 @@ void BridgeDeviceSyncPoint(DeviceState *device) {
     device->instrumentationController->Commit();
     device->metadataController->Commit();
     device->versioningController->Commit();
+
+    // Inform the streamer of the sync point
+    if (queueState) {
+        device->exportStreamer->Process(queueState);
+    } else {
+        device->exportStreamer->Process();
+    }
 
     // Commit bridge
     device->bridge->Commit();

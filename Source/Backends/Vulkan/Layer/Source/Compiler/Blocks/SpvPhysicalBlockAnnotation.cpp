@@ -64,6 +64,10 @@ void SpvPhysicalBlockAnnotation::Parse() {
                         decoration.value.descriptorOffset = ctx++;
                         break;
                     }
+                    case SpvDecorationNonUniform: {
+                        program.GetMetadataMap().AddMetadata(target, IL::MetadataType::DivergentResourceIndex);
+                        break;
+                    }
                 }
                 break;
             }

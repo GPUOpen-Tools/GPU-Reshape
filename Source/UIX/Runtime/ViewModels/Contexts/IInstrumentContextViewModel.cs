@@ -26,7 +26,7 @@
 
 namespace Studio.ViewModels.Contexts
 {
-    public interface IInstrumentContextViewModel : IContextMenuItemViewModel
+    public interface IInstrumentContextViewModel : IContextViewModel
     {
         
     }

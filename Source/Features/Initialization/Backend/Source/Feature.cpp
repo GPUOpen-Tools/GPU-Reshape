@@ -222,7 +222,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
                 IL::ID bufferID = emitter.Load(initializationMaskBufferDataID);
                 
                 // Get current mask
-                IL::ID srbMask = emitter.Extract(emitter.LoadBuffer(bufferID, PUID), 0u);
+                IL::ID srbMask = emitter.Extract(emitter.LoadBuffer(bufferID, PUID), program.GetConstants().UInt(0)->id);
 
                 // Bit-Or with resource mask
                 emitter.StoreBuffer(bufferID, PUID, emitter.BitOr(srbMask, SRB));
@@ -257,7 +257,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         IL::ID PUID = token.GetPUID();
 
         // Get the current mask
-        IL::ID currentMask = pre.Extract(pre.LoadBuffer(pre.Load(initializationMaskBufferDataID), PUID), 0u);
+        IL::ID currentMask = pre.Extract(pre.LoadBuffer(pre.Load(initializationMaskBufferDataID), PUID), program.GetConstants().UInt(0)->id);
 
         // Compare mask against token SRB
         IL::ID cond = pre.NotEqual(pre.BitAnd(currentMask, SRB), SRB);

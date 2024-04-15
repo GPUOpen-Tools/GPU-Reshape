@@ -1,4 +1,4 @@
-// 
+//
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -715,8 +715,22 @@ void InstrumentationController::CommitInstrumentation() {
     hasPendingBucket = false;
 }
 
+void InstrumentationController::CommitFeatureMessages() {
+    // Always commit the sguid host before,
+    // since this may be collected during instrumentation
+    table->sguidHost->Commit(table->bridge.GetUnsafe());
+    
+    // Commit all feature messages
+    for (const ComRef<IFeature>& feature : table->features) {
+        feature->CollectMessages(table->bridge->GetOutput());
+    }
+}
+
 void InstrumentationController::Commit() {
     uint32_t count = GetJobCount();
+
+    // Commit all collected feature messages
+    CommitFeatureMessages();
 
     // Serial
     std::lock_guard guard(mutex);

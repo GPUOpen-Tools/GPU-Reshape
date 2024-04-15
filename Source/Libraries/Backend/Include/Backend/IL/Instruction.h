@@ -88,12 +88,23 @@ namespace IL {
         /// Is this instruction part of the original source code?
         /// \return true if user instruction
         bool IsUserInstruction() const {
-            return source.IsValid();
+            // Symbolic instructions may not be part of the original code, however,
+            // they contribute to the abstracted structure.
+            return source.IsValid() || source.symbolic;
         }
 
         OpCode opCode;
         ID result;
         Source source;
+    };
+
+    struct UnexposedInstructionTraits {
+        /// This instruction may be folded with immediate constants
+        /// Although the exact nature of the folding remains unexposed
+        uint32_t foldableWithImmediates : 1;
+
+        /// This instruction is divergent within the executing group
+        uint32_t divergent : 1;
     };
 
     struct UnexposedInstruction : public Instruction {
@@ -102,6 +113,12 @@ namespace IL {
         uint32_t backendOpCode;
 
         const char* symbol;
+
+        ID* operands;
+
+        uint32_t operandCount;
+
+        UnexposedInstructionTraits traits;
     };
 
     struct LiteralInstruction : public Instruction {
@@ -271,6 +288,12 @@ namespace IL {
         ID rhs;
     };
 
+    struct NotInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Not;
+
+        ID value;
+    };
+
     struct EqualInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Equal;
 
@@ -406,7 +429,7 @@ namespace IL {
         static constexpr OpCode kOpCode = OpCode::Extract;
 
         ID composite;
-        uint32_t index;
+        ID index;
     };
 
     struct InsertInstruction : public Instruction {
@@ -513,6 +536,27 @@ namespace IL {
         ID value;
     };
 
+    struct CallInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::Call;
+
+        /// Get size of this instruction
+        /// \param argumentCount number of arguments
+        /// \return byte size
+        static uint64_t GetSize(uint32_t argumentCount) {
+            return sizeof(CallInstruction) + InlineArray<ID>::ElementSize(argumentCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(CallInstruction) + arguments.ElementSize();
+        }
+
+        ID target;
+
+        InlineArray<ID> arguments;
+    };
+
     struct AtomicOrInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::AtomicOr;
 
@@ -570,6 +614,109 @@ namespace IL {
         ID value;
     };
 
+    struct WaveAnyTrueInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveAnyTrue;
+
+        ID value;
+    };
+
+    struct WaveAllTrueInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveAllTrue;
+
+        ID value;
+    };
+
+    struct WaveBallotInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBallot;
+
+        ID value;
+    };
+
+    struct WaveReadInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveRead;
+
+        ID value;
+        ID lane;
+    };
+
+    struct WaveReadFirstInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveReadFirst;
+
+        ID value;
+    };
+
+    struct WaveAllEqualInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveAllEqual;
+
+        ID value;
+    };
+
+    struct WaveBitAndInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBitAnd;
+
+        ID value;
+    };
+
+    struct WaveBitOrInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBitOr;
+
+        ID value;
+    };
+
+    struct WaveBitXOrInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveBitXOr;
+
+        ID value;
+    };
+
+    struct WaveCountBitsInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveCountBits;
+
+        ID value;
+    };
+
+    struct WaveMaxInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveMax;
+
+        ID value;
+    };
+
+    struct WaveMinInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveMin;
+
+        ID value;
+    };
+
+    struct WaveProductInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveProduct;
+
+        ID value;
+    };
+
+    struct WaveSumInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WaveSum;
+
+        ID value;
+    };
+
+    struct WavePrefixCountBitsInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WavePrefixCountBits;
+
+        ID value;
+    };
+
+    struct WavePrefixProductInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WavePrefixProduct;
+
+        ID value;
+    };
+
+    struct WavePrefixSumInstruction : public Instruction {
+        static constexpr OpCode kOpCode = OpCode::WavePrefixSum;
+
+        ID value;
+    };
+
     struct ExportInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Export;
 
@@ -593,8 +740,6 @@ namespace IL {
 
     struct AllocaInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Alloca;
-
-        ID type;
     };
 
     struct AnyInstruction : public Instruction {
@@ -683,6 +828,8 @@ namespace IL {
                 return sizeof(OrInstruction);
             case OpCode::And:
                 return sizeof(AndInstruction);
+            case OpCode::Not:
+                return sizeof(NotInstruction);
             case OpCode::LoadBuffer:
                 return sizeof(LoadBufferInstruction);
             case OpCode::ResourceSize:
@@ -697,6 +844,8 @@ namespace IL {
                 return sizeof(TruncInstruction);
             case OpCode::Return:
                 return sizeof(ReturnInstruction);
+            case OpCode::Call:
+                return static_cast<const CallInstruction*>(instruction)->GetSize();
             case OpCode::FloatToInt:
                 return sizeof(FloatToIntInstruction);
             case OpCode::IntToFloat:
@@ -733,6 +882,40 @@ namespace IL {
                 return sizeof(AtomicExchangeInstruction);
             case OpCode::AtomicCompareExchange:
                 return sizeof(AtomicCompareExchangeInstruction);
+            case OpCode::WaveAnyTrue:
+                return sizeof(WaveAnyTrueInstruction);
+            case OpCode::WaveAllTrue:
+                return sizeof(WaveAllTrueInstruction);
+            case OpCode::WaveBallot:
+                return sizeof(WaveBallotInstruction);
+            case OpCode::WaveRead:
+                return sizeof(WaveReadInstruction);
+            case OpCode::WaveReadFirst:
+                return sizeof(WaveReadFirstInstruction);
+            case OpCode::WaveAllEqual:
+                return sizeof(WaveAllEqualInstruction);
+            case OpCode::WaveBitAnd:
+                return sizeof(WaveBitAndInstruction);
+            case OpCode::WaveBitOr:
+                return sizeof(WaveBitOrInstruction);
+            case OpCode::WaveBitXOr:
+                return sizeof(WaveBitXOrInstruction);
+            case OpCode::WaveCountBits:
+                return sizeof(WaveCountBitsInstruction);
+            case OpCode::WaveMax:
+                return sizeof(WaveMaxInstruction);
+            case OpCode::WaveMin:
+                return sizeof(WaveMinInstruction);
+            case OpCode::WaveProduct:
+                return sizeof(WaveProductInstruction);
+            case OpCode::WaveSum:
+                return sizeof(WaveSumInstruction);
+            case OpCode::WavePrefixCountBits:
+                return sizeof(WavePrefixCountBitsInstruction);
+            case OpCode::WavePrefixProduct:
+                return sizeof(WavePrefixProductInstruction);
+            case OpCode::WavePrefixSum:
+                return sizeof(WavePrefixSumInstruction);
         }
     }
 }

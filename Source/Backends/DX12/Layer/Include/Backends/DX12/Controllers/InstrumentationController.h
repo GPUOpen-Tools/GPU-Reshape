@@ -40,6 +40,7 @@
 #include <Message/MessageStream.h>
 
 // Common
+#include <Common/Allocator/Vector.h>
 #include <Common/Dispatcher/EventCounter.h>
 #include <Common/Dispatcher/RelaxedAtomic.h>
 #include <Common/ComRef.h>
@@ -118,6 +119,7 @@ protected:
     void CommitShaders(DispatcherBucket* bucket, void *data);
     void CommitPipelines(DispatcherBucket* bucket, void *data);
     void CommitTable(DispatcherBucket* bucket, void *data);
+    void CommitFeatureMessages();
 
     /// Message handler
     void OnMessage(const ConstMessageStreamView<>::ConstIterator &it);

@@ -98,6 +98,19 @@ namespace Studio.Models.IL
         public uint Value;
     }
     
+    public class WaveReadInstruction : Instruction
+    {
+        /// <summary>
+        /// Value to read
+        /// </summary>
+        public uint Value;
+        
+        /// <summary>
+        /// Lane to read from
+        /// </summary>
+        public uint Lane;
+    }
+    
     public class StoreInstruction : Instruction
     {
         /// <summary>
@@ -267,6 +280,19 @@ namespace Studio.Models.IL
         /// Optional return value
         /// </summary>
         public uint? Value;
+    }
+    
+    public class CallInstruction : Instruction
+    {
+        /// <summary>
+        /// Target function
+        /// </summary>
+        public uint Target;
+
+        /// <summary>
+        /// All arguments
+        /// </summary>
+        public uint[] Arguments;
     }
     
     public class AddressChainInstruction : Instruction

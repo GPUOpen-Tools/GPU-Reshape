@@ -394,7 +394,7 @@ namespace Studio.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to All.
+        ///   Looks up a localized string similar to All Standard.
         /// </summary>
         public static string Workspace_Configuration_All_Name {
             get {

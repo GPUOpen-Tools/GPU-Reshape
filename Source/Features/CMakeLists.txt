@@ -35,12 +35,18 @@ add_subdirectory(Concurrency)
 add_subdirectory(Descriptor)
 add_subdirectory(Initialization)
 add_subdirectory(Loop)
+add_subdirectory(Waterfall)
 
 # Proxy object
 add_custom_target(Features)
 add_dependencies(
     Features
     GRS.Features.ResourceBounds
+    GRS.Features.ExportStability
+    GRS.Features.Concurrency
+    GRS.Features.Descriptor
+    GRS.Features.Initialization
+    GRS.Features.Loop
 )
 
 # IDE source discovery

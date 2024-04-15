@@ -26,17 +26,29 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace Studio.Extensions
 {
     public static class LinqExtensions
     {
+        /// <summary>
+        /// Functional iteration of a source
+        /// </summary>
         public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
         {
             foreach (T item in source)
             {
                 action(item);
             }
+        }
+        
+        /// <summary>
+        /// Convert an enumerable to an observable collection
+        /// </summary>
+        public static ObservableCollection<T> ToObservableCollection<T>(this IEnumerable<T> source)
+        {
+            return new ObservableCollection<T>(source);
         }
     }
 }

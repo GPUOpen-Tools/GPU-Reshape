@@ -49,6 +49,10 @@ public:
     /// \param stream the produced stream
     virtual void CollectExports(const MessageStream& stream) { /* no collection */};
 
+    /// Invoked before injection takes place
+    /// \param program the program to be injected    
+    virtual void PreInject(IL::Program &program, const MessageStreamView<> &specialization) { /* no pre-injection */};
+
     /// Perform injection into a program
     /// \param program the program to be injected to
     virtual void Inject(IL::Program &program, const MessageStreamView<> &specialization) { /* no injection */ }

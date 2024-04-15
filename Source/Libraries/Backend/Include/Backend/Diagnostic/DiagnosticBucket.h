@@ -80,12 +80,12 @@ public:
     }
 
     /// Get starting iterator
-    BucketType::const_iterator begin() const {
+    typename BucketType::const_iterator begin() const {
         return messages.begin();
     }
 
     /// Get ending iterator
-    BucketType::const_iterator end() const {
+    typename BucketType::const_iterator end() const {
         return messages.end();
     }
 

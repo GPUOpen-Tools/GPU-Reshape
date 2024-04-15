@@ -31,6 +31,7 @@
 #include <Backends/Vulkan/Compiler/SpvJob.h>
 
 // Backend
+#include <Backend/IL/InstructionCommon.h>
 #include <Backend/IL/Emitter.h>
 #include <Backend/IL/ID.h>
 
@@ -112,11 +113,11 @@ void SpvPhysicalBlockFunction::ParseFunctionHeader(IL::Function *function, SpvPa
                 return;
             }
             case SpvOpFunctionParameter: {
-                Backend::IL::Variable variable;
-                variable.addressSpace = Backend::IL::AddressSpace::Function;
-                variable.type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx.GetResultType());
-                variable.id = ctx.GetResult();
-                function->GetParameters().Add(variable);
+                function->GetParameters().Add(new (allocators) Backend::IL::Variable {
+                    .id = ctx.GetResult(),
+                    .addressSpace = Backend::IL::AddressSpace::Function,
+                    .type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx.GetResultType())
+                });
                 break;
             }
         }
@@ -273,6 +274,18 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 instr.source = source;
                 instr.lhs = ctx++;
                 instr.rhs = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpNot:
+            case SpvOpLogicalNot: {
+                // Append
+                IL::NotInstruction instr{};
+                instr.opCode = IL::OpCode::Not;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
                 basicBlock->Append(instr);
                 break;
             }
@@ -599,12 +612,12 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             case SpvOpVariable: {
                 const Backend::IL::Type *type = table.typeConstantVariable.typeMap.GetTypeFromId(ctx.GetResultType());
 
-                // Variables may only appear in the first block of a function, there's no co-dependence so just insert them
-                function->GetVariables().Add(Backend::IL::Variable {
-                    .id = ctx.GetResult(),
-                    .addressSpace = Backend::IL::AddressSpace::Function,
-                    .type = type
-                });
+                // Append as top-most allocas (order does not matter)
+                IL::AllocaInstruction instr{};
+                instr.opCode = IL::OpCode::Alloca;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                basicBlock->Append(instr);
 
                 program.GetTypeMap().SetType(ctx.GetResult(), type);
                 break;
@@ -665,6 +678,8 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 instr.result = ctx.GetResult();
                 instr.source = source;
                 instr.backendOpCode = ctx->GetOp();
+                instr.operands = nullptr;
+                instr.operandCount = 0;
                 basicBlock->Append(instr);
 
                 // Create metadata
@@ -815,6 +830,236 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 break;
             }
 
+            case SpvOpFunctionCall: {
+                IL::ID target = ctx++;
+                
+                auto *instr = ALLOCA_SIZE(IL::CallInstruction, IL::CallInstruction::GetSize(ctx.PendingWords()));
+                instr->opCode = IL::OpCode::Call;
+                instr->result = ctx.GetResult();
+                instr->source = source;
+                instr->target = target;
+                instr->arguments.count = ctx.PendingWords();
+
+                for (uint32_t i = 0; ctx.HasPendingWords(); i++) {
+                    instr->arguments[i] = ctx++;
+                }
+                
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpVectorExtractDynamic: {
+                IL::ExtractInstruction instr{};
+                instr.opCode = IL::OpCode::Extract;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.composite = ctx++;
+                instr.index = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBroadcastFirst: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveReadFirstInstruction instr{};
+                instr.opCode = IL::OpCode::WaveReadFirst;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformAny: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveAnyTrueInstruction instr{};
+                instr.opCode = IL::OpCode::WaveAnyTrue;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformAll: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveAllTrueInstruction instr{};
+                instr.opCode = IL::OpCode::WaveAllTrue;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBallot: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveBallotInstruction instr{};
+                instr.opCode = IL::OpCode::WaveBallot;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBroadcast:
+            case SpvOpGroupNonUniformShuffle: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveReadInstruction instr{};
+                instr.opCode = IL::OpCode::WaveRead;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                instr.lane = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformAllEqual: {
+                // Ignore scope
+                ctx++;
+
+                IL::WaveAllEqualInstruction instr{};
+                instr.opCode = IL::OpCode::WaveAllEqual;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBitwiseAnd:
+            case SpvOpGroupNonUniformLogicalAnd: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveBitAndInstruction instr{};
+                instr.opCode = IL::OpCode::WaveBitAnd;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBitwiseOr:
+            case SpvOpGroupNonUniformLogicalOr: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveBitOrInstruction instr{};
+                instr.opCode = IL::OpCode::WaveBitOr;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBitwiseXor:
+            case SpvOpGroupNonUniformLogicalXor: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveBitXOrInstruction instr{};
+                instr.opCode = IL::OpCode::WaveBitXOr;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformBallotBitCount: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveCountBitsInstruction instr{};
+                instr.opCode = IL::OpCode::WaveCountBits;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformFMax:
+            case SpvOpGroupNonUniformSMax:
+            case SpvOpGroupNonUniformUMax: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveMaxInstruction instr{};
+                instr.opCode = IL::OpCode::WaveMax;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformFMin:
+            case SpvOpGroupNonUniformSMin:
+            case SpvOpGroupNonUniformUMin: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveMinInstruction instr{};
+                instr.opCode = IL::OpCode::WaveMin;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformFMul:
+            case SpvOpGroupNonUniformIMul: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveProductInstruction instr{};
+                instr.opCode = IL::OpCode::WaveProduct;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpGroupNonUniformFAdd:
+            case SpvOpGroupNonUniformIAdd: {
+                // Ignore scope, group operation
+                ctx++;
+                ctx++;
+
+                IL::WaveSumInstruction instr{};
+                instr.opCode = IL::OpCode::WaveSum;
+                instr.result = ctx.GetResult();
+                instr.source = source;
+                instr.value = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
             case SpvOpAccessChain: {
                 const uint32_t base = ctx++;
 
@@ -822,7 +1067,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 const auto* elementType = program.GetTypeMap().GetType(base);
 
                 // Number of address chains
-                const uint32_t chainCount = ctx.PendingWords();
+                const uint32_t chainCount = ctx.PendingWords() + 1u;
 
                 // Allocate instruction
                 auto *instr = ALLOCA_SIZE(IL::AddressChainInstruction, IL::AddressChainInstruction::GetSize(chainCount));
@@ -832,12 +1077,18 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 instr->composite = base;
                 instr->chains.count = chainCount;
 
-                // Start unwrapping from value type
-                elementType = elementType->As<Backend::IL::PointerType>()->pointee;
-
                 // Handle all cases
                 for (uint32_t i = 0; i < chainCount; i++) {
-                    const uint32_t nextChainId = ctx++;
+                    uint32_t nextChainId;
+
+                    // GRIL address chains always start at the base address.
+                    // While SPIRV itself does not support base composite offsets, other languages do.
+                    // So, always append a 0-offset beforehand.
+                    if (i == 0) {
+                        nextChainId = program.GetConstants().UInt(0)->id;
+                    } else {
+                        nextChainId = ctx++;
+                    }
 
                     // Constant indexing into struct?
                     switch (elementType->kind) {
@@ -884,6 +1135,25 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                 break;
             }
 
+            case SpvOpExtInst: {
+                // Emit as unexposed
+                IL::UnexposedInstruction instr{};
+                instr.opCode = IL::OpCode::Unexposed;
+                instr.result = ctx.HasResult() ? ctx.GetResult() : IL::InvalidID;
+                instr.source = source;
+                instr.backendOpCode = ctx->GetOp();
+                instr.operandCount = ctx->GetWordCount() - 5u;
+                instr.operands = operandAllocator.AllocateArray<SpvId>(instr.operandCount);
+                std::memcpy(instr.operands, ctx->Ptr() + 5, sizeof(SpvId) * instr.operandCount);
+
+                // TODO: foldability
+                instr.traits.foldableWithImmediates = true;
+
+                // OK
+                basicBlock->Append(instr);
+                break;
+            }
+
             default: {
                 if (basicBlock) {
                     // Emit as unexposed
@@ -892,6 +1162,27 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                     instr.result = ctx.HasResult() ? ctx.GetResult() : IL::InvalidID;
                     instr.source = source;
                     instr.backendOpCode = ctx->GetOp();
+                    instr.operandCount = 0;
+
+                    // Count number operands
+                    VisitSpvOperands(ctx->GetOp(), ctx->Ptr(), ctx->GetWordCount(), [&](SpvId) {
+                        instr.operandCount++;
+                    });
+
+                    // Allocate operands
+                    instr.operands = operandAllocator.AllocateArray<SpvId>(instr.operandCount);
+
+                    // Fill each operand
+                    uint32_t operandOffset = 0;
+                    VisitSpvOperands(ctx->GetOp(), ctx->Ptr(), ctx->GetWordCount(), [&](SpvId id) {
+                        instr.operands[operandOffset++] = id;
+                    });
+
+                    // TODO: Foldability
+                    ASSERT(operandOffset == instr.operandCount, "Invalid operand head");
+                    instr.traits.foldableWithImmediates = true;
+
+                    // OK
                     basicBlock->Append(instr);
                 }
                 break;
@@ -942,10 +1233,10 @@ bool SpvPhysicalBlockFunction::CompileFunction(const SpvJob& job, SpvIdMap &idMa
     spvFn[4] = table.typeConstantVariable.typeMap.GetSpvTypeId(type);
 
     // Generate parameters
-    for (const Backend::IL::Variable& parameter : fn.GetParameters()) {
+    for (const Backend::IL::Variable* parameter : fn.GetParameters()) {
         SpvInstruction& spvParam = block->stream.Allocate(SpvOpFunctionParameter, 3);
-        spvParam[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(parameter.type);
-        spvParam[2] = parameter.id;
+        spvParam[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(parameter->type);
+        spvParam[2] = parameter->id;
     }
 
     // Compile all basic blocks if the definition is being emitted
@@ -977,6 +1268,10 @@ bool SpvPhysicalBlockFunction::IsTriviallyCopyableSpecial(IL::BasicBlock *bb, co
     switch (it->opCode) {
         default: {
             return sourceRequest;
+        }
+        case IL::OpCode::Alloca: {
+            // Alloca's never emitted during block writing
+            return false;
         }
         case IL::OpCode::SampleTexture: {
             // If not source
@@ -1053,12 +1348,27 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
 
     // First block?
     if (bb == *fn.GetBasicBlocks().begin()) {
-        // Emit all variables, order doesn't matter
-        for (const Backend::IL::Variable& variable : fn.GetVariables()) {
-            SpvInstruction& spv = stream.Allocate(SpvOpVariable, 4);
-            spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(variable.type);
-            spv[2] = variable.id;
-            spv[3] = SpvStorageClassFunction;
+        // Emit all alloca's as function scope variables
+        // Must be inserted at the start
+        for (IL::BasicBlock* basicBlock : fn.GetBasicBlocks()) {
+            for (const IL::Instruction* instr : *basicBlock) {
+                auto* _instr = instr->Cast<IL::AllocaInstruction>();
+                if (!_instr) {
+                    continue;
+                }
+
+                // If trivial, just copy it directly
+                if (instr->source.TriviallyCopyable()) {
+                    stream.Template(instr->source);
+                    continue;
+                }
+
+                // User alloca
+                SpvInstruction& spv = stream.Allocate(SpvOpVariable, 4);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().GetType(_instr->result));
+                spv[2] = _instr->result;
+                spv[3] = SpvStorageClassFunction;
+            }
         }
 
         // Has the function been modified?
@@ -1225,6 +1535,18 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 spv[3] = idMap.Get(storeTexture->texel);
                 break;
             }
+            case IL::OpCode::Rem: {
+                auto *add = instr.As<IL::RemInstruction>();
+
+                SpvOp op = resultType->kind == Backend::IL::TypeKind::FP ? SpvOpFRem : SpvOpSRem;
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(op, 5, add->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = add->result;
+                spv[3] = idMap.Get(add->lhs);
+                spv[4] = idMap.Get(add->rhs);
+                break;
+            }
             case IL::OpCode::Add: {
                 auto *add = instr.As<IL::AddInstruction>();
 
@@ -1302,6 +1624,31 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 spv[2] = _or->result;
                 spv[3] = idMap.Get(_or->lhs);
                 spv[4] = idMap.Get(_or->rhs);
+                break;
+            }
+            case IL::OpCode::Not: {
+                auto *_not = instr.As<IL::NotInstruction>();
+
+                const Backend::IL::Type* valueType = ilTypeMap.GetType(_not->value);
+
+                SpvOp op;
+                switch (valueType->kind) {
+                    default:
+                        ASSERT(false, "Invalid Not operand type");
+                        op = SpvOpNot;
+                        break;
+                    case Backend::IL::TypeKind::Bool:
+                        op = SpvOpLogicalNot;
+                        break;
+                    case Backend::IL::TypeKind::Int:
+                        op = SpvOpNot;
+                        break;
+                }
+
+                SpvInstruction& spv = stream.TemplateOrAllocate(op, 4, _not->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = _not->result;
+                spv[3] = idMap.Get(_not->value);
                 break;
             }
             case IL::OpCode::And: {
@@ -1692,12 +2039,7 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 break;
             }
             case IL::OpCode::Alloca: {
-                auto *bsr = instr.As<IL::BitShiftRightInstruction>();
-
-                SpvInstruction& spv = table.typeConstantVariable.block->stream.TemplateOrAllocate(SpvOpVariable, 4, bsr->source);
-                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
-                spv[2] = bsr->result;
-                spv[3] = SpvStorageClassFunction;
+                // Alloca's handled in function header
                 break;
             }
             case IL::OpCode::Load: {
@@ -1728,11 +2070,15 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Extract: {
                 auto *extract = instr.As<IL::ExtractInstruction>();
 
+                // Only static extraction supported for now
+                const IL::Constant* index = program.GetConstants().GetConstant(extract->index);
+                ASSERT(index, "Dynamic extraction not supported");
+                
                 SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpCompositeExtract, 5, extract->source);
                 spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
                 spv[2] = idMap.Get(extract->result);
                 spv[3] = idMap.Get(extract->composite);
-                spv[4] = extract->index;
+                spv[4] = static_cast<uint32_t>(index->As<IL::IntConstant>()->value);
                 break;
             }
             case IL::OpCode::Return: {
@@ -2041,6 +2387,27 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 }
                 break;
             }
+            
+            case IL::OpCode::WaveAllEqual: {
+                auto *_instr = instr.As<IL::WaveAllEqualInstruction>();
+                table.capability.Add(SpvCapabilityGroupNonUniformVote);
+                
+                // Scope constant id
+                IL::ID scopeId = table.scan.header.bound++;
+
+                // Scope value
+                SpvInstruction &spvScope = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
+                spvScope[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
+                spvScope[2] = scopeId;
+                spvScope[3] = SpvScopeSubgroup;
+                
+                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpGroupNonUniformAllEqual, 5, _instr->source);
+                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                spv[2] = _instr->result;
+                spv[3] = scopeId;
+                spv[4] = idMap.Get(_instr->value);
+                break;
+            }
         }
     }
 
@@ -2150,81 +2517,47 @@ void SpvPhysicalBlockFunction::PostPatchLoopSelectionMerge(const IL::OpaqueInstr
     }
 }
 
-static void ReplicateNonPhiInstructionStream(IL::BasicBlock* source, IL::BasicBlock* dest) {
-    // TODO: Replication of non-exposed streams!
-    GRS_SINK(source, dest);
-}
-
 void SpvPhysicalBlockFunction::PostPatchLoopContinue(IL::Function* fn) {
-    // We must allow for the instrumentation of loop continue blocks, however,
-    // structured control flow puts a very strict set of requirements on this.
-    // The cleanest way forward is to proxy each loop continue predecessor,
-    // duplicate the instruction stream, and phi merge the results.
+    // Structured control flow puts a strict set of requirements on branching, which
+    // unfortunately complicates instrumentation a little, as features can easily
+    // split blocks and violate the spec. So, we split continue blocks in two pieces.
+    // First is the "proxy" block that contains the actual instructions, which may be
+    // safely instrumented, and then the edge. Keeping the final edge as a no-instrument
+    // ensures that the user doesn't accidentally introduce new edges to the loop header,
+    // of which there must be one from a continue block.
+    // 
     // So.
     //   A ---v
     //   B -> Continue
     //   C ---^
+    //
     // Becomes
-    //   A -> PA ---v
-    //   B -> PB -> Continue
-    //   C -> PC ---^
-    // With Continue being marked as no instrumentation.
-    
+    //   A ---v
+    //   B -> Continue(NI) -> Proxy -> Edge(NI)
+    //   C ---^
+
     for (const LoopContinueBlock& block : loopContinueBlocks) {
         IL::BasicBlock* continueBlock = program.GetIdentifierMap().GetBasicBlock(block.block);
 
-        // Never instrument the actual continue block
+        // Additional blocks (see above)
+        IL::BasicBlock* proxyBlock = fn->GetBasicBlocks().AllocBlock();
+        IL::BasicBlock* edgeBlock  = fn->GetBasicBlocks().AllocBlock();
+
+        // Never instrument the actual continue block and its final edge (see above)
         continueBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
+        edgeBlock->AddFlag(BasicBlockFlag::NoInstrumentation);
 
-        // Keep a local copy
-        IL::IdentifierMap::BlockUserList list = program.GetIdentifierMap().GetBlockUsers(block.block);
-        
-        // Find all predecessors
-        for (IL::OpaqueInstructionRef opaque : list) {
-            IL::BasicBlock* predecessorBlock = opaque.basicBlock;
+        // Move all contents from the source continue block to the proxy block
+        continueBlock->Split(proxyBlock, continueBlock->begin());
 
-            // Ignore non branch instructions (phi)
-            auto ref = IL::InstructionRef<>(opaque).Cast<IL::BranchInstruction>();
-            if (!ref) {
-                continue;
-            }
+        // Move the terminator to the final edge
+        proxyBlock->Split(edgeBlock, proxyBlock->GetTerminator());
 
-            // Validation
-            ASSERT(opaque.basicBlock->GetTerminator()->As<IL::BranchInstruction>()->branch == block.block, "Unexpected branching");
+        // Continue -> Proxy
+        IL::Emitter<>(program, *continueBlock).Branch(proxyBlock);
 
-            // Replicate the instruction stream
-            IL::BasicBlock* proxyBlock = fn->GetBasicBlocks().AllocBlock();
-            ReplicateNonPhiInstructionStream(continueBlock, proxyBlock);
-
-            // Predecessor (A, B, C) -> Proxy
-            IL::Emitter<IL::Op::Replace>(program, *predecessorBlock, predecessorBlock->GetTerminator()).Branch(proxyBlock);
-
-            // Proxy -> Continue
-            IL::Emitter<>(program, *proxyBlock).Branch(continueBlock);
-
-            // Redirect the existing continue Phis to the proxy
-            for (auto it = continueBlock->begin(); it != continueBlock->end(); it++) {
-                auto* instr = it.GetMutable()->Cast<IL::PhiInstruction>();
-                if (!instr) {
-                    continue;
-                }
-
-                // Check all values
-                for (uint32_t i = 0; i < instr->values.count; i++) {
-                    IL::PhiValue& value = instr->values[i];
-                    
-                    if (value.branch == predecessorBlock->GetID()) {
-                        value.branch = proxyBlock->GetID();
-                    }
-                }
-
-                // Make sure it's recompiled
-                instr->source = instr->source.Modify();
-            }
-        }
-
-        // Re-emit entire block
-        continueBlock->MarkAsDirty();
+        // Proxy -> Edge
+        IL::Emitter<>(program, *proxyBlock).Branch(edgeBlock);
     }
 
     // Empty out

@@ -39,17 +39,22 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// All hosted items
         /// </summary>
-        public ObservableCollection<IContextMenuItemViewModel> Items { get; } = new();
+        public ObservableCollection<IContextMenuItemViewModel> Items { get; set; } = new();
 
         /// <summary>
         /// Command on invoke
         /// </summary>
-        public ICommand? Command { get; } = null;
+        public ICommand? Command { get; set; } = null;
+
+        /// <summary>
+        /// If this context menu is visible
+        /// </summary>
+        public bool IsVisible { get; set; } = true;
 
         /// <summary>
         /// If this context menu is enabled
         /// </summary>
-        public bool IsVisible { get; set; } = true;
+        public bool IsEnabled { get; set; } = true;
         
         /// <summary>
         /// Underlying target view model for the context menu

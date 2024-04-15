@@ -30,7 +30,7 @@
 
 namespace IL {
     /// Invalid, unmapped, source
-    static constexpr uint32_t InvalidOffset = 0x7FFFFFFF;
+    static constexpr uint32_t InvalidOffset = (1u << 30u) - 1u;
 
     /// Source value, word offset for the source instruction
     struct Source {
@@ -39,6 +39,7 @@ namespace IL {
             Source source;
             source.codeOffset = code;
             source.modified = 0;
+            source.symbolic = 0;
             return source;
         }
 
@@ -47,6 +48,17 @@ namespace IL {
             Source source;
             source.codeOffset = InvalidOffset;
             source.modified = 0;
+            source.symbolic = 0;
+            return source;
+        }
+
+        /// Symbolic source
+        /// Should only be used by backend compilers
+        static Source Symbolic(uint32_t code) {
+            Source source;
+            source.codeOffset = code;
+            source.modified = 0;
+            source.symbolic = 1;
             return source;
         }
 
@@ -55,6 +67,7 @@ namespace IL {
             Source source;
             source.codeOffset = codeOffset;
             source.modified = IsValid();
+            source.symbolic = symbolic;
             return source;
         }
 
@@ -68,8 +81,9 @@ namespace IL {
             return codeOffset != InvalidOffset && !modified;
         }
 
-        uint32_t codeOffset : 31;
+        uint32_t codeOffset : 30;
         uint32_t modified   : 1;
+        uint32_t symbolic   : 1;
     };
 
 

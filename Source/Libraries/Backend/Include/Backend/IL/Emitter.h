@@ -371,7 +371,7 @@ namespace IL {
         /// \param composite the base composite
         /// \param index the index
         /// \return instruction reference
-        BasicBlock::TypedIterator <ExtractInstruction> Extract(ID composite, uint32_t index) {
+        BasicBlock::TypedIterator <ExtractInstruction> Extract(ID composite, ID index) {
             ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
 
             ExtractInstruction instr{};
@@ -413,6 +413,22 @@ namespace IL {
             instr.condition = condition;
             instr.pass = pass;
             instr.fail = fail;
+            return Op(instr);
+        }
+
+        /// Binary add two values
+        /// \param lhs lhs operand
+        /// \param rhs rhs operand
+        /// \return instruction reference
+        BasicBlock::TypedIterator <RemInstruction> Rem(ID lhs, ID rhs) {
+            ASSERT(IsMapped(lhs) && IsMapped(rhs), "Unmapped identifier");
+
+            RemInstruction instr{};
+            instr.opCode = OpCode::Rem;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.lhs = lhs;
+            instr.rhs = rhs;
             return Op(instr);
         }
 
@@ -665,6 +681,20 @@ namespace IL {
             instr.result = map->AllocID();
             instr.lhs = lhs;
             instr.rhs = rhs;
+            return Op(instr);
+        }
+
+        /// Perform a logical not
+        /// \param value the value to negate
+        /// \return instruction reference
+        BasicBlock::TypedIterator <NotInstruction> Not(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            NotInstruction instr{};
+            instr.opCode = OpCode::Not;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
             return Op(instr);
         }
 
@@ -931,6 +961,20 @@ namespace IL {
             return Op(instr);
         }
 
+        /// Perform a wave all equal
+        /// \param value value to check for equality
+        /// \return original value
+        BasicBlock::TypedIterator<WaveAllEqualInstruction> WaveAllEqual(ID value) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+            
+            WaveAllEqualInstruction instr{};
+            instr.opCode = OpCode::WaveAllEqual;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            return Op(instr);
+        }
+
         /// Perform an atomic / interlocked exchange
         /// \param address base address
         /// \param value value
@@ -1008,15 +1052,16 @@ namespace IL {
         /// Alloca a varaible
         /// \param type the varaible type
         /// \return instruction reference
-        BasicBlock::TypedIterator <AllocaInstruction> Alloca(ID type) {
-            ASSERT(IsMapped(type), "Unmapped identifier");
-
+        BasicBlock::TypedIterator <AllocaInstruction> Alloca(const Backend::IL::Type* type) {
             AllocaInstruction instr{};
             instr.opCode = OpCode::Alloca;
             instr.source = Source::Invalid();
             instr.result = map->AllocID();
-            instr.type = type;
-            return Op(instr);
+
+            return Op(instr, program->GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+                .pointee = type,
+                .addressSpace = Backend::IL::AddressSpace::Function
+            }));
         }
 
         /// Is this emitter good?

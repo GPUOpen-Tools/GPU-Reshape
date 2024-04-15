@@ -26,6 +26,7 @@
 
 #include <Backends/DX12/CommandList.h>
 #include <Backends/DX12/Table.Gen.h>
+#include <Backends/DX12/RenderPass.h>
 #include <Backends/DX12/States/CommandListState.h>
 #include <Backends/DX12/States/CommandQueueState.h>
 #include <Backends/DX12/States/CommandAllocatorState.h>
@@ -73,9 +74,11 @@ void CreateDeviceCommandProxies(DeviceState *state) {
             state->commandListProxies.featureHooks_CopyBufferRegion[i] = hookTable.copyResource;
             state->commandListProxies.featureHooks_CopyTextureRegion[i] = hookTable.copyResource;
             state->commandListProxies.featureHooks_CopyResource[i] = hookTable.copyResource;
+            state->commandListProxies.featureHooks_CopyTiles[i] = hookTable.copyResource;
             state->commandListProxies.featureBitSetMask_CopyBufferRegion |= (1ull << i);
             state->commandListProxies.featureBitSetMask_CopyTextureRegion |= (1ull << i);
             state->commandListProxies.featureBitSetMask_CopyResource |= (1ull << i);
+            state->commandListProxies.featureBitSetMask_CopyTiles |= (1ull << i);
         }
 
         if (hookTable.resolveResource.IsValid()) {
@@ -115,6 +118,7 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet
     state->commandListProxies.featureBitSet_CopyBufferRegion = state->commandListProxies.featureBitSetMask_CopyBufferRegion & featureSet;
     state->commandListProxies.featureBitSet_CopyTextureRegion = state->commandListProxies.featureBitSetMask_CopyTextureRegion & featureSet;
     state->commandListProxies.featureBitSet_CopyResource = state->commandListProxies.featureBitSetMask_CopyResource & featureSet;
+    state->commandListProxies.featureBitSet_CopyTiles = state->commandListProxies.featureBitSetMask_CopyTiles & featureSet;
     state->commandListProxies.featureBitSet_ResolveSubresource = state->commandListProxies.featureBitSetMask_ResolveSubresource & featureSet;
     state->commandListProxies.featureBitSet_ClearDepthStencilView = state->commandListProxies.featureBitSetMask_ClearDepthStencilView & featureSet;
     state->commandListProxies.featureBitSet_ClearRenderTargetView = state->commandListProxies.featureBitSetMask_ClearRenderTargetView & featureSet;
@@ -721,18 +725,22 @@ void WINAPI HookID3D12CommandListBeginRenderPass(ID3D12CommandList* list, UINT N
         renderPassState.depthStencil.cpuDescriptor.ptr = 0ull;
     }
 
-    // Pass down callchain
-    table.next->BeginRenderPass(NumRenderTargets, pRenderTargets, pDepthStencil, Flags);
+    // Start the user pass
+    BeginRenderPassForUser(table.next, &renderPassState);
 }
 
 void WINAPI HookID3D12CommandListEndRenderPass(ID3D12CommandList* list) {
     auto table = GetTable(list);
 
     // Mark as outside
+    ASSERT(table.state->streamState->renderPass.insideRenderPass, "Unexpected render pass state");
     table.state->streamState->renderPass.insideRenderPass = false;
     
     // Pass down callchain
     table.next->EndRenderPass();
+
+    // Handle any pending operations
+    ResolveRenderPassForUserEnd(table.next, &table.state->streamState->renderPass);
 }
 
 static void CommitGraphics(DeviceState* device, CommandListState* list) {
@@ -918,6 +926,20 @@ void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList* list, ID3D12
         ArgumentBufferOffset, 
         Next(pCountBuffer), 
         CountBufferOffset
+    );
+}
+
+void WINAPI HookID3D12CommandListCopyTiles(ID3D12CommandList *list, ID3D12Resource* pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pTileRegionSize, ID3D12Resource* pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags) {
+    auto table = GetTable(list);
+    
+    // Pass down callchain
+    table.next->CopyTiles(
+        Next(pTiledResource),
+        pTileRegionStartCoordinate,
+        pTileRegionSize,
+        Next(pBuffer),
+        BufferStartOffsetInBytes,
+        Flags
     );
 }
 
@@ -1128,12 +1150,9 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     // Flush any pending work
     FlushCommandQueueContext(GetState(table.state->parent), table.state);
 
-    // Process any remaining work on the queue
-    device.state->exportStreamer->Process(table.state);
-
     // Special case, invoke a device sync point during empty submissions
     if (count == 0) {
-        BridgeDeviceSyncPoint(device.state);
+        BridgeDeviceSyncPoint(device.state, table.state);
     }
 
     // Allocate submission segment

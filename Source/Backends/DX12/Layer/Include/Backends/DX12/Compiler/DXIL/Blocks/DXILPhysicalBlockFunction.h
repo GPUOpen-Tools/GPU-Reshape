@@ -294,9 +294,9 @@ private:
     /// \param reader record reader
     /// \param anchor instruction anchor
     /// \param called called function index
-    /// \param declaration pulled declaration
+    /// \param unexposed unexposed intrinsic
     /// \return true if recognized intrinsic
-    bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, const DXILFunctionDeclaration *declaration);
+    bool TryParseIntrinsic(IL::BasicBlock *basicBlock, uint32_t recordIdx, DXILValueReader &reader, uint32_t anchor, uint32_t called, uint32_t result, IL::UnexposedInstruction& unexposed);
 
 private:
     /// Returns true if the program requires value map segmentation, i.e. branching over value data

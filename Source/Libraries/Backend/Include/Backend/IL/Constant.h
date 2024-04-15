@@ -60,6 +60,12 @@ namespace IL {
             return kind == T::kKind;
         }
 
+        /// Check if this constant is symbolic
+        /// i.e. It is non-semantic
+        bool IsSymbolic() const {
+            return id == InvalidID;
+        }
+
         const Backend::IL::Type* type{nullptr};
 
         Backend::IL::ConstantKind kind{Backend::IL::ConstantKind::None};
@@ -111,6 +117,30 @@ namespace IL {
         }
 
         double value{0};
+    };
+
+    struct ArrayConstant : public Constant {
+        using Type = Backend::IL::ArrayType;
+
+        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Array;
+
+        auto SortKey(const Type* _type) const {
+            return std::make_tuple(_type->SortKey(), elements);
+        }
+
+        std::vector<const Constant*> elements;
+    };
+
+    struct VectorConstant : public Constant {
+        using Type = Backend::IL::VectorType;
+
+        static constexpr Backend::IL::ConstantKind kKind = Backend::IL::ConstantKind::Vector;
+
+        auto SortKey(const Type* _type) const {
+            return std::make_tuple(_type->SortKey(), elements);
+        }
+
+        std::vector<const Constant*> elements;
     };
 
     struct StructConstant : public Constant {

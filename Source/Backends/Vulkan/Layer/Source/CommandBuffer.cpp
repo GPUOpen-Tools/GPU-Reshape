@@ -108,6 +108,10 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
         if (hookTable.beginRenderPass.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderPass[i] = hookTable.beginRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderPass2[i] = hookTable.beginRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass2 |= (1ull << i);
+            table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderPass2KHR[i] = hookTable.beginRenderPass;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass2KHR |= (1ull << i);
             table->commandBufferDispatchTable.featureHooks_vkCmdBeginRendering[i] = hookTable.beginRenderPass;
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRendering |= (1ull << i);
             table->commandBufferDispatchTable.featureHooks_vkCmdBeginRenderingKHR[i] = hookTable.beginRenderPass;
@@ -145,6 +149,8 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdClearAttachments = table->commandBufferDispatchTable.featureBitSetMask_vkCmdClearAttachments & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdResolveImage = table->commandBufferDispatchTable.featureBitSetMask_vkCmdResolveImage & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderPass2 = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass2 & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderPass2KHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderPass2KHR & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderPass = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderPass & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRendering = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRendering & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderingKHR & featureSet;

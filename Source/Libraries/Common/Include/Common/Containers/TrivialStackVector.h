@@ -181,7 +181,14 @@ struct TrivialStackVector {
     /// \return 
     T PopBack() {
         ASSERT(size > 0, "Out of bounds");
-        return data[--size];
+        T value = data[--size];
+        
+        if (data != stack) {
+            fallback.pop_back();
+            data = fallback.data();
+        }
+        
+        return value;
     }
 
     /// Size of this container

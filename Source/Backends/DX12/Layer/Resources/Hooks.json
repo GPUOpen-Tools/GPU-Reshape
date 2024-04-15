@@ -218,6 +218,7 @@
         "DrawIndexedInstanced",
         "Dispatch",
         "ExecuteIndirect",
+        "CopyTiles",
         "DispatchMesh",
         "GetDevice",
         "GetType"
@@ -230,6 +231,7 @@
         "CopyBufferRegion",
         "CopyTextureRegion",
         "CopyResource",
+        "CopyTiles",
         "ResolveSubresource",
         "ResolveSubresourceRegion",
         "ClearDepthStencilView",

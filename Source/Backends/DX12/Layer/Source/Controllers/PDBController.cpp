@@ -39,6 +39,7 @@
 
 // Common
 #include <Common/CRC.h>
+#include <Common/String.h>
 #include <Common/FileSystem.h>
 
 // Std
@@ -100,8 +101,9 @@ void PDBController::OnMessage(const struct SetPDBConfigMessage &message) {
 }
 
 void PDBController::IndexPathCandidates(const std::string_view& base, const std::filesystem::path &path) {
-    // May create a copy
-    std::string filename = path.string();
+    // Index everything in lowercase
+    // TODO: What about platforms where paths are case sensitive?
+    std::string filename = std::lowercase(path.string());
     
     // Local view
     std::string_view view = filename;
@@ -144,12 +146,16 @@ void PDBController::GetCandidateList(const char* path, PDBCandidateList& candida
     if (PathExists(path)) {
         candidates.Add(path);
     }
+    
+    // Query everything in lowercase
+    // TODO: What about platforms where paths are case sensitive?
+    std::string filename = std::lowercase(path);
 
     // Serial
     std::lock_guard guard(mutex);
 
     // Local view
-    std::string_view view = path;
+    std::string_view view = filename;
 
     // Relative to pdb root candidates
     AppendCandidates(view, candidates);

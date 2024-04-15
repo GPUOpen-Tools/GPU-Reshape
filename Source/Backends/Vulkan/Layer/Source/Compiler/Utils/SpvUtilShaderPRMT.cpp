@@ -315,7 +315,7 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
         }
         case IL::OpCode::AddressChain: {
             auto* addressChain = ref->As<IL::AddressChainInstruction>();
-            ASSERT(addressChain->chains.count == 1, "Unexpected address chain on descriptor data");
+            ASSERT(addressChain->chains.count == 2, "Unexpected address chain on descriptor data");
 
             // Get base decoration
             DynamicSpvValueDecoration dynamic = GetSourceResourceDecoration(job, stream, addressChain->composite);
@@ -331,7 +331,7 @@ SpvUtilShaderPRMT::DynamicSpvValueDecoration SpvUtilShaderPRMT::GetSourceResourc
             spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {.bitWidth = 32, .signedness = false}));
             spv[2] = offsetId;
             spv[3] = dynamic.dynamicOffset;
-            spv[4] = addressChain->chains[0].index;
+            spv[4] = addressChain->chains[1].index;
 
             // Set new offset
             dynamic.dynamicOffset = offsetId;

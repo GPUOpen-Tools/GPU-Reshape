@@ -27,15 +27,15 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Windows.Input;
-using Message.CLR;
 using ReactiveUI;
-using Runtime.Models.Objects;
+using Runtime.ViewModels.Traits;
+using Studio.Extensions;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
-    public class InstrumentNoneContextViewModel : ReactiveObject, IInstrumentContextViewModel
+    public class InstrumentNoneContextViewModel : ReactiveObject, IContextMenuItemViewModel
     {
         /// <summary>
         /// Target view model of the context
@@ -84,16 +84,27 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         private void OnInvoked()
         {
-            if (_targetViewModel is not IPropertyViewModel propertyViewModel)
+            if (_targetViewModel is IPropertyViewModel propertyViewModel)
             {
+                Traverse(propertyViewModel);
+            }
+        }
+
+        /// <summary>
+        /// Traverse an item for closing
+        /// </summary>
+        private void Traverse(IPropertyViewModel propertyViewModel)
+        {
+            // Is instrumentable object and closable?
+            // Exception for the actual workspace, never close that
+            if (propertyViewModel is IInstrumentableObject and IClosableObject closableObject and not IWorkspaceAdapter)
+            {
+                closableObject.CloseCommand?.Execute(Unit.Default);
                 return;
             }
-
-            // Close all instrumentation properties
-            while (propertyViewModel.GetProperty<IInstrumentationProperty>() is { } instrumentationProperty)
-            {
-                (instrumentationProperty as IClosableObject)?.CloseCommand?.Execute(Unit.Default);
-            }
+            
+            // Not applicable, check child properties
+            propertyViewModel.Properties.Items.ForEach(Traverse);
         }
 
         /// <summary>

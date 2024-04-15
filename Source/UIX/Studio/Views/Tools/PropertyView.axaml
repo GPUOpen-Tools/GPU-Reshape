@@ -49,5 +49,13 @@
                 <propertyGrid:CategorizedLayout />
             </propertyGrid:PropertyGrid.Layout>
         </propertyGrid:PropertyGrid>
+        
+        <TextBlock
+            VerticalAlignment="Bottom"
+            HorizontalAlignment="Stretch"
+            Foreground="{DynamicResource StatusForeground}"
+            Margin="5 0 0 5 "
+            TextWrapping="Wrap"
+            Text="{Binding #PropertyGrid.CurrentDescription}"/>
     </Grid>
 </UserControl>

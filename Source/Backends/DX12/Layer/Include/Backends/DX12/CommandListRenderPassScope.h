@@ -28,6 +28,7 @@
 
 // Layer
 #include <Backends/DX12/Export/ShaderExportStreamState.h>
+#include <Backends/DX12/RenderPass.h>
 
 class CommandListRenderPassScope {
 public:
@@ -41,12 +42,7 @@ public:
     ~CommandListRenderPassScope() {
         // Reconstruct render pass if needed
         if (streamState->insideRenderPass) {
-            commandList->BeginRenderPass(
-                streamState->renderTargetCount,
-                streamState->renderTargets,
-                streamState->depthStencil.cpuDescriptor.ptr != 0 ? &streamState->depthStencil : nullptr,
-                streamState->flags
-            );
+            BeginRenderPassForReconstruction(commandList, streamState);
         }
     }
 
