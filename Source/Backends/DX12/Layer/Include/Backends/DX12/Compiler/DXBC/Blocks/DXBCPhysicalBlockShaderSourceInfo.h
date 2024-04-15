@@ -36,6 +36,9 @@ struct DXBCPhysicalBlockShaderSourceInfo {
     /// Parse source info
     void Parse();
 
+    /// Check if this module uses "slim pdbs"
+    bool IsSlimPDB();
+
 public:
     struct SourceArg {
         /// Name of the argument

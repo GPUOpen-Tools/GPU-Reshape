@@ -89,6 +89,16 @@ IDXDebugModule *DXILModule::GetDebug() {
     return nullptr;
 }
 
+bool DXILModule::IsSlimDebugModule() {
+    // No debug data
+    return false;
+}
+
+IDXCompilerEnvironment * DXILModule::CreateCompilerEnvironment(IDxcLibrary *library) {
+    // No native environment
+    return nullptr;
+}
+
 DXCodeOffsetTraceback DXILModule::GetCodeOffsetTraceback(uint32_t codeOffset) {
     return table.function.GetCodeOffsetTraceback(codeOffset);
 }

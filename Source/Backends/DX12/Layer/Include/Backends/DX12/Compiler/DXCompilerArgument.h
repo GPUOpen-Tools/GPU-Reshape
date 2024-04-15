@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -27,35 +27,12 @@
 #pragma once
 
 // Layer
-#include "DXBCPhysicalBlockSection.h"
-#include "DXBCPhysicalBlockShaderSourceInfo.h"
-
-// Std
 #include <string_view>
 
-// Forward declarations
-struct DXParseJob;
-
-/// Debug block
-struct DXBCPhysicalBlockDebug : public DXBCPhysicalBlockSection {
-    DXBCPhysicalBlockDebug(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table);
-
-    /// Parse all instructions
-    bool Parse(const DXParseJob& job);
-
-    /// Scanner for external pdbs
-    DXBCPhysicalBlockScan pdbScanner;
-
-    /// Optional, source info block for external pdbs
-    DXBCPhysicalBlockShaderSourceInfo pdbShaderSourceInfo;
-
-private:
-    /// Try to parse a PDB file
-    /// \param path given path
-    /// \return nullptr if failed
-    DXBCPhysicalBlock* TryParsePDB(const std::string_view& path);
-
-private:
-    /// Tie lifetime of external pdb to this block
-    Vector<uint8_t> pdbContainerContents;
+struct DXCompilerArgument {
+    /// Argument identifier
+    std::string_view name;
+    
+    /// Value given to the argument
+    std::string_view value;
 };
