@@ -32,6 +32,7 @@
 
 // Backend
 #include <Backend/IL/TypeSize.h>
+#include <Backend/IL/Metadata/KernelMetadata.h>
 
 // Common
 #include <Common/Sink.h>
@@ -64,6 +65,7 @@ void DXILPhysicalBlockMetadata::CopyTo(DXILPhysicalBlockMetadata &out) {
     out.shadingModel = shadingModel;
     out.validationVersion = validationVersion;
     out.handles = handles;
+    out.entryPointId = entryPointId;
 }
 
 void DXILPhysicalBlockMetadata::ParseMetadata(const struct LLVMBlock *block) {
@@ -181,6 +183,10 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
             entryPoint.uid = block->uid;
             entryPoint.program = record.Op32(0);
 
+            // Assign new id
+            entryPointId = program.GetIdentifierMap().AllocID();
+            program.SetEntryPoint(entryPointId);
+
             // Extended metadata kv pairs?
             if (list.Op(4)) {
                 const LLVMRecord &kvRecord = block->records[list.ops[4] - 1];
@@ -194,6 +200,18 @@ void DXILPhysicalBlockMetadata::ParseNamedNode(MetadataBlock& metadataBlock, con
                         case DXILProgramTag::ShaderFlags: {
                             // Get current flags
                             programMetadata.shaderFlags = DXILProgramShaderFlagSet(GetOperandU32Constant(metadataBlock, kvRecord.Op32(kv + 1)));
+                            break;
+                        }
+                        case DXILProgramTag::NumThreads: {
+                            // Get the threads node
+                            const LLVMRecord &threadsNode = block->records[kvRecord.Op32(kv + 1) - 1];
+
+                            // Add metadata
+                            program.GetMetadataMap().AddMetadata(entryPointId, IL::KernelWorkgroupSizeMetadata {
+                                .threadsX = GetOperandU32Constant(metadataBlock, threadsNode.Op32(0)),
+                                .threadsY = GetOperandU32Constant(metadataBlock, threadsNode.Op32(1)),
+                                .threadsZ = GetOperandU32Constant(metadataBlock, threadsNode.Op32(2)),
+                            });
                             break;
                         }
                     }
@@ -1923,6 +1941,17 @@ void DXILPhysicalBlockMetadata::CompileProgramEntryPoints() {
 
                 // OK
                 programMetadata.internalShaderFlags = {};
+                break;
+            }
+            case DXILProgramTag::NumThreads: {
+                // Get the threads node
+                LLVMRecordView threadsNode(mdBlock, kvRecord->Op32(kv + 1) - 1);
+
+                // Overwrite the thread counts
+                auto workgroupSize = program.GetMetadataMap().GetMetadata<IL::KernelWorkgroupSizeMetadata>(entryPointId);
+                threadsNode->Op(0) = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, workgroupSize->threadsX);
+                threadsNode->Op(1) = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, workgroupSize->threadsY);
+                threadsNode->Op(2) = FindOrAddOperandU32Constant(*metadataBlock, mdBlock, workgroupSize->threadsZ);
                 break;
             }
         }

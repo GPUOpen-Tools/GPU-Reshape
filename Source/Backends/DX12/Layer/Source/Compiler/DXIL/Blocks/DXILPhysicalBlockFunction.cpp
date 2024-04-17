@@ -86,10 +86,8 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // Create function
-    IL::Function *fn = program.GetFunctionList().AllocFunction();
-
-    // Set program metadata
-    program.SetEntryPoint(fn->GetID());
+    ASSERT(table.metadata.entryPointId != IL::InvalidID, "Expected entrypoint");
+    IL::Function *fn = program.GetFunctionList().AllocFunction(table.metadata.entryPointId);
 
     // Set the type
     fn->SetFunctionType(declaration->type);

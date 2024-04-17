@@ -62,7 +62,18 @@ namespace IL {
         /// \param payload payload to assign, type derived from embedded id
         template<typename T>
         void AddMetadata(ID id, const T& payload) {
-            buckets[id].metadatas.push_back(Metadata {
+            MetadataBucket& bucket = buckets[id];
+
+            // Try to replace existing metadata
+            for (Metadata& metadata : bucket.metadatas) {
+                if (metadata.type == T::kID) {
+                    metadata.payload = payloadAllocator.Allocate<T>(payload);
+                    return;
+                }
+            }
+
+            // None found, add new
+            bucket.metadatas.push_back(Metadata {
                 .type = T::kID,
                 .payload = payloadAllocator.Allocate<T>(payload)
             });
@@ -76,7 +87,7 @@ namespace IL {
         const T* GetMetadata(ID id) {
             auto it = buckets.find(id);
             if (it == buckets.end()) {
-                return false;
+                return nullptr;
             }
             
             for (const Metadata& metadata : it->second.metadatas) {

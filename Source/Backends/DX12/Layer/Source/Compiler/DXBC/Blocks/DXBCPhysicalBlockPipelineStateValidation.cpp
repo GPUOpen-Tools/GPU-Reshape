@@ -29,6 +29,9 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
 
+// Backend
+#include <Backend/IL/Metadata/KernelMetadata.h>
+
 void DXBCPhysicalBlockPipelineStateValidation::Parse() {
     // Block is optional
     DXBCPhysicalBlock* block = table.scan.GetPhysicalBlock(DXBCPhysicalBlockType::PipelineStateValidation);
@@ -229,6 +232,15 @@ void DXBCPhysicalBlockPipelineStateValidation::Compile() {
 
         // Next
         dataOffset++;
+    }
+
+    // Overwrite thread counts
+    if (runtimeInfoSize >= sizeof(DXBCPSVRuntimeInfoRevision2)) {
+        if (auto* metadata = program.GetMetadataMap().GetMetadata<IL::KernelWorkgroupSizeMetadata>(program.GetEntryPoint()->GetID())) {
+            runtimeInfo.info2.threadCountX = metadata->threadsX;
+            runtimeInfo.info2.threadCountY = metadata->threadsY;
+            runtimeInfo.info2.threadCountZ = metadata->threadsZ;   
+        }
     }
 
     // Emit runtime info with the original size

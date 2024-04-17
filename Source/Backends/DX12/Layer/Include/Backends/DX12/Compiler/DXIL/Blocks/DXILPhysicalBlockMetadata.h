@@ -420,6 +420,8 @@ public:
         DXILProgramShaderFlagSet internalShaderFlags{ 0 };
     } programMetadata;
 
+    IL::ID entryPointId{IL::InvalidID};
+
 private:
     /// Declaration blocks
     LLVMBlock* declarationBlock{nullptr};

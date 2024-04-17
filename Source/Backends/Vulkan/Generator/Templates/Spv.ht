@@ -23,9 +23,9 @@ inline SpvPhysicalBlockType GetSpvBlockType(SpvOp op) {
         case SpvOpEntryPoint:
             return SpvPhysicalBlockType::EntryPoint;
         case SpvOpExecutionMode:
-            return SpvPhysicalBlockType::ExecutionMode;
+            return SpvPhysicalBlockType::EntryPoint;
         case SpvOpExecutionModeId:
-            return SpvPhysicalBlockType::ExecutionMode;
+            return SpvPhysicalBlockType::EntryPoint;
         case SpvOpString:
             return SpvPhysicalBlockType::DebugStringSource;
         case SpvOpSourceExtension:

@@ -28,6 +28,9 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
 
+// Backend
+#include <Backend/IL/Metadata/KernelMetadata.h>
+
 void SpvPhysicalBlockEntryPoint::Parse() {
     block = table.scan.GetPhysicalBlock(SpvPhysicalBlockType::EntryPoint);
 
@@ -38,18 +41,52 @@ void SpvPhysicalBlockEntryPoint::Parse() {
             default:
                 break;
             case SpvOpEntryPoint: {
-                executionModel = static_cast<SpvExecutionModel>(ctx++);
-                program.SetEntryPoint(ctx++);
+                // Create entrypoint entry
+                EntryPoint& entryPoint = entryPoints.emplace_back();
+                entryPoint.executionModel = static_cast<SpvExecutionModel>(ctx++);
+                entryPoint.id = ctx++;
+                program.SetEntryPoint(entryPoint.id);
 
                 // Parse name
                 auto* ptr = reinterpret_cast<const char*>(ctx.GetInstructionCode());
                 size_t length = std::strlen(ptr);
                 ctx.Skip(static_cast<uint32_t>((length + 3) / 4));
-                name = ptr;
+                entryPoint.name = ptr;
 
                 // Parse all interfaces
                 while (ctx.HasPendingWords()) {
-                    interfaces.push_back(ctx++);
+                    entryPoint.interfaces.push_back(ctx++);
+                }
+                break;
+            }
+            case SpvOpExecutionMode:
+            case SpvOpExecutionModeId: {
+                EntryPoint* entryPoint = GetEntryPoint(ctx++);
+                ASSERT(entryPoint, "Invalid entrypoint");
+
+                // Create mode entry
+                ExecutionMode& executionMode = entryPoint->executionModes.emplace_back();
+                executionMode.opCode = ctx->GetOp();
+                executionMode.executionMode = static_cast<SpvExecutionMode>(ctx++);
+
+                // Read all payload words
+                while (ctx.HasPendingWords()) {
+                    executionMode.payload.Add(ctx++);
+                }
+
+                // Create program metadata
+                switch (executionMode.executionMode) {
+                    default: {
+                        break;
+                    }
+                    case SpvExecutionModeLocalSize: {
+                        program.GetMetadataMap().AddMetadata(entryPoint->id, IL::KernelWorkgroupSizeMetadata {
+                            .threadsX = executionMode.payload[0],
+                            .threadsY = executionMode.payload[1],
+                            .threadsZ = executionMode.payload[2]
+                        });
+                        break;
+                    }
                 }
                 break;
             }
@@ -63,29 +100,73 @@ void SpvPhysicalBlockEntryPoint::Parse() {
 void SpvPhysicalBlockEntryPoint::Compile() {
     block->stream.Clear();
 
+    // Recompile all entry points
+    for (EntryPoint& entryPoint : entryPoints) {
+        // Compile the SpvOpEntryPoint
+        CompileEntryPoint(entryPoint);
+
+        // Compile all execution modes
+        for (ExecutionMode& executionMode : entryPoint.executionModes) {
+            CompileExecutionMode(entryPoint.id, executionMode);
+        }
+    } 
+}
+
+void SpvPhysicalBlockEntryPoint::CompileEntryPoint(const EntryPoint &entryPoint) {
     // Total number of dwords for the name
-    uint32_t nameDWordCount = static_cast<uint32_t>((name.length() + 3) / 4);
+    uint32_t nameDWordCount = static_cast<uint32_t>((entryPoint.name.length() + 3) / 4);
 
     // Emit instruction
-    SpvInstruction& instr = block->stream.Allocate(SpvOpEntryPoint, static_cast<uint32_t>(3 + nameDWordCount + interfaces.size()));
-    instr[1] = static_cast<uint32_t>(executionModel);
+    SpvInstruction& instr = block->stream.Allocate(SpvOpEntryPoint, static_cast<uint32_t>(3 + nameDWordCount + entryPoint.interfaces.size()));
+    instr[1] = static_cast<uint32_t>(entryPoint.executionModel);
     instr[2] = program.GetEntryPoint()->GetID();
     std::memset(&instr[3], 0x0, sizeof(uint32_t) * nameDWordCount);
 
     // Write name
-    for (size_t i = 0; i < name.size(); i++) {
-        instr[static_cast<uint32_t>(3 + (i / 4))] |= name[i] << (i % 4) * 8;
+    for (size_t i = 0; i < entryPoint.name.size(); i++) {
+        instr[static_cast<uint32_t>(3 + (i / 4))] |= entryPoint.name[i] << (i % 4) * 8;
     }
 
     // Write all interfaces
-    for (size_t i = 0; i < interfaces.size(); i++) {
-        instr[static_cast<uint32_t>(3 + nameDWordCount + i)] = interfaces[i];
+    for (size_t i = 0; i < entryPoint.interfaces.size(); i++) {
+        instr[static_cast<uint32_t>(3 + nameDWordCount + i)] = entryPoint.interfaces[i];
     }
+}
+
+void SpvPhysicalBlockEntryPoint::CompileExecutionMode(SpvId entryPoint, ExecutionMode &executionMode) {
+    // Metadata overrides
+    switch (executionMode.executionMode) {
+        default: {
+            break;
+        }
+        case SpvExecutionModeLocalSize: {
+            auto workgroupSize = program.GetMetadataMap().GetMetadata<IL::KernelWorkgroupSizeMetadata>(entryPoint);
+            executionMode.payload[0] = workgroupSize->threadsX;
+            executionMode.payload[1] = workgroupSize->threadsY;
+            executionMode.payload[2] = workgroupSize->threadsZ;
+            break;
+        }
+    }
+
+    // Emit mode
+    SpvInstruction& instr = block->stream.Allocate(executionMode.opCode, static_cast<uint32_t>(3 + executionMode.payload.Size()));
+    instr[1] = entryPoint;
+    instr[2] = executionMode.executionMode;
+    std::memcpy(&instr[3], executionMode.payload.Data(), sizeof(uint32_t) * executionMode.payload.Size());
+}
+
+SpvPhysicalBlockEntryPoint::EntryPoint * SpvPhysicalBlockEntryPoint::GetEntryPoint(SpvId id) {
+    for (EntryPoint& entryPoint : entryPoints) {
+        if (entryPoint.id == id) {
+            return &entryPoint;
+        }
+    }
+
+    // Not found
+    return nullptr;
 }
 
 void SpvPhysicalBlockEntryPoint::CopyTo(SpvPhysicalBlockTable &remote, SpvPhysicalBlockEntryPoint &out) {
     out.block = remote.scan.GetPhysicalBlock(SpvPhysicalBlockType::EntryPoint);
-    out.executionModel = executionModel;
-    out.name = name;
-    out.interfaces = interfaces;
+    out.entryPoints = entryPoints;
 }

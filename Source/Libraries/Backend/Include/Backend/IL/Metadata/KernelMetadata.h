@@ -26,19 +26,15 @@
 
 #pragma once
 
-// Common
-#include <Common/Enum.h>
+// Backend
+#include <Backend/IL/MetadataType.h>
 
 namespace IL {
-    enum class MetadataType {
-        /// Invalid type
-        None,
+    struct KernelWorkgroupSizeMetadata {
+        static constexpr MetadataType kID = MetadataType::KernelWorkgroupSize;
 
-        /// Specifies that an object is expected to be divergent within a wave
-        /// Typically applied to resource indexing operations
-        DivergentResourceIndex,
-
-        /// Specifies the workgroup size of a program
-        KernelWorkgroupSize
+        uint32_t threadsX{1};
+        uint32_t threadsY{1};
+        uint32_t threadsZ{1};
     };
 }
