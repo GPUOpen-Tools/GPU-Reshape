@@ -217,24 +217,32 @@ IL::ID InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::E
             return instr->As<IL::StoreBufferRawInstruction>()->index;
         }
         case IL::OpCode::StoreTexture: {
-            auto _instr = instr->As<IL::StoreTextureInstruction>();
+            auto _instr = *instr->As<IL::StoreTextureInstruction>();
 
-            IL::ID index = _instr->index;
-            if (dimensions > 0) x = emitter.Extract(index, program->GetConstants().UInt(0)->id);
-            if (dimensions > 1) y = emitter.Extract(index, program->GetConstants().UInt(1)->id);
-            if (dimensions > 2) z = emitter.Extract(index, program->GetConstants().UInt(2)->id);
+            // Vectorized index?
+            if (const Backend::IL::Type* indexType = program->GetTypeMap().GetType(_instr.index); indexType->Is<Backend::IL::VectorType>()) {
+                if (dimensions > 0) x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
+                if (dimensions > 1) y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
+                if (dimensions > 2) z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
+            } else {
+                x = _instr.index;
+            }
             break;
         }
         case IL::OpCode::LoadTexture: {
-            auto _instr = instr->As<IL::LoadTextureInstruction>();
+            auto _instr = *instr->As<IL::LoadTextureInstruction>();
 
-            IL::ID index = _instr->index;
-            if (dimensions > 0) x = emitter.Extract(index, program->GetConstants().UInt(0)->id);
-            if (dimensions > 1) y = emitter.Extract(index, program->GetConstants().UInt(1)->id);
-            if (dimensions > 2) z = emitter.Extract(index, program->GetConstants().UInt(2)->id);
-
-            if (_instr->mip != IL::InvalidID) {
-                mip = _instr->mip;
+            // Vectorized index?
+            if (const Backend::IL::Type* indexType = program->GetTypeMap().GetType(_instr.index); indexType->Is<Backend::IL::VectorType>()) {
+                if (dimensions > 0) x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
+                if (dimensions > 1) y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
+                if (dimensions > 2) z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
+            } else {
+                x = _instr.index;
+            }
+            
+            if (_instr.mip != IL::InvalidID) {
+                mip = _instr.mip;
             }
             break;
         }
