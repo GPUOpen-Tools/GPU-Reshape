@@ -217,26 +217,22 @@ static TexelAddress InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceToken
         case IL::OpCode::LoadBuffer: {
             // Buffer types just return the linear index
             address.x = instr->As<IL::LoadBufferInstruction>()->index;
-            address.texelOffset = address.x;
-            return address;
+            break;
         }
         case IL::OpCode::StoreBuffer: {
             // Buffer types just return the linear index
             address.x = instr->As<IL::StoreBufferInstruction>()->index;
-            address.texelOffset = address.x;
-            return address;
+            break;
         }
         case IL::OpCode::LoadBufferRaw: {
             // Buffer types just return the linear index
             address.x = instr->As<IL::LoadBufferRawInstruction>()->index;
-            address.texelOffset = address.x;
-            return address;
+            break;
         }
         case IL::OpCode::StoreBufferRaw: {
             // Buffer types just return the linear index
             address.x = instr->As<IL::StoreBufferRawInstruction>()->index;
-            address.texelOffset = address.x;
-            return address;
+            break;
         }
         case IL::OpCode::StoreTexture: {
             auto _instr = *instr->As<IL::StoreTextureInstruction>();
