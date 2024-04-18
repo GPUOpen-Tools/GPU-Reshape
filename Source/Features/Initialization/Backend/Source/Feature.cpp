@@ -615,6 +615,9 @@ static void ChunkedExecution(CommandBuilder& builder, const ComRef<T>& program, 
         // Advance offset
         params.dispatchOffset += workgroupCount * kKernelSize.threadsX;
     }
+
+    // Finalize all writes before potential usage
+    builder.UAVBarrier();
 }
 
 void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const ResourceInfo &info) {

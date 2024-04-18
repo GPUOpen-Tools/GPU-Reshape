@@ -103,6 +103,11 @@ struct CommandBuilder {
         });
     }
 
+    /// Full pipeline UAV barrier
+    void UAVBarrier() {
+        buffer.Add(UAVBarrierCommand{});
+    }
+
 private:
     CommandBuffer& buffer;
 };

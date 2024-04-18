@@ -38,5 +38,8 @@ enum class CommandType {
     StageBuffer,
 
     /// Invokes
-    Dispatch
+    Dispatch,
+
+    /// Synchronization
+    UAVBarrier
 };

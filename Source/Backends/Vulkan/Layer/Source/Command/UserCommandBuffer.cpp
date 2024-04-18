@@ -293,7 +293,9 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                     cmd->groupCountY,
                     cmd->groupCountZ
                 );
-
+                break;
+            }
+            case CommandType::UAVBarrier: {
                 // Generic shader UAV barrier
                 VkMemoryBarrier barrier{};
                 barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;

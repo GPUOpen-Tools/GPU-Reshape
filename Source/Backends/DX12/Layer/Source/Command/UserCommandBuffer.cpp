@@ -270,8 +270,9 @@ void CommitCommands(DeviceState* device, ID3D12GraphicsCommandList* commandList,
                     cmd->groupCountY,
                     cmd->groupCountZ
                 );
-
-                // Assumed barrier for simplicity
+                break;
+            }
+            case CommandType::UAVBarrier: {
                 D3D12_RESOURCE_BARRIER barrier{};
                 barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
                 commandList->ResourceBarrier(1u, &barrier);

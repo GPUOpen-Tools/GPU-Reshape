@@ -122,3 +122,7 @@ struct DispatchCommand : public TCommand<DispatchCommand, CommandType::Dispatch>
     uint32_t groupCountY;
     uint32_t groupCountZ;
 };
+
+struct UAVBarrierCommand : public TCommand<UAVBarrierCommand, CommandType::UAVBarrier> {
+    
+};

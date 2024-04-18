@@ -553,6 +553,7 @@ void LoopFeature::HeartBeatThreadWorker() {
             builder.SetShaderProgram(signalShaderProgramID);
             builder.SetEventData(signalShaderProgram->GetSignalEventID(), value.terminationID);
             builder.Dispatch(1, 1, 1);
+            builder.UAVBarrier();
 #else // USE_SIGNAL_PROGRAM
             // Perform staging, ideally with atomic writes
             builder.StageBuffer(terminationBufferID, sizeof(uint32_t) * value.terminationID, sizeof(uint32_t), &stagedValue, StageBufferFlag::Atomic32);
