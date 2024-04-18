@@ -162,7 +162,19 @@ void InitializationFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-IL::ID InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::Emitter<>>& token, IL::ID resource, const IL::InstructionRef<> instr) {
+struct TexelAddress {
+    /// Source coordinates
+    /// todo[init]: offset by base when reporting!
+    IL::ID x{IL::InvalidID};
+    IL::ID y{IL::InvalidID};
+    IL::ID z{IL::InvalidID};
+    IL::ID mip{IL::InvalidID};
+
+    /// Texel address offset
+    IL::ID texelOffset{IL::InvalidID};
+};
+
+static TexelAddress InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::Emitter<>>& token, IL::ID resource, const IL::InstructionRef<> instr) {
     IL::Program* program = emitter.GetProgram();
 
     // Get type
@@ -182,50 +194,60 @@ IL::ID InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::E
         // Boo!
     } else {
         ASSERT(false, "Invalid type");
-        return IL::InvalidID;
+        return {};
     }
 
     // Defaults
     IL::ID zero = program->GetConstants().UInt(0)->id;
 
     // Addressing offsets
-    IL::ID x = zero;
-    IL::ID y = zero;
-    IL::ID z = zero;
-    IL::ID mip = zero;
+    TexelAddress address;
+    address.x = zero;
+    address.y = zero;
+    address.z = zero;
+    address.mip = zero;
+    address.texelOffset = zero;
 
     // Get offsets from instruction
     switch (instr->opCode) {
         default: {
             ASSERT(false, "Invalid instruction");
-            return IL::InvalidID;
+            return address;
         }
         case IL::OpCode::LoadBuffer: {
             // Buffer types just return the linear index
-            return instr->As<IL::LoadBufferInstruction>()->index;
+            address.x = instr->As<IL::LoadBufferInstruction>()->index;
+            address.texelOffset = address.x;
+            return address;
         }
         case IL::OpCode::StoreBuffer: {
             // Buffer types just return the linear index
-            return instr->As<IL::StoreBufferInstruction>()->index;
+            address.x = instr->As<IL::StoreBufferInstruction>()->index;
+            address.texelOffset = address.x;
+            return address;
         }
         case IL::OpCode::LoadBufferRaw: {
             // Buffer types just return the linear index
-            return instr->As<IL::LoadBufferRawInstruction>()->index;
+            address.x = instr->As<IL::LoadBufferRawInstruction>()->index;
+            address.texelOffset = address.x;
+            return address;
         }
         case IL::OpCode::StoreBufferRaw: {
             // Buffer types just return the linear index
-            return instr->As<IL::StoreBufferRawInstruction>()->index;
+            address.x = instr->As<IL::StoreBufferRawInstruction>()->index;
+            address.texelOffset = address.x;
+            return address;
         }
         case IL::OpCode::StoreTexture: {
             auto _instr = *instr->As<IL::StoreTextureInstruction>();
 
             // Vectorized index?
             if (const Backend::IL::Type* indexType = program->GetTypeMap().GetType(_instr.index); indexType->Is<Backend::IL::VectorType>()) {
-                if (dimensions > 0) x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
-                if (dimensions > 1) y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
-                if (dimensions > 2) z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
+                if (dimensions > 0) address.x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
+                if (dimensions > 1) address.y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
+                if (dimensions > 2) address.z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
             } else {
-                x = _instr.index;
+                address.x = _instr.index;
             }
             break;
         }
@@ -234,15 +256,15 @@ IL::ID InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::E
 
             // Vectorized index?
             if (const Backend::IL::Type* indexType = program->GetTypeMap().GetType(_instr.index); indexType->Is<Backend::IL::VectorType>()) {
-                if (dimensions > 0) x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
-                if (dimensions > 1) y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
-                if (dimensions > 2) z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
+                if (dimensions > 0) address.x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
+                if (dimensions > 1) address.y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
+                if (dimensions > 2) address.z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
             } else {
-                x = _instr.index;
+                address.x = _instr.index;
             }
             
             if (_instr.mip != IL::InvalidID) {
-                mip = _instr.mip;
+                address.mip = _instr.mip;
             }
             break;
         }
@@ -259,13 +281,16 @@ IL::ID InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::E
             emitter.Mul(_instr->coordinate, )
 #endif
             
-            return zero;
+            return address;
         }
     }
 
     // Determine texel address
-    Backend::IL::TexelAddressEmitter address(emitter, token);
-    return address.LocalTexelAddress(x, y, z, mip, isVolumetric);
+    Backend::IL::TexelAddressEmitter addressEmitter(emitter, token);
+    address.texelOffset = addressEmitter.LocalTexelAddress(address.x, address.y, address.z, address.mip, isVolumetric);
+
+    // OK
+    return address;
 }
 
 void InitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
@@ -342,7 +367,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             IL::ResourceTokenEmitter token(emitter, resource);
 
             // Get the texel address
-            IL::ID texelAddress = InjectTexelAddress(emitter, token, resource, ref);
+            TexelAddress texelAddress = InjectTexelAddress(emitter, token, resource, ref);
 
             // Get token details
             IL::ID PUID = token.GetPUID();
@@ -351,7 +376,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             IL::ID baseMemoryOffsetAlign32 = emitter.Extract(emitter.LoadBuffer(emitter.Load(puidMemoryBaseBufferDataID), PUID), zero);
 
             // Mark it as initialized
-            AtomicOrTexelAddress(emitter, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress);
+            AtomicOrTexelAddress(emitter, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress.texelOffset);
             
             // Resume on next
             return emitter.GetIterator();
@@ -378,7 +403,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         IL::ResourceTokenEmitter token(pre, resource);
 
         // Get the texel address
-        IL::ID texelAddress = InjectTexelAddress(pre, token, resource, IL::InstructionRef(instr));
+        TexelAddress texelAddress = InjectTexelAddress(pre, token, resource, IL::InstructionRef(instr));
         
         // Get token details
         IL::ID PUID = token.GetPUID();
@@ -388,7 +413,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
 
         // Fetch the bit
         // todo[init]: To atomic, or not to atomic?
-        IL::ID texelBit = ReadTexelAddress(pre, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress);
+        IL::ID texelBit = ReadTexelAddress(pre, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress.texelOffset);
 
         // If the bit is not set, the texel isn't initialized
         IL::ID cond = pre.Equal(texelBit, zero);
@@ -405,6 +430,10 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         if (config.detail) {
             msg.chunks |= UninitializedResourceMessage::Chunk::Detail;
             msg.detail.token = token.GetPackedToken();
+            msg.detail.coordinate[0] = texelAddress.x;
+            msg.detail.coordinate[1] = texelAddress.y;
+            msg.detail.coordinate[2] = texelAddress.z;
+            msg.detail.mip = texelAddress.mip;
         }
         
         // Export the message

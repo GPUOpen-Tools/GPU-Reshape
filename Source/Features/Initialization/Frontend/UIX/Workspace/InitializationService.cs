@@ -208,8 +208,11 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     // Get resource
                     ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
 
+                    // Read coordinate
+                    uint[] coordinate = detailChunk.coordinate;
+                    
                     // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance(_reducedMessages[message.Key].Content);
+                    resourceValidationObject.AddUniqueInstance($"Uninitialized read at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}");
                 }
             }
             

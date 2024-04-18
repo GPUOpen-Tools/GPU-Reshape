@@ -207,7 +207,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace
                     uint[] coordinate = detailChunk.coordinate;
                     
                     // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance($"Out of bounds at {coordinate[0]}, {coordinate[1]}, {coordinate[2]}");
+                    resourceValidationObject.AddUniqueInstance($"Out of bounds at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}");
                 }
             }
             
