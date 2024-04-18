@@ -27,6 +27,7 @@
 #include <Features/Initialization/MaskBlitShaderProgram.h>
 #include <Features/Initialization/BitIndexing.h>
 #include <Features/Initialization/MaskBlitParameters.h>
+#include <Features/Initialization/KernelShared.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -35,6 +36,7 @@
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Devices/StructResourceTokenEmitter.h>
 #include <Backend/Resource/TexelAddressEmitter.h>
+#include <Backend/Resource/TexelCommon.h>
 
 // Common
 #include <Common/Registry.h>
@@ -66,6 +68,9 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
     if (!basicBlock) {
         return;
     }
+        
+    // Launch in shared configuration
+    program.GetMetadataMap().AddMetadata(program.GetEntryPoint()->GetID(), kKernelSize);
 
     // Get the initialization buffer
     IL::ID initializationMaskBufferDataID = program.GetShaderDataMap().Get(initializationMaskBufferID)->id;
@@ -84,8 +89,9 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
     // Get dispatch offsets
     IL::ID dispatchID = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
     IL::ID dispatchXID = emitter.Extract(dispatchID, constants.UInt(0)->id);
-    IL::ID dispatchYID = emitter.Extract(dispatchID, constants.UInt(1)->id);
-    IL::ID dispatchZID = emitter.Extract(dispatchID, constants.UInt(2)->id);
+
+    // Base dispatch offset
+    dispatchXID = emitter.Add(dispatchXID, data.Get<&MaskBlitParameters::dispatchOffset>(emitter));
     
     // Get memory base offset
     IL::ID baseAlign32 = data.Get<&MaskBlitParameters::memoryBaseElementAlign32>(emitter);
@@ -99,12 +105,20 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
     } else {
         // Texel addressing computation
         Backend::IL::TexelAddressEmitter address(emitter, token);
+
+        // Convert to 3d
+        Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
+            emitter, dispatchXID,
+            data.Get<&MaskBlitParameters::width>(emitter),
+            data.Get<&MaskBlitParameters::height>(emitter),
+            data.Get<&MaskBlitParameters::depth>(emitter)
+        );
         
         // Compute the intra-resource offset
         texel = address.LocalTexelAddress(
-            emitter.Add(data.Get<&MaskBlitParameters::baseX>(emitter), dispatchXID),
-            emitter.Add(data.Get<&MaskBlitParameters::baseY>(emitter), dispatchYID),
-            emitter.Add(data.Get<&MaskBlitParameters::baseZ>(emitter), dispatchZID),
+            emitter.Add(data.Get<&MaskBlitParameters::baseX>(emitter), index.x),
+            emitter.Add(data.Get<&MaskBlitParameters::baseY>(emitter), index.y),
+            emitter.Add(data.Get<&MaskBlitParameters::baseZ>(emitter), index.z),
             data.Get<&MaskBlitParameters::mip>(emitter),
             isVolumetric
         );

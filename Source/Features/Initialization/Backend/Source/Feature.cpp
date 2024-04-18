@@ -49,6 +49,7 @@
 #include <Features/Initialization/BitIndexing.h>
 #include <Features/Initialization/MaskBlitParameters.h>
 #include <Features/Initialization/MaskCopyRangeParameters.h>
+#include <Features/Initialization/KernelShared.h>
 
 // Generated schema
 #include <Schemas/Features/Initialization.h>
@@ -413,6 +414,11 @@ static uint32_t Cast32Checked(uint64_t value) {
     return static_cast<uint32_t>(value);
 }
 
+/// Get the number of workgroups
+static uint32_t GetWorkgroupCount(uint64_t value, uint32_t align) {
+    return Cast32Checked((value + align - 1) / align);
+}
+
 void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
     std::lock_guard guard(mutex);
 
@@ -588,6 +594,29 @@ void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
     commandContexts.erase(contextHandle);
 }
 
+/// Execute a program in a chunked fashion, respecting the API limits
+/// \param builder destination builder
+/// \param program program to execute, must be bound prior
+/// \param params parameters updated every iteration
+/// \param width absolute width
+template<typename T, typename P>
+static void ChunkedExecution(CommandBuilder& builder, const ComRef<T>& program, P& params, uint64_t width) {
+    // Determine the total number of chunks
+    uint64_t chunkCount = GetWorkgroupCount(width, kKernelSize.threadsX);
+
+    // Execute all chunks
+    for (uint64_t offset = 0; offset < chunkCount; offset += kMaxDispatchThreadGroupPerDimension) {
+        auto workgroupCount = std::min<uint32_t>(kMaxDispatchThreadGroupPerDimension, Cast32Checked(chunkCount - offset));
+
+        // Dispatch the current chunk size
+        builder.SetDescriptorData(program->GetDataID(), params);
+        builder.Dispatch(workgroupCount, 1, 1);
+
+        // Advance offset
+        params.dispatchOffset += workgroupCount * kKernelSize.threadsX;
+    }
+}
+
 void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const ResourceInfo &info) {
     const ResourceProgram<MaskBlitShaderProgram>& program = blitPrograms[{info.token.type, info.isVolumetric}];
     
@@ -611,16 +640,7 @@ void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const Resour
         CommandBuilder builder(buffer);
         builder.SetShaderProgram(program.id);
         builder.SetDescriptorData(program.program->GetDestTokenID(), info.token);
-
-        // Blit all the chunks
-        for (uint64_t offset = 0; offset < info.bufferDescriptor.width; offset += kMaxDispatchThreadGroupPerDimension) {
-            auto width = std::min<uint32_t>(kMaxDispatchThreadGroupPerDimension, Cast32Checked(info.bufferDescriptor.width - offset));
-            builder.SetDescriptorData(program.program->GetDataID(), params);
-            builder.Dispatch(width, 1, 1);
-
-            // Next chunk
-            params.baseX += kMaxDispatchThreadGroupPerDimension;
-        }
+        ChunkedExecution(builder, program.program, params, info.bufferDescriptor.width);
     } else {
         // Blit each mip separately
         for (uint32_t i = 0; i < info.textureDescriptor.region.mipCount; i++) {
@@ -637,16 +657,16 @@ void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const Resour
             }
 
             // Expected dimensions
-            uint32_t mipWidth = info.textureDescriptor.region.width >> i;
-            uint32_t mipHeight = info.textureDescriptor.region.height >> i;
-            uint32_t mipDepth = info.textureDescriptor.region.depth >> i;
+            params.width = info.textureDescriptor.region.width >> i;
+            params.height = info.textureDescriptor.region.height >> i;
+            params.depth = info.textureDescriptor.region.depth >> i;
         
             // Blit the given range int he mip
             CommandBuilder builder(buffer);
             builder.SetShaderProgram(program.id);
             builder.SetDescriptorData(program.program->GetDataID(), params);
             builder.SetDescriptorData(program.program->GetDestTokenID(), info.token);
-            builder.Dispatch(mipWidth, mipHeight, mipDepth);
+            ChunkedExecution(builder, program.program, params, params.width * params.height * params.depth);
         }
     }
 }
@@ -681,17 +701,7 @@ void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer
         builder.SetShaderProgram(program.id);
         builder.SetDescriptorData(program.program->GetSourceTokenID(), source.token);
         builder.SetDescriptorData(program.program->GetDestTokenID(), dest.token);
-        
-        // Blit all the chunks
-        for (uint64_t offset = 0; offset < source.bufferDescriptor.width; offset += kMaxDispatchThreadGroupPerDimension) {
-            auto width = std::min<uint32_t>(kMaxDispatchThreadGroupPerDimension, Cast32Checked(source.bufferDescriptor.width - offset));
-            builder.SetDescriptorData(program.program->GetDataID(), params);
-            builder.Dispatch(width, 1, 1);
-
-            // Next chunk
-            params.sourceBaseX += kMaxDispatchThreadGroupPerDimension;
-            params.destBaseX += kMaxDispatchThreadGroupPerDimension;
-        }
+        ChunkedExecution(builder, program.program, params, source.bufferDescriptor.width);
     } else {
         // Copy each mip separately
         for (uint32_t i = 0; i < source.textureDescriptor.region.mipCount; i++) {
@@ -718,9 +728,9 @@ void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer
             }
 
             // Expected dimensions
-            uint32_t mipWidth = source.textureDescriptor.region.width >> i;
-            uint32_t mipHeight = source.textureDescriptor.region.height >> i;
-            uint32_t mipDepth = source.textureDescriptor.region.depth >> i;
+            params.width = source.textureDescriptor.region.width >> i;
+            params.height = source.textureDescriptor.region.height >> i;
+            params.depth = source.textureDescriptor.region.depth >> i;
         
             // Blit the entire range
             CommandBuilder builder(buffer);
@@ -728,7 +738,7 @@ void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer
             builder.SetDescriptorData(program.program->GetDataID(), params);
             builder.SetDescriptorData(program.program->GetSourceTokenID(), source.token);
             builder.SetDescriptorData(program.program->GetDestTokenID(), dest.token);
-            builder.Dispatch(mipWidth, mipHeight, mipDepth);
+            ChunkedExecution(builder, program.program, params, params.width * params.height * params.depth);
         }
     }
 }
@@ -772,13 +782,18 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
             params.destBaseZ += dest.textureDescriptor.region.baseSlice;
         }
 
+        // Set dimensions
+        params.width = dest.textureDescriptor.region.width;
+        params.height = dest.textureDescriptor.region.height;
+        params.depth = dest.textureDescriptor.region.depth;
+
         // Blit the given range
         CommandBuilder builder(buffer);
         builder.SetShaderProgram(program.id);
         builder.SetDescriptorData(program.program->GetDataID(), params);
         builder.SetDescriptorData(program.program->GetSourceTokenID(), source.token);
         builder.SetDescriptorData(program.program->GetDestTokenID(), dest.token);
-        builder.Dispatch(dest.textureDescriptor.region.width, dest.textureDescriptor.region.height, dest.textureDescriptor.region.depth);
+        ChunkedExecution(builder, program.program, params, params.width * params.height * params.depth);
     } else {
         // Texture -> Buffer
 
@@ -800,13 +815,18 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
             params.sourceBaseZ += source.textureDescriptor.region.baseSlice;
         }
 
+        // Set dimensions
+        params.width = source.textureDescriptor.region.width;
+        params.height = source.textureDescriptor.region.height;
+        params.depth = source.textureDescriptor.region.depth;
+
         // Blit the given range
         CommandBuilder builder(buffer);
         builder.SetShaderProgram(program.id);
         builder.SetDescriptorData(program.program->GetDataID(), params);
         builder.SetDescriptorData(program.program->GetSourceTokenID(), source.token);
         builder.SetDescriptorData(program.program->GetDestTokenID(), dest.token);
-        builder.Dispatch(source.textureDescriptor.region.width, source.textureDescriptor.region.height, source.textureDescriptor.region.depth);
+        ChunkedExecution(builder, program.program, params, params.width * params.height * params.depth);
     }
 }
 

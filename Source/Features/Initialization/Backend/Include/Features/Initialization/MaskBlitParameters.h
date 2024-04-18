@@ -38,6 +38,14 @@ struct MaskBlitParameters {
     uint32_t baseY{0};
     uint32_t baseZ{0};
 
+    /// Dimensions
+    uint32_t width{1};
+    uint32_t height{1};
+    uint32_t depth{1};
+
+    /// Dispatch offset
+    uint32_t dispatchOffset{0};
+
     /// Destination mip
     uint32_t mip{0};
 };

@@ -27,6 +27,7 @@
 #include <Features/Initialization/MaskCopyRangeShaderProgram.h>
 #include <Features/Initialization/BitIndexing.h>
 #include <Features/Initialization/MaskCopyRangeParameters.h>
+#include <Features/Initialization/KernelShared.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -35,6 +36,7 @@
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Devices/StructResourceTokenEmitter.h>
 #include <Backend/Resource/TexelAddressEmitter.h>
+#include <Backend/Resource/TexelCommon.h>
 
 // Common
 #include <Common/Registry.h>
@@ -67,6 +69,9 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     if (!basicBlock) {
         return;
     }
+        
+    // Launch in shared configuration
+    program.GetMetadataMap().AddMetadata(program.GetEntryPoint()->GetID(), kKernelSize);
 
     // Get the initialization buffer
     IL::ID initializationMaskBufferDataID = program.GetShaderDataMap().Get(initializationMaskBufferID)->id;
@@ -86,8 +91,9 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     // Get dispatch offsets
     IL::ID dispatchID = emitter.KernelValue(Backend::IL::KernelValue::DispatchThreadID);
     IL::ID dispatchXID = emitter.Extract(dispatchID, constants.UInt(0)->id);
-    IL::ID dispatchYID = emitter.Extract(dispatchID, constants.UInt(1)->id);
-    IL::ID dispatchZID = emitter.Extract(dispatchID, constants.UInt(2)->id);
+
+    // Base dispatch offset
+    dispatchXID = emitter.Add(dispatchXID, data.Get<&MaskCopyRangeParameters::dispatchOffset>(emitter));
     
     // Get memory base offsets
     IL::ID sourceBaseAlign32 = data.Get<&MaskCopyRangeParameters::sourceMemoryBaseElementAlign32>(emitter);
@@ -104,20 +110,28 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             sourceTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), dispatchXID);
             destTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), dispatchXID);
         } else {
+            // Convert to 3d
+            Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
+                emitter, dispatchXID,
+                data.Get<&MaskCopyRangeParameters::width>(emitter),
+                data.Get<&MaskCopyRangeParameters::height>(emitter),
+                data.Get<&MaskCopyRangeParameters::depth>(emitter)
+            );
+            
             // Compute the source intra-resource offset
             sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken).LocalTexelAddress(
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), dispatchXID),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), dispatchYID),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), dispatchZID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), index.x),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), index.y),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), index.z),
                 data.Get<&MaskCopyRangeParameters::sourceMip>(emitter),
                 isVolumetric
             );
 
             // Compute the destination intra-resource offset
             destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken).LocalTexelAddress(
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), dispatchXID),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), dispatchYID),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), dispatchZID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), index.x),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), index.y),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), index.z),
                 data.Get<&MaskCopyRangeParameters::destMip>(emitter),
                 isVolumetric
             );
@@ -126,14 +140,22 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
         // Asymmetric copy, uses placement descriptors
         // Follows 1D scheduling with the total number of texels
 
+        // Convert to 3d
+        Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
+            emitter, dispatchXID,
+            data.Get<&MaskCopyRangeParameters::width>(emitter),
+            data.Get<&MaskCopyRangeParameters::height>(emitter),
+            data.Get<&MaskCopyRangeParameters::depth>(emitter)
+        );
+        
         // Placement dimensions
         IL::ID placementWidth  = data.Get<&MaskCopyRangeParameters::placementRowLength>(emitter);
         IL::ID placementHeight = data.Get<&MaskCopyRangeParameters::placementImageHeight>(emitter);
         
         // z * w * h + y * w + x
-        IL::ID placementOffset = emitter.Mul(dispatchZID, emitter.Mul(placementWidth, placementHeight));
-        placementOffset = emitter.Add(placementOffset, emitter.Mul(dispatchYID, placementWidth));
-        placementOffset = emitter.Add(placementOffset, dispatchXID);
+        IL::ID placementOffset = emitter.Mul(index.z, emitter.Mul(placementWidth, placementHeight));
+        placementOffset = emitter.Add(placementOffset, emitter.Mul(index.y, placementWidth));
+        placementOffset = emitter.Add(placementOffset, index.x);
         
         // Buffer Placement -> Texture
         if (from == Backend::IL::ResourceTokenType::Buffer) {
@@ -142,9 +164,9 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             
             // Compute the destination intra-resource offset
             destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken).LocalTexelAddress(
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), dispatchXID),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), dispatchYID),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), dispatchZID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), index.x),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), index.y),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), index.z),
                 data.Get<&MaskCopyRangeParameters::destMip>(emitter),
                 isVolumetric
             );
@@ -153,9 +175,9 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             
             // Compute the source intra-resource offset
             sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken).LocalTexelAddress(
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), dispatchXID),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), dispatchYID),
-                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), dispatchZID),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), index.x),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), index.y),
+                emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), index.z),
                 data.Get<&MaskCopyRangeParameters::sourceMip>(emitter),
                 isVolumetric
             );
