@@ -484,6 +484,9 @@ void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
 }
 
 void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
+    std::lock_guard guard(mutex);
+
+    // Get allocation
     Allocation& allocation = allocations.at(source.token.puid);
 
     // todo[init]: free it!
@@ -503,19 +506,23 @@ void InitializationFeature::OnMapResource(const ResourceInfo &source) {
 }
 
 void InitializationFeature::OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
+    std::lock_guard guard(mutex);
     CopyResourceMaskRange(context->buffer, source, dest);
 }
 
 void InitializationFeature::OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
+    std::lock_guard guard(mutex);
     // todo[init]: How can we handle resolve mapping sensibly?
     BlitResourceMask(context->buffer, dest);
 }
 
 void InitializationFeature::OnClearResource(CommandContext* context, const ResourceInfo& resource) {
+    std::lock_guard guard(mutex);
     BlitResourceMask(context->buffer, resource);
 }
 
 void InitializationFeature::OnWriteResource(CommandContext* context, const ResourceInfo& resource) {
+    std::lock_guard guard(mutex);
     BlitResourceMask(context->buffer, resource);
 }
 
