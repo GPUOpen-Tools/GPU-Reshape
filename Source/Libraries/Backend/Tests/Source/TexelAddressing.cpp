@@ -166,3 +166,23 @@ TEST_CASE("Backend.IL.TexelAddressing.Volumetric.1x1Mip") {
 
     Test(TokenEmitter(), false);
 }
+
+TEST_CASE("Backend.IL.TexelAddressing.1D") {
+    class TokenEmitter {
+    public:
+        uint32_t GetWidth() { return 64; }
+        uint32_t GetHeight() { return 1; }
+        uint32_t GetDepthOrSliceCount() { return 1; }
+        uint32_t GetMipCount() { return 1; }
+        uint32_t GetViewBaseWidth() { return 0; }
+        uint32_t GetViewWidth() { return 64; }
+        uint32_t GetViewBaseMip() { return 0; }
+        uint32_t GetViewBaseSlice() { return 0; }
+        uint32_t GetViewSliceCount() { return 1; }
+        uint32_t GetViewMipCount() { return 1; }
+        bool IsVolumetric() { return false; }
+    };
+
+    Test(TokenEmitter());
+}
+

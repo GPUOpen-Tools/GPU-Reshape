@@ -43,9 +43,9 @@ public:
         uint32_t mipTexelCount = 0;
 
         // Align all dimensions to a power of two
-        uint32_t widthAlignP2 = std::bit_ceil(info.token.width - 1u);
-        uint32_t heightAlignP2 = std::bit_ceil(info.token.height - 1u);
-        uint32_t depthAlignP2 = std::bit_ceil(info.token.depthOrSliceCount - 1u);
+        uint32_t widthAlignP2 = std::max(std::bit_ceil(info.token.width - 1u), 1u);
+        uint32_t heightAlignP2 = std::max(std::bit_ceil(info.token.height - 1u), 1u);
+        uint32_t depthAlignP2 = std::max(std::bit_ceil(info.token.depthOrSliceCount - 1u), 1u);
 
         // Aggregate per mip level
         for (uint32_t i = 0; i < info.token.mipCount; i++) {

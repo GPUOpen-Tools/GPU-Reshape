@@ -223,7 +223,11 @@ namespace Backend::IL {
             ExtendedEmitter extended(emitter);
 
             // 2u << FirstBitHigh(X - 1)
-            return emitter.BitShiftLeft(emitter.UInt32(2u), extended.template FirstBitHigh<UInt32>(emitter.Sub(x, emitter.UInt32(1))));
+            UInt32 alignedX = emitter.BitShiftLeft(emitter.UInt32(2u), extended.template FirstBitHigh<UInt32>(emitter.Sub(x, emitter.UInt32(1))));
+
+            // Edge case, if the value is 1, return 1
+            UInt32 isOne = emitter.Equal(x, emitter.UInt32(1u));
+            return emitter.Select(isOne, emitter.UInt32(1u), alignedX);
         }
         
     private:        

@@ -80,6 +80,25 @@ namespace IL {
             return lhs >> rhs;
         }
 
+        /// Check for equality between two values
+        /// \param lhs lhs to equate
+        /// \param rhs lhs to equate
+        /// \return true if equal
+        template<typename T>
+        bool Equal(T lhs, T rhs) {
+            return lhs == rhs;
+        }
+
+        /// Select between two values
+        /// \param condition conditional value
+        /// \param passed value selected if true
+        /// \param failed value selected if false
+        /// \return selected value
+        template<typename T>
+        T Select(bool condition, T passed, T failed) {
+            return condition ? passed : failed;
+        }
+
         /// Perform an extended instruction
         /// \param op given op code
         /// \param a first argument
