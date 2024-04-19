@@ -42,17 +42,22 @@ public:
     uint64_t GetAllocationSize(const ResourceInfo& info) {        
         uint32_t mipTexelCount = 0;
 
+        // Align all dimensions to a power of two
+        uint32_t widthAlignP2 = std::bit_ceil(info.token.width - 1u);
+        uint32_t heightAlignP2 = std::bit_ceil(info.token.height - 1u);
+        uint32_t depthAlignP2 = std::bit_ceil(info.token.depthOrSliceCount - 1u);
+
         // Aggregate per mip level
         for (uint32_t i = 0; i < info.token.mipCount; i++) {
-            uint32_t mipWidth  = std::max(1u, info.token.width  >> i);
-            uint32_t mipHeight = std::max(1u, info.token.height >> i);
+            uint32_t mipWidth  = std::max(1u, widthAlignP2  >> i);
+            uint32_t mipHeight = std::max(1u, heightAlignP2 >> i);
 
             // If volumetric, depth is affected by the mip level
             uint32_t mipDepthOrArraySize;
             if (info.isVolumetric) {
-                mipDepthOrArraySize = std::max(1u, info.token.depthOrSliceCount >> i);
+                mipDepthOrArraySize = std::max(1u, depthAlignP2 >> i);
             } else {
-                mipDepthOrArraySize = info.token.depthOrSliceCount;
+                mipDepthOrArraySize = depthAlignP2;
             }
 
             // Just add it!

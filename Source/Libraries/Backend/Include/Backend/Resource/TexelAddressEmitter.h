@@ -40,7 +40,10 @@ namespace Backend::IL {
         /// \param emitter destination instruction emitter
         /// \param tokenEmitter destination token emitter
         TexelAddressEmitter(E& emitter, RTE& tokenEmitter) : emitter(emitter), tokenEmitter(tokenEmitter) {
-            
+            // Cache the aligned dimensions
+            widthAlignP2 = AlignToPow2Upper(tokenEmitter.GetWidth());
+            heightAlignP2 = AlignToPow2Upper(tokenEmitter.GetHeight());
+            depthOrSliceCountAlignP2 = AlignToPow2Upper(tokenEmitter.GetDepthOrSliceCount());
         }
 
     public:
@@ -225,6 +228,14 @@ namespace Backend::IL {
             // w*h*d
             return emitter.Mul(emitter.Mul(width, height), depth);
         }
+
+        /// Align a resource dimension
+        UInt32 AlignToPow2Upper(UInt32 x) {
+            ExtendedEmitter extended(emitter);
+
+            // 2u << FirstBitHigh(X - 1)
+            return emitter.BitShiftLeft(emitter.UInt32(2u), extended.template FirstBitHigh<UInt32>(emitter.Sub(x, emitter.UInt32(1))));
+        }
         
     private:        
         /// Current emitter
@@ -232,5 +243,10 @@ namespace Backend::IL {
 
         /// Resource token emitter
         RTE& tokenEmitter;
+
+        /// Cached dimensions
+        IL::ID widthAlignP2{InvalidID};
+        IL::ID heightAlignP2{InvalidID};
+        IL::ID depthOrSliceCountAlignP2{InvalidID};
     };
 }
