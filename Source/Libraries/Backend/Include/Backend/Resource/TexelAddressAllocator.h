@@ -40,31 +40,36 @@ public:
     /// \param info given resource information
     /// \return number of entries
     uint64_t GetAllocationSize(const ResourceInfo& info) {        
-        uint32_t mipTexelCount = 0;
+        uint32_t texelCount = 0;
 
-        // Align all dimensions to a power of two
-        uint32_t widthAlignP2 = std::max(std::bit_ceil(info.token.width - 1u), 1u);
-        uint32_t heightAlignP2 = std::max(std::bit_ceil(info.token.height - 1u), 1u);
-        uint32_t depthAlignP2 = std::max(std::bit_ceil(info.token.depthOrSliceCount - 1u), 1u);
+        // Buffer types have no complex addressing mechanisms
+        if (info.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+            texelCount += info.token.width;
+        } else {
+            // Align all texture dimensions to a power of two
+            uint32_t widthAlignP2 = std::max(std::bit_ceil(info.token.width - 1u), 1u);
+            uint32_t heightAlignP2 = std::max(std::bit_ceil(info.token.height - 1u), 1u);
+            uint32_t depthAlignP2 = std::max(std::bit_ceil(info.token.depthOrSliceCount - 1u), 1u);
 
-        // Aggregate per mip level
-        for (uint32_t i = 0; i < info.token.mipCount; i++) {
-            uint32_t mipWidth  = std::max(1u, widthAlignP2  >> i);
-            uint32_t mipHeight = std::max(1u, heightAlignP2 >> i);
+            // Aggregate per mip level
+            for (uint32_t i = 0; i < info.token.mipCount; i++) {
+                uint32_t mipWidth  = std::max(1u, widthAlignP2  >> i);
+                uint32_t mipHeight = std::max(1u, heightAlignP2 >> i);
 
-            // If volumetric, depth is affected by the mip level
-            uint32_t mipDepthOrArraySize;
-            if (info.isVolumetric) {
-                mipDepthOrArraySize = std::max(1u, depthAlignP2 >> i);
-            } else {
-                mipDepthOrArraySize = depthAlignP2;
+                // If volumetric, depth is affected by the mip level
+                uint32_t mipDepthOrArraySize;
+                if (info.isVolumetric) {
+                    mipDepthOrArraySize = std::max(1u, depthAlignP2 >> i);
+                } else {
+                    mipDepthOrArraySize = depthAlignP2;
+                }
+
+                // Just add it!
+                texelCount += mipWidth * mipHeight * mipDepthOrArraySize;
             }
-
-            // Just add it!
-            mipTexelCount += mipWidth * mipHeight * mipDepthOrArraySize;
         }
         
-        return mipTexelCount;
+        return texelCount;
     }
 
     /// Allocate from a given length

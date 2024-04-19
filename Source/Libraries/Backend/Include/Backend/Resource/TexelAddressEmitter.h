@@ -41,6 +41,7 @@ namespace Backend::IL {
         /// \param tokenEmitter destination token emitter
         TexelAddressEmitter(E& emitter, RTE& tokenEmitter) : emitter(emitter), tokenEmitter(tokenEmitter) {
             // Cache the aligned dimensions
+            // Only matters for texture dimensions
             widthAlignP2 = AlignToPow2Upper(tokenEmitter.GetWidth());
             heightAlignP2 = AlignToPow2Upper(tokenEmitter.GetHeight());
             depthOrSliceCountAlignP2 = AlignToPow2Upper(tokenEmitter.GetDepthOrSliceCount());

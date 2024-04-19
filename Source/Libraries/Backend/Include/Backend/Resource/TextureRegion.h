@@ -44,7 +44,7 @@ struct TextureRegion {
     uint32_t offsetZ{0};
 
     /// Regional sizes
-    uint32_t width{0};
-    uint32_t height{0};
-    uint32_t depth{0};
+    uint32_t width{1};
+    uint32_t height{1};
+    uint32_t depth{1};
 };
