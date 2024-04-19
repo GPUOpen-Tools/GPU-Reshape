@@ -533,6 +533,8 @@ void InitializationFeature::OnWriteResource(CommandContext* context, const Resou
 }
 
 void InitializationFeature::OnBeginRenderPass(CommandContext *context, const RenderPassInfo &passInfo) {
+    std::lock_guard guard(mutex);
+    
     // TODO: Only blit the "active" render pass region
     
     // Initialize all color targets
