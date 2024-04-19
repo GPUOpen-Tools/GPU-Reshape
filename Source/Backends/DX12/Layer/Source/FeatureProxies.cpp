@@ -131,7 +131,7 @@ static ResourceInfo GetSourceRegionResourceInfo(ResourceState* state, const D3D1
     // Calculate source bounds
     uint32_t width = static_cast<uint32_t>(pSrcBox ? pSrcBox->right - pSrcBox->left : state->desc.Width);
     uint32_t height = pSrcBox ? pSrcBox->bottom - pSrcBox->top : state->desc.Height;
-    uint32_t depth = pSrcBox ? pSrcBox->front - pSrcBox->back : state->desc.DepthOrArraySize;
+    uint32_t depth = pSrcBox ? pSrcBox->back - pSrcBox->front : state->desc.DepthOrArraySize;
 
     // Number of bytes for the format
     uint32_t formatByteCount = GetFormatByteSize(format);
@@ -192,7 +192,7 @@ static ResourceInfo GetDestRegionResourceInfo(ResourceState* state, const D3D12_
     // Calculate source bounds
     uint32_t width = static_cast<uint32_t>(pSrcBox ? pSrcBox->right - pSrcBox->left : state->desc.Width);
     uint32_t height = pSrcBox ? pSrcBox->bottom - pSrcBox->top : state->desc.Height;
-    uint32_t depth = pSrcBox ? pSrcBox->front - pSrcBox->back : state->desc.DepthOrArraySize;
+    uint32_t depth = pSrcBox ? pSrcBox->back - pSrcBox->front : state->desc.DepthOrArraySize;
 
     // Number of bytes for the format
     uint32_t formatByteCount = GetFormatByteSize(format);
