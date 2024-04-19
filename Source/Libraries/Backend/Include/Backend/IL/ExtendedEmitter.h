@@ -123,6 +123,22 @@ namespace IL {
             return emitter.Extended(Backend::IL::ExtendedOp::Sqrt, x);
         }
 
+        /// Find the (zero based) index of the first bit set, starting from the low order
+        /// \param x value
+        /// \return result
+        template<typename T>
+        T FirstBitLow(T x) {
+            return emitter.Extended(Backend::IL::ExtendedOp::FirstBitLow, x);
+        }
+
+        /// Find the (zero based) index of the first bit set, starting from the high order
+        /// \param x value
+        /// \return result
+        template<typename T>
+        T FirstBitHigh(T x) {
+            return emitter.Extended(Backend::IL::ExtendedOp::FirstBitHigh, x);
+        }
+
     private:
         /// Current emitter
         E& emitter;

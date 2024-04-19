@@ -125,6 +125,12 @@ namespace IL {
                 case Backend::IL::ExtendedOp::Sqrt: {
                     return static_cast<T>(std::sqrt(ops[0]));
                 }
+                case Backend::IL::ExtendedOp::FirstBitLow: {
+                    return 1u << std::countr_zero(ops[0]);
+                }
+                case Backend::IL::ExtendedOp::FirstBitHigh: {
+                    return std::bit_width(ops[0]) - 1;
+                }
             }
         }
 

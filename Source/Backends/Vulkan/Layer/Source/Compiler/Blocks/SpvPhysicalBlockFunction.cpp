@@ -1976,6 +1976,22 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                         operands.Add(extended->operands[0]);
                         break;
                     }
+                    case Backend::IL::ExtendedOp::FirstBitLow: {
+                        std450Id = GLSLstd450FindILsb;
+                        operands.Add(extended->operands[0]);
+                        break;
+                    }
+                    case Backend::IL::ExtendedOp::FirstBitHigh: {
+                        auto type = GetComponentType(program.GetTypeMap().GetType(extended->operands[0]));
+                        if (type->As<Backend::IL::IntType>()->signedness) {
+                            std450Id = GLSLstd450FindSMsb;
+                        } else {
+                            std450Id = GLSLstd450FindUMsb;
+                        }
+                        
+                        operands.Add(extended->operands[0]);
+                        break;
+                    }
                 }
 
                 // Get or add the instruction set

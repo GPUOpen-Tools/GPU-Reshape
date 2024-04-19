@@ -36,6 +36,8 @@ namespace Backend::IL {
         Round,
         Pow,
         Exp,
-        Sqrt
+        Sqrt,
+        FirstBitLow,
+        FirstBitHigh
     };
 }

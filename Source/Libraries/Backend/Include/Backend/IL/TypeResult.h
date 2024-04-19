@@ -256,6 +256,8 @@ namespace Backend::IL {
             case ExtendedOp::Pow:
             case ExtendedOp::Exp:
             case ExtendedOp::Sqrt:
+            case ExtendedOp::FirstBitLow:
+            case ExtendedOp::FirstBitHigh:
                 return program.GetTypeMap().GetType(instr->operands[0]);
         }
     }

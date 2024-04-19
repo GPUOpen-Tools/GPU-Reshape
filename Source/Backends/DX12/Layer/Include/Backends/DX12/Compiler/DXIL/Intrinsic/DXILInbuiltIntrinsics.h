@@ -146,5 +146,15 @@ namespace Intrinsics {
         }
     };
 
-    static uint32_t kInbuiltCount = 11;
+    static DXILIntrinsicSpec DxOpUnaryBitsI32 {
+        .uid = 11,
+        .name = "dx.op.unaryBits.i32",
+        .returnType = DXILIntrinsicTypeSpec::I32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::I32 // op0
+        }
+    };
+
+    static uint32_t kInbuiltCount = 12;
 }

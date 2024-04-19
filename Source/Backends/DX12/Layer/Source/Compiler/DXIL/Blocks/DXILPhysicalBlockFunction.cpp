@@ -2583,6 +2583,7 @@ void DXILPhysicalBlockFunction::UnaryOpSVOX(LLVMBlock *block, IL::ID result, IL:
     // Pass through if singular
     if (idType == DXILIDUserType::Singular) {
         functor(type, result, value);
+        table.idRemapper.AllocSourceUserMapping(result, DXILIDUserType::Singular, result);
         return;
     }
 
@@ -3644,6 +3645,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             // log(x) * b
                             BinaryOpSVOX(block, logMulResult, logResult, _instr->operands[1], [&](const Backend::IL::Type*, IL::ID result, IL::ID a, IL::ID b) {
                                 record.SetUser(true, ~0u, result);
+                                record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+                                record.opCount = 3;
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(a);
                                 record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(b);
@@ -3712,6 +3715,50 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
                                 block->AddRecord(CompileIntrinsicCall(result, table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryF32), 2, ops));
                             });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::FirstBitLow: {
+                            UnaryOpSVOX(block, _instr->result, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::FirstbitLo_))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryBitsI32), 2, ops));
+                            });
+                            break;
+                        }
+                        case Backend::IL::ExtendedOp::FirstBitHigh: {
+                            IL::ID firstBitResult = program.GetIdentifierMap().AllocID();
+                            IL::ID constant31     = program.GetConstants().UInt(31)->id;
+
+                            // Select opcode
+                            auto type = GetComponentType(program.GetTypeMap().GetType(_instr->operands[0]));
+                            if (type->As<Backend::IL::IntType>()->signedness) {
+                                opCode = DXILOpcodes::FirstbitSHi_;
+                            } else {
+                                opCode = DXILOpcodes::FirstbitHi_;
+                            }
+                            
+                            // FirstBitHigh
+                            UnaryOpSVOX(block, firstBitResult, _instr->operands[0], [&](const Backend::IL::Type*, IL::ID result, IL::ID value) {
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(opCode))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                                block->AddRecord(CompileIntrinsicCall(result, table.intrinsics.GetIntrinsic(Intrinsics::DxOpUnaryBitsI32), 2, ops));
+                            });
+
+                            // 31 - FirstBitHigh
+                            UnaryOpSVOX(block, _instr->result, firstBitResult, [&](const Backend::IL::Type*, IL::ID result, IL::ID b) {
+                                record.SetUser(true, ~0u, result);
+                                record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
+                                record.opCount = 3;
+                                record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
+                                record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(constant31);
+                                record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(b);
+                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::Sub);
+                                block->AddRecord(record);
+                            });
+                            
+                            opCode = DXILOpcodes::FirstbitHi_;
                             break;
                         }
                     }
