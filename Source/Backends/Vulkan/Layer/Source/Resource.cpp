@@ -128,7 +128,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBufferView(VkDevice device, const Vk
 
     // Optional view properties
     if (pCreateInfo->range != VK_WHOLE_SIZE) {
-        state->virtualMapping.token.viewBaseWidth = static_cast<uint32_t>(pCreateInfo->range);
+        state->virtualMapping.token.viewWidth = static_cast<uint32_t>(pCreateInfo->range);
     }
 
     // Store lookup
