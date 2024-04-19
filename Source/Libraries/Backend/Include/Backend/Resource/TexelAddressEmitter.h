@@ -65,6 +65,9 @@ namespace Backend::IL {
                 x = extended.template Clamp<UInt32>(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetViewWidth(), emitter.UInt32(1)));
             }
 
+            // Offset by base width
+            x = emitter.Add(x, tokenEmitter.GetViewBaseWidth());
+
             // Just assume the linear index
             return x;
         }
