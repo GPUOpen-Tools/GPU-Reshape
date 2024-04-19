@@ -209,8 +209,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkAllocateDescriptorSets(VkDevice device, co
             if (mapping.immutableSamplers && mapping.type == VK_DESCRIPTOR_TYPE_SAMPLER) {
                 // Prepare mapping
                 VirtualResourceMapping virtualMapping;
-                virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
-                virtualMapping.puid = IL::kResourceTokenPUIDReservedNullSampler;
+                virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler);
+                virtualMapping.token.puid = IL::kResourceTokenPUIDReservedNullSampler;
             
                 // Update the table with immutable samplers
                 for (uint32_t descriptorIndex = 0; descriptorIndex < mapping.bindingCount; descriptorIndex++) {

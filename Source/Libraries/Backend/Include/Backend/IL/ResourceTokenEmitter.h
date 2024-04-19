@@ -102,13 +102,33 @@ namespace IL {
         }
 
         /// Get the mip offset
-        ::IL::ID GetBaseMip() {
-            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::BaseMip);
+        ::IL::ID GetViewBaseWidth() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::ViewBaseWidth);
+        }
+
+        /// Get the mip offset
+        ::IL::ID GetViewWidth() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::ViewWidth);
+        }
+
+        /// Get the mip offset
+        ::IL::ID GetViewBaseMip() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::ViewBaseMip);
         }
 
         /// Get the slice offset
-        ::IL::ID GetBaseSlice() {
-            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::BaseSlice);
+        ::IL::ID GetViewBaseSlice() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::ViewBaseSlice);
+        }
+
+        /// Get the slice offset
+        ::IL::ID GetViewSliceCount() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::ViewSliceCount);
+        }
+
+        /// Get the slice offset
+        ::IL::ID GetViewMipCount() {
+            return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::ViewMipCount);
         }
 
         /// Get the token
@@ -145,7 +165,6 @@ namespace IL {
         ::IL::ID format{IL::InvalidID};
         ::IL::ID formatSize{IL::InvalidID};
         ::IL::ID type{IL::InvalidID};
-        ::IL::ID srb{IL::InvalidID};
 
         /// Current emitter
         E& emitter;

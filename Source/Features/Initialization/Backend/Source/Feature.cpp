@@ -281,9 +281,15 @@ static TexelAddress InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceToken
         }
     }
 
-    // Determine texel address
+    // Calculate the texel address
+    // Different resource types may use different addressing schemas
     Backend::IL::TexelAddressEmitter addressEmitter(emitter, token);
-    address.texelOffset = addressEmitter.LocalTexelAddress(address.x, address.y, address.z, address.mip, isVolumetric);
+    if (resourceType->Is<Backend::IL::TextureType>()) {
+        address.texelOffset = addressEmitter.LocalTextureTexelAddress(address.x, address.y, address.z, address.mip, isVolumetric);
+    } else {
+        ASSERT(resourceType->Is<Backend::IL::BufferType>(), "Expected buffer type");
+        address.texelOffset = addressEmitter.LocalBufferTexelAddress(address.x);
+    }
 
     // OK
     return address;
@@ -661,7 +667,7 @@ static void ChunkedExecution(CommandBuilder& builder, const ComRef<T>& program, 
 }
 
 void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const ResourceInfo &info) {
-    const ResourceProgram<MaskBlitShaderProgram>& program = blitPrograms[{info.token.type, info.isVolumetric}];
+    const ResourceProgram<MaskBlitShaderProgram>& program = blitPrograms[{info.token.GetType(), info.isVolumetric}];
     
     // todo[init]: cpu side copy check
     const Allocation& allocation = allocations.at(info.token.puid);
@@ -671,7 +677,7 @@ void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const Resour
     params.memoryBaseElementAlign32 = allocation.baseAlign32;
 
     // Buffers are linearly indexed
-    if (info.token.type == Backend::IL::ResourceTokenType::Buffer) {
+    if (info.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
         ASSERT(!info.bufferDescriptor.placedDescriptor, "Blitting with placement resource");
         ASSERT(info.bufferDescriptor.width <= allocation.length, "Length of of bounds");
         ASSERT(info.bufferDescriptor.offset + info.bufferDescriptor.width <= allocation.base + allocation.length, "End offset of of bounds");
@@ -723,7 +729,7 @@ void InitializationFeature::CopyResourceMaskRange(CommandBuffer& buffer, const R
 }
 
 void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer, const ResourceInfo &source, const ResourceInfo &dest) {
-    const ResourceProgram<MaskCopyRangeShaderProgram>& program = copyPrograms[{source.token.type, dest.token.type, source.isVolumetric}];
+    const ResourceProgram<MaskCopyRangeShaderProgram>& program = copyPrograms[{source.token.GetType(), dest.token.GetType(), source.isVolumetric}];
     
     // todo[init]: cpu side copy check
     const Allocation& sourceAllocation = allocations.at(source.token.puid);
@@ -735,7 +741,7 @@ void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer
     params.destMemoryBaseElementAlign32 = destAllocation.baseAlign32;
     
     // Buffers are linearly indexed
-    if (source.token.type == Backend::IL::ResourceTokenType::Buffer) {
+    if (source.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
         params.sourceBaseX = Cast32Checked(source.bufferDescriptor.offset);
         params.destBaseX = Cast32Checked(dest.bufferDescriptor.offset);
         
@@ -791,7 +797,7 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
     bool isVolumetric = source.isVolumetric || dest.isVolumetric;
 
     // Get program
-    const ResourceProgram<MaskCopyRangeShaderProgram>& program = copyPrograms[{source.token.type, dest.token.type, isVolumetric}];
+    const ResourceProgram<MaskCopyRangeShaderProgram>& program = copyPrograms[{source.token.GetType(), dest.token.GetType(), isVolumetric}];
     
     // todo[init]: cpu side copy check
     const Allocation& sourceAllocation = allocations.at(source.token.puid);
@@ -803,7 +809,7 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
     params.destMemoryBaseElementAlign32 = destAllocation.baseAlign32;
     
     // Buffer -> Texture
-    if (source.token.type == Backend::IL::ResourceTokenType::Buffer) {
+    if (source.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
         ASSERT(source.bufferDescriptor.width <= sourceAllocation.length, "Length of of bounds");
         ASSERT(source.bufferDescriptor.offset + source.bufferDescriptor.width <= sourceAllocation.base + sourceAllocation.length, "End offset of of bounds");
 

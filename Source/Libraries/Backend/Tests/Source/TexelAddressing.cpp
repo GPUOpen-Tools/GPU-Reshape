@@ -42,8 +42,12 @@ void Test(T token, bool requiresAllResident = true) {
     info.token.height = token.GetHeight();
     info.token.depthOrSliceCount = token.GetDepthOrSliceCount();
     info.token.mipCount = token.GetMipCount();
-    info.token.baseMip = token.GetBaseMip();
-    info.token.baseSlice = token.GetBaseSlice();
+    info.token.viewBaseWidth = token.GetViewBaseWidth();
+    info.token.viewWidth = token.GetViewWidth();
+    info.token.viewBaseMip = token.GetViewBaseMip();
+    info.token.viewBaseSlice = token.GetViewBaseSlice();
+    info.token.viewSliceCount = token.GetViewSliceCount();
+    info.token.viewMipCount = token.GetViewMipCount();
     info.isVolumetric = true;
     
     TexelAddressAllocator allocator;
@@ -57,7 +61,7 @@ void Test(T token, bool requiresAllResident = true) {
             for (uint32_t z = 0; z < token.GetDepthOrSliceCount() >> mip; z++) {
                 for (uint32_t y = 0; y < token.GetHeight() >> mip; y++) {
                     for (uint32_t x = 0; x < token.GetWidth() >> mip; x++) {
-                        uint32_t offset = address.LocalTexelAddress(x, y, z, mip, true);
+                        uint32_t offset = address.LocalTextureTexelAddress(x, y, z, mip, true);
 
                         REQUIRE(!states.at(offset));
                         states.at(offset) = true;
@@ -70,7 +74,7 @@ void Test(T token, bool requiresAllResident = true) {
             for (uint32_t mip = 0; mip < token.GetMipCount(); mip++) {
                 for (uint32_t y = 0; y < token.GetHeight() >> mip; y++) {
                     for (uint32_t x = 0; x < token.GetWidth() >> mip; x++) {
-                        uint32_t offset = address.LocalTexelAddress(x, y, z, mip, false);
+                        uint32_t offset = address.LocalTextureTexelAddress(x, y, z, mip, false);
                     
                         REQUIRE(!states.at(offset));
                         states.at(offset) = true;
@@ -94,8 +98,12 @@ TEST_CASE("Backend.IL.TexelAddressing.Sliced") {
         uint32_t GetHeight() { return 128; }
         uint32_t GetDepthOrSliceCount() { return 16; }
         uint32_t GetMipCount() { return 3; }
-        uint32_t GetBaseMip() { return 0; }
-        uint32_t GetBaseSlice() { return 0; }
+        uint32_t GetViewBaseWidth() { return 0; }
+        uint32_t GetViewWidth() { return 64; }
+        uint32_t GetViewBaseMip() { return 0; }
+        uint32_t GetViewBaseSlice() { return 0; }
+        uint32_t GetViewSliceCount() { return 1; }
+        uint32_t GetViewMipCount() { return 1; }
         bool IsVolumetric() { return false; }
     };
 
@@ -109,8 +117,12 @@ TEST_CASE("Backend.IL.TexelAddressing.Volumetric") {
         uint32_t GetHeight() { return 128; }
         uint32_t GetDepthOrSliceCount() { return 16; }
         uint32_t GetMipCount() { return 3; }
-        uint32_t GetBaseMip() { return 0; }
-        uint32_t GetBaseSlice() { return 0; }
+        uint32_t GetViewBaseWidth() { return 0; }
+        uint32_t GetViewWidth() { return 64; }
+        uint32_t GetViewBaseMip() { return 0; }
+        uint32_t GetViewBaseSlice() { return 0; }
+        uint32_t GetViewSliceCount() { return 1; }
+        uint32_t GetViewMipCount() { return 1; }
         bool IsVolumetric() { return true; }
     };
 
@@ -121,11 +133,15 @@ TEST_CASE("Backend.IL.TexelAddressing.Sliced.1x1Mip") {
     class TokenEmitter {
     public:
         uint32_t GetWidth() { return 64; }
-        uint32_t GetHeight() { return 128; }
+        uint32_t GetHeight() { return 165; }
         uint32_t GetDepthOrSliceCount() { return 16; }
         uint32_t GetMipCount() { return 7; }
-        uint32_t GetBaseMip() { return 0; }
-        uint32_t GetBaseSlice() { return 0; }
+        uint32_t GetViewBaseWidth() { return 0; }
+        uint32_t GetViewWidth() { return 64; }
+        uint32_t GetViewBaseMip() { return 0; }
+        uint32_t GetViewBaseSlice() { return 0; }
+        uint32_t GetViewSliceCount() { return 1; }
+        uint32_t GetViewMipCount() { return 1; }
         bool IsVolumetric() { return false; }
     };
 
@@ -139,8 +155,12 @@ TEST_CASE("Backend.IL.TexelAddressing.Volumetric.1x1Mip") {
         uint32_t GetHeight() { return 128; }
         uint32_t GetDepthOrSliceCount() { return 16; }
         uint32_t GetMipCount() { return 7; }
-        uint32_t GetBaseMip() { return 0; }
-        uint32_t GetBaseSlice() { return 0; }
+        uint32_t GetViewBaseWidth() { return 0; }
+        uint32_t GetViewWidth() { return 64; }
+        uint32_t GetViewBaseMip() { return 0; }
+        uint32_t GetViewBaseSlice() { return 0; }
+        uint32_t GetViewSliceCount() { return 1; }
+        uint32_t GetViewMipCount() { return 1; }
         bool IsVolumetric() { return true; }
     };
 

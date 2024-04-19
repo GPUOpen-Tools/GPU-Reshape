@@ -36,28 +36,15 @@
 #include <Backend/IL/ResourceTokenType.h>
 
 ResourceInfo GetResourceInfoFor(ResourceState* state) {
-    ResourceToken token {
-        .puid = state->virtualMapping.puid,
-        .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
-        .format = static_cast<Backend::IL::Format>(state->virtualMapping.formatId),
-        .formatSize = state->virtualMapping.formatSize,
-        .width = state->virtualMapping.width,
-        .height = state->virtualMapping.height,
-        .depthOrSliceCount = state->virtualMapping.depthOrSliceCount,
-        .mipCount = state->virtualMapping.mipCount,
-        .baseMip = state->virtualMapping.baseMip,
-        .baseSlice = state->virtualMapping.baseSlice
-    };
-
     // Construct without descriptor
-    switch (static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type)) {
+    switch (static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.token.type)) {
         default:
             ASSERT(false, "Unexpected type");
             return {};
         case Backend::IL::ResourceTokenType::Texture:
-            return ResourceInfo::Texture(token, state->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D);
+            return ResourceInfo::Texture(state->virtualMapping.token, state->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D);
         case Backend::IL::ResourceTokenType::Buffer:
-            return ResourceInfo::Buffer(token);
+            return ResourceInfo::Buffer(state->virtualMapping.token);
     }
 }
 
@@ -121,7 +108,7 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     table.state->states_Resources.Add(state);
 
     // Allocate PUID
-    state->virtualMapping.puid = table.state->physicalResourceIdentifierMap.AllocatePUID();
+    state->virtualMapping.token.puid = table.state->physicalResourceIdentifierMap.AllocatePUID();
 
     // Translate dimension
     switch (desc->Dimension) {
@@ -129,22 +116,23 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
             ASSERT(false, "Unsupported dimension");
             break;
         case D3D12_RESOURCE_DIMENSION_BUFFER:
-            state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
+            state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
             break;
         case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
         case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
         case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
-            state->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+            state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
             break;
     }
 
     // Resource information
-    state->virtualMapping.formatId = static_cast<uint32_t>(Translate(desc->Format));
-    state->virtualMapping.formatSize = GetFormatByteSize(desc->Format);
-    state->virtualMapping.width = static_cast<uint32_t>(desc->Width);
-    state->virtualMapping.height = desc->Height;
-    state->virtualMapping.depthOrSliceCount = desc->DepthOrArraySize;
-    state->virtualMapping.mipCount = desc->MipLevels;
+    state->virtualMapping.token.formatId = static_cast<uint32_t>(Translate(desc->Format));
+    state->virtualMapping.token.formatSize = GetFormatByteSize(desc->Format);
+    state->virtualMapping.token.width = static_cast<uint32_t>(desc->Width);
+    state->virtualMapping.token.height = desc->Height;
+    state->virtualMapping.token.depthOrSliceCount = desc->DepthOrArraySize;
+    state->virtualMapping.token.mipCount = desc->MipLevels;
+    state->virtualMapping.token.DefaultViewToRange();
 
     // Create mapping
     switch (desc->Dimension) {

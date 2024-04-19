@@ -40,22 +40,42 @@ namespace IL {
 
         /// Get the resource physical UID
         IL::ID GetPUID() {
-            return info.Get<&ResourceToken::puid>(emitter);
+            if (puid != IL::InvalidID) {
+                return puid;
+            }
+
+            IL::ID dword = info.Get<&ResourceToken::packedToken>(emitter);
+            return emitter.BitAnd(emitter.BitShiftRight(dword, emitter.UInt32(kResourceTokenPUIDShift)), emitter.UInt32(kResourceTokenPUIDMask));
         }
 
         /// Get the resource type
         IL::ID GetType() {
-            return info.Get<&ResourceToken::type>(emitter);
+            if (type != IL::InvalidID) {
+                return type;
+            }
+
+            IL::ID dword = info.Get<&ResourceToken::packedToken>(emitter);
+            return type = emitter.BitAnd(emitter.BitShiftRight(dword, emitter.UInt32(kResourceTokenTypeShift)), emitter.UInt32(kResourceTokenTypeMask));
         }
 
         /// Get the resource type
         ::IL::ID GetFormat() {
-            return info.Get<&ResourceToken::format>(emitter);
+            if (format != IL::InvalidID) {
+                return format;
+            }
+            
+            IL::ID dword = info.Get<&ResourceToken::packedFormat>(emitter);
+            return format = emitter.BitAnd(dword, emitter.UInt32(0xFFFF));
         }
 
         /// Get the resource type
         ::IL::ID GetFormatSize() {
-            return info.Get<&ResourceToken::formatSize>(emitter);
+            if (formatSize != IL::InvalidID) {
+                return formatSize;
+            }
+
+            IL::ID dword = info.Get<&ResourceToken::packedFormat>(emitter);
+            return formatSize = emitter.BitShiftRight(dword, emitter.UInt32(16));
         }
 
         /// Get the resource width
@@ -79,18 +99,44 @@ namespace IL {
         }
 
         /// Get the mip offset
-        IL::ID GetBaseMip() {
-            return info.Get<&ResourceToken::baseMip>(emitter);
+        IL::ID GetViewBaseWidth() {
+            return info.Get<&ResourceToken::viewBaseWidth>(emitter);
+        }
+
+        /// Get the mip offset
+        IL::ID GetViewWidth() {
+            return info.Get<&ResourceToken::viewWidth>(emitter);
+        }
+
+        /// Get the mip offset
+        IL::ID GetViewBaseMip() {
+            return info.Get<&ResourceToken::viewBaseMip>(emitter);
         }
 
         /// Get the slice offset
-        IL::ID GetBaseSlice() {
-            return info.Get<&ResourceToken::baseSlice>(emitter);
+        IL::ID GetViewBaseSlice() {
+            return info.Get<&ResourceToken::viewBaseSlice>(emitter);
+        }
+
+        /// Get the slice offset
+        IL::ID GetViewSliceCount() {
+            return info.Get<&ResourceToken::viewSliceCount>(emitter);
+        }
+
+        /// Get the slice offset
+        IL::ID GetViewMipCount() {
+            return info.Get<&ResourceToken::viewMipCount>(emitter);
         }
 
     private:
         /// Underlying emitter
         Emitter<T>& emitter;
+        
+        /// Cache
+        ::IL::ID puid{IL::InvalidID};
+        ::IL::ID format{IL::InvalidID};
+        ::IL::ID formatSize{IL::InvalidID};
+        ::IL::ID type{IL::InvalidID};
 
         /// Shader struct to fetch from
         ShaderStruct<ResourceToken> info;

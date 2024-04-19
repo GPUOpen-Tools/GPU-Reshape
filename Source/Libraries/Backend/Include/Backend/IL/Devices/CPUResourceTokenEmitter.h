@@ -43,12 +43,12 @@ namespace IL {
 
         /// Get the resource type
         uint32_t GetType() {
-            return static_cast<uint32_t>(info.token.type);
+            return info.token.type;
         }
 
         /// Get the resource type
         uint32_t GetFormat() {
-            return static_cast<uint32_t>(info.token.format);
+            return info.token.formatId;
         }
 
         /// Get the resource type
@@ -77,13 +77,33 @@ namespace IL {
         }
 
         /// Get the mip offset
-        uint32_t GetBaseMip() {
-            return info.token.baseMip;
+        uint32_t GetViewBaseWidth() {
+            return info.token.viewBaseWidth;
+        }
+
+        /// Get the mip offset
+        uint32_t GetViewWidth() {
+            return info.token.viewWidth;
+        }
+
+        /// Get the mip offset
+        uint32_t GetViewBaseMip() {
+            return info.token.viewBaseMip;
         }
 
         /// Get the slice offset
-        uint32_t GetBaseSlice() {
-            return info.token.baseSlice;
+        uint32_t GetViewBaseSlice() {
+            return info.token.viewBaseSlice;
+        }
+
+        /// Get the slice offset
+        uint32_t GetViewSliceCount() {
+            return info.token.viewSliceCount;
+        }
+
+        /// Get the slice offset
+        uint32_t GetViewMipCount() {
+            return info.token.viewMipCount;
         }
 
         /// Get the token

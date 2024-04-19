@@ -68,13 +68,14 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
 
         // Create mapping template
         D3D12_RESOURCE_DESC desc = bottomBuffer->GetDesc();
-        bufferState->virtualMapping.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-        bufferState->virtualMapping.puid = deviceTable.state->physicalResourceIdentifierMap.AllocatePUID();
-        bufferState->virtualMapping.formatId = static_cast<uint32_t>(Translate(desc.Format));
-        bufferState->virtualMapping.formatSize = GetFormatByteSize(desc.Format);
-        bufferState->virtualMapping.width = static_cast<uint32_t>(desc.Width);
-        bufferState->virtualMapping.height = desc.Height;
-        bufferState->virtualMapping.depthOrSliceCount = desc.DepthOrArraySize;
+        bufferState->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+        bufferState->virtualMapping.token.puid = deviceTable.state->physicalResourceIdentifierMap.AllocatePUID();
+        bufferState->virtualMapping.token.formatId = static_cast<uint32_t>(Translate(desc.Format));
+        bufferState->virtualMapping.token.formatSize = GetFormatByteSize(desc.Format);
+        bufferState->virtualMapping.token.width = static_cast<uint32_t>(desc.Width);
+        bufferState->virtualMapping.token.height = desc.Height;
+        bufferState->virtualMapping.token.depthOrSliceCount = desc.DepthOrArraySize;
+        bufferState->virtualMapping.token.DefaultViewToRange();
 
         // Add user
         state->device->AddRef();

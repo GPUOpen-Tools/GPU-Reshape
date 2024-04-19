@@ -133,7 +133,7 @@ void VersioningController::DestroyImage(ImageState *state) {
 
     // Mark as deleted
     auto&& version = MessageStreamView<ResourceVersionMessage>(resourceStream).Add();
-    version->puid = state->virtualMappingTemplate.puid;
+    version->puid = state->virtualMappingTemplate.token.puid;
     version->version = UINT32_MAX;
 }
 
@@ -143,7 +143,7 @@ void VersioningController::DestroyBuffer(BufferState *state) {
 
     // Mark as deleted
     auto&& version = MessageStreamView<ResourceVersionMessage>(resourceStream).Add();
-    version->puid = state->virtualMapping.puid;
+    version->puid = state->virtualMapping.token.puid;
     version->version = UINT32_MAX;
 }
 
@@ -217,7 +217,7 @@ void VersioningController::CommitImageVersion(MessageStreamView<ResourceVersionM
     });
 
     // Fill info
-    version->puid = state->virtualMappingTemplate.puid;
+    version->puid = state->virtualMappingTemplate.token.puid;
     version->version = head;
     version->name.Set(debugName);
     version->width = state->createInfo.extent.width;
@@ -244,7 +244,7 @@ void VersioningController::CommitBufferVersion(MessageStreamView<ResourceVersion
     });
 
     // Fill info
-    version->puid = state->virtualMapping.puid;
+    version->puid = state->virtualMapping.token.puid;
     version->version = head;
     version->name.Set(debugName);
     version->width = static_cast<uint32_t>(state->createInfo.size);

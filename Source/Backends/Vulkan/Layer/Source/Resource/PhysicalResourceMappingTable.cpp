@@ -152,8 +152,10 @@ void PhysicalResourceMappingTable::AllocateTable(uint32_t count) {
     // Dummy initialize all new VRMs
     for (uint32_t i = migratedCount; i < virtualMappingCount; i++) {
          persistentVersion->virtualMappings[i] = VirtualResourceMapping {
-            .puid = IL::kResourceTokenPUIDInvalidUndefined,
-            .type = 0
+             ResourceToken {
+                .puid = IL::kResourceTokenPUIDInvalidUndefined,
+                .type = 0
+             }
         };
     }
 }

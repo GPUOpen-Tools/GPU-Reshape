@@ -37,25 +37,6 @@
 #include <Backend/Command/RenderPassInfo.h>
 #include <Backend/Command/AttachmentInfo.h>
 
-/// Get a resource token
-/// \param state object state
-/// \return given token
-template<typename T>
-static ResourceToken GetResourceToken(const T* state) {
-    return ResourceToken {
-        .puid = state->virtualMapping.puid,
-        .type = static_cast<Backend::IL::ResourceTokenType>(state->virtualMapping.type),
-        .format = static_cast<Backend::IL::Format>(state->virtualMapping.formatId),
-        .formatSize = state->virtualMapping.formatSize,
-        .width = state->virtualMapping.width,
-        .height = state->virtualMapping.height,
-        .depthOrSliceCount = state->virtualMapping.depthOrSliceCount,
-        .mipCount = state->virtualMapping.mipCount,
-        .baseMip = state->virtualMapping.baseMip,
-        .baseSlice = state->virtualMapping.baseSlice
-    };
-}
-
 /// Check if a resource is volumetric
 static bool IsVolumetric(const ResourceState* state) {
     return state->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
@@ -115,19 +96,8 @@ static ResourceToken GetResourceTokenFromHeapHandle(CommandListState* state, D3D
         virtualMapping = heap->GetVirtualMappingFromHeapHandle(handle);
     }
 
-    // To token
-    return ResourceToken {
-        .puid = virtualMapping.puid,
-        .type = static_cast<Backend::IL::ResourceTokenType>(virtualMapping.type),
-        .format = static_cast<Backend::IL::Format>(virtualMapping.formatId),
-        .formatSize = virtualMapping.formatSize,
-        .width = virtualMapping.width,
-        .height = virtualMapping.height,
-        .depthOrSliceCount = virtualMapping.depthOrSliceCount,
-        .mipCount = virtualMapping.mipCount,
-        .baseMip = virtualMapping.baseMip,
-        .baseSlice = virtualMapping.baseSlice
-    };
+    // Get token
+    return virtualMapping.token;
 }
 
 void FeatureHook_CopyBufferRegion::operator()(CommandListState *list, CommandContext *context, ID3D12Resource* pDstBuffer, UINT64 DstOffset, ID3D12Resource* pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes) const {
@@ -152,8 +122,8 @@ void FeatureHook_CopyBufferRegion::operator()(CommandListState *list, CommandCon
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Buffer(GetResourceToken(srcState), srcDescriptor),
-        ResourceInfo::Buffer(GetResourceToken(dstState), dstDescriptor)
+        ResourceInfo::Buffer(srcState->virtualMapping.token, srcDescriptor),
+        ResourceInfo::Buffer(dstState->virtualMapping.token, dstDescriptor)
     );
 }
 
@@ -183,7 +153,7 @@ static ResourceInfo GetSourceRegionResourceInfo(ResourceState* state, const D3D1
         }
 
         // Create placed buffer
-        return ResourceInfo::Buffer(GetResourceToken(state), BufferDescriptor {
+        return ResourceInfo::Buffer(state->virtualMapping.token, BufferDescriptor {
             .offset = offset,
             .width = state->desc.Width - offset,
             .placedDescriptor = BufferPlacedDescriptor {
@@ -211,7 +181,7 @@ static ResourceInfo GetSourceRegionResourceInfo(ResourceState* state, const D3D1
         };
 
         // Create descriptor
-        return ResourceInfo::Texture(GetResourceToken(state), IsVolumetric(state), TextureDescriptor {
+        return ResourceInfo::Texture(state->virtualMapping.token, IsVolumetric(state), TextureDescriptor {
             .region = region,
             .uid = 0u
         });
@@ -241,7 +211,7 @@ static ResourceInfo GetDestRegionResourceInfo(ResourceState* state, const D3D12_
         offset += DstX * formatByteCount;
 
         // Create placed buffer
-        return ResourceInfo::Buffer(GetResourceToken(state), BufferDescriptor {
+        return ResourceInfo::Buffer(state->virtualMapping.token, BufferDescriptor {
             .offset = offset,
             .width = state->desc.Width - offset,
             .placedDescriptor = BufferPlacedDescriptor {
@@ -269,7 +239,7 @@ static ResourceInfo GetDestRegionResourceInfo(ResourceState* state, const D3D12_
         };
 
         // Create descriptor
-        return ResourceInfo::Texture(GetResourceToken(state), IsVolumetric(state), TextureDescriptor {
+        return ResourceInfo::Texture(state->virtualMapping.token, IsVolumetric(state), TextureDescriptor {
             .region = region,
             .uid = 0u
         });
@@ -303,7 +273,7 @@ void FeatureHook_CopyResource::operator()(CommandListState *object, CommandConte
     ResourceState* srcState = GetState(pSrcResource);
 
     // Handle type
-    switch (static_cast<Backend::IL::ResourceTokenType>(dstState->virtualMapping.type)) {
+    switch (static_cast<Backend::IL::ResourceTokenType>(dstState->virtualMapping.token.type)) {
         default: {
             ASSERT(false, "Unexpected type");
             break;
@@ -334,8 +304,8 @@ void FeatureHook_CopyResource::operator()(CommandListState *object, CommandConte
             // Invoke hook
             hook.Invoke(
                 context,
-                ResourceInfo::Texture(GetResourceToken(srcState), IsVolumetric(srcState), srcDescriptor),
-                ResourceInfo::Texture(GetResourceToken(dstState), IsVolumetric(dstState), dstDescriptor)
+                ResourceInfo::Texture(srcState->virtualMapping.token, IsVolumetric(srcState), srcDescriptor),
+                ResourceInfo::Texture(dstState->virtualMapping.token, IsVolumetric(dstState), dstDescriptor)
             );
             break;
         }
@@ -357,8 +327,8 @@ void FeatureHook_CopyResource::operator()(CommandListState *object, CommandConte
             // Invoke hook
             hook.Invoke(
                 context,
-                ResourceInfo::Buffer(GetResourceToken(srcState), srcDescriptor),
-                ResourceInfo::Buffer(GetResourceToken(dstState), dstDescriptor)
+                ResourceInfo::Buffer(srcState->virtualMapping.token, srcDescriptor),
+                ResourceInfo::Buffer(dstState->virtualMapping.token, dstDescriptor)
             );
             break;
         }
@@ -401,8 +371,8 @@ void FeatureHook_ResolveSubresource::operator()(CommandListState *object, Comman
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(srcState), IsVolumetric(srcState), srcDescriptor),
-        ResourceInfo::Texture(GetResourceToken(dstState), IsVolumetric(dstState), dstDescriptor)
+        ResourceInfo::Texture(srcState->virtualMapping.token, IsVolumetric(srcState), srcDescriptor),
+        ResourceInfo::Texture(dstState->virtualMapping.token, IsVolumetric(dstState), dstDescriptor)
     );
 }
 
@@ -515,7 +485,7 @@ void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *obje
 
         // Create resource info
         ResourceInfo info;
-        if (token.type == Backend::IL::ResourceTokenType::Buffer) {
+        if (token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
             info = ResourceInfo::Buffer(token, BufferDescriptor{
                 .offset = 0u,
                 .width = token.width,
@@ -563,7 +533,7 @@ void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *obj
         
         // Create resource info
         ResourceInfo info;
-        if (token.type == Backend::IL::ResourceTokenType::Buffer) {
+        if (token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
             info = ResourceInfo::Buffer(token, BufferDescriptor{
                 .offset = 0u,
                 .width = token.width,
@@ -624,8 +594,8 @@ void FeatureHook_ResolveSubresourceRegion::operator()(CommandListState *object, 
     // Invoke hook
     hook.Invoke(
         context,
-        ResourceInfo::Texture(GetResourceToken(srcState), IsVolumetric(srcState), srcDescriptor),
-        ResourceInfo::Texture(GetResourceToken(dstState), IsVolumetric(dstState), dstDescriptor)
+        ResourceInfo::Texture(srcState->virtualMapping.token, IsVolumetric(srcState), srcDescriptor),
+        ResourceInfo::Texture(dstState->virtualMapping.token, IsVolumetric(dstState), dstDescriptor)
     );
 }
 

@@ -27,46 +27,15 @@
 #pragma once
 
 // Backend
-#include <Backend/IL/ResourceTokenPacking.h>
+#include <Backend/Resource/ResourceToken.h>
 #include <Backend/IL/ResourceTokenMetadataField.h>
-#include <Backend/IL/Format.h>
 
 // Std
 #include <cstdint>
 
 struct VirtualResourceMapping {
-    /// Physical UID of the resource
-    uint32_t puid : IL::kResourceTokenPUIDBitCount;
-
-    /// Type identifier of this resource
-    uint32_t type : IL::kResourceTokenTypeBitCount;
-
-    /// Ignored padding
-    uint32_t pad : IL::kResourceTokenPaddingBitCount;
-
-    /// Format of the resource
-    uint32_t formatId : 16;
-
-    /// Size of the format
-    uint32_t formatSize : 16;
-
-    /// Width of this mapping
-    uint32_t width{1};
-    
-    /// Height of this mapping
-    uint32_t height{1};
-    
-    /// Depth or number of slices of this mapping
-    uint32_t depthOrSliceCount{1};
-
-    /// Mip count of this mapping
-    uint32_t mipCount{1};
-
-    /// Base mip of this mapping
-    uint32_t baseMip{0};
-
-    /// Base slice of this mapping
-    uint32_t baseSlice{0};
+    /// Base token data
+    ResourceToken token;
 };
 
 /// Validation

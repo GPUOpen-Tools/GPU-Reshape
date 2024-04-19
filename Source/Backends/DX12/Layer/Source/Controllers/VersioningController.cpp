@@ -118,7 +118,7 @@ void VersioningController::DestroyResource(ResourceState *state) {
 
     // Mark as deleted
     auto&& version = MessageStreamView<ResourceVersionMessage>(resourceStream).Add();
-    version->puid = state->virtualMapping.puid;
+    version->puid = state->virtualMapping.token.puid;
     version->version = UINT32_MAX;
 }
 
@@ -191,7 +191,7 @@ void VersioningController::CommitResourceVersion(MessageStreamView<ResourceVersi
     });
 
     // Fill info
-    version->puid = state->virtualMapping.puid;
+    version->puid = state->virtualMapping.token.puid;
     version->version = head;
     version->name.Set(debugName);
     version->width = static_cast<uint32_t>(state->desc.Width);

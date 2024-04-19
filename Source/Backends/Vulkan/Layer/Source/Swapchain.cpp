@@ -83,13 +83,14 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSwapchainKHR(VkDevice device, const 
             imageState->table = table;
 
             // Create mapping template
-            imageState->virtualMappingTemplate.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
-            imageState->virtualMappingTemplate.puid = table->physicalResourceIdentifierMap.AllocatePUID();
-            imageState->virtualMappingTemplate.formatId = static_cast<uint32_t>(Translate(pCreateInfo->imageFormat));
-            imageState->virtualMappingTemplate.formatSize = GetFormatByteSize(pCreateInfo->imageFormat);
-            imageState->virtualMappingTemplate.width = pCreateInfo->imageExtent.width;
-            imageState->virtualMappingTemplate.height = pCreateInfo->imageExtent.height;
-            imageState->virtualMappingTemplate.depthOrSliceCount = pCreateInfo->imageArrayLayers;
+            imageState->virtualMappingTemplate.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);
+            imageState->virtualMappingTemplate.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
+            imageState->virtualMappingTemplate.token.formatId = static_cast<uint32_t>(Translate(pCreateInfo->imageFormat));
+            imageState->virtualMappingTemplate.token.formatSize = GetFormatByteSize(pCreateInfo->imageFormat);
+            imageState->virtualMappingTemplate.token.width = pCreateInfo->imageExtent.width;
+            imageState->virtualMappingTemplate.token.height = pCreateInfo->imageExtent.height;
+            imageState->virtualMappingTemplate.token.depthOrSliceCount = pCreateInfo->imageArrayLayers;
+            imageState->virtualMappingTemplate.token.DefaultViewToRange();
 
             // Store lookup
             table->states_image.Add(imageState->object, imageState);
@@ -133,7 +134,7 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkDestroySwapchainKHR(VkDevice device, VkSwapcha
         }
         
         // Release the token
-        table->physicalResourceIdentifierMap.FreePUID(imageState->virtualMappingTemplate.puid);
+        table->physicalResourceIdentifierMap.FreePUID(imageState->virtualMappingTemplate.token.puid);
 
         // Remove the state
         table->states_image.Remove(imageState->object);

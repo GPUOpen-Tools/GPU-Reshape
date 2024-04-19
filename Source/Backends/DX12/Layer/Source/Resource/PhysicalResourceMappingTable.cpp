@@ -100,8 +100,10 @@ void PhysicalResourceMappingTable::Install(D3D12_DESCRIPTOR_HEAP_TYPE valueType,
     // Dummy initialize all VRMs
     for (uint32_t i = 0; i < count; i++) {
         virtualMappings[i] = VirtualResourceMapping{
-            .puid = IL::kResourceTokenPUIDInvalidUndefined,
-            .type = 0
+            ResourceToken {
+                .puid = IL::kResourceTokenPUIDInvalidUndefined,
+                .type = 0
+            }
         };
     }
 
@@ -169,7 +171,7 @@ void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, const VirtualRe
     std::lock_guard guard(mutex);
 
     // Validate type
-    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.type)) {
+    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.token.type)) {
         case Backend::IL::ResourceTokenType::Texture:
             ASSERT(
                 type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||
@@ -225,7 +227,7 @@ void PhysicalResourceMappingTable::WriteMapping(uint32_t offset, ResourceState *
     std::lock_guard guard(mutex);
 
     // Validate type
-    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.type)) {
+    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.token.type)) {
         case Backend::IL::ResourceTokenType::Texture:
             ASSERT(
                 type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||

@@ -115,7 +115,7 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
         );
         
         // Compute the intra-resource offset
-        texel = address.LocalTexelAddress(
+        texel = address.LocalTextureTexelAddress(
             emitter.Add(data.Get<&MaskBlitParameters::baseX>(emitter), index.x),
             emitter.Add(data.Get<&MaskBlitParameters::baseY>(emitter), index.y),
             emitter.Add(data.Get<&MaskBlitParameters::baseZ>(emitter), index.z),

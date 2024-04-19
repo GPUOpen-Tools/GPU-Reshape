@@ -54,33 +54,19 @@ namespace Backend::IL {
         /// Standard handles
         using UInt32 = Handle<uint32_t>;
 
-        /// Linear texel address
-        /// \param x linear offset
-        /// \return texel offset
-        Handle<uint32_t> LocalTexelAddress(UInt32 x) {
-            return x;
-        }
-
-        /// Get the texel address of a 2d offset
+        /// Get the texel address of a buffer offset
         /// \param x resource local x coordinate
-        /// \param y resource local y coordinate
-        /// \param mip destination mip
         /// \return texel offset
-        UInt32 LocalTexelAddress(UInt32 x, UInt32 y, UInt32 mip) {
+        UInt32 LocalBufferTexelAddress(UInt32 x) {
             if (kGuardCoordinates) {
                 ExtendedEmitter extended(emitter);
-                
-                // Min all coordinates against max-1
-                x = extended.template Clamp<UInt32>(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetWidth(), emitter.UInt32(1)));
-                y = extended.template Clamp<UInt32>(y, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetHeight(), emitter.UInt32(1)));
-            }
-            
-            UInt32 base = MipOffset(tokenEmitter.GetWidth(), tokenEmitter.GetHeight(), mip);
 
-            // y * w + x
-            UInt32 intraTexelOffset = emitter.Add(emitter.Mul(y, tokenEmitter.GetWidth()), x);
-            
-            return emitter.Add(base, intraTexelOffset);
+                // Min all coordinates against max-1
+                x = extended.template Clamp<UInt32>(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetViewWidth(), emitter.UInt32(1)));
+            }
+
+            // Just assume the linear index
+            return x;
         }
         
         /// Get the texel address of a 3d offset
@@ -90,10 +76,10 @@ namespace Backend::IL {
         /// \param mip destination mip
         /// \param isVolumetric is this a volumetric (non-sliced) resource, affects offset calculation
         /// \return texel offset
-        UInt32 LocalTexelAddress(UInt32 x, UInt32 y, UInt32 z, UInt32 mip, bool isVolumetric) {
+        UInt32 LocalTextureTexelAddress(UInt32 x, UInt32 y, UInt32 z, UInt32 mip, bool isVolumetric) {
             if (kGuardCoordinates) {
                 ExtendedEmitter extended(emitter);
-                
+
                 // Min all coordinates against max-1
                 x = extended.template Clamp<UInt32>(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetWidth(), emitter.UInt32(1)));
                 y = extended.template Clamp<UInt32>(y, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetHeight(), emitter.UInt32(1)));
@@ -101,12 +87,12 @@ namespace Backend::IL {
             }
 
             // Offset by base mip
-            mip = emitter.Add(mip, tokenEmitter.GetBaseMip());
+            mip = emitter.Add(mip, tokenEmitter.GetViewBaseMip());
 
             // If volumetric, mipping affects depth
             if (isVolumetric) {
                 // Get the offset from the current mip level
-                MipData mipData = MipOffset(tokenEmitter.GetWidth(), tokenEmitter.GetHeight(), tokenEmitter.GetDepthOrSliceCount(), mip);
+                MipData mipData = MipOffset(widthAlignP2, heightAlignP2, depthOrSliceCountAlignP2, mip);
 
                 // z * w * h + y * w + x
                 UInt32 intraTexelOffset = emitter.Mul(z, emitter.Mul(mipData.mipWidth, mipData.mipHeight));
@@ -117,13 +103,13 @@ namespace Backend::IL {
                 return emitter.Add(mipData.offset, intraTexelOffset);
             } else {
                 // Offset by base slice
-                z = emitter.Add(z, tokenEmitter.GetBaseSlice());
+                z = emitter.Add(z, tokenEmitter.GetViewBaseSlice());
 
                 // Get the offset from the current slice level (higher dimension than mips if non-volumetric)
-                UInt32 base = SliceOffset(tokenEmitter.GetWidth(), tokenEmitter.GetHeight(), tokenEmitter.GetMipCount(), z);
+                UInt32 base = SliceOffset(widthAlignP2, heightAlignP2, tokenEmitter.GetMipCount(), z);
 
                 // Then, offset by the current mip level
-                MipData mipData = MipOffset(tokenEmitter.GetWidth(), tokenEmitter.GetHeight(), mip);
+                MipData mipData = MipOffset(widthAlignP2, heightAlignP2, mip);
 
                 // Slice offset + mip offset
                 base = emitter.Add(base, mipData.offset);

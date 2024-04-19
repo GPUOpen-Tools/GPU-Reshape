@@ -35,13 +35,27 @@
 namespace Backend::IL {
     enum class ResourceTokenMetadataField {
         PackedToken,
+
+        /// The format attributes, may be specific to the view
         PackedFormat,
+
+        /// Resource properties
+        /// Immutable to view overrides
         Width,
         Height,
         DepthOrSliceCount,
         MipCount,
-        BaseMip,
-        BaseSlice,
+
+        /// View properties
+        /// May deviate from the resource properties
+        ViewBaseWidth, // todo[init]: move to view specific data
+        ViewWidth, // todo[init]: move to view specific data
+        ViewBaseMip,
+        ViewBaseSlice,
+        ViewSliceCount,
+        ViewMipCount,
+
+        /// Total number of fields
         Count
     };
 }

@@ -5774,9 +5774,11 @@ void DXILPhysicalBlockFunction::CompileResourceTokenInstruction(const DXCompileJ
         metadataMap.Add(program.GetConstants().FindConstantOrAdd(
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth=32, .signedness=true}),
             Backend::IL::IntConstant{.value = VirtualResourceMapping {
-                .puid = 0,
-                .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler)
-            }.packedToken}
+                ResourceToken {
+                    .puid = 0,
+                    .type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Sampler)
+                }
+            }.token.packedToken}
         )->id);
 
         // Just zero out the rest
