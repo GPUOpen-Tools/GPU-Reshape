@@ -488,6 +488,7 @@ void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
     addressAllocator.Free();
 
     allocations.erase(source.token.puid);
+    puidSRBInitializationMap.erase(source.token.puid);
 }
 
 void InitializationFeature::OnMapResource(const ResourceInfo &source) {
@@ -583,9 +584,13 @@ void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& ho
 
     // Initialize all PUIDs
     for (const InitialiationTag& tag : pendingInitializationQueue) {
-        uint32_t& initializedSRB = puidSRBInitializationMap[tag.info.token.puid];
+        // May have been destroyed
+        if (!allocations.contains(tag.info.token.puid)) {
+            continue;
+        }
 
         // May already be initialized
+        uint32_t& initializedSRB = puidSRBInitializationMap[tag.info.token.puid];
         if ((initializedSRB & tag.srb) == tag.srb) {
             continue;
         }
