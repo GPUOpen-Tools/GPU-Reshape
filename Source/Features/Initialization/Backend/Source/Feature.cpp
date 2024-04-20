@@ -162,19 +162,7 @@ void InitializationFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-struct TexelAddress {
-    /// Source coordinates
-    /// todo[init]: offset by base when reporting!
-    IL::ID x{IL::InvalidID};
-    IL::ID y{IL::InvalidID};
-    IL::ID z{IL::InvalidID};
-    IL::ID mip{IL::InvalidID};
-
-    /// Texel address offset
-    IL::ID texelOffset{IL::InvalidID};
-};
-
-static TexelAddress InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::Emitter<>>& token, IL::ID resource, const IL::InstructionRef<> instr) {
+static TexelAddress<IL::ID> InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::Emitter<>>& token, IL::ID resource, const IL::InstructionRef<> instr) {
     IL::Program* program = emitter.GetProgram();
 
     // Get type
@@ -201,37 +189,35 @@ static TexelAddress InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceToken
     IL::ID zero = program->GetConstants().UInt(0)->id;
 
     // Addressing offsets
-    TexelAddress address;
-    address.x = zero;
-    address.y = zero;
-    address.z = zero;
-    address.mip = zero;
-    address.texelOffset = zero;
+    IL::ID x = zero;
+    IL::ID y = zero;
+    IL::ID z = zero;
+    IL::ID mip = zero;
 
     // Get offsets from instruction
     switch (instr->opCode) {
         default: {
             ASSERT(false, "Invalid instruction");
-            return address;
+            return {};
         }
         case IL::OpCode::LoadBuffer: {
             // Buffer types just return the linear index
-            address.x = instr->As<IL::LoadBufferInstruction>()->index;
+            x = instr->As<IL::LoadBufferInstruction>()->index;
             break;
         }
         case IL::OpCode::StoreBuffer: {
             // Buffer types just return the linear index
-            address.x = instr->As<IL::StoreBufferInstruction>()->index;
+            x = instr->As<IL::StoreBufferInstruction>()->index;
             break;
         }
         case IL::OpCode::LoadBufferRaw: {
             // Buffer types just return the linear index
-            address.x = instr->As<IL::LoadBufferRawInstruction>()->index;
+            x = instr->As<IL::LoadBufferRawInstruction>()->index;
             break;
         }
         case IL::OpCode::StoreBufferRaw: {
             // Buffer types just return the linear index
-            address.x = instr->As<IL::StoreBufferRawInstruction>()->index;
+            x = instr->As<IL::StoreBufferRawInstruction>()->index;
             break;
         }
         case IL::OpCode::StoreTexture: {
@@ -239,11 +225,11 @@ static TexelAddress InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceToken
 
             // Vectorized index?
             if (const Backend::IL::Type* indexType = program->GetTypeMap().GetType(_instr.index); indexType->Is<Backend::IL::VectorType>()) {
-                if (dimensions > 0) address.x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
-                if (dimensions > 1) address.y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
-                if (dimensions > 2) address.z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
+                if (dimensions > 0) x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
+                if (dimensions > 1) y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
+                if (dimensions > 2) z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
             } else {
-                address.x = _instr.index;
+                x = _instr.index;
             }
             break;
         }
@@ -252,15 +238,15 @@ static TexelAddress InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceToken
 
             // Vectorized index?
             if (const Backend::IL::Type* indexType = program->GetTypeMap().GetType(_instr.index); indexType->Is<Backend::IL::VectorType>()) {
-                if (dimensions > 0) address.x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
-                if (dimensions > 1) address.y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
-                if (dimensions > 2) address.z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
+                if (dimensions > 0) x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
+                if (dimensions > 1) y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
+                if (dimensions > 2) z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
             } else {
-                address.x = _instr.index;
+                x = _instr.index;
             }
             
             if (_instr.mip != IL::InvalidID) {
-                address.mip = _instr.mip;
+                mip = _instr.mip;
             }
             break;
         }
@@ -276,8 +262,14 @@ static TexelAddress InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceToken
             
             emitter.Mul(_instr->coordinate, )
 #endif
-            
-            return address;
+
+            TexelAddress<IL::ID> out;
+            out.x = zero;
+            out.y = zero;
+            out.z = zero;
+            out.mip = zero;
+            out.texelOffset = zero;
+            return out;
         }
     }
 
@@ -285,14 +277,11 @@ static TexelAddress InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceToken
     // Different resource types may use different addressing schemas
     Backend::IL::TexelAddressEmitter addressEmitter(emitter, token);
     if (resourceType->Is<Backend::IL::TextureType>()) {
-        address.texelOffset = addressEmitter.LocalTextureTexelAddress(address.x, address.y, address.z, address.mip, isVolumetric);
+        return addressEmitter.LocalTextureTexelAddress(x, y, z, mip, isVolumetric);
     } else {
         ASSERT(resourceType->Is<Backend::IL::BufferType>(), "Expected buffer type");
-        address.texelOffset = addressEmitter.LocalBufferTexelAddress(address.x);
+        return addressEmitter.LocalBufferTexelAddress(x);
     }
-
-    // OK
-    return address;
 }
 
 void InitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {

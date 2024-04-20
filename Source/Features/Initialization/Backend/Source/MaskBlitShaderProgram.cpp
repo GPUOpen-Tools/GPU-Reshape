@@ -121,7 +121,7 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
             emitter.Add(data.Get<&MaskBlitParameters::baseZ>(emitter), index.z),
             data.Get<&MaskBlitParameters::mip>(emitter),
             isVolumetric
-        );
+        ).texelOffset;
     }
 
     // Mark the given texel as initialized

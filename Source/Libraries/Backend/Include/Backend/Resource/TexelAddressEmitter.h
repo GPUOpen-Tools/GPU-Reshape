@@ -30,6 +30,7 @@
 #include <Backend/IL/Emitter.h>
 #include <Backend/IL/ExtendedEmitter.h>
 #include <Backend/IL/ResourceTokenEmitter.h>
+#include <Backend/Resource/TexelAddress.h>
 
 namespace Backend::IL {
     template<typename E = Emitter<>, typename RTE = ResourceTokenEmitter<E>>
@@ -58,7 +59,7 @@ namespace Backend::IL {
         /// Get the texel address of a buffer offset
         /// \param x resource local x coordinate
         /// \return texel offset
-        UInt32 LocalBufferTexelAddress(UInt32 x) {
+        TexelAddress<UInt32> LocalBufferTexelAddress(UInt32 x) {
             if (kGuardCoordinates) {
                 ExtendedEmitter extended(emitter);
 
@@ -70,7 +71,13 @@ namespace Backend::IL {
             x = emitter.Add(x, tokenEmitter.GetViewBaseWidth());
 
             // Just assume the linear index
-            return x;
+            TexelAddress<UInt32> out;
+            out.x = x;
+            out.y = emitter.UInt32(0);
+            out.z = emitter.UInt32(0);
+            out.mip = emitter.UInt32(0);
+            out.texelOffset = x;
+            return out;
         }
         
         /// Get the texel address of a 3d offset
@@ -80,7 +87,7 @@ namespace Backend::IL {
         /// \param mip destination mip
         /// \param isVolumetric is this a volumetric (non-sliced) resource, affects offset calculation
         /// \return texel offset
-        UInt32 LocalTextureTexelAddress(UInt32 x, UInt32 y, UInt32 z, UInt32 mip, bool isVolumetric) {
+        TexelAddress<UInt32> LocalTextureTexelAddress(UInt32 x, UInt32 y, UInt32 z, UInt32 mip, bool isVolumetric) {
             if (kGuardCoordinates) {
                 ExtendedEmitter extended(emitter);
 
@@ -94,6 +101,7 @@ namespace Backend::IL {
             mip = emitter.Add(mip, tokenEmitter.GetViewBaseMip());
 
             // If volumetric, mipping affects depth
+            IL::ID texelAddress;
             if (isVolumetric) {
                 // Get the offset from the current mip level
                 MipData mipData = MipOffset(widthAlignP2, heightAlignP2, depthOrSliceCountAlignP2, mip);
@@ -104,7 +112,7 @@ namespace Backend::IL {
                 intraTexelOffset = emitter.Add(intraTexelOffset, x);
 
                 // Actual offset is mip + intra-mip
-                return emitter.Add(mipData.offset, intraTexelOffset);
+                texelAddress = emitter.Add(mipData.offset, intraTexelOffset);
             } else {
                 // Offset by base slice
                 z = emitter.Add(z, tokenEmitter.GetViewBaseSlice());
@@ -122,8 +130,18 @@ namespace Backend::IL {
                 UInt32 intraTexelOffset = emitter.Add(emitter.Mul(y, mipData.mipWidth), x);
 
                 // Actual offset is slice/mip offset + intra-mip
-                return emitter.Add(base, intraTexelOffset);
+                texelAddress = emitter.Add(base, intraTexelOffset);
             }
+            
+
+            // Just assume the linear index
+            TexelAddress<UInt32> out;
+            out.x = x;
+            out.y = y;
+            out.z = z;
+            out.mip = mip;
+            out.texelOffset = texelAddress;
+            return out;
         }
 
     private:

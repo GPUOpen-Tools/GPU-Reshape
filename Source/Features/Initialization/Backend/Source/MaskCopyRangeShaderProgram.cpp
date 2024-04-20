@@ -125,7 +125,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
                 emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), index.z),
                 data.Get<&MaskCopyRangeParameters::sourceMip>(emitter),
                 isVolumetric
-            );
+            ).texelOffset;
 
             // Compute the destination intra-resource offset
             destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken).LocalTextureTexelAddress(
@@ -134,7 +134,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
                 emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), index.z),
                 data.Get<&MaskCopyRangeParameters::destMip>(emitter),
                 isVolumetric
-            );
+            ).texelOffset;
         }
     } else {
         // Asymmetric copy, uses placement descriptors
@@ -169,7 +169,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
                 emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), index.z),
                 data.Get<&MaskCopyRangeParameters::destMip>(emitter),
                 isVolumetric
-            );
+            ).texelOffset;
         } else {
             // Texture -> Buffer Placement
             
@@ -180,7 +180,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
                 emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), index.z),
                 data.Get<&MaskCopyRangeParameters::sourceMip>(emitter),
                 isVolumetric
-            );
+            ).texelOffset;
 
             // Apply base offset to destination placement
             destTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), placementOffset);
