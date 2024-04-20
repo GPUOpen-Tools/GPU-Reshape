@@ -174,6 +174,20 @@ void FeatureHook_vkCmdBlitImage::operator()(CommandBufferObject *object, Command
     }
 }
 
+static BufferPlacedDescriptor GetBufferPlacedDescriptor(ImageState* state, uint32_t bufferRowLength, uint32_t bufferImageHeight) {
+    // Zero is allowed, assume tightly packed coordinates
+    if (bufferRowLength == 0 || bufferImageHeight == 0) {
+        bufferRowLength = state->createInfo.extent.width * state->virtualMappingTemplate.token.formatSize;
+        bufferImageHeight = state->createInfo.extent.height;
+    }
+
+    // Create descriptor
+    BufferPlacedDescriptor out;
+    out.rowLength = bufferRowLength;
+    out.imageHeight = bufferImageHeight;
+    return out;
+}
+
 void FeatureHook_vkCmdCopyBufferToImage::operator()(CommandBufferObject *object, CommandContext *context, VkBuffer srcBuffer, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkBufferImageCopy *pRegions) const {
     // Get states
     BufferState* srcBufferState = object->table->states_buffer.Get(srcBuffer);
@@ -187,10 +201,7 @@ void FeatureHook_vkCmdCopyBufferToImage::operator()(CommandBufferObject *object,
         BufferDescriptor srcDescriptor{
             .offset = region.bufferOffset,
             .width = srcBufferState->virtualMapping.token.width,
-            .placedDescriptor = BufferPlacedDescriptor {
-                .rowLength = region.bufferRowLength,
-                .imageHeight = region.bufferImageHeight
-            },
+            .placedDescriptor = GetBufferPlacedDescriptor(dstImageState, region.bufferRowLength, region.bufferImageHeight),
             .uid = srcBufferState->uid
         };
 
@@ -231,10 +242,7 @@ void FeatureHook_vkCmdCopyBufferToImage2::operator()(CommandBufferObject *object
         BufferDescriptor srcDescriptor{
             .offset = region.bufferOffset,
             .width = srcBufferState->virtualMapping.token.width,
-            .placedDescriptor = BufferPlacedDescriptor {
-                .rowLength = region.bufferRowLength,
-                .imageHeight = region.bufferImageHeight
-            },
+            .placedDescriptor = GetBufferPlacedDescriptor(dstImageState, region.bufferRowLength, region.bufferImageHeight),
             .uid = srcBufferState->uid
         };
 
@@ -290,10 +298,7 @@ void FeatureHook_vkCmdCopyImageToBuffer::operator()(CommandBufferObject *object,
         BufferDescriptor dstDescriptor{
             .offset = region.bufferOffset,
             .width = dstBufferState->virtualMapping.token.width,
-            .placedDescriptor = BufferPlacedDescriptor {
-                .rowLength = region.bufferRowLength,
-                .imageHeight = region.bufferImageHeight
-            },
+            .placedDescriptor = GetBufferPlacedDescriptor(srcImageState, region.bufferRowLength, region.bufferImageHeight),
             .uid = dstBufferState->uid
         };
 
@@ -334,10 +339,7 @@ void FeatureHook_vkCmdCopyImageToBuffer2::operator()(CommandBufferObject *object
         BufferDescriptor dstDescriptor{
             .offset = region.bufferOffset,
             .width = dstBufferState->virtualMapping.token.width,
-            .placedDescriptor = BufferPlacedDescriptor {
-                .rowLength = region.bufferRowLength,
-                .imageHeight = region.bufferImageHeight
-            },
+            .placedDescriptor = GetBufferPlacedDescriptor(srcImageState, region.bufferRowLength, region.bufferImageHeight),
             .uid = dstBufferState->uid
         };
 
@@ -554,6 +556,7 @@ void FeatureHook_vkCmdBeginRenderPass::operator()(CommandBufferObject *object, C
         // Setup attachment
         AttachmentInfo& attachmentInfo = attachments[i];
         attachmentInfo.resource.token = state->virtualMapping.token;
+        attachmentInfo.resource.isVolumetric = IsVolumetric(state);
         attachmentInfo.resource.textureDescriptor = descriptors[i];
         attachmentInfo.resolveResource = nullptr;
 
@@ -640,6 +643,7 @@ void FeatureHook_vkCmdBeginRendering::operator()(CommandBufferObject *object, Co
         // Setup attachment
         AttachmentInfo& attachmentInfo = attachments[i];
         attachmentInfo.resource.token = state->virtualMapping.token;
+        attachmentInfo.resource.isVolumetric = IsVolumetric(state);
         attachmentInfo.resource.textureDescriptor = descriptors[i];
 
         // Has resolve target?
@@ -660,6 +664,7 @@ void FeatureHook_vkCmdBeginRendering::operator()(CommandBufferObject *object, Co
             // Setup attachment resource
             ResourceInfo& resolve = resolveInfos[i];
             resolve.token = resolveState->virtualMapping.token;
+            resolve.isVolumetric = IsVolumetric(resolveState);
             resolve.textureDescriptor = resolveDescriptors[i];
             attachmentInfo.resolveResource = resolveInfos + i;
         } else {
@@ -744,6 +749,7 @@ void FeatureHook_vkCmdBeginRendering::operator()(CommandBufferObject *object, Co
 
             // Setup attachment resource
             depthResolveInfo.token = resolveState->virtualMapping.token;
+            depthResolveInfo.isVolumetric = IsVolumetric(resolveState);
             depthResolveInfo.textureDescriptor = depthResolveDescriptor;
             depthInfo.resolveResource = &depthResolveInfo;
         } else {
@@ -787,6 +793,7 @@ void FeatureHook_vkCmdBeginRendering::operator()(CommandBufferObject *object, Co
 
         // Set resource info
         depthInfo.resource.token = depthState->virtualMapping.token;
+        depthInfo.resource.isVolumetric = IsVolumetric(depthState);
         depthInfo.resource.textureDescriptor = depthDescriptor;
         passInfo.depthAttachment = &depthInfo;
     }
