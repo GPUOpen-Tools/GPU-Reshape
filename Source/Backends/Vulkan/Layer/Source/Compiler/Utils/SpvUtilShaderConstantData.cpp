@@ -126,10 +126,10 @@ void SpvUtilShaderConstantData::CompileRecords(const SpvJob &job) {
     SpvInstruction &spvCounterBinding = table.annotation.block->stream.Allocate(SpvOpDecorate, 4);
     spvCounterBinding[1] = constantId;
     spvCounterBinding[2] = SpvDecorationBinding;
-    spvCounterBinding[3] = job.bindingInfo.descriptorDataDescriptorOffset;
+    spvCounterBinding[3] = job.bindingInfo.shaderDataConstantsDescriptorOffset;
 }
 
-IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, const Backend::IL::Type* type, uint32_t index, uint32_t dwordCount) {
+IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, const Backend::IL::Type* type, uint32_t dwordOffset, uint32_t dwordCount) {
     Backend::IL::TypeMap &ilTypeMap = program.GetTypeMap();
 
     // UInt32
@@ -166,18 +166,21 @@ IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, const Backe
         SpvId rowUintId = table.scan.header.bound++;
         SpvId columnUintId = table.scan.header.bound++;
         SpvId dword = table.scan.header.bound++;
+
+        // Just read them consecutively
+        uint32_t dwordIndex = dwordOffset + i;
     
         // Row
         SpvInstruction &spvRow = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
         spvRow[1] = uintTypeId;
         spvRow[2] = rowUintId;
-        spvRow[3] = index / 4;
+        spvRow[3] = dwordIndex / 4;
 
         // Column
         SpvInstruction &spvColumn = table.typeConstantVariable.block->stream.Allocate(SpvOpConstant, 4);
         spvColumn[1] = uintTypeId;
         spvColumn[2] = columnUintId;
-        spvColumn[3] = index % 4;
+        spvColumn[3] = dwordIndex % 4;
 
         // Address identifier
         uint32_t addressId = table.scan.header.bound++;
