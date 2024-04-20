@@ -84,7 +84,7 @@ public:
 
 private:
     /// Hooks
-    void OnCreateResource(const ResourceInfo& source);
+    void OnCreateResource(const ResourceCreateInfo& source);
     void OnDestroyResource(const ResourceInfo& source);
     void OnMapResource(const ResourceInfo& source);
     void OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest);

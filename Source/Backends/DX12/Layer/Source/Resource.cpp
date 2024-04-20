@@ -93,7 +93,7 @@ HRESULT HookID3D12ResourceUnmap(ID3D12Resource* resource, UINT subresource, cons
     return S_OK;
 }
 
-static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTable& table, ID3D12Resource* resource, const D3D12_RESOURCE_DESC* desc) {
+static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTable& table, ID3D12Resource* resource, const D3D12_RESOURCE_DESC* desc, const ResourceCreateFlagSet& createFlags = {}) {
     // Create state
     auto* state = new (table.state->allocators, kAllocStateResource) ResourceState();
     state->allocators = table.state->allocators;
@@ -156,7 +156,10 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
 
     // Invoke proxies for all handles
     for (const FeatureHookTable &proxyTable: table.state->featureHookTables) {
-        proxyTable.createResource.TryInvoke(GetResourceInfoFor(state));
+        proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+            .resource = GetResourceInfoFor(state),
+            .createFlags = createFlags
+        });
     }
     
     // Create detours
@@ -470,7 +473,7 @@ static void* CreateWrapperForSharedHandle(ID3D12Device* device, ID3D12Resource* 
     D3D12_RESOURCE_DESC desc = resource->GetDesc();
 
     // Create a standard state
-    return CreateResourceState(device, table, resource, &desc);
+    return CreateResourceState(device, table, resource, &desc, ResourceCreateFlag::OpenedFromExternalHandle);
 }
 
 static void* CreateWrapperForSharedHandle(ID3D12Device* device, ID3D12Heap* heap) {

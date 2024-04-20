@@ -99,7 +99,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
 
     // Invoke proxies for all handles
     for (const FeatureHookTable &proxyTable: table->featureHookTables) {
-        proxyTable.createResource.TryInvoke(GetResourceInfoFor(state->virtualMapping, false));
+        proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+            .resource = GetResourceInfoFor(state->virtualMapping, false),
+            .createFlags = ResourceCreateFlag::None
+        });
     }
     
     // OK
@@ -185,7 +188,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
 
     // Invoke proxies for all handles
     for (const FeatureHookTable &proxyTable: table->featureHookTables) {
-        proxyTable.createResource.TryInvoke(GetResourceInfoFor(state));
+        proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+            .resource = GetResourceInfoFor(state),
+            .createFlags = ResourceCreateFlag::None
+        });
     }
 
     // OK

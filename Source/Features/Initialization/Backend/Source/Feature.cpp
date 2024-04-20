@@ -447,11 +447,11 @@ static uint32_t GetWorkgroupCount(uint64_t value, uint32_t align) {
     return Cast32Checked((value + align - 1) / align);
 }
 
-void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
+void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     std::lock_guard guard(mutex);
 
     // Determine number of entries needed
-    uint64_t allocationSize = addressAllocator.GetAllocationSize(source);
+    uint64_t allocationSize = addressAllocator.GetAllocationSize(source.resource);
 
 #if 0
     auto formatSizeMinDWord = std::max<size_t>(sizeof(uint32_t), source.token.formatSize);
@@ -459,7 +459,7 @@ void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
 #endif // 0
     
     // Create allocation
-    Allocation& allocation = allocations[source.token.puid];
+    Allocation& allocation = allocations[source.resource.token.puid];
     allocation.base = addressAllocator.Allocate(allocationSize);
     allocation.length = allocationSize;
     ASSERT(allocation.base % 32 == 0, "Memory base not aligned to texel width (32)");
@@ -473,9 +473,19 @@ void InitializationFeature::OnCreateResource(const ResourceInfo &source) {
 
     // Mark for pending enqueue
     pendingMappingQueue.push_back(MappingTag {
-        .puid = source.token.puid,
+        .puid = source.resource.token.puid,
         .memoryBaseAlign32 = allocation.baseAlign32
     });
+
+    // If this texture was opened from an external handle, we just assume
+    // everything has been initialized. Carrying initialization states across
+    // completely opaque sources is outside the scope of this feature.
+    if (source.createFlags & ResourceCreateFlag::OpenedFromExternalHandle) {
+        pendingInitializationQueue.push_back(InitialiationTag {
+            .info = source.resource,
+            .srb = ~0u
+        });
+    }
 }
 
 void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {

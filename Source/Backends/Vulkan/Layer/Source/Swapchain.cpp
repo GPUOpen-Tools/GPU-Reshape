@@ -97,7 +97,10 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSwapchainKHR(VkDevice device, const 
 
             // Invoke proxies for all handles
             for (const FeatureHookTable &proxyTable: table->featureHookTables) {
-                proxyTable.createResource.TryInvoke(GetResourceInfoFor(imageState));
+                proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+                    .resource = GetResourceInfoFor(imageState),
+                    .createFlags = ResourceCreateFlag::SwapchainTexture
+                });
             }
         }
 

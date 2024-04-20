@@ -88,7 +88,10 @@ static void CreateSwapchainBufferWrappers(SwapChainState* state, uint32_t count)
 
         // Invoke proxies for all handles
         for (const FeatureHookTable &proxyTable: deviceTable.state->featureHookTables) {
-            proxyTable.createResource.TryInvoke(GetResourceInfoFor(bufferState));
+            proxyTable.createResource.TryInvoke(ResourceCreateInfo {
+                .resource = GetResourceInfoFor(bufferState),
+                .createFlags = ResourceCreateFlag::SwapchainTexture
+            });
         }
     }
 }
