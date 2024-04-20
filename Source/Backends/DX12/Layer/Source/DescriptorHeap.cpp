@@ -296,12 +296,12 @@ static VirtualResourceMapping GetNullResourceMapping(D3D12_DSV_DIMENSION dimensi
 /// \param mapping destination mapping
 void HandleMappingDefaults(ResourceState* state, VirtualResourceMapping& mapping) {
     // Automatic mip count?
-    if (mapping.token.viewMipCount == -1) {
+    if (mapping.token.viewMipCount == UINT32_MAX) {
         mapping.token.viewMipCount = state->desc.MipLevels - mapping.token.viewBaseMip;
     }
 
     // Automatic slice count?
-    if (mapping.token.viewSliceCount == -1) {
+    if (mapping.token.viewSliceCount == UINT32_MAX) {
         mapping.token.viewSliceCount = state->desc.DepthOrArraySize - mapping.token.viewBaseSlice;
     }
 
@@ -387,7 +387,7 @@ void WINAPI HookID3D12DeviceCreateShaderResourceView(ID3D12Device* _this, ID3D12
                         mapping.token.viewBaseMip = pDesc->TextureCubeArray.MostDetailedMip;
                         mapping.token.viewMipCount = pDesc->TextureCubeArray.MipLevels;
                         mapping.token.viewBaseSlice = pDesc->TextureCubeArray.First2DArrayFace;
-                        mapping.token.viewSliceCount = -1;
+                        mapping.token.viewSliceCount = UINT32_MAX;
                         break;
                 }
 
@@ -434,21 +434,21 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
                         break;
                     case D3D12_UAV_DIMENSION_TEXTURE1D:
                         mapping.token.viewBaseMip = pDesc->Texture1D.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         break;
                     case D3D12_UAV_DIMENSION_TEXTURE1DARRAY:
                         mapping.token.viewBaseMip = pDesc->Texture1DArray.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         mapping.token.viewBaseSlice = pDesc->Texture1DArray.FirstArraySlice;
                         mapping.token.viewSliceCount = pDesc->Texture1DArray.ArraySize;
                         break;
                     case D3D12_UAV_DIMENSION_TEXTURE2D:
                         mapping.token.viewBaseMip = pDesc->Texture2D.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         break;
                     case D3D12_UAV_DIMENSION_TEXTURE2DARRAY:
                         mapping.token.viewBaseMip = pDesc->Texture2DArray.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         mapping.token.viewBaseSlice = pDesc->Texture2DArray.FirstArraySlice;
                         mapping.token.viewSliceCount = pDesc->Texture2DArray.ArraySize;
                         break;
@@ -458,7 +458,7 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
                         break;
                     case D3D12_UAV_DIMENSION_TEXTURE3D:
                         mapping.token.viewBaseMip = pDesc->Texture3D.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         break;
                 }
 
@@ -505,21 +505,21 @@ void WINAPI HookID3D12DeviceCreateRenderTargetView(ID3D12Device* _this, ID3D12Re
                         break;
                     case D3D12_RTV_DIMENSION_TEXTURE1D:
                         mapping.token.viewBaseMip = pDesc->Texture1D.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         break;
                     case D3D12_RTV_DIMENSION_TEXTURE1DARRAY:
                         mapping.token.viewBaseMip = pDesc->Texture1DArray.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         mapping.token.viewBaseSlice = pDesc->Texture1DArray.FirstArraySlice;
                         mapping.token.viewSliceCount = pDesc->Texture1DArray.ArraySize;
                         break;
                     case D3D12_RTV_DIMENSION_TEXTURE2D:
                         mapping.token.viewBaseMip = pDesc->Texture2D.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         break;
                     case D3D12_RTV_DIMENSION_TEXTURE2DARRAY:
                         mapping.token.viewBaseMip = pDesc->Texture2DArray.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         mapping.token.viewBaseSlice = pDesc->Texture2DArray.FirstArraySlice;
                         mapping.token.viewSliceCount = pDesc->Texture2DArray.ArraySize;
                         break;
@@ -529,7 +529,7 @@ void WINAPI HookID3D12DeviceCreateRenderTargetView(ID3D12Device* _this, ID3D12Re
                         break;
                     case D3D12_RTV_DIMENSION_TEXTURE3D:
                         mapping.token.viewBaseMip = pDesc->Texture3D.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         break;
                 }
 
@@ -572,21 +572,21 @@ void WINAPI HookID3D12DeviceCreateDepthStencilView(ID3D12Device* _this, ID3D12Re
                         break;
                     case D3D12_DSV_DIMENSION_TEXTURE1D:
                         mapping.token.viewBaseMip = pDesc->Texture1D.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         break;
                     case D3D12_DSV_DIMENSION_TEXTURE1DARRAY:
                         mapping.token.viewBaseMip = pDesc->Texture1DArray.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         mapping.token.viewBaseSlice = pDesc->Texture1DArray.FirstArraySlice;
                         mapping.token.viewSliceCount = pDesc->Texture1DArray.ArraySize;
                         break;
                     case D3D12_DSV_DIMENSION_TEXTURE2D:
                         mapping.token.viewBaseMip = pDesc->Texture2D.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         break;
                     case D3D12_DSV_DIMENSION_TEXTURE2DARRAY:
                         mapping.token.viewBaseMip = pDesc->Texture2DArray.MipSlice;
-                        mapping.token.viewMipCount = -1;
+                        mapping.token.viewMipCount = UINT32_MAX;
                         mapping.token.viewBaseSlice = pDesc->Texture2DArray.FirstArraySlice;
                         mapping.token.viewSliceCount = pDesc->Texture2DArray.ArraySize;
                         break;
