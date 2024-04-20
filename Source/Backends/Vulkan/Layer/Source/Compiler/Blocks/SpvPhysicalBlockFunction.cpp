@@ -2109,6 +2109,43 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 }
                 break;
             }
+            case IL::OpCode::IntToFloat: {
+                auto *cast = instr.As<IL::IntToFloatInstruction>();
+
+                // Get value type
+                const Backend::IL::Type* valueType = ilTypeMap.GetType(cast->value);
+
+                // Handle sign
+                if (valueType->As<Backend::IL::IntType>()->signedness) {
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpConvertSToF, 4, cast->source);
+                    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                    spv[2] = cast->result;
+                    spv[3] = cast->value;
+                } else {
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpConvertUToF, 4, cast->source);
+                    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                    spv[2] = cast->result;
+                    spv[3] = cast->value;
+                }
+                break;
+            }
+            case IL::OpCode::FloatToInt: {
+                auto *cast = instr.As<IL::FloatToIntInstruction>();
+
+                // Handle sign
+                if (resultType->As<Backend::IL::IntType>()->signedness) {
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpConvertFToS, 4, cast->source);
+                    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                    spv[2] = cast->result;
+                    spv[3] = cast->value;
+                } else {
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpConvertFToU, 4, cast->source);
+                    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                    spv[2] = cast->result;
+                    spv[3] = cast->value;
+                }
+                break;
+            }
             case IL::OpCode::BitOr: {
                 auto *bitOr = instr.As<IL::BitOrInstruction>();
 

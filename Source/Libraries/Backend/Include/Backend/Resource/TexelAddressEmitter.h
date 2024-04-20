@@ -55,6 +55,7 @@ namespace Backend::IL {
 
         /// Standard handles
         using UInt32 = Handle<uint32_t>;
+        using Float = Handle<float>;
 
         /// Get the texel address of a buffer offset
         /// \param x resource local x coordinate
@@ -88,13 +89,10 @@ namespace Backend::IL {
         /// \param isVolumetric is this a volumetric (non-sliced) resource, affects offset calculation
         /// \return texel offset
         TexelAddress<UInt32> LocalTextureTexelAddress(UInt32 x, UInt32 y, UInt32 z, UInt32 mip, bool isVolumetric) {
+            // Guard mip coordinate
+            // Do this before offsetting by the base mip, to save a little bit of ALU
             if (kGuardCoordinates) {
-                ExtendedEmitter extended(emitter);
-
-                // Min all coordinates against max-1
-                x = extended.template Clamp<UInt32>(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetWidth(), emitter.UInt32(1)));
-                y = extended.template Clamp<UInt32>(y, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetHeight(), emitter.UInt32(1)));
-                z = extended.template Clamp<UInt32>(z, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetDepthOrSliceCount(), emitter.UInt32(1)));
+                GuardCoordinate(mip, tokenEmitter.GetViewMipCount());
             }
 
             // Offset by base mip
@@ -104,7 +102,14 @@ namespace Backend::IL {
             IL::ID texelAddress;
             if (isVolumetric) {
                 // Get the offset from the current mip level
-                MipData mipData = MipOffset(widthAlignP2, heightAlignP2, depthOrSliceCountAlignP2, mip);
+                PhysicalMipData mipData = MipOffset(widthAlignP2, heightAlignP2, depthOrSliceCountAlignP2, mip);
+
+                // Guard 3d mip coordinates
+                if (kGuardCoordinates) {
+                    GuardCoordinateToLogicalMip(x, tokenEmitter.GetWidth(), mip);
+                    GuardCoordinateToLogicalMip(y, tokenEmitter.GetHeight(), mip);
+                    GuardCoordinateToLogicalMip(z, tokenEmitter.GetDepthOrSliceCount(), mip);
+                }
 
                 // z * w * h + y * w + x
                 UInt32 intraTexelOffset = emitter.Mul(z, emitter.Mul(mipData.mipWidth, mipData.mipHeight));
@@ -117,11 +122,22 @@ namespace Backend::IL {
                 // Offset by base slice
                 z = emitter.Add(z, tokenEmitter.GetViewBaseSlice());
 
+                // Guard the slice index
+                if (kGuardCoordinates) {
+                    GuardCoordinate(z, tokenEmitter.GetDepthOrSliceCount());
+                }
+
                 // Get the offset from the current slice level (higher dimension than mips if non-volumetric)
                 UInt32 base = SliceOffset(widthAlignP2, heightAlignP2, tokenEmitter.GetMipCount(), z);
 
                 // Then, offset by the current mip level
-                MipData mipData = MipOffset(widthAlignP2, heightAlignP2, mip);
+                PhysicalMipData mipData = MipOffset(widthAlignP2, heightAlignP2, mip);
+
+                // Guard 2d mip coordinates
+                if (kGuardCoordinates) {
+                    GuardCoordinateToLogicalMip(x, tokenEmitter.GetWidth(), mip);
+                    GuardCoordinateToLogicalMip(y, tokenEmitter.GetHeight(), mip);
+                }
 
                 // Slice offset + mip offset
                 base = emitter.Add(base, mipData.offset);
@@ -145,12 +161,42 @@ namespace Backend::IL {
         }
 
     private:
-        struct MipData {
+        struct PhysicalMipData {
             UInt32 offset;
             UInt32 mipWidth;
             UInt32 mipHeight;
             UInt32 mipDepth;
         };
+
+        /// Guard a coordinate against its bounds
+        /// \param value coordinate to guard
+        /// \param width coordinate bound
+        void GuardCoordinate(UInt32& value, UInt32 width) {
+            ExtendedEmitter extended(emitter);
+
+            // Min coordinate against max-1
+            value = extended.template Clamp<UInt32>(value, emitter.UInt32(0), emitter.Sub(width, emitter.UInt32(1)));
+        }
+
+        /// Guard a coordinate against its bounds at a specific mip level
+        /// \param value coordinate to guard
+        /// \param width coordinate bound
+        /// \param mipLevel the target mip level
+        void GuardCoordinateToLogicalMip(UInt32& value, UInt32 width, UInt32 mipLevel) {
+            ExtendedEmitter extended(emitter);
+
+            // mipWidth = 2^mip
+            Float pow2Mip = emitter.IntToFloat32(emitter.BitShiftLeft(emitter.UInt32(1u), mipLevel));
+
+            // logicalWidth = width / mipWidth
+            Float mipFloor = extended.template Floor<Float>(emitter.Div(emitter.IntToFloat32(width), pow2Mip));
+            
+            // max(1, logicalWidth)
+            width = extended.template Max<UInt32>(emitter.UInt32(1u), emitter.FloatToUInt32(mipFloor));
+
+            // Guard against the logical size
+            return GuardCoordinate(value, width);
+        }
 
         /// Calculate the offset of a slice
         /// \param width resource width
@@ -172,13 +218,13 @@ namespace Backend::IL {
         /// \param height resource height
         /// \param mip mip to get offset for
         /// \return offset
-        MipData MipOffset(UInt32 width, UInt32 height, UInt32 mip) {
+        PhysicalMipData MipOffset(UInt32 width, UInt32 height, UInt32 mip) {
             if constexpr (E::kDevice == Device::kCPU) {
                 emitter.Assert((width & (width - 1)) == 0, "Width must be power of two");
                 emitter.Assert((height & (height - 1)) == 0, "Height must be power of two");
             }
 
-            MipData out;
+            PhysicalMipData out;
             out.mipWidth  = emitter.BitShiftRight(width, mip);
             out.mipHeight = emitter.BitShiftRight(height, mip);
             
@@ -194,14 +240,14 @@ namespace Backend::IL {
         /// @param depth resource depth
         /// @param mip mip to get offset for
         /// @return offset
-        MipData MipOffset(UInt32 width, UInt32 height, UInt32 depth, UInt32 mip) {
+        PhysicalMipData MipOffset(UInt32 width, UInt32 height, UInt32 depth, UInt32 mip) {
             if constexpr (E::kDevice == Device::kCPU) {
                 emitter.Assert((width & (width - 1)) == 0, "Width must be power of two");
                 emitter.Assert((height & (height - 1)) == 0, "Height must be power of two");
                 emitter.Assert((depth & (depth - 1)) == 0, "Depth must be power of two");
             }
             
-            MipData out;
+            PhysicalMipData out;
             out.mipWidth  = emitter.BitShiftRight(width, mip);
             out.mipHeight = emitter.BitShiftRight(height, mip);
             out.mipDepth = emitter.BitShiftRight(depth, mip);

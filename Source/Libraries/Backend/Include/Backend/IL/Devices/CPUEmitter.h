@@ -99,6 +99,21 @@ namespace IL {
             return condition ? passed : failed;
         }
 
+        /// Cast an int to a float
+        /// \param value the value to cast
+        /// \return casted value
+        template<typename T>
+        float IntToFloat32(T value) {
+            return static_cast<float>(value);
+        }
+
+        /// Cast a float to an int
+        /// \param value the value to cast
+        /// \return casted value
+        uint32_t FloatToUInt32(float value) {
+            return static_cast<uint32_t>(value);
+        }
+
         /// Perform an extended instruction
         /// \param op given op code
         /// \param a first argument
@@ -145,10 +160,20 @@ namespace IL {
                     return static_cast<T>(std::sqrt(ops[0]));
                 }
                 case Backend::IL::ExtendedOp::FirstBitLow: {
-                    return 1u << std::countr_zero(ops[0]);
+                    if constexpr(std::is_integral_v<T>) {
+                        return 1u << std::countr_zero(ops[0]);
+                    } else {
+                        ASSERT(false, "Invalid op");
+                        return 0;
+                    }
                 }
                 case Backend::IL::ExtendedOp::FirstBitHigh: {
-                    return std::bit_width(ops[0]) - 1;
+                    if constexpr(std::is_integral_v<T>) {
+                        return std::bit_width(ops[0]) - 1;
+                    } else {
+                        ASSERT(false, "Invalid op");
+                        return 0;
+                    }
                 }
             }
         }

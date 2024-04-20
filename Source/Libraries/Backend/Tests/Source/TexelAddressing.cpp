@@ -61,7 +61,7 @@ void Test(T token, bool requiresAllResident = true) {
             for (uint32_t z = 0; z < token.GetDepthOrSliceCount() >> mip; z++) {
                 for (uint32_t y = 0; y < token.GetHeight() >> mip; y++) {
                     for (uint32_t x = 0; x < token.GetWidth() >> mip; x++) {
-                        uint32_t offset = address.LocalTextureTexelAddress(x, y, z, mip, true);
+                        uint32_t offset = address.LocalTextureTexelAddress(x, y, z, mip, true).texelOffset;
 
                         REQUIRE(!states.at(offset));
                         states.at(offset) = true;
@@ -74,7 +74,7 @@ void Test(T token, bool requiresAllResident = true) {
             for (uint32_t mip = 0; mip < token.GetMipCount(); mip++) {
                 for (uint32_t y = 0; y < token.GetHeight() >> mip; y++) {
                     for (uint32_t x = 0; x < token.GetWidth() >> mip; x++) {
-                        uint32_t offset = address.LocalTextureTexelAddress(x, y, z, mip, false);
+                        uint32_t offset = address.LocalTextureTexelAddress(x, y, z, mip, false).texelOffset;
                     
                         REQUIRE(!states.at(offset));
                         states.at(offset) = true;

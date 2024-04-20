@@ -349,6 +349,63 @@ namespace IL {
             return Op(instr, type);
         }
 
+        /// Cast an integer value to float
+        /// \param value the value to cast
+        /// \return instruction reference
+        BasicBlock::TypedIterator <IntToFloatInstruction> IntToFloat(ID value, const Backend::IL::Type* type) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            IntToFloatInstruction instr{};
+            instr.opCode = OpCode::IntToFloat;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            return Op(instr, type);
+        }
+
+        /// Cast an integer value to float
+        /// \param value the value to cast
+        /// \return instruction reference
+        BasicBlock::TypedIterator <IntToFloatInstruction> IntToFloat32(ID value) {
+            return IntToFloat(value, program->GetTypeMap().FindTypeOrAdd(Backend::IL::FPType {
+                .bitWidth = 32
+            }));
+        }
+
+        /// Cast a float value to an integer
+        /// \param value the value to cast
+        /// \return instruction reference
+        BasicBlock::TypedIterator <FloatToIntInstruction> FloatToInt(ID value, const Backend::IL::Type* type) {
+            ASSERT(IsMapped(value), "Unmapped identifier");
+
+            FloatToIntInstruction instr{};
+            instr.opCode = OpCode::FloatToInt;
+            instr.source = Source::Invalid();
+            instr.result = map->AllocID();
+            instr.value = value;
+            return Op(instr, type);
+        }
+
+        /// Cast a float value to an integer
+        /// \param value the value to cast
+        /// \return instruction reference
+        BasicBlock::TypedIterator <FloatToIntInstruction> FloatToUInt32(ID value) {
+            return FloatToInt(value, program->GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {
+                .bitWidth = 32,
+                .signedness = false
+            }));
+        }
+
+        /// Cast a float value to an integer
+        /// \param value the value to cast
+        /// \return instruction reference
+        BasicBlock::TypedIterator <FloatToIntInstruction> FloatToSInt32(ID value) {
+            return FloatToInt(value, program->GetTypeMap().FindTypeOrAdd(Backend::IL::IntType {
+                .bitWidth = 32,
+                .signedness = true
+            }));
+        }
+
         /// Get the address of a composite element
         /// \param composite the base composite address
         /// \param index the uniform index

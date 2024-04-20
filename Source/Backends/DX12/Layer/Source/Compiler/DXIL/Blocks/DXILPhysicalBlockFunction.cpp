@@ -3875,8 +3875,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                             record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstCast);
                             record.opCount = 3;
                             record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
-                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->value);
-                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(static_cast<uint32_t>(record.ops[0]))));
+                            record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
+                            record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(resultType));
                             record.ops[2] = static_cast<uint64_t>(LLVMCastOp::BitCast);
                             block->AddRecord(record);
                         });
@@ -3891,6 +3891,9 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     record.opCount = 3;
                     record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
 
+                    // Get types
+                    const Backend::IL::Type* resultType = typeMap.GetType(instr->result);
+                    
                     // Translate op code
                     LLVMCastOp opCode{};
                     switch (instr->opCode) {
@@ -3917,8 +3920,8 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         }
                     }
 
-                    // Assign type
-                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(program.GetTypeMap().GetType(static_cast<uint32_t>(record.ops[0]))));
+                    // Set result
+                    record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(table.type.typeMap.GetType(resultType));
 
                     // Set cmp op
                     record.ops[2] = static_cast<uint64_t>(opCode);
