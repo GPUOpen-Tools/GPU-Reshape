@@ -160,6 +160,7 @@ private:
         spv[1] = id;
         spv[2] = type->bitWidth;
 
+        AddMapping(id, type);
         return id;
     }
 
