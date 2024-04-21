@@ -36,6 +36,7 @@
 #include <Backend/Command/RenderPassInfo.h>
 #include <Backends/Vulkan/States/FrameBufferState.h>
 #include <Backends/Vulkan/States/RenderPassState.h>
+#include <Backends/Vulkan/Resource/ResourceInfo.h>
 #include <Backend/Resource/ResourceInfo.h>
 
 /// Check if a state is volumetric
@@ -86,18 +87,22 @@ void FeatureHook_vkCmdCopyImage::operator()(CommandBufferObject *object, Command
     // Invoke hook per region
     for (uint32_t i = 0; i < regionCount; i++) {
         const VkImageCopy& region = pRegions[i];
+
+        // Expand the subresource for mappings
+        VkImageSubresourceLayers srcSubresource = ExpandImageSubresourceLayers(srcImageState, region.srcSubresource);
+        VkImageSubresourceLayers dstSubresource = ExpandImageSubresourceLayers(dstImageState, region.dstSubresource);
         
         // Setup source descriptor
         TextureDescriptor srcDescriptor{
             .region = {
-                .baseMip = region.srcSubresource.mipLevel,
-                .baseSlice = region.srcSubresource.baseArrayLayer,
+                .baseMip = srcSubresource.mipLevel,
+                .baseSlice = srcSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.srcOffset.x),
                 .offsetY = static_cast<uint32_t>(region.srcOffset.y),
                 .offsetZ = static_cast<uint32_t>(region.srcOffset.z),
                 .width = region.extent.width,
                 .height = region.extent.height,
-                .depth = std::max(region.extent.depth, region.srcSubresource.layerCount)
+                .depth = std::max(region.extent.depth, srcSubresource.layerCount)
             },
             .uid = srcImageState->uid
         };
@@ -105,14 +110,14 @@ void FeatureHook_vkCmdCopyImage::operator()(CommandBufferObject *object, Command
         // Setup destination descriptor
         TextureDescriptor dstDescriptor{
             .region = {
-                .baseMip = region.dstSubresource.mipLevel,
-                .baseSlice = region.dstSubresource.baseArrayLayer,
+                .baseMip = dstSubresource.mipLevel,
+                .baseSlice = dstSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.dstOffset.x),
                 .offsetY = static_cast<uint32_t>(region.dstOffset.y),
                 .offsetZ = static_cast<uint32_t>(region.dstOffset.z),
                 .width = region.extent.width,
                 .height = region.extent.height,
-                .depth = std::max(region.extent.depth, region.dstSubresource.baseArrayLayer + region.dstSubresource.layerCount)
+                .depth = std::max(region.extent.depth, dstSubresource.baseArrayLayer + dstSubresource.layerCount)
             },
             .uid = dstImageState->uid
         };
@@ -134,12 +139,16 @@ void FeatureHook_vkCmdBlitImage::operator()(CommandBufferObject *object, Command
     // Invoke hook per region
     for (uint32_t i = 0; i < regionCount; i++) {
         const VkImageBlit& region = pRegions[i];
+
+        // Expand the subresource for mappings
+        VkImageSubresourceLayers srcSubresource = ExpandImageSubresourceLayers(srcImageState, region.srcSubresource);
+        VkImageSubresourceLayers dstSubresource = ExpandImageSubresourceLayers(dstImageState, region.dstSubresource);
         
         // Setup source descriptor
         TextureDescriptor srcDescriptor{
             .region = {
-                .baseMip = region.srcSubresource.mipLevel,
-                .baseSlice = region.srcSubresource.baseArrayLayer,
+                .baseMip = srcSubresource.mipLevel,
+                .baseSlice = srcSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.srcOffsets[0].x),
                 .offsetY = static_cast<uint32_t>(region.srcOffsets[0].y),
                 .offsetZ = static_cast<uint32_t>(region.srcOffsets[0].z),
@@ -153,8 +162,8 @@ void FeatureHook_vkCmdBlitImage::operator()(CommandBufferObject *object, Command
         // Setup destination descriptor
         TextureDescriptor dstDescriptor{
             .region = {
-                .baseMip = region.dstSubresource.mipLevel,
-                .baseSlice = region.dstSubresource.baseArrayLayer,
+                .baseMip = dstSubresource.mipLevel,
+                .baseSlice = dstSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.dstOffsets[0].x),
                 .offsetY = static_cast<uint32_t>(region.dstOffsets[0].y),
                 .offsetZ = static_cast<uint32_t>(region.dstOffsets[0].z),
@@ -174,20 +183,6 @@ void FeatureHook_vkCmdBlitImage::operator()(CommandBufferObject *object, Command
     }
 }
 
-static BufferPlacedDescriptor GetBufferPlacedDescriptor(ImageState* state, uint32_t bufferRowLength, uint32_t bufferImageHeight) {
-    // Zero is allowed, assume tightly packed coordinates
-    if (bufferRowLength == 0 || bufferImageHeight == 0) {
-        bufferRowLength = state->createInfo.extent.width * state->virtualMappingTemplate.token.formatSize;
-        bufferImageHeight = state->createInfo.extent.height;
-    }
-
-    // Create descriptor
-    BufferPlacedDescriptor out;
-    out.rowLength = bufferRowLength;
-    out.imageHeight = bufferImageHeight;
-    return out;
-}
-
 void FeatureHook_vkCmdCopyBufferToImage::operator()(CommandBufferObject *object, CommandContext *context, VkBuffer srcBuffer, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkBufferImageCopy *pRegions) const {
     // Get states
     BufferState* srcBufferState = object->table->states_buffer.Get(srcBuffer);
@@ -196,6 +191,9 @@ void FeatureHook_vkCmdCopyBufferToImage::operator()(CommandBufferObject *object,
     // Invoke hook per region
     for (uint32_t i = 0; i < regionCount; i++) {
         const VkBufferImageCopy& region = pRegions[i];
+
+        // Expand the subresource for mappings
+        VkImageSubresourceLayers dstSubresource = ExpandImageSubresourceLayers(dstImageState, region.imageSubresource);
 
         // Setup source descriptor
         BufferDescriptor srcDescriptor{
@@ -208,14 +206,14 @@ void FeatureHook_vkCmdCopyBufferToImage::operator()(CommandBufferObject *object,
         // Setup destination descriptor
         TextureDescriptor dstDescriptor{
             .region = {
-                .baseMip = region.imageSubresource.mipLevel,
-                .baseSlice = region.imageSubresource.baseArrayLayer,
+                .baseMip = dstSubresource.mipLevel,
+                .baseSlice = dstSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.imageOffset.x),
                 .offsetY = static_cast<uint32_t>(region.imageOffset.y),
                 .offsetZ = static_cast<uint32_t>(region.imageOffset.z),
                 .width = region.imageExtent.width,
                 .height = region.imageExtent.height,
-                .depth = std::max(region.imageSubresource.baseArrayLayer + region.imageSubresource.layerCount, region.imageExtent.depth)
+                .depth = std::max(dstSubresource.baseArrayLayer + dstSubresource.layerCount, region.imageExtent.depth)
             },
             .uid = dstImageState->uid
         };
@@ -238,6 +236,9 @@ void FeatureHook_vkCmdCopyBufferToImage2::operator()(CommandBufferObject *object
     for (uint32_t i = 0; i < pCopyBufferToImageInfo->regionCount; i++) {
         const VkBufferImageCopy2& region = pCopyBufferToImageInfo->pRegions[i];
 
+        // Expand the subresource for mappings
+        VkImageSubresourceLayers dstSubresource = ExpandImageSubresourceLayers(dstImageState, region.imageSubresource);
+
         // Setup source descriptor
         BufferDescriptor srcDescriptor{
             .offset = region.bufferOffset,
@@ -249,14 +250,14 @@ void FeatureHook_vkCmdCopyBufferToImage2::operator()(CommandBufferObject *object
         // Setup destination descriptor
         TextureDescriptor dstDescriptor{
             .region = {
-                .baseMip = region.imageSubresource.mipLevel,
-                .baseSlice = region.imageSubresource.baseArrayLayer,
+                .baseMip = dstSubresource.mipLevel,
+                .baseSlice = dstSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.imageOffset.x),
                 .offsetY = static_cast<uint32_t>(region.imageOffset.y),
                 .offsetZ = static_cast<uint32_t>(region.imageOffset.z),
                 .width = region.imageExtent.width,
                 .height = region.imageExtent.height,
-                .depth = std::max(region.imageSubresource.baseArrayLayer + region.imageSubresource.layerCount, region.imageExtent.depth)
+                .depth = std::max(dstSubresource.baseArrayLayer + dstSubresource.layerCount, region.imageExtent.depth)
             },
             .uid = dstImageState->uid
         };
@@ -279,17 +280,20 @@ void FeatureHook_vkCmdCopyImageToBuffer::operator()(CommandBufferObject *object,
     for (uint32_t i = 0; i < regionCount; i++) {
         const VkBufferImageCopy& region = pRegions[i];
 
+        // Expand the subresource for mappings
+        VkImageSubresourceLayers srcSubresource = ExpandImageSubresourceLayers(srcImageState, region.imageSubresource);
+
         // Setup source descriptor
         TextureDescriptor srcDescriptor{
             .region = {
-                .baseMip = region.imageSubresource.mipLevel,
-                .baseSlice = region.imageSubresource.baseArrayLayer,
+                .baseMip = srcSubresource.mipLevel,
+                .baseSlice = srcSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.imageOffset.x),
                 .offsetY = static_cast<uint32_t>(region.imageOffset.y),
                 .offsetZ = static_cast<uint32_t>(region.imageOffset.z),
                 .width = region.imageExtent.width,
                 .height = region.imageExtent.height,
-                .depth = std::max(region.imageSubresource.baseArrayLayer + region.imageSubresource.layerCount, region.imageExtent.depth)
+                .depth = std::max(srcSubresource.baseArrayLayer + srcSubresource.layerCount, region.imageExtent.depth)
             },
             .uid = srcImageState->uid
         };
@@ -320,17 +324,20 @@ void FeatureHook_vkCmdCopyImageToBuffer2::operator()(CommandBufferObject *object
     for (uint32_t i = 0; i < pCopyImageToBufferInfo->regionCount; i++) {
         const VkBufferImageCopy2& region = pCopyImageToBufferInfo->pRegions[i];
 
+        // Expand the subresource for mappings
+        VkImageSubresourceLayers srcSubresource = ExpandImageSubresourceLayers(srcImageState, region.imageSubresource);
+
         // Setup source descriptor
         TextureDescriptor srcDescriptor{
             .region = {
-                .baseMip = region.imageSubresource.mipLevel,
-                .baseSlice = region.imageSubresource.baseArrayLayer,
+                .baseMip = srcSubresource.mipLevel,
+                .baseSlice = srcSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.imageOffset.x),
                 .offsetY = static_cast<uint32_t>(region.imageOffset.y),
                 .offsetZ = static_cast<uint32_t>(region.imageOffset.z),
                 .width = region.imageExtent.width,
                 .height = region.imageExtent.height,
-                .depth = std::max(region.imageSubresource.baseArrayLayer + region.imageSubresource.layerCount, region.imageExtent.depth)
+                .depth = std::max(srcSubresource.baseArrayLayer + srcSubresource.layerCount, region.imageExtent.depth)
             },
             .uid = srcImageState->uid
         };
@@ -394,7 +401,7 @@ void FeatureHook_vkCmdClearColorImage::operator()(CommandBufferObject *object, C
 
     // Invoke hook per region
     for (uint32_t i = 0; i < rangeCount; i++) {
-        const VkImageSubresourceRange& region = pRanges[i];
+        VkImageSubresourceRange region = ExpandImageSubresourceRange(dstImageState, pRanges[i]);
         
         // Setup source descriptor
         TextureDescriptor dstDescriptor{
@@ -421,7 +428,7 @@ void FeatureHook_vkCmdClearDepthStencilImage::operator()(CommandBufferObject *ob
 
     // Invoke hook per region
     for (uint32_t i = 0; i < rangeCount; i++) {
-        const VkImageSubresourceRange& region = pRanges[i];
+        VkImageSubresourceRange region = ExpandImageSubresourceRange(dstImageState, pRanges[i]);
         
         // Setup source descriptor
         TextureDescriptor dstDescriptor{
@@ -479,18 +486,22 @@ void FeatureHook_vkCmdResolveImage::operator()(CommandBufferObject *object, Comm
     // Invoke hook per region
     for (uint32_t i = 0; i < regionCount; i++) {
         const VkImageResolve& region = pRegions[i];
+
+        // Expand the subresource for mappings
+        VkImageSubresourceLayers srcSubresource = ExpandImageSubresourceLayers(srcImageState, region.srcSubresource);
+        VkImageSubresourceLayers dstSubresource = ExpandImageSubresourceLayers(dstImageState, region.dstSubresource);
         
         // Setup source descriptor
         TextureDescriptor srcDescriptor{
             .region = {
-                .baseMip = region.srcSubresource.mipLevel,
-                .baseSlice = region.srcSubresource.baseArrayLayer,
+                .baseMip = srcSubresource.mipLevel,
+                .baseSlice = srcSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.srcOffset.x),
                 .offsetY = static_cast<uint32_t>(region.srcOffset.y),
                 .offsetZ = static_cast<uint32_t>(region.srcOffset.z),
                 .width = region.extent.width,
                 .height = region.extent.height,
-                .depth = std::max(region.srcSubresource.baseArrayLayer + region.srcSubresource.layerCount, region.extent.depth)
+                .depth = std::max(srcSubresource.baseArrayLayer + srcSubresource.layerCount, region.extent.depth)
             },
             .uid = srcImageState->uid
         };
@@ -498,14 +509,14 @@ void FeatureHook_vkCmdResolveImage::operator()(CommandBufferObject *object, Comm
         // Setup destination descriptor
         TextureDescriptor dstDescriptor{
             .region = {
-                .baseMip = region.dstSubresource.mipLevel,
-                .baseSlice = region.dstSubresource.baseArrayLayer,
+                .baseMip = dstSubresource.mipLevel,
+                .baseSlice = dstSubresource.baseArrayLayer,
                 .offsetX = static_cast<uint32_t>(region.dstOffset.x),
                 .offsetY = static_cast<uint32_t>(region.dstOffset.y),
                 .offsetZ = static_cast<uint32_t>(region.dstOffset.z),
                 .width = region.extent.width,
                 .height = region.extent.height,
-                .depth = std::max(region.dstSubresource.baseArrayLayer + region.dstSubresource.layerCount, region.extent.depth)
+                .depth = std::max(dstSubresource.baseArrayLayer + dstSubresource.layerCount, region.extent.depth)
             },
             .uid = dstImageState->uid
         };

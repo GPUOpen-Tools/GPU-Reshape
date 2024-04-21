@@ -31,32 +31,13 @@
 #include <Backends/Vulkan/States/ImageState.h>
 #include <Backends/Vulkan/States/SamplerState.h>
 #include <Backends/Vulkan/Controllers/VersioningController.h>
-#include <Backends/Vulkan/Memory.h>
+#include <Backends/Vulkan/Resource/ResourceInfo.h>
 #include <Backends/Vulkan/Translation.h>
+#include <Backends/Vulkan/Memory.h>
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
 
-ResourceInfo GetResourceInfoFor(const VirtualResourceMapping& mapping, bool isVolumetric) {
-    // Construct without descriptor
-    switch (static_cast<Backend::IL::ResourceTokenType>(mapping.token.type)) {
-        default:
-            ASSERT(false, "Unexpected type");
-        return {};
-        case Backend::IL::ResourceTokenType::Texture:
-            return ResourceInfo::Texture(mapping.token, isVolumetric);
-        case Backend::IL::ResourceTokenType::Buffer:
-            return ResourceInfo::Buffer(mapping.token);
-    }
-}
-
-ResourceInfo GetResourceInfoFor(const ImageState *state) {
-    return GetResourceInfoFor(state->virtualMappingTemplate, state->createInfo.extent.depth > 1u);
-}
-
-ResourceInfo GetResourceInfoFor(const ImageViewState *state) {
-    return GetResourceInfoFor(state->virtualMapping, state->parent->createInfo.extent.depth > 1u);
-}
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBuffer* pBuffer) {
     DeviceDispatchTable *table = DeviceDispatchTable::Get(GetInternalTable(device));
@@ -212,14 +193,17 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImageView(VkDevice device, const VkI
     state->object = *pView;
     state->parent = table->states_image.Get(pCreateInfo->image);
 
+    // Expand the subresource for mappings
+    VkImageSubresourceRange expandedRange = ExpandImageSubresourceRange(state->parent, pCreateInfo->subresourceRange);
+
     // Inherit mapping
     state->virtualMapping = state->parent->virtualMappingTemplate;
     state->virtualMapping.token.formatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
     state->virtualMapping.token.formatSize = GetFormatByteSize(pCreateInfo->format);
-    state->virtualMapping.token.viewBaseMip = pCreateInfo->subresourceRange.baseMipLevel;
-    state->virtualMapping.token.viewMipCount = pCreateInfo->subresourceRange.levelCount;
-    state->virtualMapping.token.viewBaseSlice = pCreateInfo->subresourceRange.baseArrayLayer;
-    state->virtualMapping.token.viewSliceCount = pCreateInfo->subresourceRange.layerCount;
+    state->virtualMapping.token.viewBaseMip = expandedRange.baseMipLevel;
+    state->virtualMapping.token.viewMipCount = expandedRange.levelCount;
+    state->virtualMapping.token.viewBaseSlice = expandedRange.baseArrayLayer;
+    state->virtualMapping.token.viewSliceCount = expandedRange.layerCount;
 
     // Store lookup
     table->states_imageView.Add(*pView, state);

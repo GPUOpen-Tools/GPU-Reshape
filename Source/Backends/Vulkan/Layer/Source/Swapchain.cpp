@@ -31,6 +31,7 @@
 #include <Backends/Vulkan/Tables/DeviceDispatchTable.h>
 #include <Backends/Vulkan/Resource.h>
 #include <Backends/Vulkan/Translation.h>
+#include <Backends/Vulkan/Resource/ResourceInfo.h>
 
 // Backend
 #include <Backend/IL/ResourceTokenType.h>
@@ -81,6 +82,20 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateSwapchainKHR(VkDevice device, const 
             imageState = new(table->allocators) ImageState;
             imageState->object = images[i];
             imageState->table = table;
+
+            // Emulate creation info
+            imageState->createInfo = {};
+            imageState->createInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageState->createInfo.format = pCreateInfo->imageFormat;
+            imageState->createInfo.extent = VkExtent3D(pCreateInfo->imageExtent.width, pCreateInfo->imageExtent.height, 1u);
+            imageState->createInfo.mipLevels = 1u;
+            imageState->createInfo.arrayLayers = pCreateInfo->imageArrayLayers;
+            imageState->createInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+            imageState->createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+            imageState->createInfo.usage = pCreateInfo->imageUsage;
+            imageState->createInfo.sharingMode = pCreateInfo->imageSharingMode;
+            imageState->createInfo.queueFamilyIndexCount = pCreateInfo->queueFamilyIndexCount;
+            imageState->createInfo.pQueueFamilyIndices = pCreateInfo->pQueueFamilyIndices;
 
             // Create mapping template
             imageState->virtualMappingTemplate.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Texture);

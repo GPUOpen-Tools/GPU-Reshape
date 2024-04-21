@@ -31,6 +31,7 @@
 #include <Backends/Vulkan/States/DeviceMemoryState.h>
 #include <Backends/Vulkan/States/BufferState.h>
 #include <Backends/Vulkan/States/ImageState.h>
+#include <Backends/Vulkan/Resource/ResourceInfo.h>
 
 // Backend
 #include <Backend/Resource/ResourceInfo.h>

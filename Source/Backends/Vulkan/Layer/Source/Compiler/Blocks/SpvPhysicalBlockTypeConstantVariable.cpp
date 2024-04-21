@@ -231,6 +231,9 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
                             case Backend::IL::TextureDimension::Texture2D:
                                 type.dimension = Backend::IL::TextureDimension::Texture2DArray;
                                 break;
+                            case Backend::IL::TextureDimension::Texture2DCube:
+                                type.dimension = Backend::IL::TextureDimension::Texture2DCubeArray;
+                                break;
                         }
                     }
 
