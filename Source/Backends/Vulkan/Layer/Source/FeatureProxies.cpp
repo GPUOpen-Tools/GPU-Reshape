@@ -409,7 +409,9 @@ void FeatureHook_vkCmdClearColorImage::operator()(CommandBufferObject *object, C
                 .baseMip = region.baseMipLevel,
                 .baseSlice = region.baseArrayLayer,
                 .mipCount = region.levelCount,
-                .depth = region.baseArrayLayer + region.layerCount
+                .width = dstImageState->createInfo.extent.width,
+                .height = dstImageState->createInfo.extent.height,
+                .depth = std::max(region.baseArrayLayer + region.layerCount, dstImageState->createInfo.extent.depth)
             },
             .uid = dstImageState->uid
         };
@@ -436,7 +438,9 @@ void FeatureHook_vkCmdClearDepthStencilImage::operator()(CommandBufferObject *ob
                 .baseMip = region.baseMipLevel,
                 .baseSlice = region.baseArrayLayer,
                 .mipCount = region.levelCount,
-                .depth = region.baseArrayLayer + region.layerCount
+                .width = dstImageState->createInfo.extent.width,
+                .height = dstImageState->createInfo.extent.height,
+                .depth = std::max(region.baseArrayLayer + region.layerCount, dstImageState->createInfo.extent.depth)
             },
             .uid = dstImageState->uid
         };
@@ -455,26 +459,31 @@ void FeatureHook_vkCmdClearAttachments::operator()(CommandBufferObject *object, 
     // Get states
     FrameBufferState* frameBufferState = object->table->states_frameBuffers.Get(object->streamState->renderPass.deepCopy->framebuffer);
 
-    for (uint32_t i = 0; i < attachmentCount; i++) {
-        const VkClearRect& rect = pRects[i];
+    // Clear each attachment
+    for (uint32_t attachmentIndex = 0; attachmentIndex < attachmentCount; attachmentIndex++) {
+        ImageViewState* imageViewState = frameBufferState->imageViews[attachmentIndex];
 
-        // Get view state
-        ImageViewState* imageViewState = frameBufferState->imageViews[i];
+        // Clear each rect area
+        for (uint32_t regionIndex = 0; regionIndex < rectCount; regionIndex++) {
+            const VkClearRect& rect = pRects[regionIndex];
         
-        // Setup source descriptor
-        TextureDescriptor dstDescriptor{
-            .region = {
-                .baseSlice = rect.baseArrayLayer,
-                .depth = rect.baseArrayLayer + rect.layerCount
-            },
-            .uid = imageViewState->uid
-        };
+            // Setup source descriptor
+            TextureDescriptor dstDescriptor{
+                .region = {
+                    .baseSlice = rect.baseArrayLayer,
+                    .width = imageViewState->parent->createInfo.extent.width,
+                    .height = imageViewState->parent->createInfo.extent.height,
+                    .depth = std::max(rect.baseArrayLayer + rect.layerCount, imageViewState->parent->createInfo.extent.depth)
+                },
+                .uid = imageViewState->uid
+            };
 
-        // Invoke hook
-        hook.Invoke(
-            context,
-            ResourceInfo::Texture(imageViewState->virtualMapping.token, IsVolumetric(imageViewState), dstDescriptor)
-        );
+            // Invoke hook
+            hook.Invoke(
+                context,
+                ResourceInfo::Texture(imageViewState->virtualMapping.token, IsVolumetric(imageViewState), dstDescriptor)
+            );
+        }
     }
 }
 
