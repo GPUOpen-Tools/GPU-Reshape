@@ -188,7 +188,8 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     }
 
     // Read the source initialization bit
-    IL::ID sourceBit = AtomicAndTexelAddress(emitter, initializationMaskBufferDataID, sourceBaseAlign32, sourceTexel);
+    // This doesn't need to be atomic, as the source memory should be visible at this point
+    IL::ID sourceBit = ReadTexelAddress(emitter, initializationMaskBufferDataID, sourceBaseAlign32, sourceTexel);
 
     // Write the source bit to the destination bit
     AtomicOrTexelAddress(emitter, initializationMaskBufferDataID, destBaseAlign32, destTexel, sourceBit);

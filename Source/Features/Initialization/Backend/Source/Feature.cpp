@@ -403,7 +403,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         IL::ID baseMemoryOffsetAlign32 = pre.Extract(pre.LoadBuffer(pre.Load(puidMemoryBaseBufferDataID), PUID), zero);
 
         // Fetch the bit
-        // todo[init]: To atomic, or not to atomic?
+        // This doesn't need to be atomic, as the source memory should be visible at this point
         IL::ID texelBit = ReadTexelAddress(pre, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress.texelOffset);
 
         // If the bit is not set, the texel isn't initialized
@@ -481,10 +481,12 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     // everything has been initialized. Carrying initialization states across
     // completely opaque sources is outside the scope of this feature.
     if (source.createFlags & ResourceCreateFlag::OpenedFromExternalHandle) {
-        pendingInitializationQueue.push_back(InitialiationTag {
-            .info = source.resource,
-            .srb = ~0u
-        });
+        if (!puidSRBInitializationSet.contains(source.resource.token.puid)) {
+            pendingInitializationQueue.push_back(InitialiationTag {
+                .info = source.resource,
+                .srb = ~0u
+            });
+        }
     }
 }
 
@@ -498,12 +500,17 @@ void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
     addressAllocator.Free();
 
     allocations.erase(source.token.puid);
-    puidSRBInitializationMap.erase(source.token.puid);
+    puidSRBInitializationSet.erase(source.token.puid);
 }
 
 void InitializationFeature::OnMapResource(const ResourceInfo &source) {
     std::lock_guard guard(mutex);
 
+    // Skip if already initialized
+    if (puidSRBInitializationSet.contains(source.token.puid)) {
+        return;
+    }
+    
     // Mark for host initialization
     pendingInitializationQueue.push_back(InitialiationTag {
         .info = source,
@@ -599,15 +606,6 @@ void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& ho
             continue;
         }
 
-        // May already be initialized
-        uint32_t& initializedSRB = puidSRBInitializationMap[tag.info.token.puid];
-        if ((initializedSRB & tag.srb) == tag.srb) {
-            continue;
-        }
-
-        // Mark host side initialization
-        initializedSRB |= tag.srb;
-
         // Mark device side initialization
         BlitResourceMask(hookContexts.preContext->buffer, tag.info);
     }
@@ -624,8 +622,14 @@ void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
     
     // If the head is less than the current base, it's already been shaved off
     if (it->second.committedInitializationHead > committedInitializationBase) {
-        // Shave off all known committed initialization events
         const size_t shaveCount = it->second.committedInitializationHead - committedInitializationBase;
+
+        // Mark all resources in range as initialized
+        for (size_t i = 0; i < shaveCount; i++) {
+            puidSRBInitializationSet.insert(pendingInitializationQueue[i].info.token.puid);
+        }
+        
+        // Shave off all known committed initialization events
         pendingInitializationQueue.erase(pendingInitializationQueue.begin(), pendingInitializationQueue.begin() + shaveCount);
 
         // Set new base

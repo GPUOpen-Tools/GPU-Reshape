@@ -45,6 +45,7 @@
 // Std
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
 // Forward declarations
 class IShaderSGUIDHost;
@@ -237,5 +238,5 @@ private:
     std::mutex mutex;
 
     /// Current initialization mask
-    std::unordered_map<uint64_t, uint32_t> puidSRBInitializationMap;
+    std::unordered_set<uint64_t> puidSRBInitializationSet;
 };
