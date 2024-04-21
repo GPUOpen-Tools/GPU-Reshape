@@ -200,7 +200,7 @@ void FeatureHook_vkCmdCopyBufferToImage::operator()(CommandBufferObject *object,
         // Setup source descriptor
         BufferDescriptor srcDescriptor{
             .offset = region.bufferOffset,
-            .width = srcBufferState->virtualMapping.token.width,
+            .width = srcBufferState->virtualMapping.token.width - region.bufferOffset,
             .placedDescriptor = GetBufferPlacedDescriptor(dstImageState, region.bufferRowLength, region.bufferImageHeight),
             .uid = srcBufferState->uid
         };
@@ -241,7 +241,7 @@ void FeatureHook_vkCmdCopyBufferToImage2::operator()(CommandBufferObject *object
         // Setup source descriptor
         BufferDescriptor srcDescriptor{
             .offset = region.bufferOffset,
-            .width = srcBufferState->virtualMapping.token.width,
+            .width = srcBufferState->virtualMapping.token.width - region.bufferOffset,
             .placedDescriptor = GetBufferPlacedDescriptor(dstImageState, region.bufferRowLength, region.bufferImageHeight),
             .uid = srcBufferState->uid
         };
@@ -297,7 +297,7 @@ void FeatureHook_vkCmdCopyImageToBuffer::operator()(CommandBufferObject *object,
         // Setup destination descriptor
         BufferDescriptor dstDescriptor{
             .offset = region.bufferOffset,
-            .width = dstBufferState->virtualMapping.token.width,
+            .width = dstBufferState->virtualMapping.token.width - region.bufferOffset,
             .placedDescriptor = GetBufferPlacedDescriptor(srcImageState, region.bufferRowLength, region.bufferImageHeight),
             .uid = dstBufferState->uid
         };
@@ -338,7 +338,7 @@ void FeatureHook_vkCmdCopyImageToBuffer2::operator()(CommandBufferObject *object
         // Setup destination descriptor
         BufferDescriptor dstDescriptor{
             .offset = region.bufferOffset,
-            .width = dstBufferState->virtualMapping.token.width,
+            .width = dstBufferState->virtualMapping.token.width - region.bufferOffset,
             .placedDescriptor = GetBufferPlacedDescriptor(srcImageState, region.bufferRowLength, region.bufferImageHeight),
             .uid = dstBufferState->uid
         };

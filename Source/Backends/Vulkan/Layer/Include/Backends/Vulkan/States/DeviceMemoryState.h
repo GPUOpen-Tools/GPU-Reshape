@@ -49,14 +49,13 @@ struct DeviceMemoryState {
     /// Length of this memory
     size_t length{UINT64_MAX};
 
-    /// Currently mapped offset
-    uint64_t mappedOffset{UINT64_MAX};
+    /// Currently known mapped range
+    /// This may change into a proper map in the future for better granularity
+    uint64_t mappedOffsetStart{UINT64_MAX};
+    uint64_t mappedOffsetEnd{0};
 
-    /// Currently mapped length
-    uint64_t mappedLength{UINT64_MAX};
-
-    /// Currently mapped memory
-    void* mappedMemory{nullptr};
+    /// Has this block been mapped before?
+    bool hasMapped{false};
 
     /// Shared lock for this memory allocation
     /// Number of allocations are low enough so that this is not that costly

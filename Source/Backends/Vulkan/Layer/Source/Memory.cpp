@@ -104,8 +104,9 @@ VKAPI_ATTR VkResult VKAPI_ATTR Hook_vkMapMemory(VkDevice device, VkDeviceMemory 
 
     // Serial!
     std::lock_guard guard(memoryState->lock);
-    memoryState->mappedOffset = offset;
-    memoryState->mappedLength = size;
+    memoryState->mappedOffsetStart = std::min(memoryState->mappedOffsetStart, offset);
+    memoryState->mappedOffsetEnd = std::max(memoryState->mappedOffsetStart, offset + size);
+    memoryState->hasMapped = true;
 
     // Find ranges to visit
     auto range = memoryState->range.entries.enumerate(offset, offset + size);
@@ -138,7 +139,7 @@ VKAPI_ATTR void VKAPI_ATTR Hook_vkUnmapMemory(VkDevice device, VkDeviceMemory me
     std::lock_guard guard(memoryState->lock);
 
     // Find ranges to visit
-    auto range = memoryState->range.entries.enumerate(memoryState->mappedOffset, memoryState->mappedOffset + memoryState->mappedLength);
+    auto range = memoryState->range.entries.enumerate(memoryState->mappedOffsetStart, memoryState->mappedOffsetEnd);
     
     // Invoke proxies for all resources in overlapping range
     for (auto&& [offset, memoryEntry] : range) {
@@ -152,9 +153,14 @@ VKAPI_ATTR void VKAPI_ATTR Hook_vkUnmapMemory(VkDevice device, VkDeviceMemory me
     }
 }
 
+/// Check if a range is overlapping
+bool IsRangeOverlapping(uint64_t rangeAStart, uint64_t rangeAEnd, uint64_t rangeBStart, uint64_t rangeBEnd) {
+    return rangeAStart <= rangeBEnd && rangeBStart <= rangeAEnd;
+}
+
 static void EmulateBindOverMappedRange(DeviceDispatchTable* table, DeviceMemoryState* memoryState, const BufferState* bufferState, VkDeviceSize memoryOffset) {
     // Not mapped at all?
-    if (!memoryState->mappedMemory) {
+    if (!memoryState->hasMapped) {
         return;
     }
     
@@ -163,8 +169,7 @@ static void EmulateBindOverMappedRange(DeviceDispatchTable* table, DeviceMemoryS
     table->next_vkGetBufferMemoryRequirements(table->object, bufferState->object, &requirements);
 
     // No overlap?
-    if (memoryOffset < memoryState->mappedOffset + memoryState->mappedLength ||
-        memoryState->mappedOffset > memoryOffset + requirements.size) {
+    if (!IsRangeOverlapping(memoryOffset, memoryOffset + requirements.size, memoryState->mappedOffsetStart, memoryState->mappedOffsetEnd)) {
         return;
     }
 
@@ -179,7 +184,7 @@ static void EmulateBindOverMappedRange(DeviceDispatchTable* table, DeviceMemoryS
 
 static void EmulateBindOverMappedRange(DeviceDispatchTable* table, DeviceMemoryState* memoryState, const ImageState* imageState, VkDeviceSize memoryOffset) {
     // Not mapped at all?
-    if (!memoryState->mappedMemory) {
+    if (!memoryState->hasMapped) {
         return;
     }
     
@@ -188,8 +193,7 @@ static void EmulateBindOverMappedRange(DeviceDispatchTable* table, DeviceMemoryS
     table->next_vkGetImageMemoryRequirements(table->object, imageState->object, &requirements);
 
     // No overlap?
-    if (memoryOffset < memoryState->mappedOffset + memoryState->mappedLength ||
-        memoryState->mappedOffset > memoryOffset + requirements.size) {
+    if (!IsRangeOverlapping(memoryOffset, memoryOffset + requirements.size, memoryState->mappedOffsetStart, memoryState->mappedOffsetEnd)) {
         return;
     }
 
