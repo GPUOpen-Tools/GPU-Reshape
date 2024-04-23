@@ -226,11 +226,7 @@ struct ShaderExportStreamSegmentUserContext {
 /// Single stream segment, i.e. submission
 struct ShaderExportStreamSegment {
     ShaderExportStreamSegment(const Allocators& allocators) :
-        segmentDescriptors(allocators),
         referencedHeaps(allocators),
-        descriptorDataSegments(allocators),
-        constantShaderDataBuffers(allocators),
-        constantAllocator(allocators),
         commandContextHandles(allocators) {
         
     }
@@ -246,20 +242,8 @@ struct ShaderExportStreamSegment {
     ShaderExportSegmentDescriptorInfo patchDeviceCPUDescriptor;
     ShaderExportSegmentDescriptorInfo patchDeviceGPUDescriptor;
 
-    /// Combined segment descriptors, lifetime bound to this segment
-    Vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
-
     /// All references heaps
     Vector<DescriptorHeapState*> referencedHeaps;
-
-    /// Combined descriptor data segments, lifetime bound to this segment
-    Vector<DescriptorDataSegment> descriptorDataSegments;
-
-    /// Combined context handles
-    Vector<ConstantShaderDataBuffer> constantShaderDataBuffers;
-
-    /// Combined constant allocators
-    Vector<ShaderExportConstantAllocator> constantAllocator;
 
     /// Combined context handles
     Vector<CommandContextHandle> commandContextHandles;
