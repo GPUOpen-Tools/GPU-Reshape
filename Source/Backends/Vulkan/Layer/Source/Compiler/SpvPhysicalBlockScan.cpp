@@ -51,6 +51,10 @@ bool SpvPhysicalBlockScan::Scan(const uint32_t *const code, uint32_t count) {
         return false;
     }
 
+    // Decode version
+    majorVersion = (header.version >> 16) & 0xFF;
+    minorVersion = (header.version >>  8) & 0xFF;
+
     // Set identifier bound
     program.GetIdentifierMap().SetBound(header.bound);
 
@@ -162,6 +166,8 @@ void SpvPhysicalBlockScan::Stitch(SpvStream &out) {
 
 void SpvPhysicalBlockScan::CopyTo(SpvPhysicalBlockScan &out) {
     out.header = header;
+    out.majorVersion = majorVersion;
+    out.minorVersion = minorVersion;
 
     for (uint32_t i = 0; i < static_cast<uint32_t>(SpvPhysicalBlockType::Count); i++) {
         out.sections[i] = sections[i];

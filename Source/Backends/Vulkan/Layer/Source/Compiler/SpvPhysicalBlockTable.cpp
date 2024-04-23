@@ -85,6 +85,9 @@ bool SpvPhysicalBlockTable::Compile(const SpvJob &job) {
     // Compile dynamic constant data
     typeConstantVariable.CompileConstants();
 
+    // Compile entry point, may add interfaces
+    entryPoint.Compile();
+
     // OK
     return true;
 }
@@ -96,6 +99,7 @@ void SpvPhysicalBlockTable::Stitch(SpvStream &out) {
 
 void SpvPhysicalBlockTable::CopyTo(SpvPhysicalBlockTable &out) {
     scan.CopyTo(out.scan);
+    entryPoint.CopyTo(out, out.entryPoint);
     capability.CopyTo(out, out.capability);
     annotation.CopyTo(out, out.annotation);
     debugStringSource.CopyTo(out, out.debugStringSource);
