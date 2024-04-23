@@ -40,8 +40,12 @@
 #include <Backends/DX12/Resource/PhysicalResourceMappingTable.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/QueueSegmentAllocator.h>
-#include <Backend/IFeature.h>
 #include <Backends/DX12/IncrementalFence.h>
+#include <Backends/DX12/Scheduler/Scheduler.h>
+
+// Backend
+#include <Backend/SubmissionContext.h>
+#include <Backend/IFeature.h>
 
 static D3D12_COMMAND_LIST_TYPE GetEmulatedCommandListType(D3D12_COMMAND_LIST_TYPE type) {
     switch (type) {
@@ -1017,7 +1021,7 @@ AGSReturnCode HookAMDAGSSetMarker(AGSContext* context, ID3D12GraphicsCommandList
     return D3D12GPUOpenFunctionTableNext.next_AMDAGSSetMarker(context, Next(commandList), data);
 }
 
-static void InvokePreSubmitBatchHook(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment, ID3D12CommandList** commandLists, uint32_t commandListCount) {
+static void InvokePreSubmitBatchHook(const CommandQueueTable& table, const DeviceTable& device, ShaderExportStreamSegment* segment, ID3D12CommandList** commandLists, uint32_t commandListCount, SubmissionContext& context) {
     ShaderExportStreamSegmentUserContext& preContext = segment->userPreContext;
     ShaderExportStreamSegmentUserContext& postContext = segment->userPostContext;
     
@@ -1034,13 +1038,12 @@ static void InvokePreSubmitBatchHook(const CommandQueueTable& table, const Devic
     postContext.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(table.state->object);
 
     // Setup hook contexts
-    SubmitBatchHookContexts hookContexts;
-    hookContexts.preContext = &preContext.commandContext;
-    hookContexts.postContext = &postContext.commandContext;
+    context.preContext = &preContext.commandContext;
+    context.postContext = &postContext.commandContext;
     
     // Invoke proxies for all handles
     for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {
-        proxyTable.preSubmit.TryInvoke(hookContexts, reinterpret_cast<const CommandContextHandle*>(commandLists), commandListCount);
+        proxyTable.preSubmit.TryInvoke(context, reinterpret_cast<const CommandContextHandle*>(commandLists), commandListCount);
     }
 }
 
@@ -1157,14 +1160,15 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
         auto listTable = GetTable(lists[i]);
 
         // Create streamer allocation association
-        device.state->exportStreamer->MapSegment(listTable.state->streamState, segment);
+        device.state->exportStreamer->MapSegment(listTable.state->streamState, listTable.next, segment);
 
         // Pass down unwrapped
         unwrapped.Add(listTable.next);
     }
 
     // Run the submission hook
-    InvokePreSubmitBatchHook(table, device, segment, unwrapped.Data() + 1, count);
+    SubmissionContext submitContext;
+    InvokePreSubmitBatchHook(table, device, segment, unwrapped.Data() + 1, count, submitContext);
 
     // Record the streaming pre patching
     unwrapped[0] = RecordExecutePreCommandList(table, device, segment);
@@ -1172,8 +1176,18 @@ void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT c
     // Record the streaming post patching
     unwrapped.Add(RecordExecutePostCommandList(table, device, segment));
 
+    // Wait for all primitives
+    for (const SchedulerPrimitiveEvent& primitive : submitContext.waitPrimitives) {
+        table.next->Wait(device.state->scheduler->GetPrimitiveFence(primitive.id), primitive.value);
+    } 
+
     // Pass down callchain
     table.bottom->next_ExecuteCommandLists(table.next, static_cast<uint32_t>(unwrapped.Size()), unwrapped.Data());
+
+    // Signal for all primitives
+    for (const SchedulerPrimitiveEvent& primitive : submitContext.signalPrimitives) {
+        table.next->Signal(device.state->scheduler->GetPrimitiveFence(primitive.id), primitive.value);
+    } 
 
     // Run post submission for all proxies
     for (const FeatureHookTable &proxyTable: device.state->featureHookTables) {

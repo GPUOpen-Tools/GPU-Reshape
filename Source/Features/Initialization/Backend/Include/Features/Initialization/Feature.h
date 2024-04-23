@@ -38,6 +38,7 @@
 #include <Backend/ShaderData/IShaderDataHost.h>
 #include <Backend/ShaderProgram/ShaderProgram.h>
 #include <Backend/Resource/TexelAddressAllocator.h>
+#include <Backend/Scheduler/SchedulerPrimitive.h>
 
 // Message
 #include <Message/MessageStream.h>
@@ -48,6 +49,7 @@
 #include <unordered_set>
 
 // Forward declarations
+class IScheduler;
 class IShaderSGUIDHost;
 class MaskBlitShaderProgram;
 class MaskCopyRangeShaderProgram;
@@ -93,7 +95,7 @@ private:
     void OnClearResource(CommandContext* context, const ResourceInfo& buffer);
     void OnWriteResource(CommandContext* context, const ResourceInfo& buffer);
     void OnBeginRenderPass(CommandContext* context, const RenderPassInfo& passInfo);
-    void OnSubmitBatchBegin(const SubmitBatchHookContexts& hookContexts, const CommandContextHandle *contexts, uint32_t contextCount);
+    void OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount);
     void OnJoin(CommandContextHandle contextHandle);
 
 private:
@@ -124,6 +126,7 @@ private:
     /// Hosts
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
     ComRef<IShaderDataHost> shaderDataHost{nullptr};
+    ComRef<IScheduler> scheduler{nullptr};
 
     /// Shader data
     ShaderDataID puidMemoryBaseBufferID{InvalidShaderDataID};
@@ -188,14 +191,17 @@ private:
 
 private:
     struct Allocation {
-        /// Absolute memory offset
-        uint64_t base{0};
-
-        /// Relative offset, aligned to 32
-        uint32_t baseAlign32{0};
+        /// Base texel block, aligned to 32
+        uint32_t baseBlock{0};
 
         /// Length of this allocation
         uint64_t length{0};
+
+        /// Assigned mapping to this allocation
+        ShaderDataMappingID mappingId{InvalidShaderDataMappingID};
+
+        /// Number of tiles for the given mapping
+        uint32_t tileCount{0};
     };
 
     /// Shared texel allocator
@@ -208,7 +214,6 @@ private:
     struct CommandContextInfo {
         /// The next committed bases upon join
         uint64_t committedInitializationHead = 0ull;
-        uint64_t committedMappingHead = 0ull;
     };
 
     struct InitialiationTag {
@@ -231,7 +236,13 @@ private:
     /// The current committed bases
     /// All pending initializations use this value as the base commit id
     uint64_t committedInitializationBase = 0ull;
-    uint64_t committedMappingBase = 0ull;
+
+private:
+    /// Monotonically incremented primitive counter
+    uint64_t exclusiveTransferPrimitiveMonotonicCounter{0};
+
+    /// Primitive used for all transfer synchronization
+    SchedulerPrimitiveID exclusiveTransferPrimitiveID{InvalidSchedulerPrimitiveID};
     
 private:
     /// Shared lock

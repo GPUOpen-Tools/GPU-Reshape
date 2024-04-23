@@ -36,6 +36,10 @@
 #include <Backends/Vulkan/Controllers/VersioningController.h>
 #include <Backends/Vulkan/ShaderData/ShaderDataHost.h>
 #include <Backends/Vulkan/Command/UserCommandBuffer.h>
+#include <Backends/Vulkan/Scheduler/Scheduler.h>
+
+// Backend
+#include <Backend/SubmissionContext.h>
 
 // Bridge
 #include <Bridge/IBridge.h>
@@ -159,7 +163,7 @@ static FenceState* AcquireOrCreateFence(DeviceDispatchTable* table, QueueState* 
     return state;
 }
 
-static void InvokePreSubmitBatchHook(DeviceDispatchTable* device, QueueState* queueState, ShaderExportStreamSegment* segment, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount) {
+static void InvokePreSubmitBatchHook(DeviceDispatchTable* device, QueueState* queueState, ShaderExportStreamSegment* segment, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, SubmissionContext& context) {
     ShaderExportStreamSegmentUserContext& preContext = segment->userPreContext;
     ShaderExportStreamSegmentUserContext& postContext = segment->userPostContext;
     
@@ -176,13 +180,12 @@ static void InvokePreSubmitBatchHook(DeviceDispatchTable* device, QueueState* qu
     postContext.commandContext.queueHandle = reinterpret_cast<CommandQueueHandle>(queueState->object);
 
     // Setup hook contexts
-    SubmitBatchHookContexts hookContexts;
-    hookContexts.preContext = &preContext.commandContext;
-    hookContexts.postContext = &postContext.commandContext;
+    context.preContext = &preContext.commandContext;
+    context.postContext = &postContext.commandContext;
     
     // Invoke proxies for all handles
     for (const FeatureHookTable &proxyTable: device->featureHookTables) {
-        proxyTable.preSubmit.TryInvoke(hookContexts, reinterpret_cast<const CommandContextHandle*>(commandBuffers), commandBufferCount);
+        proxyTable.preSubmit.TryInvoke(context, reinterpret_cast<const CommandContextHandle*>(commandBuffers), commandBufferCount);
     }
 }
 
@@ -302,7 +305,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     vkCommandBuffersIt = vkCommandBuffers;
     
     // Run the submission hook
-    InvokePreSubmitBatchHook(table, queueState, segment, vkCommandBuffers, commandBufferCount);
+    SubmissionContext submitContext;
+    InvokePreSubmitBatchHook(table, queueState, segment, vkCommandBuffers, commandBufferCount, submitContext);
     
     // Unwrapped submits
     TrivialStackVector<VkSubmitInfo, 32u> vkSubmits;
@@ -310,10 +314,30 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     // Record the streaming pre patching
     VkCommandBuffer prePatchCommandBuffer = RecordExecutePreCommandBuffer(table, queueState, segment);
 
+    // All semaphores
+    TrivialStackVector<VkSemaphore, 4u>          waitSemaphores;
+    TrivialStackVector<uint64_t, 4u>             waitSemaphoreValues;
+    TrivialStackVector<VkPipelineStageFlags, 4u> waitSemaphoreStageFlags;
+    
+    // Append signalling event if specified
+    for (SchedulerPrimitiveEvent primitive : submitContext.waitPrimitives) {
+        waitSemaphores.Add(table->scheduler->GetPrimitiveSemaphore(primitive.id));
+        waitSemaphoreValues.Add(primitive.value);
+        waitSemaphoreStageFlags.Add(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    } 
+
+    // Fill timeline semaphore values
+    VkTimelineSemaphoreSubmitInfo prePatchSemaphoreSubmitInfo{VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
+    prePatchSemaphoreSubmitInfo.pWaitSemaphoreValues = waitSemaphoreValues.Data();
+
     // Fill pre-patch submission info
     VkSubmitInfo& prePatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
+    prePatchInfo.pNext              = &prePatchSemaphoreSubmitInfo;
     prePatchInfo.commandBufferCount = 1;
-    prePatchInfo.pCommandBuffers = &prePatchCommandBuffer;
+    prePatchInfo.pCommandBuffers    = &prePatchCommandBuffer;
+    prePatchInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.Size());
+    prePatchInfo.pWaitSemaphores    = waitSemaphores.Data();
+    prePatchInfo.pWaitDstStageMask  = waitSemaphoreStageFlags.Data();
 
     // Unwrap all internal states
     for (uint32_t i = 0; i < submitCount; i++) {
@@ -351,10 +375,27 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     // Record the streaming patching
     VkCommandBuffer postPatchCommandBuffer = RecordExecutePostCommandBuffer(table, queueState, segment);
 
+    // All signal semaphores
+    TrivialStackVector<VkSemaphore, 4u> signalSemaphores;
+    TrivialStackVector<uint64_t, 4u>    signalSemaphoreValues;
+    
+    // Append signalling event if specified
+    for (SchedulerPrimitiveEvent primitive : submitContext.signalPrimitives) {
+        signalSemaphores.Add(table->scheduler->GetPrimitiveSemaphore(primitive.id));
+        signalSemaphoreValues.Add(primitive.value);
+    } 
+
+    // Fill timeline semaphore values
+    VkTimelineSemaphoreSubmitInfo postPatchSemaphoreSubmitInfo{VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
+    postPatchSemaphoreSubmitInfo.pSignalSemaphoreValues = signalSemaphoreValues.Data();
+    
     // Fill the post-patch submission info
     VkSubmitInfo& postPatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
-    postPatchInfo.commandBufferCount = 1;
-    postPatchInfo.pCommandBuffers = &postPatchCommandBuffer;
+    postPatchInfo.pNext                = &postPatchSemaphoreSubmitInfo;
+    postPatchInfo.commandBufferCount   = 1;
+    postPatchInfo.pCommandBuffers      = &postPatchCommandBuffer;
+    postPatchInfo.signalSemaphoreCount = static_cast<uint32_t>(signalSemaphores.Size());
+    postPatchInfo.pSignalSemaphores    = signalSemaphores.Data();
 
     // Serialize queue access
     {
@@ -424,7 +465,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit2(VkQueue queue, uint32_t submi
     vkCommandBuffersIt = vkCommandBuffers;
     
     // Run the submission hook
-    InvokePreSubmitBatchHook(table, queueState, segment, vkCommandBuffers, commandBufferCount);
+    SubmissionContext submitContext;
+    InvokePreSubmitBatchHook(table, queueState, segment, vkCommandBuffers, commandBufferCount, submitContext);
     
     // Unwrapped submits
     TrivialStackVector<VkSubmitInfo2, 32u> vkSubmits;
@@ -433,13 +475,27 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit2(VkQueue queue, uint32_t submi
     VkCommandBuffer prePatchCommandBuffer = RecordExecutePreCommandBuffer(table, queueState, segment);
 
     // Fill pre-patch streaming submit info
-    VkCommandBufferSubmitInfo pretPatchCommandSubmit{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
-    pretPatchCommandSubmit.commandBuffer = prePatchCommandBuffer;
+    VkCommandBufferSubmitInfo prePatchCommandSubmit{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
+    prePatchCommandSubmit.commandBuffer = prePatchCommandBuffer;
+
+    // All wait semaphores
+    TrivialStackVector<VkSemaphoreSubmitInfo, 4u> waitSemaphores;
+
+    // Append signalling event if specified
+    for (SchedulerPrimitiveEvent primitive : submitContext.waitPrimitives) {
+        VkSemaphoreSubmitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+        info.semaphore = table->scheduler->GetPrimitiveSemaphore(primitive.id);
+        info.value     = primitive.value;
+        info.stageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+        waitSemaphores.Add(info);
+    }
     
     // Fill patch submission info
-    VkSubmitInfo2& prePatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
+    VkSubmitInfo2& prePatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO_2});
     prePatchInfo.commandBufferInfoCount = 1;
-    prePatchInfo.pCommandBufferInfos    = &pretPatchCommandSubmit;
+    prePatchInfo.pCommandBufferInfos    = &prePatchCommandSubmit;
+    prePatchInfo.waitSemaphoreInfoCount = static_cast<uint32_t>(waitSemaphores.Size());
+    prePatchInfo.pWaitSemaphoreInfos    = waitSemaphores.Data();
     
     // Unwrapped command buffers
     auto* vkCommandSubmitInfos = ALLOCA_ARRAY(VkCommandBufferSubmitInfo, commandBufferCount);
@@ -481,20 +537,31 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit2(VkQueue queue, uint32_t submi
         vkCommandBuffersIt += submit.commandBufferInfoCount;
     }
     
-    // Run the submission hook
-    InvokePreSubmitBatchHook(table, queueState, segment, vkCommandBuffers, commandBufferCount);
-    
     // Record the streaming patching
     VkCommandBuffer postPatchCommandBuffer = RecordExecutePostCommandBuffer(table, queueState, segment);
+
+    // All signal semaphores
+    TrivialStackVector<VkSemaphoreSubmitInfo, 4u> signalSemaphores;
+
+    // Append signalling event if specified
+    for (SchedulerPrimitiveEvent primitive : submitContext.signalPrimitives) {
+        VkSemaphoreSubmitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO};
+        info.semaphore = table->scheduler->GetPrimitiveSemaphore(primitive.id);
+        info.value     = primitive.value;
+        info.stageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+        signalSemaphores.Add(info);
+    }
 
     // Fill the post-patch streaming submit info
     VkCommandBufferSubmitInfo postPatchCommandSubmit{VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO};
     postPatchCommandSubmit.commandBuffer = postPatchCommandBuffer;
 
     // Fill patch submission info
-    VkSubmitInfo2& postPatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
-    postPatchInfo.commandBufferInfoCount = 1;
-    postPatchInfo.pCommandBufferInfos    = &postPatchCommandSubmit;
+    VkSubmitInfo2& postPatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO_2});
+    postPatchInfo.commandBufferInfoCount   = 1;
+    postPatchInfo.pCommandBufferInfos      = &postPatchCommandSubmit;
+    postPatchInfo.signalSemaphoreInfoCount = static_cast<uint32_t>(signalSemaphores.Size());
+    postPatchInfo.pSignalSemaphoreInfos    = signalSemaphores.Data();
 
     // Serialize queue access
     {

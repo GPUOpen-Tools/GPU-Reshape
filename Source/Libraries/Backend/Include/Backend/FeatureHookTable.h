@@ -43,14 +43,7 @@ struct BufferDescriptor;
 struct TextureDescriptor;
 struct ResourceInfo;
 struct RenderPassInfo;
-
-struct SubmitBatchHookContexts {
-    /// Commands injected prior all command contexts
-    CommandContext* preContext{nullptr};
-
-    /// Commands injected after all command contexts
-    CommandContext* postContext{nullptr};
-};
+struct SubmissionContext;
 
 // Hook types
 namespace Hooks {
@@ -76,7 +69,7 @@ namespace Hooks {
     /// Submission
     using Open = Delegate<void(CommandContext *context)>;
     using Close = Delegate<void(CommandContextHandle contextHandle)>;
-    using PreSubmit = Delegate<void(const SubmitBatchHookContexts& hookContexts, const CommandContextHandle *contexts, uint32_t contextCount)>;
+    using PreSubmit = Delegate<void(SubmissionContext& submission, const CommandContextHandle *contexts, uint32_t contextCount)>;
     using PostSubmit = Delegate<void(const CommandContextHandle *contexts, uint32_t contextCount)>;
     using Join = Delegate<void(CommandContextHandle contextHandle)>;
 }

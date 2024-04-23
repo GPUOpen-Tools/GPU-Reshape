@@ -27,19 +27,15 @@
 #pragma once
 
 // Backend
-#include <Backend/IL/Format.h>
-#include <Backend/ShaderData/ShaderDataBufferFlags.h>
+#include <Backend/ShaderData/ShaderData.h>
 
-// Std
-#include <cstdint>
+struct SchedulerTileMapping {
+    /// Mapping to be used
+    ShaderDataMappingID mapping{InvalidShaderDataMappingID};
 
-struct ShaderDataBufferInfo {
-    /// Number of elements within this buffer
-    size_t elementCount{0};
+    /// Starting tile offset to the source resource
+    uint32_t tileOffset{0};
 
-    /// Format of each element
-    Backend::IL::Format format{Backend::IL::Format::None};
-
-    /// All buffer flags
-    ShaderDataBufferFlagSet flagSet{};
+    /// Number of tiles to bring over from the mapping
+    uint32_t tileCount{0};
 };

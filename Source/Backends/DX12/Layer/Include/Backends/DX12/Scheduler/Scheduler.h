@@ -34,6 +34,7 @@
 
 // Common
 #include <Common/Allocator/Vector.h>
+#include <Common/ComRef.h>
 
 // Std
 #include <vector>
@@ -41,6 +42,7 @@
 #include <Backends/DX12/IncrementalFence.h>
 
 // Forward declarations
+class ShaderDataHost;
 struct DeviceState;
 struct ShaderExportStreamState;
 
@@ -60,9 +62,17 @@ public:
     /// Invoke a synchronization point
     void SyncPoint();
 
+    /// Get the fence of a primitive
+    /// \param pid primitive id
+    /// \return native fence
+    ID3D12Fence* GetPrimitiveFence(SchedulerPrimitiveID pid);
+
     /// Overrides
     void WaitForPending() override;
-    void Schedule(Queue queue, const CommandBuffer &buffer) override;
+    void Schedule(Queue queue, const CommandBuffer &buffer, const SchedulerPrimitiveEvent* event) override;
+    void MapTiles(Queue queue, ShaderDataID id, uint32_t count, const SchedulerTileMapping* mappings) override;
+    SchedulerPrimitiveID CreatePrimitive() override;
+    void DestroyPrimitive(SchedulerPrimitiveID pid) override;
 
 private:
     struct Submission {
@@ -101,6 +111,18 @@ private:
     Vector<QueueBucket> queues;
 
 private:
+    struct PrimitiveEntry {
+        /// Underlying fence object
+        ID3D12Fence* fence{nullptr};
+    };
+
+    /// All free fence indices
+    Vector<uint32_t> freePrimitives;
+
+    /// All primitives, sparsely laid out
+    Vector<PrimitiveEntry> primitives;
+
+private:
     /// Pop or construct a submission
     /// \param queue expected queue
     /// \return submission object
@@ -110,6 +132,9 @@ private:
     /// Parent device
     DeviceState* device;
 
+    /// Shader data host component
+    ComRef<ShaderDataHost> shaderDataHost;
+    
     /// Shared lock
     std::mutex mutex;
 };

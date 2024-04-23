@@ -71,19 +71,34 @@ public:
     /// \return given allocation
     Allocation GetResourceAllocation(ShaderDataID rid);
 
+    /// Get the allocation of a resource
+    /// \param rid resource identifier
+    /// \return given allocation
+    D3D12MA::Allocation* GetMappingAllocation(ShaderDataMappingID rid);
+
     /// Overrides
     ShaderDataID CreateBuffer(const ShaderDataBufferInfo &info) override;
     ShaderDataID CreateEventData(const ShaderDataEventInfo &info) override;
     ShaderDataID CreateDescriptorData(const ShaderDataDescriptorInfo &info) override;
     void *Map(ShaderDataID rid) override;
+    ShaderDataMappingID CreateMapping(ShaderDataID data, uint64_t tileCount) override;
+    void DestroyMapping(ShaderDataMappingID mid) override;
     void FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) override;
     void Destroy(ShaderDataID rid) override;
     void Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataTypeSet mask) override;
 
 private:
     struct ResourceEntry {
+        /// Underlying allocation
         Allocation allocation;
+
+        /// Creation info
         ShaderDataInfo info;
+    };
+
+    struct MappingEntry {
+        /// Underlying allocation
+        D3D12MA::Allocation* allocation;
     };
 
 private:
@@ -93,6 +108,7 @@ private:
     /// Shared lock
     std::mutex mutex;
 
+private:
     /// Free indices to be used immediately
     Vector<ShaderDataID> freeIndices;
 
@@ -101,4 +117,11 @@ private:
 
     /// Linear resources
     Vector<ResourceEntry> resources;
+
+private:
+    /// Free indices for mapping allocations
+    Vector<ShaderDataMappingID> freeMappingIndices;
+
+    /// All mappings, sparsely laid out
+    Vector<MappingEntry> mappings;
 };

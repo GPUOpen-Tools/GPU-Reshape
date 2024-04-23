@@ -271,6 +271,9 @@ struct DeviceDispatchTable {
     PFN_vkDestroySwapchainKHR             next_vkDestroySwapchainKHR;
     PFN_vkGetSwapchainImagesKHR           next_vkGetSwapchainImagesKHR;
     PFN_vkSetDebugUtilsObjectNameEXT      next_vkSetDebugUtilsObjectNameEXT;
+    PFN_vkQueueBindSparse                 next_vkQueueBindSparse;
+    PFN_vkCreateSemaphore                 next_vkCreateSemaphore;
+    PFN_vkDestroySemaphore                next_vkDestroySemaphore;
 
     /// Properties
     VkPhysicalDeviceProperties                 physicalDeviceProperties{};

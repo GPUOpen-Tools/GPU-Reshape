@@ -214,6 +214,8 @@ template<typename T>
 static void EnableFeatureSet(T* features) {
     features->vertexPipelineStoresAndAtomics = true;
     features->fragmentStoresAndAtomics = true;
+    features->sparseBinding = true;
+    features->sparseResidencyBuffer = true;
 }
 
 VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDevice *pDevice) {
@@ -272,11 +274,18 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
 
     // Add descriptor indexing extension
     table->enabledExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+    
+    // Add synchronization extensions
+    table->enabledExtensions.push_back(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
+    table->enabledExtensions.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
 
     // Optional feature structures
-    auto* features2        = FindStructureTypeMutableUnsafe<VkPhysicalDeviceFeatures2, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2>(table->createInfo->pNext);
-    auto* features1_2      = FindStructureTypeMutableUnsafe<VkPhysicalDeviceVulkan12Features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES>(table->createInfo->pNext);
-    auto* indexingFeatures = FindStructureTypeMutableUnsafe<VkPhysicalDeviceDescriptorIndexingFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES>(table->createInfo->pNext);
+    auto* features2                = FindStructureTypeMutableUnsafe<VkPhysicalDeviceFeatures2, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2>(table->createInfo->pNext);
+    auto* features1_2              = FindStructureTypeMutableUnsafe<VkPhysicalDeviceVulkan12Features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES>(table->createInfo->pNext);
+    auto* features1_3              = FindStructureTypeMutableUnsafe<VkPhysicalDeviceVulkan13Features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES>(table->createInfo->pNext);
+    auto* indexingFeatures         = FindStructureTypeMutableUnsafe<VkPhysicalDeviceDescriptorIndexingFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES>(table->createInfo->pNext);
+    auto* timelineFeatures         = FindStructureTypeMutableUnsafe<VkPhysicalDeviceTimelineSemaphoreFeatures, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES>(table->createInfo->pNext);
+    auto* synchronization2Features = FindStructureTypeMutableUnsafe<VkPhysicalDeviceSynchronization2Features, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES>(table->createInfo->pNext);
 
     // Try enabling descriptor features
     VkPhysicalDeviceDescriptorIndexingFeatures indexingFeaturesFallback{};
@@ -288,6 +297,30 @@ VkResult VKAPI_PTR Hook_vkCreateDevice(VkPhysicalDevice physicalDevice, const Vk
         EnableDescriptorFeatureSet(&indexingFeaturesFallback);
         indexingFeaturesFallback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
         PrependExtensionUnsafe(&table->createInfo.createInfo, &indexingFeaturesFallback);
+    }
+
+    // Try enabling synchronization2
+    VkPhysicalDeviceSynchronization2Features synchronization2Fallback{};
+    if (features1_3) {
+        features1_3->synchronization2 = true;
+    } else if (synchronization2Features) {
+        synchronization2Features->synchronization2 = true;
+    } else {
+        synchronization2Fallback.synchronization2 = true;
+        synchronization2Fallback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+        PrependExtensionUnsafe(&table->createInfo.createInfo, &synchronization2Fallback);
+    }
+
+    // Try enabling timeline features
+    VkPhysicalDeviceTimelineSemaphoreFeatures timelineFallback{};
+    if (features1_2) {
+        features1_2->timelineSemaphore = true;
+    } else if (timelineFeatures) {
+        timelineFeatures->timelineSemaphore = true;
+    } else {
+        timelineFallback.timelineSemaphore = true;
+        timelineFallback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
+        PrependExtensionUnsafe(&table->createInfo.createInfo, &timelineFallback);
     }
 
     // Try enabling base features

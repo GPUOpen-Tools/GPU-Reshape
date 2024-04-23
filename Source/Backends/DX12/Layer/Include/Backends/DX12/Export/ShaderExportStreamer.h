@@ -162,8 +162,9 @@ public:
 
     /// Map a stream state pre submission
     /// \param state the stream state
+    /// \param commandList the owning command list
     /// \param segment the segment to be mapped to
-    void MapSegment(ShaderExportStreamState* state, ShaderExportStreamSegment* segment);
+    void MapSegment(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList, ShaderExportStreamSegment* segment);
 
     /// Invoked during root binding
     /// \param state parent stream state
@@ -233,13 +234,10 @@ public:
     /// \param state parent stream state
     void CloseCommandList(ShaderExportStreamState* state);
 
-    /// Close a command list
-    /// \param state parent stream state
-    void ResetCommandList(ShaderExportStreamState* state);
-
     /// Recycle a command list
+    /// \param commandList the owning command list
     /// \param state parent stream state, must be pending
-    void RecycleCommandList(ShaderExportStreamState* state);
+    void RecycleCommandList(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList);
 
     /// Bind the shader export for a pipeline
     /// \param state the stream state

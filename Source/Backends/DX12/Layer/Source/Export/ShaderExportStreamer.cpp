@@ -232,7 +232,7 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
 void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
     // Recycle old data if needed
     if (state->pending) {
-        RecycleCommandList(state);
+        RecycleCommandList(state, commandList);
     }
 
     // Serial
@@ -664,26 +664,29 @@ void ShaderExportStreamer::Process(CommandQueueState* queueState) {
     }
 }
 
-void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
+void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state, ID3D12GraphicsCommandList* commandList) {
     std::lock_guard guard(mutex);
     ASSERT(state->pending, "Recycling non-pending stream state");
 
-    // Move descriptor data ownership to segment
-    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        FreeDescriptorDataSegment(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
-    }
+    // Uses descriptors?
+    if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY) {
+        // Move descriptor data ownership to segment
+        for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+            FreeDescriptorDataSegment(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
+        }
 
-    // Move constant ownership to the segment
-    freeConstantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
+        // Move constant ownership to the segment
+        freeConstantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
 
-    // Move constant allocator to the segment
-    if (!state->constantAllocator.staging.empty()) {
-        FreeConstantAllocator(state->constantAllocator);
-    }
+        // Move constant allocator to the segment
+        if (!state->constantAllocator.staging.empty()) {
+            FreeConstantAllocator(state->constantAllocator);
+        }
 
-    // Move ownership to the segment
-    for (const ShaderExportSegmentDescriptorAllocation& segmentDescriptor : state->segmentDescriptors) {
-        segmentDescriptor.allocator->Free(segmentDescriptor.info);
+        // Move ownership to the segment
+        for (const ShaderExportSegmentDescriptorAllocation& segmentDescriptor : state->segmentDescriptors) {
+            segmentDescriptor.allocator->Free(segmentDescriptor.info);
+        }
     }
 
     // Cleanup
@@ -769,39 +772,42 @@ void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDesc
     device->shaderDataHost->CreateDescriptors(descriptorLayout.GetShaderData(descriptors.info.cpuHandle, 0), sharedCPUHeapAllocator->GetAdvance());
 }
 
-void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ShaderExportStreamSegment *segment) {
-    // Map the command state to shared segment
-    for (const ShaderExportSegmentDescriptorAllocation& allocation : state->segmentDescriptors) {
-        // Update the segment counters
-        device->object->CreateUnorderedAccessView(
-            segment->allocation->counter.allocation.device.resource, nullptr,
-            &segment->allocation->counter.view,
-            descriptorLayout.GetExportCounter(allocation.info.cpuHandle)
-        );
-
-        // Update the segment streams
-        for (uint64_t i = 0; i < segment->allocation->streams.size(); i++) {
+void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ID3D12GraphicsCommandList* commandList, ShaderExportStreamSegment *segment) {
+    // Uses descriptors?
+    if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY) {
+        // Map the command state to shared segment
+        for (const ShaderExportSegmentDescriptorAllocation& allocation : state->segmentDescriptors) {
+            // Update the segment counters
             device->object->CreateUnorderedAccessView(
-                segment->allocation->streams[i].allocation.device.resource, nullptr,
-                &segment->allocation->streams[i].view,
-                descriptorLayout.GetExportStream(allocation.info.cpuHandle, static_cast<uint32_t>(i))
+                segment->allocation->counter.allocation.device.resource, nullptr,
+                &segment->allocation->counter.view,
+                descriptorLayout.GetExportCounter(allocation.info.cpuHandle)
             );
+
+            // Update the segment streams
+            for (uint64_t i = 0; i < segment->allocation->streams.size(); i++) {
+                device->object->CreateUnorderedAccessView(
+                    segment->allocation->streams[i].allocation.device.resource, nullptr,
+                    &segment->allocation->streams[i].view,
+                    descriptorLayout.GetExportStream(allocation.info.cpuHandle, static_cast<uint32_t>(i))
+                );
+            }
         }
-    }
 
-    // Move descriptor data ownership to segment
-    for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
-        segment->descriptorDataSegments.push_back(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
-    }
+        // Move descriptor data ownership to segment
+        for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
+            segment->descriptorDataSegments.push_back(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
+        }
 
-    // Move constant ownership to the segment
-    segment->constantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
-    state->constantShaderDataBuffer = {};
+        // Move constant ownership to the segment
+        segment->constantShaderDataBuffers.push_back(state->constantShaderDataBuffer);
+        state->constantShaderDataBuffer = {};
 
-    // Move constant allocator to the segment
-    if (!state->constantAllocator.staging.empty()) {
-        segment->constantAllocator.push_back(state->constantAllocator);
-        state->constantAllocator = {};
+        // Move constant allocator to the segment
+        if (!state->constantAllocator.staging.empty()) {
+            segment->constantAllocator.push_back(state->constantAllocator);
+            state->constantAllocator = {};
+        }
     }
 
     // Add context handle

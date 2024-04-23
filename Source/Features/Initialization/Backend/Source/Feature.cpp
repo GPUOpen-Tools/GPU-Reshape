@@ -29,6 +29,10 @@
 #include <Features/Initialization/MaskBlitShaderProgram.h>
 #include <Features/Initialization/MaskCopyRangeShaderProgram.h>
 #include <Features/Descriptor/Feature.h>
+#include <Features/Initialization/BitIndexing.h>
+#include <Features/Initialization/MaskBlitParameters.h>
+#include <Features/Initialization/MaskCopyRangeParameters.h>
+#include <Features/Initialization/KernelShared.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -46,10 +50,8 @@
 #include <Backend/Resource/TexelAddressEmitter.h>
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
 #include <Backend/Scheduler/IScheduler.h>
-#include <Features/Initialization/BitIndexing.h>
-#include <Features/Initialization/MaskBlitParameters.h>
-#include <Features/Initialization/MaskCopyRangeParameters.h>
-#include <Features/Initialization/KernelShared.h>
+#include <Backend/SubmissionContext.h>
+#include <Backend/Scheduler/SchedulerTileMapping.h>
 
 // Generated schema
 #include <Schemas/Features/Initialization.h>
@@ -63,8 +65,11 @@
 // Common
 #include <Common/Registry.h>
 
-// todo[init]: remove
-static constexpr uint32_t kTempSize = 512'000'000;
+/// Total number of texel blocks, each block has 32 texels
+static constexpr uint32_t kMaxTrackedTexelBlocks = UINT32_MAX; // ~4gb
+
+/// Max number of tracked texels
+static constexpr uint64_t kMaxTrackedTexels = kMaxTrackedTexelBlocks * 32; // 128gb of R1
 
 bool InitializationFeature::Install() {
     // Must have the export host
@@ -82,6 +87,12 @@ bool InitializationFeature::Install() {
     // Shader data host
     shaderDataHost = registry->Get<IShaderDataHost>();
 
+    // Get scheduler
+    scheduler = registry->Get<IScheduler>();
+
+    // Create monotonic primitive
+    exclusiveTransferPrimitiveID = scheduler->CreatePrimitive();
+    
     // Allocate puid mapping buffer
     puidMemoryBaseBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
         .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
@@ -89,10 +100,10 @@ bool InitializationFeature::Install() {
     });
 
     // Allocate texel mask buffer
-    // todo[init]: dynamically grown with syncs
     texelMaskBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
-        .elementCount = kTempSize,
-        .format = Backend::IL::Format::R32UInt
+        .elementCount = kMaxTrackedTexelBlocks,
+        .format = Backend::IL::Format::R32UInt,
+        .flagSet = ShaderDataBufferFlag::Tiled
     });
 
     // Must have program host
@@ -111,12 +122,6 @@ bool InitializationFeature::Install() {
 }
 
 bool InitializationFeature::PostInstall() {
-    // Get scheduler
-    auto scheduler = registry->Get<IScheduler>();
-    if (!scheduler) {
-        return false;
-    }
-
     // Command buffer for stages
     CommandBuffer  buffer;
     CommandBuilder builder(buffer);
@@ -132,7 +137,7 @@ bool InitializationFeature::PostInstall() {
 #endif // 0
     
     // Schedule blocking
-    scheduler->Schedule(Queue::Graphics, buffer);
+    scheduler->Schedule(Queue::Graphics, buffer, nullptr);
     scheduler->WaitForPending();
 
     // OK
@@ -457,24 +462,26 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     auto formatSizeMinDWord = std::max<size_t>(sizeof(uint32_t), source.token.formatSize);
     allocationSize = (allocationSize + formatSizeMinDWord - 1) / formatSizeMinDWord;
 #endif // 0
+
+    // Determine the number of texel blocks needed
+    uint32_t numTexelBlocks = Cast32Checked(allocationSize / 32);
     
     // Create allocation
     Allocation& allocation = allocations[source.resource.token.puid];
-    allocation.base = addressAllocator.Allocate(allocationSize);
+    allocation.baseBlock = Cast32Checked(addressAllocator.Allocate(kShaderDataMappingTileWidth, numTexelBlocks));
     allocation.length = allocationSize;
-    ASSERT(allocation.base % 32 == 0, "Memory base not aligned to texel width (32)");
-
-    // Get base offset
-    uint64_t memoryBaseAlign32 = allocation.base / 32;
-    allocation.baseAlign32 = Cast32Checked(memoryBaseAlign32);
-
+    
     // todo[init]: temp
-    ASSERT(allocation.baseAlign32 + allocationSize / 32 < kTempSize, "Out of temp size");
+    ASSERT(allocation.baseBlock + numTexelBlocks < kMaxTrackedTexels, "Out of memory");
+
+    // Create tile mapping
+    allocation.tileCount = (numTexelBlocks * sizeof(uint32_t) + kShaderDataMappingTileWidth - 1) / kShaderDataMappingTileWidth;
+    allocation.mappingId = shaderDataHost->CreateMapping(texelMaskBufferID, allocation.tileCount);
 
     // Mark for pending enqueue
     pendingMappingQueue.push_back(MappingTag {
         .puid = source.resource.token.puid,
-        .memoryBaseAlign32 = allocation.baseAlign32
+        .memoryBaseAlign32 = allocation.baseBlock
     });
 
     // If this texture was opened from an external handle, we just assume
@@ -577,28 +584,67 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
     }
 }
 
-void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& hookContexts, const CommandContextHandle *contexts, uint32_t contextCount) {
+void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
     std::lock_guard guard(mutex);
 
     // Not interested in empty submissions
     if (!contextCount) {
         return;
     }
-    
+
+    // Any mappings to push?
+    if (!pendingMappingQueue.empty())
+    {
+        // Allocate the next sync value
+        ++exclusiveTransferPrimitiveMonotonicCounter;
+        
+        // Create builder
+        CommandBuffer buffer;
+        CommandBuilder builder(buffer);
+
+        // All mappings
+        std::vector<SchedulerTileMapping> tileMappings;
+        tileMappings.reserve(pendingMappingQueue.size());
+        
+        // Map all new resources
+        for (const MappingTag& tag : pendingMappingQueue) {
+            Allocation& allocation = allocations[tag.puid];
+
+            // Tiles are updated in batches
+            tileMappings.push_back(SchedulerTileMapping {
+                .mapping = allocation.mappingId,
+                .tileOffset = static_cast<uint32_t>((allocation.baseBlock * sizeof(uint32_t)) / kShaderDataMappingTileWidth),
+                .tileCount = allocation.tileCount
+            });
+
+            // Assign the memory lookup
+            builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);
+        }
+
+        // Create the tile mappings for the new resource
+        scheduler->MapTiles(Queue::ExclusiveTransfer, texelMaskBufferID, static_cast<uint32_t>(tileMappings.size()), tileMappings.data());
+
+        // Clear mappings
+        pendingMappingQueue.clear();
+
+        // Submit to the transfer queue
+        SchedulerPrimitiveEvent event;
+        event.id = exclusiveTransferPrimitiveID;
+        event.value = exclusiveTransferPrimitiveMonotonicCounter;
+        scheduler->Schedule(Queue::ExclusiveTransfer, buffer, &event);
+    }
+
+    // Submissions always wait for the last mappings
+    submitContext.waitPrimitives.Add(SchedulerPrimitiveEvent {
+        .id = exclusiveTransferPrimitiveID,
+        .value = exclusiveTransferPrimitiveMonotonicCounter
+    });
+
     // Set commit base
     // Note: We track on the first context, once the first context has completed, all the rest have
     CommandContextInfo& info = commandContexts[contexts[0]];
     info.committedInitializationHead = committedInitializationBase + pendingInitializationQueue.size();
-    info.committedMappingHead = committedMappingBase + pendingMappingQueue.size();
-
-    // Create builder
-    CommandBuilder builder(hookContexts.preContext->buffer);
-
-    // Map all PUIDs
-    for (const MappingTag& tag : pendingMappingQueue) {
-        builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);
-    }
-
+    
     // Initialize all PUIDs
     for (const InitialiationTag& tag : pendingInitializationQueue) {
         // May have been destroyed
@@ -607,7 +653,7 @@ void InitializationFeature::OnSubmitBatchBegin(const SubmitBatchHookContexts& ho
         }
 
         // Mark device side initialization
-        BlitResourceMask(hookContexts.preContext->buffer, tag.info);
+        BlitResourceMask(submitContext.preContext->buffer, tag.info);
     }
 }
 
@@ -634,16 +680,6 @@ void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
 
         // Set new base
         committedInitializationBase = it->second.committedInitializationHead;
-    }
-    
-    // If the head is less than the current base, it's already been shaved off
-    if (it->second.committedMappingHead > committedMappingBase) {
-        // Shave off all known committed initialization events
-        const size_t shaveCount = it->second.committedMappingHead - committedMappingBase;
-        pendingMappingQueue.erase(pendingMappingQueue.begin(), pendingMappingQueue.begin() + shaveCount);
-
-        // Set new base
-        committedMappingBase = it->second.committedMappingHead;
     }
 
     // Get rid of context
@@ -684,13 +720,13 @@ void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const Resour
 
     // Setup blit parameters
     MaskBlitParameters params{};
-    params.memoryBaseElementAlign32 = allocation.baseAlign32;
+    params.memoryBaseElementAlign32 = allocation.baseBlock;
 
     // Buffers are linearly indexed
     if (info.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
         ASSERT(!info.bufferDescriptor.placedDescriptor, "Blitting with placement resource");
         ASSERT(info.bufferDescriptor.width <= allocation.length, "Length of of bounds");
-        ASSERT(info.bufferDescriptor.offset + info.bufferDescriptor.width <= allocation.base + allocation.length, "End offset of of bounds");
+        ASSERT(info.bufferDescriptor.offset + info.bufferDescriptor.width <= allocation.length, "End offset of of bounds");
 
         // Offset by descriptor
         params.baseX = Cast32Checked(info.bufferDescriptor.offset);
@@ -747,8 +783,8 @@ void InitializationFeature::CopyResourceMaskRangeSymmetric(CommandBuffer &buffer
 
     // Setup blit parameters
     MaskCopyRangeParameters params{};
-    params.sourceMemoryBaseElementAlign32 = sourceAllocation.baseAlign32;
-    params.destMemoryBaseElementAlign32 = destAllocation.baseAlign32;
+    params.sourceMemoryBaseElementAlign32 = sourceAllocation.baseBlock;
+    params.destMemoryBaseElementAlign32 = destAllocation.baseBlock;
     
     // Buffers are linearly indexed
     if (source.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
@@ -815,13 +851,13 @@ void InitializationFeature::CopyResourceMaskRangeAsymmetric(CommandBuffer &buffe
 
     // Setup blit parameters
     MaskCopyRangeParameters params{};
-    params.sourceMemoryBaseElementAlign32 = sourceAllocation.baseAlign32;
-    params.destMemoryBaseElementAlign32 = destAllocation.baseAlign32;
+    params.sourceMemoryBaseElementAlign32 = sourceAllocation.baseBlock;
+    params.destMemoryBaseElementAlign32 = destAllocation.baseBlock;
     
     // Buffer -> Texture
     if (source.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
         ASSERT(source.bufferDescriptor.width <= sourceAllocation.length, "Length of of bounds");
-        ASSERT(source.bufferDescriptor.offset + source.bufferDescriptor.width <= sourceAllocation.base + sourceAllocation.length, "End offset of of bounds");
+        ASSERT(source.bufferDescriptor.offset + source.bufferDescriptor.width <= sourceAllocation.length, "End offset of of bounds");
 
         // Source buffer offsetting
         params.sourceBaseX = Cast32Checked(source.bufferDescriptor.offset);

@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -27,19 +27,24 @@
 #pragma once
 
 // Backend
-#include <Backend/IL/Format.h>
-#include <Backend/ShaderData/ShaderDataBufferFlags.h>
+#include <Backend/Scheduler/SchedulerPrimitiveEvent.h>
 
-// Std
-#include <cstdint>
+// Common
+#include <Common/Containers/TrivialStackVector.h>
 
-struct ShaderDataBufferInfo {
-    /// Number of elements within this buffer
-    size_t elementCount{0};
+// Forward declarations
+class CommandContext;
 
-    /// Format of each element
-    Backend::IL::Format format{Backend::IL::Format::None};
+struct SubmissionContext {    
+    /// Commands injected prior all command contexts
+    CommandContext* preContext{nullptr};
 
-    /// All buffer flags
-    ShaderDataBufferFlagSet flagSet{};
+    /// Commands injected after all command contexts
+    CommandContext* postContext{nullptr};
+
+    /// Optional, primitives to wait for
+    TrivialStackVector<SchedulerPrimitiveEvent, 4u> waitPrimitives;
+
+    /// Optional, primitives to signal to
+    TrivialStackVector<SchedulerPrimitiveEvent, 4u> signalPrimitives;
 };

@@ -565,7 +565,7 @@ void LoopFeature::HeartBeatThreadWorker() {
 
         // Any commands?
         if (transferBuffer.Count()) {
-            scheduler->Schedule(Queue::Compute, transferBuffer);
+            scheduler->Schedule(Queue::Compute, transferBuffer, nullptr);
         }
     }
 }

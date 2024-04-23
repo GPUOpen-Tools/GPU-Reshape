@@ -68,19 +68,24 @@ public:
                 texelCount += mipWidth * mipHeight * mipDepthOrArraySize;
             }
         }
-        
+
+        // All texels are allocated in blocks, align to 32
+        texelCount = (texelCount + 31) & ~31;
+
+        // OK
         return texelCount;
     }
 
     /// Allocate from a given length
+    /// \param alignment entry alignment
     /// \param length number of entries
     /// \return offset
-    uint64_t Allocate(uint64_t length) {
+    uint64_t Allocate(uint64_t alignment, uint64_t length) {
         uint64_t head = GetHead();
 
         // All allocations are aligned to 32
         // This greatly helps other operations
-        head = (head + 31) & ~31;
+        head = (head + alignment - 1) & ~(alignment - 1);
         
         Allocation& allocation = allocations.emplace_back();
         allocation.offset = head;

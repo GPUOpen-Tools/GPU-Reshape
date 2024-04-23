@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,20 +26,11 @@
 
 #pragma once
 
-// Backend
-#include <Backend/IL/Format.h>
-#include <Backend/ShaderData/ShaderDataBufferFlags.h>
-
 // Std
 #include <cstdint>
 
-struct ShaderDataBufferInfo {
-    /// Number of elements within this buffer
-    size_t elementCount{0};
+/// Unique primitive id
+using SchedulerPrimitiveID = uint32_t;
 
-    /// Format of each element
-    Backend::IL::Format format{Backend::IL::Format::None};
-
-    /// All buffer flags
-    ShaderDataBufferFlagSet flagSet{};
-};
+/// An invalid primitive id
+static constexpr SchedulerPrimitiveID InvalidSchedulerPrimitiveID = ~0u;

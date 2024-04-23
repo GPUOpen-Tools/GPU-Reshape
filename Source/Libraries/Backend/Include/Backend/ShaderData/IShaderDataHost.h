@@ -55,6 +55,12 @@ public:
     /// \return invalid if failed
     virtual ShaderDataID CreateDescriptorData(const ShaderDataDescriptorInfo& info) = 0;
 
+    /// Create a new mapping, used for tile updates
+    /// \param data the data, or one of same creation parameters, to be mapped to
+    /// \param tileCount number of tiles to request
+    /// \return invalid if failed
+    virtual ShaderDataMappingID CreateMapping(ShaderDataID data, uint64_t tileCount) = 0;
+
     /// Map a buffer
     /// \param rid resource id
     /// \return mapped buffer
@@ -69,6 +75,10 @@ public:
     /// Destroy an allocation
     /// \param rid allocation identifier
     virtual void Destroy(ShaderDataID rid) = 0;
+
+    /// Destroy a mapping
+    /// \param mid allocation identifier
+    virtual void DestroyMapping(ShaderDataMappingID mid) = 0;
 
     /// Enumerate all created data
     /// \param count if [out] is null, filled with the number of resources

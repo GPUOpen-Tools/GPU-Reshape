@@ -34,7 +34,9 @@ ShaderDataHost::ShaderDataHost(DeviceState *device) :
     device(device),
     freeIndices(device->allocators.Tag(kAllocShaderData)),
     indices(device->allocators.Tag(kAllocShaderData)),
-    resources(device->allocators.Tag(kAllocShaderData)) {
+    resources(device->allocators.Tag(kAllocShaderData)),
+    freeMappingIndices(device->allocators.Tag(kAllocShaderData)),
+    mappings(device->allocators.Tag(kAllocShaderData)) {
 
 }
 
@@ -42,7 +44,9 @@ ShaderDataHost::~ShaderDataHost() {
     // Release resources
     for (const ResourceEntry& entry : resources) {
         if (entry.allocation.resource) {
-            entry.allocation.allocation->Release();
+            if (entry.allocation.allocation) {
+                entry.allocation.allocation->Release();
+            }
             entry.allocation.resource->Release();
         }
     }
@@ -84,10 +88,22 @@ ShaderDataID ShaderDataHost::CreateBuffer(const ShaderDataBufferInfo &info) {
 
     // Create allocation
     ResourceEntry &entry = resources.emplace_back();
-    entry.allocation = device->deviceAllocator->Allocate(desc, info.hostVisible ? AllocationResidency::HostVisible : AllocationResidency::Device);
     entry.info.id = rid;
     entry.info.type = ShaderDataType::Buffer;
     entry.info.buffer = info;
+
+    // If tiled, create the reserved resource immediately
+    if (info.flagSet & ShaderDataBufferFlag::Tiled) {
+        device->object->CreateReservedResource(
+            &desc,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            nullptr,
+            __uuidof(ID3D12Resource*),
+            reinterpret_cast<void**>(&entry.allocation.resource)
+        );
+    } else {
+        entry.allocation = device->deviceAllocator->Allocate(desc, info.flagSet & ShaderDataBufferFlag::HostVisible ? AllocationResidency::HostVisible : AllocationResidency::Device);
+    }
 
 #ifndef NDEBUG
     entry.allocation.resource->SetName(L"ShaderDataHostBuffer");
@@ -161,6 +177,36 @@ void *ShaderDataHost::Map(ShaderDataID rid) {
     return device->deviceAllocator->Map(entry.allocation);
 }
 
+ShaderDataMappingID ShaderDataHost::CreateMapping(ShaderDataID data, uint64_t tileCount) {
+    // Allocate index
+    ShaderDataMappingID mid;
+    if (freeMappingIndices.empty()) {
+        mid = static_cast<uint32_t>(mappings.size());
+        mappings.emplace_back();
+    } else {
+        mid = freeMappingIndices.back();
+        freeMappingIndices.pop_back();
+    }
+
+    // Create allocation
+    MappingEntry& entry = mappings[mid];
+    entry.allocation = device->deviceAllocator->AllocateMemory(kShaderDataMappingTileWidth, kShaderDataMappingTileWidth * tileCount);
+
+    // OK
+    return mid;
+}
+
+void ShaderDataHost::DestroyMapping(ShaderDataMappingID mid) {
+    MappingEntry& entry = mappings[mid];
+
+    // Release the allocation
+    device->deviceAllocator->Free(entry.allocation);
+    entry.allocation = nullptr;
+
+    // Mark as free
+    freeMappingIndices.push_back(mid);
+}
+
 void ShaderDataHost::FlushMappedRange(ShaderDataID rid, size_t offset, size_t length) {
     uint32_t index = indices[rid];
 
@@ -178,6 +224,11 @@ Allocation ShaderDataHost::GetResourceAllocation(ShaderDataID rid) {
     ResourceEntry &entry = resources[index];
 
     // OK
+    return entry.allocation;
+}
+
+D3D12MA::Allocation * ShaderDataHost::GetMappingAllocation(ShaderDataMappingID mid) {
+    MappingEntry &entry = mappings[mid];
     return entry.allocation;
 }
 

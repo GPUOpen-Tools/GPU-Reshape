@@ -127,6 +127,9 @@ void DeviceDispatchTable::Populate(PFN_vkGetInstanceProcAddr getInstanceProcAddr
     next_vkDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(getDeviceProcAddr(object, "vkDestroySwapchainKHR"));
     next_vkGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(getDeviceProcAddr(object, "vkGetSwapchainImagesKHR"));
     next_vkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(getDeviceProcAddr(object, "vkSetDebugUtilsObjectNameEXT"));
+    next_vkQueueBindSparse = reinterpret_cast<PFN_vkQueueBindSparse>(getDeviceProcAddr(object, "vkQueueBindSparse"));
+    next_vkCreateSemaphore = reinterpret_cast<PFN_vkCreateSemaphore>(getDeviceProcAddr(object, "vkCreateSemaphore"));
+    next_vkDestroySemaphore = reinterpret_cast<PFN_vkDestroySemaphore>(getDeviceProcAddr(object, "vkDestroySemaphore"));
 
     // Populate all generated commands
     commandBufferDispatchTable.Populate(object, getDeviceProcAddr);

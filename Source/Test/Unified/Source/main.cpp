@@ -27,6 +27,12 @@
 // Main executable
 #define CATCH_CONFIG_MAIN
 
+// Disable exception handling
+// Any failure is a complete failure, and they greatly impede debugging
+#define CATCH_CONFIG_RUNNER
+#define CATCH_CONFIG_DISABLE_EXCEPTIONS
+#define CATCH_CONFIG_NO_POSIX_SIGNALS
+
 // Enable leak detection
 // #define CATCH_CONFIG_WINDOWS_CRTDBG
 

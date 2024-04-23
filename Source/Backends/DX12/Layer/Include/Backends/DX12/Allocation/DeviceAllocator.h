@@ -65,6 +65,12 @@ public:
     /// \return the mirror allocation
     MirrorAllocation AllocateMirror(const D3D12_RESOURCE_DESC& desc, AllocationResidency residency = AllocationResidency::Device);
 
+    /// Allocate a memory chunk
+    /// \param alignment expected byte alignment
+    /// \param size byte size of the allocation
+    /// \return nullptr if failed
+    D3D12MA::Allocation* AllocateMemory(uint32_t alignment, uint64_t size);
+
     /// Free a given allocation
     /// \param allocation
     void Free(const Allocation& allocation);
@@ -72,6 +78,10 @@ public:
     /// Free a given mirror allocation
     /// \param mirrorAllocation
     void Free(const MirrorAllocation& mirrorAllocation);
+
+    /// Free a given allocation
+    /// \param allocation
+    void Free(D3D12MA::Allocation* allocation);
 
     /// Map an allocation
     /// \param allocation the allocation to be mapped

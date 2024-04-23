@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,20 +26,17 @@
 
 #pragma once
 
-// Backend
-#include <Backend/IL/Format.h>
-#include <Backend/ShaderData/ShaderDataBufferFlags.h>
-
 // Std
-#include <cstdint>
+#include <Common/Enum.h>
 
-struct ShaderDataBufferInfo {
-    /// Number of elements within this buffer
-    size_t elementCount{0};
+enum class ShaderDataBufferFlag {
+    None,
 
-    /// Format of each element
-    Backend::IL::Format format{Backend::IL::Format::None};
+    /// This buffer is visible from the host
+    HostVisible = BIT(0),
 
-    /// All buffer flags
-    ShaderDataBufferFlagSet flagSet{};
+    /// This buffer represents a tiled / sparse resource, and must be mapped manually
+    Tiled = BIT(1)
 };
+
+BIT_SET(ShaderDataBufferFlag);

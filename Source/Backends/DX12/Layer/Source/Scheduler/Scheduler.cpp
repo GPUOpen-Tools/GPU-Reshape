@@ -29,9 +29,16 @@
 #include <Backends/DX12/States/DeviceState.h>
 #include <Backends/DX12/Export/ShaderExportStreamer.h>
 #include <Backends/DX12/Command/UserCommandBuffer.h>
+#include <Backend/Scheduler/SchedulerPrimitiveEvent.h>
+#include <Backends/DX12/ShaderData/ShaderDataHost.h>
+
+// Backend
+#include <Backend/Scheduler/SchedulerTileMapping.h>
 
 Scheduler::Scheduler(DeviceState *device) :
     queues(device->allocators),
+    freePrimitives(device->allocators),
+    primitives(device->allocators),
     device(device) {
 
 }
@@ -70,6 +77,9 @@ bool Scheduler::Install() {
         }
     }
 
+    // Get data host
+    shaderDataHost = registry->Get<ShaderDataHost>();
+
     // OK
     return true;
 }
@@ -89,7 +99,7 @@ void Scheduler::SyncPoint() {
             }
 
             // Let the streamer recycle it
-            device->exportStreamer->RecycleCommandList(it->streamState);
+            device->exportStreamer->RecycleCommandList(it->streamState, it->commandList);
 
             // Add as free
             bucket.freeSubmissions.push_back(*it);
@@ -98,6 +108,10 @@ void Scheduler::SyncPoint() {
         // Remove free submissions
         bucket.pendingSubmissions.erase(bucket.pendingSubmissions.begin(), it);
     }
+}
+
+ID3D12Fence * Scheduler::GetPrimitiveFence(SchedulerPrimitiveID pid) {
+    return primitives[pid].fence;
 }
 
 void Scheduler::WaitForPending() {
@@ -124,7 +138,7 @@ void Scheduler::WaitForPending() {
     CloseHandle(waitFenceEvent);
 }
 
-void Scheduler::Schedule(Queue queue, const CommandBuffer &buffer) {
+void Scheduler::Schedule(Queue queue, const CommandBuffer &buffer, const SchedulerPrimitiveEvent* event) {
     std::lock_guard guard(mutex);
 
     // Get the queue
@@ -156,8 +170,140 @@ void Scheduler::Schedule(Queue queue, const CommandBuffer &buffer) {
     bucket.queue->ExecuteCommandLists(1u, commandLists);
     bucket.queue->Signal(submission.fence->fence, submission.fenceCommitID);
 
+    // Signal event if specified
+    if (event) {
+        bucket.queue->Signal(primitives[event->id].fence, event->value);
+    }
+
     // Mark as pending
     bucket.pendingSubmissions.push_back(submission);
+}
+
+void Scheduler::MapTiles(Queue queue, ShaderDataID id, uint32_t count, const SchedulerTileMapping* mappings) {
+    // Get allocation
+    Allocation allocation = shaderDataHost->GetResourceAllocation(id);
+    ASSERT(allocation.resource->GetDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER, "Texture tile mappings not supported");
+
+    // Get queue
+    QueueBucket& bucket = queues[static_cast<uint32_t>(queue)];
+
+    // Cached allocations
+    TrivialStackVector<D3D12MA::Allocation*, 64> allocations;
+    allocations.Resize(count);
+
+    // All referenced heaps
+    TrivialStackVector<ID3D12Heap*, 16> heaps;
+
+    // Cache all allocations and determine their unique heaps
+    for (uint32_t i = 0; i < count; i++) {
+        const SchedulerTileMapping& mapping = mappings[i];
+
+        // Cache allocation
+        allocations[i] = shaderDataHost->GetMappingAllocation(mapping.mapping);
+
+        // Heap already accounted for?
+        if (std::find(heaps.begin(), heaps.end(), allocations[i]->GetHeap()) != heaps.end()) {
+            continue;
+        }
+
+        // New unique heap
+        heaps.Add(allocations[i]->GetHeap());
+    }
+
+    // All mapping properties
+    TrivialStackVector<D3D12_TILED_RESOURCE_COORDINATE, 64> resourceCoordinates;
+    TrivialStackVector<D3D12_TILE_REGION_SIZE, 64> resourceRegions;
+    TrivialStackVector<uint32_t, 64> heapStartOffsets;
+    TrivialStackVector<uint32_t, 64> heapTileCounts;
+
+    // Assume worst case
+    resourceCoordinates.Reserve(count);
+    resourceRegions.Reserve(count);
+    heapStartOffsets.Reserve(count);
+    heapTileCounts.Reserve(count);
+
+    // Batch on a per-heap basis
+    for (uint32_t heapIndex = 0; heapIndex < heaps.Size(); heapIndex++) {
+        ID3D12Heap* heap = heaps[heapIndex];
+
+        // Append all allocations sharing this heap
+        for (uint32_t i = 0; i < count; i++) {
+            const SchedulerTileMapping& mapping = mappings[i];
+
+            // Filter heap
+            if (allocations[i]->GetHeap() != heap) {
+                continue;
+            }
+
+            // Resource starting coordinate, in tiles
+            resourceCoordinates.Add(D3D12_TILED_RESOURCE_COORDINATE {
+                .X = mapping.tileOffset
+            });
+
+            // Resource tile region
+            resourceRegions.Add(D3D12_TILE_REGION_SIZE {
+                .NumTiles = mapping.tileCount
+            });
+
+            // Heap starting tile offset
+            heapStartOffsets.Add( static_cast<uint32_t>(allocations[i]->GetOffset() / kShaderDataMappingTileWidth));
+
+            // Heap tile count from offset
+            heapTileCounts.Add(mapping.tileCount);
+        }
+
+        // Batch update the tile mappings
+        bucket.queue->UpdateTileMappings(
+            allocation.resource,
+            static_cast<uint32_t>(resourceCoordinates.Size()),
+            resourceCoordinates.Data(),
+            resourceRegions.Data(),
+            heap,
+            static_cast<uint32_t>(heapStartOffsets.Size()),
+            nullptr, 
+            heapStartOffsets.Data(),
+            heapTileCounts.Data(),
+            D3D12_TILE_MAPPING_FLAG_NONE
+        );
+
+        // Cleanup for next iteration
+        resourceCoordinates.Clear();
+        resourceRegions.Clear();
+        heapStartOffsets.Clear();
+        heapTileCounts.Clear();
+    }
+}
+
+SchedulerPrimitiveID Scheduler::CreatePrimitive() {
+    // Allocate index
+    SchedulerPrimitiveID pod;
+    if (freePrimitives.empty()) {
+        pod = static_cast<uint32_t>(primitives.size());
+        primitives.emplace_back();
+    } else {
+        pod = freePrimitives.back();
+        freePrimitives.pop_back();
+    }
+
+    // Create allocation
+    PrimitiveEntry& entry = primitives[pod];
+
+    // Create the fence
+    device->object->CreateFence(0u, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), reinterpret_cast<void**>(&entry.fence));
+
+    // OK
+    return pod;
+}
+
+void Scheduler::DestroyPrimitive(SchedulerPrimitiveID pid) {
+    PrimitiveEntry& entry = primitives[pid];
+
+    // Destroy the fence
+    entry.fence->Release();
+    entry.fence = nullptr;
+
+    // Mark as free
+    freePrimitives.push_back(pid);
 }
 
 Scheduler::Submission Scheduler::PopSubmission(Queue queue) {
