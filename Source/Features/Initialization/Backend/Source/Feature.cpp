@@ -71,6 +71,10 @@ static constexpr uint32_t kMaxTrackedTexelBlocks = UINT32_MAX; // ~4gb
 /// Max number of tracked texels
 static constexpr uint64_t kMaxTrackedTexels = kMaxTrackedTexelBlocks * 32; // 128gb of R1
 
+/// Debugging toggle
+/// Useful for validating incorrect tile mappings
+#define USE_TILED_RESOURCES 1
+
 bool InitializationFeature::Install() {
     // Must have the export host
     auto exportHost = registry->Get<IShaderExportHost>();
@@ -101,9 +105,15 @@ bool InitializationFeature::Install() {
 
     // Allocate texel mask buffer
     texelMaskBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
+#if USE_TILED_RESOURCES
         .elementCount = kMaxTrackedTexelBlocks,
         .format = Backend::IL::Format::R32UInt,
         .flagSet = ShaderDataBufferFlag::Tiled
+#else // USE_TILED_RESOURCES 
+        .elementCount = 512'000'000,
+        .format = Backend::IL::Format::R32UInt,
+        .flagSet = ShaderDataBufferFlag::Tiled
+#endif // USE_TILED_RESOURCES
     });
 
     // Must have program host
@@ -602,6 +612,12 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
         CommandBuffer buffer;
         CommandBuilder builder(buffer);
 
+        // Assign the memory lookups
+        for (const MappingTag& tag : pendingMappingQueue) {
+            builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);
+        }
+
+#if USE_TILED_RESOURCES
         // All mappings
         std::vector<SchedulerTileMapping> tileMappings;
         tileMappings.reserve(pendingMappingQueue.size());
@@ -616,13 +632,11 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
                 .tileOffset = static_cast<uint32_t>((allocation.baseBlock * sizeof(uint32_t)) / kShaderDataMappingTileWidth),
                 .tileCount = allocation.tileCount
             });
-
-            // Assign the memory lookup
-            builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);
         }
 
         // Create the tile mappings for the new resource
         scheduler->MapTiles(Queue::ExclusiveTransfer, texelMaskBufferID, static_cast<uint32_t>(tileMappings.size()), tileMappings.data());
+#endif // USE_TILED_RESOURCES
 
         // Clear mappings
         pendingMappingQueue.clear();
