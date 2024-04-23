@@ -598,6 +598,20 @@ namespace Runtime.ViewModels.IL
                     AssembleInlineOperand(typed.Value, builder);
                     break;
                 }
+                case OpCode.StoreVertexOutput:
+                {
+                    var typed = (StoreVertexOutputInstruction)instruction;
+                    AssembleInlineOperand(typed.Index, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Row, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Column, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.Value, builder);
+                    builder.Append(' ');
+                    AssembleInlineOperand(typed.VertexIndex, builder);
+                    break;
+                }
                 case OpCode.SampleTexture:
                 {
                     var typed = (SampleTextureInstruction)instruction;

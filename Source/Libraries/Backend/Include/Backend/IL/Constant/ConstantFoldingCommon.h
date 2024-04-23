@@ -17,6 +17,7 @@ namespace Backend::IL {
 
             /** Inter-stages can never be folded */
             case ::IL::OpCode::StoreOutput:
+            case ::IL::OpCode::StoreVertexOutput:
 
             /** No resource immediates */
             case ::IL::OpCode::SampleTexture:

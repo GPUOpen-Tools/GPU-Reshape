@@ -382,6 +382,15 @@ namespace Backend::IL {
                 functor(typed->index);
                 break;
             }
+            case ::IL::OpCode::StoreVertexOutput: {
+                auto typed = instr->As<::IL::StoreVertexOutputInstruction>();
+                functor(typed->value);
+                functor(typed->row);
+                functor(typed->column);
+                functor(typed->index);
+                functor(typed->vertexIndex);
+                break;
+            }
             case ::IL::OpCode::SampleTexture: {
                 auto typed = instr->As<::IL::SampleTextureInstruction>();
                 functor(typed->texture);

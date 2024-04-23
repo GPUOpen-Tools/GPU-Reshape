@@ -1582,6 +1582,39 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
 
         /*
          * DXIL Specification
+         *   overloads: i32
+         *   declare void @dx.op.storeVertexOutput.f32(
+         *       i32,                            ; opcode
+         *       i32,                            ; output ID
+         *       i32,                            ; row (relative to start row of output ID)
+         *       i8,                             ; column (relative to start column of output ID), constant in [0,3]
+         *       float,                          ; value to store
+         *       i32)                            ; vertex ID
+         */
+
+        case DXILOpcodes::StoreVertexOutput: {
+            uint32_t outputID = reader.GetMappedRelative(anchor);
+            uint32_t row = reader.GetMappedRelative(anchor);
+            uint32_t column = reader.GetMappedRelative(anchor);
+            uint32_t value = reader.GetMappedRelative(anchor);
+            uint32_t vertexID = reader.GetMappedRelative(anchor);
+
+            // Emit
+            IL::StoreVertexOutputInstruction instr{};
+            instr.opCode = IL::OpCode::StoreVertexOutput;
+            instr.result = IL::InvalidID;
+            instr.source = IL::Source::Code(recordIdx);
+            instr.index = outputID;
+            instr.row = row;
+            instr.column = column;
+            instr.value = value;
+            instr.vertexIndex = vertexID;
+            basicBlock->Append(instr);
+            return true;
+        }
+
+        /*
+         * DXIL Specification
          *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
          *   ; returns: status
          *   declare %dx.types.ResRet.f32 @dx.op.bufferLoad.f32(

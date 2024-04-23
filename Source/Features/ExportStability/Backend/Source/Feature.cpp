@@ -98,6 +98,9 @@ void ExportStabilityFeature::Inject(IL::Program &program, const MessageStreamVie
             case IL::OpCode::StoreOutput:
                 value = it->As<IL::StoreOutputInstruction>()->value;
                 break;
+            case IL::OpCode::StoreVertexOutput:
+                value = it->As<IL::StoreVertexOutputInstruction>()->value;
+                break;
         }
 
         // Get type

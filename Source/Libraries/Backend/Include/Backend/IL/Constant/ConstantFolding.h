@@ -138,6 +138,7 @@ namespace Backend::IL {
             case OpCode::AtomicExchange:
             case OpCode::AtomicCompareExchange:
             case OpCode::StoreOutput:
+            case OpCode::StoreVertexOutput:
             case OpCode::SampleTexture:
             case OpCode::StoreTexture:
             case OpCode::LoadTexture:
