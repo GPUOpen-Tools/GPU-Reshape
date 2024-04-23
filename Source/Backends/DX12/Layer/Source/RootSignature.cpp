@@ -528,9 +528,11 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     exportParameter.DescriptorTable.NumDescriptorRanges = 5u;
     exportParameter.DescriptorTable.pDescriptorRanges = ranges;
 
-    // Range version 1.1 assumes STATIC registers, explicitly say otherwise
+    // Range version 1.1 assumes STATIC registers and data (CBV), explicitly say otherwise
     if constexpr(std::is_same_v<T, D3D12_ROOT_SIGNATURE_DESC1>) {
+        // TODO: Generalize the register mappings, these magic constants are horrible
         ranges[0].Flags |= D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
+        ranges[3].Flags |= D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE;
     }
 
     // Descriptor constant parameter
