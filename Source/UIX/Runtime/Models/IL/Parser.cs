@@ -950,17 +950,29 @@ namespace Studio.Models.IL
                     break;
                 }
                 case OpCode.StoreVertexOutput:
+                {
+                    instruction = new StoreVertexOutputInstruction()
                     {
-                        instruction = new StoreVertexOutputInstruction()
-                        {
-                            Index = node.Index,
-                            Row = node.Row,
-                            Column = node.Column,
-                            Value = node.Value,
-                            VertexIndex = node.VertexIndex
-                        };
-                        break;
-                    }
+                        Index = node.Index,
+                        Row = node.Row,
+                        Column = node.Column,
+                        Value = node.Value,
+                        VertexIndex = node.VertexIndex
+                    };
+                    break;
+                }
+                case OpCode.StorePrimitiveOutput:
+                {
+                    instruction = new StorePrimitiveOutputInstruction()
+                    {
+                        Index = node.Index,
+                        Row = node.Row,
+                        Column = node.Column,
+                        Value = node.Value,
+                        PrimitiveIndex = node.PrimitiveIndex
+                    };
+                    break;
+                }
                 case OpCode.SampleTexture:
                 {
                     instruction = new SampleTextureInstruction()
