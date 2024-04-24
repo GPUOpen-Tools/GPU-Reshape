@@ -308,7 +308,7 @@ void Scheduler::MapTiles(Queue queue, ShaderDataID id, uint32_t count, const Sch
         // Assign offsets
         VkSparseMemoryBind& memoryInfo = memoryBinds[i] = {};
         memoryInfo.resourceOffset = mapping.tileOffset * kShaderDataMappingTileWidth;
-        memoryInfo.size = mappings->tileCount * kShaderDataMappingTileWidth;
+        memoryInfo.size = mapping.tileCount * kShaderDataMappingTileWidth;
         memoryInfo.memory = mappingInfo.deviceMemory;
         memoryInfo.memoryOffset = mappingInfo.offset;
     }
