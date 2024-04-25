@@ -101,6 +101,26 @@ namespace IL {
             return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::MipCount);
         }
 
+        /// Get the resource type
+        ::IL::ID GetViewFormat() {
+            if (viewFormat != IL::InvalidID) {
+                return viewFormat;
+            }
+
+            IL::ID dword = GetFieldDWord(Backend::IL::ResourceTokenMetadataField::ViewPackedFormat);
+            return viewFormat = emitter.BitAnd(dword, emitter.UInt32(0xFFFF));
+        }
+
+        /// Get the resource type
+        ::IL::ID GetViewFormatSize() {
+            if (viewFormatSize != IL::InvalidID) {
+                return viewFormatSize;
+            }
+
+            IL::ID dword = GetFieldDWord(Backend::IL::ResourceTokenMetadataField::ViewPackedFormat);
+            return viewFormatSize = emitter.BitShiftRight(dword, emitter.UInt32(16));
+        }
+
         /// Get the mip offset
         ::IL::ID GetViewBaseWidth() {
             return GetFieldDWord(Backend::IL::ResourceTokenMetadataField::ViewBaseWidth);
@@ -165,6 +185,8 @@ namespace IL {
         ::IL::ID format{IL::InvalidID};
         ::IL::ID formatSize{IL::InvalidID};
         ::IL::ID type{IL::InvalidID};
+        ::IL::ID viewFormat{IL::InvalidID};
+        ::IL::ID viewFormatSize{IL::InvalidID};
 
         /// Current emitter
         E& emitter;

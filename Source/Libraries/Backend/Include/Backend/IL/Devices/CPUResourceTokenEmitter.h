@@ -76,6 +76,16 @@ namespace IL {
             return info.token.mipCount;
         }
 
+        /// Get the resource type
+        uint32_t GetViewFormat() {
+            return info.token.viewFormatId;
+        }
+
+        /// Get the resource type
+        uint32_t GetViewFormatSize() {
+            return info.token.viewFormatSize;
+        }
+
         /// Get the mip offset
         uint32_t GetViewBaseWidth() {
             return info.token.viewBaseWidth;

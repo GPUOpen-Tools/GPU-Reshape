@@ -106,13 +106,18 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBufferView(VkDevice device, const Vk
 
     // Inherit mapping
     state->virtualMapping = state->parent->virtualMapping;
-    state->virtualMapping.token.formatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
-    state->virtualMapping.token.formatSize = GetFormatByteSize(pCreateInfo->format);
-    state->virtualMapping.token.viewBaseWidth = static_cast<uint32_t>(pCreateInfo->offset);
+    state->virtualMapping.token.viewFormatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
+    state->virtualMapping.token.viewFormatSize = GetFormatByteSize(pCreateInfo->format);
 
-    // Optional view properties
+    // Report view widths as that of the view format
+    state->virtualMapping.token.viewBaseWidth = static_cast<uint32_t>(pCreateInfo->offset / state->virtualMapping.token.viewFormatSize);
+
+    // Optional view range
     if (pCreateInfo->range != VK_WHOLE_SIZE) {
-        state->virtualMapping.token.viewWidth = static_cast<uint32_t>(pCreateInfo->range);
+        state->virtualMapping.token.viewWidth = static_cast<uint32_t>(pCreateInfo->range / state->virtualMapping.token.viewFormatSize);
+    } else {
+        VkDeviceSize baseWidth = state->virtualMapping.token.width * state->virtualMapping.token.formatSize;
+        state->virtualMapping.token.viewWidth = state->virtualMapping.token.viewBaseWidth - static_cast<uint32_t>(baseWidth / state->virtualMapping.token.viewFormatSize);
     }
 
     // Store lookup
@@ -198,8 +203,8 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImageView(VkDevice device, const VkI
 
     // Inherit mapping
     state->virtualMapping = state->parent->virtualMappingTemplate;
-    state->virtualMapping.token.formatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
-    state->virtualMapping.token.formatSize = GetFormatByteSize(pCreateInfo->format);
+    state->virtualMapping.token.viewFormatId = static_cast<uint32_t>(Translate(pCreateInfo->format));
+    state->virtualMapping.token.viewFormatSize = GetFormatByteSize(pCreateInfo->format);
     state->virtualMapping.token.viewBaseMip = expandedRange.baseMipLevel;
     state->virtualMapping.token.viewMipCount = expandedRange.levelCount;
     state->virtualMapping.token.viewBaseSlice = expandedRange.baseArrayLayer;

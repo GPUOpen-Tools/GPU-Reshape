@@ -36,6 +36,8 @@ namespace Backend::IL {
     enum class ResourceTokenMetadataField {
         PackedToken,
 
+        // todo[init]: move to view specific data
+
         /// The format attributes, may be specific to the view
         PackedFormat,
 
@@ -48,14 +50,16 @@ namespace Backend::IL {
 
         /// View properties
         /// May deviate from the resource properties
-        ViewBaseWidth, // todo[init]: move to view specific data
-        ViewWidth, // todo[init]: move to view specific data
+        ViewPackedFormat, 
+        ViewBaseWidth,
+        ViewWidth,
         ViewBaseMip,
         ViewBaseSlice,
         ViewSliceCount,
         ViewMipCount,
 
         /// Total number of fields
+        /// 13 dw per token
         Count
     };
 }

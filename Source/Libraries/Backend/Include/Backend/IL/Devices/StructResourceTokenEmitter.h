@@ -98,6 +98,26 @@ namespace IL {
             return info.Get<&ResourceToken::mipCount>(emitter);
         }
 
+        /// Get the resource type
+        ::IL::ID GetViewFormat() {
+            if (viewFormat != IL::InvalidID) {
+                return viewFormat;
+            }
+            
+            IL::ID dword = info.Get<&ResourceToken::viewPackedFormat>(emitter);
+            return viewFormat = emitter.BitAnd(dword, emitter.UInt32(0xFFFF));
+        }
+
+        /// Get the resource type
+        ::IL::ID GetViewFormatSize() {
+            if (viewFormatSize != IL::InvalidID) {
+                return viewFormatSize;
+            }
+
+            IL::ID dword = info.Get<&ResourceToken::viewPackedFormat>(emitter);
+            return viewFormatSize = emitter.BitShiftRight(dword, emitter.UInt32(16));
+        }
+
         /// Get the mip offset
         IL::ID GetViewBaseWidth() {
             return info.Get<&ResourceToken::viewBaseWidth>(emitter);
@@ -137,6 +157,8 @@ namespace IL {
         ::IL::ID format{IL::InvalidID};
         ::IL::ID formatSize{IL::InvalidID};
         ::IL::ID type{IL::InvalidID};
+        ::IL::ID viewFormat{IL::InvalidID};
+        ::IL::ID viewFormatSize{IL::InvalidID};
 
         /// Shader struct to fetch from
         ShaderStruct<ResourceToken> info;

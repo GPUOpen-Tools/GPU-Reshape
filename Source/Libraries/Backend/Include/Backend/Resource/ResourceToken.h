@@ -47,6 +47,7 @@ struct ResourceToken {
 
     /// Default all view properties to the full range
     void DefaultViewToRange() {
+        viewPackedFormat = packedFormat;
         viewWidth = width;
         viewSliceCount = depthOrSliceCount;
         viewMipCount = mipCount;
@@ -94,6 +95,20 @@ struct ResourceToken {
 
     /// Mip count in the resource
     uint32_t mipCount{1};
+
+    // Packed view format header
+    union {
+        struct {
+            /// Format of the resource
+            uint32_t viewFormatId : 16;
+
+            /// Size of the format
+            uint32_t viewFormatSize : 16;
+        };
+
+        /// Opaque key
+        uint32_t viewPackedFormat;
+    };
 
     /// Base width, i.e., offset of the linear index, of this mapping
     /// Only applies to linearly addressable mappings
