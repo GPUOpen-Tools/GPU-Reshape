@@ -31,7 +31,7 @@ using Studio.Models.Workspace;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace.Properties;
 
-namespace GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation
+namespace GRS.Features.ExportIndices.UIX.Workspace.Properties.Instrumentation
 {
     public class ExportIndicesPropertyViewModel : BasePropertyViewModel, IInstrumentationProperty, IClosableObject
     {

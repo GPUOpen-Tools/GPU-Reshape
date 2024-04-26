@@ -28,7 +28,7 @@ using System;
 using Avalonia;
 using DynamicData;
 using GRS.Features.ExportIndices.UIX.Workspace;
-using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
+using GRS.Features.ExportIndices.UIX.Workspace.Properties.Instrumentation;
 using Studio.Plugin;
 using Studio.Services;
 using Studio.ViewModels.Contexts;

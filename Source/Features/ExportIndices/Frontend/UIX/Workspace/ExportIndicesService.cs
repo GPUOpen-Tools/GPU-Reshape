@@ -31,7 +31,7 @@ using Avalonia.Threading;
 using Studio.ViewModels.Workspace;
 using Message.CLR;
 using Bridge.CLR;
-using GRS.Features.ResourceBounds.UIX.Workspace.Properties.Instrumentation;
+using GRS.Features.ExportIndices.UIX.Workspace.Properties.Instrumentation;
 using ReactiveUI;
 using Runtime.Threading;
 using Runtime.ViewModels.Workspace.Properties;
@@ -125,7 +125,7 @@ namespace GRS.Features.ExportIndices.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Exporting {(message.Flat.isNoThreadID == 1 ? "NaN" : "Inf")}",
+                        Content = $"Export index is not the thread id",
                         Count = 1u
                     };
                     
@@ -179,13 +179,13 @@ namespace GRS.Features.ExportIndices.UIX.Workspace
 
                         // Create the missing detail view model
                         detailViewModel = new ResourceValidationDetailViewModel();
-                        
+
                         // Assign on UI thread
                         Dispatcher.UIThread.InvokeAsync(() =>
                         {
                             validationObject.DetailViewModel = detailViewModel;
                         });
-                        
+
                         // Add lookup
                         _reducedDetails.Add(message.Key, detailViewModel);
                     }
@@ -198,7 +198,7 @@ namespace GRS.Features.ExportIndices.UIX.Workspace
                         Name = $"#{token.PUID}",
                         IsUnknown = true
                     };
-                    
+
                     // Get resource
                     ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
 
@@ -206,7 +206,7 @@ namespace GRS.Features.ExportIndices.UIX.Workspace
                     resourceValidationObject.AddUniqueInstance(_reducedMessages[message.Key].Content);
                 }
             }
-            
+
             // Update counts on main thread
             foreach (var kv in enqueued)
             {

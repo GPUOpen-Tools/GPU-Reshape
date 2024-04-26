@@ -29,10 +29,10 @@
 
 <schema>
     <shader-export name="InefficientExport">
-        <chunk name="Detail">
-            <field name="token" type="uint32"/>
-        </chunk>
+      <chunk name="Detail">
+        <field name="token" type="uint32"/>
+      </chunk>
 
-        <field name="isNoThreadID" type="uint32" bits="1"/>
+      <field name="padding" type="uint32" bits="1"/>
     </shader-export>
 </schema>

@@ -83,7 +83,6 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
         // Instruction of interest?
         IL::ID outputIndex;
-        IL::ID resource = IL::InvalidID;
         switch (it->opCode) {
             default:
                 return it;
@@ -132,30 +131,23 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
         IL::ID isNotThreadIndex = pre.NotEqual(outputIndex, pre.KernelValue(Backend::IL::KernelValue::FlattenedLocalThreadID));
         //IL::ID isNotThreadIndex = pre.NotEqual(outputIndex, pre.Extract(pre.KernelValue(Backend::IL::KernelValue::DispatchThreadID), pre.GetProgram()->GetConstants().UInt(0)->id));
 
-        // isInf/isNaN block
-        IL::Emitter<> oob(program, *context.function.GetBasicBlocks().AllocBlock());
-        oob.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
+        // isNotThreadIndex block
+        IL::Emitter<> noTid(program, *context.function.GetBasicBlocks().AllocBlock());
+        noTid.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
 
         // Setup message
         InefficientExportMessage::ShaderExport msg;
-        msg.sguid = oob.UInt32(sguid);
-        // TODO
-        msg.isNoThreadID = oob.Select(isNotThreadIndex, oob.UInt32(1), oob.UInt32(0));
-
-        // Detailed instrumentation?
-        if (config.detail && resource != IL::InvalidID) {
-            msg.chunks |= InefficientExportMessage::Chunk::Detail;
-            msg.detail.token = IL::ResourceTokenEmitter(oob, resource).GetToken();
-        }
+        msg.sguid = noTid.UInt32(sguid);
+        msg.padding = noTid.UInt32(0);
 
         // Export the message
-        oob.Export(exportID, msg);
+        noTid.Export(exportID, msg);
 
         // Branch back
-        oob.Branch(resumeBlock);
+        noTid.Branch(resumeBlock);
 
         // If so, branch to failure, otherwise resume
-        pre.BranchConditional(isNotThreadIndex, oob.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+        pre.BranchConditional(isNotThreadIndex, noTid.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
         return instr;
     });
 }
