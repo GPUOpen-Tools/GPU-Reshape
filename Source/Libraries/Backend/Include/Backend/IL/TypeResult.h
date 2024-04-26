@@ -239,6 +239,9 @@ namespace Backend::IL {
                     .dimension = 3
                 });
             }
+            case KernelValue::FlattenedLocalThreadID: {
+                return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
+            }
         }
     }
 

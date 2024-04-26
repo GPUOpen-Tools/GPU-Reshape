@@ -87,6 +87,8 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
         switch (it->opCode) {
             default:
                 return it;
+                // TODO: SPIRV StoreOutput -> vertex and primitive
+                // TODO: DXIL EmitIndices
             case IL::OpCode::StoreVertexOutput:
                 outputIndex = it->As<IL::StoreVertexOutputInstruction>()->vertexIndex;
                 break;
@@ -94,9 +96,6 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
                 outputIndex = it->As<IL::StorePrimitiveOutputInstruction>()->primitiveIndex;
                 break;
         }
-
-        // Get type
-        //const Backend::IL::Type *valueType = program.GetTypeMap().GetType(outputIndex);
 
         // Get index variable
         const Backend::IL::Variable *outputIndexVariable = program.GetVariableList().GetVariable(outputIndex);
@@ -129,13 +128,9 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
         // Perform instrumentation check
         IL::Emitter<> pre(program, context.basicBlock);
 
-        // Failure conditions
-        // IL::ID isInf = pre.Any(pre.IsInf(value));
-        // IL::ID isNaN = pre.Any(pre.IsNaN(value));
-
         // Failure conditions: output index is not thread ID
-        IL::ID isNotThreadIndex = pre.Any(pre.Equal(outputIndex, pre.FlattenedLocalThreadIndex()));
-        //IL::ID isDivergent = pre.Any(pre.WaveAllEqual(pre.Sub(outputIndex, pre.FlattenedLocalThreadIndex())));
+        IL::ID isNotThreadIndex = pre.NotEqual(outputIndex, pre.KernelValue(Backend::IL::KernelValue::FlattenedLocalThreadID));
+        //IL::ID isNotThreadIndex = pre.NotEqual(outputIndex, pre.Extract(pre.KernelValue(Backend::IL::KernelValue::DispatchThreadID), pre.GetProgram()->GetConstants().UInt(0)->id));
 
         // isInf/isNaN block
         IL::Emitter<> oob(program, *context.function.GetBasicBlocks().AllocBlock());
@@ -145,7 +140,7 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
         InefficientExportMessage::ShaderExport msg;
         msg.sguid = oob.UInt32(sguid);
         // TODO
-        msg.isNoThreadID = oob.Select(false, oob.UInt32(1), oob.UInt32(0));
+        msg.isNoThreadID = oob.Select(isNotThreadIndex, oob.UInt32(1), oob.UInt32(0));
 
         // Detailed instrumentation?
         if (config.detail && resource != IL::InvalidID) {

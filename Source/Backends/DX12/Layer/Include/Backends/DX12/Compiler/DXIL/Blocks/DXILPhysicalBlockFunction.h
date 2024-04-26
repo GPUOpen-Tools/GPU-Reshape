@@ -101,6 +101,11 @@ private:
         IL::ID value{IL::InvalidID};
     };
 
+    /// Check if a value is svox
+    /// @param value given value to check
+    /// @return true if svox
+    bool IsSVOX(IL::ID value);
+
     /// Get the number of SVOX values
     /// \param value SVOX value
     /// \return component count
@@ -121,6 +126,13 @@ private:
     /// \param w fourth component, optional
     /// \return
     IL::ID AllocateSVOSequential(uint32_t count, IL::ID x, IL::ID y = IL::InvalidID, IL::ID z = IL::InvalidID, IL::ID w = IL::InvalidID);
+
+    /// Allocate a struct-wise sequential svox
+    /// @param type expected type
+    /// @param values all values inside the struct
+    /// @param count number of values
+    /// @return svox identifier
+    IL::ID AllocateSVOStructSequential(const Backend::IL::Type *type, const IL::ID *values, uint32_t count);
 
     /// Iterate a scalar / vector-of-x operation
     /// \param lhs lhs operand
