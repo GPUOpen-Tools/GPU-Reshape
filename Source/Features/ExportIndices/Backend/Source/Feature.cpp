@@ -96,9 +96,6 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
                 break;
         }
 
-        // Get index variable
-        const Backend::IL::Variable *outputIndexVariable = program.GetVariableList().GetVariable(outputIndex);
-
         // Instrumentation Segmentation
         //
         //             BEFORE                                 AFTER
@@ -117,6 +114,9 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
         // Bind the SGUID
         ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
 
+        uint64_t line = sguidHost->GetMapping(sguid).line;
+        std::string_view lineCode = sguidHost->GetSource(sguid);
+
         // Allocate resume
         IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock();
 
@@ -129,7 +129,6 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
 
         // Failure conditions: output index is not thread ID
         IL::ID isNotThreadIndex = pre.NotEqual(outputIndex, pre.KernelValue(Backend::IL::KernelValue::FlattenedLocalThreadID));
-        //IL::ID isNotThreadIndex = pre.NotEqual(outputIndex, pre.Extract(pre.KernelValue(Backend::IL::KernelValue::DispatchThreadID), pre.GetProgram()->GetConstants().UInt(0)->id));
 
         // isNotThreadIndex block
         IL::Emitter<> noTid(program, *context.function.GetBasicBlocks().AllocBlock());
@@ -138,7 +137,7 @@ void ExportIndicesFeature::Inject(IL::Program &program, const MessageStreamView<
         // Setup message
         InefficientExportMessage::ShaderExport msg;
         msg.sguid = noTid.UInt32(sguid);
-        msg.padding = noTid.UInt32(0);
+        msg.hasOffset = noTid.UInt32(0);
 
         // Export the message
         noTid.Export(exportID, msg);

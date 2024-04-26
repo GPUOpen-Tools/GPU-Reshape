@@ -33,6 +33,6 @@
         <field name="token" type="uint32"/>
       </chunk>
 
-      <field name="padding" type="uint32" bits="1"/>
+      <field name="hasOffset" type="uint32" bits="1"/>
     </shader-export>
 </schema>
