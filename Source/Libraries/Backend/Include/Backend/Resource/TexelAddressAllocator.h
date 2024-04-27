@@ -58,9 +58,9 @@ public:
             if (info.isVolumetric) {
                 // Aggregate per mip level
                 for (uint32_t mipIndex = 0; mipIndex < info.token.mipCount; mipIndex++) {
-                    uint32_t mipWidth  = std::max(1u, static_cast<uint32_t>(static_cast<float>(width) / (1u << mipIndex)));
-                    uint32_t mipHeight = std::max(1u, static_cast<uint32_t>(static_cast<float>(height) / (1u << mipIndex)));
-                    uint32_t mipDepth = std::max(1u, static_cast<uint32_t>(static_cast<float>(depth) / (1u << mipIndex)));
+                    uint32_t mipWidth  = std::max(1u, static_cast<uint32_t>(std::floor(static_cast<float>(width) / (1u << mipIndex))));
+                    uint32_t mipHeight = std::max(1u, static_cast<uint32_t>(std::floor(static_cast<float>(height) / (1u << mipIndex))));
+                    uint32_t mipDepth = std::max(1u, static_cast<uint32_t>(std::floor(static_cast<float>(depth) / (1u << mipIndex))));
                     
                     // Just add it!
                     out.subresourceOffsets.Add(out.texelCount);
@@ -70,8 +70,8 @@ public:
                 // Aggregate per mip level
                 for (uint32_t sliceIndex = 0; sliceIndex < info.token.depthOrSliceCount; sliceIndex++) {
                     for (uint32_t mipIndex = 0; mipIndex < info.token.mipCount; mipIndex++) {
-                        uint32_t mipWidth  = std::max(1u, static_cast<uint32_t>(static_cast<float>(width) / (1u << mipIndex)));
-                        uint32_t mipHeight = std::max(1u, static_cast<uint32_t>(static_cast<float>(height) / (1u << mipIndex)));
+                        uint32_t mipWidth  = std::max(1u, static_cast<uint32_t>(std::floor(static_cast<float>(width) / (1u << mipIndex))));
+                        uint32_t mipHeight = std::max(1u, static_cast<uint32_t>(std::floor(static_cast<float>(height) / (1u << mipIndex))));
 
                         // If volumetric, depth is affected by the mip level
                         out.subresourceOffsets.Add(out.texelCount);
@@ -80,9 +80,6 @@ public:
                 }
             }
         }
-
-        // All texels are allocated in blocks, align to 32
-        out.texelCount = (out.texelCount + 31) & ~31;
 
         // OK
         return out;

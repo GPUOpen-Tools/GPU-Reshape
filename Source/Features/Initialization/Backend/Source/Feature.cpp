@@ -467,7 +467,7 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
 #endif // 0
 
     // Determine the number of texel blocks needed
-    uint32_t numTexelBlocks = Cast32Checked(allocationInfo.texelCount / 32);
+    uint32_t numTexelBlocks = Cast32Checked((allocationInfo.texelCount + 31) / 32);
 
     // Number of header dwords
     uint32_t headerDWords = 1u + static_cast<uint32_t>(allocationInfo.subresourceOffsets.Size());

@@ -104,8 +104,9 @@ void PopulateAndTestUniqueAddressing(ResourceInfo info, bool lastBlocksAllReside
         Backend::IL::CPUResourceTokenEmitter tokenEmitter(info);
         Backend::IL::CPUSubresourceEmitter   subresourceEmitter(info, addressInfo);
         Backend::IL::TexelAddressEmitter     address(emitter, tokenEmitter, subresourceEmitter);
-    
-        PopulateAndTestUniqueAddressing(info, addressInfo, address, lastBlocksAllResident);
+
+        // Packed layout, always resident
+        PopulateAndTestUniqueAddressing(info, addressInfo, address, true);
     }
 
     // Test with runtime inferred offsets
