@@ -329,6 +329,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     // Fill timeline semaphore values
     VkTimelineSemaphoreSubmitInfo prePatchSemaphoreSubmitInfo{VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
     prePatchSemaphoreSubmitInfo.pWaitSemaphoreValues = waitSemaphoreValues.Data();
+    prePatchSemaphoreSubmitInfo.waitSemaphoreValueCount = static_cast<uint32_t>(waitSemaphoreValues.Size());
 
     // Fill pre-patch submission info
     VkSubmitInfo& prePatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
@@ -388,6 +389,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkQueueSubmit(VkQueue queue, uint32_t submit
     // Fill timeline semaphore values
     VkTimelineSemaphoreSubmitInfo postPatchSemaphoreSubmitInfo{VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
     postPatchSemaphoreSubmitInfo.pSignalSemaphoreValues = signalSemaphoreValues.Data();
+    postPatchSemaphoreSubmitInfo.signalSemaphoreValueCount = static_cast<uint32_t>(signalSemaphoreValues.Size());
     
     // Fill the post-patch submission info
     VkSubmitInfo& postPatchInfo = vkSubmits.Add({VK_STRUCTURE_TYPE_SUBMIT_INFO});
