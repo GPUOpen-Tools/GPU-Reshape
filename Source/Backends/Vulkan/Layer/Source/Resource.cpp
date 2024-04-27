@@ -68,7 +68,7 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     state->virtualMapping.token.type = static_cast<uint32_t>(Backend::IL::ResourceTokenType::Buffer);
     state->virtualMapping.token.puid = table->physicalResourceIdentifierMap.AllocatePUID();
     state->virtualMapping.token.formatId = static_cast<uint32_t>(Backend::IL::Format::None);
-    state->virtualMapping.token.formatSize = 1;
+    state->virtualMapping.token.formatSize = 0;
     state->virtualMapping.token.width = static_cast<uint32_t>(pCreateInfo->size);
     state->virtualMapping.token.DefaultViewToRange();
 
@@ -113,11 +113,12 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBufferView(VkDevice device, const Vk
     state->virtualMapping.token.viewBaseWidth = static_cast<uint32_t>(pCreateInfo->offset / state->virtualMapping.token.viewFormatSize);
 
     // Optional view range
+    uint32_t byteSizeMin1 = std::max(1u, state->virtualMapping.token.viewFormatSize);
     if (pCreateInfo->range != VK_WHOLE_SIZE) {
-        state->virtualMapping.token.viewWidth = static_cast<uint32_t>(pCreateInfo->range / state->virtualMapping.token.viewFormatSize);
+        state->virtualMapping.token.viewWidth = static_cast<uint32_t>(pCreateInfo->range / byteSizeMin1);
     } else {
         VkDeviceSize baseWidth = state->virtualMapping.token.width * state->virtualMapping.token.formatSize;
-        state->virtualMapping.token.viewWidth = state->virtualMapping.token.viewBaseWidth - static_cast<uint32_t>(baseWidth / state->virtualMapping.token.viewFormatSize);
+        state->virtualMapping.token.viewWidth = state->virtualMapping.token.viewBaseWidth - static_cast<uint32_t>(baseWidth / byteSizeMin1);
     }
 
     // Store lookup

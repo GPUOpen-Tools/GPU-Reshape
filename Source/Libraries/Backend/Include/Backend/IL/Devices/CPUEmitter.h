@@ -59,6 +59,11 @@ namespace IL {
         /// \return resulting value
         template<typename T>
         T Div(T lhs, T rhs) {
+            // Do not fault on zero divisions
+            if (rhs == static_cast<T>(0)) {
+                return static_cast<T>(0);
+            }
+            
             return lhs / rhs;
         }
 
@@ -87,6 +92,15 @@ namespace IL {
         template<typename T>
         bool Equal(T lhs, T rhs) {
             return lhs == rhs;
+        }
+
+        /// Check if lhs > rhs
+        /// \param lhs lhs to compare
+        /// \param rhs lhs to compare
+        /// \return true if equal
+        template<typename T>
+        bool GreaterThan(T lhs, T rhs) {
+            return lhs > rhs;
         }
 
         /// Select between two values

@@ -133,6 +133,11 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     state->virtualMapping.token.depthOrSliceCount = desc->DepthOrArraySize;
     state->virtualMapping.token.mipCount = desc->MipLevels;
 
+    // Special case, report R1 as "0" (bitwise)
+    if (desc->Format == DXGI_FORMAT_R1_UNORM) {
+        state->virtualMapping.token.formatSize = 0;
+    }
+
     // If the number of mips is zero, its automatically deduced
     if (state->virtualMapping.token.mipCount == 0) {
         uint32_t maxDimension = std::max<uint32_t>({static_cast<uint32_t>(desc->Width), desc->Height, desc->DepthOrArraySize});

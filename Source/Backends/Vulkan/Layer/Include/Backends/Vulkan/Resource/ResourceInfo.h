@@ -75,6 +75,7 @@ static ResourceInfo GetResourceInfoFor(const ImageViewState *state) {
 static BufferPlacedDescriptor GetBufferPlacedDescriptor(ImageState* state, uint32_t bufferRowLength, uint32_t bufferImageHeight) {
     // Zero is allowed, assume tightly packed coordinates
     if (bufferRowLength == 0 || bufferImageHeight == 0) {
+        ASSERT(state->virtualMappingTemplate.token.formatSize != 0, "Unexpected width");
         bufferRowLength = state->createInfo.extent.width * state->virtualMappingTemplate.token.formatSize;
         bufferImageHeight = state->createInfo.extent.height;
     }

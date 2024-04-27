@@ -75,6 +75,36 @@ namespace Backend::IL {
             // Offset by base width
             x = emitter.Add(x, tokenEmitter.GetViewBaseWidth());
 
+            IL::ID isUntypedFormat     = emitter.Equal(tokenEmitter.GetFormatSize(),     emitter.UInt32(0));
+            IL::ID isUntypedViewFormat = emitter.Equal(tokenEmitter.GetViewFormatSize(), emitter.UInt32(0));
+
+            IL::ID expandedTexel;
+            {
+                // If the format is expanding, calculate the factor
+                IL::ID expansionFactor = emitter.Div(tokenEmitter.GetViewFormatSize(), tokenEmitter.GetFormatSize());
+
+                // If the format is untyped, just use the view format width
+                expansionFactor = emitter.Select(isUntypedFormat, tokenEmitter.GetViewFormatSize(), expansionFactor);
+            
+                // Expanded texel
+                expandedTexel = emitter.Mul(x, expansionFactor);
+            }
+
+            IL::ID contractedTexel;
+            {
+                // If the format is expanding, calculate the factor
+                IL::ID contractionFactor = emitter.Div(tokenEmitter.GetFormatSize(), tokenEmitter.GetViewFormatSize());
+
+                // If the format is untyped, just use the format width
+                contractionFactor = emitter.Select(isUntypedViewFormat, tokenEmitter.GetFormatSize(), contractionFactor);
+            
+                // Contracted texel
+                contractedTexel = emitter.Div(x, contractionFactor);
+            }
+            
+            IL::ID isExpansion = emitter.GreaterThan(tokenEmitter.GetViewFormatSize(), tokenEmitter.GetFormatSize());
+            x = emitter.Select(isExpansion, expandedTexel, contractedTexel);
+
             // Just assume the linear index
             TexelAddress<UInt32> out;
             out.x = x;

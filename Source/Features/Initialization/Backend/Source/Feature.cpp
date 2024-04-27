@@ -618,6 +618,12 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
 
         // Assign the memory lookups
         for (const MappingTag& tag : pendingMappingQueue) {
+            // May have been destroyed
+            if (!allocations.contains(tag.puid)) {
+                continue;
+            }
+
+            // Get allocation
             Allocation& allocation = allocations[tag.puid];
 
             // Assign the PUID -> Memory Offset mapping
@@ -645,8 +651,14 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
         
         // Map all new resources
         for (const MappingTag& tag : pendingMappingQueue) {
+            // May have been destroyed
+            if (!allocations.contains(tag.puid)) {
+                continue;
+            }
+            
+            // Get allocation
             Allocation& allocation = allocations[tag.puid];
-
+            
             // Tiles are updated in batches
             tileMappings.push_back(SchedulerTileMapping {
                 .mapping = allocation.mappingId,

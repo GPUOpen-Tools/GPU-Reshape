@@ -139,6 +139,55 @@ void PopulateAndTestUniqueAddressing(ResourceInfo info, bool lastBlocksAllReside
     }
 }
 
+TEST_CASE("Backend.IL.BufferAddressing.1D") {
+    ResourceInfo info;
+    info.token.width = 64;
+    info.token.formatSize = 1;
+    info.token.viewFormatSize = 1;
+
+    IL::CPUEmitter                         emitter;
+    Backend::IL::CPUResourceTokenEmitter   tokenEmitter(info);
+    Backend::IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
+    Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
+
+    REQUIRE(address.LocalBufferTexelAddress(0).texelOffset == 0);
+    REQUIRE(address.LocalBufferTexelAddress(1).texelOffset == 1);
+    REQUIRE(address.LocalBufferTexelAddress(2).texelOffset == 2);
+    REQUIRE(address.LocalBufferTexelAddress(3).texelOffset == 3);
+}
+
+TEST_CASE("Backend.IL.BufferAddressing.1D.ViewExpansion") {
+    ResourceInfo info;
+    info.token.width = 64;
+    info.token.formatSize = 0; // R1
+    info.token.viewFormatSize = 4; // R32
+
+    IL::CPUEmitter                         emitter;
+    Backend::IL::CPUResourceTokenEmitter   tokenEmitter(info);
+    Backend::IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
+    Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
+
+    for (uint32_t i = 0; i < 64; i++) {
+        REQUIRE(address.LocalBufferTexelAddress(i).texelOffset == i * 4);
+    }
+}
+
+TEST_CASE("Backend.IL.BufferAddressing.1D.ViewContraction") {
+    ResourceInfo info;
+    info.token.width = 64;
+    info.token.formatSize = 4; // R32
+    info.token.viewFormatSize = 0; // R1
+
+    IL::CPUEmitter                         emitter;
+    Backend::IL::CPUResourceTokenEmitter   tokenEmitter(info);
+    Backend::IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
+    Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
+
+    for (uint32_t i = 0; i < 64; i++) {
+        REQUIRE(address.LocalBufferTexelAddress(i).texelOffset == i / 4);
+    }
+}
+
 TEST_CASE("Backend.IL.TexelAddressing.Sliced") {
     ResourceInfo info;
     info.token.width = 64;

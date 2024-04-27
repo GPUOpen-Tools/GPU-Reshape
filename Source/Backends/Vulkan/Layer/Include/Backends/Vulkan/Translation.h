@@ -599,6 +599,10 @@ inline uint32_t GetFormatByteSize(VkFormat format) {
     }
 }
 
+inline uint32_t GetFormatBitSize(VkFormat format) {
+    return GetFormatByteSize(format) * 8u;
+}
+
 inline VkImageType Translate(Backend::IL::TextureDimension dim) {
     switch (dim) {
         default:
