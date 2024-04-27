@@ -33,6 +33,7 @@
 #include <Features/Initialization/MaskBlitParameters.h>
 #include <Features/Initialization/MaskCopyRangeParameters.h>
 #include <Features/Initialization/KernelShared.h>
+#include <Features/Initialization/InlineSubresourceEmitter.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
@@ -41,13 +42,13 @@
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/ResourceTokenEmitter.h>
 #include <Backend/IL/ResourceTokenType.h>
+#include <Backend/IL/Resource/TexelAddressEmitter.h>
 #include <Backend/CommandContext.h>
 #include <Backend/Resource/ResourceInfo.h>
 #include <Backend/Command/AttachmentInfo.h>
 #include <Backend/Command/RenderPassInfo.h>
 #include <Backend/Command/CommandBuilder.h>
 #include <Backend/Resource/TexelAddressAllocator.h>
-#include <Backend/Resource/TexelAddressEmitter.h>
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/SubmissionContext.h>
@@ -176,7 +177,10 @@ void InitializationFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
-static TexelAddress<IL::ID> InjectTexelAddress(IL::Emitter<>& emitter, IL::ResourceTokenEmitter<IL::Emitter<>>& token, IL::ID resource, const IL::InstructionRef<> instr) {
+InitializationFeature::TexelProperties InitializationFeature::GetTexelProperties(IL::Emitter<>& emitter, IL::ID puidMemoryBaseBufferDataID, IL::ID texelMaskBufferDataID, IL::ID resource, const IL::InstructionRef<> instr) {
+    TexelProperties out;
+
+    // Get the program
     IL::Program* program = emitter.GetProgram();
 
     // Get type
@@ -201,6 +205,11 @@ static TexelAddress<IL::ID> InjectTexelAddress(IL::Emitter<>& emitter, IL::Resou
 
     // Defaults
     IL::ID zero = program->GetConstants().UInt(0)->id;
+
+    // Setup the token emitter
+    IL::ResourceTokenEmitter token(emitter, resource);
+    out.puid = token.GetPUID();
+    out.packedToken = token.GetPackedToken();
 
     // Addressing offsets
     IL::ID x = zero;
@@ -276,26 +285,29 @@ static TexelAddress<IL::ID> InjectTexelAddress(IL::Emitter<>& emitter, IL::Resou
             
             emitter.Mul(_instr->coordinate, )
 #endif
-
-            TexelAddress<IL::ID> out;
-            out.x = zero;
-            out.y = zero;
-            out.z = zero;
-            out.mip = zero;
-            out.texelOffset = zero;
-            return out;
+            break;
         }
     }
 
+    // Get the base memory offset for the resource, points to the header
+    IL::ID resourceBaseMemoryOffset = emitter.Extract(emitter.LoadBuffer(emitter.Load(puidMemoryBaseBufferDataID), out.puid), zero);
+
+    // Setup the subresource emitter
+    SubresourceEmitter subresourceEmitter(emitter, token, emitter.Load(texelMaskBufferDataID), resourceBaseMemoryOffset);
+    out.texelBaseOffsetAlign32 = subresourceEmitter.GetResourceMemoryBase();
+    
     // Calculate the texel address
     // Different resource types may use different addressing schemas
-    Backend::IL::TexelAddressEmitter addressEmitter(emitter, token);
+    Backend::IL::TexelAddressEmitter addressEmitter(emitter, token, subresourceEmitter);
     if (resourceType->Is<Backend::IL::TextureType>()) {
-        return addressEmitter.LocalTextureTexelAddress(x, y, z, mip, isVolumetric);
+        out.address = addressEmitter.LocalTextureTexelAddress(x, y, z, mip, isVolumetric);
     } else {
         ASSERT(resourceType->Is<Backend::IL::BufferType>(), "Expected buffer type");
-        return addressEmitter.LocalBufferTexelAddress(x);
+        out.address = addressEmitter.LocalBufferTexelAddress(x);
     }
+
+    // OK
+    return out;
 }
 
 void InitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
@@ -368,20 +380,11 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             // Insert prior to IOI
             IL::Emitter<> emitter(program, context.basicBlock, it);
 
-            // Get global id of resource
-            IL::ResourceTokenEmitter token(emitter, resource);
-
             // Get the texel address
-            TexelAddress texelAddress = InjectTexelAddress(emitter, token, resource, ref);
-
-            // Get token details
-            IL::ID PUID = token.GetPUID();
-
-            // Get the base offset of the memory
-            IL::ID baseMemoryOffsetAlign32 = emitter.Extract(emitter.LoadBuffer(emitter.Load(puidMemoryBaseBufferDataID), PUID), zero);
+            TexelProperties texelAddress = GetTexelProperties(emitter, puidMemoryBaseBufferDataID, texelMaskBufferDataID, resource, ref);
 
             // Mark it as initialized
-            AtomicOrTexelAddress(emitter, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress.texelOffset);
+            AtomicOrTexelAddress(emitter, texelMaskBufferDataID, texelAddress.texelBaseOffsetAlign32, texelAddress.address.texelOffset);
             
             // Resume on next
             return emitter.GetIterator();
@@ -404,21 +407,12 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         // Perform instrumentation check
         IL::Emitter<> pre(program, context.basicBlock);
 
-        // Get global id of resource
-        IL::ResourceTokenEmitter token(pre, resource);
-
         // Get the texel address
-        TexelAddress texelAddress = InjectTexelAddress(pre, token, resource, IL::InstructionRef(instr));
-        
-        // Get token details
-        IL::ID PUID = token.GetPUID();
-
-        // Get the base offset of the memory
-        IL::ID baseMemoryOffsetAlign32 = pre.Extract(pre.LoadBuffer(pre.Load(puidMemoryBaseBufferDataID), PUID), zero);
+        TexelProperties texelAddress = GetTexelProperties(pre, puidMemoryBaseBufferDataID, texelMaskBufferDataID, resource, IL::InstructionRef(instr));
 
         // Fetch the bit
         // This doesn't need to be atomic, as the source memory should be visible at this point
-        IL::ID texelBit = ReadTexelAddress(pre, texelMaskBufferDataID, baseMemoryOffsetAlign32, texelAddress.texelOffset);
+        IL::ID texelBit = ReadTexelAddress(pre, texelMaskBufferDataID, texelAddress.texelBaseOffsetAlign32, texelAddress.address.texelOffset);
 
         // If the bit is not set, the texel isn't initialized
         IL::ID cond = pre.Equal(texelBit, zero);
@@ -429,16 +423,16 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         // Setup message
         UninitializedResourceMessage::ShaderExport msg;
         msg.sguid = mismatch.UInt32(sguid);
-        msg.LUID = PUID;
+        msg.LUID = texelAddress.puid;
 
         // Detailed instrumentation?
         if (config.detail) {
             msg.chunks |= UninitializedResourceMessage::Chunk::Detail;
-            msg.detail.token = token.GetPackedToken();
-            msg.detail.coordinate[0] = texelAddress.x;
-            msg.detail.coordinate[1] = texelAddress.y;
-            msg.detail.coordinate[2] = texelAddress.z;
-            msg.detail.mip = texelAddress.mip;
+            msg.detail.token = texelAddress.packedToken;
+            msg.detail.coordinate[0] = texelAddress.address.x;
+            msg.detail.coordinate[1] = texelAddress.address.y;
+            msg.detail.coordinate[2] = texelAddress.address.z;
+            msg.detail.mip = texelAddress.address.mip;
         }
         
         // Export the message
@@ -465,7 +459,7 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     std::lock_guard guard(mutex);
 
     // Determine number of entries needed
-    uint64_t allocationSize = addressAllocator.GetAllocationSize(source.resource);
+    TexelAddressAllocationInfo allocationInfo = addressAllocator.GetAllocationInfo(source.resource, false);
 
 #if 0
     auto formatSizeMinDWord = std::max<size_t>(sizeof(uint32_t), source.token.formatSize);
@@ -473,18 +467,26 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
 #endif // 0
 
     // Determine the number of texel blocks needed
-    uint32_t numTexelBlocks = Cast32Checked(allocationSize / 32);
+    uint32_t numTexelBlocks = Cast32Checked(allocationInfo.texelCount / 32);
+
+    // Number of header dwords
+    uint32_t headerDWords = 1u + static_cast<uint32_t>(allocationInfo.subresourceOffsets.Size());
+
+    // Total allocation size
+    uint32_t allocationDWords = headerDWords + numTexelBlocks;
     
     // Create allocation
     Allocation& allocation = allocations[source.resource.token.puid];
-    allocation.baseBlock = Cast32Checked(addressAllocator.Allocate(kShaderDataMappingTileWidth, numTexelBlocks));
-    allocation.length = allocationSize;
+    allocation.baseBlock = Cast32Checked(addressAllocator.Allocate(kShaderDataMappingTileWidth, allocationDWords));
+    allocation.length = allocationInfo.texelCount;
+    allocation.headerDWords = headerDWords;
+    allocation.addressInfo = allocationInfo;
     
     // todo[init]: temp
-    ASSERT(allocation.baseBlock + numTexelBlocks < kMaxTrackedTexels, "Out of memory");
+    ASSERT(allocation.baseBlock + allocationDWords < kMaxTrackedTexels, "Out of memory");
 
     // Create tile mapping
-    allocation.tileCount = (numTexelBlocks * sizeof(uint32_t) + kShaderDataMappingTileWidth - 1) / kShaderDataMappingTileWidth;
+    allocation.tileCount = (allocationDWords * sizeof(uint32_t) + kShaderDataMappingTileWidth - 1) / kShaderDataMappingTileWidth;
     allocation.mappingId = shaderDataHost->CreateMapping(texelMaskBufferID, allocation.tileCount);
 
     // Mark for pending enqueue
@@ -611,9 +613,29 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
         CommandBuffer buffer;
         CommandBuilder builder(buffer);
 
+        // Temporary structure for header population
+        TrivialStackVector<uint32_t, 64> headerDWords;
+
         // Assign the memory lookups
         for (const MappingTag& tag : pendingMappingQueue) {
+            Allocation& allocation = allocations[tag.puid];
+
+            // Assign the PUID -> Memory Offset mapping
             builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);
+
+            // DW0, number of subresources
+            headerDWords.Add(static_cast<uint32_t>(allocation.addressInfo.subresourceOffsets.Size()));
+
+            // DW1..n, all subresource offsets
+            for (uint64_t offset : allocation.addressInfo.subresourceOffsets) {
+                headerDWords.Add(static_cast<uint32_t>(offset));
+            }
+
+            // Fill resource header
+            builder.StageBuffer(texelMaskBufferID, tag.memoryBaseAlign32 * sizeof(uint32_t), sizeof(uint32_t) * headerDWords.Size(), headerDWords.Data());
+
+            // Cleanup
+            headerDWords.Clear();
         }
 
 #if USE_TILED_RESOURCES

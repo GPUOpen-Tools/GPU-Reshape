@@ -30,22 +30,26 @@
 #include <Backend/IL/Emitter.h>
 #include <Backend/IL/ExtendedEmitter.h>
 #include <Backend/IL/ResourceTokenEmitter.h>
-#include <Backend/Resource/TexelAddress.h>
+#include <Backend/IL/Resource/AlignedSubresourceEmitter.h>
+#include <Backend/IL/Resource/TexelAddress.h>
 
 namespace Backend::IL {
-    template<typename E = Emitter<>, typename RTE = ResourceTokenEmitter<E>>
+    template<
+        typename E = Emitter<>,
+        typename RTE = ResourceTokenEmitter<E>,
+        typename SE = AlignedSubresourceEmitter<E>
+    >
     struct TexelAddressEmitter {
         static constexpr bool kGuardCoordinates = true;
 
         /// Constructor
         /// \param emitter destination instruction emitter
         /// \param tokenEmitter destination token emitter
-        TexelAddressEmitter(E& emitter, RTE& tokenEmitter) : emitter(emitter), tokenEmitter(tokenEmitter) {
-            // Cache the aligned dimensions
-            // Only matters for texture dimensions
-            widthAlignP2 = AlignToPow2Upper(tokenEmitter.GetWidth());
-            heightAlignP2 = AlignToPow2Upper(tokenEmitter.GetHeight());
-            depthOrSliceCountAlignP2 = AlignToPow2Upper(tokenEmitter.GetDepthOrSliceCount());
+        TexelAddressEmitter(E& emitter, RTE& tokenEmitter, SE& subresourceEmitter) :
+            emitter(emitter),
+            tokenEmitter(tokenEmitter),
+            subresourceEmitter(subresourceEmitter) {
+            
         }
 
     public:
@@ -102,7 +106,7 @@ namespace Backend::IL {
             IL::ID texelAddress;
             if (isVolumetric) {
                 // Get the offset from the current mip level
-                PhysicalMipData mipData = MipOffset(widthAlignP2, heightAlignP2, depthOrSliceCountAlignP2, mip);
+                PhysicalMipData<UInt32> mipData = subresourceEmitter.VolumetricOffset(mip);
 
                 // Guard 3d mip coordinates
                 if (kGuardCoordinates) {
@@ -127,11 +131,8 @@ namespace Backend::IL {
                     GuardCoordinate(z, tokenEmitter.GetDepthOrSliceCount());
                 }
 
-                // Get the offset from the current slice level (higher dimension than mips if non-volumetric)
-                UInt32 base = SliceOffset(widthAlignP2, heightAlignP2, tokenEmitter.GetMipCount(), z);
-
                 // Then, offset by the current mip level
-                PhysicalMipData mipData = MipOffset(widthAlignP2, heightAlignP2, mip);
+                PhysicalMipData<UInt32> mipData = subresourceEmitter.SlicedOffset(z, mip);
 
                 // Guard 2d mip coordinates
                 if (kGuardCoordinates) {
@@ -139,14 +140,11 @@ namespace Backend::IL {
                     GuardCoordinateToLogicalMip(y, tokenEmitter.GetHeight(), mip);
                 }
 
-                // Slice offset + mip offset
-                base = emitter.Add(base, mipData.offset);
-
                 // y * w + x
                 UInt32 intraTexelOffset = emitter.Add(emitter.Mul(y, mipData.mipWidth), x);
 
                 // Actual offset is slice/mip offset + intra-mip
-                texelAddress = emitter.Add(base, intraTexelOffset);
+                texelAddress = emitter.Add(mipData.offset, intraTexelOffset);
             }
             
 
@@ -161,13 +159,6 @@ namespace Backend::IL {
         }
 
     private:
-        struct PhysicalMipData {
-            UInt32 offset;
-            UInt32 mipWidth;
-            UInt32 mipHeight;
-            UInt32 mipDepth;
-        };
-
         /// Guard a coordinate against its bounds
         /// \param value coordinate to guard
         /// \param width coordinate bound
@@ -198,103 +189,6 @@ namespace Backend::IL {
             return GuardCoordinate(value, width);
         }
 
-        /// Calculate the offset of a slice
-        /// \param width resource width
-        /// \param height resource height
-        /// \param mipCount resource mip count
-        /// \param slice slice to get offset for
-        /// \return offset
-        UInt32 SliceOffset(UInt32 width, UInt32 height, UInt32 mipCount, UInt32 slice) {
-            UInt32 mipWidth  = emitter.BitShiftRight(width, mipCount);
-            UInt32 mipHeight = emitter.BitShiftRight(height, mipCount);
-
-            // Each mip chain has the same size, just multiply it
-            UInt32 mipSize = MipOffsetFromDifference(emitter.Sub(TexelCount(width, height), TexelCount(mipWidth, mipHeight)), 2u);
-            return emitter.Mul(mipSize, slice);
-        }
-
-        /// Calculate the offset of a 2d mip
-        /// \param width resource width
-        /// \param height resource height
-        /// \param mip mip to get offset for
-        /// \return offset
-        PhysicalMipData MipOffset(UInt32 width, UInt32 height, UInt32 mip) {
-            if constexpr (E::kDevice == Device::kCPU) {
-                emitter.Assert((width & (width - 1)) == 0, "Width must be power of two");
-                emitter.Assert((height & (height - 1)) == 0, "Height must be power of two");
-            }
-
-            PhysicalMipData out;
-            out.mipWidth  = emitter.BitShiftRight(width, mip);
-            out.mipHeight = emitter.BitShiftRight(height, mip);
-            
-            // w*h - mW*mH
-            out.offset = MipOffsetFromDifference(emitter.Sub(TexelCount(width, height), TexelCount(out.mipWidth, out.mipHeight)), 2u);
-
-            return out;
-        }
-
-        /// Calculate the offset of a 3d mip
-        /// \param width resource width
-        /// \param height resource height
-        /// @param depth resource depth
-        /// @param mip mip to get offset for
-        /// @return offset
-        PhysicalMipData MipOffset(UInt32 width, UInt32 height, UInt32 depth, UInt32 mip) {
-            if constexpr (E::kDevice == Device::kCPU) {
-                emitter.Assert((width & (width - 1)) == 0, "Width must be power of two");
-                emitter.Assert((height & (height - 1)) == 0, "Height must be power of two");
-                emitter.Assert((depth & (depth - 1)) == 0, "Depth must be power of two");
-            }
-            
-            PhysicalMipData out;
-            out.mipWidth  = emitter.BitShiftRight(width, mip);
-            out.mipHeight = emitter.BitShiftRight(height, mip);
-            out.mipDepth = emitter.BitShiftRight(depth, mip);
-
-            // w*h*d - mW*mH*mD
-            out.offset = MipOffsetFromDifference(emitter.Sub(TexelCount(width, height, depth), TexelCount(out.mipWidth, out.mipHeight, out.mipDepth)), 3u);
-
-            return out;
-        }
-
-        /// Calculate the offset of a particular mip
-        /// @param difference mip wise size offset (w*h - mW*mH)
-        /// @param dimensionality source dimensionality (1, 2, 3)
-        /// @return offset
-        UInt32 MipOffsetFromDifference(UInt32 difference, uint32_t dimensionality) {
-            // s = 2^d
-            UInt32 scale = emitter.UInt32(1u << dimensionality);
-            UInt32 scaleSub1 = emitter.UInt32((1u << dimensionality) - 1);
-
-            // (difference * s) / (s-1)
-            return emitter.Div(emitter.Mul(difference, scale), scaleSub1);
-        }
-
-        /// Calculate the number of 2d texels
-        UInt32 TexelCount(UInt32 width, UInt32 height) {
-            // w*h
-            return emitter.Mul(width, height);
-        }
-
-        /// Calculate the number of 3d texels
-        UInt32 TexelCount(UInt32 width, UInt32 height, UInt32 depth) {
-            // w*h*d
-            return emitter.Mul(emitter.Mul(width, height), depth);
-        }
-
-        /// Align a resource dimension
-        UInt32 AlignToPow2Upper(UInt32 x) {
-            ExtendedEmitter extended(emitter);
-
-            // 2u << FirstBitHigh(X - 1)
-            UInt32 alignedX = emitter.BitShiftLeft(emitter.UInt32(2u), extended.template FirstBitHigh<UInt32>(emitter.Sub(x, emitter.UInt32(1))));
-
-            // Edge case, if the value is 1, return 1
-            UInt32 isOne = emitter.Equal(x, emitter.UInt32(1u));
-            return emitter.Select(isOne, emitter.UInt32(1u), alignedX);
-        }
-        
     private:        
         /// Current emitter
         E& emitter;
@@ -302,9 +196,7 @@ namespace Backend::IL {
         /// Resource token emitter
         RTE& tokenEmitter;
 
-        /// Cached dimensions
-        IL::ID widthAlignP2{InvalidID};
-        IL::ID heightAlignP2{InvalidID};
-        IL::ID depthOrSliceCountAlignP2{InvalidID};
+        /// Subresource emitter
+        SE& subresourceEmitter;
     };
 }

@@ -90,3 +90,21 @@ static IL::ID ReadTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID ba
     // Only report the texel bit itself, ignore the rest
     return emitter.BitAnd(value, bit);
 }
+
+/// Perform an atomic or of a texel address
+/// \param emitter instructione mitter
+/// \param buffer destination buffer
+/// \param baseElementAlign32 the base memory offset aligned to 32
+/// \param blockOffset the offset for the specific block
+/// \param value given value to bit-or
+/// \return existing value
+template<typename T>
+static void WriteTexelAddressBlock(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID blockOffset, IL::ID value) {
+    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+
+    // Add global offset
+    IL::ID globalElement = emitter.Add(baseElementAlign32, blockOffset);
+
+    // Bit or at given bit
+    emitter.StoreBuffer(emitter.Load(buffer), globalElement, value);
+}

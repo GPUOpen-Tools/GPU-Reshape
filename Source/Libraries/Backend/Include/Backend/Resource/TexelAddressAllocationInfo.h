@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,18 +24,27 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-// Main executable
-#define CATCH_CONFIG_MAIN
+#pragma once
 
-// Disable exception handling
-// Any failure is a complete failure, and they greatly impede debugging
-#define CATCH_CONFIG_RUNNER
-#define CATCH_CONFIG_DISABLE_EXCEPTIONS
-#define CATCH_CONFIG_NO_POSIX_SIGNALS
-#define CATCH_CONFIG_DISABLE_EXCEPTIONS
+// Common
+#include <Common/Containers/TrivialStackVector.h>
 
-// Enable leak detection
-// #define CATCH_CONFIG_WINDOWS_CRTDBG
+class TexelAddressAllocationInfo {
+public:
+    /// Get the subresource offset
+    /// \param slice target slice
+    /// \param mip target mip
+    /// \return subresource texel offset
+    uint64_t GetSubresourceOffset(uint32_t slice, uint32_t mip) {
+        return subresourceOffsets[mipCount * slice + mip];
+    }
 
-// Catch2
-#include <catch2/catch.hpp>
+    /// Total number of texels
+    uint64_t texelCount = 0;
+
+    /// Total number of mip levels
+    uint32_t mipCount = 0;
+
+    /// All precomputed subresource offsets
+    TrivialStackVector<uint64_t, 16> subresourceOffsets;
+};

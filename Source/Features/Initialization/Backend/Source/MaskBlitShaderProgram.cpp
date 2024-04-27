@@ -28,6 +28,7 @@
 #include <Features/Initialization/BitIndexing.h>
 #include <Features/Initialization/MaskBlitParameters.h>
 #include <Features/Initialization/KernelShared.h>
+#include <Features/Initialization/InlineSubresourceEmitter.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -35,8 +36,8 @@
 #include <Backend/IL/Emitter.h>
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Devices/StructResourceTokenEmitter.h>
-#include <Backend/Resource/TexelAddressEmitter.h>
-#include <Backend/Resource/TexelCommon.h>
+#include <Backend/IL/Resource/TexelAddressEmitter.h>
+#include <Backend/IL/Resource/TexelCommon.h>
 
 // Common
 #include <Common/Registry.h>
@@ -98,13 +99,16 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
 
     // Final offset
     IL::ID texel;
-    
+
+    // Setup subresource emitter
+    SubresourceEmitter subresourceEmitter(emitter, token, emitter.Load(initializationMaskBufferDataID), baseAlign32);
+
     // Buffer indexing just adds the linear offset
     if (type == Backend::IL::ResourceTokenType::Buffer) {
         texel = emitter.Add(data.Get<&MaskBlitParameters::baseX>(emitter), dispatchXID);
     } else {
         // Texel addressing computation
-        Backend::IL::TexelAddressEmitter address(emitter, token);
+        Backend::IL::TexelAddressEmitter address(emitter, token, subresourceEmitter);
 
         // Convert to 3d
         Backend::IL::TexelCoordinateScalar index = Backend::IL::TexelIndexTo3D(
@@ -125,6 +129,10 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
     }
 
     // Mark the given texel as initialized
-    AtomicOrTexelAddress(emitter, initializationMaskBufferDataID, baseAlign32, texel);
-}
+    
+    // Blitting operates on a per-block basis, it assumes thread safety
 
+    // todo[init]: fix this!
+    WriteTexelAddressBlock(emitter, initializationMaskBufferDataID, subresourceEmitter.GetResourceMemoryBase(), emitter.Div(texel, constants.UInt(32)->id), constants.UInt(~0u)->id);
+    // AtomicOrTexelAddress(emitter, initializationMaskBufferDataID, baseAlign32, texel);
+}

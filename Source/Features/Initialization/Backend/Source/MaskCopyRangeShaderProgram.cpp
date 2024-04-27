@@ -28,6 +28,7 @@
 #include <Features/Initialization/BitIndexing.h>
 #include <Features/Initialization/MaskCopyRangeParameters.h>
 #include <Features/Initialization/KernelShared.h>
+#include <Features/Initialization/InlineSubresourceEmitter.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
@@ -35,8 +36,8 @@
 #include <Backend/IL/Emitter.h>
 #include <Backend/IL/ShaderStruct.h>
 #include <Backend/IL/Devices/StructResourceTokenEmitter.h>
-#include <Backend/Resource/TexelAddressEmitter.h>
-#include <Backend/Resource/TexelCommon.h>
+#include <Backend/IL/Resource/TexelAddressEmitter.h>
+#include <Backend/IL/Resource/TexelCommon.h>
 
 // Common
 #include <Common/Registry.h>
@@ -103,6 +104,10 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     IL::ID sourceTexel;
     IL::ID destTexel;
 
+    // Setup subresource emitters
+    SubresourceEmitter sourceSubresourceEmitter(emitter, sourceToken, emitter.Load(initializationMaskBufferDataID), sourceBaseAlign32);
+    SubresourceEmitter destSubresourceEmitter(emitter, destToken, emitter.Load(initializationMaskBufferDataID), destBaseAlign32);
+    
     // Symmetric copy?
     if (from == to) {
         // Buffer indexing just adds the linear offset
@@ -119,7 +124,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             );
             
             // Compute the source intra-resource offset
-            sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken).LocalTextureTexelAddress(
+            sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
                 emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), index.x),
                 emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), index.y),
                 emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), index.z),
@@ -128,7 +133,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             ).texelOffset;
 
             // Compute the destination intra-resource offset
-            destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken).LocalTextureTexelAddress(
+            destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
                 emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), index.x),
                 emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), index.y),
                 emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), index.z),
@@ -163,7 +168,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             sourceTexel = emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), placementOffset);
             
             // Compute the destination intra-resource offset
-            destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken).LocalTextureTexelAddress(
+            destTexel = Backend::IL::TexelAddressEmitter(emitter, destToken, destSubresourceEmitter).LocalTextureTexelAddress(
                 emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseX>(emitter), index.x),
                 emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseY>(emitter), index.y),
                 emitter.Add(data.Get<&MaskCopyRangeParameters::destBaseZ>(emitter), index.z),
@@ -174,7 +179,7 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
             // Texture -> Buffer Placement
             
             // Compute the source intra-resource offset
-            sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken).LocalTextureTexelAddress(
+            sourceTexel = Backend::IL::TexelAddressEmitter(emitter, sourceToken, sourceSubresourceEmitter).LocalTextureTexelAddress(
                 emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseX>(emitter), index.x),
                 emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseY>(emitter), index.y),
                 emitter.Add(data.Get<&MaskCopyRangeParameters::sourceBaseZ>(emitter), index.z),
@@ -189,8 +194,8 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
 
     // Read the source initialization bit
     // This doesn't need to be atomic, as the source memory should be visible at this point
-    IL::ID sourceBit = ReadTexelAddress(emitter, initializationMaskBufferDataID, sourceBaseAlign32, sourceTexel);
+    IL::ID sourceBit = ReadTexelAddress(emitter, initializationMaskBufferDataID, sourceSubresourceEmitter.GetResourceMemoryBase(), sourceTexel);
 
     // Write the source bit to the destination bit
-    AtomicOrTexelAddress(emitter, initializationMaskBufferDataID, destBaseAlign32, destTexel, sourceBit);
+    AtomicOrTexelAddress(emitter, initializationMaskBufferDataID, destSubresourceEmitter.GetResourceMemoryBase(), destTexel, sourceBit);
 }

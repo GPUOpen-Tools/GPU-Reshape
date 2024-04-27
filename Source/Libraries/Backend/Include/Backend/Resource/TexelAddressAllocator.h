@@ -28,6 +28,7 @@
 
 // Backend
 #include <Backend/Resource/ResourceInfo.h>
+#include <Backend/Resource/TexelAddressAllocationInfo.h>
 
 // Std
 #include <vector>
@@ -38,42 +39,53 @@ public:
     
     /// Get the total number of entries needed for a resource
     /// \param info given resource information
-    /// \return number of entries
-    uint64_t GetAllocationSize(const ResourceInfo& info) {        
-        uint32_t texelCount = 0;
+    /// \param requiresAlignP2 if true, all resource dimensions are aligned to the upper power of two
+    /// \return addressing info
+    TexelAddressAllocationInfo GetAllocationInfo(const ResourceInfo& info, bool requiresAlignP2) {
+        TexelAddressAllocationInfo out;
+        out.mipCount = info.token.mipCount;
 
         // Buffer types have no complex addressing mechanisms
         if (info.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
-            texelCount += info.token.width;
+            out.texelCount += info.token.width;
         } else {
             // Align all texture dimensions to a power of two
-            uint32_t widthAlignP2 = std::max(std::bit_ceil(info.token.width - 1u), 1u);
-            uint32_t heightAlignP2 = std::max(std::bit_ceil(info.token.height - 1u), 1u);
-            uint32_t depthAlignP2 = std::max(std::bit_ceil(info.token.depthOrSliceCount - 1u), 1u);
+            uint32_t width = requiresAlignP2 ? std::max(std::bit_ceil(info.token.width - 1u), 1u) : info.token.width;
+            uint32_t height = requiresAlignP2 ? std::max(std::bit_ceil(info.token.height - 1u), 1u) : info.token.height;
+            uint32_t depth = requiresAlignP2 ? std::max(std::bit_ceil(info.token.depthOrSliceCount - 1u), 1u) : info.token.depthOrSliceCount;
 
-            // Aggregate per mip level
-            for (uint32_t i = 0; i < info.token.mipCount; i++) {
-                uint32_t mipWidth  = std::max(1u, widthAlignP2  >> i);
-                uint32_t mipHeight = std::max(1u, heightAlignP2 >> i);
-
-                // If volumetric, depth is affected by the mip level
-                uint32_t mipDepthOrArraySize;
-                if (info.isVolumetric) {
-                    mipDepthOrArraySize = std::max(1u, depthAlignP2 >> i);
-                } else {
-                    mipDepthOrArraySize = depthAlignP2;
+            // If volumetric, the major dimension changes
+            if (info.isVolumetric) {
+                // Aggregate per mip level
+                for (uint32_t mipIndex = 0; mipIndex < info.token.mipCount; mipIndex++) {
+                    uint32_t mipWidth  = std::max(1u, static_cast<uint32_t>(static_cast<float>(width) / (1u << mipIndex)));
+                    uint32_t mipHeight = std::max(1u, static_cast<uint32_t>(static_cast<float>(height) / (1u << mipIndex)));
+                    uint32_t mipDepth = std::max(1u, static_cast<uint32_t>(static_cast<float>(depth) / (1u << mipIndex)));
+                    
+                    // Just add it!
+                    out.subresourceOffsets.Add(out.texelCount);
+                    out.texelCount += mipWidth * mipHeight * mipDepth;
                 }
+            } else {
+                // Aggregate per mip level
+                for (uint32_t sliceIndex = 0; sliceIndex < info.token.depthOrSliceCount; sliceIndex++) {
+                    for (uint32_t mipIndex = 0; mipIndex < info.token.mipCount; mipIndex++) {
+                        uint32_t mipWidth  = std::max(1u, static_cast<uint32_t>(static_cast<float>(width) / (1u << mipIndex)));
+                        uint32_t mipHeight = std::max(1u, static_cast<uint32_t>(static_cast<float>(height) / (1u << mipIndex)));
 
-                // Just add it!
-                texelCount += mipWidth * mipHeight * mipDepthOrArraySize;
+                        // If volumetric, depth is affected by the mip level
+                        out.subresourceOffsets.Add(out.texelCount);
+                        out.texelCount += mipWidth * mipHeight;
+                    }
+                }
             }
         }
 
         // All texels are allocated in blocks, align to 32
-        texelCount = (texelCount + 31) & ~31;
+        out.texelCount = (out.texelCount + 31) & ~31;
 
         // OK
-        return texelCount;
+        return out;
     }
 
     /// Allocate from a given length
