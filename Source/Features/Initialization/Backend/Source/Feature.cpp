@@ -116,6 +116,9 @@ bool InitializationFeature::Install() {
 #endif // USE_TILED_RESOURCES
     });
 
+    // Create residency allocator
+    tileResidencyAllocator.Install(kMaxTrackedTexelBlocks * sizeof(uint32_t));
+
     // Must have program host
     auto programHost = registry->Get<IShaderProgramHost>();
     if (!programHost) {
@@ -477,17 +480,19 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     
     // Create allocation
     Allocation& allocation = allocations[source.resource.token.puid];
-    allocation.baseBlock = Cast32Checked(addressAllocator.Allocate(kShaderDataMappingTileWidth, allocationDWords));
+    allocation.baseBlock = Cast32Checked(addressAllocator.Allocate(4u, allocationDWords));
     allocation.length = allocationInfo.texelCount;
     allocation.headerDWords = headerDWords;
     allocation.addressInfo = allocationInfo;
+
+    // Allocate all tiles in range
+    tileResidencyAllocator.Allocate(
+        allocation.baseBlock * sizeof(uint32_t),
+        allocationDWords * sizeof(uint32_t)
+    );
     
     // todo[init]: temp
     ASSERT(allocation.baseBlock + allocationDWords < kMaxTrackedTexels, "Out of memory");
-
-    // Create tile mapping
-    allocation.tileCount = (allocationDWords * sizeof(uint32_t) + kShaderDataMappingTileWidth - 1) / kShaderDataMappingTileWidth;
-    allocation.mappingId = shaderDataHost->CreateMapping(texelMaskBufferID, allocation.tileCount);
 
     // Mark for pending enqueue
     pendingMappingQueue.push_back(MappingTag {
@@ -648,24 +653,21 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
         // All mappings
         std::vector<SchedulerTileMapping> tileMappings;
         tileMappings.reserve(pendingMappingQueue.size());
-        
-        // Map all new resources
-        for (const MappingTag& tag : pendingMappingQueue) {
-            // May have been destroyed
-            if (!allocations.contains(tag.puid)) {
-                continue;
-            }
-            
-            // Get allocation
-            Allocation& allocation = allocations[tag.puid];
-            
-            // Tiles are updated in batches
+
+        // Map all new requests
+        for (uint32_t i = 0; i < tileResidencyAllocator.GetRequestCount(); i++) {
+            const TileMappingRequest& request = tileResidencyAllocator.GetRequest(i);
+
+            // Create mapping and push for mapping
             tileMappings.push_back(SchedulerTileMapping {
-                .mapping = allocation.mappingId,
-                .tileOffset = static_cast<uint32_t>((allocation.baseBlock * sizeof(uint32_t)) / kShaderDataMappingTileWidth),
-                .tileCount = allocation.tileCount
+                .mapping = shaderDataHost->CreateMapping(texelMaskBufferID, request.tileCount),
+                .tileOffset = request.tileOffset,
+                .tileCount = request.tileCount
             });
         }
+
+        // Cleanup
+        tileResidencyAllocator.ClearRequests();
 
         // Create the tile mappings for the new resource
         scheduler->MapTiles(Queue::ExclusiveTransfer, texelMaskBufferID, static_cast<uint32_t>(tileMappings.size()), tileMappings.data());

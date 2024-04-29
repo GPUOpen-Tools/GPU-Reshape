@@ -43,6 +43,9 @@
 #include <Backend/Resource/TexelAddressAllocator.h>
 #include <Backend/Scheduler/SchedulerPrimitive.h>
 
+// Initialization
+#include <Features/Initialization/TileResidencyAllocator.h>
+
 // Message
 #include <Message/MessageStream.h>
 
@@ -229,16 +232,13 @@ private:
 
         /// Allocation addressing information
         TexelAddressAllocationInfo addressInfo;
-
-        /// Assigned mapping to this allocation
-        ShaderDataMappingID mappingId{InvalidShaderDataMappingID};
-
-        /// Number of tiles for the given mapping
-        uint32_t tileCount{0};
     };
 
     /// Shared texel allocator
     TexelAddressAllocator addressAllocator;
+
+    /// Residency allocator
+    TileResidencyAllocator tileResidencyAllocator;
 
     /// All allocations
     std::unordered_map<uint64_t, Allocation> allocations;
