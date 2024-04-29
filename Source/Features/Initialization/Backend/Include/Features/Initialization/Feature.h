@@ -45,6 +45,7 @@
 
 // Initialization
 #include <Features/Initialization/TileResidencyAllocator.h>
+#include <Features/Initialization/BuddyAllocator.h>
 
 // Message
 #include <Message/MessageStream.h>
@@ -221,6 +222,9 @@ private:
 
 private:
     struct Allocation {
+        /// The underlying allocation
+        BuddyAllocation buddy = kInvalidBuddyAllocation;
+        
         /// Base texel block, aligned to 32
         uint32_t baseBlock{0};
 
@@ -239,6 +243,9 @@ private:
 
     /// Residency allocator
     TileResidencyAllocator tileResidencyAllocator;
+
+    /// Shared buddy allocator
+    BuddyAllocator texelBuddyAllocator;
 
     /// All allocations
     std::unordered_map<uint64_t, Allocation> allocations;

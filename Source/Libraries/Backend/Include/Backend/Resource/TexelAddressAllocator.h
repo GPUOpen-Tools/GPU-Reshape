@@ -30,13 +30,8 @@
 #include <Backend/Resource/ResourceInfo.h>
 #include <Backend/Resource/TexelAddressAllocationInfo.h>
 
-// Std
-#include <vector>
-
 class TexelAddressAllocator {
 public:
-    /** todo[init]: incomplete! */
-    
     /// Get the total number of entries needed for a resource
     /// \param info given resource information
     /// \param requiresAlignP2 if true, all resource dimensions are aligned to the upper power of two
@@ -84,48 +79,4 @@ public:
         // OK
         return out;
     }
-
-    /// Allocate from a given length
-    /// \param alignment entry alignment
-    /// \param length number of entries
-    /// \return offset
-    uint64_t Allocate(uint64_t alignment, uint64_t length) {
-        uint64_t head = GetHead();
-
-        // All allocations are aligned to 32
-        // This greatly helps other operations
-        head = (head + alignment - 1) & ~(alignment - 1);
-        
-        Allocation& allocation = allocations.emplace_back();
-        allocation.offset = head;
-        allocation.length = length;
-        return allocation.offset;
-    }
-
-    /// Free an allocation
-    void Free() {
-        // poof!
-    }
-
-private:
-    /// Get the head allocation offset
-    uint64_t GetHead() const {
-        if (allocations.empty()) {
-            return 0ull;
-        }
-
-        // Start from last end
-        const Allocation& last = allocations.back();
-        return last.offset + last.length;
-    }
-
-private:
-    struct Allocation {
-        uint64_t offset{UINT64_MAX};
-        uint64_t length{UINT64_MAX};
-        bool destroyed{false};
-    };
-
-    /// All allocations
-    std::vector<Allocation> allocations;
 };

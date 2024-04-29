@@ -119,6 +119,10 @@ bool InitializationFeature::Install() {
     // Create residency allocator
     tileResidencyAllocator.Install(kMaxTrackedTexelBlocks * sizeof(uint32_t));
 
+    // Create buddy allocator
+    // +1 to align to next power of two
+    texelBuddyAllocator.Install(kMaxTrackedTexelBlocks + 1ull);
+
     // Must have program host
     auto programHost = registry->Get<IShaderProgramHost>();
     if (!programHost) {
@@ -480,7 +484,8 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     
     // Create allocation
     Allocation& allocation = allocations[source.resource.token.puid];
-    allocation.baseBlock = Cast32Checked(addressAllocator.Allocate(4u, allocationDWords));
+    allocation.buddy = texelBuddyAllocator.Allocate(allocationDWords);
+    allocation.baseBlock = Cast32Checked(allocation.buddy.offset);
     allocation.length = allocationInfo.texelCount;
     allocation.headerDWords = headerDWords;
     allocation.addressInfo = allocationInfo;
@@ -519,9 +524,10 @@ void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
     // Get allocation
     Allocation& allocation = allocations.at(source.token.puid);
 
-    // todo[init]: free it!
-    addressAllocator.Free();
+    // Free the texel range
+    texelBuddyAllocator.Free(allocation.buddy);
 
+    // Remove local tracking
     allocations.erase(source.token.puid);
     puidSRBInitializationSet.erase(source.token.puid);
 }
