@@ -34,7 +34,7 @@
 #include <Backend/Scheduler/IScheduler.h>
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/ComRef.h>
 
 // Std

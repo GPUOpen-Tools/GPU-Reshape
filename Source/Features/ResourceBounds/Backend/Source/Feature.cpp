@@ -33,7 +33,7 @@
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
-#include <Backend/IL/ResourceTokenEmitter.h>
+#include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 
 // Generated schema
 #include <Schemas/Features/ResourceBounds.h>

@@ -26,9 +26,12 @@
 
 #pragma once
 
+// Addressing
+#include <Addressing/IL/PhysicalMipData.h>
+#include <Addressing/TexelAddressAllocationInfo.h>
+
 // Backend
-#include <Backend/IL/Resource/PhysicalMipData.h>
-#include <Backend/Resource/TexelAddressAllocationInfo.h>
+#include <Backend/Resource/ResourceInfo.h>
 
 // Std
 #include <cmath>

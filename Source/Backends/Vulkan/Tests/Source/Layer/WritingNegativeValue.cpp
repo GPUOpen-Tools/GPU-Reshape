@@ -49,7 +49,7 @@
 #include <Backend/IFeature.h>
 #include <Backend/IShaderFeature.h>
 #include <Backend/IL/Program.h>
-#include <Backend/IL/Emitter.h>
+#include <Backend/IL/Emitters/Emitter.h>
 #include <Backend/IShaderExportHost.h>
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/ShaderSGUIDHostListener.h>

@@ -26,17 +26,18 @@
 
 #pragma once
 
+// Layer
+#include "Spv.h"
+#include "SpvSourceAssociation.h"
+
 // Common
 #include <Common/Allocators.h>
+#include <Common/Assert.h>
 
 // Std
 #include <string>
 #include <vector>
 #include <unordered_map>
-
-// Layer
-#include "Spv.h"
-#include "SpvSourceAssociation.h"
 
 struct SpvSourceMap {
     /// Constructor

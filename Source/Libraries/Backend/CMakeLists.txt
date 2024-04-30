@@ -99,7 +99,6 @@ add_executable(
     Tests/Source/Emitter.cpp
     Tests/Source/Feature.cpp
     Tests/Source/BasicBlock.cpp
-    Tests/Source/TexelAddressing.cpp
 
     # Generated
     ${GeneratedTestSchemaCPP}

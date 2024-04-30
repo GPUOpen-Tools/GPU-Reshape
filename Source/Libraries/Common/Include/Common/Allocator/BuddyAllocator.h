@@ -26,10 +26,8 @@
 
 #pragma once
 
-// Feature
-#include <Features/Initialization/BuddyAllocation.h>
-
 // Common
+#include <Common/Allocator/BuddyAllocation.h>
 #include <Common/Assert.h>
 
 // Std

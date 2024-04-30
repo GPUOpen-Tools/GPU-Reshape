@@ -26,29 +26,29 @@
 
 #pragma once
 
-// Common
-#include <Common/ComRef.h>
-
 // Backend
 #include <Backend/IFeature.h>
 #include <Backend/IShaderFeature.h>
 #include <Backend/ShaderExport.h>
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/VisitContext.h>
-#include <Backend/IL/Emitter.h>
-#include <Backend/IL/ResourceTokenEmitter.h>
-#include <Backend/IL/Resource/TexelAddress.h>
+#include <Backend/IL/Emitters/Emitter.h>
+#include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 #include <Backend/ShaderData/IShaderDataHost.h>
 #include <Backend/ShaderProgram/ShaderProgram.h>
-#include <Backend/Resource/TexelAddressAllocator.h>
 #include <Backend/Scheduler/SchedulerPrimitive.h>
 
-// Initialization
-#include <Features/Initialization/TileResidencyAllocator.h>
-#include <Features/Initialization/BuddyAllocator.h>
+// Addressing
+#include <Addressing/IL/TexelAddress.h>
+#include <Addressing/TileResidencyAllocator.h>
+#include <Addressing/TexelAddressAllocator.h>
 
 // Message
 #include <Message/MessageStream.h>
+
+// Common
+#include <Common/ComRef.h>
+#include <Common/Allocator/BuddyAllocator.h>
 
 // Std
 #include <mutex>

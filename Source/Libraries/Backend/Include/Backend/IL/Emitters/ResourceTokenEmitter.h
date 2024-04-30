@@ -27,9 +27,9 @@
 #pragma once
 
 // Backend
-#include "ID.h"
-#include "ResourceTokenMetadataField.h"
-#include "ResourceTokenPacking.h"
+#include <Backend/IL/ID.h>
+#include <Backend/IL/ResourceTokenMetadataField.h>
+#include <Backend/IL/ResourceTokenPacking.h>
 
 namespace IL {
     template<typename E>

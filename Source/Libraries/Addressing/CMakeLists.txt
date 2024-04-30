@@ -24,20 +24,25 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
+# Create library
+add_library(
+    GRS.Libraries.Addressing STATIC
+    Source/Addressing/TexelAddressAllocator.cpp
+)
 
-# Feature libraries
-add_subdirectory(Common)
-add_subdirectory(Message)
-add_subdirectory(Backend)
-add_subdirectory(Discovery)
-add_subdirectory(Analysis)
-add_subdirectory(Frontend)
-add_subdirectory(Addressing)
+# Include directories
+target_include_directories(GRS.Libraries.Addressing PUBLIC Include)
 
-# Experimental libraries
-if (${ENABLE_EXPERIMENTAL})
-    add_subdirectory(Transform)
-endif()
+# Links
+target_link_libraries(GRS.Libraries.Addressing PUBLIC GRS.Libraries.Backend)
 
-# Interop libraries
-add_subdirectory(Bridge)
+# IDE source discovery
+SetSourceDiscovery(GRS.Libraries.Addressing CXX Include Source)
+
+#----- Tests -----#
+
+Project_AddTest(
+    NAME GRS.Libraries.Addressing.Tests
+    SOURCE Tests/TexelAddressing.cpp
+    LIBS GRS.Libraries.Addressing
+)

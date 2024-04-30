@@ -26,11 +26,13 @@
 
 #pragma once
 
+// Addressing
+#include <Addressing/IL/PhysicalMipData.h>
+
 // Backend
-#include <Backend/IL/Emitter.h>
-#include <Backend/IL/ExtendedEmitter.h>
-#include <Backend/IL/ResourceTokenEmitter.h>
-#include <Backend/IL/Resource/PhysicalMipData.h>
+#include <Backend/IL/Emitters/Emitter.h>
+#include <Backend/IL/Emitters/ExtendedEmitter.h>
+#include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 
 namespace Backend::IL {
     template<typename E = Emitter<>, typename RTE = ResourceTokenEmitter<E>>

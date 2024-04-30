@@ -37,7 +37,7 @@
 #include <Common/ComRef.h>
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/Containers/ObjectPool.h>
 #include <Common/Containers/TrivialObjectPool.h>
 #include <Common/Containers/TrivialStackVector.h>

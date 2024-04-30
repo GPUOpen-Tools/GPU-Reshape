@@ -52,6 +52,7 @@ target_link_libraries(
     GRS.Features.Initialization.Backend PUBLIC
     GRS.Libraries.Common
     GRS.Libraries.Backend
+    GRS.Libraries.Addressing
     GRS.Features.Descriptor.Backend
 )
 

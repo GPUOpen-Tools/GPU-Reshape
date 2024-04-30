@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -24,31 +24,6 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+// Addressing
+#include <Addressing/TexelAddressAllocator.h>
 
-// Backend
-#include <Backend/IShaderExportHost.h>
-
-// Common
-#include <Common/Containers/Vector.h>
-
-// Std
-#include <vector>
-
-class ShaderExportHost : public IShaderExportHost {
-public:
-    ShaderExportHost(const Allocators &allocators);
-
-    ShaderExportID Allocate(const ShaderExportTypeInfo &typeInfo) override;
-    void Enumerate(uint32_t *count, ShaderExportID *out) override;
-    ShaderExportTypeInfo GetTypeInfo(ShaderExportID id) override;
-    uint32_t GetBound() override;
-
-private:
-    struct ShaderExportInfo {
-        ShaderExportTypeInfo typeInfo;
-    };
-
-    /// All exports
-    Vector<ShaderExportInfo> exports;
-};

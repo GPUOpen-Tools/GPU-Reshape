@@ -26,11 +26,13 @@
 
 #pragma once
 
+// Addressing
+#include <Addressing/IL/PhysicalMipData.h>
+#include <Addressing/IL/TexelCommon.h>
+
 // Feature
-#include <Backend/IL/Emitter.h>
-#include <Backend/IL/ExtendedEmitter.h>
-#include <Backend/IL/Resource/PhysicalMipData.h>
-#include <Backend/IL/Resource/TexelCommon.h>
+#include <Backend/IL/Emitters/Emitter.h>
+#include <Backend/IL/Emitters/ExtendedEmitter.h>
 
 // Std
 #include <cstdint>

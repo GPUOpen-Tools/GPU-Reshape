@@ -35,7 +35,7 @@
 
 // Backend
 #include <Backend/IL/Program.h>
-#include <Backend/IL/Emitter.h>
+#include <Backend/IL/Emitters/Emitter.h>
 
 // Layer
 #include <Backends/Vulkan/Compiler/SpvTypeMap.h>

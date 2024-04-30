@@ -27,12 +27,12 @@
 #pragma once
 
 // Backend
-#include "Instruction.h"
-#include "BasicBlock.h"
-#include "Program.h"
-#include "TypeResult.h"
-#include "ControlFlow.h"
-#include "Device.h"
+#include <Backend/IL/Instruction.h>
+#include <Backend/IL/BasicBlock.h>
+#include <Backend/IL/Program.h>
+#include <Backend/IL/TypeResult.h>
+#include <Backend/IL/ControlFlow.h>
+#include <Backend/IL/Device.h>
 
 // Common
 #include <Common/Alloca.h>

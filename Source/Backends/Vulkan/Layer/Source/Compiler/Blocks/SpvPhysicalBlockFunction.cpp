@@ -32,7 +32,7 @@
 
 // Backend
 #include <Backend/IL/InstructionCommon.h>
-#include <Backend/IL/Emitter.h>
+#include <Backend/IL/Emitters/Emitter.h>
 #include <Backend/IL/ID.h>
 
 // Common

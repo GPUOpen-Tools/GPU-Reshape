@@ -31,7 +31,7 @@
 #include <Backends/DX12/Allocation/MirrorAllocation.h>
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/ComRef.h>
 
 // Std

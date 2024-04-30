@@ -34,7 +34,7 @@
 #include "PipelineType.h"
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/Containers/ReferenceObject.h>
 #include <Common/Enum.h>
 #include <Common/Allocators.h>

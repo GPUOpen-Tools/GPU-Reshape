@@ -26,12 +26,14 @@
 
 #pragma once
 
+// Addressing
+#include <Addressing/IL/Emitters/AlignedSubresourceEmitter.h>
+#include <Addressing/IL/TexelAddress.h>
+
 // Backend
-#include <Backend/IL/Emitter.h>
-#include <Backend/IL/ExtendedEmitter.h>
-#include <Backend/IL/ResourceTokenEmitter.h>
-#include <Backend/IL/Resource/AlignedSubresourceEmitter.h>
-#include <Backend/IL/Resource/TexelAddress.h>
+#include <Backend/IL/Emitters/Emitter.h>
+#include <Backend/IL/Emitters/ExtendedEmitter.h>
+#include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 
 namespace Backend::IL {
     template<

@@ -29,26 +29,27 @@
 #include <Features/Initialization/MaskBlitShaderProgram.h>
 #include <Features/Initialization/MaskCopyRangeShaderProgram.h>
 #include <Features/Descriptor/Feature.h>
-#include <Features/Initialization/BitIndexing.h>
 #include <Features/Initialization/MaskBlitParameters.h>
 #include <Features/Initialization/MaskCopyRangeParameters.h>
 #include <Features/Initialization/KernelShared.h>
-#include <Features/Initialization/InlineSubresourceEmitter.h>
+
+// Addressing
+#include <Addressing/IL/BitIndexing.h>
+#include <Addressing/IL/Emitters/InlineSubresourceEmitter.h>
+#include <Addressing/IL/Emitters/TexelAddressEmitter.h>
 
 // Backend
 #include <Backend/IShaderExportHost.h>
 #include <Backend/IShaderSGUIDHost.h>
 #include <Backend/IL/Visitor.h>
 #include <Backend/IL/TypeCommon.h>
-#include <Backend/IL/ResourceTokenEmitter.h>
+#include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 #include <Backend/IL/ResourceTokenType.h>
-#include <Backend/IL/Resource/TexelAddressEmitter.h>
 #include <Backend/CommandContext.h>
 #include <Backend/Resource/ResourceInfo.h>
 #include <Backend/Command/AttachmentInfo.h>
 #include <Backend/Command/RenderPassInfo.h>
 #include <Backend/Command/CommandBuilder.h>
-#include <Backend/Resource/TexelAddressAllocator.h>
 #include <Backend/ShaderProgram/IShaderProgramHost.h>
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/SubmissionContext.h>

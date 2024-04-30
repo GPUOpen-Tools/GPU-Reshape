@@ -26,9 +26,14 @@
 
 #pragma once
 
+// Addressing
+#include <Addressing/TexelAddressAllocationInfo.h>
+
 // Backend
 #include <Backend/Resource/ResourceInfo.h>
-#include <Backend/Resource/TexelAddressAllocationInfo.h>
+
+// Std
+#include <cmath>
 
 class TexelAddressAllocator {
 public:

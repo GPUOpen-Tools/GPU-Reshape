@@ -27,7 +27,7 @@
 #pragma once
 
 // Feature
-#include <Features/Initialization/TileMappingRequest.h>
+#include <Addressing/TileMappingRequest.h>
 
 // Std
 #include <vector>
@@ -87,7 +87,7 @@ public:
     /// Check if a tile is resident
     /// \param tileIndex given index
     /// \return true if resident
-    bool IsResident(uint32_t tileIndex) {
+    bool IsResident(uint32_t tileIndex) const {
         return tileResidency[tileIndex >> 5] & (1u << (tileIndex & 31));
     }
 

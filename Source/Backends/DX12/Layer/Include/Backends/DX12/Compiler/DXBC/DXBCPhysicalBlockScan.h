@@ -33,7 +33,7 @@
 #include "DXBCHeader.h"
 
 // Common
-#include <Common/Allocator/Vector.h>
+#include <Common/Containers/Vector.h>
 #include <Common/Allocators.h>
 
 // Forward declarations

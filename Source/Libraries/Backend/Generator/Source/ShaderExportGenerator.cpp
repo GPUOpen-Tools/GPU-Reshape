@@ -45,7 +45,7 @@ bool ShaderExportGenerator::Generate(Schema &schema, Language language, SchemaSt
 
     // Include emitter
     if (language == Language::CPP) {
-        out.header << "#include <Backend/IL/Emitter.h>\n";
+        out.header << "#include <Backend/IL/Emitters/Emitter.h>\n";
     }
 
     // OK

@@ -37,7 +37,7 @@
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/VisitContext.h>
 #include <Backend/ShaderProgram/ShaderProgram.h>
-#include <Backend/IL/Emitter.h>
+#include <Backend/IL/Emitters/Emitter.h>
 
 // Message
 #include <Message/MessageStream.h>

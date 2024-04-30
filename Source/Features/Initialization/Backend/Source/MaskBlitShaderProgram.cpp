@@ -25,19 +25,20 @@
 // 
 
 #include <Features/Initialization/MaskBlitShaderProgram.h>
-#include <Features/Initialization/BitIndexing.h>
 #include <Features/Initialization/MaskBlitParameters.h>
 #include <Features/Initialization/KernelShared.h>
-#include <Features/Initialization/InlineSubresourceEmitter.h>
 
 // Backend
 #include <Backend/IL/ProgramCommon.h>
 #include <Backend/ShaderData/IShaderDataHost.h>
-#include <Backend/IL/Emitter.h>
+#include <Backend/IL/Emitters/Emitter.h>
 #include <Backend/IL/ShaderStruct.h>
-#include <Backend/IL/Devices/StructResourceTokenEmitter.h>
-#include <Backend/IL/Resource/TexelAddressEmitter.h>
-#include <Backend/IL/Resource/TexelCommon.h>
+#include <Backend/IL/Emitters/StructResourceTokenEmitter.h>
+
+// Addressing
+#include <Addressing/IL/BitIndexing.h>
+#include <Addressing/IL/Emitters/InlineSubresourceEmitter.h>
+#include <Addressing/IL/Emitters/TexelAddressEmitter.h>
 
 // Common
 #include <Common/Registry.h>

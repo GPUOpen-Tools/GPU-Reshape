@@ -24,12 +24,15 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+// Addressing
+#include <Addressing/IL/Emitters/TexelAddressEmitter.h>
+#include <Addressing/IL/Emitters/AlignedSubresourceEmitter.h>
+#include <Addressing/IL/Emitters/CPUSubresourceEmitter.h>
+#include <Addressing/TexelAddressAllocator.h>
+
 // Backend
-#include <Backend/IL/Devices/CPUResourceTokenEmitter.h>
-#include <Backend/IL/Devices/CPUSubresourceEmitter.h>
-#include <Backend/IL/Resource/TexelAddressEmitter.h>
-#include <Backend/IL/Devices/CPUEmitter.h>
-#include <Backend/Resource/TexelAddressAllocator.h>
+#include <Backend/IL/Emitters/CPUResourceTokenEmitter.h>
+#include <Backend/IL/Emitters/CPUEmitter.h>
 
 // Catch
 #include <catch2/catch.hpp>

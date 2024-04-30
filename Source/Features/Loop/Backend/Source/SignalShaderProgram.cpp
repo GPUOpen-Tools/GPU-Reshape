@@ -29,7 +29,7 @@
 // Backend
 #include <Backend/IL/ProgramCommon.h>
 #include <Backend/ShaderData/IShaderDataHost.h>
-#include <Backend/IL/Emitter.h>
+#include <Backend/IL/Emitters/Emitter.h>
 
 // Common
 #include <Common/Registry.h>
