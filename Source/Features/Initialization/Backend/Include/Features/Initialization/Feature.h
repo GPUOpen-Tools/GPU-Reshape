@@ -39,9 +39,7 @@
 #include <Backend/Scheduler/SchedulerPrimitive.h>
 
 // Addressing
-#include <Addressing/IL/TexelAddress.h>
-#include <Addressing/TileResidencyAllocator.h>
-#include <Addressing/TexelAddressAllocator.h>
+#include <Addressing/TexelMemoryAllocation.h>
 
 // Message
 #include <Message/MessageStream.h>
@@ -60,6 +58,7 @@ class IScheduler;
 class IShaderSGUIDHost;
 class MaskBlitShaderProgram;
 class MaskCopyRangeShaderProgram;
+class TexelMemoryAllocator;
 class IShaderProgramHost;
 struct CommandBuffer;
 
@@ -106,30 +105,6 @@ private:
     void OnJoin(CommandContextHandle contextHandle);
 
 private:
-    struct TexelProperties {
-        /// Address of the texel
-        TexelAddress<IL::ID> address;
-
-        /// The packed token of the owning resource
-        IL::ID packedToken{IL::InvalidID};
-
-        /// Assigned PUID of the owning resource
-        IL::ID puid{IL::InvalidID};
-
-        /// The memory base offset of the initialization masks
-        IL::ID texelBaseOffsetAlign32{IL::InvalidID};
-    };
-
-    /// Get the texel properties from an instruction
-    /// \param emitter target emitter
-    /// \param puidMemoryBaseBufferDataID the puid mapping buffer id
-    /// \param texelMaskBufferDataID the texel mask buffer id
-    /// \param resource handle of the target resource
-    /// \param instr target instruction
-    /// \return fetched properties
-    TexelProperties GetTexelProperties(IL::Emitter<>& emitter, IL::ID puidMemoryBaseBufferDataID, IL::ID texelMaskBufferDataID, IL::ID resource, const IL::InstructionRef<> instr);
-    
-private:
     /// Blit a resource mask
     /// \param buffer destination command buffer
     /// \param info the resource info, contains sub-regions
@@ -161,7 +136,6 @@ private:
 
     /// Shader data
     ShaderDataID puidMemoryBaseBufferID{InvalidShaderDataID};
-    ShaderDataID texelMaskBufferID{InvalidShaderDataID};
 
     /// Export id for this feature
     ShaderExportID exportID{};
@@ -223,29 +197,11 @@ private:
 private:
     struct Allocation {
         /// The underlying allocation
-        BuddyAllocation buddy = kInvalidBuddyAllocation;
-        
-        /// Base texel block, aligned to 32
-        uint32_t baseBlock{0};
-
-        /// Length of this allocation
-        uint64_t length{0};
-
-        /// Number of dwords in the header
-        uint64_t headerDWords{0};
-
-        /// Allocation addressing information
-        TexelAddressAllocationInfo addressInfo;
+        TexelMemoryAllocation memory;
     };
 
     /// Shared texel allocator
-    TexelAddressAllocator addressAllocator;
-
-    /// Residency allocator
-    TileResidencyAllocator tileResidencyAllocator;
-
-    /// Shared buddy allocator
-    BuddyAllocator texelBuddyAllocator;
+    ComRef<TexelMemoryAllocator> texelAllocator;
 
     /// All allocations
     std::unordered_map<uint64_t, Allocation> allocations;

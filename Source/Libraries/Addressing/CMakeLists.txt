@@ -27,7 +27,7 @@
 # Create library
 add_library(
     GRS.Libraries.Addressing STATIC
-    Source/Addressing/TexelAddressAllocator.cpp
+    Source/Addressing/TexelMemoryAllocator.cpp
 )
 
 # Include directories

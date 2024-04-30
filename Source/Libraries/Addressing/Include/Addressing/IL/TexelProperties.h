@@ -24,6 +24,24 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-// Addressing
-#include <Addressing/TexelAddressAllocator.h>
+#pragma once
 
+// Address
+#include "TexelAddress.h"
+
+// Backend
+#include <Backend/IL/ID.h>
+
+struct TexelProperties {
+    /// Address of the texel
+    TexelAddress<IL::ID> address;
+
+    /// The packed token of the owning resource
+    IL::ID packedToken{IL::InvalidID};
+
+    /// Assigned PUID of the owning resource
+    IL::ID puid{IL::InvalidID};
+
+    /// The memory base offset of the initialization masks
+    IL::ID texelBaseOffsetAlign32{IL::InvalidID};
+};
