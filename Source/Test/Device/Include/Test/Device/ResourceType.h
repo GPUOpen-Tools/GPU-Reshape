@@ -30,6 +30,8 @@ namespace Test {
     enum class ResourceType {
         TexelBuffer,
         RWTexelBuffer,
+        StructuredBuffer,
+        RWStructuredBuffer,
         Texture1D,
         RWTexture1D,
         Texture2D,

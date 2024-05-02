@@ -195,6 +195,12 @@ void Assembler::AssembleResources() {
             case ResourceType::RWBuffer:
                 types << "ResourceType::RWTexelBuffer";
                 break;
+            case ResourceType::StructuredBuffer:
+                types << "ResourceType::StructuredBuffer";
+                break;
+            case ResourceType::RWStructuredBuffer:
+                types << "ResourceType::RWStructuredBuffer";
+                break;
             case ResourceType::Texture1D:
                 types << "ResourceType::Texture1D";
                 break;
@@ -253,6 +259,16 @@ void Assembler::AssembleResources() {
                 break;
             case ResourceType::RWBuffer:
                 create << "BufferID resource" << i << " = device->CreateTexelBuffer(ResourceType::RWTexelBuffer, Backend::IL::Format::" << resource.format << ", ";
+                create << resource.initialization.sizes.at(0);
+                create << ", data" << i << ", " << resource.initialization.data.size() << ");\n";
+                break;
+            case ResourceType::StructuredBuffer:
+                create << "BufferID resource" << i << " = device->CreateStructuredBuffer(ResourceType::StructuredBuffer, " << resource.structuredSize << ", ";
+                create << resource.initialization.sizes.at(0);
+                create << ", data" << i << ", " << resource.initialization.data.size() << ");\n";
+                break;
+            case ResourceType::RWStructuredBuffer:
+                create << "BufferID resource" << i << " = device->CreateStructuredBuffer(ResourceType::RWStructuredBuffer, " << resource.structuredSize << ", ";
                 create << resource.initialization.sizes.at(0);
                 create << ", data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;

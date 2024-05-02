@@ -24,50 +24,23 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+//! KERNEL   Compute "main"
+//! DISPATCH 64, 1, 1
 
-#include <string_view>
-#include <vector>
+//! SCHEMA "Schemas/Features/Concurrency.h"
 
-enum class ResourceType {
-    None,
-    Buffer,
-    RWBuffer,
-    StructuredBuffer,
-    RWStructuredBuffer,
-    Texture1D,
-    RWTexture1D,
-    Texture2D,
-    RWTexture2D,
-    RWTexture2DArray,
-    Texture3D,
-    RWTexture3D,
-    SamplerState,
-    StaticSamplerState,
-    CBuffer
-};
+//! RESOURCE RWBuffer<R32Float> size:1024
+[[vk::binding(0)]] RWBuffer<float> bufferRW : register(u0, space0);
 
-struct ResourceInitialization {
-    /// Resource sizes (x, [y, [z]])
-    std::vector<int64_t> sizes;
+//! RESOURCE RWStructuredBuffer width:16 size:1024
+[[vk::binding(1)]] RWStructuredBuffer<float4> structuredRW : register(u1, space0);
 
-    /// Resource data (a, b, c, d...)
-    std::vector<int64_t> data;
-};
+[numthreads(32, 1, 1)]
+void main(uint dtid : SV_DispatchThreadID) {
+    //! MESSAGE ResourceRaceCondition[0]
+    bufferRW[dtid] = 1.0f;
+    
+    //! MESSAGE ResourceRaceCondition[0]
+    structuredRW[dtid] = 1.0f.xxxx;
+}
 
-struct Resource {
-    /// Type of this resource
-    ResourceType type{ResourceType::None};
-
-    /// View and data format
-    std::string_view format;
-
-    /// Structured buffer width (0 indicates not a structured buffer)
-    uint32_t structuredSize{0};
-
-    /// Optional array size (0 indicates no array)
-    uint32_t arraySize{0};
-
-    /// Initialization info
-    ResourceInitialization initialization;
-};

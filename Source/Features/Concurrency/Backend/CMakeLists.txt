@@ -66,6 +66,7 @@ add_custom_command(
 Project_AddBackendTest_Common(GeneratedTest Concurrency)
 Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencySimpleTest.hlsl)
 Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencyAddressingTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencyExpansionTest.hlsl)
 
 Project_AddTest(
         NAME GRS.Features.Concurrency.Tests
