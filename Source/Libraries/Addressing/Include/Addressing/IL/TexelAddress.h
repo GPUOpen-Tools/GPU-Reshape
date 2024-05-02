@@ -36,6 +36,15 @@ struct TexelAddress {
     /// Source view mip map
     T mip{};
 
+    /// Logical dimensions
+    T logicalWidth{};
+    T logicalHeight{};
+    T logicalDepth{};
+    T logicalMips{};
+
     /// Texel address offset
     T texelOffset{};
+
+    /// Was the addressing out of bounds?
+    T isOutOfBounds{};
 };

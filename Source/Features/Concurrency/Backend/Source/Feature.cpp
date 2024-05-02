@@ -34,6 +34,14 @@
 #include <Backend/IL/TypeCommon.h>
 #include <Backend/IL/Emitters/ResourceTokenEmitter.h>
 #include <Backend/CommandContext.h>
+#include <Backend/SubmissionContext.h>
+#include <Backend/Scheduler/IScheduler.h>
+#include <Backend/Scheduler/SchedulerPrimitiveEvent.h>
+
+// Addressing
+#include <Addressing/TexelMemoryAllocator.h>
+#include <Addressing/IL/BitIndexing.h>
+#include <Addressing/IL/Emitters/TexelPropertiesEmitter.h>
 
 // Generated schema
 #include <Schemas/Features/Concurrency.h>
@@ -63,16 +71,23 @@ bool ConcurrencyFeature::Install() {
     // Shader data host
     shaderDataHost = registry->Get<IShaderDataHost>();
 
-    // Allocate lock buffer
-    //   ? Each respective PUID takes one lock integer, representing the current event id
-    lockBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
+    // Get scheduler
+    scheduler = registry->Get<IScheduler>();
+
+    // Create monotonic primitive
+    exclusiveTransferPrimitiveID = scheduler->CreatePrimitive();
+
+    // Allocate puid mapping buffer
+    puidMemoryBaseBufferID = shaderDataHost->CreateBuffer(ShaderDataBufferInfo {
         .elementCount = 1u << Backend::IL::kResourceTokenPUIDBitCount,
         .format = Backend::IL::Format::R32UInt
     });
 
-    // Allocate event data
-    //   ? Lightweight event data
-    eventID = shaderDataHost->CreateEventData(ShaderDataEventInfo { });
+    // Try to install texel allocator
+    texelAllocator = registry->New<TexelMemoryAllocator>();
+    if (!texelAllocator->Install()) {
+        return false;
+    }
 
     // OK
     return true;
@@ -80,9 +95,9 @@ bool ConcurrencyFeature::Install() {
 
 FeatureHookTable ConcurrencyFeature::GetHookTable() {
     FeatureHookTable table{};
-    table.dispatch = BindDelegate(this, ConcurrencyFeature::OnDispatch);
-    table.drawInstanced = BindDelegate(this, ConcurrencyFeature::OnDrawInstanced);
-    table.drawIndexedInstanced = BindDelegate(this, ConcurrencyFeature::OnDrawIndexedInstanced);
+    table.createResource = BindDelegate(this, ConcurrencyFeature::OnCreateResource);
+    table.destroyResource = BindDelegate(this, ConcurrencyFeature::OnDestroyResource);
+    table.preSubmit = BindDelegate(this, ConcurrencyFeature::OnSubmitBatchBegin);
     return table;
 }
 
@@ -99,8 +114,11 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
     const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
     
     // Get the data ids
-    IL::ID lockBufferDataID = program.GetShaderDataMap().Get(lockBufferID)->id;
-    IL::ID eventDataID = program.GetShaderDataMap().Get(eventID)->id;
+    IL::ID puidMemoryBaseBufferDataID = program.GetShaderDataMap().Get(puidMemoryBaseBufferID)->id;
+    IL::ID texelMaskBufferDataID      = program.GetShaderDataMap().Get(texelAllocator->GetTexelBlocksBufferID())->id;
+
+    // Common constants
+    IL::ID zero = program.GetConstants().UInt(0)->id;
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
@@ -167,57 +185,66 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         // Perform instrumentation check
         IL::Emitter<> pre(program, context.basicBlock);
 
-        // Get global id of resource
-        IL::ResourceTokenEmitter token(pre, resource);
-        IL::ID puid = token.GetPUID();
+        // Get the texel address
+        Backend::IL::TexelPropertiesEmitter propertiesEmitter(pre, texelAllocator, puidMemoryBaseBufferDataID);
+        TexelProperties texelProperties = propertiesEmitter.GetTexelProperties(IL::InstructionRef(instr));
 
-        // Load buffer
-        IL::ID bufferValue = pre.Load(lockBufferDataID);
-
-        // Default unlocked value
-        IL::ID unlockedConstant = pre.UInt32(0);
-
-        // Get previous lock
+        // Manually select the target bit, this follows the same mechanism as the other overloads,
+        // in our case we set the target bit to 0 if the address is out of bounds. Effectively disabling
+        // the atomic writes without adding block branching logic.
+        IL::ID texelBlockBit = pre.Select(
+            texelProperties.address.isOutOfBounds,
+            program.GetConstants().UInt(0)->id,
+            GetTexelAddressBit(pre, texelProperties.address.texelOffset)
+        );
+        
+        // Read the previous lock, semantics change if write
         IL::ID previousLock;
         if (isWrite) {
-            // Compare exchange at PUID with the event
-            // ! Single producer
-            previousLock = pre.AtomicCompareExchange(pre.AddressOf(lockBufferDataID, puid), unlockedConstant, eventDataID);
+            // Writes follow the single producer pattern, so, write the destination bit and check if it was already locked
+            // Basically an atomic or with the target bit
+            previousLock = AtomicOrTexelAddress(pre, texelMaskBufferDataID, texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset, texelBlockBit);
         } else {
-            // Read the current lock at PUID
-            // ! Multiple consumers
-            previousLock = pre.Extract(pre.LoadBuffer(bufferValue, puid), program.GetConstants().UInt(0)->id);
+            // Reads follow multiple-consumers, so check if anything has locked the destination bit
+            previousLock = ReadTexelAddress(pre, texelMaskBufferDataID, texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset);
         }
 
-        // If either unacquired or by the current event
-        IL::ID cond = pre.And(
-            pre.NotEqual(previousLock, pre.UInt32(0)),
-            pre.NotEqual(previousLock, eventDataID)
-        );
+        // Unsafe if the previous lock bit is allocated
+        // If the coordinate is out of bounds, the texel coordinates will be clamped to its bounds.
+        // For concurrency, this will result in inevitable reports. There's some question as to what
+        // the valid behaviour is here, today, Reshape will only report errors for in bounds texels,
+        // as the bounds feature will snuff out invalid addressing.
+        IL::ID unsafeCond = pre.And(pre.NotEqual(previousLock, zero), pre.Not(texelProperties.address.isOutOfBounds));
 
         // If so, branch to failure, otherwise resume
-        pre.BranchConditional(cond, oobBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+        pre.BranchConditional(unsafeCond, oobBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
 
         // Out of bounds block
-        IL::Emitter<> oob(program, *oobBlock);
-        oob.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
+        IL::Emitter<> unsafe(program, *oobBlock);
+        {
+            unsafe.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
 
-        // Export the message
-        ResourceRaceConditionMessage::ShaderExport msg;
-        msg.sguid = oob.UInt32(sguid);
-        msg.LUID = eventDataID;
+            // Export the message
+            ResourceRaceConditionMessage::ShaderExport msg;
+            msg.sguid = unsafe.UInt32(sguid);
+            msg.LUID = program.GetConstants().UInt(0)->id;
 
-        // Detailed instrumentation?
-        if (config.detail) {
-            msg.chunks |= ResourceRaceConditionMessage::Chunk::Detail;
-            msg.detail.token = token.GetPackedToken();
+            // Detailed instrumentation?
+            if (config.detail) {
+                msg.chunks |= ResourceRaceConditionMessage::Chunk::Detail;
+                msg.detail.token = texelProperties.packedToken;
+                msg.detail.coordinate[0] = texelProperties.address.x;
+                msg.detail.coordinate[1] = texelProperties.address.y;
+                msg.detail.coordinate[2] = texelProperties.address.z;
+                msg.detail.mip = texelProperties.address.mip;
+            }
+            
+            // Export the message
+            unsafe.Export(exportID, msg);
+
+            // Branch back
+            unsafe.Branch(resumeBlock);
         }
-        
-        // Export the message
-        oob.Export(exportID, msg);
-
-        // Branch back
-        oob.Branch(resumeBlock);
 
         // Reads have no lock
         if (!isWrite) {
@@ -225,11 +252,97 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         }
 
         // Writes release lock after IOI
+        // Clear the lock allocation bit
         IL::Emitter<> resumeEmitter(program, *resumeBlock, ++resumeBlock->begin());
-        resumeEmitter.StoreBuffer(bufferValue, puid, unlockedConstant);
+        AtomicClearTexelAddress(resumeEmitter, texelMaskBufferDataID, texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset);
 
         // Resume after unlock
         return resumeEmitter.GetIterator();
+    });
+}
+
+void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
+    std::lock_guard guard(mutex);
+
+    // Create allocation
+    TexelMemoryAllocation memory = texelAllocator->Allocate(source.resource);
+
+    // Create allocation
+    Allocation& allocation = allocations[source.resource.token.puid];
+    allocation.memory = memory;
+
+    // Mark for pending enqueue
+    pendingMappingQueue.push_back(MappingTag {
+        .puid = source.resource.token.puid,
+        .memoryBaseAlign32 = allocation.memory.texelBaseBlock
+    });
+}
+
+void ConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {
+    std::lock_guard guard(mutex);
+
+    // Get allocation
+    Allocation& allocation = allocations.at(source.token.puid);
+
+    // Free underlying memory
+    texelAllocator->Free(allocation.memory);
+
+    // Remove local tracking
+    allocations.erase(source.token.puid);
+}
+
+void ConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, const CommandContextHandle *contexts, uint32_t contextCount) {
+    std::lock_guard guard(mutex);
+
+    // Not interested in empty submissions
+    if (!contextCount) {
+        return;
+    }
+
+    // Any mappings to push?
+    if (!pendingMappingQueue.empty())
+    {
+        // Allocate the next sync value
+        ++exclusiveTransferPrimitiveMonotonicCounter;
+        
+        // Create builder
+        CommandBuffer buffer;
+        CommandBuilder builder(buffer);
+
+        // Assign the memory lookups
+        for (const MappingTag& tag : pendingMappingQueue) {
+            // May have been destroyed
+            if (!allocations.contains(tag.puid)) {
+                continue;
+            }
+
+            // Get allocation
+            Allocation& allocation = allocations[tag.puid];
+
+            // Assign the PUID -> Memory Offset mapping
+            builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);
+
+            // Initialize texel data
+            texelAllocator->Initialize(builder, allocation.memory);
+        }
+
+        // Update the residency of all texels
+        texelAllocator->UpdateResidency(Queue::ExclusiveTransfer);
+
+        // Clear mappings
+        pendingMappingQueue.clear();
+
+        // Submit to the transfer queue
+        SchedulerPrimitiveEvent event;
+        event.id = exclusiveTransferPrimitiveID;
+        event.value = exclusiveTransferPrimitiveMonotonicCounter;
+        scheduler->Schedule(Queue::ExclusiveTransfer, buffer, &event);
+    }
+
+    // Submissions always wait for the last mappings
+    submitContext.waitPrimitives.Add(SchedulerPrimitiveEvent {
+        .id = exclusiveTransferPrimitiveID,
+        .value = exclusiveTransferPrimitiveMonotonicCounter
     });
 }
 
@@ -244,19 +357,4 @@ FeatureInfo ConcurrencyFeature::GetInfo() {
 
     // OK
     return info;
-}
-
-void ConcurrencyFeature::OnDrawInstanced(CommandContext *context, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) {
-    // Assign next event UID, small chance of collision if any event lingers past UINT32_MAX
-    context->eventStack.Set(eventID, eventCounter++);
-}
-
-void ConcurrencyFeature::OnDrawIndexedInstanced(CommandContext *context, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) {
-    // Assign next event UID, small chance of collision if any event lingers past UINT32_MAX
-    context->eventStack.Set(eventID, eventCounter++);
-}
-
-void ConcurrencyFeature::OnDispatch(CommandContext *context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ) {
-    // Assign next event UID, small chance of collision if any event lingers past UINT32_MAX
-    context->eventStack.Set(eventID, eventCounter++);
 }

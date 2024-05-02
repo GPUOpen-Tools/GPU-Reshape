@@ -519,6 +519,8 @@ bool Parser::ParseResourceType(Parser::Context &context, ResourceType *out) {
         *out = ResourceType::Texture2D;
     } else if (context.TryNext("RWTexture2D")) {
         *out = ResourceType::RWTexture2D;
+    } else if (context.TryNext("RWTexture2DArray")) {
+        *out = ResourceType::RWTexture2DArray;
     } else if (context.TryNext("Texture3D")) {
         *out = ResourceType::Texture3D;
     } else if (context.TryNext("RWTexture3D")) {

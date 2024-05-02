@@ -200,6 +200,18 @@ namespace Backend::IL {
             );
         }
         
+        /// Get bool value, helper
+        /// \param value given value
+        /// \return allocated constant
+        const BoolConstant* Bool(bool value) {
+            return FindConstantOrAdd(
+                typeMap.FindTypeOrAdd(BoolType { }),
+                BoolConstant {
+                    .value = value
+                }
+            );
+        }
+        
         /// Get floating point constant, helper
         /// \param value given value
         /// \param bitWidth bit width

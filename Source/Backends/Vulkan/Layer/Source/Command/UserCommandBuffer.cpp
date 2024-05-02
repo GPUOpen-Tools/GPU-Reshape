@@ -283,6 +283,22 @@ void CommitCommands(DeviceDispatchTable* device, VkCommandBuffer commandBuffer, 
                 );
                 break;
             }
+            case CommandType::ClearBuffer: {
+                auto* cmd = command.As<ClearBufferCommand>();
+
+                // Get the data buffer
+                VkBuffer resourceBuffer = device->dataHost->GetResourceBuffer(cmd->id);
+
+                // Fill the range with zero's
+                device->commandBufferDispatchTable.next_vkCmdFillBuffer(
+                    commandBuffer,
+                    resourceBuffer,
+                    cmd->offset,
+                    cmd->length,
+                    cmd->value
+                );
+                break;
+            }
             case CommandType::Dispatch: {
                 auto* cmd = command.As<DispatchCommand>();
 

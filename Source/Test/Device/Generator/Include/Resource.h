@@ -37,6 +37,7 @@ enum class ResourceType {
     RWTexture1D,
     Texture2D,
     RWTexture2D,
+    RWTexture2DArray,
     Texture3D,
     RWTexture3D,
     SamplerState,

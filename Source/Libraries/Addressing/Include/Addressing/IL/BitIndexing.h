@@ -47,7 +47,23 @@ static IL::ID AtomicOrTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL::I
     IL::ID globalElement = emitter.Add(baseElementAlign32, element);
 
     // Bit or at given bit
-    return emitter.AtomicOr(emitter.AddressOf(buffer, globalElement), value);
+    IL::ID atomicValue = emitter.AtomicOr(emitter.AddressOf(buffer, globalElement), value);
+    
+    // Only report the texel bit itself, ignore the rest
+    return emitter.BitAnd(atomicValue, value);
+}
+
+/// Get the bit used for block-wise addressing
+/// \param emitter instruction emitter
+/// \param texelOffset non-block texel offset
+/// \return bit
+template<typename T>
+static IL::ID GetTexelAddressBit(IL::Emitter<T>& emitter, IL::ID texelOffset) {
+    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+
+    // Extract bit
+    IL::ID bitIndex = emitter.Rem(texelOffset, constants.UInt(32)->id);
+    return emitter.BitShiftLeft(constants.UInt(1u)->id, bitIndex);
 }
 
 /// Perform an atomic or of a texel address
@@ -87,6 +103,32 @@ static IL::ID AtomicAndTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL::
     // Extract bit
     IL::ID bitIndex = emitter.Rem(texelOffset, constants.UInt(32)->id);
     IL::ID bit      = emitter.BitShiftLeft(constants.UInt(1u)->id, bitIndex);
+
+    // Only report the texel bit itself, ignore the rest
+    return emitter.BitAnd(value, bit);
+}
+
+/// Perform an atomic and of a texel address
+/// \param emitter instructione mitter
+/// \param buffer destination buffer
+/// \param baseElementAlign32 the base memory offset aligned to 32
+/// \param texelOffset intra-resource texel offset
+/// \return existing value
+template<typename T>
+static IL::ID AtomicClearTexelAddress(IL::Emitter<T>& emitter, IL::ID buffer, IL::ID baseElementAlign32, IL::ID texelOffset) {
+    Backend::IL::ConstantMap& constants = emitter.GetProgram()->GetConstants();
+
+    // Extract element and global element
+    IL::ID element       = emitter.Div(texelOffset, constants.UInt(32)->id);
+    IL::ID globalElement = emitter.Add(baseElementAlign32, element);
+
+    // Extract the bit and flip it
+    IL::ID bitIndex = emitter.Rem(texelOffset, constants.UInt(32)->id);
+    IL::ID bit      = emitter.BitShiftLeft(constants.UInt(1u)->id, bitIndex);
+    IL::ID bitNot   = emitter.Not(bit);
+    
+    // Perform atomic clear at address
+    IL::ID value = emitter.AtomicAnd(emitter.AddressOf(buffer, globalElement), bitNot);
 
     // Only report the texel bit itself, ignore the rest
     return emitter.BitAnd(value, bit);

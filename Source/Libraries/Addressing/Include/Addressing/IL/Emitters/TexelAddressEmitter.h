@@ -67,11 +67,13 @@ namespace Backend::IL {
         /// \param x resource local x coordinate
         /// \return texel offset
         TexelAddress<UInt32> LocalBufferTexelAddress(UInt32 x) {
+            TexelAddress<UInt32> out;
+            
             if (kGuardCoordinates) {
-                ExtendedEmitter extended(emitter);
-
-                // Min all coordinates against max-1
-                x = extended.template Clamp<UInt32>(x, emitter.UInt32(0), emitter.Sub(tokenEmitter.GetViewWidth(), emitter.UInt32(1)));
+                // Default to not out of bounds
+                out.isOutOfBounds = emitter.Bool(false);
+                
+                out.logicalWidth = GuardCoordinate(out, x, tokenEmitter.GetViewWidth());
             }
 
             // Offset by base width
@@ -103,16 +105,23 @@ namespace Backend::IL {
                 // Contracted texel
                 contractedTexel = emitter.Div(x, contractionFactor);
             }
-            
+
+            // Select expansion or contraction
             IL::ID isExpansion = emitter.GreaterThan(tokenEmitter.GetViewFormatSize(), tokenEmitter.GetFormatSize());
             x = emitter.Select(isExpansion, expandedTexel, contractedTexel);
 
+            // Constants
+            IL::ID zero = emitter.UInt32(0);
+            IL::ID one = emitter.UInt32(1);
+            
             // Just assume the linear index
-            TexelAddress<UInt32> out;
             out.x = x;
-            out.y = emitter.UInt32(0);
-            out.z = emitter.UInt32(0);
-            out.mip = emitter.UInt32(0);
+            out.y = zero;
+            out.z = zero;
+            out.mip = zero;
+            out.logicalHeight = one;
+            out.logicalDepth = one;
+            out.logicalMips = one;
             out.texelOffset = x;
             return out;
         }
@@ -125,10 +134,15 @@ namespace Backend::IL {
         /// \param isVolumetric is this a volumetric (non-sliced) resource, affects offset calculation
         /// \return texel offset
         TexelAddress<UInt32> LocalTextureTexelAddress(UInt32 x, UInt32 y, UInt32 z, UInt32 mip, bool isVolumetric) {
+            TexelAddress<UInt32> out;
+            
             // Guard mip coordinate
             // Do this before offsetting by the base mip, to save a little bit of ALU
             if (kGuardCoordinates) {
-                GuardCoordinate(mip, tokenEmitter.GetViewMipCount());
+                // Default to not out of bounds
+                out.isOutOfBounds = emitter.Bool(false);
+                
+                out.logicalMips = GuardCoordinate(out, mip, tokenEmitter.GetViewMipCount());
             }
 
             // Offset by base mip
@@ -142,9 +156,9 @@ namespace Backend::IL {
 
                 // Guard 3d mip coordinates
                 if (kGuardCoordinates) {
-                    GuardCoordinateToLogicalMip(x, tokenEmitter.GetWidth(), mip);
-                    GuardCoordinateToLogicalMip(y, tokenEmitter.GetHeight(), mip);
-                    GuardCoordinateToLogicalMip(z, tokenEmitter.GetDepthOrSliceCount(), mip);
+                    out.logicalWidth = GuardCoordinateToLogicalMip(out, x, tokenEmitter.GetWidth(), mip);
+                    out.logicalHeight = GuardCoordinateToLogicalMip(out, y, tokenEmitter.GetHeight(), mip);
+                    out.logicalDepth = GuardCoordinateToLogicalMip(out, z, tokenEmitter.GetDepthOrSliceCount(), mip);
                 }
 
                 // z * w * h + y * w + x
@@ -160,7 +174,7 @@ namespace Backend::IL {
 
                 // Guard the slice index
                 if (kGuardCoordinates) {
-                    GuardCoordinate(z, tokenEmitter.GetDepthOrSliceCount());
+                    out.logicalDepth = GuardCoordinate(out, z, tokenEmitter.GetDepthOrSliceCount());
                 }
 
                 // Then, offset by the current mip level
@@ -168,8 +182,8 @@ namespace Backend::IL {
 
                 // Guard 2d mip coordinates
                 if (kGuardCoordinates) {
-                    GuardCoordinateToLogicalMip(x, tokenEmitter.GetWidth(), mip);
-                    GuardCoordinateToLogicalMip(y, tokenEmitter.GetHeight(), mip);
+                    out.logicalWidth = GuardCoordinateToLogicalMip(out, x, tokenEmitter.GetWidth(), mip);
+                    out.logicalHeight = GuardCoordinateToLogicalMip(out, y, tokenEmitter.GetHeight(), mip);
                 }
 
                 // y * w + x
@@ -178,10 +192,8 @@ namespace Backend::IL {
                 // Actual offset is slice/mip offset + intra-mip
                 texelAddress = emitter.Add(mipData.offset, intraTexelOffset);
             }
-            
 
             // Just assume the linear index
-            TexelAddress<UInt32> out;
             out.x = x;
             out.y = y;
             out.z = z;
@@ -194,18 +206,22 @@ namespace Backend::IL {
         /// Guard a coordinate against its bounds
         /// \param value coordinate to guard
         /// \param width coordinate bound
-        void GuardCoordinate(UInt32& value, UInt32 width) {
+        UInt32 GuardCoordinate(TexelAddress<UInt32>& address, UInt32& value, UInt32 width) {
             ExtendedEmitter extended(emitter);
+
+            // Out of bounds if value >= Width
+            address.isOutOfBounds = emitter.Or(address.isOutOfBounds, emitter.GreaterThanEqual(value, width));
 
             // Min coordinate against max-1
             value = extended.template Clamp<UInt32>(value, emitter.UInt32(0), emitter.Sub(width, emitter.UInt32(1)));
+            return width;
         }
 
         /// Guard a coordinate against its bounds at a specific mip level
         /// \param value coordinate to guard
         /// \param width coordinate bound
         /// \param mipLevel the target mip level
-        void GuardCoordinateToLogicalMip(UInt32& value, UInt32 width, UInt32 mipLevel) {
+        UInt32 GuardCoordinateToLogicalMip(TexelAddress<UInt32>& address, UInt32& value, UInt32 width, UInt32 mipLevel) {
             ExtendedEmitter extended(emitter);
 
             // mipWidth = 2^mip
@@ -218,7 +234,7 @@ namespace Backend::IL {
             width = extended.template Max<UInt32>(emitter.UInt32(1u), emitter.FloatToUInt32(mipFloor));
 
             // Guard against the logical size
-            return GuardCoordinate(value, width);
+            return GuardCoordinate(address, value, width);
         }
 
     private:        

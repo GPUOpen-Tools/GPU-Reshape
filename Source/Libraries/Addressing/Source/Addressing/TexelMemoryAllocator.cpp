@@ -133,6 +133,14 @@ void TexelMemoryAllocator::Initialize(CommandBuilder &builder, const TexelMemory
     // Fill resource header
     builder.StageBuffer(texelBlocksBufferID, allocation.texelBaseBlock * sizeof(uint32_t), sizeof(uint32_t) * headerDWords.Size(), headerDWords.Data());
 
+    // Clear all states
+    builder.ClearBuffer(
+        texelBlocksBufferID,
+        (allocation.texelBaseBlock + allocation.headerDWordCount) * sizeof(uint32_t),
+        (allocation.texelBlockCount) * sizeof(uint32_t),
+        0u
+    );
+
     // Cleanup
     headerDWords.Clear();
 }

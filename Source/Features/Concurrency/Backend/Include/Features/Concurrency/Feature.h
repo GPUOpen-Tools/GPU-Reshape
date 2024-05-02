@@ -36,15 +36,18 @@
 #include <Backend/ShaderData/IShaderDataHost.h>
 #include <Backend/IL/BasicBlock.h>
 #include <Backend/IL/VisitContext.h>
+#include <Backend/Scheduler/SchedulerPrimitive.h>
+
+// Addressing
+#include <Addressing/TexelMemoryAllocation.h>
 
 // Message
 #include <Message/MessageStream.h>
 
-// Std
-#include <atomic>
-
 // Forward declarations
 class IShaderSGUIDHost;
+class TexelMemoryAllocator;
+class IScheduler;
 
 class ConcurrencyFeature final : public IFeature, public IShaderFeature {
 public:
@@ -76,25 +79,54 @@ public:
 
 public:
     /// Proxies
-    void OnDrawInstanced(CommandContext* context, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
-    void OnDrawIndexedInstanced(CommandContext* context, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance);
-    void OnDispatch(CommandContext* context, uint32_t threadGroupX, uint32_t threadGroupY, uint32_t threadGroupZ);
+    void OnCreateResource(const ResourceCreateInfo& source);
+    void OnDestroyResource(const ResourceInfo& source);
+    void OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount);
 
+private:
+    struct Allocation {
+        /// The underlying allocation
+        TexelMemoryAllocation memory;
+    };
+
+    /// Shared texel allocator
+    ComRef<TexelMemoryAllocator> texelAllocator;
+
+    /// All allocations
+    std::unordered_map<uint64_t, Allocation> allocations;
+
+private:
+    struct MappingTag {
+        uint64_t puid{0};
+        uint32_t memoryBaseAlign32{0};
+    };
+
+    /// Current queue
+    std::vector<MappingTag> pendingMappingQueue;
+
+private:
+    /// Monotonically incremented primitive counter
+    uint64_t exclusiveTransferPrimitiveMonotonicCounter{0};
+
+    /// Primitive used for all transfer synchronization
+    SchedulerPrimitiveID exclusiveTransferPrimitiveID{InvalidSchedulerPrimitiveID};
+    
 private:
     /// Hosts
     ComRef<IShaderSGUIDHost> sguidHost{nullptr};
     ComRef<IShaderDataHost> shaderDataHost{nullptr};
+    ComRef<IScheduler> scheduler{nullptr};
+
+    /// Shader data
+    ShaderDataID puidMemoryBaseBufferID{InvalidShaderDataID};
 
     /// Export id for this feature
     ShaderExportID exportID{};
 
-    /// Shader data
-    ShaderDataID lockBufferID{InvalidShaderDataID};
-    ShaderDataID eventID{InvalidShaderDataID};
-
-    /// Cyclic event counter
-    std::atomic<uint32_t> eventCounter{720};
-
     /// Shared stream
     MessageStream stream;
+
+private:
+    /// Shared lock
+    std::mutex mutex;
 };

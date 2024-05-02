@@ -36,6 +36,7 @@ enum class CommandType {
 
     /// Resources
     StageBuffer,
+    ClearBuffer,
 
     /// Invokes
     Dispatch,

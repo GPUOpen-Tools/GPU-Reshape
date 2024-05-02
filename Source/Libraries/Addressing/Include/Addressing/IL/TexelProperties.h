@@ -35,6 +35,12 @@
 struct TexelProperties {
     /// Address of the texel
     TexelAddress<IL::ID> address;
+    
+    /// Source view coordinates
+    IL::ID x{};
+    IL::ID y{};
+    IL::ID z{};
+    IL::ID mip{};
 
     /// The packed token of the owning resource
     IL::ID packedToken{IL::InvalidID};

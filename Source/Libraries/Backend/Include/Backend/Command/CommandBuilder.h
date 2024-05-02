@@ -88,6 +88,20 @@ struct CommandBuilder {
         buffer.Increment();
     }
 
+    /// Clear a buffer
+    /// \param id buffer id
+    /// \param offset offset into buffer
+    /// \param length length of data to stage
+    /// \param value dword to be written
+    void ClearBuffer(ShaderDataID id, size_t offset, size_t length, uint32_t value) {
+        buffer.Add(ClearBufferCommand {
+            .id = id,
+            .offset = offset,
+            .length = length,
+            .value = value
+        });
+    }
+
     /// Dispatch the bound shader program
     /// \param groupCountX number of groups X
     /// \param groupCountY number of groups Y

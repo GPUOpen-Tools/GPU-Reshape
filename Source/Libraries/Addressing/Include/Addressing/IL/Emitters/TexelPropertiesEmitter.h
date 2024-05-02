@@ -96,10 +96,10 @@ namespace Backend::IL {
             ID zero = program->GetConstants().UInt(0)->id;
 
             // Addressing offsets
-            ID x = zero;
-            ID y = zero;
-            ID z = zero;
-            ID mip = zero;
+            out.x = zero;
+            out.y = zero;
+            out.z = zero;
+            out.mip = zero;
 
             // Get offsets from instruction
             switch (instr->opCode) {
@@ -109,22 +109,22 @@ namespace Backend::IL {
                 }
                 case OpCode::LoadBuffer: {
                     // Buffer types just return the linear index
-                    x = instr->As<LoadBufferInstruction>()->index;
+                    out.x = instr->As<LoadBufferInstruction>()->index;
                     break;
                 }
                 case OpCode::StoreBuffer: {
                     // Buffer types just return the linear index
-                    x = instr->As<StoreBufferInstruction>()->index;
+                    out.x = instr->As<StoreBufferInstruction>()->index;
                     break;
                 }
                 case OpCode::LoadBufferRaw: {
                     // Buffer types just return the linear index
-                    x = instr->As<LoadBufferRawInstruction>()->index;
+                    out.x = instr->As<LoadBufferRawInstruction>()->index;
                     break;
                 }
                 case OpCode::StoreBufferRaw: {
                     // Buffer types just return the linear index
-                    x = instr->As<StoreBufferRawInstruction>()->index;
+                    out.x = instr->As<StoreBufferRawInstruction>()->index;
                     break;
                 }
                 case OpCode::StoreTexture: {
@@ -132,11 +132,11 @@ namespace Backend::IL {
 
                     // Vectorized index?
                     if (const Type *indexType = program->GetTypeMap().GetType(_instr.index); indexType->Is<VectorType>()) {
-                        if (dimensions > 0) x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
-                        if (dimensions > 1) y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
-                        if (dimensions > 2) z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
+                        if (dimensions > 0) out.x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
+                        if (dimensions > 1) out.y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
+                        if (dimensions > 2) out.z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
                     } else {
-                        x = _instr.index;
+                        out.x = _instr.index;
                     }
                     break;
                 }
@@ -145,15 +145,15 @@ namespace Backend::IL {
 
                     // Vectorized index?
                     if (const Type *indexType = program->GetTypeMap().GetType(_instr.index); indexType->Is<VectorType>()) {
-                        if (dimensions > 0) x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
-                        if (dimensions > 1) y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
-                        if (dimensions > 2) z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
+                        if (dimensions > 0) out.x = emitter.Extract(_instr.index, program->GetConstants().UInt(0)->id);
+                        if (dimensions > 1) out.y = emitter.Extract(_instr.index, program->GetConstants().UInt(1)->id);
+                        if (dimensions > 2) out.z = emitter.Extract(_instr.index, program->GetConstants().UInt(2)->id);
                     } else {
-                        x = _instr.index;
+                        out.x = _instr.index;
                     }
 
                     if (_instr.mip != InvalidID) {
-                        mip = _instr.mip;
+                        out.mip = _instr.mip;
                     }
                     break;
                 }
@@ -184,10 +184,10 @@ namespace Backend::IL {
             // Different resource types may use different addressing schemas
             TexelAddressEmitter addressEmitter(emitter, token, subresourceEmitter);
             if (resourceType->Is<TextureType>()) {
-                out.address = addressEmitter.LocalTextureTexelAddress(x, y, z, mip, isVolumetric);
+                out.address = addressEmitter.LocalTextureTexelAddress(out.x, out.y, out.z, out.mip, isVolumetric);
             } else {
                 ASSERT(resourceType->Is<Backend::IL::BufferType>(), "Expected buffer type");
-                out.address = addressEmitter.LocalBufferTexelAddress(x);
+                out.address = addressEmitter.LocalBufferTexelAddress(out.x);
             }
 
             // OK

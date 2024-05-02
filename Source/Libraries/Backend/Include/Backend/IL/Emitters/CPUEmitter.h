@@ -26,6 +26,31 @@ namespace IL {
             ASSERT(condition, message);
         }
 
+        /// Logical and two values
+        /// \param lhs let hand side
+        /// \param rhs right hand side
+        /// \return resulting value
+        bool And(bool lhs, bool rhs) {
+            return lhs && rhs;
+        }
+
+        /// Logical or two values
+        /// \param lhs let hand side
+        /// \param rhs right hand side
+        /// \return resulting value
+        bool Or(bool lhs, bool rhs) {
+            return lhs || rhs;
+        }
+
+        /// Check if a value is greater than or equal to
+        /// \param lhs let hand side
+        /// \param rhs right hand side
+        /// \return resulting value
+        template<typename T>
+        T GreaterThanEqual(T lhs, T rhs) {
+            return lhs >= rhs;
+        }
+
         /// Add two values
         /// \param lhs let hand side
         /// \param rhs right hand side
@@ -194,6 +219,11 @@ namespace IL {
 
         /// Literal emitter
         uint32_t UInt32(uint32_t value) {
+            return value;
+        }
+        
+        /// Literal emitter
+        bool Bool(bool value) {
             return value;
         }
     };

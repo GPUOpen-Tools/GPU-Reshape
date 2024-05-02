@@ -201,8 +201,11 @@ namespace GRS.Features.Concurrency.UIX.Workspace
                     // Get resource
                     ResourceValidationObject resourceValidationObject = detailViewModel.FindOrAddResource(resource);
 
+                    // Read coordinate
+                    uint[] coordinate = detailChunk.coordinate;
+                    
                     // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance(_reducedMessages[message.sguid].Content);
+                    resourceValidationObject.AddUniqueInstance($"Potential race condition detected at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}");
                 }
             }
             

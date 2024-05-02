@@ -264,7 +264,7 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
     // Translate type
     switch (type) {
         default:
-        ASSERT(false, "Invalid resource type");
+            ASSERT(false, "Invalid resource type");
             break;
         case ResourceType::Texture1D:
         case ResourceType::RWTexture1D:
@@ -272,6 +272,8 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
             break;
         case ResourceType::Texture2D:
         case ResourceType::RWTexture2D:
+        case ResourceType::Texture2DArray:
+        case ResourceType::RWTexture2DArray:
             resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
             break;
         case ResourceType::Texture3D:
@@ -322,12 +324,14 @@ ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_
             case ResourceType::TexelBuffer:
             case ResourceType::Texture1D:
             case ResourceType::Texture2D:
+            case ResourceType::Texture2DArray:
             case ResourceType::Texture3D:
                 range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
                 break;
             case ResourceType::RWTexelBuffer:
             case ResourceType::RWTexture1D:
             case ResourceType::RWTexture2D:
+            case ResourceType::RWTexture2DArray:
             case ResourceType::RWTexture3D:
                 range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
                 break;
@@ -431,10 +435,30 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 set.count++;
                 break;
             }
+            case ResourceType::Texture2DArray: {
+                D3D12_SHADER_RESOURCE_VIEW_DESC desc{};
+                desc.Format = resourceDesc.Format;
+                desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                desc.Texture2DArray.MipLevels = 1;
+                desc.Texture2DArray.ArraySize = resourceDesc.DepthOrArraySize;
+                device->CreateShaderResourceView(resource.resource.Get(), &desc, sharedResourceHeap.sharedCPUHeapOffset);
+                set.count++;
+                break;
+            }
             case ResourceType::RWTexture2D: {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
                 desc.Format = resourceDesc.Format;
                 desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+                device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
+                set.count++;
+                break;
+            }
+            case ResourceType::RWTexture2DArray: {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC desc{};
+                desc.Format = resourceDesc.Format;
+                desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                desc.Texture2DArray.ArraySize = resourceDesc.DepthOrArraySize;
                 device->CreateUnorderedAccessView(resource.resource.Get(), nullptr, &desc, sharedResourceHeap.sharedCPUHeapOffset);
                 set.count++;
                 break;
@@ -734,6 +758,8 @@ Device::HeapInfo &Device::GetHeapForType(ResourceType type) {
         case ResourceType::RWTexture1D:
         case ResourceType::Texture2D:
         case ResourceType::RWTexture2D:
+        case ResourceType::Texture2DArray:
+        case ResourceType::RWTexture2DArray:
         case ResourceType::Texture3D:
         case ResourceType::RWTexture3D:
         case ResourceType::CBuffer:

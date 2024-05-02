@@ -207,6 +207,9 @@ void Assembler::AssembleResources() {
             case ResourceType::RWTexture2D:
                 types << "ResourceType::RWTexture2D";
                 break;
+            case ResourceType::RWTexture2DArray:
+                types << "ResourceType::RWTexture2DArray";
+                break;
             case ResourceType::Texture3D:
                 types << "ResourceType::Texture3D";
                 break;
@@ -279,6 +282,13 @@ void Assembler::AssembleResources() {
                 create << resource.initialization.sizes.at(0) << ", ";
                 create << resource.initialization.sizes.at(1) << ", ";
                 create << "1, ";
+                create << "data" << i << ", " << resource.initialization.data.size() << ");\n";
+                break;
+            case ResourceType::RWTexture2DArray:
+                create << "TextureID resource" << i << " = device->CreateTexture(ResourceType::RWTexture2DArray, Backend::IL::Format::" << resource.format << ", ";
+                create << resource.initialization.sizes.at(0) << ", ";
+                create << resource.initialization.sizes.at(1) << ", ";
+                create << resource.initialization.sizes.at(2) << ", ";
                 create << "data" << i << ", " << resource.initialization.data.size() << ");\n";
                 break;
             case ResourceType::Texture3D:

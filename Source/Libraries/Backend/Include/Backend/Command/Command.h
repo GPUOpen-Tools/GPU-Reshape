@@ -117,6 +117,13 @@ struct StageBufferCommand : public TCommand<StageBufferCommand, CommandType::Sta
     StageBufferFlagSet flags;
 };
 
+struct ClearBufferCommand : public TCommand<ClearBufferCommand, CommandType::ClearBuffer> {
+    ShaderDataID id;
+    size_t offset;
+    size_t length;
+    uint32_t value;
+};
+
 struct DispatchCommand : public TCommand<DispatchCommand, CommandType::Dispatch> {
     uint32_t groupCountX;
     uint32_t groupCountY;

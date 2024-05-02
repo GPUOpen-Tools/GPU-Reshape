@@ -412,6 +412,8 @@ void Device::ReleaseResources() {
             case ResourceType::RWTexture1D:
             case ResourceType::Texture2D:
             case ResourceType::RWTexture2D:
+            case ResourceType::Texture2DArray:
+            case ResourceType::RWTexture2DArray:
             case ResourceType::Texture3D:
             case ResourceType::RWTexture3D:
                 vkDestroyImageView(device, info.texture.view, nullptr);
@@ -543,7 +545,7 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
 
     // Image creation info
     VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-    imageInfo.extent = VkExtent3D{width, height, depth};
+    imageInfo.extent = VkExtent3D{width, height, 1u};
     imageInfo.arrayLayers = 1;
     imageInfo.format = Translate(format);
     imageInfo.mipLevels = 1;
@@ -564,9 +566,15 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
             imageInfo.imageType = VK_IMAGE_TYPE_2D;
             imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
             break;
+        case ResourceType::Texture2DArray:
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+            imageInfo.arrayLayers = depth;
+            break;
         case ResourceType::Texture3D:
             imageInfo.imageType = VK_IMAGE_TYPE_3D;
             imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+            imageInfo.extent.depth = depth;
             break;
         case ResourceType::RWTexture1D:
             imageInfo.imageType = VK_IMAGE_TYPE_1D;
@@ -576,9 +584,15 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
             imageInfo.imageType = VK_IMAGE_TYPE_2D;
             imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
             break;
+        case ResourceType::RWTexture2DArray:
+            imageInfo.imageType = VK_IMAGE_TYPE_2D;
+            imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+            imageInfo.arrayLayers = depth;
+            break;
         case ResourceType::RWTexture3D:
             imageInfo.imageType = VK_IMAGE_TYPE_3D;
             imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+            imageInfo.extent.depth = depth;
             break;
     }
 
@@ -612,6 +626,11 @@ TextureID Device::CreateTexture(ResourceType type, Backend::IL::Format format, u
         case ResourceType::Texture2D:
         case ResourceType::RWTexture2D:
             imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            break;
+        case ResourceType::Texture2DArray:
+        case ResourceType::RWTexture2DArray:
+            imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            imageViewInfo.subresourceRange.layerCount = depth;
             break;
         case ResourceType::Texture3D:
         case ResourceType::RWTexture3D:
@@ -678,11 +697,13 @@ ResourceLayoutID Device::CreateResourceLayout(const ResourceType *types, uint32_
                 break;
             case ResourceType::Texture1D:
             case ResourceType::Texture2D:
+            case ResourceType::Texture2DArray:
             case ResourceType::Texture3D:
                 binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                 break;
             case ResourceType::RWTexture1D:
             case ResourceType::RWTexture2D:
+            case ResourceType::RWTexture2DArray:
             case ResourceType::RWTexture3D:
                 binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 break;
@@ -716,6 +737,8 @@ static bool HasImageDescriptor(ResourceType type) {
         case ResourceType::RWTexture1D:
         case ResourceType::Texture2D:
         case ResourceType::RWTexture2D:
+        case ResourceType::Texture2DArray:
+        case ResourceType::RWTexture2DArray:
         case ResourceType::Texture3D:
         case ResourceType::RWTexture3D:
         case ResourceType::SamplerState:
@@ -773,11 +796,13 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                     break;
                 case ResourceType::Texture1D:
                 case ResourceType::Texture2D:
+                case ResourceType::Texture2DArray:
                 case ResourceType::Texture3D:
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     break;
                 case ResourceType::RWTexture1D:
                 case ResourceType::RWTexture2D:
+                case ResourceType::RWTexture2DArray:
                 case ResourceType::RWTexture3D:
                     imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
                     break;
@@ -814,12 +839,14 @@ ResourceSetID Device::CreateResourceSet(ResourceLayoutID layout, const ResourceI
                 break;
             case ResourceType::Texture1D:
             case ResourceType::Texture2D:
+            case ResourceType::Texture2DArray:
             case ResourceType::Texture3D:
                 write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                 write.pImageInfo = &imageInfos[imageOffset++];
                 break;
             case ResourceType::RWTexture1D:
             case ResourceType::RWTexture2D:
+            case ResourceType::RWTexture2DArray:
             case ResourceType::RWTexture3D:
                 write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                 write.pImageInfo = &imageInfos[imageOffset++];

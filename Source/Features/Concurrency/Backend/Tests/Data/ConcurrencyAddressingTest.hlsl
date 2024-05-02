@@ -24,22 +24,27 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+//! KERNEL   Compute "main"
+//! DISPATCH 64, 64, 64
 
-namespace Test {
-    enum class ResourceType {
-        TexelBuffer,
-        RWTexelBuffer,
-        Texture1D,
-        RWTexture1D,
-        Texture2D,
-        Texture2DArray,
-        RWTexture2D,
-        RWTexture2DArray,
-        Texture3D,
-        RWTexture3D,
-        SamplerState,
-        StaticSamplerState,
-        CBuffer
-    };
+//! SCHEMA "Schemas/Features/Concurrency.h"
+
+//! RESOURCE RWBuffer<R32Float> size:1024
+[[vk::binding(0)]] RWBuffer<float> bufferRW : register(u0, space0);
+
+//! RESOURCE RWTexture2DArray<R32Float> size:512,512,512
+[[vk::binding(1)]] RWTexture2DArray<float> arrayRW : register(u1, space0);
+
+//! RESOURCE RWTexture2DArray<R32Float> size:32,32,32
+[[vk::binding(2)]] RWTexture2DArray<float> arrayRWSmall : register(u2, space0);
+
+[numthreads(4, 4, 4)]
+void main(uint3 dtid : SV_DispatchThreadID) {
+    // Ensure all addressing is valid
+    //! MESSAGE ResourceRaceCondition[0]
+    arrayRW[uint3(dtid.x, dtid.y, dtid.z)] = 1.0f;
+    
+    // Ensure addressing with bounds checking is working
+    //! MESSAGE ResourceRaceCondition[0]
+    arrayRWSmall[uint3(dtid.x, dtid.y, dtid.z)] = 1.0f;
 }

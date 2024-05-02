@@ -3248,15 +3248,27 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                     record.id = static_cast<uint32_t>(LLVMFunctionRecord::InstBinOp);
                     record.opCount = 3;
                     
+                    // Get castee type
+                    auto valueType = program.GetTypeMap().GetType(_instr->value);
+
+                    // Create mask
+                    IL::ID xorMask;
+                    if (auto intType = valueType->Cast<Backend::IL::IntType>()) {
+                        xorMask = program.GetConstants().UInt(~0u, intType->bitWidth)->id;
+                    } else {
+                        ASSERT(valueType->Is<Backend::IL::BoolType>(), "Unexpected not value");
+                        xorMask = program.GetConstants().FindConstantOrAdd(
+                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
+                            IL::BoolConstant{.value = true}
+                        )->id;
+                    }
+
                     // Handle as unary
                     UnaryOpSVOX(block, instr->result, _instr->value, [&](const Backend::IL::Type* type, IL::ID result, IL::ID value) {
                         record.SetUser(true, ~0u, result);
                         record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                         record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
-                        record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().FindConstantOrAdd(
-                            program.GetTypeMap().FindTypeOrAdd(Backend::IL::BoolType{}),
-                            Backend::IL::BoolConstant{.value = true}
-                        )->id);
+                        record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(xorMask);
                         record.ops[2] = static_cast<uint64_t>(LLVMBinOp::XOr);
                         block->AddRecord(record);
                     });

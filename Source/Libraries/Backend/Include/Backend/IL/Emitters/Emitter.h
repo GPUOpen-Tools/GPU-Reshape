@@ -223,6 +223,13 @@ namespace IL {
             return UInt(8, value);
         }
 
+        /// Add a bool value
+        /// \param value the constant value
+        /// \return value id
+        ID Bool(bool value) {
+            return program->GetConstants().Bool(value)->id;
+        }
+
         /// Add a floating point instruction
         /// \param result the result id
         /// \param bitWidth the bit width of the type

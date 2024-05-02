@@ -50,6 +50,7 @@ target_link_libraries(
     GRS.Features.Concurrency.Backend PUBLIC
     GRS.Libraries.Common
     GRS.Libraries.Backend
+    GRS.Libraries.Addressing
     GRS.Features.Descriptor.Backend
 )
 
@@ -64,6 +65,7 @@ add_custom_command(
 # Test files
 Project_AddBackendTest_Common(GeneratedTest Concurrency)
 Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencySimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Concurrency Tests/Data/ConcurrencyAddressingTest.hlsl)
 
 Project_AddTest(
         NAME GRS.Features.Concurrency.Tests

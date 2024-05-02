@@ -280,7 +280,14 @@ namespace Backend::IL {
             case OpCode::Not: {
                 auto _instr = instr->As<NotInstruction>();
                 return FoldNumericConstants(program, std::make_tuple(map(_instr->value)), [](auto value) {
-                    return !value;
+                    if constexpr (IsNumericV<decltype(value)>) {
+                        return ~value;
+                    } else if constexpr(std::is_same_v<decltype(value), bool>) {
+                        return !value;
+                    } else {
+                        ASSERT(false, "Invalid operation");
+                        return value;
+                    }
                 });
             }
             case OpCode::And: {

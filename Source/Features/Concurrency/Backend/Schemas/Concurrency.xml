@@ -31,6 +31,8 @@
     <shader-export name="ResourceRaceCondition">
         <chunk name="Detail">
             <field name="token" type="uint32"/>
+            <field name="coordinate" type="array" element="uint32" length="3"/>
+            <field name="mip" type="uint32"/>
         </chunk>
         
         <field name="LUID" type="uint32" bits="10"/>
