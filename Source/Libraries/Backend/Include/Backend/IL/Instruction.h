@@ -205,6 +205,7 @@ namespace IL {
         ID buffer;
         ID index;
         ID value;
+        ID offset;
         ComponentMaskSet mask;
     };
 
@@ -222,6 +223,7 @@ namespace IL {
         ID buffer;
         ID index;
         ID value;
+        ID offset;
         ComponentMaskSet mask;
         uint32_t alignment;
     };

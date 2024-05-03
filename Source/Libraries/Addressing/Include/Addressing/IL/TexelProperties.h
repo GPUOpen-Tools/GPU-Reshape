@@ -41,6 +41,7 @@ struct TexelProperties {
     IL::ID y{};
     IL::ID z{};
     IL::ID mip{};
+    IL::ID offset{};
 
     /// The packed token of the owning resource
     IL::ID packedToken{IL::InvalidID};

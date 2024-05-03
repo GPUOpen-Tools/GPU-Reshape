@@ -100,6 +100,7 @@ namespace Backend::IL {
             out.y = zero;
             out.z = zero;
             out.mip = zero;
+            out.offset = zero;
 
             // Get offsets from instruction
             switch (instr->opCode) {
@@ -108,23 +109,39 @@ namespace Backend::IL {
                     return {};
                 }
                 case OpCode::LoadBuffer: {
-                    // Buffer types just return the linear index
-                    out.x = instr->As<LoadBufferInstruction>()->index;
+                    auto _instr = instr->As<LoadBufferInstruction>();
+                    out.x = _instr->index;
+
+                    if (_instr->offset != InvalidID) {
+                        out.offset = _instr->offset;
+                    }
                     break;
                 }
                 case OpCode::StoreBuffer: {
-                    // Buffer types just return the linear index
-                    out.x = instr->As<StoreBufferInstruction>()->index;
+                    auto _instr = instr->As<StoreBufferInstruction>();
+                    out.x = _instr->index;
+
+                    if (_instr->offset != InvalidID) {
+                        out.offset = _instr->offset;
+                    }
                     break;
                 }
                 case OpCode::LoadBufferRaw: {
-                    // Buffer types just return the linear index
-                    out.x = instr->As<LoadBufferRawInstruction>()->index;
+                    auto _instr = instr->As<LoadBufferRawInstruction>();
+                    out.x = _instr->index;
+
+                    if (_instr->offset != InvalidID) {
+                        out.offset = _instr->offset;
+                    }
                     break;
                 }
                 case OpCode::StoreBufferRaw: {
-                    // Buffer types just return the linear index
-                    out.x = instr->As<StoreBufferRawInstruction>()->index;
+                    auto _instr = instr->As<StoreBufferRawInstruction>();
+                    out.x = _instr->index;
+
+                    if (_instr->offset != InvalidID) {
+                        out.offset = _instr->offset;
+                    }
                     break;
                 }
                 case OpCode::StoreTexture: {
@@ -187,7 +204,7 @@ namespace Backend::IL {
                 out.address = addressEmitter.LocalTextureTexelAddress(out.x, out.y, out.z, out.mip, isVolumetric);
             } else {
                 ASSERT(resourceType->Is<Backend::IL::BufferType>(), "Expected buffer type");
-                out.address = addressEmitter.LocalBufferTexelAddress(out.x);
+                out.address = addressEmitter.LocalBufferTexelAddress(out.x, out.offset);
             }
 
             // OK

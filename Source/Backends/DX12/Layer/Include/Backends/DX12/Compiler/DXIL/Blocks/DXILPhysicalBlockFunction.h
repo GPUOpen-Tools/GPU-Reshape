@@ -301,6 +301,11 @@ private:
     /// Does the record have a result?
     bool HasResult(const struct LLVMRecord& record);
 
+    /// Get an operand, or, if undef, an invalid id
+    /// \param id id to check
+    /// \return id or invalid id
+    IL::ID GetOperandOrInvalid(IL::ID id);
+
     /// Try to parse an intrinsic
     /// \param basicBlock output bb
     /// \param reader record reader

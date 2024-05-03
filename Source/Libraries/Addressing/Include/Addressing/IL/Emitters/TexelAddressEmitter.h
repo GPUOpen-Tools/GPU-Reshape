@@ -65,8 +65,9 @@ namespace Backend::IL {
 
         /// Get the texel address of a buffer offset
         /// \param x resource local x coordinate
+        /// \param byteOffset the byte offset into the (x) element
         /// \return texel offset
-        TexelAddress<UInt32> LocalBufferTexelAddress(UInt32 x) {
+        TexelAddress<UInt32> LocalBufferTexelAddress(UInt32 x, UInt32 byteOffset) {
             TexelAddress<UInt32> out;
             
             if (kGuardCoordinates) {
@@ -109,6 +110,10 @@ namespace Backend::IL {
             // Select expansion or contraction
             IL::ID isExpansion = emitter.GreaterThan(tokenEmitter.GetViewFormatSize(), tokenEmitter.GetFormatSize());
             x = emitter.Select(isExpansion, expandedTexel, contractedTexel);
+
+            // Offset the "coordinate" by the byte offset, said offset granularity is that of the format
+            IL::ID formatByteOffset = emitter.Div(byteOffset, tokenEmitter.GetFormatSize());
+            x = emitter.Add(x, formatByteOffset);
 
             // Constants
             IL::ID zero = emitter.UInt32(0);

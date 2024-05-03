@@ -35,6 +35,18 @@
 //! RESOURCE RWStructuredBuffer width:16 size:1024
 [[vk::binding(1)]] RWStructuredBuffer<float4> structuredRW : register(u1, space0);
 
+struct SubFoo {
+    uint dword;
+};
+
+struct Foo {
+    float dword[4];
+    SubFoo subFoo;
+};
+
+//! RESOURCE RWStructuredBuffer width:20 size:1024
+[[vk::binding(2)]] RWStructuredBuffer<Foo> structuredFooRW : register(u2, space0);
+
 [numthreads(32, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
     //! MESSAGE ResourceRaceCondition[0]
@@ -42,5 +54,16 @@ void main(uint dtid : SV_DispatchThreadID) {
     
     //! MESSAGE ResourceRaceCondition[0]
     structuredRW[dtid] = 1.0f.xxxx;
+    
+    //! MESSAGE ResourceRaceCondition[0]
+    structuredRW[dtid].xyz = 1.0f.xxx;
+    
+    //! MESSAGE ResourceRaceCondition[0]
+    structuredFooRW[dtid / 4].dword[dtid % 4] = 1.0f;
+    
+    if (dtid % 2 == 0) {
+        //! MESSAGE ResourceRaceCondition[0]
+        structuredFooRW[dtid / 2].subFoo.dword = 1.0f;
+    }
 }
 

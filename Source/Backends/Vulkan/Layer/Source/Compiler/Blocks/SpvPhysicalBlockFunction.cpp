@@ -794,6 +794,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                     instr.buffer = image;
                     instr.index = coordinate;
                     instr.value = texel;
+                    instr.offset = program.GetConstants().UInt(0)->id;
                     instr.mask = IL::ComponentMask::All;
                     basicBlock->Append(instr);
                 } else {

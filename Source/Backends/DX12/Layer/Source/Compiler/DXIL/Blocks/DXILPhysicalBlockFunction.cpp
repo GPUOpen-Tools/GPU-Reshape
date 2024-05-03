@@ -1242,6 +1242,15 @@ bool DXILPhysicalBlockFunction::HasResult(const struct LLVMRecord &record) {
     return HasValueAllocation(record.As<LLVMFunctionRecord>(), record.opCount);
 }
 
+IL::ID DXILPhysicalBlockFunction::GetOperandOrInvalid(IL::ID id) {
+    if (const IL::Constant *constant = program.GetConstants().GetConstant(id); constant && constant->Is<IL::UndefConstant>()) {
+        return IL::InvalidID;
+    }
+
+    // Valid
+    return id;
+}
+
 void DXILPhysicalBlockFunction::ParseModuleFunction(struct LLVMRecord &record) {
     LLVMRecordReader reader(record);
 
@@ -1592,7 +1601,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t coordinate = reader.GetMappedRelative(anchor);
-            uint32_t offset = reader.GetMappedRelative(anchor);
+            uint32_t offset = GetOperandOrInvalid(reader.GetMappedRelative(anchor));
 
             // Unused
             GRS_SINK(offset);
@@ -1628,7 +1637,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t coordinate = reader.GetMappedRelative(anchor);
-            uint32_t offset = reader.GetMappedRelative(anchor);
+            uint32_t offset = GetOperandOrInvalid(reader.GetMappedRelative(anchor));
             uint32_t x = reader.GetMappedRelative(anchor);
             uint32_t y = reader.GetMappedRelative(anchor);
             uint32_t z = reader.GetMappedRelative(anchor);
@@ -1636,9 +1645,6 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
 
             // Get mask
             uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
-            // Unused
-            GRS_SINK(offset);
 
             // Get type
             const auto* bufferType = ilTypeMap.GetType(resource)->As<Backend::IL::BufferType>();
@@ -1657,6 +1663,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             instr.buffer = resource;
             instr.index = coordinate;
             instr.value = svoxValue;
+            instr.offset = offset;
             instr.mask = IL::ComponentMaskSet(mask);
             basicBlock->Append(instr);
             return true;
@@ -1678,13 +1685,10 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t coordinate = reader.GetMappedRelative(anchor);
-            uint32_t offset = reader.GetMappedRelative(anchor);
+            uint32_t offset = GetOperandOrInvalid(reader.GetMappedRelative(anchor));
             uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
             uint64_t alignment = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
             
-            // Unused
-            GRS_SINK(offset);
-
             // Emit as load
             IL::LoadBufferRawInstruction instr{};
             instr.opCode = IL::OpCode::LoadBufferRaw;
@@ -1719,7 +1723,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             // Get operands, ignore offset for now
             uint32_t resource = reader.GetMappedRelative(anchor);
             uint32_t coordinate = reader.GetMappedRelative(anchor);
-            uint32_t offset = reader.GetMappedRelative(anchor);
+            uint32_t offset = GetOperandOrInvalid(reader.GetMappedRelative(anchor));
             uint32_t x = reader.GetMappedRelative(anchor);
             uint32_t y = reader.GetMappedRelative(anchor);
             uint32_t z = reader.GetMappedRelative(anchor);
@@ -1728,9 +1732,6 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             // Get mask
             uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
             uint64_t alignment = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
-            // Unused
-            GRS_SINK(offset);
 
             // Get type
             const auto* bufferType = ilTypeMap.GetType(resource)->As<Backend::IL::BufferType>();
@@ -1749,6 +1750,7 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             instr.buffer = resource;
             instr.index = coordinate;
             instr.value = svoxValue;
+            instr.offset = offset;
             instr.mask = IL::ComponentMaskSet(mask);
             instr.alignment = static_cast<uint32_t>(alignment);
             basicBlock->Append(instr);

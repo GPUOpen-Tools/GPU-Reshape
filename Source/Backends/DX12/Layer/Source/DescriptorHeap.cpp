@@ -448,7 +448,7 @@ void WINAPI HookID3D12DeviceCreateUnorderedAccessView(ID3D12Device* _this, ID3D1
                     case D3D12_UAV_DIMENSION_TEXTURE2DMS: {
                         break;
                     }
-                    case D3D12_SRV_DIMENSION_BUFFER: {
+                    case D3D12_UAV_DIMENSION_BUFFER: {
                         if (pDesc->Buffer.StructureByteStride) {
                             mapping.token.viewFormatSize = pDesc->Buffer.StructureByteStride;
                         }

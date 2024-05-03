@@ -153,10 +153,10 @@ TEST_CASE("Backend.IL.BufferAddressing.1D") {
     Backend::IL::AlignedSubresourceEmitter subresourceEmitter(emitter, tokenEmitter);
     Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
 
-    REQUIRE(address.LocalBufferTexelAddress(0).texelOffset == 0);
-    REQUIRE(address.LocalBufferTexelAddress(1).texelOffset == 1);
-    REQUIRE(address.LocalBufferTexelAddress(2).texelOffset == 2);
-    REQUIRE(address.LocalBufferTexelAddress(3).texelOffset == 3);
+    REQUIRE(address.LocalBufferTexelAddress(0, 0).texelOffset == 0);
+    REQUIRE(address.LocalBufferTexelAddress(1, 0).texelOffset == 1);
+    REQUIRE(address.LocalBufferTexelAddress(2, 0).texelOffset == 2);
+    REQUIRE(address.LocalBufferTexelAddress(3, 0).texelOffset == 3);
 }
 
 TEST_CASE("Backend.IL.BufferAddressing.1D.ViewExpansion") {
@@ -171,7 +171,7 @@ TEST_CASE("Backend.IL.BufferAddressing.1D.ViewExpansion") {
     Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
 
     for (uint32_t i = 0; i < 64; i++) {
-        REQUIRE(address.LocalBufferTexelAddress(i).texelOffset == i * 4);
+        REQUIRE(address.LocalBufferTexelAddress(i, 0).texelOffset == i * 4);
     }
 }
 
@@ -187,7 +187,7 @@ TEST_CASE("Backend.IL.BufferAddressing.1D.ViewContraction") {
     Backend::IL::TexelAddressEmitter       address(emitter, tokenEmitter, subresourceEmitter);
 
     for (uint32_t i = 0; i < 64; i++) {
-        REQUIRE(address.LocalBufferTexelAddress(i).texelOffset == i / 4);
+        REQUIRE(address.LocalBufferTexelAddress(i, 0).texelOffset == i / 4);
     }
 }
 
