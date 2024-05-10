@@ -27,35 +27,26 @@
 #pragma once
 
 // Layer
-#include "DXBCPhysicalBlockSection.h"
-#include "DXBCPhysicalBlockShaderSourceInfo.h"
-
-// Std
 #include <string_view>
 
 // Forward declarations
-struct DXParseJob;
+struct IDxcIncludeHandler;
+struct DXCompilerArgument;
 
-/// Debug block
-struct DXBCPhysicalBlockDebug : public DXBCPhysicalBlockSection {
-    DXBCPhysicalBlockDebug(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table);
+class IDXCompilerEnvironment {
+public:
+    virtual ~IDXCompilerEnvironment() = default;
 
-    /// Parse all instructions
-    bool Parse(const DXParseJob& job);
+    /// Get the primary source contents
+    /// \return always valid
+    virtual std::string_view GetSourceContents() = 0;
 
-    /// Scanner for external pdbs
-    DXBCPhysicalBlockScan pdbScanner;
+    /// Enumerate all arguments
+    /// \param count number of arguments
+    /// \param arguments all arguments, if null, count is filled with the number of arguments
+    virtual void EnumerateArguments(uint32_t* count, DXCompilerArgument* arguments) = 0;
 
-    /// Optional, source info block for external pdbs
-    DXBCPhysicalBlockShaderSourceInfo pdbShaderSourceInfo;
-
-private:
-    /// Try to parse a PDB file
-    /// \param path given path
-    /// \return nullptr if failed
-    DXBCPhysicalBlock* TryParsePDB(const std::string_view& path);
-
-private:
-    /// Tie lifetime of external pdb to this block
-    Vector<uint8_t> pdbContainerContents;
+    /// Get the include handler
+    /// \return always valid
+    virtual IDxcIncludeHandler* GetDxcIncludeHandler() = 0;
 };

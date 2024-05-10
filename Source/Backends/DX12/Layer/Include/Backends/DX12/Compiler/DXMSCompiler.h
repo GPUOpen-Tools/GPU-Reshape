@@ -27,35 +27,53 @@
 #pragma once
 
 // Layer
-#include "DXBCPhysicalBlockSection.h"
-#include "DXBCPhysicalBlockShaderSourceInfo.h"
+#include <Backends/DX12/DX12.h>
+
+// Common
+#include <Common/IComponent.h>
+
+// DXC
+#include <DXC/dxcapi.h>
+
+// System
+#include <wrl/client.h>
 
 // Std
-#include <string_view>
+#include <vector>
 
 // Forward declarations
-struct DXParseJob;
+class IDXModule;
+class IDXCompilerEnvironment;
 
-/// Debug block
-struct DXBCPhysicalBlockDebug : public DXBCPhysicalBlockSection {
-    DXBCPhysicalBlockDebug(const Allocators &allocators, Backend::IL::Program &program, DXBCPhysicalBlockTable &table);
+class DXMSCompiler : public TComponent<DXMSCompiler> {
+public:
+    COMPONENT(DXCCompiler);
 
-    /// Parse all instructions
-    bool Parse(const DXParseJob& job);
+    /// Deconstructor
+    ~DXMSCompiler();
 
-    /// Scanner for external pdbs
-    DXBCPhysicalBlockScan pdbScanner;
+    /// Install this compiler
+    /// \return false if failed
+    bool Install();
 
-    /// Optional, source info block for external pdbs
-    DXBCPhysicalBlockShaderSourceInfo pdbShaderSourceInfo;
-
-private:
-    /// Try to parse a PDB file
-    /// \param path given path
+    /// Compile a new module with embedded debug data
+    /// \param module source module
     /// \return nullptr if failed
-    DXBCPhysicalBlock* TryParsePDB(const std::string_view& path);
+    IDxcResult* CompileWithEmbeddedDebug(IDXModule* module);
 
 private:
-    /// Tie lifetime of external pdb to this block
-    Vector<uint8_t> pdbContainerContents;
+    /// Enumerate all module source arguments
+    /// \param environment source environment
+    /// \param out destination arguments
+    void EnumerateArguments(IDXCompilerEnvironment* environment, std::vector<std::wstring>& out);
+
+private:
+    /// Objects
+    Microsoft::WRL::ComPtr<IDxcLibrary> library;
+    Microsoft::WRL::ComPtr<IDxcCompiler3> compiler;
+
+private:
+    /// Dynamic modules
+    HMODULE dxilModule{nullptr};
+    HMODULE dxCompilerModule{nullptr};
 };

@@ -38,6 +38,7 @@
 #include <Backends/DX12/Compiler/Tags.h>
 #include <Backends/DX12/ShaderData/ShaderDataHost.h>
 #include <Backends/DX12/Compiler/Diagnostic/DiagnosticType.h>
+#include <Backends/DX12/Compiler/DXMSCompiler.h>
 
 // Backend
 #include <Backend/IFeatureHost.h>
@@ -65,6 +66,9 @@ bool ShaderCompiler::Install() {
 
     // Optional debug
     debug = registry->Get<ShaderCompilerDebug>();
+
+    // Get the microsoft compiler
+    msCompiler = registry->Get<DXMSCompiler>();
 
     // Get all shader features
     for (const ComRef<IFeature>& feature : device->features) {
@@ -117,32 +121,42 @@ bool ShaderCompiler::InitializeModule(ShaderState *state) {
     std::lock_guard moduleGuad(state->mutex);
 
     // Create the module on demand
-    if (!state->module) {
-        // Get type
-        uint32_t type = *static_cast<const uint32_t *>(state->byteCode.pShaderBytecode);
+    if (state->module) {
+        return true;
+    }
 
-        // Create the module
-        switch (type) {
-            default: {
-                // Unknown type, just skip the job
-                return false;
-            }
-            case 'CBXD': {
-                state->module = new (allocators, kAllocModuleDXBC) DXBCModule(allocators.Tag(kAllocModuleDXBC), state->uid, GlobalUID::New());
-                break;
-            }
-        }
+    // Get type
+    uint32_t type = *static_cast<const uint32_t *>(state->byteCode.pShaderBytecode);
 
-        // Prepare job
-        DXParseJob job;
-        job.byteCode = state->byteCode.pShaderBytecode;
-        job.byteLength = state->byteCode.BytecodeLength;
-        job.pdbController = device->pdbController;
-        job.dxbcConverter = dxbcConverter;
-
-        // Try to parse the bytecode
-        if (!state->module->Parse(job)) {
+    // Create the module
+    switch (type) {
+        default: {
+            // Unknown type, just skip the job
             return false;
+        }
+        case 'CBXD': {
+            state->module = new (allocators, kAllocModuleDXBC) DXBCModule(allocators.Tag(kAllocModuleDXBC), state->uid, GlobalUID::New());
+            break;
+        }
+    }
+
+    // Prepare job
+    DXParseJob job;
+    job.byteCode = state->byteCode.pShaderBytecode;
+    job.byteLength = state->byteCode.BytecodeLength;
+    job.pdbController = device->pdbController;
+    job.dxbcConverter = dxbcConverter;
+
+    // Try to parse the bytecode
+    if (!state->module->Parse(job)) {
+        return false;
+    }
+
+    // If this contains a slim debug module, recompile it all
+    if (!state->module->GetDebug() && state->module->IsSlimDebugModule()) {
+        if (IDXModule* slimModule = CompileSlimModule(state->module)) {
+            destroy(state->module, allocators);
+            state->module = slimModule;
         }
     }
 
@@ -244,4 +258,75 @@ void ShaderCompiler::CompileShader(const ShaderJob &job) {
 
     // Destroy the module
     destroy(module, allocators);
+}
+
+IDXModule* ShaderCompiler::CompileSlimModule(IDXModule* sourceModule) {
+    // Try to compile a new module from the source blob
+    Microsoft::WRL::ComPtr<IDxcResult> result = msCompiler->CompileWithEmbeddedDebug(sourceModule);
+    if (!result) {
+        return nullptr;
+    }
+
+    // Get the status
+    HRESULT status;
+    result->GetStatus(&status);
+
+    // May have failed
+    if (FAILED(status)) {
+#ifndef NDEBUG
+        Microsoft::WRL::ComPtr<IDxcBlobUtf8> errorBlob;
+        if (SUCCEEDED(result->GetOutput(DXC_OUT_ERRORS, __uuidof(IDxcBlobUtf8), &errorBlob, nullptr))) {
+            // Format
+            std::stringstream stream;
+            stream << "Failed to compile slim module:\n";
+            stream.write(errorBlob->GetStringPointer(), errorBlob->GetStringLength());
+
+            // Dump to console
+            OutputDebugStringA(stream.str().c_str());
+#endif // NDEBUG
+        }
+
+        // Treat as complete failure
+        return nullptr;
+    }
+
+    // Get the shader blob
+    Microsoft::WRL::ComPtr<IDxcBlob> blob;
+    result->GetOutput(DXC_OUT_OBJECT, __uuidof(IDxcBlob), &blob, nullptr);
+    
+    // Get type
+    uint32_t type = *static_cast<const uint32_t *>(blob->GetBufferPointer());
+    
+    // Create the module
+    IDXModule* slimModule;
+    switch (type) {
+        default: {
+            // Unknown type
+            return nullptr;
+        }
+        case 'CBXD': {
+            slimModule = new (allocators, kAllocModuleDXBC) DXBCModule(
+                allocators.Tag(kAllocModuleDXBC),
+                 sourceModule->GetProgram()->GetShaderGUID(),
+                 sourceModule->GetInstrumentationGUID()
+            );
+            break;
+        }
+    }
+
+    // Prepare job
+    DXParseJob job;
+    job.byteCode = blob->GetBufferPointer();
+    job.byteLength = blob->GetBufferSize();
+    job.pdbController = device->pdbController;
+    job.dxbcConverter = dxbcConverter;
+
+    // Try to parse the bytecode
+    if (!slimModule->Parse(job)) {
+        destroy(slimModule, allocators);
+        return nullptr;
+    }
+
+    // OK
+    return slimModule;
 }

@@ -39,6 +39,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCSigner.h>
 #include <Backends/DX12/Compiler/DXBC/DXBCConverter.h>
+#include <Backends/DX12/Compiler/DXMSCompiler.h>
 #include <Backends/DX12/Controllers/InstrumentationController.h>
 #include <Backends/DX12/Controllers/FeatureController.h>
 #include <Backends/DX12/Controllers/MetadataController.h>
@@ -283,6 +284,10 @@ HRESULT WINAPI D3D12CreateDeviceGPUOpen(
         // Install the dxil signer
         auto dxilSigner = state->registry.AddNew<DXILSigner>();
         ENSURE(dxilSigner->Install(), "Failed to install DXIL signer");
+        
+        // Install the dxms compiler
+        auto dxmsCompiler = state->registry.AddNew<DXMSCompiler>();
+        ENSURE(dxmsCompiler->Install(), "Failed to install DXMS compiler");
 
         // Install the dxbc signer
         auto dxbcSigner = state->registry.AddNew<DXBCSigner>();
