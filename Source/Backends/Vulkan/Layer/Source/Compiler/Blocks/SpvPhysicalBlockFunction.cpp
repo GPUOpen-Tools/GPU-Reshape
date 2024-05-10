@@ -851,12 +851,35 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
             }
 
             case SpvOpVectorExtractDynamic: {
-                IL::ExtractInstruction instr{};
-                instr.opCode = IL::OpCode::Extract;
-                instr.result = ctx.GetResult();
-                instr.source = source;
-                instr.composite = ctx++;
-                instr.index = ctx++;
+                auto *instr = ALLOCA_SIZE(IL::ExtractInstruction, IL::ExtractInstruction::GetSize(1u));
+                instr->opCode = IL::OpCode::Extract;
+                instr->result = ctx.GetResult();
+                instr->source = source;
+                instr->composite = ctx++;
+                instr->chains.count = 1;
+                instr->chains[0].index = ctx++;
+                basicBlock->Append(instr);
+                break;
+            }
+
+            case SpvOpCompositeExtract: {
+                const uint32_t base = ctx++;
+                
+                // Number of address chains
+                const uint32_t chainCount = ctx.PendingWords();
+                
+                auto *instr = ALLOCA_SIZE(IL::ExtractInstruction, IL::ExtractInstruction::GetSize(chainCount));
+                instr->opCode = IL::OpCode::Extract;
+                instr->result = ctx.GetResult();
+                instr->source = source;
+                instr->composite = base;
+                instr->chains.count = chainCount;
+
+                // Fill chains with literals
+                for (uint32_t i = 0; i < chainCount; i++) {
+                    instr->chains[i].index = program.GetConstants().UInt(ctx++)->id;
+                }
+                
                 basicBlock->Append(instr);
                 break;
             }
@@ -2250,15 +2273,27 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
             case IL::OpCode::Extract: {
                 auto *extract = instr.As<IL::ExtractInstruction>();
 
-                // Only static extraction supported for now
-                const IL::Constant* index = program.GetConstants().GetConstant(extract->index);
-                ASSERT(index, "Dynamic extraction not supported");
-                
-                SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpCompositeExtract, 5, extract->source);
-                spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
-                spv[2] = idMap.Get(extract->result);
-                spv[3] = idMap.Get(extract->composite);
-                spv[4] = static_cast<uint32_t>(index->As<IL::IntConstant>()->value);
+                if (!program.GetConstants().GetConstant(extract->chains[0].index)) {
+                    ASSERT(extract->chains.count == 1u, "Dynamic extraction only supports a single chain");
+                    
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpVectorExtractDynamic, 5, extract->source);
+                    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                    spv[2] = idMap.Get(extract->result);
+                    spv[3] = idMap.Get(extract->composite);
+                    spv[4] = idMap.Get(extract->chains[0].index);
+                } else {
+                    SpvInstruction& spv = stream.TemplateOrAllocate(SpvOpCompositeExtract, 4 + extract->chains.count, extract->source);
+                    spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                    spv[2] = idMap.Get(extract->result);
+                    spv[3] = idMap.Get(extract->composite);
+
+                    for (uint32_t i = 0; i < extract->chains.count; i++) {
+                        const IL::Constant* index = program.GetConstants().GetConstant(extract->chains[i].index);
+                        ASSERT(index, "All indices must be constant");
+                        
+                        spv[4 + i] = static_cast<uint32_t>(index->As<IL::IntConstant>()->value);
+                    }
+                }
                 break;
             }
             case IL::OpCode::Return: {

@@ -28,6 +28,9 @@
 #include <Backends/Vulkan/Compiler/SpvPhysicalBlockTable.h>
 #include <Backends/Vulkan/Compiler/SpvParseContext.h>
 
+// Backend
+#include <Backend/IL/Metadata/DataMetadata.h>
+
 void SpvPhysicalBlockAnnotation::Parse() {
     block = table.scan.GetPhysicalBlock(SpvPhysicalBlockType::Annotation);
 
@@ -86,6 +89,12 @@ void SpvPhysicalBlockAnnotation::Parse() {
                         program.GetMetadataMap().AddMetadata(target, IL::MetadataType::DivergentResourceIndex);
                         break;
                     }
+                    case SpvDecorationArrayStride: {
+                        program.GetMetadataMap().AddMetadata(target, IL::ArrayStrideMetadata {
+                            .byteStride = ctx++
+                        });
+                        break;
+                    }
                 }
                 break;
             }
@@ -119,6 +128,19 @@ void SpvPhysicalBlockAnnotation::Parse() {
                 if (kv.wordCount) {
                     kv.words = table.recordAllocator.AllocateArray<uint32_t>(kv.wordCount);
                     std::memcpy(kv.words, ctx.GetInstructionCode(), sizeof(uint32_t) * kv.wordCount);
+                }
+                
+                // Handle decoration
+                switch (kv.kind) {
+                    default: {
+                        break;
+                    }
+                    case SpvDecorationOffset: {
+                        program.GetMetadataMap().AddMetadata(target, member, IL::OffsetMetadata {
+                            .byteOffset = kv.words[0]
+                        });
+                        break;
+                    }
                 }
                 
                 memberDecoration.decorations.push_back(kv);

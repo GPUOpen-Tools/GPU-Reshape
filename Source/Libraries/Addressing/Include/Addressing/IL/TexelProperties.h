@@ -43,6 +43,10 @@ struct TexelProperties {
     IL::ID mip{};
     IL::ID offset{};
 
+    /// The value type texel count
+    /// This may not represent the runtime width
+    uint32_t texelCountLiteral{};
+
     /// The packed token of the owning resource
     IL::ID packedToken{IL::InvalidID};
 

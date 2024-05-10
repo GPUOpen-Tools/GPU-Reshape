@@ -29,22 +29,38 @@
 
 //! SCHEMA "Schemas/Features/Initialization.h"
 
-//! RESOURCE RWTexture2D<R32Float> size:64,64
-[[vk::binding(0)]] RWTexture2D<float> textureRW : register(u0, space0);
+struct SubFoo {
+    uint dword;
+};
 
-//! RESOURCE Texture2D<R32Float> size:64,64
-[[vk::binding(1)]] Texture2D<float> textureRO : register(t1, space0);
+struct Foo {
+    float dword[4];
+    SubFoo subFoo;
+};
 
-//! RESOURCE StaticSamplerState
-[[vk::binding(2)]] SamplerState defaultSampler : register(s2, space0);
+//! RESOURCE RWStructuredBuffer width:20 size:2048
+[[vk::binding(0)]] RWStructuredBuffer<Foo> structuredFooRW : register(u0, space0);
+
+//! RESOURCE RWBuffer<R32Float> size:64
+[[vk::binding(1)]] RWBuffer<float> bufferRW : register(u1, space0);
 
 [numthreads(64, 1, 1)]
 void main(uint dtid : SV_DispatchThreadID) {
-    float data = 1.0f;
+    structuredFooRW[dtid].subFoo.dword = 1.0f;
 
-    //! MESSAGE UninitializedResource[64]
-    data += textureRO.SampleLevel(defaultSampler, dtid.xx / 64.0f, 0.0f);
+    // Validate the write chain
+    //! MESSAGE UninitializedResource[0]
+    bufferRW[dtid * 1] = structuredFooRW[dtid].subFoo.dword;
 
-    // Store
-    textureRW[dtid.xx] = data;
+    // Validate the write chain didn't write unrelated bytes
+    //-! MESSAGE UninitializedResource[>0]
+    //bufferRW[dtid * 2] = structuredFooRW[dtid].dword[1];
+
+    // Write all elements
+    //structuredFooRW[0] = (Foo)0;
+
+    // Validate a full write
+    //! MESSAGE UninitializedResource[0]
+    //bufferRW[dtid * 3] = structuredFooRW[0].dword[0];
 }
+

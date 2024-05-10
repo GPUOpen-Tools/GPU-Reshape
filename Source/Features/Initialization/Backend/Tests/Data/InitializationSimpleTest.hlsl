@@ -42,12 +42,12 @@
 void main(uint dtid : SV_DispatchThreadID) {
     float data = 1.0f;
 
-    //! MESSAGE UninitializedResource[0] LUID:0
+    //! MESSAGE UninitializedResource[0]
     data += bufferRW[0];
 
-    //! MESSAGE UninitializedResource[64] LUID:{x == /*Reserved*/ 4 + 3}
+    //! MESSAGE UninitializedResource[64]
     data += textureRO.Load(dtid.x);
 
-    //! MESSAGE UninitializedResource[0] LUID:{x == /*Reserved*/ 4 + 2}
+    //! MESSAGE UninitializedResource[0]
 	bufferRW2[dtid.x] = data;
 }

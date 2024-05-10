@@ -62,6 +62,14 @@ bool SpvPhysicalBlockTable::Parse(const uint32_t *code, uint32_t count) {
     return true;
 }
 
+bool SpvPhysicalBlockTable::Specialize(const SpvJob &job) {
+    // Specialize relevant blocks
+    typeConstantVariable.Specialize(job);
+
+    // OK
+    return true;
+}
+
 bool SpvPhysicalBlockTable::Compile(const SpvJob &job) {
     // Set the new bound
     scan.header.bound = program.GetIdentifierMap().GetMaxID();

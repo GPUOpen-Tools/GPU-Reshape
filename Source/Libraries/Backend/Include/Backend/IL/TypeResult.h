@@ -112,7 +112,7 @@ namespace Backend::IL {
     }
 
     inline const Type* ResultOf(Program& program, const NotInstruction* instr) {
-        return program.GetTypeMap().FindTypeOrAdd(BoolType{});
+        return program.GetTypeMap().GetType(instr->value);
     }
 
     inline const Type* ResultOf(Program& program, const AndInstruction* instr) {
@@ -492,29 +492,40 @@ namespace Backend::IL {
             return nullptr;
         }
 
-        switch (type->kind) {
-            default:
-            ASSERT(false, "Unexpected GEP chain type");
-                return nullptr;
-            case Backend::IL::TypeKind::None:
-                return nullptr;
-            case Backend::IL::TypeKind::Buffer:
-                return type->As<Backend::IL::BufferType>()->elementType;
-            case Backend::IL::TypeKind::Texture:
-                return type->As<Backend::IL::TextureType>()->sampledType;
-            case Backend::IL::TypeKind::Vector:
-                return type->As<Backend::IL::VectorType>()->containedType;
-            case Backend::IL::TypeKind::Matrix:
-                return type->As<Backend::IL::MatrixType>()->containedType;
-            case Backend::IL::TypeKind::Pointer:
-                return type->As<Backend::IL::PointerType>()->pointee;
-            case Backend::IL::TypeKind::Array:
-                return type->As<Backend::IL::ArrayType>()->elementType;
-            case Backend::IL::TypeKind::Struct: {
-                const Constant* index = program.GetConstants().GetConstant(instr->index);
-                ASSERT(index, "Dynamic structured extraction not supported");
-                return type->As<Backend::IL::StructType>()->memberTypes[index->As<IntConstant>()->value];
+        // Walk the chain
+        for (uint32_t i = 0; i < instr->chains.count; i++) {
+            switch (type->kind) {
+                default:
+                    ASSERT(false, "Unexpected GEP chain type");
+                    return nullptr;
+                case Backend::IL::TypeKind::None:
+                    return nullptr;
+                case Backend::IL::TypeKind::Buffer:
+                    type = type->As<Backend::IL::BufferType>()->elementType;
+                    break;
+                case Backend::IL::TypeKind::Texture:
+                    type = type->As<Backend::IL::TextureType>()->sampledType;
+                    break;
+                case Backend::IL::TypeKind::Vector:
+                    type = type->As<Backend::IL::VectorType>()->containedType;
+                    break;
+                case Backend::IL::TypeKind::Matrix:
+                    type = type->As<Backend::IL::MatrixType>()->containedType;
+                    break;
+                case Backend::IL::TypeKind::Pointer:
+                    type = type->As<Backend::IL::PointerType>()->pointee;
+                    break;
+                case Backend::IL::TypeKind::Array:
+                    type = type->As<Backend::IL::ArrayType>()->elementType;
+                    break;
+                case Backend::IL::TypeKind::Struct: {
+                    const Constant* index = program.GetConstants().GetConstant(instr->chains[i].index);
+                    ASSERT(index, "Dynamic structured extraction not supported");
+                    type = type->As<Backend::IL::StructType>()->memberTypes[index->As<IntConstant>()->value];
+                }
             }
         }
+
+        return type;
     }
 }

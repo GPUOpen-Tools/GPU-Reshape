@@ -34,11 +34,21 @@ namespace IL {
         /// Invalid type
         None,
 
+        /// Specifies the member byte wise offset
+        /// Payload: OffsetMetadata
+        Offset,
+
+        /// Specifies the array byte wise stride between elements
+        /// Payload: ArrayStrideMetadata
+        ArrayStride,
+
         /// Specifies that an object is expected to be divergent within a wave
         /// Typically applied to resource indexing operations
+        /// Payload: None
         DivergentResourceIndex,
 
         /// Specifies the workgroup size of a program
+        /// Payload: KernelWorkgroupSizeMetadata
         KernelWorkgroupSize
     };
 }

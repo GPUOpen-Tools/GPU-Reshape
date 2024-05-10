@@ -48,7 +48,9 @@ namespace Backend::IL {
             switch (instr->opCode) {
                 default: {
                     // Unknown addressing, report it to avoid partial-but-similar cases
-                    functor(address, false);
+                    if (!functor(address, false)) {
+                        return;
+                    }
                     return;
                 }
                 case OpCode::AddressChain: {
@@ -57,7 +59,9 @@ namespace Backend::IL {
 
                     // Report all chains
                     for (int32_t i = _instr->chains.count - 1; i >= 0; i--) {
-                        functor(_instr->chains[static_cast<uint32_t>(i)].index, i == 0);
+                        if (!functor(_instr->chains[static_cast<uint32_t>(i)].index, i == 0)) {
+                            return;
+                        }
                     }
 
                     address = _instr->composite;
@@ -65,10 +69,32 @@ namespace Backend::IL {
                 }
                 case OpCode::Alloca: {
                     // End of chain
-                    functor(address, false);
+                    if (!functor(address, false)) {
+                        return;
+                    }
                     return;
                 }
             }
         }
+    }
+
+    /// Get the resource from a chain
+    /// \param program given program
+    /// \param address address to traverse
+    /// \return invalid if not found
+    inline IL::ID GetResourceFromAddressChain(Program& program, IL::ID address) {
+        // Traverse back until we find the resource
+        ID resourceId{InvalidID};
+        IL::VisitGlobalAddressChainReverse(program, address, [&](ID id, bool) {
+            if (IsPointerToResourceType(program.GetTypeMap().GetType(id))) {
+                resourceId = id;
+                return false;
+            }
+
+            // Next!
+            return true;
+        });
+        
+        return resourceId;
     }
 }

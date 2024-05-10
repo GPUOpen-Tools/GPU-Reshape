@@ -28,6 +28,7 @@
 
 // Std
 #include <vector>
+#include <bit>
 
 class BitArray {
 public:
@@ -98,6 +99,18 @@ public:
     /// \return count
     size_t Size() const {
         return elements.size() * 32u;
+    }
+
+    /// Get the number of bits set
+    /// \return bit count
+    size_t PopCount() const {
+        size_t count = 0;
+
+        for (uint32_t element : elements) {
+            count += std::popcount(element);
+        } 
+
+        return count;
     }
 
     /// Get an element

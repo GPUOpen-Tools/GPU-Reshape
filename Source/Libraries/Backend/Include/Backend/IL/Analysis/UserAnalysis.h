@@ -29,6 +29,7 @@
 // Backend
 #include <Backend/IL/InstructionCommon.h>
 #include <Backend/IL/Analysis/IAnalysis.h>
+#include <Backend/IL/Program.h>
 
 // Std
 #include <vector>

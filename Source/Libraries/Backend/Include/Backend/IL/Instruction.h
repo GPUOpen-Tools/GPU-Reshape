@@ -475,11 +475,28 @@ namespace IL {
         InlineArray<AddressChain> chains;
     };
 
+    struct ExtractChain {
+        ID index;
+    };
+
     struct ExtractInstruction : public Instruction {
         static constexpr OpCode kOpCode = OpCode::Extract;
 
+        /// Get size of this instruction
+        /// \param chainCount number of chains
+        /// \return byte size
+        static uint64_t GetSize(uint32_t chainCount) {
+            return sizeof(ExtractInstruction) + InlineArray<ExtractChain>::ElementSize(chainCount);
+        }
+
+        /// Get size of this instruction
+        /// \return byte size
+        uint64_t GetSize() const {
+            return sizeof(ExtractInstruction) + chains.ElementSize();
+        }
+
         ID composite;
-        ID index;
+        InlineArray<ExtractChain> chains;
     };
 
     struct InsertInstruction : public Instruction {
@@ -909,7 +926,7 @@ namespace IL {
             case OpCode::AddressChain:
                 return static_cast<const AddressChainInstruction*>(instruction)->GetSize();
             case OpCode::Extract:
-                return sizeof(ExtractInstruction);
+                return static_cast<const ExtractInstruction*>(instruction)->GetSize();
             case OpCode::Insert:
                 return sizeof(InsertInstruction);
             case OpCode::Select:

@@ -322,15 +322,42 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, c
     ComRef divergencePropagator = simulationAnalysis->FindPropagator<IL::DivergencePropagator>();
 
     // If either the composite or index is constant, no conditional masking will take place
-    if (constantPropagator.IsConstant(instr->composite) || constantPropagator.IsConstant(instr->index)) {
+    if (constantPropagator.IsConstant(instr->composite)) {
         return it;
     }
 
-    // If the index is not divergent, it can go through the M0 register with dynamic addressing
-    if (divergencePropagator->GetDivergence(instr->index) != IL::WorkGroupDivergence::Divergent) {
+    // Outgoing message attributes
+    uint32_t varyingOperandIndex = 0;
+    
+    // If the composite is not constant, we check each access chain
+    bool anyChainVarying = false;
+    bool anyChainDivergent = false;
+
+    // Check if any part of the chain is varying or divergent
+    for (uint32_t i = 0; i < instr->chains.count; i++) {
+        const IL::ExtractChain& chain = instr->chains[i];
+
+        if (constantPropagator.IsVarying(chain.index)) {
+            anyChainVarying     = true;
+            varyingOperandIndex = i;
+        }
+
+        if (divergencePropagator->IsDivergent(chain.index)) {
+            anyChainDivergent = true;
+        }
+    }
+    
+    // If none is varying, this can be collapsed
+    // TODO: Check for partial constants!
+    if (!anyChainVarying) {
         return it;
     }
 
+    // If none is divergent, it can go through the M0 register with dynamic addressing
+    if (!anyChainDivergent) {
+        return it;
+    }
+    
     // TODO: Configurable masking limits
     
     // Bind the current sguid
@@ -343,7 +370,7 @@ IL::BasicBlock::Iterator WaterfallFeature::InjectExtract(IL::Program &program, c
         // Export compile time message
         auto* message = MessageStreamView<WaterfallingConditionMessage>(stream).Add();
         message->sguid = sguid;
-        message->varyingOperandIndex = 0;
+        message->varyingOperandIndex = varyingOperandIndex;
     }
 
     return it;

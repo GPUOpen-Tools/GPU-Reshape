@@ -860,11 +860,18 @@ namespace Studio.Models.IL
                 }
                 case OpCode.Extract:
                 {
-                    instruction = new ExtractInstruction()
+                    ExtractInstruction chain = new()
                     {
-                        Composite = node.Composite,
-                        Index = node.Index
+                        Composite = node.Composite
                     };
+
+                    chain.Chains = new uint[node.Chains.Count];
+                    for (int i = 0; i < chain.Chains.Length; i++)
+                    {
+                        chain.Chains[i] = node.Chains[i];
+                    }
+                    
+                    instruction = chain;
                     break;
                 }
                 case OpCode.Insert:

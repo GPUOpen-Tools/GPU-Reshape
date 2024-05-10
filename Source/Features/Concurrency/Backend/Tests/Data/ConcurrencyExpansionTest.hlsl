@@ -25,7 +25,7 @@
 // 
 
 //! KERNEL   Compute "main"
-//! DISPATCH 64, 1, 1
+//! DISPATCH 4, 1, 1
 
 //! SCHEMA "Schemas/Features/Concurrency.h"
 
@@ -65,5 +65,8 @@ void main(uint dtid : SV_DispatchThreadID) {
         //! MESSAGE ResourceRaceCondition[0]
         structuredFooRW[dtid / 2].subFoo.dword = 1.0f;
     }
+    
+    //! MESSAGE ResourceRaceCondition[>0]
+    bufferRW[dtid/2] = 1.0f;
 }
 

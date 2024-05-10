@@ -52,6 +52,11 @@ struct SpvPhysicalBlockTable {
     /// \return success state
     bool Parse(const uint32_t *code, uint32_t count);
 
+    /// Specialize the entire table
+    /// \param job job to specialize for
+    /// \return success state
+    bool Specialize(const SpvJob& job);
+
     /// Compile the table
     /// \param job the job to compile against
     /// \return success state

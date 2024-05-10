@@ -81,6 +81,16 @@ bool SpvModule::ParseModule(const uint32_t *code, uint32_t wordCount) {
     return true;
 }
 
+bool SpvModule::Specialize(const SpvJob &job) {
+    // Try to specialize for the given job
+    if (!physicalBlockTable->Specialize(job)) {
+        return false;
+    }
+
+    // OK
+    return true;
+}
+
 bool SpvModule::Recompile(const uint32_t *code, uint32_t wordCount, const SpvJob& job) {
     for (IL::Function* fn : program->GetFunctionList()) {
         if (!fn->ReorderByDominantBlocks(true)) {

@@ -178,6 +178,15 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
     // Create a copy of the module, don't modify the source
     SpvModule *module = job.info.state->spirvModule->Copy();
 
+    // Spv job
+    SpvJob spvJob;
+    spvJob.instrumentationKey = job.info.instrumentationKey;
+    spvJob.bindingInfo = shaderExportDescriptorAllocator->GetBindingInfo();
+    spvJob.messages = scope;
+
+    // Specialize the module
+    module->Specialize(spvJob);
+
     // Get user map
     IL::ShaderDataMap& shaderDataMap = module->GetProgram()->GetShaderDataMap();
 
@@ -205,12 +214,6 @@ void ShaderCompiler::CompileShader(const ShaderJobEntry &job) {
         // Inject marked shader feature
         shaderFeatures[i]->Inject(*module->GetProgram(), *job.info.dependentSpecialization);
     }
-
-    // Spv job
-    SpvJob spvJob;
-    spvJob.instrumentationKey = job.info.instrumentationKey;
-    spvJob.bindingInfo = shaderExportDescriptorAllocator->GetBindingInfo();
-    spvJob.messages = scope;
 
     // Recompile the program
     if (!module->Recompile(

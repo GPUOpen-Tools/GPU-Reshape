@@ -66,8 +66,9 @@ namespace Backend::IL {
         /// Get the texel address of a buffer offset
         /// \param x resource local x coordinate
         /// \param byteOffset the byte offset into the (x) element
+        /// \param byteCount the number of bytes being read or written
         /// \return texel offset
-        TexelAddress<UInt32> LocalBufferTexelAddress(UInt32 x, UInt32 byteOffset) {
+        TexelAddress<UInt32> LocalBufferTexelAddress(UInt32 x, UInt32 byteOffset, uint32_t texelCountLiteral) {
             TexelAddress<UInt32> out;
             
             if (kGuardCoordinates) {
@@ -109,11 +110,15 @@ namespace Backend::IL {
 
             // Select expansion or contraction
             IL::ID isExpansion = emitter.GreaterThan(tokenEmitter.GetViewFormatSize(), tokenEmitter.GetFormatSize());
-            x = emitter.Select(isExpansion, expandedTexel, contractedTexel);
+            IL::ID sourceOffset = emitter.Select(isExpansion, expandedTexel, contractedTexel);
 
             // Offset the "coordinate" by the byte offset, said offset granularity is that of the format
-            IL::ID formatByteOffset = emitter.Div(byteOffset, tokenEmitter.GetFormatSize());
-            x = emitter.Add(x, formatByteOffset);
+            IL::ID formatWidthOr1 = emitter.Select(isUntypedFormat, emitter.UInt32(1), tokenEmitter.GetFormatSize());
+            IL::ID formatByteOffset = emitter.Div(byteOffset, formatWidthOr1);
+            sourceOffset = emitter.Add(sourceOffset, formatByteOffset);
+
+            // Determine the number of elements
+            out.texelCount = emitter.Div(emitter.UInt32(texelCountLiteral), formatWidthOr1);
 
             // Constants
             IL::ID zero = emitter.UInt32(0);
@@ -127,7 +132,52 @@ namespace Backend::IL {
             out.logicalHeight = one;
             out.logicalDepth = one;
             out.logicalMips = one;
-            out.texelOffset = x;
+            out.texelOffset = sourceOffset;
+            return out;
+        }
+
+        /// Get the texel address of a buffer offset
+        /// \param x resource local x coordinate
+        /// \param byteOffset the byte offset into the (x) element
+        /// \param texelCountLiteral the number of bytes being read or written
+        /// \return texel offset
+        TexelAddress<UInt32> LocalMemoryTexelAddress(UInt32 x, UInt32 byteOffset, uint32_t texelCountLiteral) {
+            TexelAddress<UInt32> out;
+            
+            if (kGuardCoordinates) {
+                // Default to not out of bounds
+                out.isOutOfBounds = emitter.Bool(false);
+                
+                out.logicalWidth = GuardCoordinate(out, x, tokenEmitter.GetViewWidth());
+            }
+
+            // Offset by base width
+            x = emitter.Add(x, tokenEmitter.GetViewBaseWidth());
+
+            // Is the format per-byte?
+            IL::ID isUntypedFormat = emitter.Equal(tokenEmitter.GetFormatSize(), emitter.UInt32(0));
+            
+            // Offset the "coordinate" by the byte offset, said offset granularity is that of the format
+            IL::ID formatWidthOr1 = emitter.Select(isUntypedFormat, emitter.UInt32(1), tokenEmitter.GetFormatSize());
+            IL::ID formatByteOffset = emitter.Div(byteOffset, formatWidthOr1);
+            IL::ID sourceOffset = emitter.Add(x, formatByteOffset);
+
+            // Determine the number of elements
+            out.texelCount = emitter.Div(emitter.UInt32(texelCountLiteral), formatWidthOr1);
+
+            // Constants
+            IL::ID zero = emitter.UInt32(0);
+            IL::ID one = emitter.UInt32(1);
+            
+            // Just assume the linear index
+            out.x = x;
+            out.y = zero;
+            out.z = zero;
+            out.mip = zero;
+            out.logicalHeight = one;
+            out.logicalDepth = one;
+            out.logicalMips = one;
+            out.texelOffset = sourceOffset;
             return out;
         }
         
@@ -204,6 +254,7 @@ namespace Backend::IL {
             out.z = z;
             out.mip = mip;
             out.texelOffset = texelAddress;
+            out.texelCount = emitter.UInt32(1u);
             return out;
         }
 

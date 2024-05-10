@@ -45,6 +45,9 @@ struct TexelAddress {
     /// Texel address offset
     T texelOffset{};
 
+    /// Number of texels from the offset
+    T texelCount{};
+
     /// Was the addressing out of bounds?
     T isOutOfBounds{};
 };

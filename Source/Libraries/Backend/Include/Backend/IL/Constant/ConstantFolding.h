@@ -449,25 +449,37 @@ namespace Backend::IL {
                 auto _instr = instr->As<ExtractInstruction>();
 
                 const Constant* constant = map(_instr->composite);
-                const Constant* index    = map(_instr->index);
 
-                // Handle composite type
-                switch (constant->kind) {
-                    case ConstantKind::None:
-                    case ConstantKind::Undef:
-                    case ConstantKind::Bool:
-                    case ConstantKind::Int:
-                    case ConstantKind::FP:
-                    case ConstantKind::Unexposed:
-                    case ConstantKind::Null:
-                        return nullptr;
-                    case ConstantKind::Array:
-                        return constant->As<ArrayConstant>()->elements[index->As<IntConstant>()->value];
-                    case ConstantKind::Struct:
-                        return constant->As<StructConstant>()->members[index->As<IntConstant>()->value];
-                    case ConstantKind::Vector:
-                        return constant->As<VectorConstant>()->elements[index->As<IntConstant>()->value];
+                // Fold all chains
+                for (uint32_t i = 0; i < _instr->chains.count; i++) {
+                    ExtractChain chain = _instr->chains[i];
+                    
+                    // Get index
+                    const auto* index = map(chain.index)->template As<IntConstant>();
+
+                    // Handle composite type
+                    switch (constant->kind) {
+                        case ConstantKind::None:
+                        case ConstantKind::Undef:
+                        case ConstantKind::Bool:
+                        case ConstantKind::Int:
+                        case ConstantKind::FP:
+                        case ConstantKind::Unexposed:
+                        case ConstantKind::Null:
+                            return nullptr;
+                        case ConstantKind::Array:
+                            constant = constant->As<ArrayConstant>()->elements[index->value];
+                            break;
+                        case ConstantKind::Struct:
+                            constant = constant->As<StructConstant>()->members[index->value];
+                            break;
+                        case ConstantKind::Vector:
+                            constant = constant->As<VectorConstant>()->elements[index->value];
+                            break;
+                    }
                 }
+
+                return constant;
             }
             case OpCode::Insert: {
                 // TODO: Implement cfold vector insertion

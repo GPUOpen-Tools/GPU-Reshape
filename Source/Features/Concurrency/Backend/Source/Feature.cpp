@@ -37,6 +37,7 @@
 #include <Backend/SubmissionContext.h>
 #include <Backend/Scheduler/IScheduler.h>
 #include <Backend/Scheduler/SchedulerPrimitiveEvent.h>
+#include <Backend/IL/Analysis/StructuralUserAnalysis.h>
 
 // Addressing
 #include <Addressing/TexelMemoryAllocator.h>
@@ -103,6 +104,11 @@ FeatureHookTable ConcurrencyFeature::GetHookTable() {
 
 void ConcurrencyFeature::CollectExports(const MessageStream &exports) {
     stream.Append(exports);
+}
+
+void ConcurrencyFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
+    // Analyze structural usage for all source users
+    program.GetAnalysisMap().FindPassOrCompute<IL::StructuralUserAnalysis>(program);
 }
 
 void ConcurrencyFeature::CollectMessages(IMessageStorage *storage) {
@@ -192,10 +198,10 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         // Manually select the target bit, this follows the same mechanism as the other overloads,
         // in our case we set the target bit to 0 if the address is out of bounds. Effectively disabling
         // the atomic writes without adding block branching logic.
-        IL::ID texelBlockBit = pre.Select(
+        IL::ID guardedTexelCount = pre.Select(
             texelProperties.address.isOutOfBounds,
             program.GetConstants().UInt(0)->id,
-            GetTexelAddressBit(pre, texelProperties.address.texelOffset)
+            texelProperties.address.texelCount
         );
         
         // Read the previous lock, semantics change if write
@@ -203,10 +209,22 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         if (isWrite) {
             // Writes follow the single producer pattern, so, write the destination bit and check if it was already locked
             // Basically an atomic or with the target bit
-            previousLock = AtomicOrTexelAddress(pre, texelMaskBufferDataID, texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset, texelBlockBit);
+            previousLock = AtomicOpTexelAddressRegion<RegionCombinerBitOr>(
+                pre,
+                AtomicOrTexelAddressValue<IL::Op::Append>,
+                texelMaskBufferDataID,
+                texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset,
+                texelProperties.texelCountLiteral, guardedTexelCount
+            );
         } else {
             // Reads follow multiple-consumers, so check if anything has locked the destination bit
-            previousLock = ReadTexelAddress(pre, texelMaskBufferDataID, texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset);
+            previousLock = AtomicOpTexelAddressRegion<RegionCombinerBitOr>(
+                pre,
+                ReadTexelAddressValue<IL::Op::Append>,
+                texelMaskBufferDataID,
+                texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset,
+                texelProperties.texelCountLiteral, guardedTexelCount
+            );
         }
 
         // Unsafe if the previous lock bit is allocated
@@ -227,7 +245,7 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
             // Export the message
             ResourceRaceConditionMessage::ShaderExport msg;
             msg.sguid = unsafe.UInt32(sguid);
-            msg.LUID = program.GetConstants().UInt(0)->id;
+            msg.LUID = unsafe.UInt32(0);
 
             // Detailed instrumentation?
             if (config.detail) {
@@ -254,7 +272,13 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         // Writes release lock after IOI
         // Clear the lock allocation bit
         IL::Emitter<> resumeEmitter(program, *resumeBlock, ++resumeBlock->begin());
-        AtomicClearTexelAddress(resumeEmitter, texelMaskBufferDataID, texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset);
+        AtomicOpTexelAddressRegion<RegionCombinerIgnore>(
+            resumeEmitter,
+            AtomicClearTexelAddressValue<IL::Op::Append>,
+            texelMaskBufferDataID, 
+            texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset,
+            texelProperties.texelCountLiteral, guardedTexelCount
+        );
 
         // Resume after unlock
         return resumeEmitter.GetIterator();

@@ -129,7 +129,7 @@ namespace GRS.Features.ResourceBounds.UIX.Workspace.Objects
                 case OpCode.Extract:
                 {
                     var typed = (ExtractInstruction)instr;
-                    AssembledVaryingOperand = assembler.AssembleInlineOperand(typed.Index);
+                    AssembledVaryingOperand = assembler.AssembleInlineOperand(typed.Chains[VaryingOperandIndex]);
                     break;
                 }
                 case OpCode.AddressChain:

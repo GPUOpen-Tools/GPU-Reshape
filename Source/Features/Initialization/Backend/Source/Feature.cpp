@@ -163,6 +163,11 @@ void InitializationFeature::CollectMessages(IMessageStorage *storage) {
     storage->AddStreamAndSwap(stream);
 }
 
+void InitializationFeature::PreInject(IL::Program &program, const MessageStreamView<> &specialization) {
+    // Analyze structural usage for all source users
+    program.GetAnalysisMap().FindPassOrCompute<IL::StructuralUserAnalysis>(program);
+}
+
 void InitializationFeature::Inject(IL::Program &program, const MessageStreamView<> &specialization) {
     // Options
     const SetInstrumentationConfigMessage config = CollapseOrDefault<SetInstrumentationConfigMessage>(specialization);
@@ -173,9 +178,6 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
-        // Pooled resource id
-        IL::ID resource;
-
         // Write operation?
         bool isWrite = false;
 
@@ -183,31 +185,19 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         switch (it->opCode) {
             default:
                 return it;
-            case IL::OpCode::LoadBuffer: {
-                resource = it->As<IL::LoadBufferInstruction>()->buffer;
+            case IL::OpCode::LoadBuffer:
+            case IL::OpCode::LoadBufferRaw:
+            case IL::OpCode::SampleTexture: {
                 break;
             }
-            case IL::OpCode::StoreBuffer: {
-                resource = it->As<IL::StoreBufferInstruction>()->buffer;
-                isWrite = true;
-                break;
-            }
-            case IL::OpCode::LoadBufferRaw: {
-                resource = it->As<IL::LoadBufferRawInstruction>()->buffer;
-                break;
-            }
+            case IL::OpCode::StoreBuffer:
+            case IL::OpCode::StoreTexture:
             case IL::OpCode::StoreBufferRaw: {
-                resource = it->As<IL::StoreBufferRawInstruction>()->buffer;
-                isWrite = true;
-                break;
-            }
-            case IL::OpCode::StoreTexture: {
-                resource = it->As<IL::StoreTextureInstruction>()->texture;
                 isWrite = true;
                 break;
             }
             case IL::OpCode::LoadTexture: {
-                resource = it->As<IL::LoadTextureInstruction>()->texture;
+                IL::ID resource = it->As<IL::LoadTextureInstruction>()->texture;
 
                 // Get type
                 auto type = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
@@ -218,8 +208,43 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
                 }
                 break;
             }
-            case IL::OpCode::SampleTexture: {
-                resource = it->As<IL::SampleTextureInstruction>()->texture;
+            case IL::OpCode::Load: {
+                auto _instr = it->As<IL::LoadInstruction>();
+    
+                // Quick check, if the address space isn't resource related, ignore it
+                auto type = program.GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                if (!IsGenericResourceAddressSpace(type)) {
+                    return it;
+                }
+
+                // Try to find the resource being addressed,
+                // if this either fails, or we're just loading the resource itself, ignore it
+                IL::ID resourceAddress = Backend::IL::GetResourceFromAddressChain(program, _instr->address);
+                if (resourceAddress == IL::InvalidID || resourceAddress == _instr->address) {
+                    return it;
+                }
+
+                // OK
+                break;
+            }
+            case IL::OpCode::Store: {
+                auto _instr = it->As<IL::StoreInstruction>();
+                
+                // Quick check, if the address space isn't resource related, ignore it
+                auto type = program.GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                if (!IsGenericResourceAddressSpace(type)) {
+                    return it;
+                }
+
+                // Try to find the resource being addressed,
+                // if this either fails, or we're just loading the resource itself, ignore it
+                IL::ID resourceAddress = Backend::IL::GetResourceFromAddressChain(program, _instr->address);
+                if (resourceAddress == IL::InvalidID || resourceAddress == _instr->address) {
+                    return it;
+                }
+
+                // OK
+                isWrite = true;
                 break;
             }
         }
@@ -229,7 +254,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         // Write operations just assign the new mask
         if (isWrite) {
             IL::InstructionRef ref(it);
-            
+
             // Insert prior to IOI
             IL::Emitter<> emitter(program, context.basicBlock, it);
 
@@ -238,7 +263,13 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             TexelProperties texelProperties = propertiesEmitter.GetTexelProperties(ref);
 
             // Mark it as initialized
-            AtomicOrTexelAddress(emitter, texelMaskBufferDataID, texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset);
+            AtomicOpTexelAddressRegion<RegionCombinerIgnore>(
+                emitter,
+                AtomicOrTexelAddressValue<IL::Op::Append>,
+                texelMaskBufferDataID,
+                texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset,
+                texelProperties.texelCountLiteral, texelProperties.address.texelCount
+            );
             
             // Resume on next
             return emitter.GetIterator();
@@ -265,20 +296,23 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         Backend::IL::TexelPropertiesEmitter propertiesEmitter(pre, texelAllocator, puidMemoryBaseBufferDataID);
         TexelProperties texelProperties = propertiesEmitter.GetTexelProperties(IL::InstructionRef(instr));
 
-        // Fetch the bit
+        // Fetch the bits
         // This doesn't need to be atomic, as the source memory should be visible at this point
-        IL::ID texelBit = ReadTexelAddress(pre, texelMaskBufferDataID, texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset);
-
-        // If the bit is not set, the texel isn't initialized
-        IL::ID cond = pre.Equal(texelBit, zero);
-
+        IL::ID anyBitsZero = AtomicOpTexelAddressRegion<RegionCombinerAnyNotEqual>(
+            pre,
+            ReadTexelAddressValue<IL::Op::Append>,
+            texelMaskBufferDataID,
+            texelProperties.texelBaseOffsetAlign32, texelProperties.address.texelOffset,
+            texelProperties.texelCountLiteral, texelProperties.address.texelCount
+        );
+        
         // If so, branch to failure, otherwise resume
-        pre.BranchConditional(cond, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+        pre.BranchConditional(anyBitsZero, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
 
         // Setup message
         UninitializedResourceMessage::ShaderExport msg;
         msg.sguid = mismatch.UInt32(sguid);
-        msg.LUID = texelProperties.puid;
+        msg.LUID = texelProperties.address.texelOffset;
 
         // Detailed instrumentation?
         if (config.detail) {

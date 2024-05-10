@@ -227,10 +227,11 @@ namespace IL {
             Backend::IL::VisitGlobalAddressChainReverse(program, id, [&](ID id, bool isCompositeBase) {
                 if (isCompositeBase) {
                     hasBaseCompositeOffset |= IsBaseOffsetNonConstantZero(id);
-                    return;
+                    return true;
                 }
 
                 chain.Add(id);
+                return true;
             });
 
             // Nothing?

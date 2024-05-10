@@ -421,12 +421,13 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 // Unused
                 GRS_SINK(compositeType);
 
-                IL::ExtractInstruction instr{};
-                instr.opCode = IL::OpCode::Extract;
-                instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
-                instr.composite = compositeValue;
-                instr.index = program.GetConstants().UInt(indexValue)->id;
+                auto *instr = ALLOCA_SIZE(IL::ExtractInstruction, IL::ExtractInstruction::GetSize(1u));
+                instr->opCode = IL::OpCode::Extract;
+                instr->result = result;
+                instr->source = IL::Source::Code(recordIdx);
+                instr->composite = compositeValue;
+                instr->chains.count = 1u;
+                instr->chains[0].index = program.GetConstants().UInt(indexValue)->id;
                 basicBlock->Append(instr);
                 break;
             }
@@ -456,12 +457,13 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 ASSERT(!reader.Any(), "Unexpected extraction count on InstExtractVal");
 
                 // Create extraction instruction
-                IL::ExtractInstruction instr{};
-                instr.opCode = IL::OpCode::Extract;
-                instr.result = result;
-                instr.source = IL::Source::Code(recordIdx);
-                instr.composite = compositeValue;
-                instr.index = program.GetConstants().UInt(index)->id;
+                auto *instr = ALLOCA_SIZE(IL::ExtractInstruction, IL::ExtractInstruction::GetSize(1u));
+                instr->opCode = IL::OpCode::Extract;
+                instr->result = result;
+                instr->source = IL::Source::Code(recordIdx);
+                instr->composite = compositeValue;
+                instr->chains.count = 1u;
+                instr->chains[0].index = program.GetConstants().UInt(index)->id;
 
                 basicBlock->Append(instr);
                 break;
@@ -3212,7 +3214,13 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                                 record.ops = table.recordAllocator.AllocateArray<uint64_t>(3);
                                 record.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(value);
                                 record.ops[1] = table.idRemapper.EncodeRedirectedUserOperand(shift);
-                                record.ops[2] = static_cast<uint64_t>(LLVMBinOp::AShR);
+
+                                if (type->As<Backend::IL::IntType>()->signedness) {
+                                    record.ops[2] = static_cast<uint64_t>(LLVMBinOp::AShR);
+                                } else {
+                                    record.ops[2] = static_cast<uint64_t>(LLVMBinOp::LShR);
+                                }
+                                
                                 block->AddRecord(record);
                             });
                             break;
@@ -4645,28 +4653,43 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                 case IL::OpCode::Extract: {
                     auto _instr = instr->As<IL::ExtractInstruction>();
 
-                    // DX12 backend only supports static extraction, for now
-                    const IL::Constant* index = program.GetConstants().GetConstant(_instr->index);
-                    ASSERT(index, "Dynamic extraction not supported");
+                    // Current composite being extracted
+                    IL::ID composite = _instr->composite;
 
-                    // Assume int
-                    auto offset = static_cast<uint32_t>(index->As<IL::IntConstant>()->value);
+                    // Extract all chains
+                    for (uint32_t i = 0; i < _instr->chains.count; i++) {
+                        // DX12 backend only supports static extraction, for now
+                        const IL::Constant* index = program.GetConstants().GetConstant(_instr->chains[i].index);
+                        ASSERT(index, "Dynamic extraction not supported");
+
+                        // Assume int
+                        auto offset = static_cast<uint32_t>(index->As<IL::IntConstant>()->value);
                     
-                    // Emulated extraction, or real?
-                    if (IsSVOX(_instr->composite)) {
-                        // Source data may be SVOX
-                        SVOXElement element = ExtractSVOXElement(block, _instr->composite, offset);
+                        // Emulated extraction, or real?
+                        if (IsSVOX(composite)) {
+                            // Source data may be SVOX
+                            SVOXElement element = ExtractSVOXElement(block, composite, offset);
                         
-                        // Point to the extracted element
-                        table.idRemapper.SetUserRedirect(instr->result, element.value);
-                    } else {
-                        LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-                        recordExtract.SetUser(true, ~0u, _instr->result);
-                        recordExtract.opCount = 2;
-                        recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
-                        recordExtract.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(_instr->composite);
-                        recordExtract.ops[1] = offset;
-                        block->AddRecord(recordExtract);
+                            // Point to the extracted element
+                            table.idRemapper.SetUserRedirect(instr->result, element.value);
+                        } else {
+                            IL::ID result;
+                            if (i == _instr->chains.count - 1) {
+                                result = _instr->result;
+                            } else {
+                                result = program.GetIdentifierMap().AllocID();
+                            }
+
+                            // Create record
+                            LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+                            recordExtract.SetUser(true, ~0u, result);
+                            recordExtract.opCount = 2;
+                            recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+                            recordExtract.ops[0] = table.idRemapper.EncodeRedirectedUserOperand(composite);
+                            recordExtract.ops[1] = offset;
+                            block->AddRecord(recordExtract);
+                            composite = result;
+                        }
                     }
                     break;
                 }

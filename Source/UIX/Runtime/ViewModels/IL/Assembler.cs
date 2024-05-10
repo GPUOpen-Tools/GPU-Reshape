@@ -516,8 +516,19 @@ namespace Runtime.ViewModels.IL
                 {
                     var typed = (ExtractInstruction)instruction;
                     AssembleInlineOperand(typed.Composite, builder);
-                    builder.Append(' ');
-                    AssembleInlineOperand(typed.Index, builder);
+                    builder.Append(" [ ");
+                    
+                    for (int i = 0; i < typed.Chains.Length; i++)
+                    {
+                        if (i != 0)
+                        {
+                            builder.Append(", ");
+                        }
+                        
+                        AssembleInlineOperand(typed.Chains[i], builder);
+                    }
+                    
+                    builder.Append(" ]");
                     break;
                 }
                 case OpCode.Insert:

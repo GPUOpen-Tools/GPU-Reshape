@@ -169,16 +169,16 @@ namespace IL {
         /// \param bitWidth the bit width of the type
         /// \param value the constant value
         /// \return instruction reference
-        BasicBlock::TypedIterator <LiteralInstruction> Int(uint8_t bitWidth, int64_t value) {
-            return Integral(bitWidth, value, true);
+        IL::ID Int(uint8_t bitWidth, int64_t value) {
+            return program->GetConstants().Int(value, bitWidth)->id;
         }
 
         /// Add a uint constant
         /// \param bitWidth the bit width of the type
         /// \param value the constant value
         /// \return instruction reference
-        BasicBlock::TypedIterator <LiteralInstruction> UInt(uint8_t bitWidth, int64_t value) {
-            return Integral(bitWidth, value, false);
+        IL::ID UInt(uint8_t bitWidth, int64_t value) {
+            return program->GetConstants().UInt(value, bitWidth)->id;
         }
 
         /// Add a 32 bit integral instruction
@@ -205,8 +205,8 @@ namespace IL {
         /// Add a 32 bit integral instruction
         /// \param value the constant value
         /// \return instruction reference
-        BasicBlock::TypedIterator <LiteralInstruction> UInt32(uint32_t value) {
-            return UInt(32, value);
+        IL::ID UInt32(uint32_t value) {
+            return program->GetConstants().UInt(value)->id;
         }
 
         /// Add a 16 bit integral instruction
@@ -441,18 +441,28 @@ namespace IL {
 
         /// Extract a value from a composite
         /// \param composite the base composite
-        /// \param index the index
+        /// \param ix the indices
         /// \return instruction reference
-        BasicBlock::TypedIterator <ExtractInstruction> Extract(ID composite, ID index) {
-            ASSERT(IsMapped(composite) && IsMapped(index), "Unmapped identifier");
+        template<typename... IX>
+        BasicBlock::TypedIterator <ExtractInstruction> Extract(ID composite, IX... ix) {
+            ASSERT(IsMapped(composite), "Unmapped identifier");
 
-            ExtractInstruction instr{};
-            instr.opCode = OpCode::Extract;
-            instr.source = Source::Invalid();
-            instr.result = map->AllocID();
-            instr.composite = composite;
-            instr.index = index;
-            return Op(instr);
+            // Fold it down
+            IL::ID chains[] = {ix...};
+
+            auto instr = ALLOCA_SIZE(IL::ExtractInstruction, IL::ExtractInstruction::GetSize(sizeof...(IX)));
+            instr->opCode = OpCode::Extract;
+            instr->source = Source::Invalid();
+            instr->result = map->AllocID();
+            instr->composite = composite;
+            instr->chains.count = sizeof...(IX);
+
+            // Write all chains
+            for (uint32_t i = 0; i < static_cast<uint32_t>(instr->chains.count); i++) {
+                instr->chains[i].index = chains[i];
+            }
+
+            return Op(*instr);
         }
 
         /// Insert a value to a composite

@@ -455,6 +455,63 @@ void SpvPhysicalBlockTypeConstantVariable::Parse() {
     }
 }
 
+void SpvPhysicalBlockTypeConstantVariable::Specialize(const SpvJob &job) {
+    // Specialize variables based on their actual pipeline signature
+    for (const Backend::IL::Variable* variable : program.GetVariableList()) {
+        if (!table.annotation.IsDecorated(variable->id)) {
+            continue;
+        }
+
+        // Get the decoration
+        const SpvValueDecoration& decoration = table.annotation.GetDecoration(variable->id);
+
+        // May not be found in the physical layout
+        if (decoration.descriptorSet >= job.instrumentationKey.physicalMapping->descriptorSets.size()) {
+            continue;
+        }
+        
+        // Get the physical mapping
+        const DescriptorLayoutPhysicalMapping& descriptorSetPhysicalMapping = job.instrumentationKey.physicalMapping->descriptorSets.at(decoration.descriptorSet);
+        
+        // Binding may not exist
+        if (decoration.descriptorOffset >= descriptorSetPhysicalMapping.bindings.size()) {
+            continue;
+        }
+
+        // Specialize per binding
+        const BindingPhysicalMapping& binding = descriptorSetPhysicalMapping.bindings.at(decoration.descriptorOffset);
+        switch (binding.type) {
+            default: {
+                // Nothing to specialize for
+                break;
+            }
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+                // SPIRV does not differentiate between storage and uniform buffers
+                // which can make some instrumentation impossible to figure out, so,
+                // help shaders a little by representing them as buffers. Also brings
+                // things in line with DXIL.
+
+                // Get the SB type
+                const Backend::IL::Type *pointee = variable->type->As<Backend::IL::PointerType>()->pointee;
+
+                // Represent the variable
+                const Backend::IL::Type* type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::PointerType {
+                    .pointee = program.GetTypeMap().FindTypeOrAdd(Backend::IL::BufferType {
+                        .elementType = pointee,
+                        .samplerMode = Backend::IL::ResourceSamplerMode::Writable,
+                        .texelType = Backend::IL::Format::None
+                    }),
+                    .addressSpace = Backend::IL::AddressSpace::Resource
+                });
+
+                // Modify types
+                program.GetTypeMap().SetType(variable->id, type);
+                break;
+            }
+        }
+    }
+}
+
 void SpvPhysicalBlockTypeConstantVariable::AssignTypeAssociation(const SpvParseContext &ctx) {
     // If there's an associated type, map it
     if (!ctx.HasResult() || !ctx.HasResultType()) {

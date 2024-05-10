@@ -47,4 +47,7 @@ void main(uint3 dtid : SV_DispatchThreadID) {
     // Ensure addressing with bounds checking is working
     //! MESSAGE ResourceRaceCondition[0]
     arrayRWSmall[uint3(dtid.x, dtid.y, dtid.z)] = 1.0f;
+    
+    //! MESSAGE ResourceRaceCondition[>0]
+    arrayRW[uint3(dtid.x, dtid.y/2, dtid.z)] = 1.0f;
 }

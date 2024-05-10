@@ -67,6 +67,7 @@ add_custom_command(
 # Test files
 Project_AddBackendTest_Common(GeneratedTest Initialization)
 Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/InitializationSimpleTest.hlsl)
+Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/InitializationStructuredTest.hlsl)
 Project_AddBackendTest(GeneratedTest "-Od" Initialization Tests/Data/SampledTest.hlsl)
 
 Project_AddTest(

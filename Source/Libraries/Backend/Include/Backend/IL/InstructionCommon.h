@@ -339,7 +339,9 @@ namespace Backend::IL {
             case ::IL::OpCode::Extract: {
                 auto typed = instr->As<::IL::ExtractInstruction>();
                 functor(typed->composite);
-                functor(typed->index);
+                for (uint32_t i = 0; i < typed->chains.count; i++) {
+                    functor(typed->chains[i].index);
+                }
                 break;
             }
             case ::IL::OpCode::Insert: {

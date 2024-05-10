@@ -355,11 +355,11 @@ namespace Studio.Models.IL
         /// Composite to extract
         /// </summary>
         public uint Composite;
-        
+
         /// <summary>
-        /// Literal index
+        /// All chains into the composite
         /// </summary>
-        public uint Index;
+        public uint[] Chains;
     }
     
     public class InsertInstruction : Instruction

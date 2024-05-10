@@ -343,7 +343,11 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
         }
         case OpCode::Extract: {
             auto extract = instr->As<IL::ExtractInstruction>();
-            line << "Extract composite:%" << extract->composite << " index:%" << extract->index;
+            line << "Extract composite:%" << extract->composite;
+            
+            for (uint32_t i = 0; i < extract->chains.count; i++) {
+                line << "[ %" << extract->chains[i].index << " ]";
+            }
             break;
         }
         case OpCode::Insert: {
@@ -1949,7 +1953,18 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
         case IL::OpCode::Extract: {
             auto extract = instr->As<IL::ExtractInstruction>();
             out.Line() << "\"Composite\": " << extract->composite << ",";
-            out.Line() << "\"Index\": " << extract->index << ",";
+            out.Line() << "\"Chains\": ";
+            out.Line() << "[";
+            
+            for (uint32_t i = 0; i < static_cast<uint32_t>(extract->chains.count); i++) {         
+                if (i != extract->chains.count - 1) {
+                    out.Line() << "\t" << extract->chains[i].index << ",";
+                } else {
+                    out.Line() << "\t" << extract->chains[i].index;
+                }
+            }
+
+            out.Line() << "],";
             break;
         }
         case IL::OpCode::Insert: {
