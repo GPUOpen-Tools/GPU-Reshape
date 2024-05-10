@@ -53,14 +53,14 @@ void main(uint dtid : SV_DispatchThreadID) {
     bufferRW[dtid * 1] = structuredFooRW[dtid].subFoo.dword;
 
     // Validate the write chain didn't write unrelated bytes
-    //-! MESSAGE UninitializedResource[>0]
-    //bufferRW[dtid * 2] = structuredFooRW[dtid].dword[1];
+    //! MESSAGE UninitializedResource[>0]
+    bufferRW[dtid * 2] = structuredFooRW[dtid].dword[1];
 
     // Write all elements
-    //structuredFooRW[0] = (Foo)0;
+    structuredFooRW[0] = (Foo)0;
 
     // Validate a full write
     //! MESSAGE UninitializedResource[0]
-    //bufferRW[dtid * 3] = structuredFooRW[0].dword[0];
+    bufferRW[dtid * 3] = structuredFooRW[0].dword[0];
 }
 
