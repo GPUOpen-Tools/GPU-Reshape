@@ -122,9 +122,9 @@ namespace GRS.Features.Initialization.UIX.Workspace
             foreach (UninitializedResourceMessage message in view)
             {
                 // Add to latent set
-                if (enqueued.TryGetValue(message.Key, out uint enqueuedCount))
+                if (enqueued.TryGetValue(message.sguid, out uint enqueuedCount))
                 {
-                    enqueued[message.Key] = enqueuedCount + 1u;
+                    enqueued[message.sguid] = enqueuedCount + 1u;
                 }
                 else
                 {
@@ -136,7 +136,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     };
                     
                     // Register with latent
-                    enqueued.Add(message.Key, 1u);
+                    enqueued.Add(message.sguid, 1u);
 
                     // Shader view model injection
                     validationObject.WhenAnyValue(x => x.Segment).WhereNotNull().Subscribe(x =>
@@ -157,7 +157,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     _shaderMappingService?.EnqueueMessage(validationObject, message.sguid);
 
                     // Insert lookup
-                    _reducedMessages.Add(message.Key, validationObject);
+                    _reducedMessages.Add(message.sguid, validationObject);
 
                     // Add to UI visible collection
                     Dispatcher.UIThread.InvokeAsync(() => { _messageCollectionViewModel?.ValidationObjects.Add(validationObject); });
@@ -175,10 +175,10 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     };
 
                     // Get detailed view model
-                    if (!_reducedDetails.TryGetValue(message.Key, out ResourceValidationDetailViewModel? detailViewModel))
+                    if (!_reducedDetails.TryGetValue(message.sguid, out ResourceValidationDetailViewModel? detailViewModel))
                     {
                         // Not found, find the object
-                        if (!_reducedMessages.TryGetValue(message.Key, out ValidationObject? validationObject))
+                        if (!_reducedMessages.TryGetValue(message.sguid, out ValidationObject? validationObject))
                         {
                             continue;
                         }
@@ -193,7 +193,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
                         });
                         
                         // Add lookup
-                        _reducedDetails.Add(message.Key, detailViewModel);
+                        _reducedDetails.Add(message.sguid, detailViewModel);
                     }
 
                     // Try to find resource
@@ -212,7 +212,7 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     uint[] coordinate = detailChunk.coordinate;
                     
                     // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance($"Uninitialized read at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}");
+                    resourceValidationObject.AddUniqueInstance($"Uninitialized read at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}, byteOffset:{detailChunk.byteOffset}");
                 }
             }
             

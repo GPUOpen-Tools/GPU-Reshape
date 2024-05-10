@@ -143,16 +143,6 @@ namespace Backend::IL {
         /// \return texel offset
         TexelAddress<UInt32> LocalMemoryTexelAddress(UInt32 x, UInt32 byteOffset, uint32_t texelCountLiteral) {
             TexelAddress<UInt32> out;
-            
-            if (kGuardCoordinates) {
-                // Default to not out of bounds
-                out.isOutOfBounds = emitter.Bool(false);
-                
-                out.logicalWidth = GuardCoordinate(out, x, tokenEmitter.GetViewWidth());
-            }
-
-            // Offset by base width
-            x = emitter.Add(x, tokenEmitter.GetViewBaseWidth());
 
             // Is the format per-byte?
             IL::ID isUntypedFormat = emitter.Equal(tokenEmitter.GetFormatSize(), emitter.UInt32(0));
@@ -164,6 +154,18 @@ namespace Backend::IL {
 
             // Determine the number of elements
             out.texelCount = emitter.Div(emitter.UInt32(texelCountLiteral), formatWidthOr1);
+            
+            if (kGuardCoordinates) {
+                // Default to not out of bounds
+                out.isOutOfBounds = emitter.Bool(false);
+                out.logicalWidth = tokenEmitter.GetViewWidth();
+
+                // Guard the offset to width - byteRange, since we're requesting multiple texels
+                GuardCoordinate(out, sourceOffset,  emitter.Sub(out.logicalWidth, out.texelCount));
+            }
+
+            // Offset by base width
+            sourceOffset = emitter.Add(sourceOffset, tokenEmitter.GetViewBaseWidth());
 
             // Constants
             IL::ID zero = emitter.UInt32(0);

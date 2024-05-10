@@ -306,8 +306,11 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             texelProperties.texelCountLiteral, texelProperties.address.texelCount
         );
         
+        // Do not track out of bound reads
+        IL::ID cond = pre.And(anyBitsZero, pre.Not(texelProperties.address.isOutOfBounds));
+
         // If so, branch to failure, otherwise resume
-        pre.BranchConditional(anyBitsZero, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+        pre.BranchConditional(cond, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
 
         // Setup message
         UninitializedResourceMessage::ShaderExport msg;
@@ -321,6 +324,7 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             msg.detail.coordinate[0] = texelProperties.address.x;
             msg.detail.coordinate[1] = texelProperties.address.y;
             msg.detail.coordinate[2] = texelProperties.address.z;
+            msg.detail.byteOffset = texelProperties.offset;
             msg.detail.mip = texelProperties.address.mip;
         }
         
