@@ -175,6 +175,45 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
                 resource = it->As<IL::SampleTextureInstruction>()->texture;
                 break;
             }
+            case IL::OpCode::Load: {
+                auto _instr = it->As<IL::LoadInstruction>();
+    
+                // Quick check, if the address space isn't resource related, ignore it
+                auto type = program.GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                if (!IsGenericResourceAddressSpace(type)) {
+                    return it;
+                }
+
+                // Try to find the resource being addressed,
+                // if this either fails, or we're just loading the resource itself, ignore it
+                IL::ID resourceAddress = Backend::IL::GetResourceFromAddressChain(program, _instr->address);
+                if (resourceAddress == IL::InvalidID || resourceAddress == _instr->address) {
+                    return it;
+                }
+
+                // OK
+                break;
+            }
+            case IL::OpCode::Store: {
+                auto _instr = it->As<IL::StoreInstruction>();
+                
+                // Quick check, if the address space isn't resource related, ignore it
+                auto type = program.GetTypeMap().GetType(_instr->address)->As<Backend::IL::PointerType>();
+                if (!IsGenericResourceAddressSpace(type)) {
+                    return it;
+                }
+
+                // Try to find the resource being addressed,
+                // if this either fails, or we're just loading the resource itself, ignore it
+                IL::ID resourceAddress = Backend::IL::GetResourceFromAddressChain(program, _instr->address);
+                if (resourceAddress == IL::InvalidID || resourceAddress == _instr->address) {
+                    return it;
+                }
+
+                // OK
+                isWrite = true;
+                break;
+            }
         }
 
         // Bind the SGUID
