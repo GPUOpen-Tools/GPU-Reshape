@@ -219,6 +219,7 @@
         "Dispatch",
         "ExecuteIndirect",
         "CopyTiles",
+        "DispatchMesh",
         "GetDevice",
         "GetType"
       ],
@@ -226,6 +227,7 @@
         "DrawInstanced",
         "DrawIndexedInstanced",
         "Dispatch",
+        "DispatchMesh",
         "CopyBufferRegion",
         "CopyTextureRegion",
         "CopyResource",

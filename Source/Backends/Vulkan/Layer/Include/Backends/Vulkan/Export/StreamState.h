@@ -159,15 +159,6 @@ struct ShaderExportStreamSegment {
     /// The next fence commit id to be waited for
     uint64_t fenceNextCommitId{0};
 
-    /// Combined segment descriptors, lifetime bound to this segment
-    std::vector<ShaderExportSegmentDescriptorAllocation> segmentDescriptors;
-
-    /// Combined descriptor data segments, lifetime bound to this segment
-    std::vector<DescriptorDataSegment> descriptorDataSegments;
-
-    /// All pending push segments
-    std::vector<PushDescriptorSegment> pushDescriptorSegments;
-
     /// Combined context handles
     std::vector<CommandContextHandle> commandContextHandles;
 

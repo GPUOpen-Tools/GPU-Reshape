@@ -28,6 +28,7 @@
 
 // Layer
 #include <Backends/Vulkan/Compiler/Blocks/SpvPhysicalBlockSection.h>
+#include <Backends/Vulkan/Compiler/Spv.h>
 
 /// Entry point physical block
 struct SpvPhysicalBlockEntryPoint : public SpvPhysicalBlockSection {
@@ -35,4 +36,34 @@ struct SpvPhysicalBlockEntryPoint : public SpvPhysicalBlockSection {
 
     /// Parse all instructions
     void Parse();
+
+    /// Compile all new instructions
+    void Compile();
+
+    /// Copy to a new block
+    /// \param remote the remote table
+    /// \param out destination capability
+    void CopyTo(SpvPhysicalBlockTable& remote, SpvPhysicalBlockEntryPoint& out);
+
+public:
+    /// Add a shader interface value
+    /// \param id identifier to be added to entry point interfaces
+    void AddInterface(SpvId id) {
+        interfaces.push_back(id);
+    }
+    
+    /// Add a shader interface value
+    /// \param storageClass variable storage class
+    /// \param id identifier to be added to entry point interfaces
+    void AddInterface(SpvStorageClass storageClass, SpvId id);
+
+private:
+    /// Assigned execution model
+    SpvExecutionModel executionModel;
+
+    /// Entrypoint name
+    std::string name;
+
+    /// All interfaces
+    std::vector<SpvId> interfaces;
 };

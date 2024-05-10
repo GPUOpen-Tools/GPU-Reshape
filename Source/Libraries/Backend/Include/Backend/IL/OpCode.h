@@ -131,6 +131,8 @@ namespace IL {
 
         /// Program
         StoreOutput,
+        StoreVertexOutput,
+        StorePrimitiveOutput,
 
         /// Resource
         SampleTexture,

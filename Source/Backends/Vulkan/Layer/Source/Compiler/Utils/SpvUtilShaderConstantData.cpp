@@ -124,6 +124,9 @@ void SpvUtilShaderConstantData::CompileRecords(const SpvJob &job) {
     spvCounterBinding[1] = constantId;
     spvCounterBinding[2] = SpvDecorationBinding;
     spvCounterBinding[3] = job.bindingInfo.descriptorDataDescriptorOffset;
+
+    // Add to all entry points
+    table.entryPoint.AddInterface(SpvStorageClassUniform, constantId);
 }
 
 IL::ID SpvUtilShaderConstantData::GetConstantData(SpvStream& stream, uint32_t index) {
