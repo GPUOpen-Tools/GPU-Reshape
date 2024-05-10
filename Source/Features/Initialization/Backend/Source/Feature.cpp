@@ -633,6 +633,7 @@ void InitializationFeature::BlitResourceMask(CommandBuffer& buffer, const Resour
             // Expected dimensions
             params.width = info.textureDescriptor.region.width >> i;
             params.height = info.textureDescriptor.region.height >> i;
+            // todo[init]: not volumetric
             params.depth = info.textureDescriptor.region.depth >> i;
         
             // Blit the given range int he mip

@@ -402,10 +402,13 @@ void FeatureHook_ClearDepthStencilView::operator()(CommandListState *object, Com
         // Setup source descriptor
         TextureDescriptor descriptor{
             .region = TextureRegion {
+                .baseMip = token.viewBaseMip,
+                .baseSlice = token.viewBaseSlice,
                 .offsetX = static_cast<uint32_t>(rect.left),
                 .offsetY = static_cast<uint32_t>(rect.top),
                 .width = static_cast<uint32_t>(rect.right - rect.left),
-                .height = static_cast<uint32_t>(rect.bottom - rect.top)
+                .height = static_cast<uint32_t>(rect.bottom - rect.top),
+                .depth = token.viewSliceCount
             },
             .uid = 0u
         };
@@ -444,10 +447,13 @@ void FeatureHook_ClearRenderTargetView::operator()(CommandListState *object, Com
         // Setup source descriptor
         TextureDescriptor descriptor{
             .region = TextureRegion {
+                .baseMip = token.viewBaseMip,
+                .baseSlice = token.viewBaseSlice,
                 .offsetX = static_cast<uint32_t>(rect.left),
                 .offsetY = static_cast<uint32_t>(rect.top),
                 .width = static_cast<uint32_t>(rect.right - rect.left),
-                .height = static_cast<uint32_t>(rect.bottom - rect.top)
+                .height = static_cast<uint32_t>(rect.bottom - rect.top),
+                .depth = token.viewSliceCount
             },
             .uid = 0u
         };
@@ -494,10 +500,13 @@ void FeatureHook_ClearUnorderedAccessViewUint::operator()(CommandListState *obje
         } else {
             info = ResourceInfo::Texture(token, IsVolumetric(state), TextureDescriptor{
                 .region = TextureRegion{
+                    .baseMip = token.viewBaseMip,
+                    .baseSlice = token.viewBaseSlice,
                     .offsetX = static_cast<uint32_t>(rect.left),
                     .offsetY = static_cast<uint32_t>(rect.top),
                     .width = static_cast<uint32_t>(rect.right - rect.left),
-                    .height = static_cast<uint32_t>(rect.bottom - rect.top)
+                    .height = static_cast<uint32_t>(rect.bottom - rect.top),
+                    .depth = token.viewSliceCount
                 },
                 .uid = 0u
             });
@@ -542,10 +551,13 @@ void FeatureHook_ClearUnorderedAccessViewFloat::operator()(CommandListState *obj
         } else {
             info = ResourceInfo::Texture(token, IsVolumetric(state), TextureDescriptor{
                 .region = TextureRegion{
+                    .baseMip = token.viewBaseMip,
+                    .baseSlice = token.viewBaseSlice,
                     .offsetX = static_cast<uint32_t>(rect.left),
                     .offsetY = static_cast<uint32_t>(rect.top),
                     .width = static_cast<uint32_t>(rect.right - rect.left),
-                    .height = static_cast<uint32_t>(rect.bottom - rect.top)
+                    .height = static_cast<uint32_t>(rect.bottom - rect.top),
+                    .depth = token.viewSliceCount
                 },
                 .uid = 0u
             });
