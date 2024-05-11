@@ -164,8 +164,13 @@ bool ShaderProgramHost::InstallPrograms() {
         range.size = eventCount * sizeof(uint32_t);
         range.stageFlags = VK_SHADER_STAGE_ALL;
 
-        // Optional event data
-        if (eventCount > 0) {
+#if PRMT_METHOD == PRMT_METHOD_UB_PC
+        // Take single dword for PRMT sub-segment offset
+        range.size += sizeof(uint32_t);
+#endif // PRMT_METHOD == PRMT_METHOD_UB_PC
+
+        // Optional data
+        if (range.size > 0) {
             // Set ranges
             layoutCreateInfo.pushConstantRangeCount = 1;
             layoutCreateInfo.pPushConstantRanges = &range;
