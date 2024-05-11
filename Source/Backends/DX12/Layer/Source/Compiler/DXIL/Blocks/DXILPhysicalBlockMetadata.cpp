@@ -402,6 +402,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                     buffer.samplerMode = Backend::IL::ResourceSamplerMode::RuntimeOnly;
                     buffer.elementType = containedType;
                     buffer.texelType = format;
+                    buffer.byteAddressing = shape == DXILShaderResourceShape::RawBuffer;
                     entry.type = program.GetTypeMap().FindTypeOrAdd(buffer);
                 } else {
                     Backend::IL::TextureType texture{};
@@ -506,6 +507,7 @@ void DXILPhysicalBlockMetadata::ParseResourceList(struct MetadataBlock& metadata
                     buffer.samplerMode = Backend::IL::ResourceSamplerMode::Writable;
                     buffer.elementType = containedType;
                     buffer.texelType = format;
+                    buffer.byteAddressing = shape == DXILShaderResourceShape::RawBuffer;
                     entry.type = program.GetTypeMap().FindTypeOrAdd(buffer);
                 } else {
                     Backend::IL::TextureType texture{};

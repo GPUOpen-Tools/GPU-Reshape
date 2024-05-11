@@ -249,8 +249,6 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             }
         }
 
-        IL::ID zero = program.GetConstants().UInt(0)->id;
-
         // Write operations just assign the new mask
         if (isWrite) {
             IL::InstructionRef ref(it);

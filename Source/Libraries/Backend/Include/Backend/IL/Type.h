@@ -194,7 +194,7 @@ namespace Backend::IL {
         static constexpr TypeKind kKind = TypeKind::Buffer;
 
         auto SortKey() const {
-            return std::make_tuple(elementType, samplerMode, texelType);
+            return std::make_tuple(elementType, samplerMode, texelType, byteAddressing);
         }
 
         const Type* elementType{nullptr};
@@ -202,6 +202,8 @@ namespace Backend::IL {
         ResourceSamplerMode samplerMode{ResourceSamplerMode::Compatible};
 
         Format texelType{Format::None};
+
+        bool byteAddressing{false};
     };
 
     struct SamplerType : public Type {

@@ -179,21 +179,48 @@ namespace Backend::IL {
                 }
                 case OpCode::LoadBufferRaw: {
                     auto _instr = instr->As<LoadBufferRawInstruction>();
-                    out.x = _instr->index;
-                    out.texelCountLiteral = 1u;
                     
-                    if (_instr->offset != InvalidID) {
-                        out.offset = _instr->offset;
+                    // Get the buffer
+                    auto buffer = resourceType->As<BufferType>();
+
+                    // If byte addressing, the index is the actual byte offset
+                    if (buffer->byteAddressing) {
+                        isMemoryAddressing = true;
+                        out.texelCountLiteral = 1u;
+                        out.offset = _instr->index;
+                        ASSERT(_instr->offset == InvalidID, "Byte addressing only expects an index");
+                    } else {
+                        out.x = _instr->index;
+                        out.texelCountLiteral = 1u;
+
+                        // Intra-element offset is optional
+                        if (_instr->offset != InvalidID) {
+                            out.offset = _instr->offset;
+                        }
                     }
+
                     break;
                 }
                 case OpCode::StoreBufferRaw: {
                     auto _instr = instr->As<StoreBufferRawInstruction>();
-                    out.x = _instr->index;
-                    out.texelCountLiteral = 1u;
-
-                    if (_instr->offset != InvalidID) {
-                        out.offset = _instr->offset;
+                    
+                    // Get the buffer
+                    auto buffer = resourceType->As<BufferType>();
+                    
+                    // If byte addressing, the index is the actual byte offset
+                    if (buffer->byteAddressing) {
+                        isMemoryAddressing = true;
+                        out.texelCountLiteral = 1u;
+                        out.offset = _instr->index;
+                        ASSERT(_instr->offset == InvalidID, "Byte addressing only expects an index");
+                    } else {
+                        out.x = _instr->index;
+                        out.texelCountLiteral = 1u;
+                    
+                        // Intra-element offset is optional
+                        if (_instr->offset != InvalidID) {
+                            out.offset = _instr->offset;
+                        }
                     }
                     break;
                 }

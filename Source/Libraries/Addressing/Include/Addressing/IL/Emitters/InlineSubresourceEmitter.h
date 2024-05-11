@@ -107,6 +107,11 @@ struct SubresourceEmitter {
         return out;
     }
 
+    /// Get the number of subresources
+    IL::ID GetSubresourceCount() const {
+        return subresourceCount;
+    }
+
 private:
     /// Target emitter
     IL::Emitter<E>& emitter;

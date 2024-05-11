@@ -134,7 +134,7 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     state->virtualMapping.token.mipCount = desc->MipLevels;
 
     // Special case, report R1 as "0" (bitwise)
-    if (desc->Format == DXGI_FORMAT_R1_UNORM) {
+    if (desc->Format == DXGI_FORMAT_R1_UNORM || desc->Format == DXGI_FORMAT_UNKNOWN) {
         state->virtualMapping.token.formatSize = 0;
     }
 

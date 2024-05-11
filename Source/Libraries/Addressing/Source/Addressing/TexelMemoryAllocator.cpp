@@ -96,7 +96,8 @@ TexelMemoryAllocation TexelMemoryAllocator::Allocate(const ResourceInfo &info) {
     out.addressInfo = addressAllocator.GetAllocationInfo(info, false);
 
     // Determine the number of texel blocks needed
-    out.texelBlockCount = Cast32Checked((out.addressInfo.texelCount + 31) / 32);
+    // +1 for safety padding on region writes
+    out.texelBlockCount = Cast32Checked((out.addressInfo.texelCount + 31) / 32 + 1u);
 
     // Number of header dwords
     out.headerDWordCount = 1u + static_cast<uint32_t>(out.addressInfo.subresourceOffsets.Size());

@@ -55,4 +55,7 @@ struct TexelProperties {
 
     /// The memory base offset of the initialization masks
     IL::ID texelBaseOffsetAlign32{IL::InvalidID};
+
+    /// Debugging value
+    IL::ID debug{};
 };
