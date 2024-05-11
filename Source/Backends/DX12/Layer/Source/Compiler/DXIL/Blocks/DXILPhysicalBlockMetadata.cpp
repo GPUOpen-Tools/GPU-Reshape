@@ -1314,7 +1314,7 @@ void DXILPhysicalBlockMetadata::CreateDescriptorHandle(const DXCompileJob &job) 
             // [i32 x 4]
             program.GetTypeMap().FindTypeOrAdd(Backend::IL::ArrayType {
                 .elementType = i32x4,
-                .count = MaxRootSignatureDWord / 4u
+                .count = (job.instrumentationKey.physicalMapping->rootDWordCount + 3) / 4u
             })
         }
     });
