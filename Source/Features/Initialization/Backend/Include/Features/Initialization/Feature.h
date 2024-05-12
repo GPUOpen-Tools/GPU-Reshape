@@ -26,6 +26,9 @@
 
 #pragma once
 
+// Feature
+#include <Features/Initialization/FailureCode.h>
+
 // Backend
 #include <Backend/IFeature.h>
 #include <Backend/IShaderFeature.h>
@@ -98,11 +101,18 @@ private:
     void OnMapResource(const ResourceInfo& source);
     void OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest);
     void OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest);
-    void OnClearResource(CommandContext* context, const ResourceInfo& buffer);
-    void OnWriteResource(CommandContext* context, const ResourceInfo& buffer);
+    void OnClearResource(CommandContext* context, const ResourceInfo& resource);
+    void OnWriteResource(CommandContext* context, const ResourceInfo& resource);
+    void OnDiscardResource(CommandContext* context, const ResourceInfo& resource);
     void OnBeginRenderPass(CommandContext* context, const RenderPassInfo& passInfo);
     void OnSubmitBatchBegin(SubmissionContext& submitContext, const CommandContextHandle *contexts, uint32_t contextCount);
     void OnJoin(CommandContextHandle contextHandle);
+
+private:
+    /// Mark a resource metadata as initialized
+    /// \param context destination context
+    /// \param info resource metadata to mark as initialized
+    void OnMetadataInitializationEvent(CommandContext* context, const ResourceInfo& info);
 
 private:
     /// Blit a resource mask
@@ -198,6 +208,9 @@ private:
     struct Allocation {
         /// The underlying allocation
         TexelMemoryAllocation memory;
+
+        /// Assigned initial failure code
+        FailureCode failureCode{FailureCode::None};
     };
 
     /// Shared texel allocator

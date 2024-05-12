@@ -90,6 +90,10 @@ struct FeatureHook_ResolveSubresourceRegion : TFeatureHook<Hooks::ResolveResourc
     void operator()(CommandListState *object, CommandContext *context, ID3D12Resource *pDstResource, UINT DstSubresource, UINT DstX, UINT DstY, ID3D12Resource *pSrcResource, UINT SrcSubresource, D3D12_RECT *pSrcRect, DXGI_FORMAT Format, D3D12_RESOLVE_MODE ResolveMode) const;
 };
 
+struct FeatureHook_DiscardResource : TFeatureHook<Hooks::DiscardResource> {
+    void operator()(CommandListState *object, CommandContext *context, ID3D12Resource *pResource, const D3D12_DISCARD_REGION* pRegion) const;
+};
+
 struct FeatureHook_BeginRenderPass : TFeatureHook<Hooks::BeginRenderPass> {
     void operator()(CommandListState *object, CommandContext *context, UINT NumRenderTargets, const D3D12_RENDER_PASS_RENDER_TARGET_DESC *pRenderTargets, const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC *pDepthStencil, D3D12_RENDER_PASS_FLAGS Flags) const;
 };

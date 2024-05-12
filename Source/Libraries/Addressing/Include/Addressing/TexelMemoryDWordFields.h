@@ -26,39 +26,17 @@
 
 #pragma once
 
-// Address
-#include "TexelAddress.h"
+enum class TexelMemoryDWordFields {
+    /// Number of sub-resources
+    SubresourceCount = 0u,
 
-// Backend
-#include <Backend/IL/ID.h>
+    /// Special block with failure conditions
+    FailureBlock = 1u,
 
-struct TexelProperties {
-    /// Address of the texel
-    TexelAddress<IL::ID> address;
-    
-    /// Source view coordinates
-    IL::ID x{};
-    IL::ID y{};
-    IL::ID z{};
-    IL::ID mip{};
-    IL::ID offset{};
+    /// Total number of dwords
+    Count,
 
-    /// The value type texel count
-    /// This may not represent the runtime width
-    uint32_t texelCountLiteral{};
-
-    /// The packed token of the owning resource
-    IL::ID packedToken{IL::InvalidID};
-
-    /// Assigned PUID of the owning resource
-    IL::ID puid{IL::InvalidID};
-
-    /// The memory base offset of the initialization masks
-    IL::ID texelBaseOffsetAlign32{IL::InvalidID};
-
-    /// Failure block code
-    IL::ID failureBlock{IL::InvalidID};
-
-    /// Debugging value
-    IL::ID debug{};
+    /// All sub-resource offsets start after the fields
+    /// This must be the last member
+    SubresourceOffsetStart = Count
 };

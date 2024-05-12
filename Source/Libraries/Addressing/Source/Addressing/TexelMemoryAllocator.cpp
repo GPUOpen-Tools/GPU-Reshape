@@ -26,6 +26,7 @@
 
 // Addressing
 #include <Addressing/TexelMemoryAllocator.h>
+#include <Addressing/TexelMemoryDWordFields.h>
 
 // Backend
 #include <Backend/Scheduler/IScheduler.h>
@@ -100,7 +101,7 @@ TexelMemoryAllocation TexelMemoryAllocator::Allocate(const ResourceInfo &info) {
     out.texelBlockCount = Cast32Checked((out.addressInfo.texelCount + 31) / 32 + 1u);
 
     // Number of header dwords
-    out.headerDWordCount = 1u + static_cast<uint32_t>(out.addressInfo.subresourceOffsets.Size());
+    out.headerDWordCount = static_cast<uint32_t>(TexelMemoryDWordFields::Count) + static_cast<uint32_t>(out.addressInfo.subresourceOffsets.Size());
 
     // Create underlying allocation
     uint32_t allocationDWords = out.headerDWordCount + out.texelBlockCount;
@@ -120,15 +121,19 @@ TexelMemoryAllocation TexelMemoryAllocator::Allocate(const ResourceInfo &info) {
     return out;
 }
 
-void TexelMemoryAllocator::Initialize(CommandBuilder &builder, const TexelMemoryAllocation &allocation) const {
+void TexelMemoryAllocator::Initialize(CommandBuilder &builder, const TexelMemoryAllocation &allocation, uint32_t failureBlockCode) const {
     TrivialStackVector<uint32_t, 64> headerDWords;
+    headerDWords.Resize(allocation.headerDWordCount);
 
     // DW0, number of subresources
-    headerDWords.Add(static_cast<uint32_t>(allocation.addressInfo.subresourceOffsets.Size()));
+    headerDWords[static_cast<uint32_t>(TexelMemoryDWordFields::SubresourceCount)] = static_cast<uint32_t>(allocation.addressInfo.subresourceOffsets.Size());
 
-    // DW1 .. n, all subresource offsets
-    for (uint64_t offset : allocation.addressInfo.subresourceOffsets) {
-        headerDWords.Add(static_cast<uint32_t>(offset));
+    // DW1, special failure block
+    headerDWords[static_cast<uint32_t>(TexelMemoryDWordFields::FailureBlock)] = failureBlockCode;
+
+    // DW2 .. n, all subresource offsets
+    for (size_t i = 0; i < allocation.addressInfo.subresourceOffsets.Size(); i++) {
+        headerDWords[static_cast<uint32_t>(TexelMemoryDWordFields::SubresourceOffsetStart) + i] = static_cast<uint32_t>(allocation.addressInfo.subresourceOffsets[i]);
     }
 
     // Fill resource header
@@ -144,6 +149,15 @@ void TexelMemoryAllocator::Initialize(CommandBuilder &builder, const TexelMemory
 
     // Cleanup
     headerDWords.Clear();
+}
+
+void TexelMemoryAllocator::StageFailureCode(CommandBuilder &builder, const TexelMemoryAllocation &allocation, uint32_t failureBlockCode) const {
+    builder.StageBuffer(
+        texelBlocksBufferID,
+        (allocation.texelBaseBlock + static_cast<uint32_t>(TexelMemoryDWordFields::FailureBlock)) * sizeof(uint32_t),
+        sizeof(uint32_t),
+        &failureBlockCode
+    );
 }
 
 void TexelMemoryAllocator::UpdateResidency(Queue queue) {

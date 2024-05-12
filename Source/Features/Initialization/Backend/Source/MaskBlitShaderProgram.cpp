@@ -102,7 +102,7 @@ void MaskBlitShaderProgram::Inject(IL::Program &program) {
     IL::ID texel;
 
     // Setup subresource emitter
-    SubresourceEmitter subresourceEmitter(emitter, token, emitter.Load(initializationMaskBufferDataID), baseAlign32);
+    InlineSubresourceEmitter subresourceEmitter(emitter, token, emitter.Load(initializationMaskBufferDataID), baseAlign32);
 
     // Buffer indexing just adds the linear offset
     if (type == Backend::IL::ResourceTokenType::Buffer) {

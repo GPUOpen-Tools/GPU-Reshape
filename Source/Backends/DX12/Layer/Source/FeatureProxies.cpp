@@ -611,6 +611,21 @@ void FeatureHook_ResolveSubresourceRegion::operator()(CommandListState *object, 
     );
 }
 
+void FeatureHook_DiscardResource::operator()(CommandListState *object, CommandContext *context, ID3D12Resource *pResource, const D3D12_DISCARD_REGION *pRegion) const {
+    ResourceState* state = GetState(pResource);
+
+    // Create resource info
+    ResourceInfo info;
+    if (state->virtualMapping.token.GetType() == Backend::IL::ResourceTokenType::Buffer) {
+        info = ResourceInfo::Buffer(state->virtualMapping.token, BufferDescriptor{});
+    } else {
+        info = ResourceInfo::Texture(state->virtualMapping.token, IsVolumetric(state), TextureDescriptor{});
+    }
+
+    // Invoke hook
+    hook.Invoke(context, info);
+}
+
 void FeatureHook_BeginRenderPass::operator()(CommandListState *object, CommandContext *context, UINT NumRenderTargets, const D3D12_RENDER_PASS_RENDER_TARGET_DESC *pRenderTargets, const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC *pDepthStencil, D3D12_RENDER_PASS_FLAGS Flags) const {
     TextureDescriptor* descriptors = ALLOCA_ARRAY(TextureDescriptor, NumRenderTargets);
     AttachmentInfo*    attachments = ALLOCA_ARRAY(AttachmentInfo, NumRenderTargets);

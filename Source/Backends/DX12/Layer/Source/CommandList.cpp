@@ -103,6 +103,11 @@ void CreateDeviceCommandProxies(DeviceState *state) {
             state->commandListProxies.featureBitSetMask_ClearUnorderedAccessViewUint |= (1ull << i);
         }
 
+        if (hookTable.discardResource.IsValid()) {
+            state->commandListProxies.featureHooks_DiscardResource[i] = hookTable.discardResource;
+            state->commandListProxies.featureBitSetMask_DiscardResource |= (1ull << i);
+        }
+
         if (hookTable.beginRenderPass.IsValid()) {
             state->commandListProxies.featureHooks_BeginRenderPass[i] = hookTable.beginRenderPass;
             state->commandListProxies.featureHooks_OMSetRenderTargets[i] = hookTable.beginRenderPass;
@@ -129,6 +134,7 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceState *state, uint64_t featureSet
     state->commandListProxies.featureBitSet_ClearUnorderedAccessViewUint = state->commandListProxies.featureBitSetMask_ClearUnorderedAccessViewUint & featureSet;
     state->commandListProxies.featureBitSet_ClearUnorderedAccessViewFloat = state->commandListProxies.featureBitSetMask_ClearUnorderedAccessViewFloat & featureSet;
     state->commandListProxies.featureBitSet_ResolveSubresourceRegion = state->commandListProxies.featureBitSetMask_ResolveSubresourceRegion & featureSet;
+    state->commandListProxies.featureBitSet_DiscardResource = state->commandListProxies.featureBitSetMask_DiscardResource & featureSet;
     state->commandListProxies.featureBitSet_BeginRenderPass = state->commandListProxies.featureBitSetMask_BeginRenderPass & featureSet;
     state->commandListProxies.featureBitSet_EndRenderPass = state->commandListProxies.featureBitSetMask_EndRenderPass & featureSet;
     state->commandListProxies.featureBitSet_OMSetRenderTargets = state->commandListProxies.featureBitSetMask_OMSetRenderTargets & featureSet;

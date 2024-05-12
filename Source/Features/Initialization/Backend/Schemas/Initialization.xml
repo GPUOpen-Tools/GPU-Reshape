@@ -36,6 +36,6 @@
             <field name="byteOffset" type="uint32"/>
         </chunk>
 
-        <field name="LUID" type="uint32" bits="10"/>
+        <field name="failureCode" type="uint32" bits="10"/>
     </shader-export>
 </schema>

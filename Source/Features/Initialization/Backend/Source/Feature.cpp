@@ -68,6 +68,9 @@
 // Common
 #include <Common/Registry.h>
 
+/// Debugging toggle
+#define USE_METADATA_CLEAR_CHECKS 1
+
 bool InitializationFeature::Install() {
     // Must have the export host
     auto exportHost = registry->Get<IShaderExportHost>();
@@ -149,6 +152,7 @@ FeatureHookTable InitializationFeature::GetHookTable() {
     table.resolveResource = BindDelegate(this, InitializationFeature::OnResolveResource);
     table.clearResource = BindDelegate(this, InitializationFeature::OnClearResource);
     table.writeResource = BindDelegate(this, InitializationFeature::OnWriteResource);
+    table.discardResource = BindDelegate(this, InitializationFeature::OnDiscardResource);
     table.beginRenderPass = BindDelegate(this, InitializationFeature::OnBeginRenderPass);
     table.preSubmit = BindDelegate(this, InitializationFeature::OnSubmitBatchBegin);
     table.join = BindDelegate(this, InitializationFeature::OnJoin);
@@ -273,6 +277,9 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             return emitter.GetIterator();
         }
 
+        // Constants
+        IL::ID zero = program.GetConstants().UInt(0)->id;
+
         // Bind the SGUID
         ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
 
@@ -307,13 +314,16 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         // Do not track out of bound reads
         IL::ID cond = pre.And(anyBitsZero, pre.Not(texelProperties.address.isOutOfBounds));
 
+        // If the failure block has any data, this is a bad operation
+        cond = pre.Or(cond, pre.NotEqual(texelProperties.failureBlock, zero));
+
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(cond, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
 
         // Setup message
         UninitializedResourceMessage::ShaderExport msg;
         msg.sguid = mismatch.UInt32(sguid);
-        msg.LUID = texelProperties.address.texelOffset;
+        msg.failureCode = texelProperties.failureBlock;
 
         // Detailed instrumentation?
         if (config.detail) {
@@ -373,6 +383,13 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
             });
         }
     }
+
+    // If the resource requires a clear for stable metadata, mark the failure code as such
+#if USE_METADATA_CLEAR_CHECKS
+    if (source.createFlags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
+        allocation.failureCode = FailureCode::MetadataRequiresHardwareClear;
+    }
+#endif // USE_METADATA_CLEAR_CHECKS
 }
 
 void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {
@@ -436,22 +453,30 @@ void InitializationFeature::OnMapResource(const ResourceInfo &source) {
 void InitializationFeature::OnCopyResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
     std::lock_guard guard(mutex);
     CopyResourceMaskRange(context->buffer, source, dest);
+    OnMetadataInitializationEvent(context, dest);
 }
 
 void InitializationFeature::OnResolveResource(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest) {
     std::lock_guard guard(mutex);
     // todo[init]: How can we handle resolve mapping sensibly?
     BlitResourceMask(context->buffer, dest);
+    OnMetadataInitializationEvent(context, dest);
 }
 
 void InitializationFeature::OnClearResource(CommandContext* context, const ResourceInfo& resource) {
     std::lock_guard guard(mutex);
     BlitResourceMask(context->buffer, resource);
+    OnMetadataInitializationEvent(context, resource);
 }
 
 void InitializationFeature::OnWriteResource(CommandContext* context, const ResourceInfo& resource) {
     std::lock_guard guard(mutex);
     BlitResourceMask(context->buffer, resource);
+}
+
+void InitializationFeature::OnDiscardResource(CommandContext *context, const ResourceInfo &resource) {
+    std::lock_guard guard(mutex);
+    OnMetadataInitializationEvent(context, resource);
 }
 
 void InitializationFeature::OnBeginRenderPass(CommandContext *context, const RenderPassInfo &passInfo) {
@@ -463,6 +488,11 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
     for (uint32_t i = 0; i < passInfo.attachmentCount; i++) {
         const AttachmentInfo& info = passInfo.attachments[i];
 
+        // Mark metadata as cleared if needed
+        if (info.loadAction == AttachmentAction::Clear) {
+            OnMetadataInitializationEvent(context, info.resource);
+        }
+
         // Only mark as initialized if the destination is written to
         if (info.loadAction == AttachmentAction::Clear ||
             info.storeAction == AttachmentAction::Store ||
@@ -473,11 +503,17 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
         // Always mark resolve targets as initialized
         if (info.resolveResource) {
             BlitResourceMask(context->buffer, *info.resolveResource);
+            OnMetadataInitializationEvent(context, *info.resolveResource);
         }
     }
 
     // Has depth?
     if (passInfo.depthAttachment) {
+        // Mark metadata as cleared if needed
+        if (passInfo.depthAttachment->loadAction == AttachmentAction::Clear) {
+            OnMetadataInitializationEvent(context, passInfo.depthAttachment->resource);
+        }
+        
         // Only mark as initialized if the destination is written to
         if (passInfo.depthAttachment->loadAction == AttachmentAction::Clear ||
             passInfo.depthAttachment->storeAction == AttachmentAction::Store ||
@@ -488,6 +524,7 @@ void InitializationFeature::OnBeginRenderPass(CommandContext *context, const Ren
         // Always mark resolve targets as initialized
         if (passInfo.depthAttachment->resolveResource) {
             BlitResourceMask(context->buffer, *passInfo.depthAttachment->resolveResource);
+            OnMetadataInitializationEvent(context, *passInfo.depthAttachment->resolveResource);
         }
     }
 }
@@ -524,7 +561,7 @@ void InitializationFeature::OnSubmitBatchBegin(SubmissionContext& submitContext,
             builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);
 
             // Initialize texel data
-            texelAllocator->Initialize(builder, allocation.memory);
+            texelAllocator->Initialize(builder, allocation.memory, static_cast<uint32_t>(allocation.failureCode));
         }
 
         // Update the residency of all texels
@@ -590,6 +627,14 @@ void InitializationFeature::OnJoin(CommandContextHandle contextHandle) {
 
     // Get rid of context
     commandContexts.erase(contextHandle);
+}
+
+void InitializationFeature::OnMetadataInitializationEvent(CommandContext *context, const ResourceInfo &info) {
+    // If this is a resource with metadata clear requirements, mark the block as safe now
+    if (Allocation& allocation = allocations[info.token.puid]; allocation.failureCode == FailureCode::MetadataRequiresHardwareClear) {
+        CommandBuilder builder(context->buffer);
+        texelAllocator->StageFailureCode(builder, allocation.memory, 0x0);
+    }
 }
 
 /// Execute a program in a chunked fashion, respecting the API limits

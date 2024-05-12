@@ -61,8 +61,15 @@ public:
     /// Initialize a resource
     /// \param builder builder to stage in
     /// \param allocation allocation to initialize
-    void Initialize(CommandBuilder& builder, const TexelMemoryAllocation& allocation) const;
+    /// \param failureBlockCode the initial failure code, use 0x0 for no failure
+    void Initialize(CommandBuilder& builder, const TexelMemoryAllocation& allocation, uint32_t failureBlockCode) const;
 
+    /// Stage a failure code
+    /// \param builder builder to stage in
+    /// \param allocation allocation to stage
+    /// \param failureBlockCode the staged failure code, use 0x0 for no failure
+    void StageFailureCode(CommandBuilder& builder, const TexelMemoryAllocation& allocation, uint32_t failureBlockCode) const;
+    
     /// Update the residency on a target queue
     /// \param queue target queue
     void UpdateResidency(Queue queue);

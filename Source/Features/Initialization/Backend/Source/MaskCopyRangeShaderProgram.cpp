@@ -106,8 +106,8 @@ void MaskCopyRangeShaderProgram::Inject(IL::Program &program) {
     IL::ID destTexel;
 
     // Setup subresource emitters
-    SubresourceEmitter sourceSubresourceEmitter(emitter, sourceToken, emitter.Load(initializationMaskBufferDataID), sourceBaseAlign32);
-    SubresourceEmitter destSubresourceEmitter(emitter, destToken, emitter.Load(initializationMaskBufferDataID), destBaseAlign32);
+    InlineSubresourceEmitter sourceSubresourceEmitter(emitter, sourceToken, emitter.Load(initializationMaskBufferDataID), sourceBaseAlign32);
+    InlineSubresourceEmitter destSubresourceEmitter(emitter, destToken, emitter.Load(initializationMaskBufferDataID), destBaseAlign32);
     
     // Symmetric copy?
     if (from == to) {

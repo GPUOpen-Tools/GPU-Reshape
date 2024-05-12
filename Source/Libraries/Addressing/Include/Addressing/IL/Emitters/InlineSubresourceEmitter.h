@@ -29,6 +29,7 @@
 // Addressing
 #include <Addressing/IL/PhysicalMipData.h>
 #include <Addressing/IL/TexelCommon.h>
+#include <Addressing/TexelMemoryDWordFields.h>
 
 // Feature
 #include <Backend/IL/Emitters/Emitter.h>
@@ -38,24 +39,42 @@
 #include <cstdint>
 
 template<typename E, typename RTE>
-struct SubresourceEmitter {
+struct InlineSubresourceEmitter {
     /// Constructor
     /// \param emitter target emitter 
     /// \param tokenEmitter the resource token emitter
     /// \param buffer buffer with subresource information
     /// \param memoryBase header offset
-    SubresourceEmitter(IL::Emitter<E>& emitter, RTE& tokenEmitter, IL::ID buffer, IL::ID memoryBase) :
+    InlineSubresourceEmitter(IL::Emitter<E>& emitter, RTE& tokenEmitter, IL::ID buffer, IL::ID memoryBase) :
         emitter(emitter), tokenEmitter(tokenEmitter),
         buffer(buffer), memoryBase(memoryBase) {
         // Read the subresource count
-        subresourceCount = emitter.Extract(emitter.LoadBuffer(buffer, memoryBase), emitter.GetProgram()->GetConstants().UInt(0)->id);
+        subresourceCount = ReadFieldDWord(TexelMemoryDWordFields::SubresourceCount);
+    }
+
+    /// Read a specific field dword
+    /// \param field field to read
+    /// \return dword
+    IL::ID ReadFieldDWord(TexelMemoryDWordFields field) {
+        IL::ID fieldId = emitter.GetProgram()->GetConstants().UInt(static_cast<uint32_t>(field))->id;
+
+        // Read the field, header dwords always up first
+        return emitter.Extract(
+            emitter.LoadBuffer(buffer, emitter.Add(memoryBase, fieldId)),
+            emitter.GetProgram()->GetConstants().UInt(0)->id
+        );
+    }
+
+    /// Get the subresource offset starting offset
+    /// \return offset
+    IL::ID GetMemorySubresourceOffsetStart() {
+        return emitter.Add(memoryBase, emitter.GetProgram()->GetConstants().UInt(static_cast<uint32_t>(TexelMemoryDWordFields::SubresourceOffsetStart))->id);
     }
 
     /// Get the memory base of the resource
     /// \return memory base
     IL::ID GetResourceMemoryBase() {
-        IL::ID subresourceOffsetStart = emitter.Add(memoryBase, emitter.GetProgram()->GetConstants().UInt(1)->id);
-        return emitter.Add(subresourceOffsetStart, subresourceCount);
+        return emitter.Add(GetMemorySubresourceOffsetStart(), subresourceCount);
     }
 
     /// Get the subresource offset of a slice major resource
@@ -65,15 +84,11 @@ struct SubresourceEmitter {
     Backend::IL::PhysicalMipData<uint32_t> SlicedOffset(uint32_t slice, uint32_t mip) {
         IL::ExtendedEmitter extended(emitter);
 
-        // Constants
-        IL::ID one = emitter.GetProgram()->GetConstants().UInt(1)->id;
-
         // Calculate the subresource index, mipCount * slice + mip
         IL::ID subresourceIndex = emitter.Add(emitter.Mul(tokenEmitter.GetMipCount(), slice), mip);
 
         // Load the subresource offset
-        IL::ID subresourceOffsetStart = emitter.Add(memoryBase, one);
-        IL::ID subresourceMemoryIndex = emitter.Add(subresourceOffsetStart, subresourceIndex);
+        IL::ID subresourceMemoryIndex = emitter.Add(GetMemorySubresourceOffsetStart(), subresourceIndex);
         IL::ID subresourceOffset      = emitter.Extract(emitter.LoadBuffer(buffer, subresourceMemoryIndex), emitter.GetProgram()->GetConstants().UInt(0)->id);
 
         // Setup the mip data
@@ -90,12 +105,8 @@ struct SubresourceEmitter {
     Backend::IL::PhysicalMipData<uint32_t> VolumetricOffset(uint32_t mip) {
         IL::ExtendedEmitter extended(emitter);
 
-        // Constants
-        IL::ID one = emitter.GetProgram()->GetConstants().UInt(1)->id;
-
         // Load the subresource offset
-        IL::ID subresourceOffsetStart = emitter.Add(memoryBase, one);
-        IL::ID subresourceMemoryIndex = emitter.Add(subresourceOffsetStart, mip);
+        IL::ID subresourceMemoryIndex = emitter.Add(GetMemorySubresourceOffsetStart(), mip);
         IL::ID subresourceOffset      = emitter.Extract(emitter.LoadBuffer(buffer, subresourceMemoryIndex), emitter.GetProgram()->GetConstants().UInt(0)->id);
 
         // Setup the mip data

@@ -131,10 +131,10 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     // Create object
                     var validationObject = new ValidationObject()
                     {
-                        Content = $"Uninitialized resource read",
+                        Content = GetFailureCodeString((InitializationFailureCode)message.failureCode),
                         Count = 1u
                     };
-                    
+
                     // Register with latent
                     enqueued.Add(message.sguid, 1u);
 
@@ -212,7 +212,8 @@ namespace GRS.Features.Initialization.UIX.Workspace
                     uint[] coordinate = detailChunk.coordinate;
                     
                     // Compose detailed message
-                    resourceValidationObject.AddUniqueInstance($"Uninitialized read at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}, byteOffset:{detailChunk.byteOffset}");
+                    string header = GetFailureCodeString((InitializationFailureCode)message.failureCode);
+                    resourceValidationObject.AddUniqueInstance($"{header} at x:{coordinate[0]}, y:{coordinate[1]}, z:{coordinate[2]}, mip:{detailChunk.mip}, byteOffset:{detailChunk.byteOffset}");
                 }
             }
             
@@ -226,6 +227,20 @@ namespace GRS.Features.Initialization.UIX.Workspace
                         ValidationMergePumpBus.Increment(value, kv.Value);
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Get the failure code string for a specific condition
+        /// </summary>
+        private static string GetFailureCodeString(InitializationFailureCode failureCode)
+        {
+            switch (failureCode)
+            {
+                default:
+                    return "Uninitialized resource read";
+                case InitializationFailureCode.MetadataRequiresHardwareClear:
+                    return "Read without required clear/discard";
             }
         }
 

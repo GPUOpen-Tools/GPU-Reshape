@@ -291,24 +291,56 @@ HRESULT WINAPI HookID3D12DeviceCreateCommittedResource3(ID3D12Device* device, co
     return S_OK;
 }
 
+template<typename T = D3D12_RESOURCE_DESC>
+static ResourceCreateFlagSet GetPlacedResourceFlags(const T *desc) {
+    // Creation flags
+    ResourceCreateFlagSet flags = {};
+
+    // If either a render target or depth stencil, this resource must be cleared
+    // This is basically due to certain metadata, such as DCC/DeltaColorCompression, requiring
+    // valid initial data.
+    if ((desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) || (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)) {
+        flags |= ResourceCreateFlag::MetadataRequiresHardwareClear;
+    }
+
+    // OK
+    return flags;
+}
+
 HRESULT HookID3D12DeviceCreatePlacedResource(ID3D12Device *device, ID3D12Heap * heap, UINT64 heapFlags, const D3D12_RESOURCE_DESC *desc, D3D12_RESOURCE_STATES resourceState, const D3D12_CLEAR_VALUE * clearValue, const IID& riid, void ** pResource) {
     auto table = GetTable(device);
 
     // Object
     ID3D12Resource* resource{nullptr};
 
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePlacedResource(table.next, Next(heap), heapFlags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
-    if (FAILED(hr)) {
-        return hr;
+    // Get the required flags
+    ResourceCreateFlagSet flags = GetPlacedResourceFlags(desc);
+
+    // TODO: Reshape should support generic modifications, so figure out a system for this
+    // If we require a hardware clear, safe-guard the resource
+    if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
+        // Let the internal committed heap emulate the desired heap
+        D3D12_HEAP_DESC heapDesc = heap->GetDesc();
+        
+        // Safe-guarded path
+        HRESULT hr = table.bottom->next_CreateCommittedResource(table.next, &heapDesc.Properties, heapDesc.Flags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
+    } else {
+        // Application path
+        HRESULT hr = table.bottom->next_CreatePlacedResource(table.next, Next(heap), heapFlags, desc, resourceState, clearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource, desc);
+    resource = CreateResourceState(device, table, resource, desc, flags);
 
     // Query to external object if requested
     if (pResource) {
-        hr = resource->QueryInterface(riid, pResource);
+        HRESULT hr = resource->QueryInterface(riid, pResource);
         if (FAILED(hr)) {
             return hr;
         }
@@ -327,18 +359,34 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource1(ID3D12Device* device, ID3D1
     // Object
     ID3D12Resource* resource{nullptr};
 
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePlacedResource1(table.next, Next(pHeap), HeapOffset, pDesc, InitialState, pOptimizedClearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
-    if (FAILED(hr)) {
-        return hr;
+    // Get the required flags
+    ResourceCreateFlagSet flags = GetPlacedResourceFlags(pDesc);
+
+    // TODO: Reshape should support generic modifications, so figure out a system for this
+    // If we require a hardware clear, safe-guard the resource
+    if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
+        // Let the internal committed heap emulate the desired heap
+        D3D12_HEAP_DESC heapDesc = pHeap->GetDesc();
+        
+        // Safe-guarded path
+        HRESULT hr = table.bottom->next_CreateCommittedResource2(table.next, &heapDesc.Properties, heapDesc.Flags, pDesc, InitialState, pOptimizedClearValue, nullptr, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
+    } else {
+        // Application path
+        HRESULT hr = table.bottom->next_CreatePlacedResource1(table.next, Next(pHeap), HeapOffset, pDesc, InitialState, pOptimizedClearValue, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
     }
 
     // Create state with lowered description
-    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc));
+    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc), flags);
 
     // Query to external object if requested
     if (ppvResource) {
-        hr = resource->QueryInterface(riid, ppvResource);
+        HRESULT hr = resource->QueryInterface(riid, ppvResource);
         if (FAILED(hr)) {
             return hr;
         }
@@ -357,18 +405,34 @@ HRESULT WINAPI HookID3D12DeviceCreatePlacedResource2(ID3D12Device* device, ID3D1
     // Object
     ID3D12Resource* resource{nullptr};
 
-    // Pass down callchain
-    HRESULT hr = table.bottom->next_CreatePlacedResource2(table.next, Next(pHeap), HeapOffset, pDesc, InitialLayout, pOptimizedClearValue, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
-    if (FAILED(hr)) {
-        return hr;
+    // Get the required flags
+    ResourceCreateFlagSet flags = GetPlacedResourceFlags(pDesc);
+
+    // TODO: Reshape should support generic modifications, so figure out a system for this
+    // If we require a hardware clear, safe-guard the resource
+    if (flags & ResourceCreateFlag::MetadataRequiresHardwareClear) {
+        // Let the internal committed heap emulate the desired heap
+        D3D12_HEAP_DESC heapDesc = pHeap->GetDesc();
+        
+        // Safe-guarded path
+        HRESULT hr = table.bottom->next_CreateCommittedResource3(table.next, &heapDesc.Properties, heapDesc.Flags, pDesc, InitialLayout, pOptimizedClearValue, nullptr, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
+    } else {
+        // Application path
+        HRESULT hr = table.bottom->next_CreatePlacedResource2(table.next, Next(pHeap), HeapOffset, pDesc, InitialLayout, pOptimizedClearValue, NumCastableFormats, pCastableFormats, __uuidof(ID3D12Resource), reinterpret_cast<void**>(&resource));
+        if (FAILED(hr)) {
+            return hr;
+        }
     }
 
     // Create state with lowered description
-    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc));
+    resource = CreateResourceState(device, table, resource, reinterpret_cast<const D3D12_RESOURCE_DESC*>(pDesc), flags);
 
     // Query to external object if requested
     if (ppvResource) {
-        hr = resource->QueryInterface(riid, ppvResource);
+        HRESULT hr = resource->QueryInterface(riid, ppvResource);
         if (FAILED(hr)) {
             return hr;
         }

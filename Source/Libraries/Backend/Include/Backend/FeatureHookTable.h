@@ -61,6 +61,7 @@ namespace Hooks {
     using ResolveResource = Delegate<void(CommandContext* context, const ResourceInfo& source, const ResourceInfo& dest)>;
     using ClearResource = Delegate<void(CommandContext* context, const ResourceInfo& resource)>;
     using WriteResource = Delegate<void(CommandContext* context, const ResourceInfo& resource)>;
+    using DiscardResource = Delegate<void(CommandContext* context, const ResourceInfo& resource)>;
 
     /// Render pass
     using BeginRenderPass = Delegate<void(CommandContext* context, const RenderPassInfo& passInfo)>;
@@ -91,6 +92,7 @@ public:
     Hooks::ResolveResource resolveResource;
     Hooks::ClearResource clearResource;
     Hooks::WriteResource writeResource;
+    Hooks::DiscardResource discardResource;
 
     /// Render pass
     Hooks::BeginRenderPass beginRenderPass;

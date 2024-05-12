@@ -386,7 +386,7 @@ void ConcurrencyFeature::OnSubmitBatchBegin(SubmissionContext &submitContext, co
             builder.StageBuffer(puidMemoryBaseBufferID, tag.puid * sizeof(uint32_t), sizeof(uint32_t), &tag.memoryBaseAlign32);
 
             // Initialize texel data
-            texelAllocator->Initialize(builder, allocation.memory);
+            texelAllocator->Initialize(builder, allocation.memory, 0x0);
         }
 
         // Update the residency of all texels

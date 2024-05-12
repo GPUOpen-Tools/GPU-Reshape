@@ -298,7 +298,7 @@ namespace Backend::IL {
             ID resourceBaseMemoryOffset = emitter.Extract(emitter.LoadBuffer(emitter.Load(puidMemoryBaseBufferDataID), out.puid), zero);
             
             // Set up the subresource emitter
-            SubresourceEmitter subresourceEmitter(emitter, token, emitter.Load(texelBlockBufferDataID), resourceBaseMemoryOffset);
+            InlineSubresourceEmitter subresourceEmitter(emitter, token, emitter.Load(texelBlockBufferDataID), resourceBaseMemoryOffset);
             out.texelBaseOffsetAlign32 = subresourceEmitter.GetResourceMemoryBase();
 
             // Calculate the texel address
@@ -314,6 +314,9 @@ namespace Backend::IL {
             } else {
                 ASSERT(false, "Invalid type");
             }
+
+            // Get failure condition
+            out.failureBlock = subresourceEmitter.ReadFieldDWord(TexelMemoryDWordFields::FailureBlock);
 
             // OK
             return out;

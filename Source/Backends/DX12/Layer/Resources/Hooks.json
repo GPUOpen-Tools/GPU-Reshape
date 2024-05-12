@@ -236,6 +236,7 @@
         "ClearRenderTargetView",
         "ClearUnorderedAccessViewUint",
         "ClearUnorderedAccessViewFloat",
+        "DiscardResource",
         "BeginRenderPass",
         "EndRenderPass",
         "OMSetRenderTargets"

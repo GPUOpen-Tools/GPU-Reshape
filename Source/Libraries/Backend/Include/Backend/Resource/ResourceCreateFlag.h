@@ -39,6 +39,9 @@ enum class ResourceCreateFlag {
 
     /// This resource was created by the swapchain for presentation
     SwapchainTexture = BIT(2),
+
+    /// This resource requires a clear before it can be safely used
+    MetadataRequiresHardwareClear = BIT(3)
 };
 
 BIT_SET(ResourceCreateFlag);
