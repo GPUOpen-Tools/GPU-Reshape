@@ -374,6 +374,7 @@ add_library(
     Layer/Source/Compiler/DXIL/LLVM/LLVMPrettyPrint.cpp
     Layer/Source/Compiler/DXIL/DXILSigner.cpp
     Layer/Source/Compiler/DXIL/DXILDebugModule.cpp
+    Layer/Source/Compiler/DXMSCompiler.cpp
     Layer/Source/Controllers/InstrumentationController.cpp
     Layer/Source/Controllers/MetadataController.cpp
     Layer/Source/Controllers/VersioningController.cpp

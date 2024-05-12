@@ -54,6 +54,12 @@ struct FeatureHook_vkCmdDispatch : TFeatureHook<Hooks::Dispatch> {
     }
 };
 
+struct FeatureHook_vkCmdDrawMeshTasksEXT : TFeatureHook<Hooks::DispatchMesh> {
+    void operator()(CommandBufferObject* object, CommandContext* context, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) const {
+        hook.Invoke(context, groupCountX, groupCountY, groupCountZ);
+    }
+};
+
 struct FeatureHook_vkCmdCopyBuffer : TFeatureHook<Hooks::CopyResource> {
     void operator()(CommandBufferObject* object, CommandContext* context, VkBuffer srcBuffer, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferCopy* pRegions) const;
 };

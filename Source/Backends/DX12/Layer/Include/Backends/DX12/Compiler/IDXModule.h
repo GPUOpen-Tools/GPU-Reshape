@@ -40,7 +40,9 @@
 struct DXParseJob;
 struct DXCompileJob;
 struct DXStream;
+struct IDxcLibrary;
 class IDXDebugModule;
+class IDXCompilerEnvironment;
 namespace IL {
     struct Program;
 }
@@ -71,6 +73,15 @@ public:
     /// Get the debug information
     /// \return debug interface
     virtual IDXDebugModule* GetDebug() = 0;
+
+    /// Check if the debug module is "slim"
+    /// \return true if slim
+    virtual bool IsSlimDebugModule() = 0;
+
+    /// Create a compiler environment
+    /// \param library target library
+    /// \return new library, must be free'd
+    virtual IDXCompilerEnvironment* CreateCompilerEnvironment(IDxcLibrary* library) = 0;
 
     /// Get a source traceback
     /// \param codeOffset given offset, must originate from the same module

@@ -612,6 +612,9 @@ IL::ID SpvPhysicalBlockTypeConstantVariable::CreatePushConstantBlock(const SpvJo
         // Allocate new ids
         pcBlockPtrId           = table.scan.header.bound++;
         pushConstantVariableId = table.scan.header.bound++;
+
+        // Add to all entry points
+        table.entryPoint.AddInterface(SpvStorageClassPushConstant, pushConstantVariableId);
     }
 
     // Starting offset for instrumentation

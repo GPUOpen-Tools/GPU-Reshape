@@ -489,6 +489,11 @@ namespace IL {
                     continue;
                 }
 
+                // While the constants themselves may be mapped, that doesn't mean we know their contents
+                if (tag.first.constant->Is<UnexposedConstant>()) {
+                    continue;
+                }
+
                 // Try to construct element
                 const auto* offset = tag.first.constant->As<IntConstant>();
                 array.elements.at(offset->value) = CompositeConstant(type->elementType, tag.second, lattice);
@@ -521,6 +526,11 @@ namespace IL {
             // Handle all mapped elements
             for (auto&& tag : node->children) {
                 if (tag.first.type != MemoryAddressType::Constant) {
+                    continue;
+                }
+
+                // While the constants themselves may be mapped, that doesn't mean we know their contents
+                if (tag.first.constant->Is<UnexposedConstant>()) {
                     continue;
                 }
 

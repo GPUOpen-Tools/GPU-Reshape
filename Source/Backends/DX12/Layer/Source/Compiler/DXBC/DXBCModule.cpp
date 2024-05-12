@@ -33,6 +33,7 @@
 #include <Backends/DX12/Layer.h>
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
 #include <Backends/DX12/Compiler/DXCompileJob.h>
+#include <Backends/DX12/Compiler/DXBC/DXBCCompilerEnvironment.h>
 
 // Common
 #include <Common/FileSystem.h>
@@ -165,6 +166,14 @@ bool DXBCModule::Compile(const DXCompileJob& job, DXStream& out) {
 
 IDXDebugModule *DXBCModule::GetDebug() {
     return table.debugModule;
+}
+
+bool DXBCModule::IsSlimDebugModule() {
+    return table.debug.pdbShaderSourceInfo.IsSlimPDB();
+}
+
+IDXCompilerEnvironment * DXBCModule::CreateCompilerEnvironment(IDxcLibrary *library) {
+    return new (allocators) DXBCCompilerEnvironment(library, table.debug.pdbShaderSourceInfo);
 }
 
 DXCodeOffsetTraceback DXBCModule::GetCodeOffsetTraceback(uint32_t codeOffset) {

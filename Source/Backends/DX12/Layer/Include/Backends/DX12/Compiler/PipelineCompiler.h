@@ -87,6 +87,7 @@ protected:
     /// Compile a given job
     void CompileGraphics(const PipelineJobBatch& job);
     void CompileCompute(const PipelineJobBatch& job);
+    void CompileMeshShader(const PipelineJobBatch &job);
 
     /// Worker entry
     void WorkerGraphics(void* userData);

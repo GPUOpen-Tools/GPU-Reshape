@@ -92,6 +92,9 @@ void SpvUtilShaderPRMT::CompileRecords(const SpvJob &job) {
     spvCounterBinding[1] = prmTableId;
     spvCounterBinding[2] = SpvDecorationBinding;
     spvCounterBinding[3] = job.bindingInfo.prmtDescriptorOffset;
+
+    // Add to all entry points
+    table.entryPoint.AddInterface(SpvStorageClassUniform, prmTableId);
 }
 
 SpvUtilShaderPRMT::SpvPRMTOffset SpvUtilShaderPRMT::GetResourcePRMTOffset(const SpvJob& job, SpvStream &stream, IL::ID resource) {

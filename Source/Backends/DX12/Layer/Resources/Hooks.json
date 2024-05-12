@@ -183,6 +183,7 @@
       "name": "CommandAllocator",
       "state": "CommandAllocatorState",
       "hooks": [
+        "Reset",
         "GetDevice"
       ]
     },
@@ -219,6 +220,7 @@
         "Dispatch",
         "ExecuteIndirect",
         "CopyTiles",
+        "DispatchMesh",
         "GetDevice",
         "GetType"
       ],
@@ -226,6 +228,7 @@
         "DrawInstanced",
         "DrawIndexedInstanced",
         "Dispatch",
+        "DispatchMesh",
         "CopyBufferRegion",
         "CopyTextureRegion",
         "CopyResource",

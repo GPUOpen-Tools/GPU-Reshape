@@ -56,7 +56,7 @@ namespace Studio.Models.IL
             dynamic? node;
             try
             {
-                node = JsonConvert.DeserializeObject(json);
+                node = JsonConvert.DeserializeObject(json, new JsonSerializerSettings { FloatFormatHandling = FloatFormatHandling.Symbol });
                 if (node == null)
                 {
                     return;
@@ -953,6 +953,30 @@ namespace Studio.Models.IL
                         Row = node.Row,
                         Column = node.Column,
                         Value = node.Value
+                    };
+                    break;
+                }
+                case OpCode.StoreVertexOutput:
+                {
+                    instruction = new StoreVertexOutputInstruction()
+                    {
+                        Index = node.Index,
+                        Row = node.Row,
+                        Column = node.Column,
+                        Value = node.Value,
+                        VertexIndex = node.VertexIndex
+                    };
+                    break;
+                }
+                case OpCode.StorePrimitiveOutput:
+                {
+                    instruction = new StorePrimitiveOutputInstruction()
+                    {
+                        Index = node.Index,
+                        Row = node.Row,
+                        Column = node.Column,
+                        Value = node.Value,
+                        PrimitiveIndex = node.PrimitiveIndex
                     };
                     break;
                 }

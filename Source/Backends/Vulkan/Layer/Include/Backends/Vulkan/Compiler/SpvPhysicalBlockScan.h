@@ -70,8 +70,31 @@ struct SpvPhysicalBlockScan {
         return &section.physicalBlock;
     }
 
+    /// Check if a version satisfies a request
+    /// \param major requested major
+    /// \param minor requested minor
+    /// \return true if passed
+    bool VersionSatisfies(uint32_t major, uint32_t minor) {
+        // If requested major is ahead, not valid
+        if (major > majorVersion) {
+            return false;
+        }
+
+        // If matching major, check minor
+        if (major == majorVersion && minor > minorVersion) {
+            return false;
+        }
+
+        // Acceptable
+        return true;
+    }
+
     /// SPIRV header
     SpvHeader header;
+
+    /// SPIRV version
+    uint32_t majorVersion{0};
+    uint32_t minorVersion{0};
 
 private:
     struct Section {

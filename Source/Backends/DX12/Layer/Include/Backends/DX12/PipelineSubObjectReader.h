@@ -174,11 +174,12 @@ struct PipelineSubObjectReader {
                 case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS:
                 case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_HS:
                 case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_GS:
-                    return PipelineType::Graphics;
+                    //return PipelineType::Graphics;
                 case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS:
                 case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS:
-                    ASSERT(false, "Mesh shaders not supported");
-                    return PipelineType::None;
+                    return PipelineType::Graphics;
+                    //ASSERT(false, "Mesh shaders not supported");
+                    //return PipelineType::None;
             }
 
             // Next!

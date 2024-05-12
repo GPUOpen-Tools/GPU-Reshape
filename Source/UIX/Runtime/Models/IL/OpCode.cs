@@ -103,6 +103,8 @@ namespace Studio.Models.IL
         Load,
         Store,
         StoreOutput,
+        StoreVertexOutput,
+        StorePrimitiveOutput,
         SampleTexture,
         StoreTexture,
         LoadTexture,

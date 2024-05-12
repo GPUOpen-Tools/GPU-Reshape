@@ -259,6 +259,32 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
                 *reinterpret_cast<D3D12_SHADER_BYTECODE*>(streamStack.Data() + graphicsState->streamPSOffset) = overwrite;
             }
 
+            // Amplification shader
+            if (graphicsState->as) {
+                D3D12_SHADER_BYTECODE overwrite = graphicsState->as->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!overwrite.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                    ++batch.diagnostic->failedJobs;
+                    continue;
+                }
+
+                // Overwrite compute sub-object
+                *reinterpret_cast<D3D12_SHADER_BYTECODE *>(streamStack.Data() + graphicsState->streamASOffset) = overwrite;
+            }
+
+            // Mesh shader
+            if (graphicsState->ms) {
+                D3D12_SHADER_BYTECODE overwrite = graphicsState->ms->GetInstrument(job.shaderInstrumentationKeys[keyOffset++]);
+                if (!overwrite.pShaderBytecode) {
+                    scope.Add(DiagnosticType::PipelineMissingShaderKey);
+                    ++batch.diagnostic->failedJobs;
+                    continue;
+                }
+
+                // Overwrite compute sub-object
+                *reinterpret_cast<D3D12_SHADER_BYTECODE *>(streamStack.Data() + graphicsState->streamMSOffset) = overwrite;
+            }
+
             // To stream description
             D3D12_PIPELINE_STATE_STREAM_DESC desc;
             desc.SizeInBytes = streamStack.Size();
@@ -331,6 +357,10 @@ void PipelineCompiler::CompileGraphics(const PipelineJobBatch &batch) {
                     continue;
                 }
             }
+
+            // AS and MS not supported yet
+            assert(!graphicsState->as);
+            assert(!graphicsState->ms);
 
             // Attempt to create pipeline
             HRESULT result = device->object->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipeline));

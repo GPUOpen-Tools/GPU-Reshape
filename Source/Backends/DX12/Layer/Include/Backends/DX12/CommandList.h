@@ -49,6 +49,7 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *, const D3D1
 HRESULT WINAPI HookID3D12CommandSignatureGetDevice(ID3D12CommandSignature*, const IID &, void **);
 HRESULT WINAPI HookID3D12CommandQueueGetDevice(ID3D12CommandQueue *_this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12DeviceCreateCommandAllocator(ID3D12Device *, D3D12_COMMAND_LIST_TYPE, const IID &, void **);
+HRESULT WINAPI HookID3D12CommandAllocatorReset(ID3D12CommandAllocator *_this);
 HRESULT WINAPI HookID3D12CommandAllocatorGetDevice(ID3D12CommandAllocator *_this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12DeviceCreateCommandList(ID3D12Device *, UINT, D3D12_COMMAND_LIST_TYPE, ID3D12CommandAllocator *, ID3D12PipelineState *, const IID &, void **);
 HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *, UINT, D3D12_COMMAND_LIST_TYPE, D3D12_COMMAND_LIST_FLAGS, const IID &, void **);
@@ -80,7 +81,8 @@ void WINAPI HookID3D12CommandListDrawInstanced(ID3D12CommandList *list, UINT Ver
 void WINAPI HookID3D12CommandListDrawIndexedInstanced(ID3D12CommandList *list, UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation);
 void WINAPI HookID3D12CommandListDispatch(ID3D12CommandList *list, UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ);
 void WINAPI HookID3D12CommandListExecuteIndirect(ID3D12CommandList *list, ID3D12CommandSignature *pCommandSignature, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset, ID3D12Resource *pCountBuffer, UINT64 CountBufferOffset);
-void WINAPI HookID3D12CommandListCopyTiles(ID3D12CommandList *list, ID3D12Resource* pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pTileRegionSize, ID3D12Resource* pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags);
+void WINAPI HookID3D12CommandListCopyTiles(ID3D12CommandList* list, ID3D12Resource* pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pTileRegionSize, ID3D12Resource* pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags);
+void WINAPI HookID3D12CommandListDispatchMesh(ID3D12CommandList* list, UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ);
 void WINAPI HookID3D12CommandListSetComputeRoot32BitConstant(ID3D12CommandList *list, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues);
 void WINAPI HookID3D12CommandListSetGraphicsRoot32BitConstant(ID3D12CommandList *list, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues);
 void WINAPI HookID3D12CommandListSetComputeRoot32BitConstants(ID3D12CommandList *list, UINT RootParameterIndex, UINT Num32BitValuesToSet, const void *pSrcData, UINT DestOffsetIn32BitValues);

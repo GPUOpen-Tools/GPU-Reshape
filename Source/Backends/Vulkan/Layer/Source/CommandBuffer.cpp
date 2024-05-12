@@ -69,6 +69,11 @@ void CreateDeviceCommandProxies(DeviceDispatchTable *table) {
             table->commandBufferDispatchTable.featureBitSetMask_vkCmdDispatch |= (1ull << i);
         }
 
+        if (hookTable.dispatchMesh.IsValid()) {
+            table->commandBufferDispatchTable.featureHooks_vkCmdDrawMeshTasksEXT[i] = hookTable.dispatchMesh;
+            table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawMeshTasksEXT |= (1ull << i);
+        }
+
         if (hookTable.copyResource.IsValid()) {
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyBuffer[i] = hookTable.copyResource;
             table->commandBufferDispatchTable.featureHooks_vkCmdCopyImage[i] = hookTable.copyResource;
@@ -151,6 +156,7 @@ void SetDeviceCommandFeatureSetAndCommit(DeviceDispatchTable *table, uint64_t fe
     table->commandBufferDispatchTable.featureBitSet_vkCmdBeginRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdBeginRenderingKHR & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRendering = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRendering & featureSet;
     table->commandBufferDispatchTable.featureBitSet_vkCmdEndRenderingKHR = table->commandBufferDispatchTable.featureBitSetMask_vkCmdEndRenderingKHR & featureSet;
+    table->commandBufferDispatchTable.featureBitSet_vkCmdDrawMeshTasksEXT = table->commandBufferDispatchTable.featureBitSetMask_vkCmdDrawMeshTasksEXT & featureSet;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkCommandPool *pCommandPool) {
@@ -442,6 +448,30 @@ VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatch(CommandBufferObject *commandBuffer
 
     // Pass down callchain
     commandBuffer->dispatchTable.next_vkCmdDispatch(commandBuffer->object, groupCountX, groupCountY, groupCountZ);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksEXT(CommandBufferObject* commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawMeshTasksEXT(commandBuffer->object, groupCountX, groupCountY, groupCountZ);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, uint32_t drawCount, uint32_t stride) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawMeshTasksIndirectEXT(commandBuffer->object, buffer, offset, drawCount, stride);
+}
+
+VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDrawMeshTasksIndirectCountEXT(CommandBufferObject *commandBuffer, VkBuffer buffer, VkDeviceSize offset, VkBuffer countBuffer, VkDeviceSize countBufferOffset, uint32_t maxDrawCount, uint32_t stride) {
+    // Commit all pending graphics
+    CommitGraphics(commandBuffer);
+
+    // Pass down callchain
+    commandBuffer->dispatchTable.next_vkCmdDrawMeshTasksIndirectCountEXT(commandBuffer->object, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 }
 
 VKAPI_ATTR void VKAPI_CALL Hook_vkCmdDispatchBase(CommandBufferObject *commandBuffer, uint32_t baseCountX, uint32_t baseCountY, uint32_t baseCountZ, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {

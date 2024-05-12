@@ -2831,6 +2831,9 @@ void SpvPhysicalBlockFunction::CreateDataResourceMap(const SpvJob& job) {
         spvCounterBinding[2] = SpvDecorationBinding;
         spvCounterBinding[3] = job.bindingInfo.shaderDataDescriptorOffset + shaderDataOffset;
 
+        // Add to all entry points
+        table.entryPoint.AddInterface(SpvStorageClassUniformConstant, variable->id);
+
         // Next!
         shaderDataOffset++;
     }

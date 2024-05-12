@@ -397,7 +397,63 @@ namespace Studio.Models.IL
         /// </summary>
         public uint Value;
     }
-    
+
+    public class StoreVertexOutputInstruction : Instruction
+    {
+        /// <summary>
+        /// Output index
+        /// </summary>
+        public uint Index;
+
+        /// <summary>
+        /// Row into output
+        /// </summary>
+        public uint Row;
+
+        /// <summary>
+        /// Column into output
+        /// </summary>
+        public uint Column;
+
+        /// <summary>
+        /// Value to be stored
+        /// </summary>
+        public uint Value;
+
+        /// <summary>
+        /// Output vertex index
+        /// </summary>
+        public uint VertexIndex;
+    }
+
+    public class StorePrimitiveOutputInstruction : Instruction
+    {
+        /// <summary>
+        /// Output index
+        /// </summary>
+        public uint Index;
+
+        /// <summary>
+        /// Row into output
+        /// </summary>
+        public uint Row;
+
+        /// <summary>
+        /// Column into output
+        /// </summary>
+        public uint Column;
+
+        /// <summary>
+        /// Value to be stored
+        /// </summary>
+        public uint Value;
+
+        /// <summary>
+        /// Output primitive index
+        /// </summary>
+        public uint PrimitiveIndex;
+    }
+
     public class SampleTextureInstruction : Instruction
     {
         /// <summary>

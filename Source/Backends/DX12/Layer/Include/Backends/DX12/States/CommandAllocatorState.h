@@ -28,9 +28,14 @@
 
 // Layer
 #include <Backends/DX12/Detour.Gen.h>
+#include <Backends/DX12/States/CommandListState.h>
 
 // Common
 #include <Common/Allocators.h>
+#include <Common/Containers/SlotArray.h>
+
+// Std
+#include <mutex>
 
 struct __declspec(uuid("23000608-5CA5-4865-883A-4A864750B14B")) CommandAllocatorState {
     ~CommandAllocatorState();
@@ -40,6 +45,15 @@ struct __declspec(uuid("23000608-5CA5-4865-883A-4A864750B14B")) CommandAllocator
 
     /// User command list type
     D3D12_COMMAND_LIST_TYPE userType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+    /// All streaming states tracked by this allocator
+    std::vector<ShaderExportStreamState*> streamStates;
+
+    /// All command lists currently allocating from this allocator
+    SlotArray<CommandListState*, &CommandListState::allocatorSlotId> commandLists;
+
+    /// Shared lock for thread safe usage
+    std::mutex lock;
 
     /// Owning allocator
     Allocators allocators;

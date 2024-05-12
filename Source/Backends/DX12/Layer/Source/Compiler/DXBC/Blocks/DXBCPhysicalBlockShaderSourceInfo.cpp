@@ -29,6 +29,9 @@
 #include <Backends/DX12/Compiler/DXBC/DXBCParseContext.h>
 #include <Backends/DX12/Compiler/DXIL/DXILModule.h>
 
+// Common
+#include <Common/String.h>
+
 // ZLIB
 #include <zlib.h>
 
@@ -165,4 +168,15 @@ void DXBCPhysicalBlockShaderSourceInfo::Parse() {
         // Aligned next
         ctx.SetOffset(start + section.alignedByteSize);
     }
+}
+
+bool DXBCPhysicalBlockShaderSourceInfo::IsSlimPDB() {
+    for (const SourceArg& arg : sourceArgs) {
+        if (std::iequals(std::string(arg.name), "Zs")) {
+            return true;
+        }
+    }
+
+    // None found
+    return false;
 }

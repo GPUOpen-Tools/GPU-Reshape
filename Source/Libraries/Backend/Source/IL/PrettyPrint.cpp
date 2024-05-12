@@ -249,6 +249,16 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             line << "StoreOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value;
             break;
         }
+        case OpCode::StoreVertexOutput: {
+            auto store = instr->As<IL::StoreVertexOutputInstruction>();
+            line << "StoreVertexOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value << " vertexIndex:%" << store->vertexIndex;
+            break;
+        }
+        case OpCode::StorePrimitiveOutput: {
+            auto store = instr->As<IL::StorePrimitiveOutputInstruction>();
+            line << "StorePrimitiveOutput index:%" << store->index << " row:%" << store->row << " column:%" << store->column << " value:%" << store->value << " primitiveIndex:%" << store->primitiveIndex;
+            break;
+        }
         case OpCode::IsInf: {
             auto isInf = instr->As<IL::IsInfInstruction>();
             line << "IsInf %" << isInf->value;
@@ -1644,7 +1654,21 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, SymbolicContext& con
         }
         case Backend::IL::ConstantKind::FP: {
             auto fp = constant->As<Backend::IL::FPConstant>();
-            out.Line() << "\"Value\": " << fp->value << ",";
+            out.Line() << "\"Value\": ";
+
+            if (std::isinf(fp->value)) {
+                if (fp->value > 0) {
+                    out.stream << "Infinity";
+                } else {
+                    out.stream << "-Infinity";
+                }
+            } else if (std::isnan(fp->value)) {
+                out.stream << "NaN";
+            } else {
+                out.stream << fp->value;
+            }
+
+            out.stream << ",";
             break;
         }
         case Backend::IL::ConstantKind::Array: {
@@ -1828,6 +1852,24 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             out.Line() << "\"Row\": " << store->row << ",";
             out.Line() << "\"Column\": " << store->column << ",";
             out.Line() << "\"Value\": " << store->value << ",";
+            break;
+        }
+        case IL::OpCode::StoreVertexOutput: {
+            auto store = instr->As<IL::StoreVertexOutputInstruction>();
+            out.Line() << "\"Index\": " << store->index << ",";
+            out.Line() << "\"Row\": " << store->row << ",";
+            out.Line() << "\"Column\": " << store->column << ",";
+            out.Line() << "\"Value\": " << store->value << ",";
+            out.Line() << "\"VertexIndex\": " << store->vertexIndex << ",";
+            break;
+        }
+        case IL::OpCode::StorePrimitiveOutput: {
+            auto store = instr->As<IL::StorePrimitiveOutputInstruction>();
+            out.Line() << "\"Index\": " << store->index << ",";
+            out.Line() << "\"Row\": " << store->row << ",";
+            out.Line() << "\"Column\": " << store->column << ",";
+            out.Line() << "\"Value\": " << store->value << ",";
+            out.Line() << "\"PrimitiveIndex\": " << store->primitiveIndex << ",";
             break;
         }
         case IL::OpCode::IsInf: {
