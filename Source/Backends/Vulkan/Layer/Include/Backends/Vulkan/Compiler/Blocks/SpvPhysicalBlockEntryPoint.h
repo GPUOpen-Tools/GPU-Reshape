@@ -56,6 +56,11 @@ public:
             entryPoint.interfaces.push_back(id);
         }
     }
+    
+    /// Add a shader interface value
+    /// \param storageClass variable storage class
+    /// \param id identifier to be added to entry point interfaces
+    void AddInterface(SpvStorageClass storageClass, SpvId id);
 
 private:
     struct ExecutionMode {

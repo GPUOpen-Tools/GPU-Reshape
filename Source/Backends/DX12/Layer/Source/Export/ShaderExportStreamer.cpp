@@ -255,7 +255,7 @@ void ShaderExportStreamer::Enqueue(CommandQueueState* queueState, ShaderExportSt
 void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList) {
     // Recycle old data if needed
     if (state->pending) {
-        RecycleCommandList(state, commandList);
+        RecycleCommandList(state);
     }
 
     // Serial
@@ -273,8 +273,11 @@ void ShaderExportStreamer::BeginCommandList(ShaderExportStreamState* state, ID3D
     // Reset render pass state
     state->renderPass.insideRenderPass = false;
 
+    // If this is a copy command list, there's so descriptor data
+    state->hasDescriptorState = commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY;
+
     // Uses descriptors?
-    if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY) {
+    if (state->hasDescriptorState) {
         // Set initial heap
         commandList->SetDescriptorHeaps(1u, &sharedGPUHeap);
 
@@ -687,12 +690,12 @@ void ShaderExportStreamer::Process(CommandQueueState* queueState) {
     }
 }
 
-void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state, ID3D12GraphicsCommandList* commandList) {
+void ShaderExportStreamer::RecycleCommandList(ShaderExportStreamState *state) {
     std::lock_guard guard(mutex);
     ASSERT(state->pending, "Recycling non-pending stream state");
 
     // Uses descriptors?
-    if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY) {
+    if (state->hasDescriptorState) {
         // Move descriptor data ownership to segment
         for (uint32_t i = 0; i < static_cast<uint32_t>(PipelineType::Count); i++) {
             FreeDescriptorDataSegment(state->bindStates[i].descriptorDataAllocator->ReleaseSegment());
@@ -797,7 +800,7 @@ void ShaderExportStreamer::MapImmutableDescriptors(const ShaderExportSegmentDesc
 
 void ShaderExportStreamer::MapSegment(ShaderExportStreamState *state, ID3D12GraphicsCommandList* commandList, ShaderExportStreamSegment *segment) {
     // Uses descriptors?
-    if (commandList->GetType() != D3D12_COMMAND_LIST_TYPE_COPY) {
+    if (state->hasDescriptorState) {
         // Map the command state to shared segment
         for (const ShaderExportSegmentDescriptorAllocation& allocation : state->segmentDescriptors) {
             // Update the segment counters

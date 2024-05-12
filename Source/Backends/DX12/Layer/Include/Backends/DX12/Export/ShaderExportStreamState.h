@@ -173,6 +173,9 @@ struct ShaderExportStreamState {
 
     /// Is this state pending?
     bool pending{false};
+
+    /// Does this state have any descriptor data?
+    bool hasDescriptorState{false};
     
     /// Currently bound heaps
     DescriptorHeapState* resourceHeap{nullptr};

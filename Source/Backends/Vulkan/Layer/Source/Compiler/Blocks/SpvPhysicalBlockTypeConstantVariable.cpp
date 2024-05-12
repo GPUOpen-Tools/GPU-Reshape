@@ -721,7 +721,7 @@ IL::ID SpvPhysicalBlockTypeConstantVariable::FindOrCreateInput(SpvBuiltIn builti
 
     // Keep record of builtin and add to entrypoint interface list
     table.annotation.SetBuiltin(builtin, value);
-    table.entryPoint.AddInterface(value);
+    table.entryPoint.AddInterface(SpvStorageClassInput, value);
     return value;
 }
 

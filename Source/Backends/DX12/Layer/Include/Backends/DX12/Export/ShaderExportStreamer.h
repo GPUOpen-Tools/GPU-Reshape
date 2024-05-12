@@ -235,9 +235,8 @@ public:
     void CloseCommandList(ShaderExportStreamState* state);
 
     /// Recycle a command list
-    /// \param commandList the owning command list
     /// \param state parent stream state, must be pending
-    void RecycleCommandList(ShaderExportStreamState* state, ID3D12GraphicsCommandList* commandList);
+    void RecycleCommandList(ShaderExportStreamState* state);
 
     /// Bind the shader export for a pipeline
     /// \param state the stream state

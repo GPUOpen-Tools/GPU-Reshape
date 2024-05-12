@@ -170,3 +170,15 @@ void SpvPhysicalBlockEntryPoint::CopyTo(SpvPhysicalBlockTable &remote, SpvPhysic
     out.block = remote.scan.GetPhysicalBlock(SpvPhysicalBlockType::EntryPoint);
     out.entryPoints = entryPoints;
 }
+
+void SpvPhysicalBlockEntryPoint::AddInterface(SpvStorageClass storageClass, SpvId id) {
+    // If we're not on 1.4, only report Input | Output storage classes
+    if (!table.scan.VersionSatisfies(1, 4)) {
+        if (storageClass != SpvStorageClassInput && storageClass != SpvStorageClassOutput) {
+            return;
+        }
+    }
+
+    // Passed, add it!
+    AddInterface(id);
+}
