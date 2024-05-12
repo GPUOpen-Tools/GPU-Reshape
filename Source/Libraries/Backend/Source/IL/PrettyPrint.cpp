@@ -1617,7 +1617,21 @@ void PrettyPrintJson(const Backend::IL::Constant *constant, SymbolicContext& con
         }
         case Backend::IL::ConstantKind::FP: {
             auto fp = constant->As<Backend::IL::FPConstant>();
-            out.Line() << "\"Value\": " << fp->value << ",";
+            out.Line() << "\"Value\": ";
+
+            if (std::isinf(fp->value)) {
+                if (fp->value > 0) {
+                    out.stream << "Infinity";
+                } else {
+                    out.stream << "-Infinity";
+                }
+            } else if (std::isnan(fp->value)) {
+                out.stream << "NaN";
+            } else {
+                out.stream << fp->value;
+            }
+
+            out.stream << ",";
             break;
         }
         case Backend::IL::ConstantKind::Array: {

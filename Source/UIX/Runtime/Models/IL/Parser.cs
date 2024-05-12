@@ -56,7 +56,7 @@ namespace Studio.Models.IL
             dynamic? node;
             try
             {
-                node = JsonConvert.DeserializeObject(json);
+                node = JsonConvert.DeserializeObject(json, new JsonSerializerSettings { FloatFormatHandling = FloatFormatHandling.Symbol });
                 if (node == null)
                 {
                     return;
