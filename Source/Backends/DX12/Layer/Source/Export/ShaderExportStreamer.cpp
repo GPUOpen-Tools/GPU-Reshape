@@ -130,7 +130,26 @@ ShaderExportStreamer::~ShaderExportStreamer() {
 
     // Free all stream states
     for (ShaderExportStreamState* state : streamStatePool) {
-        device->deviceAllocator->Free(state->constantShaderDataBuffer.allocation);
+        if (state->pending) {
+            RecycleCommandList(state);
+        }
+    }
+
+    // Free all descriptor data segments
+    for (const DescriptorDataSegmentEntry& entry : freeDescriptorDataSegmentEntries) {
+        device->deviceAllocator->Free(entry.allocation);
+    }
+
+    // Free all constant buffers
+    for (const ConstantShaderDataBuffer& buffer : freeConstantShaderDataBuffers) {
+        device->deviceAllocator->Free(buffer.allocation);
+    }
+
+    // Free all constant allocators
+    for (const ShaderExportConstantAllocator& allocator : freeConstantAllocators) {
+        for (const ShaderExportConstantSegment& staging : allocator.staging) {
+            device->deviceAllocator->Free(staging.allocation);
+        }
     }
 }
 
@@ -171,9 +190,13 @@ ShaderExportStreamState *ShaderExportStreamer::AllocateStreamState() {
 }
 
 void ShaderExportStreamer::Free(ShaderExportStreamState *state) {
-    std::lock_guard guard(mutex);
+    // Recycle old data if needed
+    if (state->pending) {
+        RecycleCommandList(state);
+    }
 
     // Done
+    std::lock_guard guard(mutex);
     streamStatePool.Push(state);
 }
 

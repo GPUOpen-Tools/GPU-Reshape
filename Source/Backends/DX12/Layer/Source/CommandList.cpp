@@ -378,6 +378,30 @@ HRESULT HookID3D12DeviceCreateCommandAllocator(ID3D12Device *device, D3D12_COMMA
     return S_OK;
 }
 
+HRESULT HookID3D12CommandAllocatorReset(ID3D12CommandAllocator *_this) {
+    auto table = GetTable(_this);
+
+    // Get device
+    auto device = GetTable(table.state->parent);
+
+    // Serialize
+    {
+        std::lock_guard guard(table.state->lock);
+        
+        // The allocator owns the lifetimes of the streaming states
+        // If an allocator has been reset, all the submissions are done, so free the states up
+        for (ShaderExportStreamState *streamState : table.state->streamStates) {
+            device.state->exportStreamer->Free(streamState);
+        }
+    
+        // Cleanup
+        table.state->streamStates.clear();
+    }
+
+    // Pass to allocator
+    return table.next->Reset();
+}
+
 static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState) {
     if (!initialState) {
         return nullptr;
@@ -391,7 +415,42 @@ static ID3D12PipelineState *GetHotSwapPipeline(ID3D12PipelineState *initialState
     return nullptr;
 }
 
-static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D12PipelineState* initialState, ID3D12PipelineState* hotSwap, bool isHotSwap) {
+
+static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D12CommandAllocator* allocator, ID3D12PipelineState* initialState, ID3D12PipelineState* hotSwap, bool isHotSwap) {
+    auto allocatorTable = GetTable(allocator);
+
+    // Either the state must be zero, or an allocator already owns it
+    ASSERT(!state->streamState || state->owningAllocator, "Leaking streaming state");
+    
+    // If the allocator has changed
+    if (state->owningAllocator != allocator) {
+        // Has previous instance?
+        if (state->allocatorSlotId != kInvalidSlotId) {
+            auto owningTable = GetTable(state->owningAllocator);
+
+            // Remove from owning
+            std::lock_guard guard(owningTable.state->lock);
+            owningTable.state->commandLists.Remove(state);
+        }
+
+        // New owner
+        state->owningAllocator = allocator;
+        
+        // Add to allocator tracking
+        std::lock_guard guard(allocatorTable.state->lock);
+        allocatorTable.state->commandLists.Add(state);
+    }
+
+    // Create export state
+    // Ideally re-used behind the scenes
+    state->streamState = device->exportStreamer->AllocateStreamState();
+
+    // Add to allocator, effectively owns this streaming state
+    {
+        std::lock_guard guard(allocatorTable.state->lock);
+        allocatorTable.state->streamStates.push_back(state->streamState);
+    }
+    
     // Inform the streamer
     device->exportStreamer->BeginCommandList(state->streamState, state->object);
 
@@ -418,7 +477,7 @@ static void BeginCommandList(DeviceState* device, CommandListState* state, ID3D1
     }
 }
 
-HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandList, D3D12_COMMAND_LIST_TYPE type, ID3D12PipelineState *initialState, ID3D12PipelineState* hotSwap, bool opened, const IID &riid, void **pCommandList) {
+HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandList, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *allocator, ID3D12PipelineState *initialState, ID3D12PipelineState* hotSwap, bool opened, const IID &riid, void **pCommandList) {
     auto table = GetTable(device);
 
     // Create state
@@ -438,12 +497,9 @@ HRESULT CreateCommandListState(ID3D12Device *device, ID3D12CommandList* commandL
             return hr;
         }
 
-        // Create export state
-        state->streamState = table.state->exportStreamer->AllocateStreamState();
-
         // Handle sub-systems
         if (opened) {
-            BeginCommandList(table.state, state, initialState, hotSwap, hotSwap != nullptr);
+            BeginCommandList(table.state, state, allocator, initialState, hotSwap, hotSwap != nullptr);
         }
     }
 
@@ -473,7 +529,7 @@ HRESULT HookID3D12DeviceCreateCommandList(ID3D12Device *device, UINT nodeMask, D
     }
 
     // Create state
-    return CreateCommandListState(device, commandList, type, initialState, hotSwap, true, riid, pCommandList);
+    return CreateCommandListState(device, commandList, type, allocator, initialState, hotSwap, true, riid, pCommandList);
 }
 
 HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *device, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, D3D12_COMMAND_LIST_FLAGS flags, const IID &riid, void **pCommandList) {
@@ -492,7 +548,7 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *device, UINT nod
     }
 
     // Create state
-    return CreateCommandListState(device, commandList, type, nullptr, nullptr, false, riid, pCommandList);
+    return CreateCommandListState(device, commandList, type, nullptr, nullptr, nullptr, false, riid, pCommandList);
 }
 
 HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12CommandAllocator *allocator, ID3D12PipelineState *state) {
@@ -514,7 +570,7 @@ HRESULT WINAPI HookID3D12CommandListReset(ID3D12CommandList *list, ID3D12Command
     }
 
     // Handle sub-systems
-    BeginCommandList(device.state, table.state, state, hotSwap, hotSwap != nullptr);
+    BeginCommandList(device.state, table.state, allocator, state, hotSwap, hotSwap != nullptr);
 
     // OK
     return S_OK;
@@ -1249,11 +1305,38 @@ CommandQueueState::~CommandQueueState() {
 }
 
 CommandAllocatorState::~CommandAllocatorState() {
+    auto device = GetTable(parent);
 
+    // Cleanup references to all command lists
+    for (CommandListState *commandList : commandLists) {
+        commandList->owningAllocator = nullptr;
+        commandList->allocatorSlotId = kInvalidSlotId;
+
+        // Lifetime is always that of the allocator
+        commandList->streamState = nullptr;
+    }
+    
+    // The allocator owns the lifetimes of the streaming states
+    // If an allocator has been destroyed, all the submissions are done, so free the states up
+    for (ShaderExportStreamState *streamState : streamStates) {
+        device.state->exportStreamer->Free(streamState);
+    }
 }
 
 CommandListState::~CommandListState() {
+    auto device = GetTable(parent);
 
+    // The command lists do not own the streaming states, leave them be
+    ASSERT(!streamState || owningAllocator, "Dangling streaming state");
+
+    // Remove from owning allocator
+    if (allocatorSlotId != kInvalidSlotId) {
+        auto owningTable = GetTable(owningAllocator);
+
+        // Serial
+        std::lock_guard guard(owningTable.state->lock);
+        owningTable.state->commandLists.Remove(this);
+    }
 }
 
 ImmediateCommandList CommandQueueState::PopCommandList() {

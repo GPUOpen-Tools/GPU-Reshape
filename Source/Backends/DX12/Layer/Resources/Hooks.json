@@ -183,6 +183,7 @@
       "name": "CommandAllocator",
       "state": "CommandAllocatorState",
       "hooks": [
+        "Reset",
         "GetDevice"
       ]
     },

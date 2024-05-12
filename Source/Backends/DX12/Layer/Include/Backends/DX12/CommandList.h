@@ -49,6 +49,7 @@ HRESULT WINAPI HookID3D12DeviceCreateCommandSignature(ID3D12Device *, const D3D1
 HRESULT WINAPI HookID3D12CommandSignatureGetDevice(ID3D12CommandSignature*, const IID &, void **);
 HRESULT WINAPI HookID3D12CommandQueueGetDevice(ID3D12CommandQueue *_this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12DeviceCreateCommandAllocator(ID3D12Device *, D3D12_COMMAND_LIST_TYPE, const IID &, void **);
+HRESULT WINAPI HookID3D12CommandAllocatorReset(ID3D12CommandAllocator *_this);
 HRESULT WINAPI HookID3D12CommandAllocatorGetDevice(ID3D12CommandAllocator *_this, REFIID riid, void **ppDevice);
 HRESULT WINAPI HookID3D12DeviceCreateCommandList(ID3D12Device *, UINT, D3D12_COMMAND_LIST_TYPE, ID3D12CommandAllocator *, ID3D12PipelineState *, const IID &, void **);
 HRESULT WINAPI HookID3D12DeviceCreateCommandList1(ID3D12Device *, UINT, D3D12_COMMAND_LIST_TYPE, D3D12_COMMAND_LIST_FLAGS, const IID &, void **);
