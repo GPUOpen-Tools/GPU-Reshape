@@ -112,6 +112,33 @@ namespace Backend::IL {
             return constantPtr;
         }
 
+        /// Add an unresolved constant to this map
+        /// This must be resolved through ResolveConstant
+        /// \param id target identifier
+        /// \param type of the constant to be instantiated
+        /// \param constant the constant to be added
+        template<typename T>
+        Constant* AddUnresolvedConstant(ID id, const Backend::IL::Type* type, const T &constant) {
+            Constant* constantPtr = AllocateConstant<T>(id, type, constant);
+            idMap[id] = constantPtr;
+            return constantPtr;
+        }
+
+        /// Resolve a constant
+        /// This must have been allocated through AddUnresolvedContant
+        /// \param constant the constant to be resolved
+        template<typename T>
+        void ResolveConstant(T *constant) {
+            auto&& sortMap = GetSortMap<T>();
+
+            // Get the expected type
+            const auto* type = constant->type->template As<typename T::Type>();
+
+            // Assign to sort map
+            ASSERT(!sortMap.contains(constant->SortKey(type)), "Constant already resolved");
+            sortMap[constant->SortKey(type)] = constant;
+        }
+
         /// Add a symbolic constant to this map
         ///   ! It must not have any semantic usage
         /// \param constant the constant to be added
@@ -134,6 +161,18 @@ namespace Backend::IL {
         const Constant *GetConstant(ID id) {
             const Constant *constant = idMap[id];
             return constant;
+        }
+
+        /// Check if a constant exists
+        /// \param id expected id
+        /// \return false if not present
+        bool HasConstant(ID id) {
+            if (id >= idMap.size()) {
+                return false;
+            }
+
+            // Check if valid
+            return idMap[id] != nullptr;
         }
 
         /// Get the constant for a given id

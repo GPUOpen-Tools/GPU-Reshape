@@ -79,6 +79,27 @@ public:
         return constantPtr;
     }
 
+    /// Add an unresolved constant to this map
+    /// This must be resolved through ResolveConstant
+    /// \param id target identifier
+    /// \param type of the constant to be instantiated
+    /// \param constant the constant to be added
+    template<typename T>
+    Backend::IL::Constant* AddUnresolvedConstant(IL::ID id, const Backend::IL::Type* type, const T &constant) {
+        auto *constantPtr = programMap.AddUnresolvedConstant<T>(id, type, constant);
+        constants.push_back(constantPtr);
+        AddConstantMapping(constantPtr, id);
+        return constantPtr;
+    }
+
+    /// Resolve a constant
+    /// This must have been allocated through AddUnresolvedContant
+    /// \param constant the constant to be resolved
+    template<typename T>
+    void ResolveConstant(T* constant) {
+        programMap.ResolveConstant<T>(constant);
+    }
+
     /// Get constant at offset
     /// \param id source id
     /// \return nullptr if not found
