@@ -755,8 +755,27 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 break;
             }
 
-            case LLVMFunctionRecord::InstRet: {
+            case LLVMFunctionRecord::InstCmpXchg: {
+                uint32_t address = reader.GetMappedRelativeValue(anchor);
+
+                // Unwrap pointer to determine result type
+                const auto* pointerType = ilTypeMap.GetType(address)->As<Backend::IL::PointerType>();
+
                 // Emit as unexposed
+                IL::UnexposedInstruction instr{};
+                instr.opCode = IL::OpCode::Unexposed;
+                instr.result = result;
+                instr.source = IL::Source::Code(recordIdx);
+                instr.backendOpCode = record.id;
+                instr.symbol = "AtomicCmpXchg";
+                basicBlock->Append(instr);
+
+                // Set resulting type
+                ilTypeMap.SetType(result, pointerType->pointee);
+                break;
+            }
+
+            case LLVMFunctionRecord::InstRet: {
                 IL::ReturnInstruction instr{};
                 instr.opCode = IL::OpCode::Return;
                 instr.result = result;

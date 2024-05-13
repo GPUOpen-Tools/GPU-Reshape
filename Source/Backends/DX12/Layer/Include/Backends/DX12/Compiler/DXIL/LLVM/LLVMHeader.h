@@ -159,6 +159,7 @@ enum class LLVMFunctionRecord : uint32_t {
     InstGEP = 43,
     InstStore = 44,
     InstStoreAtomic = 45,
+    InstCmpXchg = 46,
     InstCompareExchange = 48,
     InstLandingPad = 47
 };
