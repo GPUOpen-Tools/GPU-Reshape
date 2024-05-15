@@ -475,9 +475,20 @@ namespace Backend::IL {
             case OpCode::IntToFloat: {
                 auto _instr = instr->As<IntToFloatInstruction>();
 
+                // Map constant
+                const Constant* constant = map(_instr->value);
+
+                // Boolean values are considered integral
+                double value;
+                if (auto _int = constant->Cast<IntConstant>()) {
+                    value = static_cast<double>(_int->value);
+                } else {
+                    value = constant->As<BoolConstant>()->value ? 1.0 : 0.0;
+                }
+
                 return constants.FindConstantOrAdd(
                     types.GetType(_instr->result)->As<FPType>(),
-                    FPConstant{.value = static_cast<double>(map(_instr->value)->template As<IntConstant>()->value)}
+                    FPConstant{.value = value}
                 );
             }
             case OpCode::BitCast: {
