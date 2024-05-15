@@ -4529,9 +4529,15 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             }
 
             case LLVMFunctionRecord::InstCmp:
-            case LLVMFunctionRecord::InstCmp2:
+            case LLVMFunctionRecord::InstCmp2: {
+                writer.RemapRelativeValue(anchor);
+                writer.RemapRelative(anchor);
+                break;
+            }
+
             case LLVMFunctionRecord::InstCmpXchg: {
                 writer.RemapRelativeValue(anchor);
+                writer.RemapRelative(anchor);
                 writer.RemapRelative(anchor);
                 break;
             }
