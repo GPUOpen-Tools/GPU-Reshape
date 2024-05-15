@@ -4535,6 +4535,13 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
                 break;
             }
 
+            case LLVMFunctionRecord::InstCmpXchg: {
+                writer.RemapRelativeValue(anchor);
+                writer.RemapRelative(anchor);
+                writer.RemapRelative(anchor);
+                break;
+            }
+
             case LLVMFunctionRecord::InstRet: {
                 if (record.opCount) {
                     writer.RemapRelativeValue(anchor);

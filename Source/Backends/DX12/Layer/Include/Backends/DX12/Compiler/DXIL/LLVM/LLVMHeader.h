@@ -571,5 +571,7 @@ inline bool HasValueAllocation(LLVMFunctionRecord record, uint32_t opCount) {
             return false;
         case LLVMFunctionRecord::DebugLOC2:
             return false;
+        case LLVMFunctionRecord::InstCmpXchg:
+            return true;
     }
 }
