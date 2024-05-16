@@ -418,10 +418,9 @@ namespace Backend::IL {
                     break;
                 }
                 case PropagationResult::Mapped: {
-                    // TODO: Should be guarded
-                    //if (propagationResult != latticeResult) {
+                    if (propagationResult != latticeResult) {
                         SeedSSAEdges(work, edge, instr);
-                    //}
+                    }
 
                     if (conditionalBlock) {
                         SeedCFGEdge(work, edge.to, conditionalBlock, JoinEdgeLattice(edge.lattice, propagationResult));
@@ -433,10 +432,9 @@ namespace Backend::IL {
                 case PropagationResult::Varying: {
                     ssaExclusion.insert(instr);
 
-                    // TODO: Should be guarded
-                    //if (propagationResult != latticeResult) {
+                    if (propagationResult != latticeResult) {
                         SeedSSAEdges(work, edge, instr);
-                    //}
+                    }
 
                     // Varying terminators add all the successors to the work list
                     if (IsTerminator(instr)) {
