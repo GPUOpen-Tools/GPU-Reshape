@@ -495,7 +495,7 @@ namespace IL {
 
                 // Offset may be invalid, program may not conform to the array size
                 const auto* offset = tag.first.constant->As<IntConstant>();
-                if (offset->value >= array.elements.size()) {
+                if (static_cast<size_t>(offset->value) >= array.elements.size()) {
                     continue;
                 }
                 
@@ -540,7 +540,7 @@ namespace IL {
                 
                 // Offset may be invalid, program may not conform to the array size
                 const auto* offset = tag.first.constant->As<IntConstant>();
-                if (offset->value >= array.elements.size()) {
+                if (static_cast<size_t>(offset->value) >= array.elements.size()) {
                     continue;
                 }
                 
