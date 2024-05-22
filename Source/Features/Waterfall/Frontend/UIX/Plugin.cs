@@ -28,7 +28,6 @@ using System;
 using Avalonia;
 using DynamicData;
 using GRS.Features.ResourceBounds.UIX.Workspace.Objects;
-using GRS.Features.Waterfall.UIX.Contexts;
 using GRS.Features.Waterfall.UIX.Workspace;
 using Studio.Plugin;
 using Studio.Services;

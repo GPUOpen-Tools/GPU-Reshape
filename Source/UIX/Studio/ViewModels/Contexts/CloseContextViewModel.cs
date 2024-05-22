@@ -26,6 +26,7 @@
 
 using System.Collections.Generic;
 using ReactiveUI;
+using Studio.Extensions;
 using Studio.ViewModels.Traits;
 
 namespace Studio.ViewModels.Contexts
@@ -36,10 +37,10 @@ namespace Studio.ViewModels.Contexts
         /// Install a context against a target view model
         /// </summary>
         /// <param name="itemViewModels">destination items list</param>
-        /// <param name="targetViewModel">the target to install for</param>
-        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object targetViewModel)
+        /// <param name="targetViewModels">the targets to install for</param>
+        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object[] targetViewModels)
         {
-            if (targetViewModel is not IClosableObject closable)
+            if (targetViewModels.PromoteOrNull<IClosableObject>() is not {} closable)
             {
                 return;
             }
@@ -54,9 +55,12 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Command implementation
         /// </summary>
-        private void OnInvoked(IClosableObject closable)
+        private void OnInvoked(IClosableObject[] closable)
         {
-            closable.CloseCommand?.Execute(null);
+            foreach (IClosableObject closableObject in closable)
+            {
+                closableObject.CloseCommand?.Execute(null);
+            }
         }
     }
 }

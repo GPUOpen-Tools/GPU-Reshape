@@ -34,6 +34,7 @@ using Message.CLR;
 using ReactiveUI;
 using Runtime.Models.Objects;
 using Runtime.ViewModels.Workspace.Properties;
+using Studio.Extensions;
 using Studio.Models.Instrumentation;
 using Studio.ViewModels.Traits;
 using Studio.ViewModels.Workspace;
@@ -44,15 +45,15 @@ namespace Studio.ViewModels.Contexts
     public class InstrumentAllContextViewModel : ReactiveObject, IInstrumentAllContextViewModel
     {
         /// <summary>
-        /// Target view model of the context
+        /// Target view models of the context
         /// </summary>
-        public object? TargetViewModel
+        public object[]? TargetViewModels
         {
-            get => _targetViewModel;
+            get => _targetViewModels;
             set
             {
-                this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsVisible = _targetViewModel is IInstrumentableObject;
+                this.RaiseAndSetIfChanged(ref _targetViewModels, value);
+                IsVisible = _targetViewModels?.Any(x => x is IInstrumentableObject) ?? false;
             }
         }
 
@@ -90,28 +91,37 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         private async void OnInvoked()
         {
-            if (_targetViewModel is not IInstrumentableObject instrumentable ||
-                instrumentable.GetOrCreateInstrumentationProperty() is not { } propertyViewModel)
+            if (_targetViewModels?.PromoteOrNull<IInstrumentableObject>() is not {} instrumentableObjects)
             {
                 return;
             }
             
             // Some features may have user input, wait until everything is done
-            using var scope = new BusScope(instrumentable.GetWorkspaceCollection()?.GetService<IBusPropertyService>(), BusMode.RecordAndCommit);
+            // All objects share the same workspace
+            using var scope = new BusScope(instrumentableObjects[0].GetWorkspaceCollection()?.GetService<IBusPropertyService>(), BusMode.RecordAndCommit);
 
-            // Create all instrumentation properties
-            foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspaceCollection()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
+            // Instrument all objects
+            foreach (IInstrumentableObject instrumentable in instrumentableObjects)
             {
-                // Ignore non-standard
-                if (!service.Flags.HasFlag(InstrumentationFlag.Standard))
+                if (instrumentable.GetOrCreateInstrumentationProperty() is not { } propertyViewModel)
                 {
                     continue;
                 }
-                
-                // Create feature
-                if (await service.CreateInstrumentationObjectProperty(propertyViewModel, false) is { } instrumentationObjectProperty)
+            
+                // Create all instrumentation properties
+                foreach (IInstrumentationPropertyService service in instrumentable.GetWorkspaceCollection()?.GetServices<IInstrumentationPropertyService>() ?? Enumerable.Empty<IInstrumentationPropertyService>())
                 {
-                    propertyViewModel.Properties.Add(instrumentationObjectProperty);
+                    // Ignore non-standard
+                    if (!service.Flags.HasFlag(InstrumentationFlag.Standard))
+                    {
+                        continue;
+                    }
+                
+                    // Create feature
+                    if (await service.CreateInstrumentationObjectProperty(propertyViewModel, false) is { } instrumentationObjectProperty)
+                    {
+                        propertyViewModel.Properties.Add(instrumentationObjectProperty);
+                    }
                 }
             }
         }
@@ -122,8 +132,8 @@ namespace Studio.ViewModels.Contexts
         private bool _isEnabled = false;
 
         /// <summary>
-        /// Internal target view model
+        /// Internal target view models
         /// </summary>
-        private object? _targetViewModel;
+        private object[]? _targetViewModels;
     }
 }

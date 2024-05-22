@@ -27,6 +27,7 @@
 using System.Collections.Generic;
 using Avalonia;
 using ReactiveUI;
+using Studio.Extensions;
 using Studio.Services;
 using Studio.ViewModels.Workspace.Properties;
 
@@ -38,10 +39,10 @@ namespace Studio.ViewModels.Contexts
         /// Install a context against a target view model
         /// </summary>
         /// <param name="itemViewModels">destination items list</param>
-        /// <param name="targetViewModel">the target to install for</param>
-        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object targetViewModel)
+        /// <param name="targetViewModels">the targets to install for</param>
+        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object[] targetViewModels)
         {
-            if (targetViewModel is not IPipelineCollectionViewModel collection)
+            if (targetViewModels.PromoteSingle<IPipelineCollectionViewModel>() is not {} collection)
             {
                 return;
             }
