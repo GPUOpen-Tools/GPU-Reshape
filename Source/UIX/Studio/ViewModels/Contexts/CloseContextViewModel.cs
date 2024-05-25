@@ -25,9 +25,11 @@
 // 
 
 using System.Collections.Generic;
+using System.Linq;
 using ReactiveUI;
 using Studio.Extensions;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
@@ -55,11 +57,40 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Command implementation
         /// </summary>
-        private void OnInvoked(IClosableObject[] closable)
+        private void OnInvoked(IClosableObject[] closables)
         {
-            foreach (IClosableObject closableObject in closable)
+            HashSet<IClosableObject> set = closables.ToHashSet();
+
+            // Closable objects need a bit of care, basically, we need to make sure
+            // that we're not closing anything twice in any particular chain, which
+            // may happen if a parent is closed with a child.
+            foreach (IClosableObject closable in closables)
             {
-                closableObject.CloseCommand?.Execute(null);
+                // If this is not a hierarchical object, just close it immediately
+                if (closable is not IPropertyViewModel property)
+                {
+                    closable.CloseCommand?.Execute(null);
+                    continue;
+                }
+
+                // Does this object have a to be closed parent?
+                bool hasParent = false;
+
+                // Traverse up the tree to see if there's a shared parent which is to be closed
+                foreach (IPropertyViewModel parent in property.GetParents())
+                {
+                    if (parent is IClosableObject closableParent && set.Contains(closableParent))
+                    {
+                        hasParent = true;
+                        break;
+                    }
+                }
+
+                // If not this is isolated, so just close it
+                if (!hasParent)
+                {
+                    closable.CloseCommand?.Execute(null);
+                }
             }
         }
     }

@@ -233,5 +233,20 @@ namespace Studio.ViewModels.Workspace.Properties
                 self.Destruct();
             }
         }
+
+        /// <summary>
+        /// Get all the parents of a property
+        /// </summary>
+        public static IEnumerable<IPropertyViewModel> GetParents(this IPropertyViewModel self)
+        {
+            IPropertyViewModel model = self;
+            
+            // Visit all parents
+            while (model.Parent != null)
+            {
+                yield return model.Parent;
+                model = model.Parent;
+            }
+        }
     }
 }

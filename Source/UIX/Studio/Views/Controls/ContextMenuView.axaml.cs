@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.ExtendedToolkit.Extensions;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Metadata;
@@ -86,13 +87,27 @@ namespace Studio.Views.Controls
                 // Get service
                 if (App.Locator.GetService<IContextMenuService>() is { } service)
                 {
+                    IEnumerable<object>? dataViewModelSource = null;
+
                     // Determine appropriate view model
-                    IEnumerable<object>? dataViewModelSource;
                     if (control is ListBox listbox)
                     {
                         dataViewModelSource = listbox.SelectedItems.Cast<object>();
                     }
-                    else
+                    else if (control is TreeView tree)
+                    {
+                        dataViewModelSource = tree.SelectedItems.Cast<object>();
+                    }
+                    else if (control.Parent is TreeViewItem treeViewItem)
+                    {
+                        if (treeViewItem.TryFindParent<TreeView>() is { } parentTree)
+                        {
+                            dataViewModelSource = parentTree.SelectedItems.Cast<object>();
+                        }
+                    }
+                    
+                    // If none found, just assume the immediate data context
+                    if (dataViewModelSource == null)
                     {
                         dataViewModelSource = control.DataContext.SingleEnumerable();
                     }
