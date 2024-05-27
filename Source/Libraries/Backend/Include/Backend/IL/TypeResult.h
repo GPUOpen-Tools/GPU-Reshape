@@ -227,6 +227,24 @@ namespace Backend::IL {
         return SplatToValue(program, program.GetTypeMap().FindTypeOrAdd(BoolType{}), instr->value);
     }
 
+    inline const Type* ResultOf(Program& program, const KernelValueInstruction* instr) {
+        switch (instr->value) {
+            default: {
+                ASSERT(false, "Invalid value");
+                return nullptr;
+            }
+            case KernelValue::DispatchThreadID: {
+                return program.GetTypeMap().FindTypeOrAdd(VectorType{
+                    .containedType = program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false }),
+                    .dimension = 3
+                });
+            }
+            case KernelValue::FlattenedLocalThreadID: {
+                return program.GetTypeMap().FindTypeOrAdd(IntType { .bitWidth = 32, .signedness = false });
+            }
+        }
+    }
+
     inline const Type* ResultOf(Program& program, const IsInfInstruction* instr) {
         return SplatToValue(program, program.GetTypeMap().FindTypeOrAdd(BoolType{}), instr->value);
     }

@@ -24,20 +24,46 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+// Common
+#include <Common/Registry.h>
+#include <Common/ComponentTemplate.h>
+#include <Common/Plugin/Plugin.h>
+#include <Common/Plugin/PluginInfo.h>
 
-enum class DXILIDUserType {
-    /// Scalar value
-    Singular,
+// Backend
+#include <Backend/IFeatureHost.h>
 
-    /// Vector from structured type (member0, ... memberN)
-    VectorOnStruct,
+// ExportIndices
+#include <Features/ExportIndices/Feature.h>
 
-    /// Vector from sequential value indices (LLVMValueX, ... LLVMValueX+N)
-    VectorOnSequential,
+static ComRef<ComponentTemplate<ExportIndicesFeature>> feature{nullptr};
 
-    /// Struct from sequential value indices (LLVMValueX, ... LLVMValueX+N)
-    /// This is useful as DXIL does not allow for insertvalue constructs, and to avoid
-    /// needless memory / register operations
-    StructOnSequential,
-};
+DLL_EXPORT_C void PLUGIN_INFO(PluginInfo* info) {
+    info->name = "ExportIndices";
+    info->description = "Instrumentation and validation of export indices for vertices and primitives in mesh shader";
+}
+
+DLL_EXPORT_C bool PLUGIN_INSTALL(Registry* registry) {
+    auto host = registry->Get<IFeatureHost>();
+    if (!host) {
+        return false;
+    }
+
+    // Install the export indices feature
+    feature = registry->New<ComponentTemplate<ExportIndicesFeature>>();
+    host->Register(feature);
+
+    // OK
+    return true;
+}
+
+DLL_EXPORT_C void PLUGIN_UNINSTALL(Registry* registry) {
+    auto host = registry->Get<IFeatureHost>();
+    if (!host) {
+        return;
+    }
+
+    // Uninstall the feature
+    host->Deregister(feature);
+    feature.Release();
+}

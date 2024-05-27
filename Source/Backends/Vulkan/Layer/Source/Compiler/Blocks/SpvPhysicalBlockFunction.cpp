@@ -666,6 +666,7 @@ void SpvPhysicalBlockFunction::ParseFunctionBody(IL::Function *function, SpvPars
                     instr.source = source;
                     instr.texture = image;
                     instr.index = coordinate;
+                    instr.mip = IL::InvalidID;
                     basicBlock->Append(instr);
                 }
                 break;
@@ -1865,6 +1866,42 @@ bool SpvPhysicalBlockFunction::CompileBasicBlock(const SpvJob& job, SpvIdMap &id
                 spv[3] = idMap.Get(isNaN->value);
                 break;
             }
+            case IL::OpCode::KernelValue: {
+                auto *kernel = instr.As<IL::KernelValueInstruction>();
+
+                switch (kernel->value) {
+                    default: {
+                        ASSERT(false, "Invalid value");
+                        break;
+                    }
+                    case Backend::IL::KernelValue::DispatchThreadID: {
+                        const Backend::IL::Type *type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::VectorType{
+                            .containedType = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = false}),
+                            .dimension = 3
+                        });
+
+                        IL::ID varId = table.typeConstantVariable.FindOrCreateInput(SpvBuiltInGlobalInvocationId, type);
+
+                        SpvInstruction& spv = stream.Allocate(SpvOpLoad, 4);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = kernel->result;
+                        spv[3] = varId;
+                        break;
+                    }
+                    case Backend::IL::KernelValue::FlattenedLocalThreadID: {
+                        const Backend::IL::Type *type = program.GetTypeMap().FindTypeOrAdd(Backend::IL::IntType{.bitWidth = 32, .signedness = false});
+
+                        IL::ID varId = table.typeConstantVariable.FindOrCreateInput(SpvBuiltInLocalInvocationIndex, type);
+
+                        SpvInstruction &spv = stream.Allocate(SpvOpLoad, 4);
+                        spv[1] = table.typeConstantVariable.typeMap.GetSpvTypeId(resultType);
+                        spv[2] = kernel->result;
+                        spv[3] = varId;
+                        break;
+                    }
+                }
+                break;
+            }
             case IL::OpCode::Select: {
                 auto *select = instr.As<IL::SelectInstruction>();
 
@@ -2642,7 +2679,7 @@ void SpvPhysicalBlockFunction::CreateDataConstantMap(const SpvJob &job, SpvStrea
 
         // Set the identifier redirect, the frontend exposes the event ids as constant IDs independent of the function.
         // However, as multiple functions can be instrumented we have to load them per function, use the redirector in this case.
-        idMap.Set(variable->id, table.shaderConstantData.GetConstantData(stream, dwordOffset));
+        idMap.Set(variable->id, table.shaderConstantData.GetConstantData(stream, variable->type, dwordOffset, info.descriptor.dwordCount));
 
         // Next!
         dwordOffset += info.descriptor.dwordCount;

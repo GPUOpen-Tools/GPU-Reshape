@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,18 +26,9 @@
 
 #pragma once
 
-enum class DXILIDUserType {
-    /// Scalar value
-    Singular,
-
-    /// Vector from structured type (member0, ... memberN)
-    VectorOnStruct,
-
-    /// Vector from sequential value indices (LLVMValueX, ... LLVMValueX+N)
-    VectorOnSequential,
-
-    /// Struct from sequential value indices (LLVMValueX, ... LLVMValueX+N)
-    /// This is useful as DXIL does not allow for insertvalue constructs, and to avoid
-    /// needless memory / register operations
-    StructOnSequential,
-};
+namespace Backend::IL {
+    enum class KernelValue {
+        DispatchThreadID,
+        FlattenedLocalThreadID
+    };
+}

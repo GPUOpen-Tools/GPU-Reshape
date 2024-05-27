@@ -50,9 +50,23 @@ void SpvPhysicalBlockAnnotation::Parse() {
                 decoration.decorated = true;
 
                 // Handle decoration
-                switch (static_cast<SpvDecoration>(ctx++)) {
-                    default:
+                auto decorationKind = static_cast<SpvDecoration>(ctx++);
+                switch (decorationKind) {
+                    default: {
+                        // Parse pair
+                        SpvDecorationPair kv;
+                        kv.kind = decorationKind;
+                        kv.wordCount = ctx.PendingWords();
+
+                        // Copy payload data
+                        if (kv.wordCount) {
+                            kv.words = table.recordAllocator.AllocateArray<uint32_t>(kv.wordCount);
+                            std::memcpy(kv.words, ctx.GetInstructionCode(), sizeof(uint32_t) * kv.wordCount);
+                        }
+                
+                        decoration.value.decorations.push_back(kv);
                         break;
+                    }
                     case SpvDecorationDescriptorSet: {
                         decoration.value.descriptorSet = ctx++;
 
@@ -62,6 +76,10 @@ void SpvPhysicalBlockAnnotation::Parse() {
                     }
                     case SpvDecorationBinding: {
                         decoration.value.descriptorOffset = ctx++;
+                        break;
+                    }
+                    case SpvDecorationBuiltIn: {
+                        builtinMap[static_cast<SpvBuiltIn>(ctx++)] = target;
                         break;
                     }
                     case SpvDecorationNonUniform: {

@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -26,18 +26,27 @@
 
 #pragma once
 
-enum class DXILIDUserType {
-    /// Scalar value
-    Singular,
+namespace IL {
+    template<typename T>
+    struct ShaderStruct {
+        ShaderStruct(IL::ID data) : data(data) {
+        
+        }
 
-    /// Vector from structured type (member0, ... memberN)
-    VectorOnStruct,
+        /// Get a value within the struct
+        /// Must be dword aligned
+        /// \param emitter instruction emitter to use
+        /// \return dword value
+        template<auto M, typename E>
+        IL::ID Get(E& emitter) {
+            static T dummy;
+            size_t offset = reinterpret_cast<size_t>(&(dummy.*M)) - reinterpret_cast<size_t>(&dummy);
+            ASSERT(offset % sizeof(uint32_t) == 0, "Non-dword aligned offset");
+            return emitter.Extract(data, emitter.GetProgram()->GetConstants().UInt(offset / sizeof(uint32_t))->id);
+        }
 
-    /// Vector from sequential value indices (LLVMValueX, ... LLVMValueX+N)
-    VectorOnSequential,
-
-    /// Struct from sequential value indices (LLVMValueX, ... LLVMValueX+N)
-    /// This is useful as DXIL does not allow for insertvalue constructs, and to avoid
-    /// needless memory / register operations
-    StructOnSequential,
-};
+    private:
+        /// Underlying data
+        IL::ID data;
+    };
+}

@@ -25,30 +25,19 @@
 # 
 
 
-# Common set of utilities
-add_subdirectory(Common)
-
-# Plugins
-add_subdirectory(ResourceBounds)
-add_subdirectory(ExportStability)
-add_subdirectory(Concurrency)
-add_subdirectory(Descriptor)
-add_subdirectory(Initialization)
-add_subdirectory(Loop)
-add_subdirectory(Waterfall)
-add_subdirectory(ExportIndices)
+# Libraries
+add_subdirectory(Backend)
+add_subdirectory(Frontend)
 
 # Proxy object
-add_custom_target(Features)
+add_custom_target(GRS.Features.ExportIndices)
 add_dependencies(
-    Features
-    GRS.Features.ResourceBounds
-    GRS.Features.ExportStability
-    GRS.Features.Concurrency
-    GRS.Features.Descriptor
-    GRS.Features.Initialization
-    GRS.Features.Loop
+    GRS.Features.ExportIndices
+    GRS.Features.ExportIndices.Backend
 )
 
 # IDE source discovery
-SetSourceDiscovery(Features CXX)
+SetSourceDiscovery(GRS.Features.ExportIndices CXX)
+
+# Copy xml
+ConfigureOutput(ExportIndices.xml Plugins/ExportIndices.xml)

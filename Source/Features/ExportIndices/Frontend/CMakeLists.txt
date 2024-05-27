@@ -24,31 +24,21 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # 
 
+# Export indices feature library
 
-# Common set of utilities
-add_subdirectory(Common)
+#----- .Net UIX -----#
 
-# Plugins
-add_subdirectory(ResourceBounds)
-add_subdirectory(ExportStability)
-add_subdirectory(Concurrency)
-add_subdirectory(Descriptor)
-add_subdirectory(Initialization)
-add_subdirectory(Loop)
-add_subdirectory(Waterfall)
-add_subdirectory(ExportIndices)
+if (${BUILD_UIX})
+    # Add external projects
+    include_external_msproject(GRS.Features.ExportIndices.Frontend.UIX ${CMAKE_CURRENT_SOURCE_DIR}/UIX/UIX.csproj)
 
-# Proxy object
-add_custom_target(Features)
-add_dependencies(
-    Features
-    GRS.Features.ResourceBounds
-    GRS.Features.ExportStability
-    GRS.Features.Concurrency
-    GRS.Features.Descriptor
-    GRS.Features.Initialization
-    GRS.Features.Loop
-)
+    # IDE discovery
+    set_target_properties(GRS.Features.ExportIndices.Frontend.UIX PROPERTIES FOLDER Source/Features/ExportIndices/Frontend)
 
-# IDE source discovery
-SetSourceDiscovery(Features CXX)
+    # Add runtime dependencies
+    add_dependencies(
+        GRS.Features.ExportIndices.Frontend.UIX
+        GRS.Features.ExportIndices.Backend.DotNet
+        UIX.Runtime
+    )
+endif()

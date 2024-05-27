@@ -2400,6 +2400,17 @@ const Backend::IL::Type * DXILPhysicalBlockFunction::GetTypeFromBufferProperties
     });
 }
 
+bool DXILPhysicalBlockFunction::IsSVOX(IL::ID value) {
+    switch (table.idRemapper.GetUserMappingType(value)) {
+        default:
+            return false;
+        case DXILIDUserType::VectorOnStruct:
+        case DXILIDUserType::VectorOnSequential:
+        case DXILIDUserType::StructOnSequential:
+            return true;
+    }
+}
+
 uint32_t DXILPhysicalBlockFunction::GetSVOXCount(IL::ID value) {
     // Get type
     const auto* lhsType = program.GetTypeMap().GetType(value);
@@ -2412,7 +2423,8 @@ uint32_t DXILPhysicalBlockFunction::GetSVOXCount(IL::ID value) {
         case DXILIDUserType::Singular: {
             return 1;
         }
-        case DXILIDUserType::VectorOnStruct: {
+        case DXILIDUserType::VectorOnStruct: 
+        case DXILIDUserType::StructOnSequential: {
             const auto* _struct = lhsType->As<Backend::IL::StructType>();
             return static_cast<uint32_t>(_struct->memberTypes.size());
         }
@@ -2459,6 +2471,31 @@ IL::ID DXILPhysicalBlockFunction::AllocateSVOSequential(uint32_t count, IL::ID x
     return svox;
 }
 
+IL::ID DXILPhysicalBlockFunction::AllocateSVOStructSequential(const Backend::IL::Type *type, const IL::ID *values, uint32_t count) {
+    // Pass through if singular
+    if (count == 1) {
+        return values[0];
+    }
+
+    // Emulated value
+    IL::ID svox = program.GetIdentifierMap().AllocID();
+
+    // Fill out range
+    IL::ID base = program.GetIdentifierMap().AllocIDRange(count);
+    for (uint32_t i = 0; i < count; i++) {
+        table.idRemapper.AllocSourceUserMapping(base + i, DXILIDUserType::Singular, values[i]);
+    }
+
+    // Set base
+    table.idRemapper.AllocSourceUserMapping(svox, DXILIDUserType::StructOnSequential, base);
+
+    // Set type
+    program.GetTypeMap().SetType(svox, type);
+
+    // OK
+    return svox;
+}
+
 DXILPhysicalBlockFunction::SVOXElement DXILPhysicalBlockFunction::ExtractSVOXElement(LLVMBlock* block, IL::ID value, uint32_t index) {
     // Get type
     const auto* lhsType = program.GetTypeMap().GetType(value);
@@ -2493,6 +2530,11 @@ DXILPhysicalBlockFunction::SVOXElement DXILPhysicalBlockFunction::ExtractSVOXEle
             const auto* vector = lhsType->As<Backend::IL::VectorType>();
             uint32_t base = table.idRemapper.TryGetUserMapping(value);
             return {vector->containedType, table.idRemapper.TryGetUserMapping(base + index)};
+        }
+        case DXILIDUserType::StructOnSequential: {
+            const auto *_struct = lhsType->As<Backend::IL::StructType>();
+            uint32_t base = table.idRemapper.TryGetUserMapping(value);
+            return {_struct->memberTypes[index], table.idRemapper.TryGetUserMapping(base + index)};
         }
     }
 }
@@ -3478,6 +3520,47 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
                         // Invoke into result
                         block->AddRecord(CompileIntrinsicCall(result, intrinsic, 2, ops));
                     });
+                    break;
+                }
+
+                case IL::OpCode::KernelValue: {
+                    auto _instr = instr->As<IL::KernelValueInstruction>();
+
+                    // Handle value
+                    switch (_instr->value) {
+                        default: {
+                            ASSERT(false, "Invalid value");
+                            break;
+                        }
+                        case Backend::IL::KernelValue::DispatchThreadID: {
+                            const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpThreadI32);
+
+                            // Get each dimension
+                            IL::ID threadIds[3];
+                            for (uint32_t i = 0; i < 3; i++) {
+                                threadIds[i] = program.GetIdentifierMap().AllocID();
+
+                                // Get thread id at axis
+                                uint64_t ops[2];
+                                ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::ThreadId))->id);
+                                ops[1] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(i)->id);
+                                block->AddRecord(CompileIntrinsicCall(threadIds[i], intrinsic, 2, ops));
+                            }
+
+                            // Create svox
+                            table.idRemapper.SetUserRedirect(instr->result, AllocateSVOSequential(3, threadIds[0], threadIds[1], threadIds[2]));
+                            break;
+                        }
+                        case Backend::IL::KernelValue::FlattenedLocalThreadID: {
+                            const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpFlattenedThreadIdInGroupI32);
+                           
+                            // Get thread id
+                            uint64_t ops[1];
+                            ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::FlattenedThreadIdInGroup))->id);
+                            block->AddRecord(CompileIntrinsicCall(instr->result, intrinsic, 1, ops));
+                            break;
+                        }
+                    }
                     break;
                 }
 
@@ -5094,17 +5177,38 @@ void DXILPhysicalBlockFunction::CreateConstantHandle(const DXCompileJob &job, st
         // Get variable
         const Backend::IL::Variable* variable = shaderDataMap.Get(info.id);
 
-        // Extract respective value
-        LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
-        recordExtract.SetUser(true, ~0u, variable->id);
-        recordExtract.opCount = 2;
-        recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
-        recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyRows[dwordOffset / 4]);
-        recordExtract.ops[1] = dwordOffset % 4;
-        block->AddRecord(recordExtract);
+        // Extract all dwords
+        TrivialStackVector<IL::ID, 16> dwords;
+        for (uint32_t i = 0; i < info.descriptor.dwordCount; i++) {
+            IL::ID result;
+            if (info.descriptor.dwordCount == 1) {
+                result = variable->id;
+            } else {
+                result = program.GetIdentifierMap().AllocID();
+            }
+            
+            // Extract respective value
+            LLVMRecord recordExtract(LLVMFunctionRecord::InstExtractVal);
+            recordExtract.SetUser(true, ~0u, result);
+            recordExtract.opCount = 2;
+            recordExtract.ops = table.recordAllocator.AllocateArray<uint64_t>(2);
+            recordExtract.ops[0] = DXILIDRemapper::EncodeUserOperand(legacyRows[dwordOffset / 4]);
+            recordExtract.ops[1] = dwordOffset % 4;
+            block->AddRecord(recordExtract);
+            dwords.Add(result);
 
-        // Next!
-        dwordOffset++;
+            // Next!
+            dwordOffset++;
+        }
+
+        // If multiple dwords, create aggregate
+        if (info.descriptor.dwordCount > 1) {
+            // Get pointee
+            const Backend::IL::Type *pointee = variable->type;
+
+            // Create struct from dwords
+            table.idRemapper.SetUserRedirect(variable->id, AllocateSVOStructSequential(pointee, dwords.Data(), info.descriptor.dwordCount));
+        }
     }
 
     // Validation

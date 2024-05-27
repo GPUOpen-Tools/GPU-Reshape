@@ -94,5 +94,24 @@ namespace Intrinsics {
         }
     };
 
-    static uint32_t kInbuiltCount = 6;
+    static DXILIntrinsicSpec DxOpThreadI32 {
+        .uid = 6,
+        .name = "dx.op.threadId.i32",
+        .returnType = DXILIntrinsicTypeSpec::I32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32, // opcode
+            DXILIntrinsicTypeSpec::I32 // index
+        }
+    };
+
+    static DXILIntrinsicSpec DxOpFlattenedThreadIdInGroupI32{
+        .uid = 7,
+        .name = "dx.op.flattenedThreadIdInGroup.i32",
+        .returnType = DXILIntrinsicTypeSpec::I32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32 // opcode
+        }
+    };
+
+    static uint32_t kInbuiltCount = 8;
 }

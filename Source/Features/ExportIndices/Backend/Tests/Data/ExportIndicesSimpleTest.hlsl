@@ -24,20 +24,25 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
-#pragma once
+//! KERNEL   Compute "main"
+//! DISPATCH 4, 1, 1
 
-enum class DXILIDUserType {
-    /// Scalar value
-    Singular,
+//! SCHEMA "Schemas/Features/ExportIndices.h"
 
-    /// Vector from structured type (member0, ... memberN)
-    VectorOnStruct,
+//! RESOURCE RWBuffer<R32Float> size:64
+[[vk::binding(0)]] RWBuffer<float> bufferRW : register(u0, space0);
 
-    /// Vector from sequential value indices (LLVMValueX, ... LLVMValueX+N)
-    VectorOnSequential,
+[numthreads(1, 1, 1)]
+void main(uint dtid : SV_DispatchThreadID) {
+    float inf = 1.#INF;
+    float nan = sqrt(-1.0f);
 
-    /// Struct from sequential value indices (LLVMValueX, ... LLVMValueX+N)
-    /// This is useful as DXIL does not allow for insertvalue constructs, and to avoid
-    /// needless memory / register operations
-    StructOnSequential,
-};
+    //! MESSAGE InefficientExport[4]
+	bufferRW[dtid.x] = nan;
+
+    //! MESSAGE InefficientExport[3]
+	bufferRW[dtid.x] = dtid == 0 ? 0.0f : nan;
+
+    //! MESSAGE InefficientExport[3]
+	bufferRW[dtid.x] = dtid == 0 ? 0.0f : inf;
+}
