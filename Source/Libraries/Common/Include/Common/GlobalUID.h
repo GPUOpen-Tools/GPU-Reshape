@@ -63,6 +63,11 @@ struct GlobalUID {
     std::string ToString() const;
 
 #ifdef GRS_WINDOWS
+    /// Create a global uid from a platform uid
+    /// \param value platform uid
+    /// \return global id
+    static GlobalUID FromPlatformGUID(const GUID& value);
+    
     /// Convert to the platform GUID
     /// \return
     GUID AsPlatformGUID() const;
