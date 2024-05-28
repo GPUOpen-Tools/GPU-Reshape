@@ -334,6 +334,11 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             line << "Extract composite:%" << extract->composite << " index:%" << extract->index;
             break;
         }
+        case OpCode::KernelValue: {
+            auto kernelValue = instr->As<IL::KernelValueInstruction>();
+            line << "KernelValue value:%" << static_cast<uint32_t>(kernelValue->value);
+            break;
+        }
         case OpCode::Insert: {
             auto insert = instr->As<IL::InsertInstruction>();
             line << "Insert composite:%" << insert->composite << " value:%" << insert->value;
@@ -1929,6 +1934,11 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             auto extract = instr->As<IL::ExtractInstruction>();
             out.Line() << "\"Composite\": " << extract->composite << ",";
             out.Line() << "\"Index\": " << extract->index << ",";
+            break;
+        }
+        case IL::OpCode::KernelValue: {
+            auto kernelValue = instr->As<IL::KernelValueInstruction>();
+            out.Line() << "\"Value\": " << static_cast<uint32_t>(kernelValue->value) << ",";
             break;
         }
         case IL::OpCode::Insert: {
