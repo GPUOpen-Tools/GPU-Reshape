@@ -53,6 +53,7 @@ namespace Studio.Models.IL
         GreaterThanEqual,
         IsInf,
         IsNaN,
+        KernelValue,
         Select,
         Branch,
         BranchConditional,

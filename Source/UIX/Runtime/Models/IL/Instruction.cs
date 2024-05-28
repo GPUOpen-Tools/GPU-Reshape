@@ -193,6 +193,14 @@ namespace Studio.Models.IL
         /// </summary>
         public uint Fail;
     }
+    
+    public class KernelValueInstruction : Instruction
+    {
+        /// <summary>
+        /// Literal value
+        /// </summary>
+        public uint Value;
+    }
 
     public class ControlFlow
     {

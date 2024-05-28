@@ -348,6 +348,12 @@ namespace Runtime.ViewModels.IL
                     AssembleInlineOperand(typed.Fail, builder);
                     break;
                 }
+                case OpCode.KernelValue:
+                {
+                    var typed = (KernelValueInstruction)instruction;
+                    builder.Append(typed.Value);
+                    break;
+                }
                 case OpCode.Branch:
                 {
                     var typed = (BranchInstruction)instruction;
