@@ -1,4 +1,4 @@
-// 
+﻿// 
 // The MIT License (MIT)
 // 
 // Copyright (c) 2024 Advanced Micro Devices, Inc.,
@@ -28,65 +28,11 @@
 
 // Layer
 #include "LLVMRecord.h"
-#include "LLVMRecordOffset.h"
 
-struct LLVMRecordReader {
-    LLVMRecordReader(const LLVMRecord& record) : record(record) {
-        /* */
-    }
-    
-    LLVMRecordReader(const LLVMRecordOffset& record) : record(*record.record), offset(record.offset) {
-        /* */
-    }
-
-    /// Consume an operand
-    uint64_t ConsumeOp() {
-        return record.Op(offset++);
-    }
-
-    /// Consume an operand
-    uint32_t ConsumeOp32() {
-        return static_cast<uint32_t>(ConsumeOp());
-    }
-
-    /// Consume an operand
-    template<typename T>
-    T ConsumeOpAs() {
-        return record.OpAs<T>(offset++);
-    }
-
-    /// Consume an operand or return a default value if not present
-    uint64_t ConsumeOpDefault(uint64_t _default) {
-        return !Any() ? _default : ConsumeOp();
-    }
-
-    /// Any operands to consume?
-    bool Any() const {
-        return offset < record.opCount;
-    }
-
-    /// Get remaining operands
-    uint32_t Remaining() const {
-        return record.opCount - offset;
-    }
-
-    /// Get remaining operands
-    uint32_t Offset() const {
-        return offset;
-    }
-
-    /// Get the record offset
-    LLVMRecordOffset GetRecordOffset() const {
-        return LLVMRecordOffset {
-            .record = &record,
-            .offset = offset
-        };
-    }
-
+struct LLVMRecordOffset {
     /// Underlying record
-    const LLVMRecord& record;
+    const LLVMRecord* record{nullptr};
 
-private:
     /// Current offset
     uint32_t offset{0};
 };

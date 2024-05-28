@@ -34,6 +34,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
 #include <Backends/DX12/Compiler/DXCodeOffsetTraceback.h>
 #include <Backends/DX12/Resource/ReservedConstantData.h>
+#include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -315,6 +316,31 @@ private:
     bool RequiresValueMapSegmentation() const {
         return internalLinkedFunctions.Size() > 1u;
     }
+
+private:
+    struct UnresolvedSemanticInstruction {
+        /// Mutable instruction to be resolved
+        IL::InstructionRef<> instruction{};
+
+        /// Resolve payload
+        union {
+            struct {
+                DXILOpcodes opCode;
+            } intrinsic;
+        };
+
+        /// Original offset
+        LLVMRecordOffset offset;
+
+        /// Original value anchor
+        uint32_t anchor{UINT32_MAX};
+    };
+
+    /// Resolve all pending instructions
+    void ResolveSemanticInstructions();
+
+    /// All pending instructions to resolve
+    Vector<UnresolvedSemanticInstruction> unresolvedSemanticInstructions;
 
 private:
     struct FunctionBlock {
