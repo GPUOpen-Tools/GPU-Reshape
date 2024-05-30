@@ -714,18 +714,6 @@ namespace IL {
             return Op(instr);
         }
 
-        /// Get a kernel provided value
-        /// \param value the value to fetch
-        /// \return instruction reference
-        BasicBlock::TypedIterator <KernelValueInstruction> KernelValue(Backend::IL::KernelValue value) {
-            KernelValueInstruction instr{};
-            instr.opCode = OpCode::KernelValue;
-            instr.source = Source::Invalid();
-            instr.result = map->AllocID();
-            instr.value = value;
-            return Op(instr);
-        }
-
         /// Perform an extended operation
         /// \param op the extended opcode
         /// \param ix all arguments

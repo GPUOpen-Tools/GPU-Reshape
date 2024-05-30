@@ -2716,31 +2716,6 @@ IL::ID DXILPhysicalBlockFunction::AllocateSVOStructSequential(const Backend::IL:
     return svox;
 }
 
-IL::ID DXILPhysicalBlockFunction::AllocateSVOStructSequential(const Backend::IL::Type* type, const IL::ID *values, uint32_t count) {
-    // Pass through if singular
-    if (count == 1) {
-        return values[0];
-    }
-
-    // Emulated value
-    IL::ID svox = program.GetIdentifierMap().AllocID();
-
-    // Fill out range
-    IL::ID base = program.GetIdentifierMap().AllocIDRange(count);
-    for (uint32_t i = 0; i < count; i++) {
-        table.idRemapper.AllocSourceUserMapping(base + i, DXILIDUserType::Singular, values[i]);
-    }
-
-    // Set base
-    table.idRemapper.AllocSourceUserMapping(svox, DXILIDUserType::StructOnSequential, base);
-
-    // Set type
-    program.GetTypeMap().SetType(svox, type);
-
-    // OK
-    return svox;
-}
-
 DXILPhysicalBlockFunction::SVOXElement DXILPhysicalBlockFunction::ExtractSVOXElement(LLVMBlock* block, IL::ID value, uint32_t index) {
     // Get type
     const auto* lhsType = program.GetTypeMap().GetType(value);
