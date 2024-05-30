@@ -34,6 +34,7 @@
 #include <Backends/DX12/Compiler/DXIL/DXILHeader.h>
 #include <Backends/DX12/Compiler/DXCodeOffsetTraceback.h>
 #include <Backends/DX12/Resource/ReservedConstantData.h>
+#include <Backends/DX12/Compiler/DXIL/DXIL.Gen.h>
 
 // Common
 #include <Common/Containers/TrivialStackVector.h>
@@ -105,7 +106,7 @@ private:
     /// @param value given value to check
     /// @return true if svox
     bool IsSVOX(IL::ID value);
-    
+
     /// Get the number of SVOX values
     /// \param value SVOX value
     /// \return component count
@@ -132,7 +133,7 @@ private:
     /// @param values all values inside the struct
     /// @param count number of values
     /// @return svox identifier
-    IL::ID AllocateSVOStructSequential(const Backend::IL::Type* type, const IL::ID* values, uint32_t count);
+    IL::ID AllocateSVOStructSequential(const Backend::IL::Type *type, const IL::ID *values, uint32_t count);
 
     /// Iterate a scalar / vector-of-x operation
     /// \param lhs lhs operand
@@ -320,6 +321,31 @@ private:
     bool RequiresValueMapSegmentation() const {
         return internalLinkedFunctions.Size() > 1u;
     }
+
+private:
+    struct UnresolvedSemanticInstruction {
+        /// Mutable instruction to be resolved
+        IL::InstructionRef<> instruction{};
+
+        /// Resolve payload
+        union {
+            struct {
+                DXILOpcodes opCode;
+            } intrinsic;
+        };
+
+        /// Original offset
+        LLVMRecordOffset offset;
+
+        /// Original value anchor
+        uint32_t anchor{UINT32_MAX};
+    };
+
+    /// Resolve all pending instructions
+    void ResolveSemanticInstructions();
+
+    /// All pending instructions to resolve
+    Vector<UnresolvedSemanticInstruction> unresolvedSemanticInstructions;
 
 private:
     struct FunctionBlock {

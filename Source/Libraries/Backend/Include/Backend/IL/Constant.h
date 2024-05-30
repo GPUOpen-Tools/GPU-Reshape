@@ -36,9 +36,29 @@ namespace IL {
         /// Reinterpret this global
         /// \tparam T the target global
         template<typename T>
+        T* As() {
+            ASSERT(kind == T::kKind, "Invalid cast");
+            return static_cast<T*>(this);
+        }
+        
+        /// Reinterpret this global
+        /// \tparam T the target global
+        template<typename T>
         const T* As() const {
             ASSERT(kind == T::kKind, "Invalid cast");
             return static_cast<const T*>(this);
+        }
+
+        /// Cast this global
+        /// \tparam T the target global
+        /// \return nullptr is invalid cast
+        template<typename T>
+        T* Cast() {
+            if (kind != T::kKind) {
+                return nullptr;
+            }
+
+            return static_cast<T*>(this);
         }
 
         /// Cast this global

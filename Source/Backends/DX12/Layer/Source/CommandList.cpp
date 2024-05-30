@@ -315,7 +315,7 @@ HRESULT WINAPI HookID3D12CommandQueueSignal(ID3D12CommandQueue* queue, ID3D12Fen
     FlushCommandQueueContext(GetState(table.state->parent), table.state);
 
     // Pass down callchain
-    return table.bottom->next_Signal(table.next, Next(pFence), Value);
+    return table.bottom->next_Signal(table.next, UnwrapObject(pFence), Value);
 }
 
 HRESULT WINAPI HookID3D12CommandQueueWait(ID3D12CommandQueue* queue, ID3D12Fence* pFence, UINT64 Value) {
@@ -325,7 +325,7 @@ HRESULT WINAPI HookID3D12CommandQueueWait(ID3D12CommandQueue* queue, ID3D12Fence
     FlushCommandQueueContext(GetState(table.state->parent), table.state);
 
     // Pass down callchain
-    return table.bottom->next_Wait(table.next, Next(pFence), Value);
+    return table.bottom->next_Wait(table.next, UnwrapObject(pFence), Value);
 }
 
 void WINAPI HookID3D12CommandQueueCopyTileMappings(ID3D12CommandQueue* queue, ID3D12Resource* pDstResource, const D3D12_TILED_RESOURCE_COORDINATE* pDstRegionStartCoordinate, ID3D12Resource* pSrcResource, const D3D12_TILED_RESOURCE_COORDINATE* pSrcRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pRegionSize, D3D12_TILE_MAPPING_FLAGS Flags) {
@@ -1208,6 +1208,13 @@ static ID3D12GraphicsCommandList* RecordExecutePostCommandList(const CommandQueu
 
 void HookID3D12CommandQueueExecuteCommandLists(ID3D12CommandQueue *queue, UINT count, ID3D12CommandList *const *lists) {
     auto table = GetTable(queue);
+
+    // Special case, allow native submissions on wrapped objects
+    // Also helps hierarchical hooking.
+    if (count && !IsWrapped(lists[0])) {
+        table.next->ExecuteCommandLists(count, lists);
+        return;   
+    }
 
     // Get device
     auto device = GetTable(table.state->parent);

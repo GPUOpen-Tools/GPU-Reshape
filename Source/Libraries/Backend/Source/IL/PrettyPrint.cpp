@@ -360,6 +360,11 @@ void IL::PrettyPrint(const Program *program, const Instruction *instr, IL::Prett
             }
             break;
         }
+        case OpCode::KernelValue: {
+            auto kernelValue = instr->As<IL::KernelValueInstruction>();
+            line << "KernelValue value:%" << static_cast<uint32_t>(kernelValue->value);
+            break;
+        }
         case OpCode::Insert: {
             auto insert = instr->As<IL::InsertInstruction>();
             line << "Insert composite:%" << insert->composite << " value:%" << insert->value;
@@ -2007,6 +2012,11 @@ void PrettyPrintJson(const IL::Program& program, const Backend::IL::Instruction*
             }
 
             out.Line() << "],";
+            break;
+        }
+        case IL::OpCode::KernelValue: {
+            auto kernelValue = instr->As<IL::KernelValueInstruction>();
+            out.Line() << "\"Value\": " << static_cast<uint32_t>(kernelValue->value) << ",";
             break;
         }
         case IL::OpCode::Insert: {

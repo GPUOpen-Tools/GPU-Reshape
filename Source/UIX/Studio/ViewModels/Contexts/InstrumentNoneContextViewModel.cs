@@ -24,7 +24,9 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 
+using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reactive;
 using System.Windows.Input;
 using ReactiveUI;
@@ -38,15 +40,15 @@ namespace Studio.ViewModels.Contexts
     public class InstrumentNoneContextViewModel : ReactiveObject, IContextMenuItemViewModel
     {
         /// <summary>
-        /// Target view model of the context
+        /// Target view models of the context
         /// </summary>
-        public object? TargetViewModel
+        public object[]? TargetViewModels
         {
-            get => _targetViewModel;
+            get => _targetViewModels;
             set
             {
-                this.RaiseAndSetIfChanged(ref _targetViewModel, value);
-                IsVisible = _targetViewModel is IInstrumentableObject;
+                this.RaiseAndSetIfChanged(ref _targetViewModels, value);
+                IsVisible = _targetViewModels?.Any(x => x is IInstrumentableObject) ?? false;
             }
         }
 
@@ -84,7 +86,7 @@ namespace Studio.ViewModels.Contexts
         /// </summary>
         private void OnInvoked()
         {
-            if (_targetViewModel is IPropertyViewModel propertyViewModel)
+            foreach (IPropertyViewModel propertyViewModel in _targetViewModels?.Promote<IPropertyViewModel>() ?? Array.Empty<IPropertyViewModel>())
             {
                 Traverse(propertyViewModel);
             }
@@ -113,8 +115,8 @@ namespace Studio.ViewModels.Contexts
         private bool _isEnabled = false;
 
         /// <summary>
-        /// Internal target view model
+        /// Internal target view models
         /// </summary>
-        private object? _targetViewModel;
+        private object[]? _targetViewModels;
     }
 }

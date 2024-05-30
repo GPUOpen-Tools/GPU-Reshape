@@ -43,10 +43,10 @@ namespace Studio.ViewModels.Contexts
         /// Install a context against a target view model
         /// </summary>
         /// <param name="itemViewModels">destination items list</param>
-        /// <param name="targetViewModel">the target to install for</param>
-        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object targetViewModel)
+        /// <param name="targetViewModels">the targets to install for</param>
+        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object[] targetViewModels)
         {
-            if (targetViewModel is not IInstrumentableObject instrumentableObject)
+            if (targetViewModels.PromoteOrNull<IInstrumentableObject>() is not {} instrumentableObjects)
             {
                 return;
             }
@@ -57,9 +57,12 @@ namespace Studio.ViewModels.Contexts
                 Header = "Instrument"
             };
 
+            // Contextual actions always work on the same workspace
+            IPropertyViewModel? workspaceCollection = instrumentableObjects[0].GetWorkspaceCollection();
+
             // Get all services for the given view model
-            IInstrumentationPropertyService[] services = instrumentableObject.GetWorkspaceCollection()?.GetServices<IInstrumentationPropertyService>().ToArray() 
-                                                           ?? Array.Empty<IInstrumentationPropertyService>();
+            IInstrumentationPropertyService[] services = workspaceCollection?.GetServices<IInstrumentationPropertyService>().ToArray() 
+                                                         ?? Array.Empty<IInstrumentationPropertyService>();
 
             // Create a separate category for all experimental features
             if (services.Any(x => x.Flags.HasFlag(InstrumentationFlag.Experimental)))
@@ -67,21 +70,21 @@ namespace Studio.ViewModels.Contexts
                 item.Items.Add(new ContextMenuItemViewModel()
                 {
                     Header = "Experimental",
-                    Items = ConsumeServiceContexts(ref services, instrumentableObject, x => x.Flags.HasFlag(InstrumentationFlag.Experimental)).ToObservableCollection()
+                    Items = ConsumeServiceContexts(ref services, instrumentableObjects, x => x.Flags.HasFlag(InstrumentationFlag.Experimental)).ToObservableCollection()
                 });
             }
 
             // List all categorized features after experimental
-            item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObject, x => x.Category != string.Empty));
+            item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObjects, x => x.Category != string.Empty));
             
             // Standard instrumentation services
             item.Items.Add(new SeparatorContextMenuItemViewModel());
             item.Items.Add(new InstrumentAllContextViewModel());
-            item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObject, x => x.Flags.HasFlag(InstrumentationFlag.Standard)));
+            item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObjects, x => x.Flags.HasFlag(InstrumentationFlag.Standard)));
             
             // Non-Standard instrumentation services
             item.Items.Add(new SeparatorContextMenuItemViewModel());
-            item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObject, x => true));
+            item.Items.AddRange(ConsumeServiceContexts(ref services, instrumentableObjects, x => true));
             
             // "None" instrumentation
             item.Items.Add(new SeparatorContextMenuItemViewModel());
@@ -94,7 +97,7 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Consume all service contexts that passes a predicate
         /// </summary>
-        private IContextMenuItemViewModel[] ConsumeServiceContexts(ref IInstrumentationPropertyService[] services, IInstrumentableObject instrumentableObject, Func<IInstrumentationPropertyService, bool> predecate)
+        private IContextMenuItemViewModel[] ConsumeServiceContexts(ref IInstrumentationPropertyService[] services, IInstrumentableObject[] instrumentableObjects, Func<IInstrumentationPropertyService, bool> predecate)
         {
             List<IContextMenuItemViewModel> items = new();
             
@@ -107,7 +110,7 @@ namespace Studio.ViewModels.Contexts
             // Filter all items
             foreach (IInstrumentationPropertyService service in serviceFilter)
             {
-                IContextMenuItemViewModel item = CreateContextFor(service, instrumentableObject);
+                IContextMenuItemViewModel item = CreateContextFor(service, instrumentableObjects);
                 
                 // Categorized?
                 if (service.Category != string.Empty)
@@ -140,27 +143,30 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Create a context item for a given service
         /// </summary>
-        private IContextMenuItemViewModel CreateContextFor(IInstrumentationPropertyService service, IInstrumentableObject instrumentableObject)
+        private IContextMenuItemViewModel CreateContextFor(IInstrumentationPropertyService service, IInstrumentableObject[] instrumentableObjects)
         {
             ContextMenuItemViewModel itemViewModel = new()
             {
                 Header = service.Name,
-                IsEnabled = service.IsInstrumentationValidFor(instrumentableObject)
+                IsEnabled = instrumentableObjects.All(service.IsInstrumentationValidFor)
             };
 
             // Bind command to service
             itemViewModel.Command = ReactiveCommand.Create(async () =>
             {
-                // Try to create property
-                if (instrumentableObject.GetOrCreateInstrumentationProperty() is not { } propertyViewModel)
+                foreach (IInstrumentableObject instrumentableObject in instrumentableObjects)
                 {
-                    return;
-                }
+                    // Try to create property
+                    if (instrumentableObject.GetOrCreateInstrumentationProperty() is not { } propertyViewModel)
+                    {
+                        return;
+                    }
                 
-                // Install against property
-                if (await service.CreateInstrumentationObjectProperty(propertyViewModel, false) is { } instrumentationObjectProperty)
-                {
-                    propertyViewModel.Properties.Add(instrumentationObjectProperty);
+                    // Install against property
+                    if (await service.CreateInstrumentationObjectProperty(propertyViewModel, false) is { } instrumentationObjectProperty)
+                    {
+                        propertyViewModel.Properties.Add(instrumentationObjectProperty);
+                    }
                 }
             });
 

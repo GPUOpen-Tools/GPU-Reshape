@@ -494,8 +494,13 @@ namespace IL {
                     continue;
                 }
 
-                // Try to construct element
+                // Offset may be invalid, program may not conform to the array size
                 const auto* offset = tag.first.constant->As<IntConstant>();
+                if (static_cast<size_t>(offset->value) >= array.elements.size()) {
+                    continue;
+                }
+                
+                // Try to construct element
                 array.elements.at(offset->value) = CompositeConstant(type->elementType, tag.second, lattice);
             }
 
@@ -533,9 +538,14 @@ namespace IL {
                 if (tag.first.constant->Is<UnexposedConstant>()) {
                     continue;
                 }
-
-                // Try to construct element
+                
+                // Offset may be invalid, program may not conform to the array size
                 const auto* offset = tag.first.constant->As<IntConstant>();
+                if (static_cast<size_t>(offset->value) >= array.elements.size()) {
+                    continue;
+                }
+                
+                // Try to construct element
                 array.elements.at(offset->value) = CompositeConstant(type->containedType, tag.second, lattice);
             }
 

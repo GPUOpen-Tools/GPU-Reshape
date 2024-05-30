@@ -36,6 +36,7 @@ add_subdirectory(Descriptor)
 add_subdirectory(Initialization)
 add_subdirectory(Loop)
 add_subdirectory(Waterfall)
+add_subdirectory(ExportIndices)
 
 # Proxy object
 add_custom_target(Features)

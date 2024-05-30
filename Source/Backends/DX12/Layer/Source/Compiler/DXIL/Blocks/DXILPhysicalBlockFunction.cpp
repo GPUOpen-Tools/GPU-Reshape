@@ -68,6 +68,7 @@
 
 DXILPhysicalBlockFunction::DXILPhysicalBlockFunction(const Allocators &allocators, Backend::IL::Program &program, DXILPhysicalBlockTable &table):
     DXILPhysicalBlockSection(allocators, program, table),
+    unresolvedSemanticInstructions(allocators),
     sourceTraceback(allocators) {
     /* */
 }
@@ -755,8 +756,27 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
                 break;
             }
 
-            case LLVMFunctionRecord::InstRet: {
+            case LLVMFunctionRecord::InstCmpXchg: {
+                uint32_t address = reader.GetMappedRelativeValue(anchor);
+
+                // Unwrap pointer to determine result type
+                const auto* pointerType = ilTypeMap.GetType(address)->As<Backend::IL::PointerType>();
+
                 // Emit as unexposed
+                IL::UnexposedInstruction instr{};
+                instr.opCode = IL::OpCode::Unexposed;
+                instr.result = result;
+                instr.source = IL::Source::Code(recordIdx);
+                instr.backendOpCode = record.id;
+                instr.symbol = "AtomicCmpXchg";
+                basicBlock->Append(instr);
+
+                // Set resulting type
+                ilTypeMap.SetType(result, pointerType->pointee);
+                break;
+            }
+
+            case LLVMFunctionRecord::InstRet: {
                 IL::ReturnInstruction instr{};
                 instr.opCode = IL::OpCode::Return;
                 instr.result = result;
@@ -1072,6 +1092,9 @@ void DXILPhysicalBlockFunction::ParseFunction(struct LLVMBlock *block) {
 
     // Validation
     ASSERT(blockIndex == blockMapping.Size(), "Terminator to block count mismatch");
+
+    // Finally, resolve all pending instructions
+    ResolveSemanticInstructions();
 
     // Validation
 #ifndef NDEBUG
@@ -1686,54 +1709,18 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             return true;
         }
 
-        /*
-         * DXIL Specification
-         *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
-         *   declare void @dx.op.bufferStore.f32(
-         *       i32,                  ; opcode
-         *       %dx.types.Handle,     ; resource handle
-         *       i32,                  ; coordinate c0
-         *       i32,                  ; coordinate c1
-         *       float,                ; value v0
-         *       float,                ; value v1
-         *       float,                ; value v2
-         *       float,                ; value v3
-         *       i8)                   ; write mask
-         */
-
         case DXILOpcodes::BufferStore: {
-            // Get operands, ignore offset for now
-            uint32_t resource = reader.GetMappedRelative(anchor);
-            uint32_t coordinate = reader.GetMappedRelative(anchor);
-            uint32_t offset = GetOperandOrInvalid(reader.GetMappedRelative(anchor));
-            uint32_t x = reader.GetMappedRelative(anchor);
-            uint32_t y = reader.GetMappedRelative(anchor);
-            uint32_t z = reader.GetMappedRelative(anchor);
-            uint32_t w = reader.GetMappedRelative(anchor);
-
-            // Get mask
-            uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
-            // Get type
-            const auto* bufferType = ilTypeMap.GetType(resource)->As<Backend::IL::BufferType>();
-
-            // Number of dimensions
-            uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(bufferType->texelType);
-
-            // Vectorize
-            IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, x, y, z, w);
-
-            // Emit as store
             IL::StoreBufferInstruction instr{};
             instr.opCode = IL::OpCode::StoreBuffer;
             instr.result = result;
             instr.source = IL::Source::Code(recordIdx);
-            instr.buffer = resource;
-            instr.index = coordinate;
-            instr.value = svoxValue;
-            instr.offset = offset;
-            instr.mask = IL::ComponentMaskSet(mask);
-            basicBlock->Append(instr);
+
+            // Depends on semantic information, resolve it later
+            unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
+                .instruction = basicBlock->Append(instr),
+                .offset = reader.GetRecordOffset(),
+                .anchor = anchor
+            });
             return true;
         }
 
@@ -1825,57 +1812,18 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             return true;
         }
 
-        /*
-         * DXIL Specification
-         *  ; overloads: SM5.1: f32|i32,  SM6.0: f16|f32|i16|i32
-         *  declare %dx.types.ResRet.f32 @dx.op.textureLoad.f32(
-         *      i32,                  ; opcode
-         *      %dx.types.Handle,     ; texture handle
-         *      i32,                  ; MIP level; sample for Texture2DMS
-         *      i32,                  ; coordinate c0
-         *      i32,                  ; coordinate c1
-         *      i32,                  ; coordinate c2
-         *      i32,                  ; offset o0
-         *      i32,                  ; offset o1
-         *      i32)                  ; offset o2
-         */
-
         case DXILOpcodes::TextureLoad: {
-            // Get operands, ignore offset for now
-            uint32_t resource = reader.GetMappedRelative(anchor);
-            uint32_t mip = reader.GetMappedRelative(anchor);
-            uint32_t cx = reader.GetMappedRelative(anchor);
-            uint32_t cy = reader.GetMappedRelative(anchor);
-            uint32_t cz = reader.GetMappedRelative(anchor);
-            uint32_t ox = reader.GetMappedRelative(anchor);
-            uint32_t oy = reader.GetMappedRelative(anchor);
-            uint32_t oz = reader.GetMappedRelative(anchor);
-
-            // Undef mips are represented as unassigned
-            if (const IL::Constant *constant = program.GetConstants().GetConstant(mip); constant && constant->Is<IL::UndefConstant>()) {
-                mip = IL::InvalidID;
-            }
-
-            // Get type
-            const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
-
-            // Number of dimensions
-            uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
-
-            // Vectorize
-            IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);
-            IL::ID svoxOffset     = AllocateSVOSequential(textureDimensionCount, ox, oy, oz);
-
-            // Emit as store
             IL::LoadTextureInstruction instr{};
             instr.opCode = IL::OpCode::LoadTexture;
             instr.result = result;
             instr.source = IL::Source::Code(recordIdx);
-            instr.texture = resource;
-            instr.mip = mip;
-            instr.offset = svoxOffset;
-            instr.index = svoxCoordinate;
-            basicBlock->Append(instr);
+            
+            // Depends on semantic information, resolve it later
+            unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
+                .instruction = basicBlock->Append(instr),
+                .offset = reader.GetRecordOffset(),
+                .anchor = anchor
+            });
             return true;
         }
 
@@ -1898,109 +1846,21 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
         case DXILOpcodes::SampleBias:
         case DXILOpcodes::SampleLevel:
         case DXILOpcodes::SampleGrad: {
-            // Get operands, ignore offset for now
-            uint32_t resource = reader.GetMappedRelative(anchor);
-            uint32_t sampler = reader.GetMappedRelative(anchor);
-            uint32_t cx = reader.GetMappedRelative(anchor);
-            uint32_t cy = reader.GetMappedRelative(anchor);
-            uint32_t cz = reader.GetMappedRelative(anchor);
-            uint32_t cw = reader.GetMappedRelative(anchor);
-            uint32_t ox = reader.GetMappedRelative(anchor);
-            uint32_t oy = reader.GetMappedRelative(anchor);
-            uint32_t oz = reader.GetMappedRelative(anchor);
-
-            // Get type
-            const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
-
-            // Number of dimensions
-            uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
-
-            // Vectorize
-            IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz, cw);
-            IL::ID svoxOffset     = AllocateSVOSequential(textureDimensionCount, ox, oy, oz);
-
-            // Emit as sample
             IL::SampleTextureInstruction instr{};
             instr.opCode = IL::OpCode::SampleTexture;
-            instr.sampleMode = Backend::IL::TextureSampleMode::Default;
             instr.result = result;
             instr.source = IL::Source::Code(recordIdx);
-            instr.texture = resource;
-            instr.sampler = sampler;
-            instr.coordinate = svoxCoordinate;
-            instr.lod = IL::InvalidID;
-            instr.bias = IL::InvalidID;
-            instr.reference = IL::InvalidID;
-            instr.ddx = IL::InvalidID;
-            instr.ddy = IL::InvalidID;
-            instr.offset = svoxOffset;
-
-            // Handle additional operands
-            switch (opCode) {
-                default:
-                    ASSERT(false, "Unexpected sampling opcode");
-                    break;
-                case DXILOpcodes::Sample: {
-                    instr.sampleMode = Backend::IL::TextureSampleMode::Default;
-
-                    // Unused
-                    uint32_t clamp = reader.GetMappedRelative(anchor);
-                    GRS_SINK(clamp);
-                    break;
-                }
-                case DXILOpcodes::SampleBias: {
-                    instr.sampleMode = Backend::IL::TextureSampleMode::Default;
-                    instr.bias = reader.GetMappedRelative(anchor);
-
-                    // Unused
-                    uint32_t clamp = reader.GetMappedRelative(anchor);
-                    GRS_SINK(clamp);
-                    break;
-                }
-                case DXILOpcodes::SampleCmp: {
-                    instr.sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
-                    instr.reference = reader.GetMappedRelative(anchor);
-
-                    // Unused
-                    uint32_t clamp = reader.GetMappedRelative(anchor);
-                    GRS_SINK(clamp);
-                    break;
-                }
-                case DXILOpcodes::SampleCmpLevelZero: {
-                    instr.sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
-                    instr.reference = reader.GetMappedRelative(anchor);
-                    break;
-                }
-                case DXILOpcodes::SampleGrad: {
-                    instr.sampleMode = Backend::IL::TextureSampleMode::Default;
-
-                    // DDX
-                    uint32_t ddx0 = reader.GetMappedRelative(anchor);
-                    uint32_t ddx1 = reader.GetMappedRelative(anchor);
-                    uint32_t ddx2 = reader.GetMappedRelative(anchor);
-
-                    // DDY
-                    uint32_t ddy0 = reader.GetMappedRelative(anchor);
-                    uint32_t ddy1 = reader.GetMappedRelative(anchor);
-                    uint32_t ddy2 = reader.GetMappedRelative(anchor);
-
-                    // Vectorize
-                    instr.ddx = AllocateSVOSequential(textureDimensionCount, ddx0, ddx1, ddx2);
-                    instr.ddy = AllocateSVOSequential(textureDimensionCount, ddy0, ddy1, ddy2);
-
-                    // Unused
-                    uint32_t clamp = reader.GetMappedRelative(anchor);
-                    GRS_SINK(clamp);
-                    break;
-                }
-                case DXILOpcodes::SampleLevel: {
-                    instr.sampleMode = Backend::IL::TextureSampleMode::Default;
-                    instr.lod = reader.GetMappedRelative(anchor);
-                    break;
-                }
-            }
-
-            basicBlock->Append(instr);
+            
+            // Depends on semantic information, resolve it later
+            unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
+                .instruction = basicBlock->Append(instr),
+                .intrinsic = {
+                    .opCode = opCode
+                },
+                .offset = reader.GetRecordOffset(),
+                .anchor = anchor
+            });
+            
             return true;
         }
 
@@ -2022,40 +1882,18 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
              */
 
         case DXILOpcodes::TextureStore: {
-            // Get operands, ignore offset for now
-            uint32_t resource = reader.GetMappedRelative(anchor);
-            uint32_t cx = reader.GetMappedRelative(anchor);
-            uint32_t cy = reader.GetMappedRelative(anchor);
-            uint32_t cz = reader.GetMappedRelative(anchor);
-            uint32_t vx = reader.GetMappedRelative(anchor);
-            uint32_t vy = reader.GetMappedRelative(anchor);
-            uint32_t vz = reader.GetMappedRelative(anchor);
-            uint32_t vw = reader.GetMappedRelative(anchor);
-
-            // Get mask
-            uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
-            // Get type
-            const auto* textureType = ilTypeMap.GetType(resource)->As<Backend::IL::TextureType>();
-
-            // Number of dimensions
-            uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
-            uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(textureType->format);
-
-            // Vectorize
-            IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);
-            IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, vx, vy, vz, vw);
-
-            // Emit as store
             IL::StoreTextureInstruction instr{};
             instr.opCode = IL::OpCode::StoreTexture;
             instr.result = result;
             instr.source = IL::Source::Code(recordIdx);
-            instr.texture = resource;
-            instr.index = svoxCoordinate;
-            instr.texel =  svoxValue;
-            instr.mask = IL::ComponentMaskSet(mask);
-            basicBlock->Append(instr);
+            
+            // Depends on semantic information, resolve it later
+            unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
+                .instruction = basicBlock->Append(instr),
+                .offset = reader.GetRecordOffset(),
+                .anchor = anchor
+            });
+            
             return true;
         }
 
@@ -2362,6 +2200,298 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
     }
 }
 
+void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
+    for (const UnresolvedSemanticInstruction &unresolved: unresolvedSemanticInstructions) {
+        auto instr = unresolved.instruction.GetMutable();
+
+        // Create reader from the expected offset
+        DXILValueReader reader(table, unresolved.offset);
+
+        // Original anchor during parsing
+        uint32_t anchor = unresolved.anchor;
+
+        // Handle opcode
+        switch (instr->opCode) {
+            default: {
+                ASSERT(false, "Invalid instruction");
+                break;
+            }
+
+            /*
+             * DXIL Specification
+             *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32
+             *   declare void @dx.op.bufferStore.f32(
+             *       i32,                  ; opcode
+             *       %dx.types.Handle,     ; resource handle
+             *       i32,                  ; coordinate c0
+             *       i32,                  ; coordinate c1
+             *       float,                ; value v0
+             *       float,                ; value v1
+             *       float,                ; value v2
+             *       float,                ; value v3
+             *       i8)                   ; write mask
+             */
+
+            case IL::OpCode::StoreBuffer: {
+                auto _instr = instr->As<IL::StoreBufferInstruction>();
+
+                // Get operands, ignore offset for now
+                uint32_t resource = reader.GetMappedRelative(anchor);
+                uint32_t coordinate = reader.GetMappedRelative(anchor);
+                uint32_t offset = GetOperandOrInvalid(reader.GetMappedRelative(anchor));
+                uint32_t x = reader.GetMappedRelative(anchor);
+                uint32_t y = reader.GetMappedRelative(anchor);
+                uint32_t z = reader.GetMappedRelative(anchor);
+                uint32_t w = reader.GetMappedRelative(anchor);
+
+                // Get mask
+                uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+
+                // Get type
+                const auto *bufferType = program.GetTypeMap().GetType(resource)->As<Backend::IL::BufferType>();
+
+                // Number of dimensions
+                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(bufferType->texelType);
+
+                // Vectorize
+                IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, x, y, z, w);
+
+                // Emit as store
+                _instr->buffer = resource;
+                _instr->index = coordinate;
+                _instr->value = svoxValue;
+                _instr->mask = IL::ComponentMaskSet(mask);
+                _instr->offset = offset;
+                break;
+            }
+
+            /*
+             * DXIL Specification
+             *  ; overloads: SM5.1: f32|i32,  SM6.0: f16|f32|i16|i32
+             *  declare %dx.types.ResRet.f32 @dx.op.textureLoad.f32(
+             *      i32,                  ; opcode
+             *      %dx.types.Handle,     ; texture handle
+             *      i32,                  ; MIP level; sample for Texture2DMS
+             *      i32,                  ; coordinate c0
+             *      i32,                  ; coordinate c1
+             *      i32,                  ; coordinate c2
+             *      i32,                  ; offset o0
+             *      i32,                  ; offset o1
+             *      i32)                  ; offset o2
+             */
+
+            case IL::OpCode::LoadTexture: {
+                auto _instr = instr->As<IL::LoadTextureInstruction>();
+
+                // Get operands, ignore offset for now
+                uint32_t resource = reader.GetMappedRelative(anchor);
+                uint32_t mip = reader.GetMappedRelative(anchor);
+                uint32_t cx = reader.GetMappedRelative(anchor);
+                uint32_t cy = reader.GetMappedRelative(anchor);
+                uint32_t cz = reader.GetMappedRelative(anchor);
+                uint32_t ox = reader.GetMappedRelative(anchor);
+                uint32_t oy = reader.GetMappedRelative(anchor);
+                uint32_t oz = reader.GetMappedRelative(anchor);
+
+                // Undef mips are represented as unassigned
+                if (const IL::Constant *constant = program.GetConstants().GetConstant(mip); constant && constant->Is<IL::UndefConstant>()) {
+                    mip = IL::InvalidID;
+                }
+
+                // Get type
+                const auto *textureType = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+
+                // Number of dimensions
+                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
+
+                // Vectorize
+                IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);
+                IL::ID svoxOffset = AllocateSVOSequential(textureDimensionCount, ox, oy, oz);
+
+                // Emit as store
+                _instr->texture = resource;
+                _instr->mip = mip;
+                _instr->offset = svoxOffset;
+                _instr->index = svoxCoordinate;
+                break;
+            }
+
+            /*
+             * DXIL Specification
+             *  declare %dx.types.ResRet.f32 @dx.op.sample.f32(
+             *      i32,                      ; opcode
+             *      %dx.types.ResHandle,      ; texture handle
+             *      %dx.types.SamplerHandle,  ; sampler handle
+             *      float,                    ; coordinate c0
+             *      float,                    ; coordinate c1
+             *      float,                    ; coordinate c2
+             *      float,                    ; coordinate c3
+             *      i32,                      ; offset o0
+             *      i32,                      ; offset o1
+             *      i32,                      ; offset o2
+             */
+
+            case IL::OpCode::SampleTexture: {
+                auto _instr = instr->As<IL::SampleTextureInstruction>();
+
+                // Get operands, ignore offset for now
+                uint32_t resource = reader.GetMappedRelative(anchor);
+                uint32_t sampler = reader.GetMappedRelative(anchor);
+                uint32_t cx = reader.GetMappedRelative(anchor);
+                uint32_t cy = reader.GetMappedRelative(anchor);
+                uint32_t cz = reader.GetMappedRelative(anchor);
+                uint32_t cw = reader.GetMappedRelative(anchor);
+                uint32_t ox = reader.GetMappedRelative(anchor);
+                uint32_t oy = reader.GetMappedRelative(anchor);
+                uint32_t oz = reader.GetMappedRelative(anchor);
+
+                // Get type
+                const auto *textureType = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+
+                // Number of dimensions
+                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
+
+                // Vectorize
+                IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz, cw);
+                IL::ID svoxOffset = AllocateSVOSequential(textureDimensionCount, ox, oy, oz);
+
+                // Emit as sample
+                _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+                _instr->texture = resource;
+                _instr->sampler = sampler;
+                _instr->coordinate = svoxCoordinate;
+                _instr->lod = IL::InvalidID;
+                _instr->bias = IL::InvalidID;
+                _instr->reference = IL::InvalidID;
+                _instr->ddx = IL::InvalidID;
+                _instr->ddy = IL::InvalidID;
+                _instr->offset = svoxOffset;
+
+                // Handle additional operands
+                switch (unresolved.intrinsic.opCode) {
+                    default:
+                        ASSERT(false, "Unexpected sampling opcode");
+                        break;
+                    case DXILOpcodes::Sample: {
+                        _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+
+                        // Unused
+                        uint32_t clamp = reader.GetMappedRelative(anchor);
+                        GRS_SINK(clamp);
+                        break;
+                    }
+                    case DXILOpcodes::SampleBias: {
+                        _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+                        _instr->bias = reader.GetMappedRelative(anchor);
+
+                        // Unused
+                        uint32_t clamp = reader.GetMappedRelative(anchor);
+                        GRS_SINK(clamp);
+                        break;
+                    }
+                    case DXILOpcodes::SampleCmp: {
+                        _instr->sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
+                        _instr->reference = reader.GetMappedRelative(anchor);
+
+                        // Unused
+                        uint32_t clamp = reader.GetMappedRelative(anchor);
+                        GRS_SINK(clamp);
+                        break;
+                    }
+                    case DXILOpcodes::SampleCmpLevelZero: {
+                        _instr->sampleMode = Backend::IL::TextureSampleMode::DepthComparison;
+                        _instr->reference = reader.GetMappedRelative(anchor);
+                        break;
+                    }
+                    case DXILOpcodes::SampleGrad: {
+                        _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+
+                        // DDX
+                        uint32_t ddx0 = reader.GetMappedRelative(anchor);
+                        uint32_t ddx1 = reader.GetMappedRelative(anchor);
+                        uint32_t ddx2 = reader.GetMappedRelative(anchor);
+
+                        // DDY
+                        uint32_t ddy0 = reader.GetMappedRelative(anchor);
+                        uint32_t ddy1 = reader.GetMappedRelative(anchor);
+                        uint32_t ddy2 = reader.GetMappedRelative(anchor);
+
+                        // Vectorize
+                        _instr->ddx = AllocateSVOSequential(textureDimensionCount, ddx0, ddx1, ddx2);
+                        _instr->ddy = AllocateSVOSequential(textureDimensionCount, ddy0, ddy1, ddy2);
+
+                        // Unused
+                        uint32_t clamp = reader.GetMappedRelative(anchor);
+                        GRS_SINK(clamp);
+                        break;
+                    }
+                    case DXILOpcodes::SampleLevel: {
+                        _instr->sampleMode = Backend::IL::TextureSampleMode::Default;
+                        _instr->lod = reader.GetMappedRelative(anchor);
+                        break;
+                    }
+                }
+                break;
+            }
+
+            /*
+             * DXIL Specification
+             *   ; overloads: SM5.1: f32|i32,  SM6.0: f16|f32|i16|i32
+             *   ; returns: status
+             *   declare void @dx.op.textureStore.f32(
+             *       i32,                  ; opcode
+             *       %dx.types.Handle,     ; texture handle
+             *       i32,                  ; coordinate c0
+             *       i32,                  ; coordinate c1
+             *       i32,                  ; coordinate c2
+             *       float,                ; value v0
+             *       float,                ; value v1
+             *       float,                ; value v2
+             *       float,                ; value v3
+             *       i8)                   ; write mask
+             */
+
+            case IL::OpCode::StoreTexture: {
+                auto _instr = instr->As<IL::StoreTextureInstruction>();
+
+                // Get operands, ignore offset for now
+                uint32_t resource = reader.GetMappedRelative(anchor);
+                uint32_t cx = reader.GetMappedRelative(anchor);
+                uint32_t cy = reader.GetMappedRelative(anchor);
+                uint32_t cz = reader.GetMappedRelative(anchor);
+                uint32_t vx = reader.GetMappedRelative(anchor);
+                uint32_t vy = reader.GetMappedRelative(anchor);
+                uint32_t vz = reader.GetMappedRelative(anchor);
+                uint32_t vw = reader.GetMappedRelative(anchor);
+                
+                // Get mask
+                uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+
+                // Get type
+                const auto *textureType = program.GetTypeMap().GetType(resource)->As<Backend::IL::TextureType>();
+
+                // Number of dimensions
+                uint32_t textureDimensionCount = Backend::IL::GetDimensionSize(textureType->dimension);
+                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(textureType->format);
+
+                // Vectorize
+                IL::ID svoxCoordinate = AllocateSVOSequential(textureDimensionCount, cx, cy, cz);
+                IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, vx, vy, vz, vw);
+
+                // Emit as store
+                _instr->texture = resource;
+                _instr->index = svoxCoordinate;
+                _instr->texel = svoxValue;
+                _instr->mask = IL::ComponentMaskSet(mask);
+                break;
+            }
+        }
+    }
+
+    // Cleanup, may be invoked multiple times
+    unresolvedSemanticInstructions.clear();
+}
+
 const Backend::IL::Type* DXILPhysicalBlockFunction::GetTypeFromProperties(const DXILResourceProperties& properties) {
     Backend::IL::TypeMap &types = program.GetTypeMap();
 
@@ -2547,6 +2677,31 @@ IL::ID DXILPhysicalBlockFunction::AllocateSVOSequential(uint32_t count, IL::ID x
         .containedType = type,
         .dimension = static_cast<uint8_t>(count)
     }));
+
+    // OK
+    return svox;
+}
+
+IL::ID DXILPhysicalBlockFunction::AllocateSVOStructSequential(const Backend::IL::Type *type, const IL::ID *values, uint32_t count) {
+    // Pass through if singular
+    if (count == 1) {
+        return values[0];
+    }
+
+    // Emulated value
+    IL::ID svox = program.GetIdentifierMap().AllocID();
+
+    // Fill out range
+    IL::ID base = program.GetIdentifierMap().AllocIDRange(count);
+    for (uint32_t i = 0; i < count; i++) {
+        table.idRemapper.AllocSourceUserMapping(base + i, DXILIDUserType::Singular, values[i]);
+    }
+
+    // Set base
+    table.idRemapper.AllocSourceUserMapping(svox, DXILIDUserType::StructOnSequential, base);
+
+    // Set type
+    program.GetTypeMap().SetType(svox, type);
 
     // OK
     return svox;
@@ -3649,6 +3804,15 @@ void DXILPhysicalBlockFunction::CompileFunction(const DXCompileJob& job, struct 
 
                             // Create svox
                             table.idRemapper.SetUserRedirect(instr->result, AllocateSVOSequential(3, threadIds[0], threadIds[1], threadIds[2]));
+                            break;
+                        }
+                        case Backend::IL::KernelValue::FlattenedLocalThreadID: {
+                            const DXILFunctionDeclaration *intrinsic = table.intrinsics.GetIntrinsic(Intrinsics::DxOpFlattenedThreadIdInGroupI32);
+                           
+                            // Get thread id
+                            uint64_t ops[1];
+                            ops[0] = table.idRemapper.EncodeRedirectedUserOperand(program.GetConstants().UInt(static_cast<uint32_t>(DXILOpcodes::FlattenedThreadIdInGroup))->id);
+                            block->AddRecord(CompileIntrinsicCall(instr->result, intrinsic, 1, ops));
                             break;
                         }
                     }
@@ -4949,6 +5113,13 @@ void DXILPhysicalBlockFunction::StitchFunction(struct LLVMBlock *block) {
             case LLVMFunctionRecord::InstCmp:
             case LLVMFunctionRecord::InstCmp2: {
                 writer.RemapRelativeValue(anchor);
+                writer.RemapRelative(anchor);
+                break;
+            }
+
+            case LLVMFunctionRecord::InstCmpXchg: {
+                writer.RemapRelativeValue(anchor);
+                writer.RemapRelative(anchor);
                 writer.RemapRelative(anchor);
                 break;
             }

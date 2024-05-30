@@ -25,8 +25,11 @@
 // 
 
 using System.Collections.Generic;
+using System.Linq;
 using ReactiveUI;
+using Studio.Extensions;
 using Studio.ViewModels.Traits;
+using Studio.ViewModels.Workspace.Properties;
 
 namespace Studio.ViewModels.Contexts
 {
@@ -36,10 +39,10 @@ namespace Studio.ViewModels.Contexts
         /// Install a context against a target view model
         /// </summary>
         /// <param name="itemViewModels">destination items list</param>
-        /// <param name="targetViewModel">the target to install for</param>
-        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object targetViewModel)
+        /// <param name="targetViewModels">the targets to install for</param>
+        public void Install(IList<IContextMenuItemViewModel> itemViewModels, object[] targetViewModels)
         {
-            if (targetViewModel is not IClosableObject closable)
+            if (targetViewModels.PromoteOrNull<IClosableObject>() is not {} closable)
             {
                 return;
             }
@@ -54,9 +57,41 @@ namespace Studio.ViewModels.Contexts
         /// <summary>
         /// Command implementation
         /// </summary>
-        private void OnInvoked(IClosableObject closable)
+        private void OnInvoked(IClosableObject[] closables)
         {
-            closable.CloseCommand?.Execute(null);
+            HashSet<IClosableObject> set = closables.ToHashSet();
+
+            // Closable objects need a bit of care, basically, we need to make sure
+            // that we're not closing anything twice in any particular chain, which
+            // may happen if a parent is closed with a child.
+            foreach (IClosableObject closable in closables)
+            {
+                // If this is not a hierarchical object, just close it immediately
+                if (closable is not IPropertyViewModel property)
+                {
+                    closable.CloseCommand?.Execute(null);
+                    continue;
+                }
+
+                // Does this object have a to be closed parent?
+                bool hasParent = false;
+
+                // Traverse up the tree to see if there's a shared parent which is to be closed
+                foreach (IPropertyViewModel parent in property.GetParents())
+                {
+                    if (parent is IClosableObject closableParent && set.Contains(closableParent))
+                    {
+                        hasParent = true;
+                        break;
+                    }
+                }
+
+                // If not this is isolated, so just close it
+                if (!hasParent)
+                {
+                    closable.CloseCommand?.Execute(null);
+                }
+            }
         }
     }
 }

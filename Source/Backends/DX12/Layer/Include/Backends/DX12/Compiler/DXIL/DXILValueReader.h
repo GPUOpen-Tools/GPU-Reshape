@@ -35,7 +35,14 @@ struct DXILValueReader : public LLVMRecordReader {
     /// Constructor
     /// \param table instrumentation table
     /// \param record source record
-    DXILValueReader(DXILPhysicalBlockTable& table, LLVMRecord& record) : LLVMRecordReader(record), table(table) {
+    DXILValueReader(DXILPhysicalBlockTable& table, const LLVMRecord& record) : LLVMRecordReader(record), table(table) {
+        
+    }
+    
+    /// Constructor
+    /// \param table instrumentation table
+    /// \param record source record offset
+    DXILValueReader(DXILPhysicalBlockTable& table, const LLVMRecordOffset& record) : LLVMRecordReader(record), table(table) {
         
     }
 

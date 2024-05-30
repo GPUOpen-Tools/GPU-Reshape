@@ -692,6 +692,14 @@ namespace Studio.Models.IL
                     };
                     break;
                 }
+                case OpCode.KernelValue:
+                {
+                    instruction = new KernelValueInstruction()
+                    {
+                        Value = node.Value
+                    };
+                    break;
+                }
                 case OpCode.Branch:
                 {
                     BranchInstruction branch = new()

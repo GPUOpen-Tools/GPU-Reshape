@@ -104,8 +104,17 @@ namespace Intrinsics {
         }
     };
 
-    static DXILIntrinsicSpec DxOpBinaryF32 {
+    static DXILIntrinsicSpec DxOpFlattenedThreadIdInGroupI32{
         .uid = 7,
+        .name = "dx.op.flattenedThreadIdInGroup.i32",
+        .returnType = DXILIntrinsicTypeSpec::I32,
+        .parameterTypes = {
+            DXILIntrinsicTypeSpec::I32 // opcode
+        }
+    };
+
+    static DXILIntrinsicSpec DxOpBinaryF32 {
+        .uid = 8,
         .name = "dx.op.binary.f32",
         .returnType = DXILIntrinsicTypeSpec::F32,
         .parameterTypes = {
@@ -116,7 +125,7 @@ namespace Intrinsics {
     };
 
     static DXILIntrinsicSpec DxOpBinaryI32 {
-        .uid = 8,
+        .uid = 9,
         .name = "dx.op.binary.i32",
         .returnType = DXILIntrinsicTypeSpec::I32,
         .parameterTypes = {
@@ -127,7 +136,7 @@ namespace Intrinsics {
     };
 
     static DXILIntrinsicSpec DxOpUnaryF32 {
-        .uid = 9,
+        .uid = 10,
         .name = "dx.op.unary.f32",
         .returnType = DXILIntrinsicTypeSpec::F32,
         .parameterTypes = {
@@ -137,7 +146,7 @@ namespace Intrinsics {
     };
 
     static DXILIntrinsicSpec DxOpUnaryI32 {
-        .uid = 10,
+        .uid = 11,
         .name = "dx.op.unary.i32",
         .returnType = DXILIntrinsicTypeSpec::I32,
         .parameterTypes = {
@@ -147,7 +156,7 @@ namespace Intrinsics {
     };
 
     static DXILIntrinsicSpec DxOpUnaryBitsI32 {
-        .uid = 11,
+        .uid = 12,
         .name = "dx.op.unaryBits.i32",
         .returnType = DXILIntrinsicTypeSpec::I32,
         .parameterTypes = {
@@ -156,5 +165,5 @@ namespace Intrinsics {
         }
     };
 
-    static uint32_t kInbuiltCount = 12;
+    static uint32_t kInbuiltCount = 13;
 }

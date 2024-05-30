@@ -28,6 +28,7 @@
 
 namespace Backend::IL {
     enum class KernelValue {
-        DispatchThreadID
+        DispatchThreadID,
+        FlattenedLocalThreadID
     };
 }

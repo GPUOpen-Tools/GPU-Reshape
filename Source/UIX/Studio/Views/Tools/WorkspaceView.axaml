@@ -80,6 +80,8 @@
             ContextMenu="{StaticResource ReactiveContextMenu}" 
             BorderThickness="0"
             SelectionChanged="OnItemSelected"
+            AutoScrollToSelectedItem="False"
+            SelectionMode="Multiple"
             Tag="{Binding}"
             Items="{Binding Workspaces}">
             <TreeView.Styles>

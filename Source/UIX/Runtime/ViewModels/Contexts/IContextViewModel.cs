@@ -34,7 +34,7 @@ namespace Studio.ViewModels.Contexts
         /// Install a context against a target view model
         /// </summary>
         /// <param name="itemViewModels">destination items list</param>
-        /// <param name="targetViewModel">the target to install for</param>
-        void Install(IList<IContextMenuItemViewModel> itemViewModels, object targetViewModel);
+        /// <param name="targetViewModels">the targets to install for</param>
+        void Install(IList<IContextMenuItemViewModel> itemViewModels, object[] targetViewModels);
     }
 }
