@@ -1694,9 +1694,6 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             uint32_t coordinate = reader.GetMappedRelative(anchor);
             uint32_t offset = GetOperandOrInvalid(reader.GetMappedRelative(anchor));
 
-            // Unused
-            GRS_SINK(offset);
-
             // Emit as load
             IL::LoadBufferInstruction instr{};
             instr.opCode = IL::OpCode::LoadBuffer;
@@ -1758,57 +1755,18 @@ bool DXILPhysicalBlockFunction::TryParseIntrinsic(IL::BasicBlock *basicBlock, ui
             return true;
         }
 
-        /*
-         * DXIL Specification
-         *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32, SM6.2: f16|f32|i16|i32
-         *   declare void @dx.op.rawBufferStore.f32(
-         *       i32,                  ; opcode
-         *       %dx.types.Handle,     ; resource handle
-         *       i32,                  ; coordinate c0 (index)
-         *       i32,                  ; coordinate c1 (elementOffset)
-         *       float,                ; value v0
-         *       float,                ; value v1
-         *       float,                ; value v2
-         *       float,                ; value v3
-         *       i8,                   ; write mask
-         *       i32)                  ; alignment
-         */
-
         case DXILOpcodes::RawBufferStore: {
-            // Get operands, ignore offset for now
-            uint32_t resource = reader.GetMappedRelative(anchor);
-            uint32_t coordinate = reader.GetMappedRelative(anchor);
-            uint32_t offset = GetOperandOrInvalid(reader.GetMappedRelative(anchor));
-            uint32_t x = reader.GetMappedRelative(anchor);
-            uint32_t y = reader.GetMappedRelative(anchor);
-            uint32_t z = reader.GetMappedRelative(anchor);
-            uint32_t w = reader.GetMappedRelative(anchor);
-
-            // Get mask
-            uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-            uint64_t alignment = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
-
-            // Get type
-            const auto* bufferType = ilTypeMap.GetType(resource)->As<Backend::IL::BufferType>();
-
-            // Number of dimensions
-            uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(bufferType->texelType);
-
-            // Vectorize
-            IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, x, y, z, w);
-
-            // Emit as store
             IL::StoreBufferRawInstruction instr{};
             instr.opCode = IL::OpCode::StoreBufferRaw;
             instr.result = result;
             instr.source = IL::Source::Code(recordIdx);
-            instr.buffer = resource;
-            instr.index = coordinate;
-            instr.value = svoxValue;
-            instr.offset = offset;
-            instr.mask = IL::ComponentMaskSet(mask);
-            instr.alignment = static_cast<uint32_t>(alignment);
-            basicBlock->Append(instr);
+            
+            // Depends on semantic information, resolve it later
+            unresolvedSemanticInstructions.push_back(UnresolvedSemanticInstruction {
+                .instruction = basicBlock->Append(instr),
+                .offset = reader.GetRecordOffset(),
+                .anchor = anchor
+            });
             return true;
         }
 
@@ -2262,6 +2220,57 @@ void DXILPhysicalBlockFunction::ResolveSemanticInstructions() {
                 _instr->value = svoxValue;
                 _instr->mask = IL::ComponentMaskSet(mask);
                 _instr->offset = offset;
+                break;
+            }
+                
+            /*
+             * DXIL Specification
+             *   ; overloads: SM5.1: f32|i32,  SM6.0: f32|i32, SM6.2: f16|f32|i16|i32
+             *   declare void @dx.op.rawBufferStore.f32(
+             *       i32,                  ; opcode
+             *       %dx.types.Handle,     ; resource handle
+             *       i32,                  ; coordinate c0 (index)
+             *       i32,                  ; coordinate c1 (elementOffset)
+             *       float,                ; value v0
+             *       float,                ; value v1
+             *       float,                ; value v2
+             *       float,                ; value v3
+             *       i8,                   ; write mask
+             *       i32)                  ; alignment
+             */
+
+            case IL::OpCode::StoreBufferRaw: {
+                auto _instr = instr->As<IL::StoreBufferRawInstruction>();
+                
+                // Get operands, ignore offset for now
+                uint32_t resource = reader.GetMappedRelative(anchor);
+                uint32_t coordinate = reader.GetMappedRelative(anchor);
+                uint32_t offset = GetOperandOrInvalid(reader.GetMappedRelative(anchor));
+                uint32_t x = reader.GetMappedRelative(anchor);
+                uint32_t y = reader.GetMappedRelative(anchor);
+                uint32_t z = reader.GetMappedRelative(anchor);
+                uint32_t w = reader.GetMappedRelative(anchor);
+
+                // Get mask
+                uint64_t mask = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+                uint64_t alignment = program.GetConstants().GetConstant<IL::IntConstant>(reader.GetMappedRelative(anchor))->value;
+
+                // Get type
+                const auto* bufferType = program.GetTypeMap().GetType(resource)->As<Backend::IL::BufferType>();
+
+                // Number of dimensions
+                uint32_t formatDimensionCount = Backend::IL::GetDimensionSize(bufferType->texelType);
+
+                // Vectorize
+                IL::ID svoxValue = AllocateSVOSequential(formatDimensionCount, x, y, z, w);
+
+                // Emit as store
+                _instr->buffer = resource;
+                _instr->index = coordinate;
+                _instr->value = svoxValue;
+                _instr->offset = offset;
+                _instr->mask = IL::ComponentMaskSet(mask);
+                _instr->alignment = static_cast<uint32_t>(alignment);
                 break;
             }
 
