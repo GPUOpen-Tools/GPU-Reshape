@@ -25,7 +25,7 @@
 # 
 
 # Expected SHA256
-set(AgilitySDKSHA256 "2df788c3a020cca225a489062a4440733e8b2e1951ccbaa487af2e60da33635b")
+set(AgilitySDKSHA256 "43dbb25260712072243cd91c79101c5afd0890495cbf9446e771e3cac57633cd")
 
 # Intermediate path
 set(Path ${CMAKE_BINARY_DIR}/Nuget/AgilitySDK.zip)
@@ -40,7 +40,7 @@ endif()
 # Current version OK?
 if (NOT "${Checksum}" STREQUAL ${AgilitySDKSHA256})
     # Download SDK
-    file(DOWNLOAD https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.711.3-preview ${Path})
+    file(DOWNLOAD https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.714.0-preview ${Path})
 
     # Validate SHA256
     file(SHA256 ${Path} Checksum)

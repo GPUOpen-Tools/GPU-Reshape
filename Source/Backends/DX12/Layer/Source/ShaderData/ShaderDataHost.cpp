@@ -53,6 +53,12 @@ ShaderDataHost::~ShaderDataHost() {
 }
 
 bool ShaderDataHost::Install() {
+    // Query device options
+    if (FAILED(device->object->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options)))) {
+        return false;
+    }
+
+    // OK
     return true;
 }
 
@@ -287,6 +293,9 @@ void ShaderDataHost::Enumerate(uint32_t *count, ShaderDataInfo *out, ShaderDataT
 void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescriptorHandle, uint32_t stride) {
     uint32_t offset = 0;
 
+    // Max number of addressable bytes (-3 for bits to bytes)
+    size_t maxVirtualAddressBytes = 1ull << (options.MaxGPUVirtualAddressBitsPerResource - 3u);
+
     for (uint32_t i = 0; i < resources.size(); i++) {
         const ResourceEntry &entry = resources[i];
 
@@ -306,9 +315,12 @@ void ShaderDataHost::CreateDescriptors(D3D12_CPU_DESCRIPTOR_HANDLE baseDescripto
                 view.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
                 view.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
                 view.Buffer.FirstElement = 0;
-                view.Buffer.NumElements = static_cast<uint32_t>(entry.info.buffer.elementCount);
                 view.Buffer.StructureByteStride = 0;
 
+                // Limit number of elements by the actual number of addressable elements
+                size_t maxElements = maxVirtualAddressBytes / Backend::IL::GetSize(entry.info.buffer.format);
+                view.Buffer.NumElements = static_cast<uint32_t>(std::min(entry.info.buffer.elementCount, maxElements));
+                
                 // Create descriptor
                 device->object->CreateUnorderedAccessView(
                     entry.allocation.resource, nullptr,

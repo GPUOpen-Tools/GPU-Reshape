@@ -105,6 +105,9 @@ private:
     /// Parent device
     DeviceState* device;
 
+    /// Device queried options
+    D3D12_FEATURE_DATA_D3D12_OPTIONS options{};
+
     /// Shared lock
     std::mutex mutex;
 
