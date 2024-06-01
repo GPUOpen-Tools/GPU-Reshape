@@ -458,7 +458,7 @@ HRESULT HookID3D12DeviceCreateReservedResource(ID3D12Device *device, const D3D12
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource, desc);
+    resource = CreateResourceState(device, table, resource, desc, ResourceCreateFlag::Tiled);
 
     // Query to external object if requested
     if (pResource) {
@@ -488,7 +488,7 @@ HRESULT WINAPI HookID3D12DeviceCreateReservedResource1(ID3D12Device* device, con
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource, pDesc);
+    resource = CreateResourceState(device, table, resource, pDesc, ResourceCreateFlag::Tiled);
 
     // Query to external object if requested
     if (ppvResource) {
@@ -518,7 +518,7 @@ HRESULT WINAPI HookID3D12DeviceCreateReservedResource2(ID3D12Device* device, con
     }
 
     // Create state
-    resource = CreateResourceState(device, table, resource, pDesc);
+    resource = CreateResourceState(device, table, resource, pDesc, ResourceCreateFlag::Tiled);
 
     // Query to external object if requested
     if (ppvResource) {

@@ -180,6 +180,10 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
     IL::ID puidMemoryBaseBufferDataID = program.GetShaderDataMap().Get(puidMemoryBaseBufferID)->id;
     IL::ID texelMaskBufferDataID      = program.GetShaderDataMap().Get(texelAllocator->GetTexelBlocksBufferID())->id;
 
+    // Constants
+    IL::ID zero = program.GetConstants().UInt(0)->id;
+    IL::ID untracked = program.GetConstants().UInt(static_cast<uint32_t>(FailureCode::Untracked))->id;
+
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
         // Write operation?
@@ -264,6 +268,10 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             Backend::IL::TexelPropertiesEmitter propertiesEmitter(emitter, texelAllocator, puidMemoryBaseBufferDataID);
             TexelProperties texelProperties = propertiesEmitter.GetTexelProperties(ref);
 
+            // If untracked, don't write any bits
+            IL::ID isUntracked = emitter.Equal(texelProperties.failureBlock, untracked);
+            texelProperties.address.texelCount = emitter.Select(isUntracked, zero, texelProperties.address.texelCount);
+
             // Mark it as initialized
             AtomicOpTexelAddressRegion<RegionCombinerIgnore>(
                 emitter,
@@ -277,22 +285,16 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
             return emitter.GetIterator();
         }
 
-        // Constants
-        IL::ID zero = program.GetConstants().UInt(0)->id;
-
         // Bind the SGUID
         ShaderSGUID sguid = sguidHost ? sguidHost->Bind(program, it) : InvalidShaderSGUID;
 
-        // Allocate resume
+        // Allocate blocks
         IL::BasicBlock* resumeBlock = context.function.GetBasicBlocks().AllocBlock();
+        IL::BasicBlock* mismatchBlock = context.function.GetBasicBlocks().AllocBlock();
 
         // Split this basic block, move all instructions post and including the instrumented instruction to resume
         // ! iterator invalidated
         auto instr = context.basicBlock.Split(resumeBlock, it);
-
-        // Allocate failure block
-        IL::Emitter<> mismatch(program, *context.function.GetBasicBlocks().AllocBlock());
-        mismatch.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
 
         // Perform instrumentation check
         IL::Emitter<> pre(program, context.basicBlock);
@@ -301,6 +303,10 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         Backend::IL::TexelPropertiesEmitter propertiesEmitter(pre, texelAllocator, puidMemoryBaseBufferDataID);
         TexelProperties texelProperties = propertiesEmitter.GetTexelProperties(IL::InstructionRef(instr));
 
+        // If untracked, don't read any bits
+        IL::ID isUntracked = pre.Equal(texelProperties.failureBlock, untracked);
+        texelProperties.address.texelCount = pre.Select(isUntracked, zero, texelProperties.address.texelCount);
+        
         // Fetch the bits
         // This doesn't need to be atomic, as the source memory should be visible at this point
         IL::ID anyBitsZero = AtomicOpTexelAddressRegion<RegionCombinerAnyNotEqual>(
@@ -317,30 +323,40 @@ void InitializationFeature::Inject(IL::Program &program, const MessageStreamView
         // If the failure block has any data, this is a bad operation
         cond = pre.Or(cond, pre.NotEqual(texelProperties.failureBlock, zero));
 
+        // If untracked, this can never fail
+        cond = pre.And(cond, pre.Not(isUntracked));
+
         // If so, branch to failure, otherwise resume
-        pre.BranchConditional(cond, mismatch.GetBasicBlock(), resumeBlock, IL::ControlFlow::Selection(resumeBlock));
+        pre.BranchConditional(cond, mismatchBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
 
-        // Setup message
-        UninitializedResourceMessage::ShaderExport msg;
-        msg.sguid = mismatch.UInt32(sguid);
-        msg.failureCode = texelProperties.failureBlock;
+        // Allocate failure block
+        {
+            IL::Emitter<> mismatch(program, *mismatchBlock);
+            mismatch.AddBlockFlag(BasicBlockFlag::NoInstrumentation);
+            
+            // Setup message
+            UninitializedResourceMessage::ShaderExport msg;
+            msg.sguid = mismatch.UInt32(sguid);
+            msg.failureCode = texelProperties.failureBlock;
 
-        // Detailed instrumentation?
-        if (config.detail) {
-            msg.chunks |= UninitializedResourceMessage::Chunk::Detail;
-            msg.detail.token = texelProperties.packedToken;
-            msg.detail.coordinate[0] = texelProperties.address.x;
-            msg.detail.coordinate[1] = texelProperties.address.y;
-            msg.detail.coordinate[2] = texelProperties.address.z;
-            msg.detail.byteOffset = texelProperties.offset;
-            msg.detail.mip = texelProperties.address.mip;
+            // Detailed instrumentation?
+            if (config.detail) {
+                msg.chunks |= UninitializedResourceMessage::Chunk::Detail;
+                msg.detail.token = texelProperties.packedToken;
+                msg.detail.coordinate[0] = texelProperties.address.x;
+                msg.detail.coordinate[1] = texelProperties.address.y;
+                msg.detail.coordinate[2] = texelProperties.address.z;
+                msg.detail.byteOffset = texelProperties.offset;
+                msg.detail.mip = texelProperties.address.mip;
+            }
+            
+            // Export the message
+            mismatch.Export(exportID, msg);
+
+            // Branch back
+            mismatch.Branch(resumeBlock);
         }
         
-        // Export the message
-        mismatch.Export(exportID, msg);
-
-        // Branch back
-        mismatch.Branch(resumeBlock);
         return instr;
     });
 }
@@ -359,8 +375,24 @@ static uint32_t GetWorkgroupCount(uint64_t value, uint32_t align) {
 void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
     std::lock_guard guard(mutex);
 
+    // Actual creation parameters for texel addressing
+    ResourceInfo filteredInfo = source.resource;
+
+    // If tiled, reduce all (volume) dimensions to 1
+    // since it's not actually being tracked, and can have
+    // massive size requirements.
+    if (source.createFlags & ResourceCreateFlag::Tiled) {
+        filteredInfo.token.width = 1u;
+        filteredInfo.token.height = 1u;
+
+        // Non-volumetric resources keep the subresource layout intact
+        if (filteredInfo.isVolumetric) {
+            filteredInfo.token.depthOrSliceCount = 1u;
+        }
+    }
+
     // Create allocation
-    TexelMemoryAllocation memory = texelAllocator->Allocate(source.resource);
+    TexelMemoryAllocation memory = texelAllocator->Allocate(filteredInfo);
 
     // Create allocation
     Allocation& allocation = allocations[source.resource.token.puid];
@@ -390,6 +422,11 @@ void InitializationFeature::OnCreateResource(const ResourceCreateInfo &source) {
         allocation.failureCode = FailureCode::MetadataRequiresHardwareClear;
     }
 #endif // USE_METADATA_CLEAR_CHECKS
+
+    // Virtual resources are not tracked (yet)
+    if (source.createFlags & ResourceCreateFlag::Tiled) {
+        allocation.failureCode = FailureCode::Untracked;
+    }
 }
 
 void InitializationFeature::OnDestroyResource(const ResourceInfo &source) {

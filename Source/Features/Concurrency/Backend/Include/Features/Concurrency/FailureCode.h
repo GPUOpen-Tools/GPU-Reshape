@@ -26,25 +26,10 @@
 
 #pragma once
 
-// Common
-#include <Common/Enum.h>
+enum class FailureCode {
+    /// No failure
+    None,
 
-enum class ResourceCreateFlag {
-    None = 0x0,
-
-    /// This resource was created / opened from an external system handle,
-    /// and may originate from another device, process, and any other
-    /// compatible source.
-    OpenedFromExternalHandle = BIT(1),
-
-    /// This resource was created by the swapchain for presentation
-    SwapchainTexture = BIT(2),
-
-    /// This resource requires a clear before it can be safely used
-    MetadataRequiresHardwareClear = BIT(3),
-
-    /// This resource is tiled
-    Tiled = BIT(4)
+    /// This resource is not tracked
+    Untracked = 1u
 };
-
-BIT_SET(ResourceCreateFlag);

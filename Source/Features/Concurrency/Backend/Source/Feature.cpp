@@ -125,6 +125,7 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
 
     // Common constants
     IL::ID zero = program.GetConstants().UInt(0)->id;
+    IL::ID untracked = program.GetConstants().UInt(static_cast<uint32_t>(FailureCode::Untracked))->id;
 
     // Visit all instructions
     IL::VisitUserInstructions(program, [&](IL::VisitContext& context, IL::BasicBlock::Iterator it) -> IL::BasicBlock::Iterator {
@@ -234,11 +235,14 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         Backend::IL::TexelPropertiesEmitter propertiesEmitter(pre, texelAllocator, puidMemoryBaseBufferDataID);
         TexelProperties texelProperties = propertiesEmitter.GetTexelProperties(IL::InstructionRef(instr));
 
+        // If untracked, don't write or read any bits
+        IL::ID isUntracked = pre.Equal(texelProperties.failureBlock, untracked);
+
         // Manually select the target bit, this follows the same mechanism as the other overloads,
         // in our case we set the target bit to 0 if the address is out of bounds. Effectively disabling
         // the atomic writes without adding block branching logic.
         IL::ID guardedTexelCount = pre.Select(
-            texelProperties.address.isOutOfBounds,
+            pre.Or(texelProperties.address.isOutOfBounds, isUntracked),
             program.GetConstants().UInt(0)->id,
             texelProperties.address.texelCount
         );
@@ -273,6 +277,9 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
         // as the bounds feature will snuff out invalid addressing.
         IL::ID unsafeCond = pre.And(pre.NotEqual(previousLock, zero), pre.Not(texelProperties.address.isOutOfBounds));
 
+        // If untracked, this can never fail
+        unsafeCond = pre.And(unsafeCond, pre.Not(isUntracked));
+        
         // If so, branch to failure, otherwise resume
         pre.BranchConditional(unsafeCond, oobBlock, resumeBlock, IL::ControlFlow::Selection(resumeBlock));
 
@@ -327,8 +334,24 @@ void ConcurrencyFeature::Inject(IL::Program &program, const MessageStreamView<> 
 void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
     std::lock_guard guard(mutex);
 
+    // Actual creation parameters for texel addressing
+    ResourceInfo filteredInfo = source.resource;
+
+    // If tiled, reduce all (volume) dimensions to 1
+    // since it's not actually being tracked, and can have
+    // massive size requirements.
+    if (source.createFlags & ResourceCreateFlag::Tiled) {
+        filteredInfo.token.width = 1u;
+        filteredInfo.token.height = 1u;
+
+        // Non-volumetric resources keep the subresource layout intact
+        if (filteredInfo.isVolumetric) {
+            filteredInfo.token.depthOrSliceCount = 1u;
+        }
+    }
+
     // Create allocation
-    TexelMemoryAllocation memory = texelAllocator->Allocate(source.resource);
+    TexelMemoryAllocation memory = texelAllocator->Allocate(filteredInfo);
 
     // Create allocation
     Allocation& allocation = allocations[source.resource.token.puid];
@@ -339,6 +362,11 @@ void ConcurrencyFeature::OnCreateResource(const ResourceCreateInfo &source) {
         .puid = source.resource.token.puid,
         .memoryBaseAlign32 = allocation.memory.texelBaseBlock
     });
+
+    // Virtual resources are not tracked (yet)
+    if (source.createFlags & ResourceCreateFlag::Tiled) {
+        allocation.failureCode = FailureCode::Untracked;
+    }
 }
 
 void ConcurrencyFeature::OnDestroyResource(const ResourceInfo &source) {

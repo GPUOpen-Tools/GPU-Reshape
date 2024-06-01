@@ -26,6 +26,9 @@
 
 #pragma once
 
+// Feature
+#include <Features/Concurrency/FailureCode.h>
+
 // Common
 #include <Common/ComRef.h>
 
@@ -88,6 +91,9 @@ private:
     struct Allocation {
         /// The underlying allocation
         TexelMemoryAllocation memory;
+
+        /// Assigned initial failure code
+        FailureCode failureCode{FailureCode::None};
     };
 
     /// Shared texel allocator

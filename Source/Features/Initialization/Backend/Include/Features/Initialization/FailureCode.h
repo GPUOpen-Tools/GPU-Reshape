@@ -31,5 +31,8 @@ enum class FailureCode {
     None,
 
     /// Pending metadata clear
-    MetadataRequiresHardwareClear = 1u
+    MetadataRequiresHardwareClear = 1u,
+
+    /// This resource is not tracked
+    Untracked = 2u
 };

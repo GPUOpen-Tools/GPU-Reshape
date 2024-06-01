@@ -852,10 +852,12 @@ void FeatureHook_OMSetRenderTargets::operator()(CommandListState *object, Comman
 }
 
 void FeatureHook_CopyTiles::operator()(CommandListState *object, CommandContext *context, ID3D12Resource* pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE* pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE* pTileRegionSize, ID3D12Resource* pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags) const {
+#if 0 // todo[init]: Represent this somehow
     // Get resource infos
     ResourceInfo srcInfo = GetResourceInfoFor(GetState(pBuffer));
     ResourceInfo dstInfo = GetResourceInfoFor(GetState(pTiledResource));
 
     // Invoke proxies
     hook.Invoke(context, srcInfo, dstInfo);
+#endif // 0
 }

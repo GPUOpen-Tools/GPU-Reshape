@@ -78,11 +78,19 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateBuffer(VkDevice device, const VkBuff
     // Inform controller
     table->versioningController->CreateOrRecommitBuffer(state);
 
+    // Resource flags
+    ResourceCreateFlagSet flags = ResourceCreateFlag::None;
+
+    // Report sparse resources
+    if (pCreateInfo->flags & VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT) {
+        flags |= ResourceCreateFlag::Tiled;
+    }
+
     // Invoke proxies for all handles
     for (const FeatureHookTable &proxyTable: table->featureHookTables) {
         proxyTable.createResource.TryInvoke(ResourceCreateInfo {
             .resource = GetResourceInfoFor(state->virtualMapping, false),
-            .createFlags = ResourceCreateFlag::None
+            .createFlags = flags
         });
     }
     
@@ -173,11 +181,19 @@ VKAPI_ATTR VkResult VKAPI_CALL Hook_vkCreateImage(VkDevice device, const VkImage
     // Inform controller
     table->versioningController->CreateOrRecommitImage(state);
 
+    // Resource flags
+    ResourceCreateFlagSet flags = ResourceCreateFlag::None;
+
+    // Report sparse resources
+    if (pCreateInfo->flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) {
+        flags |= ResourceCreateFlag::Tiled;
+    }
+
     // Invoke proxies for all handles
     for (const FeatureHookTable &proxyTable: table->featureHookTables) {
         proxyTable.createResource.TryInvoke(ResourceCreateInfo {
             .resource = GetResourceInfoFor(state),
-            .createFlags = ResourceCreateFlag::None
+            .createFlags = flags
         });
     }
 
