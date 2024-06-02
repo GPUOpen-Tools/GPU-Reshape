@@ -557,6 +557,16 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
     // Create mappings
     *outMapping = CreateRootPhysicalMappings(state, parameters, parameterCount, source.pStaticSamplers, source.NumStaticSamplers);
 
+    // All deny flags
+    constexpr D3D12_ROOT_SIGNATURE_FLAGS denyFlags =
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+    
     // Versioned creation info
     D3D12_VERSIONED_ROOT_SIGNATURE_DESC versioned;
     versioned.Version = version;
@@ -566,10 +576,12 @@ HRESULT SerializeRootSignature(DeviceState* state, D3D_ROOT_SIGNATURE_VERSION ve
         versioned.Desc_1_1 = source;
         versioned.Desc_1_1.pParameters = parameters;
         versioned.Desc_1_1.NumParameters = parameterCount;
+        versioned.Desc_1_1.Flags &= ~denyFlags;
     } else {
         versioned.Desc_1_0 = source;
         versioned.Desc_1_0.pParameters = parameters;
         versioned.Desc_1_0.NumParameters = parameterCount;
+        versioned.Desc_1_0.Flags &= ~denyFlags;
     }
 
     // Create it
