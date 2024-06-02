@@ -75,6 +75,7 @@ void WINAPI HookID3D12CommandListSetGraphicsRootConstantBufferView(ID3D12Command
 void WINAPI HookID3D12CommandListCopyBufferRegion(ID3D12CommandList *list, ID3D12Resource* pDstBuffer, UINT64 DstOffset, ID3D12Resource* pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes);
 void WINAPI HookID3D12CommandListCopyTextureRegion(ID3D12CommandList *list, const D3D12_TEXTURE_COPY_LOCATION *pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION *pSrc, const D3D12_BOX *pSrcBox);
 void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList *list, UINT NumBarriers, const D3D12_RESOURCE_BARRIER *pBarriers);
+void WINAPI HookID3D12CommandListBarrier(ID3D12CommandList *list, UINT NumBarrierGroups, const D3D12_BARRIER_GROUP *pBarrierGroups);
 void WINAPI HookID3D12CommandListBeginRenderPass(ID3D12CommandList* list, UINT NumRenderTargets, const D3D12_RENDER_PASS_RENDER_TARGET_DESC* pRenderTargets, const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* pDepthStencil, D3D12_RENDER_PASS_FLAGS Flags);
 void WINAPI HookID3D12CommandListEndRenderPass(ID3D12CommandList* list);
 void WINAPI HookID3D12CommandListDrawInstanced(ID3D12CommandList *list, UINT VertexCountPerInstance, UINT InstanceCount, UINT StartVertexLocation, UINT StartInstanceLocation);

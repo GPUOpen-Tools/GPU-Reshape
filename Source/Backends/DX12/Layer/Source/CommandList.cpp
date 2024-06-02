@@ -761,6 +761,105 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
     table.bottom->next_ResourceBarrier(table.next, NumBarriers, barriers);
 }
 
+void WINAPI HookID3D12CommandListBarrier(ID3D12CommandList *list, UINT NumBarrierGroups, const D3D12_BARRIER_GROUP *pBarrierGroups) {
+    auto table = GetTable(list);
+
+    // Current offsets
+    uint32_t globalBarrierOffset{0};
+    uint32_t textureBarrierOffset{0};
+    uint32_t bufferBarrierOffset{0};
+
+    // Count all barrier types
+    for (uint32_t i = 0; i < NumBarrierGroups; i++) {
+        switch (pBarrierGroups[i].Type) {
+            default:
+                ASSERT(false, "Unexpected type");
+                break;
+            case D3D12_BARRIER_TYPE_GLOBAL:
+                globalBarrierOffset += pBarrierGroups[i].NumBarriers;
+                break;
+            case D3D12_BARRIER_TYPE_TEXTURE:
+                textureBarrierOffset += pBarrierGroups[i].NumBarriers;
+                break;
+            case D3D12_BARRIER_TYPE_BUFFER:
+                bufferBarrierOffset += pBarrierGroups[i].NumBarriers;
+                break;
+        }
+    }
+
+    // Unwrapped barriers
+    TrivialStackVector<D3D12_BARRIER_GROUP, 16> groups;
+    TrivialStackVector<D3D12_GLOBAL_BARRIER, 32> globalBarriers;
+    TrivialStackVector<D3D12_TEXTURE_BARRIER, 32> textureBarriers;
+    TrivialStackVector<D3D12_BUFFER_BARRIER, 32> bufferBarriers;
+
+    // Allocate space
+    groups.Resize(NumBarrierGroups);
+    globalBarriers.Resize(globalBarrierOffset);
+    textureBarriers.Resize(textureBarrierOffset);
+    bufferBarriers.Resize(bufferBarrierOffset);
+
+    // Reset counters
+    globalBarrierOffset = 0;
+    textureBarrierOffset = 0;
+    bufferBarrierOffset = 0;
+
+    // Unwrap all objects
+    for (uint32_t i = 0; i < NumBarrierGroups; i++) {
+        const D3D12_BARRIER_GROUP& source = pBarrierGroups[i];
+
+        // Copy group
+        D3D12_BARRIER_GROUP& dest = groups[i];
+        dest.Type = source.Type;
+        dest.NumBarriers = source.NumBarriers;
+
+        switch (pBarrierGroups[i].Type) {
+            case D3D12_BARRIER_TYPE_GLOBAL: {
+                // Unwrap global
+                for (uint32_t barrierIndex = 0; barrierIndex < source.NumBarriers; barrierIndex++) {
+                    globalBarriers[globalBarrierOffset + barrierIndex] = source.pGlobalBarriers[barrierIndex];
+                }
+                
+                dest.pGlobalBarriers = globalBarriers.Data() + globalBarrierOffset;
+                globalBarrierOffset += source.NumBarriers;
+                break;
+            }
+            case D3D12_BARRIER_TYPE_TEXTURE: {
+                // Unwrap texture
+                for (uint32_t barrierIndex = 0; barrierIndex < source.NumBarriers; barrierIndex++) {
+                    D3D12_TEXTURE_BARRIER barrier = source.pTextureBarriers[barrierIndex];
+                    barrier.pResource = Next(barrier.pResource);
+                    textureBarriers[textureBarrierOffset + barrierIndex] = barrier;
+                }
+                
+                dest.pTextureBarriers = textureBarriers.Data() + textureBarrierOffset;
+                textureBarrierOffset += source.NumBarriers;
+                break;
+            }
+            case D3D12_BARRIER_TYPE_BUFFER: {
+                // Unwrap buffer
+                for (uint32_t barrierIndex = 0; barrierIndex < source.NumBarriers; barrierIndex++) {
+                    D3D12_BUFFER_BARRIER barrier = source.pBufferBarriers[barrierIndex];
+                    barrier.pResource = Next(barrier.pResource);
+                    bufferBarriers[bufferBarrierOffset + barrierIndex] = barrier;
+                }
+                
+                dest.pBufferBarriers = bufferBarriers.Data() + bufferBarrierOffset;
+                bufferBarrierOffset += source.NumBarriers;
+                break;
+            }
+        }
+    }
+
+    // Validation
+    ASSERT(globalBarrierOffset == globalBarriers.Size(), "Invalid offset");
+    ASSERT(textureBarrierOffset == textureBarriers.Size(), "Invalid offset");
+    ASSERT(bufferBarrierOffset == bufferBarriers.Size(), "Invalid offset");
+
+    // Pass down callchain
+    table.bottom->next_Barrier(table.next, static_cast<uint32_t>(groups.Size()), groups.Data());
+}
+
 void WINAPI HookID3D12CommandListBeginRenderPass(ID3D12CommandList* list, UINT NumRenderTargets, const D3D12_RENDER_PASS_RENDER_TARGET_DESC* pRenderTargets, const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* pDepthStencil, D3D12_RENDER_PASS_FLAGS Flags) {
     auto table = GetTable(list);
 
