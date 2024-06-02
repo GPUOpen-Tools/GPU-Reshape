@@ -245,6 +245,10 @@ struct DXBCPSVRuntimeInfo2 {
     uint32_t threadCountZ;
 };
 
+struct DXBCPSVRuntimeInfo3 {
+    uint32_t entryFunctionName;
+};
+
 struct DXBCPSVRuntimeInfoRevision0 {
     DXBCPSVRuntimeInfo0 info0;
 };
@@ -258,6 +262,13 @@ struct DXBCPSVRuntimeInfoRevision2 {
     DXBCPSVRuntimeInfo0 info0;
     DXBCPSVRuntimeInfo1 info1;
     DXBCPSVRuntimeInfo2 info2;
+};
+
+struct DXBCPSVRuntimeInfoRevision3 {
+    DXBCPSVRuntimeInfo0 info0;
+    DXBCPSVRuntimeInfo1 info1;
+    DXBCPSVRuntimeInfo2 info2;
+    DXBCPSVRuntimeInfo3 info3;
 };
 
 enum class DXBCRootSignatureVersion : uint32_t {
