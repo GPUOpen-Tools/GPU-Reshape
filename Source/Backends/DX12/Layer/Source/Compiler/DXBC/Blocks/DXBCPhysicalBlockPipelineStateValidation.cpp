@@ -60,6 +60,11 @@ void DXBCPhysicalBlockPipelineStateValidation::Parse() {
         runtimeInfo.info2 = ctx.Consume<DXBCPSVRuntimeInfo2>();
     }
 
+    // Read version 3
+    if (runtimeInfoSize >= sizeof(DXBCPSVRuntimeInfoRevision3)) {
+        runtimeInfo.info3 = ctx.Consume<DXBCPSVRuntimeInfo3>();
+    }
+
     // Number of existing resources
     auto resourceCount = ctx.Consume<uint32_t>();
     if (!resourceCount) {
