@@ -662,6 +662,7 @@ HRESULT WINAPI HookD3D12EnableExperimentalFeatures(UINT NumFeatures, const IID *
 AGSReturnCode HookAMDAGSCreateDevice(AGSContext* context, const AGSDX12DeviceCreationParams* creationParams, const AGSDX12ExtensionParams* extensionParams, AGSDX12ReturnedParams* returnedParams) {
     // Create with base interface
     AGSDX12DeviceCreationParams params = *creationParams;
+    params.pAdapter = UnwrapObject(params.pAdapter);
     params.iid = __uuidof(ID3D12Device);
 
     // Try to enable for faster instrumentation

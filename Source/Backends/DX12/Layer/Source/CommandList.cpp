@@ -739,36 +739,65 @@ void WINAPI HookID3D12CommandListResourceBarrier(ID3D12CommandList* list, UINT N
     auto table = GetTable(list);
 
     // Copy wrapper barriers
-    auto barriers = ALLOCA_ARRAY(D3D12_RESOURCE_BARRIER, NumBarriers);
-    std::memcpy(barriers, pBarriers, sizeof(D3D12_RESOURCE_BARRIER) * NumBarriers);
+    TrivialStackVector<D3D12_RESOURCE_BARRIER, 16> barriers;
 
     // Unwrap all objects
     for (uint32_t i = 0; i < NumBarriers; i++) {
-        switch (barriers[i].Type) {
+        switch (pBarriers[i].Type) {
             case D3D12_RESOURCE_BARRIER_TYPE_TRANSITION: {
-                barriers[i].Transition.pResource = Next(barriers[i].Transition.pResource);
+                D3D12_RESOURCE_BARRIER barrier = pBarriers[i];
+                barrier.Transition.pResource = Next(barrier.Transition.pResource);
+                barriers.Add(barrier);
                 break;
             }
             case D3D12_RESOURCE_BARRIER_TYPE_ALIASING: {
-                if (barriers[i].Aliasing.pResourceBefore) {
-                    barriers[i].Aliasing.pResourceBefore = Next(barriers[i].Aliasing.pResourceBefore);
+                D3D12_RESOURCE_BARRIER barrier = pBarriers[i];
+                
+                if (barrier.Aliasing.pResourceBefore) {
+                    auto resourceTable = GetTable(barrier.Aliasing.pResourceBefore);
+
+                    // If emulated, this barrier is irrelevant
+                    if (resourceTable.state->isEmulatedComitted) {
+                        continue;
+                    }
+                    
+                    barrier.Aliasing.pResourceBefore = resourceTable.next;
                 }
-                if (barriers[i].Aliasing.pResourceAfter) {
-                    barriers[i].Aliasing.pResourceAfter = Next(barriers[i].Aliasing.pResourceAfter);
+                
+                if (barrier.Aliasing.pResourceAfter) {
+                    auto resourceTable = GetTable(barrier.Aliasing.pResourceAfter);
+                    
+                    // If emulated, this barrier is irrelevant
+                    if (resourceTable.state->isEmulatedComitted) {
+                        continue;
+                    }
+                    
+                    barrier.Aliasing.pResourceAfter = resourceTable.next;
                 }
+                
+                barriers.Add(barrier);
                 break;
             }
             case D3D12_RESOURCE_BARRIER_TYPE_UAV: {
-                if (barriers[i].UAV.pResource) {
-                    barriers[i].UAV.pResource = Next(barriers[i].Transition.pResource);
+                D3D12_RESOURCE_BARRIER barrier = pBarriers[i];
+                
+                if (barrier.UAV.pResource) {
+                    barrier.UAV.pResource = Next(barrier.Transition.pResource);
                 }
+                
+                barriers.Add(barrier);
                 break;
             }
         }
     }
 
+    // Aliasing may ignore some barriers
+    if (!barriers.Size()) {
+        return;
+    }
+
     // Pass down callchain
-    table.bottom->next_ResourceBarrier(table.next, NumBarriers, barriers);
+    table.bottom->next_ResourceBarrier(table.next, static_cast<uint32_t>(barriers.Size()), barriers.Data());
 }
 
 void WINAPI HookID3D12CommandListBarrier(ID3D12CommandList *list, UINT NumBarrierGroups, const D3D12_BARRIER_GROUP *pBarrierGroups) {

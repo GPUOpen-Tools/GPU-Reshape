@@ -100,6 +100,7 @@ static ID3D12Resource* CreateResourceState(ID3D12Device* parent, const DeviceTab
     state->object = resource;
     state->desc = *desc;
     state->parent = parent;
+    state->isEmulatedComitted = (createFlags & ResourceCreateFlag::MetadataRequiresHardwareClear);
 
     // Keep reference
     parent->AddRef();
