@@ -224,6 +224,8 @@ endfunction()
 # Add build support
 if (NOT THIN_X86_BUILD)
     add_subdirectory(Build)
+else()
+    include(Build/Files.cmake)
 endif()
 
 # Add external projects

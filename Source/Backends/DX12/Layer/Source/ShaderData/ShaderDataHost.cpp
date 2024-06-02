@@ -49,6 +49,12 @@ ShaderDataHost::~ShaderDataHost() {
 }
 
 bool ShaderDataHost::Install() {
+    // Query device options
+    if (FAILED(device->object->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options)))) {
+        return false;
+    }
+
+    // OK
     return true;
 }
 

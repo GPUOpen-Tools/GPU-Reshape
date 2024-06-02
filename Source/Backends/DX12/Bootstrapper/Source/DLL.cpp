@@ -495,6 +495,7 @@ void BootstrapLayer(const char* invoker) {
     // Fetch function table
     if (LayerModule) {
         // Get hook points
+        LayerFunctionTable.next_D3D12GetInterfaceOriginal  = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(KernelXGetProcAddressOriginal(LayerModule, "HookD3D12GetInterface"));
         LayerFunctionTable.next_D3D12CreateDeviceOriginal  = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(LayerModule, "HookID3D12CreateDevice"));
         LayerFunctionTable.next_CreateDXGIFactoryOriginal  = reinterpret_cast<PFN_CREATE_DXGI_FACTORY>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory"));
         LayerFunctionTable.next_CreateDXGIFactory1Original = reinterpret_cast<PFN_CREATE_DXGI_FACTORY1>(KernelXGetProcAddressOriginal(LayerModule, "HookCreateDXGIFactory1"));
@@ -1455,6 +1456,11 @@ bool IsIHVRegion(const void* address) {
     return IsModuleRegion(IHVAMDXC64ModuleInfo, address);
 }
 
+HRESULT WINAPI HookD3D12GetInterface(REFCLSID rclsid, REFIID riid, void** ppvDebug) {
+    WaitForDeferredInitialization();
+    return LayerFunctionTable.next_D3D12GetInterfaceOriginal(rclsid, riid, ppvDebug);
+}
+
 HRESULT WINAPI HookID3D12CreateDevice(
     _In_opt_ IUnknown *pAdapter,
     D3D_FEATURE_LEVEL minimumFeatureLevel,
@@ -1600,6 +1606,10 @@ void DetourD3D12Module(HMODULE handle, bool insideTransaction) {
     ConditionallyBeginDetour(insideTransaction);
 
     // Attach against original address
+    DetourFunctionTable.next_D3D12GetInterfaceOriginal = reinterpret_cast<PFN_D3D12_GET_INTERFACE>(KernelXGetProcAddressOriginal(handle, "D3D12GetInterface"));
+    DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
+
+    // Attach against original address
     DetourFunctionTable.next_D3D12CreateDeviceOriginal = reinterpret_cast<PFN_D3D12_CREATE_DEVICE>(KernelXGetProcAddressOriginal(handle, "D3D12CreateDevice"));
     DetourAttach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
 
@@ -1660,6 +1670,12 @@ void DetourDXGIModule(HMODULE handle, bool insideTransaction) {
 }
 
 void DetachInitialCreation() {
+    // Remove device
+    if (DetourFunctionTable.next_D3D12GetInterfaceOriginal) {
+        DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12GetInterfaceOriginal), reinterpret_cast<void*>(HookD3D12GetInterface));
+        DetourFunctionTable.next_D3D12GetInterfaceOriginal = nullptr;
+    }
+    
     // Remove device
     if (DetourFunctionTable.next_D3D12CreateDeviceOriginal) {
         DetourDetach(&reinterpret_cast<void*&>(DetourFunctionTable.next_D3D12CreateDeviceOriginal), reinterpret_cast<void*>(HookID3D12CreateDevice));
